@@ -1087,8 +1087,10 @@ function plotSpotHtml(p, layout){
     stageInfo.name;
   var showWorkerIcon = (p.status==='preparing' || p.status==='growing');
   var showAccIcon = (p.status==='ready' || p.status==='growing');
+  var extraInfo = '';
+  if (p.treeType){ extraInfo = '<div style="position:absolute;top:14px;left:6px;font-size:0.7rem;color:#3E6B49;font-weight:700;background:rgba(255,255,255,0.9);padding:2px 6px;border-radius:8px;">ID:'+ (p.treeUid||'—') +' · '+TREE_TYPES[p.treeType].label+'</div>'; }
   return '<div class="plot-spot" style="top:'+layout.top+'%;left:'+layout.left+'%;width:'+layout.w+'%;height:'+layout.h+'%;" data-plot="'+p.id+'">'+
-    '<div class="plot-label">'+labelText+'</div>'+
+    '<div class="plot-label">'+labelText+'</div>'+ extraInfo +
     plotSvg(p)+
     '<div class="plot-icons">'+
       (showWorkerIcon ? '<div class="icon-btn'+(p.assignedWorker!==null?' on':'')+'" data-workericon="'+p.id+'">👷</div>' : '')+
@@ -1149,19 +1151,29 @@ function render(){
   '<div class="season-strip"><div class="season-name"><span>'+season.emoji+'</span> '+season.name+
     (bonusText.length? ' · <span style="color:#B8842E">'+bonusText.join(', ')+'</span>' : '')+'</div>'+
     '<div class="speed-toggle">Clock speed: <select id="speedSel">'+speedOptsHtml+'</select></div></div>'+
-  '<div class="field-scene"><div class="field-bg" id="fieldBg"></div>'+
-    '<div class="field-plots">'+ state.plots.map(function(p,i){ return plotSpotHtml(p, PLOT_LAYOUT[i]); }).join('') +'</div>'+
-  '</div>'+
-  '<div class="panels">'+
-    '<div class="panel"><h2>📋 Tasks</h2>'+tasksHtml+'</div>'+
-    '<div class="panel"><h2>👷 Workers</h2>'+hireHtml+rosterHtml+'</div>'+
-    '<div class="panel"><h2>🏆 Achievements</h2><div class="ach-grid">'+achHtml+'</div></div>'+
-    '<div class="panel"><h2>💡 Fact</h2><div class="facts">'+(function(){
-      var planted = state.plots.filter(function(p){return p.status==='growing';});
-      if (!planted.length) return 'Plant your first tree to unlock oxygen facts here.';
-      var p = planted[Math.floor((Date.now()/4000)%planted.length)];
-      return TREE_TYPES[p.treeType].fact;
-    })()+'</div></div>'+
+  // two-column layout: left = field, right = stacked panels
+  '<div class="grid">'+
+    '<div>'+
+      '<div class="panel" style="padding:12px 12px 18px;margin-bottom:12px;"><h3>Field</h3>'+
+        '<div class="field-scene"><div class="field-bg" id="fieldBg"></div>'+
+          '<div class="field-plots">'+ state.plots.map(function(p,i){ return plotSpotHtml(p, PLOT_LAYOUT[i]); }).join('') +'</div>'+
+        '</div></div>'+
+    '</div>'+
+    '<div style="display:flex;flex-direction:column;gap:12px;">'+
+      '<div class="panel"><h2>📋 Tasks</h2>'+tasksHtml+'</div>'+
+      '<div class="panel"><h2>👷 Workers</h2>'+hireHtml+rosterHtml+'</div>'+
+      '<div class="panel"><h2>🏆 Achievements</h2><div class="ach-grid">'+achHtml+'</div></div>'+
+      '<div class="panel"><h2>🧰 Accessories</h2><div class="accessories-bar">'+
+        '<div class="accessory">Irrigation<br><div class="small">€80</div></div>'+
+        '<div class="accessory">Fertilizer<br><div class="small">€60</div></div>'+
+      '</div></div>'+
+      '<div class="panel"><h2>💡 Fact</h2><div class="facts">'+(function(){
+        var planted = state.plots.filter(function(p){return p.status==='growing';});
+        if (!planted.length) return 'Plant your first tree to unlock oxygen facts here.';
+        var p = planted[Math.floor((Date.now()/4000)%planted.length)];
+        return TREE_TYPES[p.treeType].fact;
+      })()+'</div></div>'+
+    '</div>'+
   '</div>';
 
   document.getElementById('app').innerHTML = html;
