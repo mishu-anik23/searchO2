@@ -24,6 +24,14 @@
     .row{ display:flex; justify-content:space-between; align-items:center; }
     .muted{ color:#56755A; }
     .leaderboard{ max-height:200px; overflow:auto; }
+    /* top-left floating widgets */
+    .tl-widgets{ position:fixed; left:16px; top:16px; z-index:60; display:flex; gap:8px; flex-direction:column; }
+    .tl-icon{ width:44px; height:44px; border-radius:10px; background:var(--cream); display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); cursor:pointer; font-weight:800; }
+    .widget-panel{ position:fixed; left:72px; top:16px; z-index:61; width:320px; background:var(--cream); border-radius:12px; padding:8px; box-shadow:0 20px 50px rgba(0,0,0,0.25); display:none; }
+    .widget-panel.open{ display:block; }
+    .accessories-bar{ display:flex; gap:8px; overflow:auto; padding:8px 4px; }
+    .accessory{ min-width:90px; background:white; border-radius:8px; padding:8px; border:1px solid rgba(0,0,0,0.06); text-align:center; }
+    .hint-box{ position:fixed; right:18px; top:18px; z-index:61; background:rgba(255,255,255,0.95); padding:10px 12px; border-radius:12px; box-shadow:var(--shadow); display:none; }
   </style>
 </head>
 <body>
@@ -99,6 +107,7 @@
         var o2Rate = def.o2[idx] || 0;
         var o2Gain = o2Rate * dh;
         user.totalO2 += o2Gain; user.totalO2AllTime += o2Gain;
+        p.o2Total = (p.o2Total||0) + o2Gain;
         var inc = o2Gain * O2_RATE * totalMult;
         var isFruit = (def.stages[idx].n==='Fruiting' || def.stages[idx].n==='Harvest');
         if(isFruit && def.fruit) inc += def.fruit * dh * season.income * totalMult;
@@ -113,7 +122,7 @@
       return load().then(st=>{
         var id = 'u_'+Math.random().toString(36).slice(2,10);
         var user = { id:id, name:name||('Guest-'+id.slice(-4)), money:10000, totalO2:0, totalO2AllTime:0, treesPlanted:0, plots:[], gameHour:0, ach:{}, workers:[], buildings:[], lastActionTs:0 };
-        for(var i=0;i<PLOT_COUNT;i++) user.plots.push({id:i,status:'barren',treeType:null,growHours:0,prepHours:0});
+        for(var i=0;i<PLOT_COUNT;i++) user.plots.push({id:i,status:'barren',treeType:null,growHours:0,prepHours:0, treeUid:null, o2Total:0});
         st.users[id]=user; save(st); return user;
       });
     }
@@ -141,7 +150,7 @@
         if(p.status!=='ready') throw new Error('Plot not ready');
         var def = TREE_TYPES[type]; if(!def) throw new Error('Unknown tree');
         if(user.money < def.cost) throw new Error('Insufficient funds');
-        user.money -= def.cost; p.status='growing'; p.treeType=type; p.growHours=0; user.treesPlanted=(user.treesPlanted||0)+1; user.lastActionTs=Date.now();
+        user.money -= def.cost; p.status='growing'; p.treeType=type; p.growHours=0; p.treeUid='t_'+Math.random().toString(36).slice(2,9); p.o2Total=0; user.treesPlanted=(user.treesPlanted||0)+1; user.lastActionTs=Date.now();
         save(st); return {user:user};
       });
     }
@@ -210,20 +219,41 @@
     var btnExport = document.getElementById('btnExport'); if(btnExport) btnExport.onclick=exportSave;
     var btnImport = document.getElementById('btnImport'); if(btnImport) btnImport.onclick=importSave;
     refreshLeaderboard();
+    // top-left widgets (tasks / achievements / hints / accessories)
+    (function ensureTL(){
+      if(document.getElementById('tlWidgets')) return;
+      var tl = document.createElement('div'); tl.id='tlWidgets'; tl.className='tl-widgets';
+      tl.innerHTML = '<div class="tl-icon" id="btnTasks">T</div><div class="tl-icon" id="btnAch">A</div><div class="tl-icon" id="btnHints">?</div><div class="tl-icon" id="btnAcc">$</div>';
+      document.body.appendChild(tl);
+      var panel = document.createElement('div'); panel.id='tlPanel'; panel.className='widget-panel'; document.body.appendChild(panel);
+      document.getElementById('btnTasks').onclick = function(){ toggleWidget('tasks'); };
+      document.getElementById('btnAch').onclick = function(){ toggleWidget('ach'); };
+      document.getElementById('btnHints').onclick = function(){ toggleWidget('hints'); };
+      document.getElementById('btnAcc').onclick = function(){ toggleWidget('acc'); };
+    })();
+    function toggleWidget(name){ var panel=document.getElementById('tlPanel'); if(panel.dataset.open===name){ panel.dataset.open=''; panel.classList.remove('open'); panel.innerHTML=''; return;} panel.dataset.open=name; panel.classList.add('open');
+      if(name==='tasks'){ renderTasksPanel(); } else if(name==='ach'){ renderAchPanel(); } else if(name==='hints'){ renderHintsPanel(); } else if(name==='acc'){ renderAccPanel(); } }
+    function renderTasksPanel(){ var panel=document.getElementById('tlPanel'); var html='<h4>Tasks</h4>';
+      state.cleanupTasks = state.cleanupTasks||[]; if(state.cleanupTasks.length===0) html += '<div class="small muted">No cleanup tasks</div>'; else html += state.cleanupTasks.map(function(t){ return '<div class="task-row"><div><div class="name">'+t.title+'</div><div class="meta">'+t.desc+'</div></div><button class="claim-btn" data-taskid="'+t.id+'">Assign</button></div>'; }).join(''); panel.innerHTML=html; panel.querySelectorAll('[data-taskid]').forEach(b=>b.onclick=function(){ var id=b.getAttribute('data-taskid'); assignWorkerToTask(id); }); }
+    function renderAchPanel(){ var panel=document.getElementById('tlPanel'); var html='<h4>Achievements</h4>'+ ACHIEVEMENTS.map(a=>'<div style="padding:6px 0">'+a.label+' '+(state.ach&&state.ach[a.id]?'✅':'')+'</div>').join(''); panel.innerHTML=html; }
+    function renderHintsPanel(){ var panel=document.getElementById('tlPanel'); panel.innerHTML='<h4>Hints</h4><div class="small">Automatic hints appear periodically. Click a planted tree info icon for plant-specific facts.</div>'; }
+    function renderAccPanel(){ var panel=document.getElementById('tlPanel'); var accs = [{id:'botanist',label:'Botanist',cost:120},{id:'scarecrow',label:'Scarecrow',cost:45},{id:'fence',label:'Fence',cost:200}]; panel.innerHTML = '<h4>Accessories</h4><div class="accessories-bar">'+ accs.map(a=>'<div class="accessory" data-acc="'+a.id+'">'+a.label+'<div class="small">€'+a.cost+'</div></div>').join('') +'</div>'; panel.querySelectorAll('[data-acc]').forEach(b=>b.onmouseenter=function(){ b.title='Cost: €'+(accs.find(x=>x.id===b.getAttribute('data-acc'))||{}).cost; }); }
   }
 
   function renderPlot(p){
     var badge = p.status==='barren'?'Barren':(p.status==='preparing'?'Preparing…':(p.status==='ready'?'Ready to plant':(p.status==='growing'?('Growing'):'')));
     var progress = 0;
     if(p.status==='preparing') progress = Math.min(100, Math.round((p.prepHours/PREP_DURATION_HOURS)*100));
+    // include tree UID and per-tree O2 if present
+    var treeInfo = '';
+    if(p.treeType){ treeInfo = '<div style="text-align:center"><div style="font-weight:800">'+TREE_TYPES[p.treeType].label+'</div><div class="small">'+(p.growHours||0).toFixed(1)+'h</div><div class="small">ID: '+(p.treeUid||'—')+'</div><div class="small">O₂: '+((p.o2Total||0).toFixed? (p.o2Total||0).toFixed(1) : (p.o2Total||0))+'</div></div>'; }
     return '<div class="plot" data-plot="'+p.id+'" style="background:linear-gradient(#F7FFF5,#E6F5EA);padding:8px;border:2px solid rgba(0,0,0,0.04);">'+
       '<div style="position:absolute;right:8px;top:8px;background:white;padding:6px;border-radius:8px;font-weight:700;">'+badge+'</div>'+
       '<div style="position:absolute;left:8px;bottom:8px;right:8px;height:8px;background:#eee;border-radius:6px;">'+
       '<div style="height:100%;width:'+progress+'%;background:'+ (progress>50? '#F0AC3D':'#6FA85A') +';border-radius:6px;transition:width .4s"></div></div>'+
-      '<div style="display:flex;height:100%;align-items:center;justify-content:center;">'+(p.treeType?'<div style="text-align:center">'+TREE_TYPES[p.treeType].label+'<div class="small">'+(p.growHours||0).toFixed(1)+'h</div></div>':'<div style="text-align:center">Plot '+(p.id+1)+'</div>')+'</div>'+
-      '<div style="position:absolute;left:8px;top:8px;">'+(p.treeType? '':'<button data-prep="'+p.id+'">Dig</button>')+'</div>'+
+      '<div style="display:flex;height:100%;align-items:center;justify-content:center;">'+(p.treeType? treeInfo : '<div style="text-align:center">Plot '+(p.id+1)+'</div>')+'</div>'+
+      '<div style="position:absolute;left:8px;top:8px;">'+(p.treeType? '<button class="icon-btn" data-info="'+p.id+'">i</button>' : '<button data-prep="'+p.id+'">Dig</button>')+'</div>'+
       (p.status==='ready'?'<div style="position:absolute;left:8px;bottom:36px"><button data-open="'+p.id+'">Plant</button></div>':'')+
-      (p._picker? renderPicker(p.id): '') +
       '</div>';
   }
 
@@ -244,13 +274,88 @@
     }).catch(function(err){ alert('Server: '+err.message); });
   }
 
-  function openPicker(plotId){ var p = state.plots[plotId]; if(!p || p.status!=='ready') return; p._picker=true; render(); attachPickerEvents(); }
-  function attachPickerEvents(){ document.querySelectorAll('[data-plant]').forEach(b=>b.onclick=function(e){ var id=parseInt(b.getAttribute('data-plant')); var t=b.getAttribute('data-type'); clientPlant(id,t); }); document.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=function(){ state.plots.forEach(p=>p._picker=false); render(); }); }
+  function openPicker(plotId){ var p = state.plots[plotId]; if(!p || p.status!=='ready') return; showPickerPopover(plotId); }
+  function attachPickerEvents(){
+    document.querySelectorAll('[data-plant]').forEach(b=>b.onclick=function(e){ var id=parseInt(b.getAttribute('data-plant')); var t=b.getAttribute('data-type'); clientPlant(id,t); closePopover(); });
+    document.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=function(){ closePopover(); render(); });
+    document.querySelectorAll('[data-info]').forEach(b=>b.onclick=function(){ var id=parseInt(b.getAttribute('data-info')); showTreeInfo(id); });
+  }
 
   function clientPlant(plotId, type){ if(!state.userId) return promptLogin(); server.plantTree(state.userId, plotId, type).then(function(res){ mergeUserState(res.user); saveClient().then(render); server.updateLeaderboard(res.user).then(()=>refreshLeaderboard()); }).catch(function(err){ alert('Server: '+err.message); }); }
 
   function mergeUserState(u){ // copy fields from server user to client
-    state.userId = u.id; state.name = u.name; state.money = u.money; state.totalO2 = u.totalO2; state.totalO2AllTime = u.totalO2AllTime; state.treesPlanted = u.treesPlanted; state.plots = u.plots; state.gameHour = u.gameHour; }
+    state.userId = u.id; state.name = u.name; state.money = u.money; state.totalO2 = u.totalO2; state.totalO2AllTime = u.totalO2AllTime; state.treesPlanted = u.treesPlanted; state.gameHour = u.gameHour;
+    // ensure plots include server fields (treeUid, o2Total)
+    state.plots = u.plots.map(function(p){ return { id:p.id, status:p.status, treeType:p.treeType, growHours:p.growHours, prepHours:p.prepHours, treeUid:p.treeUid||null, o2Total:p.o2Total||0 }; });
+  }
+
+  // ----- floating popover (positioned to stay within viewport) -----
+  var currentPopover = null;
+  function closePopover(){ if(currentPopover){ currentPopover.remove(); currentPopover=null; } }
+  function showPopoverForPlot(plotId, contentHtml){
+    closePopover();
+    var app = document.getElementById('app');
+    var plotEl = app.querySelector('[data-plot="'+plotId+'"]');
+    var p = document.createElement('div'); p.className='popover'; p.innerHTML = contentHtml; document.body.appendChild(p);
+    if(!plotEl){ p.style.left='50%'; p.style.top='50%'; p.style.transform='translate(-50%,-50%)'; currentPopover=p; return; }
+    var rect = plotEl.getBoundingClientRect();
+    // compute preferred below plot
+    var top = rect.bottom + 8; var left = rect.left + rect.width/2 - 100; // popover width 200
+    var vw = Math.max(document.documentElement.clientWidth, window.innerWidth||0);
+    var vh = Math.max(document.documentElement.clientHeight, window.innerHeight||0);
+    if(left < 8) left = 8; if(left + 208 > vw) left = vw - 208 - 8;
+    if(top + p.offsetHeight > vh - 8){ // flip above
+      top = rect.top - p.offsetHeight - 8;
+      if(top < 8) top = 8;
+    }
+    p.style.left = left+'px'; p.style.top = top+'px'; p.style.position='fixed'; currentPopover = p;
+    var to = setTimeout(function(){ if(currentPopover===p) closePopover(); }, 12000);
+    p.addEventListener('mouseenter', function(){ clearTimeout(to); });
+    p.addEventListener('mouseleave', function(){ clearTimeout(to); setTimeout(function(){ if(currentPopover===p) closePopover(); }, 4000); });
+  }
+
+  function showPickerPopover(plotId){
+    var html = '<h4>Choose Plant</h4>' +
+      Object.keys(TREE_TYPES).map(function(k){ var d=TREE_TYPES[k]; return '<div class="opt"><div>'+d.label+'<div class="small">€'+d.cost+' · '+d.label+'</div></div><div><button data-plant="'+plotId+'" data-type="'+k+'">Plant</button></div></div>'; }).join('') +
+      '<div class="hint">Pick a tree — server will validate cost & availability.</div>';
+    showPopoverForPlot(plotId, html);
+    attachPickerEvents();
+  }
+
+  // ----- educational hints and tasks -----
+  function showTreeInfo(plotId){
+    var p = state.plots[plotId]; if(!p || !p.treeType) return;
+    var hints = getRandomTreeHints(p.treeType);
+    var html = '<h4>'+TREE_TYPES[p.treeType].label+' — Info</h4><div>'+hints[0]+'</div>';
+    showPopoverForPlot(plotId, html);
+  }
+
+  function getRandomTreeHints(type){
+    var base = (TREE_TYPES[type] && TREE_TYPES[type].fact) ? [TREE_TYPES[type].fact] : ['This plant needs care.'];
+    var extras = ['Water regularly', 'Use balanced fertilizer', 'Prune dead branches', 'Watch for pests', 'Rotate crops to maintain soil'];
+    // shuffle and pick two
+    var arr = base.concat(extras.sort(()=>0.5-Math.random()).slice(0,2)); return arr;
+  }
+
+  function showHintBox(msg, timeout){
+    var hb = document.getElementById('hintBox'); if(!hb){ hb = document.createElement('div'); hb.id='hintBox'; hb.className='hint-box'; document.body.appendChild(hb); }
+    hb.innerHTML = '<strong>Hint</strong><div class="small">'+msg+'</div>'; hb.style.display='block'; setTimeout(function(){ hb.style.display='none'; }, timeout||6000);
+  }
+
+  function assignWorkerToTask(taskId){ // simple assign: cost and quick complete
+    state.cleanupTasks = state.cleanupTasks || []; var idx = state.cleanupTasks.findIndex(t=>t.id==taskId); if(idx<0) return; var t=state.cleanupTasks[idx]; var cost = t.cost||20; if(state.money < cost){ alert('Not enough money to assign worker'); return; }
+    state.money -= cost; // consume cost
+    // complete after short delay
+    setTimeout(function(){ state.cleanupTasks.splice(idx,1); saveClient().then(render); showHintBox('Task '+t.title+' completed by worker.',4000); }, 3000);
+    saveClient().then(render);
+  }
+
+  function generateCleanupTask(){ state.cleanupTasks = state.cleanupTasks||[]; var id='c_'+Math.random().toString(36).slice(2,8); var t={ id:id, title:'Cleanup debris', desc:'Remove rocks/weeds from field', cost:20 }; state.cleanupTasks.push(t); saveClient().then(render); }
+
+  function scheduleCleanupGenerator(){ setInterval(function(){ generateCleanupTask(); }, 1000 * 30); }
+
+  function scheduleHints(){ setInterval(function(){ // pick a random planted tree and show a hint
+    var planted = state.plots.filter(p=>p.status==='growing'); if(!planted.length) return; var p = planted[Math.floor(Math.random()*planted.length)]; var msgs = getRandomTreeHints(p.treeType); showHintBox(msgs[Math.floor(Math.random()*msgs.length)], 7000); }, 15000); }
 
   // ----- offline catch-up / loop -----
   function startLoop(){ if(tickHandle) clearInterval(tickHandle); tickHandle=setInterval(function(){ var now=Date.now(); var realDelta=now-lastRealTs; lastRealTs=now; // advance locally and ask server occasionally
@@ -284,11 +389,11 @@
 
   // ----- boot -----
   loadClient().then(function(){ // if we already have userId, reload authoritative user
-    if(state.userId){ server.getUser(state.userId).then(function(u){ if(u) mergeUserState(u); render(); startLoop(); }); } else { render(); // show login button
+    if(state.userId){ server.getUser(state.userId).then(function(u){ if(u) mergeUserState(u); render(); startLoop(); scheduleHints(); scheduleCleanupGenerator(); }); } else { render(); // show login button
       // first-run quick prompt
       if(!state.userId) setTimeout(function(){ if(confirm('Create a guest account to persist leaderboards?')) promptLogin(); }, 400);
     }
-    lastRealTs = Date.now(); startLoop();
+    lastRealTs = Date.now(); startLoop(); scheduleHints(); scheduleCleanupGenerator();
   });
 
 })();
