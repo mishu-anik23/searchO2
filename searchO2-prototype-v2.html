@@ -24,10 +24,10 @@
     .row{ display:flex; justify-content:space-between; align-items:center; }
     .muted{ color:#56755A; }
     .leaderboard{ max-height:200px; overflow:auto; }
-    /* top-left floating widgets */
-    .tl-widgets{ position:fixed; left:16px; top:16px; z-index:60; display:flex; gap:8px; flex-direction:column; }
+    /* floating widgets (docked right) */
+    .tl-widgets{ position:fixed; right:16px; top:120px; z-index:60; display:flex; gap:8px; flex-direction:column; }
     .tl-icon{ width:44px; height:44px; border-radius:10px; background:var(--cream); display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow); cursor:pointer; font-weight:800; }
-    .widget-panel{ position:fixed; left:72px; top:16px; z-index:61; width:320px; background:var(--cream); border-radius:12px; padding:8px; box-shadow:0 20px 50px rgba(0,0,0,0.25); display:none; }
+    .widget-panel{ position:fixed; right:72px; top:120px; z-index:61; width:320px; background:var(--cream); border-radius:12px; padding:8px; box-shadow:0 20px 50px rgba(0,0,0,0.25); display:none; }
     .widget-panel.open{ display:block; }
     .accessories-bar{ display:flex; gap:8px; overflow:auto; padding:8px 4px; }
     .accessory{ min-width:90px; background:white; border-radius:8px; padding:8px; border:1px solid rgba(0,0,0,0.06); text-align:center; }
@@ -1192,7 +1192,35 @@ function render(){
     );
     document.getElementById('closeOffline').onclick = function(){ offlineSummary=null; document.getElementById('offlineModal').remove(); };
   }
+
+  // relocate popovers into body and position them to stay within the viewport
+  function relocatePopovers(){
+    document.querySelectorAll('.plot-spot .popover').forEach(function(pop){
+      var container = pop.closest('.plot-spot');
+      if(!container) return;
+      // move to body
+      if(pop.parentNode !== document.body) document.body.appendChild(pop);
+      pop.style.position = 'fixed'; pop.style.zIndex = 120;
+      var rect = container.getBoundingClientRect();
+      // ensure pop has been measured
+      pop.style.left = '0px'; pop.style.top = '0px';
+      var pw = pop.offsetWidth || 200; var ph = pop.offsetHeight || 120;
+      var left = Math.round(rect.left + (rect.width/2) - pw/2);
+      var top = Math.round(rect.bottom + 8);
+      var vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+      var vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+      if(left < 8) left = 8; if(left + pw > vw - 8) left = Math.max(8, vw - pw - 8);
+      if(top + ph > vh - 8){ top = Math.round(rect.top - ph - 8); if(top < 8) top = 8; }
+      pop.style.left = left + 'px'; pop.style.top = top + 'px';
+    });
+  }
+
+  // ensure popovers reposition when layout or viewport changes
+  window.addEventListener('resize', function(){ setTimeout(relocatePopovers,120); });
+  window.addEventListener('scroll', function(){ setTimeout(relocatePopovers,120); });
   wireEvents();
+  // after events wired, relocate any popovers so they're visible
+  setTimeout(relocatePopovers, 0);
 }
 
 function wireEvents(){
