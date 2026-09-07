@@ -252,6 +252,7 @@ The complete chronological commit tree on `mvp-v1` starting from repository init
 | **11** | `4d3e7cf` | mishu-anik23 | 2026-09-07 | `docs: analyze and document prototype v4 modifications (tree lifecycle, garden/pond decay, notification system)`<br>Updates branch history with v4 modifications and expanded 8-plot comparative schema matrix. | `searchO2-MVP-v1-Branch-History.md`<br>`searchO2-prototype-v4.html` |
 | **12** | `bb4d814` | mishu-anik23 | 2026-09-07 | `feat(backend): implement production-grade Node.js/TypeScript backend, PostgreSQL 18 DB, auth, anti-cheat engine, and frontend bridge`<br>Delivers complete Express.js backend with PostgreSQL migrations, Bcrypt/JWT/cookie auth, Google OAuth2, authoritative game engine, ledger audit, WebSockets, 14/14 Jest tests, and v4 ApiClient bridge. | `backend/*`<br>`searchO2-prototype-v4.html`<br>`searchO2-MVP-v1-Branch-History.md` |
 | **13** | `24a4411` | mishu-anik23 | 2026-09-07 | `feat(ui): implement Regional Biome Selection screen, blurred initial auth flow, and German farm navigation`<br>Adds 8 global biomes with country flags, initial blurred background preview, 1-click guest start, and dual world map navigation. | `searchO2-prototype-v4.html`<br>`searchO2-MVP-v1-Branch-History.md` |
+| **14** | `9852cb7` | mishu-anik23 | 2026-09-07 | `feat(ui): add interactive 3D World Globe with draggable rotation, regional beacons, and flora tooltips`<br>Adds zero-dependency HTML5 2D Canvas 3D spherical projection engine, interactive rotation drag with momentum physics and idle auto-spin, regional beacons with pulsing concentric rings for Germany, dynamic hover billboards with native flora and tree emoji icons, 3 view modes (3D Globe, Split View, Biome Cards), and quick-center region chips. | `searchO2-prototype-v4.html` |
 
 ---
 
@@ -300,7 +301,7 @@ npm run build
 | **Countdown Sync** | Client-side `setInterval` | ✅ **Delivered** | WebSocket server (`ws`) mounted on `/ws` with token authentication, heartbeat keep-alive, and broadcast notifications |
 | **Global Leaderboards** | Local simulation stub | ✅ **Delivered** | Ranked leaderboard endpoints (Oxygen, Net Worth, Eco Score) backed by Redis caching with transparent in-memory fallback |
 | **Audit Ledger** | None | ✅ **Delivered** | Append-only `economy_transactions` double-entry ledger tracking all currency and O2 movements with running balances |
-| **Regional Biomes** | Germany Grassland (6 plots) | ⏳ *Phase 3 Backlog* | 10 unlockable global biomes with climate modifiers |
+| **Regional Biomes** | Germany Grassland (6 plots) | ✅ **Delivered** | Interactive 3D World Globe + 8 regional biomes with country flags, lock/unlock mechanics, native flora tooltips, and 3 view modes (`searchO2-prototype-v4.html`) |
 | **Educational Quiz Engine** | Static hint toasts & facts | ⏳ *Phase 3 Backlog* | Interactive sustainability quizzes with coin/seed rewards |
 
 ---
