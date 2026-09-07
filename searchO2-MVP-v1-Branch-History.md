@@ -251,6 +251,7 @@ The complete chronological commit tree on `mvp-v1` starting from repository init
 | **10** | `6b59f84` | mishu-anik3 | 2026-09-06 | `docs(mvp-v1): add branch history, blueprint traceability, and v1-v4 evolution guide`<br>Initial documentation of MVP v1 branch history and blueprint alignment. | `searchO2-MVP-v1-Branch-History.md` |
 | **11** | `4d3e7cf` | mishu-anik23 | 2026-09-07 | `docs: analyze and document prototype v4 modifications (tree lifecycle, garden/pond decay, notification system)`<br>Updates branch history with v4 modifications and expanded 8-plot comparative schema matrix. | `searchO2-MVP-v1-Branch-History.md`<br>`searchO2-prototype-v4.html` |
 | **12** | `bb4d814` | mishu-anik23 | 2026-09-07 | `feat(backend): implement production-grade Node.js/TypeScript backend, PostgreSQL 18 DB, auth, anti-cheat engine, and frontend bridge`<br>Delivers complete Express.js backend with PostgreSQL migrations, Bcrypt/JWT/cookie auth, Google OAuth2, authoritative game engine, ledger audit, WebSockets, 14/14 Jest tests, and v4 ApiClient bridge. | `backend/*`<br>`searchO2-prototype-v4.html`<br>`searchO2-MVP-v1-Branch-History.md` |
+| **13** | *pending* | mishu-anik23 | 2026-09-07 | `feat(ui): implement Regional Biome Selection screen, blurred initial auth flow, and German farm navigation`<br>Adds 8 global biomes with country flags, initial blurred background preview, 1-click guest start, and dual world map navigation. | `searchO2-prototype-v4.html`<br>`searchO2-MVP-v1-Branch-History.md` |
 
 ---
 
