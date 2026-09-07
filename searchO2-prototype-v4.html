@@ -81,9 +81,8 @@
   .floating-tooltip{ position:fixed; z-index:300; background:#2C4A32; color:white; padding:7px 10px; border-radius:8px;
     font-size:0.68rem; font-weight:600; line-height:1.35; white-space:pre-line; max-width:190px; pointer-events:none;
     opacity:0; transition:opacity 0.12s ease; box-shadow:0 8px 20px rgba(0,0,0,0.3); }
-  .floating-tooltip.show{ opacity:1; }
-
-  .plot-spot{ position:absolute; pointer-events:auto; cursor:pointer; }
+  .plot-spot{ position:absolute; pointer-events:auto; cursor:pointer; z-index:10; }
+  .plot-spot:hover{ z-index:25; }
   .plot-spot svg{ width:100%; height:100%; overflow:visible; }
   .plot-label{ position:absolute; top:-8px; left:50%; transform:translateX(-50%); background: rgba(251,246,236,0.95); border-radius:8px;
     padding:2px 8px; font-size:0.6rem; font-weight:800; color:var(--pine); white-space:nowrap; box-shadow:0 2px 4px rgba(0,0,0,0.15); }
@@ -596,7 +595,7 @@
 
   <!-- ================= COMMON LAYERS & NOTIFICATIONS ================= -->
   <!-- Music Controller Dock -->
-  <div class="music-player-dock" id="musicPlayerDock">
+  <div class="music-player-dock collapsed" id="musicPlayerDock">
     <div class="music-dock-handle" id="musicDockToggle" title="Click to collapse / expand music player">
       <span id="musicDockIcon">🎵</span>
       <span class="music-dock-label" id="musicTrackLabel">Music: Standby (Click Play)</span>
@@ -617,7 +616,7 @@
   <div id="modalLayer"></div>
   <div class="hint-toast" id="hintToast"></div>
   <div class="floating-tooltip" id="toolTip"></div>
-  <div id="notifStack" style="position:absolute; top:66px; right:12px; z-index:90; display:flex; flex-direction:column; gap:8px; max-width:270px;"></div>
+  <div id="notifStack" style="position:absolute; top:66px; right:12px; z-index:90; display:flex; flex-direction:column; gap:8px; max-width:270px; pointer-events:none;"></div>
 
 </div>
 
@@ -2994,6 +2993,7 @@ function advanceGame(dh){
   if (nextSeason.name !== prevSeasonName && typeof SoundTrackEngine !== 'undefined'){
     SoundTrackEngine.playSFX('season', nextSeason.name);
   }
+  var season = nextSeason;
 
   if (state.storage.building){
     state.storage.buildHours += dh;
@@ -3083,13 +3083,17 @@ function advanceGame(dh){
       if (p.taskHours >= CLEAR_DURATION_HOURS){
         p.status='barren'; p.weedHours=0; p.taskHours=0;
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+        pushReport('🌾 Plot '+(p.id+1)+' overgrowth cleared! Land is ready to dig.');
+        showNotification('🌾', 'Plot '+(p.id+1)+' cleared — ready to dig!', 'plot', p.id);
       }
     } else if (p.status==='preparing'){
       var prepMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : 1;
       p.taskHours += dh * prepMult;
       if (p.taskHours >= PREP_DURATION_HOURS){
-        p.status='ready'; p.weedHours=0;
+        p.status='ready'; p.weedHours=0; p.taskHours=0;
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+        pushReport('🌱 Plot '+(p.id+1)+' soil preparation complete! Ready for planting.');
+        showNotification('🌱', 'Plot '+(p.id+1)+' prepared — ready to plant!', 'plot', p.id);
       }
     } else if (p.status==='removing'){
       var remDef = TREE_TYPES[p.treeType]; var remCfg = REMOVE_CONFIG[remDef.category];
@@ -3579,7 +3583,7 @@ function spawnVehicleAnimation(fromLayout){
 function showNotification(icon, text, actionType, actionArg){
   var stack = document.getElementById('notifStack'); if (!stack) return;
   var el = document.createElement('div');
-  el.style.cssText = 'background:var(--cream);border-radius:12px;padding:9px 11px;box-shadow:0 10px 26px rgba(0,0,0,0.28);font-size:0.76rem;display:flex;gap:8px;align-items:flex-start;color:var(--pine);';
+  el.style.cssText = 'pointer-events:auto;background:var(--cream);border-radius:12px;padding:9px 11px;box-shadow:0 10px 26px rgba(0,0,0,0.28);font-size:0.76rem;display:flex;gap:8px;align-items:flex-start;color:var(--pine);';
   el.innerHTML = '<span style="font-size:1.05rem;">'+icon+'</span>'+
     '<div style="flex:1;">'+text+
       '<div style="margin-top:6px;display:flex;gap:6px;">'+
@@ -3736,7 +3740,16 @@ function plotSvg(p){
       '</g>';
   } else if (p.status==='preparing' || p.status==='clearing'){
     content = '<g opacity="0.7"><rect x="30" y="80" width="140" height="7" rx="3" fill="#5A3A22"/><rect x="30" y="95" width="140" height="7" rx="3" fill="#5A3A22"/></g>';
-    if (w){ content += personSvg('laborer', true, 150, 55); content += '<g class="dust" style="transform-origin:150px 90px;"><circle cx="150" cy="90" r="5" fill="#C9A374"/></g>'; }
+    if (w){
+      content += personSvg('laborer', true, 150, 55);
+      content += '<g class="dust" style="transform-origin:150px 90px;"><circle cx="150" cy="90" r="5" fill="#C9A374"/></g>';
+    } else {
+      content += '<g transform="translate(100,68)" class="bob">'+
+        '<line x1="-12" y1="-18" x2="6" y2="10" stroke="#7A5334" stroke-width="3.5" stroke-linecap="round"/>'+
+        '<polygon points="4,8 14,14 10,22 0,16" fill="#8A8A8A"/>'+
+        '<circle cx="8" cy="20" r="3" fill="#6E4429"/>'+
+      '</g>';
+    }
   } else if (p.status==='dead'){
     var deadDefStatic = TREE_TYPES[p.treeType];
     content = drawDeadTreeShape(deadDefStatic) + '<text x="150" y="40" font-size="18">💀</text>';
@@ -3751,7 +3764,18 @@ function plotSvg(p){
   } else if (p.status==='growing'){
     var def = TREE_TYPES[p.treeType]; var idx = stageInfo.idx;
     var dead = p.health<=0;
-    if (idx===0){ content = '<circle cx="100" cy="82" r="6" fill="#4A3320"/>'; }
+    if (idx===0){
+      content = '<ellipse cx="100" cy="88" rx="26" ry="10" fill="#5A3A22"/>'+
+        '<g class="bob" style="transform-origin:100px 80px;">'+
+          '<circle cx="100" cy="81" r="7" fill="#C8963E"/>'+
+          '<path d="M100,80 Q106,70 109,66 Q103,71 100,80" fill="#79B25F"/>'+
+          '<circle cx="100" cy="81" r="3.5" fill="#F0AC3D"/>'+
+        '</g>'+
+        '<g transform="translate(100,50)">'+
+          '<rect x="-26" y="-10" width="52" height="20" rx="10" fill="rgba(251,246,236,0.92)" stroke="#79B25F" stroke-width="1.5"/>'+
+          '<text x="0" y="4" font-size="10" text-anchor="middle" font-weight="800" fill="#2C4A32">🌱 Seed</text>'+
+        '</g>';
+    }
     else if (idx===1){ content = '<g class="'+(dead?'':'sway')+'"><rect x="97" y="60" width="6" height="26" fill="'+(dead?'#7A6A4E':'#588A46')+'"/><circle cx="100" cy="58" r="9" fill="'+(dead?'#A69B7A':'#79B25F')+'"/></g>'; }
     else if (def.shape==='bush'){
       var dots='';
@@ -3827,16 +3851,26 @@ function plotSvg(p){
 function plotSpotHtml(p, layout){
   var stageInfo = plotStageInfo(p);
   var def = p.treeType ? TREE_TYPES[p.treeType] : null;
+  var dur = p.status==='preparing' ? PREP_DURATION_HOURS : (p.status==='clearing' ? CLEAR_DURATION_HOURS : 0);
+  var taskPct = dur > 0 ? Math.round(Math.min(100, (p.taskHours/dur)*100)) : 0;
+  var remDur = p.status==='removing' && def ? REMOVE_CONFIG[def.category].hours : 0;
+  var remPct = remDur > 0 ? Math.round(Math.min(100, (p.taskHours/remDur)*100)) : 0;
+
   var labelText = p.status==='barren' ? 'Plot '+(p.id+1) :
     p.status==='overgrown' ? '⚠️ Overgrown' :
-    p.status==='preparing' ? 'Preparing…' :
-    p.status==='clearing' ? 'Clearing…' :
+    p.status==='preparing' ? '⛏️ Digging '+taskPct+'%' :
+    p.status==='clearing' ? '🌿 Clearing '+taskPct+'%' :
     p.status==='dead' ? '💀 Dead #'+p.treeId :
-    p.status==='removing' ? 'Removing…' :
-    p.status==='ready' ? 'Tap to plant' :
+    p.status==='removing' ? '🪓 Removing '+remPct+'%' :
+    p.status==='ready' ? '✅ Ready to plant' :
     (p.health<=0 ? '💤 Stalled #'+p.treeId : stageInfo.name+' #'+p.treeId);
+
   var healthBar='';
-  if (p.status==='growing'){
+  if (p.status==='preparing' || p.status==='clearing'){
+    healthBar = '<div class="health-mini"><div class="fill" style="width:'+taskPct+'%;background:#F0AC3D;"></div></div>';
+  } else if (p.status==='removing'){
+    healthBar = '<div class="health-mini"><div class="fill" style="width:'+remPct+'%;background:#E8785A;"></div></div>';
+  } else if (p.status==='growing'){
     var hColor = p.health>=70 ? '#6FA85A' : (p.health>=40 ? '#F0AC3D' : '#E8785A');
     healthBar = '<div class="health-mini"><div class="fill" style="width:'+p.health+'%;background:'+hColor+';"></div></div>';
   }
@@ -4139,8 +4173,18 @@ function modalHtml(){
       '<button class="primary" data-clear="'+p.id+'" '+(state.money<CLEAR_COST?'disabled':'')+'>Clear Overgrowth (€'+CLEAR_COST+' · 2h)</button>';
   } else if (p.status==='preparing' || p.status==='clearing'){
     var dur = p.status==='preparing'?PREP_DURATION_HOURS:CLEAR_DURATION_HOURS;
-    html += '<div class="sub">'+(p.status==='preparing'?'Digging in progress.':'Clearing overgrowth.')+'</div>'+
-      '<div class="row"><span>Progress</span><span class="v">'+Math.round(Math.min(100,(p.taskHours/dur)*100))+'%</span></div>';
+    var pct = Math.round(Math.min(100,(p.taskHours/dur)*100));
+    html += '<div class="sub">'+(p.status==='preparing'?'Digging in progress. Soil will be ready for planting once complete.':'Clearing overgrowth.')+'</div>'+
+      '<div class="row"><span>Progress</span><span class="v">'+pct+'%</span></div>'+
+      '<div class="healthbar" style="margin-bottom:12px;"><div class="fill" style="width:'+pct+'%;background:#F0AC3D;"></div></div>'+
+      (w ? ('<div class="row"><span>Assisted by</span><span class="v">'+WORKER_TYPES[w.type].label+' (+50% speed)</span></div>'+
+            '<button class="secondary" data-unassign="'+p.id+'" style="margin-top:6px;">Unassign Worker</button>')
+         : (function(){
+            var idleLaborers = state.workers.filter(function(x){return x.assignedPlot===null && x.type==='laborer';});
+            if (!idleLaborers.length) return '<div class="empty-note">Tip: Hire a Laborer from the bottom tool strip to speed up digging by +50%.</div>';
+            return '<div class="section"><h4>👷 Assign a Laborer (+50% speed)</h4>'+
+              idleLaborers.map(function(iw){ return '<div class="worker-opt"><span>Laborer (idle)</span><button data-assign="'+iw.id+'" data-assignplot="'+p.id+'">Assign</button></div>'; }).join('')+'</div>';
+          })());
   } else if (p.status==='dead'){
     var remCfg = REMOVE_CONFIG[def.category];
     html += '<div class="sub">This '+def.label+' dried out completely after being neglected at 0% health for too long. It won\'t recover — it needs to be cut down before you can replant here.</div>'+
@@ -4246,12 +4290,29 @@ function panelHtml(){
       }
     }
     state.plots.forEach(function(p){
-      if (p.status==='barren'){ any=true; rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Dig Land</div><div class="meta">€'+LABOR_COST+' · 3h</div></div><button class="claim-btn" data-prep="'+p.id+'">Start</button></div>'; }
-      else if (p.status==='overgrown'){ any=true; rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Clear Overgrowth</div><div class="meta">€'+CLEAR_COST+' · 2h</div></div><button class="claim-btn" data-clear="'+p.id+'">Clear</button></div>'; }
-      else if (p.status==='preparing' || p.status==='clearing'){ any=true; var dur=p.status==='preparing'?PREP_DURATION_HOURS:CLEAR_DURATION_HOURS; var pct=Math.round(Math.min(100,(p.taskHours/dur)*100)); rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — '+(p.status==='preparing'?'Preparing':'Clearing')+'</div><div class="meta">'+pct+'% done</div></div><button class="claim-btn" disabled>…</button></div>'; }
-      else if (p.status==='dead'){ any=true; var deadDef=TREE_TYPES[p.treeType]; var remCfg3=REMOVE_CONFIG[deadDef.category]; rows+='<div class="task-row"><div><div class="name">💀 Plot '+(p.id+1)+' — Remove Dead '+deadDef.label+'</div><div class="meta">€'+remCfg3.cost+' · '+remCfg3.hours+'h · needs a Laborer</div></div><button class="claim-btn" data-removetree="'+p.id+'" '+(state.money<remCfg3.cost?'disabled':'')+'>Remove</button></div>'; }
-      else if (p.status==='removing'){ any=true; var remDef2=TREE_TYPES[p.treeType]; var remCfg4=REMOVE_CONFIG[remDef2.category]; var rpct=Math.round(Math.min(100,(p.taskHours/remCfg4.hours)*100)); rows+='<div class="task-row"><div><div class="name">🪓 Plot '+(p.id+1)+' — Cutting down '+remDef2.label+'</div><div class="meta">'+rpct+'% done'+(p.assignedWorker!==null?' · 👷 assisted':' · assign a Laborer to speed up')+'</div></div><button class="claim-btn" disabled>…</button></div>'; }
-      else if (p.status==='ready'){ any=true; rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Ready to Plant</div><div class="meta">Open plot to choose</div></div><button class="claim-btn" data-openplot="'+p.id+'">Plant</button></div>'; }
+      if (p.status==='barren'){
+        any=true; rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Dig Land</div><div class="meta">€'+LABOR_COST+' · 3h</div></div><button class="claim-btn" data-prep="'+p.id+'">Start</button></div>';
+      } else if (p.status==='overgrown'){
+        any=true; rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Clear Overgrowth</div><div class="meta">€'+CLEAR_COST+' · 2h</div></div><button class="claim-btn" data-clear="'+p.id+'">Clear</button></div>';
+      } else if (p.status==='preparing' || p.status==='clearing'){
+        any=true; var dur=p.status==='preparing'?PREP_DURATION_HOURS:CLEAR_DURATION_HOURS; var pct=Math.round(Math.min(100,(p.taskHours/dur)*100));
+        rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — '+(p.status==='preparing'?'Digging Soil':'Clearing Weeds')+'</div><div class="meta">'+pct+'% done · '+(p.status==='preparing'?PREP_DURATION_HOURS:CLEAR_DURATION_HOURS)+'h</div></div><button class="claim-btn" disabled style="opacity:0.8;font-weight:800;">'+pct+'%</button></div>';
+      } else if (p.status==='ready'){
+        any=true;
+        rows+='<div class="task-row" style="background:rgba(46,125,50,0.08);border-left:3px solid #2E7D32;"><div><div class="name">✅ Plot '+(p.id+1)+' — Dig Complete</div><div class="meta">Soil ready · Select seed to plant</div></div><button class="claim-btn active" data-openplot="'+p.id+'" style="background:var(--forest,#2C4A32);color:#FFF;">Plant</button></div>';
+      } else if (p.status==='growing' && p.pendingHarvest >= 0.5 && !p.harvesting){
+        any=true; var defH = TREE_TYPES[p.treeType];
+        rows+='<div class="task-row"><div><div class="name">🧺 Plot '+(p.id+1)+' — Harvest '+defH.label+'</div><div class="meta">€'+p.pendingHarvest.toFixed(2)+' ripe harvest waiting</div></div><button class="claim-btn" data-openplot="'+p.id+'" style="background:#5A8FBF;color:#FFF;">Harvest</button></div>';
+      } else if (p.status==='growing' && p.health < 60){
+        any=true; var defW = TREE_TYPES[p.treeType];
+        rows+='<div class="task-row"><div><div class="name">💧 Plot '+(p.id+1)+' — Care for '+defW.label+'</div><div class="meta">Health at '+Math.round(p.health)+'% · Water needed</div></div><button class="claim-btn" data-openplot="'+p.id+'" style="background:#E8785A;color:#FFF;">Care</button></div>';
+      } else if (p.status==='dead'){
+        any=true; var deadDef=TREE_TYPES[p.treeType]; var remCfg3=REMOVE_CONFIG[deadDef.category];
+        rows+='<div class="task-row"><div><div class="name">💀 Plot '+(p.id+1)+' — Remove Dead '+deadDef.label+'</div><div class="meta">€'+remCfg3.cost+' · '+remCfg3.hours+'h · needs a Laborer</div></div><button class="claim-btn" data-removetree="'+p.id+'" '+(state.money<remCfg3.cost?'disabled':'')+'>Remove</button></div>';
+      } else if (p.status==='removing'){
+        any=true; var remDef2=TREE_TYPES[p.treeType]; var remCfg4=REMOVE_CONFIG[remDef2.category]; var rpct=Math.round(Math.min(100,(p.taskHours/remCfg4.hours)*100));
+        rows+='<div class="task-row"><div><div class="name">🪓 Plot '+(p.id+1)+' — Cutting down '+remDef2.label+'</div><div class="meta">'+rpct+'% done'+(p.assignedWorker!==null?' · 👷 assisted':' · assign a Laborer to speed up')+'</div></div><button class="claim-btn" disabled style="opacity:0.8;font-weight:800;">'+rpct+'%</button></div>';
+      }
     });
     if (!any) rows = '<div class="empty-note">No pending tasks right now.</div>';
     return '<div class="float-panel"><h2>📋 Tasks<span class="close-x" data-closepanel="1">✕</span></h2>'+rows+'</div>';
