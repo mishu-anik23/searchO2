@@ -1,4 +1,4 @@
-﻿# searchO2 MVP v1 Branch — Design Blueprint Analysis & Prototype Evolution
+# searchO2 MVP v1 Branch — Design Blueprint Analysis & Prototype Evolution
 
 > **Branch:** `mvp-v1`  
 > **Reference Blueprint:** [`searchO2_Game_Design_Blueprint_v2.md`](searchO2_Game_Design_Blueprint_v2.md)  
@@ -187,6 +187,20 @@ The `searchO2_Game_Design_Blueprint_v2.md` document serves as the architectural 
 6. **Atmospheric Sky Layer:** Animated SVG birds flying across the sky with synchronized wing flaps.
 7. **Performance & Persistence Hardening:**
    - Replaced unthrottled writes with a 3-second debounced mutex save engine (`doSave`, `requestSave`) with retry on failure, preventing browser storage rate-limiting errors.
+8. **Tree Death & Salvage Removal Pipeline:**
+   - Neglecting plot health at 0% for `TREE_DRY_THRESHOLD_HOURS` (20 game-hours) kills the tree (`status: 'dead'`).
+   - Dead trees produce zero O2/harvest and must be felled (`status: 'removing'`).
+   - Category-specific removal profiles (`REMOVE_CONFIG`) require dedicated tools (`chainsaw`, `saw`, `hand`), labor hours (1–7h), vehicle hauling (`truck` animation), and grant wood salvage refunds (up to 50%). Laborer speeds up removal.
+9. **Garden Flower Variety & Freshness Decay:**
+   - Completed Gardens allow planting Tulips, Roses, Sunflowers, or Daisies.
+   - Freshness decays at 0.8%/h; tending (€20) restores freshness to maintain full farm reputation bonus.
+10. **Pond Specialization & Physical Product Storage:**
+    - Built Ponds can be specialized into a Fish Farm or Duck Farm.
+    - Freshness decays at 0.7%/h; feeding (€8–€10) restores vitality.
+    - Operating ponds continuously stream physical goods directly into the Storage Room.
+11. **Actionable Notification Toasts & Task Counter Badges:**
+    - Toasts alert players to dead trees, overgrowth, hungry ponds, wilting gardens, and storage overflow with direct action shortcuts.
+    - Dynamic badge counter on the Tasks dock icon displays pending actionable tasks.
 
 ---
 
@@ -197,10 +211,12 @@ The `searchO2_Game_Design_Blueprint_v2.md` document serves as the architectural 
 | `money` | Number | €10,000 | €10,000 | €10,000 | €10,000 | Liquid virtual currency balance |
 | `totalO2` | Number | 0 | 0 | 0 | 0 | Current oxygen balance |
 | `totalO2AllTime` | Number | 0 | 0 | 0 | 0 | Cumulative lifetime oxygen (achievements) |
+| `treesRemoved` | Number | ❌ | ❌ | ❌ | ✅ | Lifetime counter for felled/cleared dead trees |
 | `gameHour` | Number | 0 | 0 | 0 | 0 | Total compressed game time |
-| `plots[i].status` | String | 4 states | 4 states | 6 states | 6 states | `barren`, `preparing`, `ready`, `growing`, `overgrown`, `clearing` |
+| `plots[i].status` | String | 4 states | 4 states | 6 states | 8 states | `barren`, `preparing`, `ready`, `growing`, `overgrown`, `clearing`, `dead`, `removing` |
 | `plots[i].treeId` | String/Number | ❌ | `treeUid` | `treeId` | `treeId` | Unique ID for individual tree tracking |
 | `plots[i].health` | Number (0–100) | ❌ | ❌ | ✅ | ✅ | Biological vigor; modulates growth and O2 output |
+| `plots[i].zeroHealthStreakHours` | Number | ❌ | ❌ | ❌ | ✅ | Consecutive hours at 0% health triggering tree death |
 | `plots[i].weedHours` | Number | ❌ | ❌ | ✅ | ✅ | Neglect timer tracking overgrowth threshold |
 | `plots[i].pendingHarvest` | Number | ❌ | ❌ | ❌ | ✅ | Accumulated crop yield awaiting harvest |
 | `plots[i].accessories` | Object | ❌ | Irrigation, Fert | Irrigation, Fert | Irrigation, Fert | Per-plot hardware upgrades |
@@ -208,10 +224,12 @@ The `searchO2_Game_Design_Blueprint_v2.md` document serves as the architectural 
 | `plots[i].animal` | Object | ❌ | ❌ | Encounter object | Extended encounter | Active wildlife visitor |
 | `workers` | Array<Worker> | ❌ | ✅ | ✅ | ✅ | Hired labor roster and wages |
 | `storage` | Object | ❌ | ❌ | ❌ | ✅ | Storage Room capacity, level, and stored value |
-| `buildings` | Object | ❌ | ❌ | ❌ | ✅ | Garden, Pond, Coffee Shop, Juice Bar states |
+| `buildings.garden` | Object | ❌ | ❌ | ❌ | Built, flowers, freshness | Garden state, active flower type, and freshness score |
+| `buildings.pond` | Object | ❌ | ❌ | ❌ | Built, spec, freshness | Pond state, fish/duck specialization, and feeding status |
+| `buildings.commercial`| Object | ❌ | ❌ | ❌ | Built, building | Coffee Shop and Juice Bar processing states |
 | `loan` | Object | ❌ | ❌ | ❌ | ✅ | Active loan balance, terms, installments |
 | `reports` | Array<Report> | ❌ | ❌ | ✅ | ✅ | Historical diagnostic logs from Botanist |
-| `achUnlocked` | Object | 5 flags | 7 flags | 9 flags | 12 flags | Unlocked achievement milestones |
+| `achUnlocked` | Object | 5 flags | 7 flags | 9 flags | 13 flags | Unlocked achievement milestones |
 
 ---
 

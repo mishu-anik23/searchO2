@@ -171,6 +171,7 @@
   <div id="modalLayer"></div>
   <div class="hint-toast" id="hintToast"></div>
   <div class="floating-tooltip" id="toolTip"></div>
+  <div id="notifStack" style="position:absolute; top:66px; right:12px; z-index:36; display:flex; flex-direction:column; gap:8px; max-width:270px;"></div>
 </div>
 
 <script>
@@ -235,6 +236,26 @@ var VILLAGE_LAYOUT = {
   coffee_shop: {top:47, left:50, w:19, h:7},
   juice_bar:   {top:47, left:73, w:19, h:7}
 };
+
+// A built Garden asks what to plant; a built Pond asks what to stock. Both now need
+// ongoing tending (like watering a tree) — freshness decays over time and directly
+// gates the Pond's actual production, and scales the Garden's reputation bonus.
+var FLOWER_TYPES = {
+  tulips:     { label:'Tulips',     colors:['#E8546B','#F2E14D'], fact:'Tulips bloom for just a few weeks each spring but come back reliably year after year.' },
+  roses:      { label:'Roses',      colors:['#D8283C','#8A1F2C'], fact:'Roses are among the most pollinator-friendly garden flowers when left unpruned during bloom.' },
+  sunflowers: { label:'Sunflowers', colors:['#F2C230','#8A5A16'], fact:'Young sunflowers track the sun across the sky, a behaviour called heliotropism.' },
+  daisies:    { label:'Daisies',    colors:['#FBF6EC','#F2C230'], fact:'Daisies are hardy, low-maintenance flowers that attract a wide range of beneficial insects.' }
+};
+var POND_SPECIALIZATIONS = {
+  fish: { label:'Fish Farm', icon:'🐟', productRate:5,   feedCost:8,  desc:'Raises fish for sale — steady yield, needs regular feeding to keep producing.' },
+  duck: { label:'Duck Farm', icon:'🦆', productRate:4.5, feedCost:10, desc:'Raises ducks for sale — slightly lower yield, costs more to feed, but hardier between feedings.' }
+};
+var GARDEN_FRESHNESS_DECAY = 0.8; // per game-hour
+var POND_FRESHNESS_DECAY = 0.7;   // per game-hour
+var TEND_GARDEN_COST = 20;
+var TEND_GARDEN_RESTORE = 40;
+var POND_FEED_RESTORE = 45;
+var FRESHNESS_WARN_THRESHOLD = 35;
 
 var CATEGORY_ORDER = ['Oxygen Tree','Fruit Tree','Vegetable','Timber Tree','Biodiversity Tree'];
 
@@ -313,6 +334,18 @@ var CARE_COST = {
 };
 var HEALTH_DECAY = {'Oxygen Tree':0.5, 'Fruit Tree':0.8, 'Vegetable':1.2, 'Timber Tree':0.4, 'Biodiversity Tree':0.6};
 
+// A tree stuck at 0% health for this many game-hours dries out completely and must
+// be cut down before the plot can be reused — health decay alone was a dead end
+// with no recovery path other than watering forever.
+var TREE_DRY_THRESHOLD_HOURS = 20;
+var REMOVE_CONFIG = {
+  'Oxygen Tree':      { cost:60, hours:5, tool:'chainsaw', vehicle:true,  salvagePct:0.30 },
+  'Timber Tree':       { cost:90, hours:7, tool:'chainsaw', vehicle:true,  salvagePct:0.50 },
+  'Fruit Tree':        { cost:40, hours:3, tool:'saw',      vehicle:true,  salvagePct:0.15 },
+  'Biodiversity Tree': { cost:35, hours:3, tool:'saw',      vehicle:false, salvagePct:0.10 },
+  'Vegetable':         { cost:10, hours:1, tool:'hand',     vehicle:false, salvagePct:0 }
+};
+
 var ANIMALS = [
   {key:'rabbit', emoji:'🐇', name:'Rabbit', fact:'Rabbits can nibble young shoots, but gentle deterrents protect sprouts without harming wildlife.'},
   {key:'fox', emoji:'🦊', name:'Fox', fact:'Foxes rarely damage crops directly — they often help by controlling rodent pests nearby.'},
@@ -346,7 +379,8 @@ var ACHIEVEMENTS = [
   {id:'first_harvest', label:'🧺 First Harvest', check:function(s){return (s.harvestCount||0)>=1;}},
   {id:'storekeeper', label:'🏚 Storekeeper', check:function(s){return s.storage && s.storage.built;}},
   {id:'first_building', label:'🏘️ First Building', check:function(s){return s.buildings && (s.buildings.garden.built||s.buildings.pond.built||s.buildings.coffee_shop.built||s.buildings.juice_bar.built);}},
-  {id:'visitor_magnet', label:'🎡 Visitor Magnet', check:function(s){return s.buildings && s.buildings.garden.built && s.buildings.pond.built && (s.buildings.coffee_shop.built||s.buildings.juice_bar.built);}}
+  {id:'visitor_magnet', label:'🎡 Visitor Magnet', check:function(s){return s.buildings && s.buildings.garden.built && s.buildings.pond.built && (s.buildings.coffee_shop.built||s.buildings.juice_bar.built);}},
+  {id:'lumberjack', label:'🪓 First Removal', check:function(s){return (s.treesRemoved||0)>=1;}}
 ];
 
 var PLOT_COUNT = 6;
@@ -372,16 +406,17 @@ function freshState(){
   var plots = [];
   for (var i=0;i<PLOT_COUNT;i++){
     plots.push({ id:i, status:'barren', treeType:null, treeId:null, growHours:0, taskHours:0, weedHours:0,
-      health:100, ageHours:0, downtimeHours:0, o2Produced:0, pendingHarvest:0, harvesting:false, harvestStartReal:0, harvestAmount:0,
+      health:100, ageHours:0, downtimeHours:0, zeroHealthStreakHours:0, o2Produced:0, pendingHarvest:0, harvesting:false, harvestStartReal:0, harvestAmount:0,
       careAnimUntil:0, careAnimType:null, assignedWorker:null, accessories:{irrigation:false, fertilizer:false}, animal:null });
   }
   return {
-    money: 10000, totalO2: 0, totalO2AllTime: 0, treesPlanted: 0, gameHour: 0,
+    money: 10000, totalO2: 0, totalO2AllTime: 0, treesPlanted: 0, treesRemoved: 0, gameHour: 0,
     plots: plots, achUnlocked: {}, speedFactor: 180, lastSaveReal: Date.now(),
     workers: [], lastPaidDay: 0, nextTreeId: 1, reports: [], pestHandled: 0, demerits: 0,
     harvestCount: 0, storage: { built:false, building:false, buildHours:0, capacity:0, stored:0, level:0, expanding:false, expandHours:0, warnedFull:false },
     loan: null,
-    buildings: { garden:{built:false,building:false,buildHours:0}, pond:{built:false,building:false,buildHours:0},
+    buildings: { garden:{built:false,building:false,buildHours:0,flowerType:null,freshness:100,warnedLow:false,careAnimUntil:0},
+      pond:{built:false,building:false,buildHours:0,specialization:null,freshness:100,warnedLow:false,careAnimUntil:0},
       coffee_shop:{built:false,building:false,buildHours:0}, juice_bar:{built:false,building:false,buildHours:0} }
   };
 }
@@ -434,6 +469,16 @@ function loadState(){
         if (state.loan===undefined) state.loan = null;
         if (!state.buildings) state.buildings = { garden:{built:false,building:false,buildHours:0}, pond:{built:false,building:false,buildHours:0},
           coffee_shop:{built:false,building:false,buildHours:0}, juice_bar:{built:false,building:false,buildHours:0} };
+        if (state.treesRemoved===undefined) state.treesRemoved = 0;
+        state.plots.forEach(function(p){ if (p.zeroHealthStreakHours===undefined) p.zeroHealthStreakHours = 0; });
+        if (state.buildings.garden.flowerType===undefined) state.buildings.garden.flowerType = null;
+        if (state.buildings.pond.specialization===undefined) state.buildings.pond.specialization = null;
+        ['garden','pond'].forEach(function(bk){
+          var bb = state.buildings[bk];
+          if (bb.freshness===undefined) bb.freshness = 100;
+          if (bb.warnedLow===undefined) bb.warnedLow = false;
+          if (bb.careAnimUntil===undefined) bb.careAnimUntil = 0;
+        });
         nextWorkerId = 1 + state.workers.reduce(function(m,w){return Math.max(m,w.id);},0);
         if (elapsedReal > 5000){
           var before = { money: state.money, totalO2AllTime: state.totalO2AllTime };
@@ -483,7 +528,10 @@ function farmReputation(){
   if (state.buildings){
     BUILDING_ORDER.forEach(function(key){
       var b = state.buildings[key];
-      if (b && b.built) rep += BUILDING_TYPES[key].reputationBonus;
+      if (!b || !b.built) return;
+      var bonus = BUILDING_TYPES[key].reputationBonus;
+      if ((key==='garden' || key==='pond') && b.freshness!==undefined) bonus *= (0.4 + 0.6*(b.freshness/100));
+      rep += bonus;
     });
   }
   if (state.storage && state.storage.built) rep += 4;
@@ -496,7 +544,7 @@ function farmReputation(){
   rep += Object.keys(species).length * 3;
   if (visitorMagnetActive()) rep += 10;
   rep -= state.demerits*2;
-  return Math.max(0, rep);
+  return Math.max(0, Math.round(rep));
 }
 function workerOnPlot(plotId){
   var p = state.plots[plotId];
@@ -540,6 +588,8 @@ function advanceGame(dh){
       if (b.buildHours >= def.buildHours){
         b.building=false; b.built=true;
         pushReport(def.icon+' '+def.label+' construction complete! '+(def.category==='decorative' ? 'Reputation +'+def.reputationBonus+'.' : 'Ready to sell to visitors.'));
+        if (key==='garden') showNotification('🌷','Your Garden is ready — choose what to plant!','building',key);
+        else if (key==='pond') showNotification('🪷','Your Pond is ready — choose Fish Farm or Duck Farm!','building',key);
         checkAchievements();
       }
     }
@@ -559,12 +609,42 @@ function advanceGame(dh){
     });
   }
 
+  // Garden and Pond both need tending — freshness decays continuously once
+  // planted/stocked. Garden's reputation bonus scales with it; Pond's actual
+  // production (fish/duck sales into storage) only happens while it's fed.
+  var garden = state.buildings.garden;
+  if (garden.built && garden.flowerType){
+    garden.freshness = Math.max(0, garden.freshness - dh*GARDEN_FRESHNESS_DECAY);
+    if (garden.freshness < FRESHNESS_WARN_THRESHOLD && !garden.warnedLow){
+      garden.warnedLow = true;
+      pushReport('🌷 The garden is wilting from neglect — tend it to keep its reputation bonus.');
+      showNotification('🥀','The garden needs tending — it\'s wilting.','building','garden');
+    } else if (garden.freshness >= 60){ garden.warnedLow = false; }
+  }
+  var pond = state.buildings.pond;
+  if (pond.built && pond.specialization){
+    pond.freshness = Math.max(0, pond.freshness - dh*POND_FRESHNESS_DECAY);
+    if (pond.freshness < FRESHNESS_WARN_THRESHOLD && !pond.warnedLow){
+      pond.warnedLow = true;
+      var pondSpecName = POND_SPECIALIZATIONS[pond.specialization].label;
+      pushReport('🐟 The '+pondSpecName+' needs feeding — production has slowed.');
+      showNotification('🍽️',pondSpecName+' needs feeding.','building','pond');
+    } else if (pond.freshness >= 60){ pond.warnedLow = false; }
+    if (state.storage.built && pond.freshness > 0){
+      var spec = POND_SPECIALIZATIONS[pond.specialization];
+      var freshMult = pond.freshness/100;
+      var produced = spec.productRate * dh * freshMult;
+      var room = Math.max(0, state.storage.capacity - state.storage.stored);
+      state.storage.stored += Math.min(produced, room);
+    }
+  }
+
   state.plots.forEach(function(p){
     var w = workerOnPlot(p.id);
 
     if (p.status==='barren' || p.status==='ready'){
       p.weedHours += dh;
-      if (p.weedHours >= OVERGROWN_THRESHOLD) p.status='overgrown';
+      if (p.weedHours >= OVERGROWN_THRESHOLD){ p.status='overgrown'; showNotification('🌿','Plot '+(p.id+1)+' is overgrown and needs clearing.','plot',p.id); }
     } else if (p.status==='clearing'){
       var clearMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : 1;
       p.taskHours += dh * clearMult;
@@ -573,13 +653,34 @@ function advanceGame(dh){
       var prepMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : 1;
       p.taskHours += dh * prepMult;
       if (p.taskHours >= PREP_DURATION_HOURS){ p.status='ready'; p.weedHours=0; }
+    } else if (p.status==='removing'){
+      var remDef = TREE_TYPES[p.treeType]; var remCfg = REMOVE_CONFIG[remDef.category];
+      var remMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : 1;
+      p.taskHours += dh * remMult;
+      if (p.taskHours >= remCfg.hours){
+        var salvage = Math.round(remDef.cost * remCfg.salvagePct * 100)/100;
+        state.money += salvage;
+        state.treesRemoved = (state.treesRemoved||0) + 1;
+        pushReport('🪓 Removed the dead '+remDef.label+' (#'+p.treeId+') from Plot '+(p.id+1)+'.'+(salvage>0?' Salvaged €'+salvage.toFixed(2)+' from the wood.':''));
+        if (remCfg.vehicle) spawnVehicleAnimation(PLOT_LAYOUT[p.id]);
+        p.status='barren'; p.treeType=null; p.treeId=null; p.growHours=0; p.taskHours=0; p.weedHours=0;
+        p.health=100; p.ageHours=0; p.downtimeHours=0; p.zeroHealthStreakHours=0; p.pendingHarvest=0;
+        checkAchievements();
+      }
     } else if (p.status==='growing'){
       var def = TREE_TYPES[p.treeType];
       p.ageHours += dh;
       p.health = Math.max(0, p.health - dh*HEALTH_DECAY[def.category]);
       if (p.health<=0){
         p.downtimeHours += dh; // stopped producing oxygen entirely
+        p.zeroHealthStreakHours += dh;
+        if (p.zeroHealthStreakHours >= TREE_DRY_THRESHOLD_HOURS){
+          p.status = 'dead';
+          pushReport('💀 The '+def.label+' on Plot '+(p.id+1)+' (#'+p.treeId+') has dried out completely and needs to be removed before you can replant.');
+          showNotification('💀', 'A tree on Plot '+(p.id+1)+' dried out and needs removing.', 'plot', p.id);
+        }
       } else {
+        p.zeroHealthStreakHours = 0;
         var healthMult = 0.5 + 0.5*(p.health/100);
         var growMult = (w && (w.type==='farmer'||w.type==='botanist')) ? WORKER_TYPES[w.type].mult : 1;
         var irrMult = p.accessories.irrigation ? 1.15 : 1;
@@ -618,6 +719,7 @@ function advanceGame(dh){
         var target = eligible[Math.floor(Math.random()*eligible.length)];
         var animal = ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
         target.animal = { key:animal.key, expiresAtHour: state.gameHour + ANIMAL_WINDOW_HOURS };
+        showNotification(animal.emoji, animal.name+' spotted on Plot '+(target.id+1)+'!', 'plot', target.id);
       }
     }
   }
@@ -707,6 +809,13 @@ function startClear(plotId){
   var p = state.plots[plotId]; if (p.status!=='overgrown') return;
   if (state.money < CLEAR_COST) return;
   state.money -= CLEAR_COST; p.status='clearing'; p.taskHours=0;
+  render(); requestSave();
+}
+function startRemoveTree(plotId){
+  var p = state.plots[plotId]; if (p.status!=='dead') return;
+  var def = TREE_TYPES[p.treeType]; var cfg = REMOVE_CONFIG[def.category];
+  if (state.money < cfg.cost) return;
+  state.money -= cfg.cost; p.status='removing'; p.taskHours=0;
   render(); requestSave();
 }
 function plantTree(plotId, type){
@@ -814,6 +923,43 @@ function startBuildBuilding(key){
   state.money -= def.cost; b.building = true; b.buildHours = 0;
   render(); requestSave();
 }
+function setGardenFlower(flowerKey){
+  var b = state.buildings.garden;
+  if (!b.built || b.flowerType || !FLOWER_TYPES[flowerKey]) return;
+  b.flowerType = flowerKey;
+  pushReport('🌷 Planted '+FLOWER_TYPES[flowerKey].label+' in the garden.');
+  render(); requestSave();
+}
+function setPondSpecialization(key){
+  var b = state.buildings.pond;
+  if (!b.built || b.specialization || !POND_SPECIALIZATIONS[key]) return;
+  b.specialization = key;
+  b.freshness = 100;
+  pushReport(POND_SPECIALIZATIONS[key].icon+' Stocked the pond as a '+POND_SPECIALIZATIONS[key].label+'.');
+  checkAchievements();
+  render(); requestSave();
+}
+function tendGarden(){
+  var b = state.buildings.garden;
+  if (!b.built || !b.flowerType) return;
+  if (state.money < TEND_GARDEN_COST) return;
+  state.money -= TEND_GARDEN_COST;
+  b.freshness = Math.min(100, b.freshness + TEND_GARDEN_RESTORE);
+  b.warnedLow = false;
+  b.careAnimUntil = Date.now() + 2200;
+  render(); requestSave();
+}
+function feedPond(){
+  var b = state.buildings.pond;
+  if (!b.built || !b.specialization) return;
+  var cost = POND_SPECIALIZATIONS[b.specialization].feedCost;
+  if (state.money < cost) return;
+  state.money -= cost;
+  b.freshness = Math.min(100, b.freshness + POND_FEED_RESTORE);
+  b.warnedLow = false;
+  b.careAnimUntil = Date.now() + 2200;
+  render(); requestSave();
+}
 
 function openModal(type, plotId){ activeModal = {type:type, plotId:plotId}; openPanel=null; render(); }
 function closeModal(){
@@ -900,6 +1046,7 @@ function processHarvests(){
     if (ratio >= STORAGE_WARN_RATIO && !state.storage.warnedFull){
       state.storage.warnedFull = true;
       pushReport('📦 Storage is over '+Math.round(STORAGE_WARN_RATIO*100)+'% full ('+Math.round(ratio*100)+'%). Sell some harvest or expand storage soon.');
+      showNotification('📦','Storage is over '+Math.round(STORAGE_WARN_RATIO*100)+'% full — sell or expand.','storage',null);
     } else if (ratio < 0.6){ state.storage.warnedFull = false; }
   }
 }
@@ -960,6 +1107,49 @@ function spawnCarryAnimation(fromLayout, toLayout){
   document.body.appendChild(el);
   requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.style.left=tx+'px'; el.style.top=ty+'px'; }); });
   setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 1800);
+}
+// A truck hauls cut timber off the right edge of the field — used when removing
+// larger dead trees that need vehicle transport rather than a hand-carried basket.
+function spawnVehicleAnimation(fromLayout){
+  var scene = document.querySelector('.field-scene'); if (!scene) return;
+  var rect = scene.getBoundingClientRect();
+  var fx = rect.left + rect.width*(fromLayout.left+fromLayout.w/2)/100;
+  var fy = rect.top + rect.height*(fromLayout.top+fromLayout.h/2)/100;
+  var el = document.createElement('div');
+  el.style.position='fixed'; el.style.left=fx+'px'; el.style.top=fy+'px'; el.style.fontSize='26px'; el.style.zIndex='60';
+  el.style.transition='left 2.2s ease-in, opacity 2.2s ease-in'; el.textContent='🚚';
+  document.body.appendChild(el);
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.style.left=(rect.right+60)+'px'; el.style.opacity='0'; }); });
+  setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 2400);
+}
+
+// Task notification toasts — separate from the ambient educational hint toast. These
+// fire on newly-triggered actionable events (dead tree, overgrown plot, wildlife,
+// storage full) and auto-dismiss after ~9s if ignored, with a "View" shortcut straight
+// to the relevant modal. Managed as direct DOM nodes (not part of render()'s innerHTML
+// replacement) so they survive the 1s game tick without flickering or losing timers.
+function showNotification(icon, text, actionType, actionArg){
+  var stack = document.getElementById('notifStack'); if (!stack) return;
+  var el = document.createElement('div');
+  el.style.cssText = 'background:var(--cream);border-radius:12px;padding:9px 11px;box-shadow:0 10px 26px rgba(0,0,0,0.28);font-size:0.76rem;display:flex;gap:8px;align-items:flex-start;color:var(--pine);';
+  el.innerHTML = '<span style="font-size:1.05rem;">'+icon+'</span>'+
+    '<div style="flex:1;">'+text+
+      '<div style="margin-top:6px;display:flex;gap:6px;">'+
+        '<button data-nv="1" style="background:#F0AC3D;border:none;border-radius:8px;padding:3px 10px;font-weight:800;font-size:0.7rem;cursor:pointer;color:#543A0F;">View</button>'+
+        '<button data-nx="1" style="background:none;border:none;color:var(--pine-soft);font-weight:800;cursor:pointer;font-size:0.72rem;">Dismiss</button>'+
+      '</div></div>';
+  var timer = setTimeout(remove, 9000);
+  function remove(){ clearTimeout(timer); if (el.parentNode) el.parentNode.removeChild(el); }
+  el.querySelector('[data-nv]').onclick = function(){
+    remove();
+    if (actionType==='plot') openModal('plot', actionArg);
+    else if (actionType==='bank') openModal('bank', null);
+    else if (actionType==='storage') openModal('storage', null);
+    else if (actionType==='building') openModal('building', actionArg);
+  };
+  el.querySelector('[data-nx]').onclick = remove;
+  stack.appendChild(el);
+  while (stack.children.length>3){ stack.removeChild(stack.firstChild); }
 }
 
 // ================= STATIC FIELD BACKGROUND =================
@@ -1024,16 +1214,20 @@ function toolSvg(tool, working){
   if (tool==='shovel') return '<g'+cls+'><rect x="0" y="0" width="4" height="20" fill="#B0B0B0"/><rect x="-4" y="18" width="12" height="8" rx="2" fill="#8A8A8A"/></g>';
   if (tool==='can') return '<g'+cls+'><rect x="-6" y="0" width="14" height="10" rx="3" fill="#5A8FBF"/><rect x="6" y="2" width="10" height="3" fill="#5A8FBF"/></g>';
   if (tool==='flask') return '<g'+cls+'><path d="M-3,0 L3,0 L5,14 Q0,18 -5,14 Z" fill="#7A5FA8" opacity="0.85"/></g>';
+  if (tool==='chainsaw') return '<g'+cls+'><rect x="-2" y="4" width="18" height="6" rx="2" fill="#D9822B"/><rect x="14" y="0" width="4" height="14" rx="1" fill="#8A8A8A"/><rect x="-2" y="4" width="4" height="4" fill="#5A3A22"/></g>';
+  if (tool==='saw') return '<g'+cls+'><rect x="-2" y="2" width="16" height="3" fill="#B0B0B0"/><path d="M-2,5 L1,8 L4,5 L7,8 L10,5 L13,8" stroke="#8A8A8A" stroke-width="1.4" fill="none"/><rect x="-4" y="0" width="4" height="6" rx="1" fill="#7A5334"/></g>';
+  if (tool==='hand') return '';
   return '<g'+cls+'><circle r="7" fill="none" stroke="#3E6B8B" stroke-width="3"/><circle r="2" fill="#3E6B8B"/></g>';
 }
-function personSvg(type, working, x, y, basket){
+function personSvg(type, working, x, y, basket, toolOverride){
   var wt = WORKER_TYPES[type] || WORKER_TYPES.farmer;
+  var tool = toolOverride || wt.tool;
   return '<g transform="translate('+x+','+y+')" class="'+(working?'bob':'')+'">'+
     '<ellipse cx="0" cy="30" rx="12" ry="4" fill="rgba(0,0,0,0.15)"/>'+
     '<rect x="-7" y="4" width="14" height="20" rx="5" fill="'+wt.color+'"/>'+
     '<circle cx="0" cy="-4" r="8" fill="#F2C79B"/>'+
     '<rect x="-9" y="-11" width="18" height="6" rx="3" fill="'+wt.color+'"/>'+
-    (basket ? '<text x="10" y="18" font-size="14">🧺</text>' : '<g transform="translate(9,6)">'+toolSvg(wt.tool, working)+'</g>')+
+    (basket ? '<text x="10" y="18" font-size="14">🧺</text>' : '<g transform="translate(9,6)">'+toolSvg(tool, working)+'</g>')+
   '</g>';
 }
 function drawCanopy(def, cx, cy, canopyR){
@@ -1055,6 +1249,14 @@ function drawCanopy(def, cx, cy, canopyR){
     return '<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(canopyR*0.72)+'" ry="'+(canopyR*1.2)+'" fill="'+color+'"/>';
   }
   return '<circle cx="'+cx+'" cy="'+cy+'" r="'+canopyR+'" fill="'+color+'"/>';
+}
+function drawDeadTreeShape(def){
+  if (def.shape==='bush'){
+    return '<ellipse cx="86" cy="86" rx="16" ry="12" fill="#A69B7A"/><ellipse cx="114" cy="86" rx="16" ry="12" fill="#A69B7A"/><ellipse cx="100" cy="78" rx="18" ry="13" fill="#A69B7A"/>';
+  }
+  var trunkH=42, canopyR=35;
+  var deadDef = Object.assign({}, def, {canopy:'#A69B7A'});
+  return '<rect x="94" y="'+(84-trunkH)+'" width="12" height="'+trunkH+'" rx="4" fill="#6E5B45"/>'+drawCanopy(deadDef, 100, 84-trunkH-canopyR*0.5, canopyR);
 }
 
 // ================= PLOT RENDERING =================
@@ -1087,6 +1289,17 @@ function plotSvg(p){
   } else if (p.status==='preparing' || p.status==='clearing'){
     content = '<g opacity="0.7"><rect x="30" y="80" width="140" height="7" rx="3" fill="#5A3A22"/><rect x="30" y="95" width="140" height="7" rx="3" fill="#5A3A22"/></g>';
     if (w){ content += personSvg('laborer', true, 150, 55); content += '<g class="dust" style="transform-origin:150px 90px;"><circle cx="150" cy="90" r="5" fill="#C9A374"/></g>'; }
+  } else if (p.status==='dead'){
+    var deadDefStatic = TREE_TYPES[p.treeType];
+    content = drawDeadTreeShape(deadDefStatic) + '<text x="150" y="40" font-size="18">💀</text>';
+  } else if (p.status==='removing'){
+    var remTreeDef = TREE_TYPES[p.treeType]; var remCfg2 = REMOVE_CONFIG[remTreeDef.category];
+    content = drawDeadTreeShape(remTreeDef);
+    if (w && w.type==='laborer'){
+      content += personSvg('laborer', true, 60, 55, false, remCfg2.tool);
+      content += '<g class="dust" style="transform-origin:75px 82px;"><rect x="75" y="82" width="4" height="4" fill="#8A6A45"/></g>'+
+                 '<g class="dust" style="transform-origin:85px 78px; animation-delay:0.4s;"><rect x="85" y="78" width="3" height="3" fill="#6E5B45"/></g>';
+    }
   } else if (p.status==='growing'){
     var def = TREE_TYPES[p.treeType]; var idx = stageInfo.idx;
     var dead = p.health<=0;
@@ -1150,6 +1363,7 @@ function plotSvg(p){
 
   var progressPct=0;
   if (p.status==='preparing' || p.status==='clearing'){ var dur = p.status==='preparing'?PREP_DURATION_HOURS:CLEAR_DURATION_HOURS; progressPct = Math.min(100, Math.round((p.taskHours/dur)*100)); }
+  else if (p.status==='removing'){ var remDur = REMOVE_CONFIG[TREE_TYPES[p.treeType].category].hours; progressPct = Math.min(100, Math.round((p.taskHours/remDur)*100)); }
   else if (p.status==='growing' && !p.harvesting && !stageInfo.isFinal) progressPct = stageInfo.pct;
 
   var ring='';
@@ -1169,6 +1383,8 @@ function plotSpotHtml(p, layout){
     p.status==='overgrown' ? '⚠️ Overgrown' :
     p.status==='preparing' ? 'Preparing…' :
     p.status==='clearing' ? 'Clearing…' :
+    p.status==='dead' ? '💀 Dead #'+p.treeId :
+    p.status==='removing' ? 'Removing…' :
     p.status==='ready' ? 'Tap to plant' :
     (p.health<=0 ? '💤 Stalled #'+p.treeId : stageInfo.name+' #'+p.treeId);
   var healthBar='';
@@ -1199,13 +1415,62 @@ function storageSpotHtml(){
 // Buildings not yet built render as a faint "blueprint" so their village-row slot is
 // visible and inviting before you've paid for them — an intuitive visual cue for
 // what's ownable next, rather than empty unexplained ground.
+function drawPondScene(specialization){
+  var s = '<svg viewBox="0 0 100 60" style="width:100%;height:100%;overflow:visible;">'+
+    '<ellipse cx="50" cy="36" rx="44" ry="19" fill="#4F7FAB"/>'+
+    '<ellipse cx="50" cy="33" rx="41" ry="16" fill="#6FA8D8"/>'+
+    '<ellipse cx="50" cy="31" rx="41" ry="14" fill="#7FB8E0" opacity="0.5"/>'+
+    '<g opacity="0.9"><ellipse cx="28" cy="26" rx="8" ry="3.5" fill="#4F8A45"/><circle cx="28" cy="26" r="2.2" fill="#F2E14D"/></g>'+
+    '<ellipse cx="68" cy="38" rx="7" ry="3" fill="#4F8A45" opacity="0.9"/>'+
+    '<path d="M8,46 Q10,34 7,24" stroke="#588A46" stroke-width="2.2" fill="none"/>'+
+    '<path d="M14,48 Q17,38 14,30" stroke="#6FA85A" stroke-width="2" fill="none"/>'+
+    '<path d="M92,48 Q90,36 93,26" stroke="#588A46" stroke-width="2.2" fill="none"/>'+
+    '<path d="M86,50 Q83,40 86,32" stroke="#6FA85A" stroke-width="2" fill="none"/>';
+  if (specialization==='duck'){
+    s += '<g class="sway" style="transform-origin:42px 30px;"><ellipse cx="42" cy="30" rx="7.5" ry="5.5" fill="#FBF6EC"/><circle cx="49" cy="26" r="4" fill="#FBF6EC"/><path d="M52,26 L57,26.5 L52,29Z" fill="#F0AC3D"/><circle cx="50" cy="25" r="0.7" fill="#2C4A32"/></g>'+
+      '<g class="sway" style="transform-origin:62px 40px; animation-delay:0.8s;"><ellipse cx="62" cy="40" rx="6" ry="4.3" fill="#E8E4D8"/><circle cx="67" cy="37" r="3.2" fill="#E8E4D8"/><path d="M69,37 L73,37.4 L69,39.4Z" fill="#F0AC3D"/></g>';
+  } else if (specialization==='fish'){
+    s += '<g class="sway" style="transform-origin:38px 34px;"><path d="M34,34 Q40,29 47,34 Q40,39 34,34Z" fill="#5A8FBF"/><path d="M34,34 L30,31 L30,37Z" fill="#4570A0"/></g>'+
+      '<g class="sway" style="transform-origin:62px 26px; animation-delay:0.6s;"><path d="M58,26 Q64,21 71,26 Q64,31 58,26Z" fill="#F2932E"/><path d="M58,26 L54,23 L54,29Z" fill="#C97A1E"/></g>'+
+      '<g class="sway" style="transform-origin:50px 42px; animation-delay:1.1s;"><path d="M46,42 Q51,38 57,42 Q51,46 46,42Z" fill="#E2412F" opacity="0.85"/></g>';
+  }
+  s += '</svg>';
+  return s;
+}
+function drawGardenScene(flowerType){
+  var f = flowerType ? FLOWER_TYPES[flowerType] : null;
+  var c1 = f ? f.colors[0] : '#B7C4A9', c2 = f ? f.colors[1] : '#9FB58C';
+  var s = '<svg viewBox="0 0 100 60" style="width:100%;height:100%;overflow:visible;">'+
+    '<rect x="4" y="16" width="92" height="38" rx="8" fill="#6E4429"/>'+
+    '<rect x="7" y="19" width="86" height="32" rx="7" fill="#7A5334"/>'+
+    (function(){ var t=''; for (var x=10;x<94;x+=9){ t+='<path d="M'+x+',22 Q'+(x+2)+',36 '+x+',48" stroke="#6E4429" stroke-width="1.4" fill="none" opacity="0.35"/>'; } return t; })();
+  var positions = [[16,30],[26,40],[36,26],[46,42],[56,28],[66,40],[76,26],[86,38],[21,46],[61,46],[41,32],[81,30]];
+  positions.forEach(function(pos,i){
+    var color = i%2===0?c1:c2;
+    s += '<g class="sway" style="transform-origin:'+pos[0]+'px '+pos[1]+'px; animation-delay:'+(i*0.15)+'s;">'+
+      '<rect x="'+(pos[0]-0.8)+'" y="'+(pos[1]-1)+'" width="1.6" height="9" fill="#4F8A45"/>'+
+      '<circle cx="'+pos[0]+'" cy="'+(pos[1]-4)+'" r="4" fill="'+color+'"/>'+
+      '<circle cx="'+pos[0]+'" cy="'+(pos[1]-4)+'" r="1.4" fill="#F0AC3D"/>'+
+    '</g>';
+  });
+  s += '</svg>';
+  return s;
+}
 function buildingSpotHtml(key){
   var b = state.buildings[key]; var def = BUILDING_TYPES[key]; var layout = VILLAGE_LAYOUT[key];
-  var label = b.building ? Math.round(Math.min(100,(b.buildHours/def.buildHours)*100))+'%' : def.label;
+  var needsChoice = b.built && ((key==='garden' && !b.flowerType) || (key==='pond' && !b.specialization));
+  var label = b.building ? Math.round(Math.min(100,(b.buildHours/def.buildHours)*100))+'%' :
+    (needsChoice ? def.label+' — choose!' :
+    (key==='garden' && b.built ? FLOWER_TYPES[b.flowerType].label :
+    (key==='pond' && b.built ? POND_SPECIALIZATIONS[b.specialization].label : def.label)));
   var opacity = b.built ? 1 : (b.building ? 0.9 : 0.45);
-  return '<div class="plot-spot" style="top:'+layout.top+'%;left:'+layout.left+'%;width:'+layout.w+'%;height:'+layout.h+'%;opacity:'+opacity+';display:flex;align-items:center;justify-content:center;background:rgba(251,246,236,0.35);border-radius:10px;" data-building="'+key+'">'+
-    '<div class="plot-label">'+label+'</div>'+
-    '<div style="font-size:clamp(18px,2.6vw,30px);line-height:1;">'+(b.building?'🏗️':def.icon)+'</div>'+
+  var inner;
+  if (b.built && key==='pond' && b.specialization){ inner = drawPondScene(b.specialization); }
+  else if (b.built && key==='garden' && b.flowerType){ inner = drawGardenScene(b.flowerType); }
+  else if (needsChoice){ inner = '<div style="font-size:clamp(16px,2.2vw,24px);line-height:1;" class="pulse">❓</div>'; }
+  else { inner = '<div style="font-size:clamp(18px,2.6vw,30px);line-height:1;">'+(b.building?'🏗️':def.icon)+'</div>'; }
+  return '<div class="plot-spot" style="top:'+layout.top+'%;left:'+layout.left+'%;width:'+layout.w+'%;height:'+layout.h+'%;opacity:'+opacity+';display:flex;align-items:center;justify-content:center;background:rgba(251,246,236,0.35);border-radius:10px;overflow:hidden;" data-building="'+key+'">'+
+    '<div class="plot-label">'+label+'</div>'+ inner +
   '</div>';
 }
 function villageSpotsHtml(){ return BUILDING_ORDER.map(buildingSpotHtml).join(''); }
@@ -1220,7 +1485,33 @@ function buildingModalHtml(key){
     html += '<div class="row"><span>Under construction</span><span class="v">'+Math.round(Math.min(100,(b.buildHours/def.buildHours)*100))+'%</span></div>';
   } else if (b.built){
     html += '<div class="row"><span>Status</span><span class="v" style="color:#3E7239;">✓ Built</span></div>';
-    if (def.category==='decorative'){
+    if (key==='garden'){
+      if (!b.flowerType){
+        html += '<div class="section"><h4>🌷 Choose what to plant</h4>'+
+          Object.keys(FLOWER_TYPES).map(function(fk){
+            var f = FLOWER_TYPES[fk];
+            return '<button class="plant-opt" data-setflower="'+fk+'" style="width:100%;margin-bottom:6px;display:block;"><span class="pn" style="color:'+f.colors[0]+';">'+f.label+'</span></button>';
+          }).join('')+'</div>';
+      } else {
+        html += '<div class="row"><span>Planted</span><span class="v">'+FLOWER_TYPES[b.flowerType].label+'</span></div>'+
+          '<div class="row"><span>Reputation bonus</span><span class="v">+'+def.reputationBonus+'</span></div>'+
+          '<div class="empty-note">'+FLOWER_TYPES[b.flowerType].fact+'</div>';
+      }
+    } else if (key==='pond'){
+      if (!b.specialization){
+        html += '<div class="section"><h4>🐟🦆 Choose how to stock the pond</h4>'+
+          Object.keys(POND_SPECIALIZATIONS).map(function(pk){
+            var ps = POND_SPECIALIZATIONS[pk];
+            return '<div style="background:white;border-radius:12px;padding:9px;margin-bottom:8px;"><b>'+ps.icon+' '+ps.label+'</b>'+
+              '<div class="empty-note" style="margin:4px 0 8px;">'+ps.desc+'</div>'+
+              '<button class="secondary" data-setpond="'+pk+'">Choose '+ps.label+'</button></div>';
+          }).join('')+'</div>';
+      } else {
+        html += '<div class="row"><span>Stocked as</span><span class="v">'+POND_SPECIALIZATIONS[b.specialization].label+'</span></div>'+
+          '<div class="row"><span>Reputation bonus</span><span class="v">+'+def.reputationBonus+'</span></div>'+
+          '<div class="empty-note">Feeding &amp; production mechanics are coming in the next update — for now this sets the pond\'s look and its future role.</div>';
+      }
+    } else if (def.category==='decorative'){
       html += '<div class="row"><span>Reputation bonus</span><span class="v">+'+def.reputationBonus+'</span></div>';
     } else {
       html += '<div class="row"><span>Upkeep</span><span class="v">€'+def.upkeep+'/day</span></div>'+
@@ -1343,6 +1634,24 @@ function modalHtml(){
     var dur = p.status==='preparing'?PREP_DURATION_HOURS:CLEAR_DURATION_HOURS;
     html += '<div class="sub">'+(p.status==='preparing'?'Digging in progress.':'Clearing overgrowth.')+'</div>'+
       '<div class="row"><span>Progress</span><span class="v">'+Math.round(Math.min(100,(p.taskHours/dur)*100))+'%</span></div>';
+  } else if (p.status==='dead'){
+    var remCfg = REMOVE_CONFIG[def.category];
+    html += '<div class="sub">This '+def.label+' dried out completely after being neglected at 0% health for too long. It won\'t recover — it needs to be cut down before you can replant here.</div>'+
+      '<div class="row"><span>Removal cost</span><span class="v">€'+remCfg.cost+'</span></div>'+
+      '<div class="row"><span>Time needed</span><span class="v">'+remCfg.hours+'h'+(remCfg.vehicle?' + hauling':'')+'</span></div>'+
+      (remCfg.salvagePct>0 ? '<div class="row"><span>Expected salvage</span><span class="v">≈€'+(remCfg.cost*remCfg.salvagePct).toFixed(2)+'</span></div>' : '')+
+      '<button class="primary" data-removetree="'+p.id+'" '+(state.money<remCfg.cost?'disabled':'')+'>Cut down '+def.label+' (€'+remCfg.cost+')</button>'+
+      '<div class="empty-note" style="margin-top:6px;">Assign a Laborer once removal starts to speed it up ('+remCfg.tool+(remCfg.vehicle?' + truck':'')+').</div>';
+  } else if (p.status==='removing'){
+    var remCfg2 = REMOVE_CONFIG[def.category];
+    html += '<div class="sub">Cutting down the dead '+def.label+' with a '+remCfg2.tool+(remCfg2.vehicle?', then hauling it away by truck.':'.')+'</div>'+
+      '<div class="row"><span>Progress</span><span class="v">'+Math.round(Math.min(100,(p.taskHours/remCfg2.hours)*100))+'%</span></div>'+
+      (w ? '<div class="row"><span>Assisted by</span><span class="v">'+WORKER_TYPES[w.type].label+'</span></div>'
+         : '<div class="empty-note">No worker assigned — this will take the full '+remCfg2.hours+'h. Assign a Laborer below to speed it up.</div>');
+    var idleLaborers = state.workers.filter(function(x){return x.assignedPlot===null && x.type==='laborer';});
+    if (!w && idleLaborers.length){
+      html += idleLaborers.map(function(iw){ return '<div class="worker-opt"><span>Laborer (idle)</span><button data-assign="'+iw.id+'" data-assignplot="'+p.id+'">Assign</button></div>'; }).join('');
+    }
   } else if (p.status==='ready'){
     html += '<div class="sub">Soil is ready — but weeds will creep back if it sits unplanted too long. Every species from the blueprint\'s tree categories is available.</div>'+
       '<div class="row"><span>Weed level</span><span class="v">'+Math.round(Math.min(100,p.weedHours/OVERGROWN_THRESHOLD*100))+'%</span></div>';
@@ -1433,6 +1742,8 @@ function panelHtml(){
       if (p.status==='barren'){ any=true; rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Dig Land</div><div class="meta">€'+LABOR_COST+' · 3h</div></div><button class="claim-btn" data-prep="'+p.id+'">Start</button></div>'; }
       else if (p.status==='overgrown'){ any=true; rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Clear Overgrowth</div><div class="meta">€'+CLEAR_COST+' · 2h</div></div><button class="claim-btn" data-clear="'+p.id+'">Clear</button></div>'; }
       else if (p.status==='preparing' || p.status==='clearing'){ any=true; var dur=p.status==='preparing'?PREP_DURATION_HOURS:CLEAR_DURATION_HOURS; var pct=Math.round(Math.min(100,(p.taskHours/dur)*100)); rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — '+(p.status==='preparing'?'Preparing':'Clearing')+'</div><div class="meta">'+pct+'% done</div></div><button class="claim-btn" disabled>…</button></div>'; }
+      else if (p.status==='dead'){ any=true; var deadDef=TREE_TYPES[p.treeType]; var remCfg3=REMOVE_CONFIG[deadDef.category]; rows+='<div class="task-row"><div><div class="name">💀 Plot '+(p.id+1)+' — Remove Dead '+deadDef.label+'</div><div class="meta">€'+remCfg3.cost+' · '+remCfg3.hours+'h · needs a Laborer</div></div><button class="claim-btn" data-removetree="'+p.id+'" '+(state.money<remCfg3.cost?'disabled':'')+'>Remove</button></div>'; }
+      else if (p.status==='removing'){ any=true; var remDef2=TREE_TYPES[p.treeType]; var remCfg4=REMOVE_CONFIG[remDef2.category]; var rpct=Math.round(Math.min(100,(p.taskHours/remCfg4.hours)*100)); rows+='<div class="task-row"><div><div class="name">🪓 Plot '+(p.id+1)+' — Cutting down '+remDef2.label+'</div><div class="meta">'+rpct+'% done'+(p.assignedWorker!==null?' · 👷 assisted':' · assign a Laborer to speed up')+'</div></div><button class="claim-btn" disabled>…</button></div>'; }
       else if (p.status==='ready'){ any=true; rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Ready to Plant</div><div class="meta">Open plot to choose</div></div><button class="claim-btn" data-openplot="'+p.id+'">Plant</button></div>'; }
     });
     if (!any) rows = '<div class="empty-note">No pending tasks right now.</div>';
@@ -1487,11 +1798,23 @@ function buildSeasonChipOnce(){
   el.innerHTML = '<span id="bonusTextSpan">'+bonusText()+'</span>&nbsp;|&nbsp;Speed <select id="speedSel">'+speedOpts+'</select>';
   document.getElementById('speedSel').addEventListener('change', function(e){ setSpeed(parseInt(e.target.value, 10)); });
 }
+function countPendingTasks(){
+  var n = 0;
+  if (!state.storage.built && !state.storage.building) n++;
+  state.plots.forEach(function(p){
+    if (['barren','overgrown','ready','dead'].indexOf(p.status) >= 0) n++;
+  });
+  if (state.buildings.garden.built && !state.buildings.garden.flowerType) n++;
+  if (state.buildings.pond.built && !state.buildings.pond.specialization) n++;
+  return n;
+}
 function dockHtml(){
+  var taskCount = countPendingTasks();
+  var taskBadge = taskCount ? '<span class="badge">'+Math.min(9,taskCount)+'</span>' : '';
   var reportBadge = state.reports.length ? '<span class="badge">'+Math.min(9,state.reports.length)+'</span>' : '';
   var bankBadge = (state.money<0 || state.loan) ? '<span class="badge" style="background:'+(state.money<0?'#B23B2E':'#F0AC3D')+';">'+(state.money<0?'!':'€')+'</span>' : '';
   return ''+
-    '<div class="dock-btn'+(openPanel==='tasks'?' active':'')+'" data-panel="tasks" title="Tasks">📋</div>'+
+    '<div class="dock-btn'+(openPanel==='tasks'?' active':'')+'" data-panel="tasks" title="Tasks">📋'+taskBadge+'</div>'+
     '<div class="dock-btn'+(openPanel==='workers'?' active':'')+'" data-panel="workers" title="Workers">👷</div>'+
     '<div class="dock-btn'+(openPanel==='achievements'?' active':'')+'" data-panel="achievements" title="Achievements">🏆</div>'+
     '<div class="dock-btn'+(openPanel==='reports'?' active':'')+'" data-panel="reports" title="Reports">📰'+reportBadge+'</div>'+
@@ -1587,6 +1910,8 @@ function wireEvents(){
   document.querySelectorAll('[data-storage]').forEach(function(el){ el.addEventListener('click', function(){ openModal('storage', null); }); });
   document.querySelectorAll('[data-building]').forEach(function(el){ el.addEventListener('click', function(){ openModal('building', el.getAttribute('data-building')); }); });
   document.querySelectorAll('[data-buildbuilding]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); startBuildBuilding(b.getAttribute('data-buildbuilding')); }; });
+  document.querySelectorAll('[data-setflower]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); setGardenFlower(b.getAttribute('data-setflower')); }; });
+  document.querySelectorAll('[data-setpond]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); setPondSpecialization(b.getAttribute('data-setpond')); }; });
   document.querySelectorAll('[data-openbank]').forEach(function(b){ b.onclick=function(){ bankruptcyDismissed=false; openModal('bank', null); }; });
   document.querySelectorAll('[data-takeloan]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); takeLoan(b.getAttribute('data-takeloan')); }; });
   document.querySelectorAll('[data-repayloan]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); repayLoanEarly(); }; });
@@ -1601,6 +1926,7 @@ function wireEvents(){
   if (overlay) overlay.addEventListener('click', function(e){ if (e.target===overlay) closeModal(); });
   document.querySelectorAll('[data-prep]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); startPrep(parseInt(b.getAttribute('data-prep'))); }; });
   document.querySelectorAll('[data-clear]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); startClear(parseInt(b.getAttribute('data-clear'))); }; });
+  document.querySelectorAll('[data-removetree]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); startRemoveTree(parseInt(b.getAttribute('data-removetree'))); }; });
   document.querySelectorAll('[data-plant]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); plantTree(parseInt(b.getAttribute('data-plant')), b.getAttribute('data-type')); }; });
   document.querySelectorAll('[data-water]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); waterPlot(parseInt(b.getAttribute('data-water'))); }; });
   document.querySelectorAll('[data-prune]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); prunePlot(parseInt(b.getAttribute('data-prune'))); }; });
