@@ -249,6 +249,8 @@ The complete chronological commit tree on `mvp-v1` starting from repository init
 | **8** | `5c3bb95` | mishu-anik3 | 2026-09-06 | `feat(prototype-v3): immersive full-screen farm UI with plot health and care system`<br>Introduces fixed full-screen viewport, icon dock, tool strip, plot health decay, water/prune care, overgrowth clearing, and wildlife alerts. | `searchO2-prototype-v3.html` |
 | **9** | `7fc4ae8` | mishu-anik3 | 2026-09-06 | `feat(prototype-v4): economy rebalance, storage, buildings, loans, and harvest pipeline`<br>Tightens economy (O2 rate €0.03), adds Storage Room, active harvesting, village commercial buildings, banking/loans, flying birds, and debounced save engine. | `searchO2-prototype-v4.html` |
 | **10** | `6b59f84` | mishu-anik3 | 2026-09-06 | `docs(mvp-v1): add branch history, blueprint traceability, and v1-v4 evolution guide`<br>Initial documentation of MVP v1 branch history and blueprint alignment. | `searchO2-MVP-v1-Branch-History.md` |
+| **11** | `4d3e7cf` | mishu-anik23 | 2026-09-07 | `docs: analyze and document prototype v4 modifications (tree lifecycle, garden/pond decay, notification system)`<br>Updates branch history with v4 modifications and expanded 8-plot comparative schema matrix. | `searchO2-MVP-v1-Branch-History.md`<br>`searchO2-prototype-v4.html` |
+| **12** | *pending* | mishu-anik23 | 2026-09-07 | `feat(backend): implement production-grade Node.js/TypeScript backend, PostgreSQL 18 DB, auth, anti-cheat engine, and frontend bridge`<br>Delivers complete Express.js backend with PostgreSQL migrations, Bcrypt/JWT/cookie auth, Google OAuth2, authoritative game engine, ledger audit, WebSockets, 14/14 Jest tests, and v4 ApiClient bridge. | `backend/*`<br>`searchO2-prototype-v4.html`<br>`searchO2-MVP-v1-Branch-History.md` |
 
 ---
 
@@ -261,7 +263,20 @@ All four prototype applications can be executed directly in any modern web brows
 searchO2-prototype.html       # v1: Minimal 3-tree core loop & time compression
 searchO2-prototype-v2.html    # v2: SVG landscape field, 18 tree types, workers
 searchO2-prototype-v3.html    # v3: Full-screen UI, plot health decay, watering/pruning
-searchO2-prototype-v4.html    # v4: Complete eco-village, storage pipeline, buildings, loans
+searchO2-prototype-v4.html    # v4: Complete eco-village, storage pipeline, buildings, loans, and backend auth integration
+```
+
+### Backend Execution & Automated Tests
+```bash
+# Start backend in development mode (port 5000):
+cd backend
+npm run dev
+
+# Run automated test suite (14/14 Jest test specs):
+npm test
+
+# Build production bundle:
+npm run build
 ```
 
 ### Recommended Gameplay Test Flows
@@ -269,22 +284,25 @@ searchO2-prototype-v4.html    # v4: Complete eco-village, storage pipeline, buil
 2. **Storage Pipeline Test (v4):** Plant fruit trees or vegetables. Build the Storage Room (€550). When trees reach maturity, click them to harvest. Verify stored goods appear in storage rather than suffering the $50\%$ spoilage penalty.
 3. **Village Revenue Loop (v4):** Build a Coffee Shop or Juice Bar. Observe stored harvest being automatically converted into visitor Euro revenue at a premium markup ($1.6\times - 1.8\times$).
 4. **Credit & Bankruptcy Test (v4):** Hire all workers or spend cash until balance reaches $-€50$. Verify the emergency Bank modal triggers automatically with restructuring options.
+5. **Backend Authentication & Server Synchronization (v4):** Click `👤 Sign In` on the topbar dock. Play as Guest, register an account, or log in with Google OAuth. Your farm state automatically syncs to PostgreSQL 18 with authoritative server validation.
 
 ---
 
-## 6. Blueprint Gap Analysis & Phase 2 Engineering Roadmap
+## 6. Blueprint Gap Analysis & Phase 2 Delivery Status
 
-| Blueprint Section | Phase 1 Status (Prototypes v1–v4) | Phase 2 Implementation Target |
-|---|---|---|
-| **API Architecture** | Browser-only client logic | Node.js + Express + TypeScript REST API |
-| **Database Model** | LocalStorage JSON blobs | PostgreSQL schema with Knex / Prisma migrations |
-| **Server-Authoritative Anti-Cheat (§A1)** | Client calculates elapsed time & income | Server recomputes game time from timestamps on claim |
-| **Authentication (§A2)** | Anonymous local guest profile | JWT access tokens (15 min) + HTTP-only refresh cookies |
-| **Countdown Sync** | Client-side `setInterval` | WebSocket push notifications for task completions |
-| **Global Leaderboards** | Local simulation stub | Redis cache with scheduled batch aggregation |
-| **Regional Biomes** | Germany Grassland (6 plots) | 10 unlockable global biomes with climate modifiers |
-| **Educational Quiz Engine** | Static hint toasts & facts | Interactive sustainability quizzes with coin/seed rewards |
+| Blueprint Section | Phase 1 Status (Prototypes v1–v4) | Phase 2 Implementation Status | Delivery Details |
+|---|---|---|---|
+| **API Architecture** | Browser-only client logic | ✅ **Delivered** | Node.js (v24) + Express.js + TypeScript REST API with modular controllers, services, and Zod validation |
+| **Database Model** | LocalStorage JSON blobs | ✅ **Delivered** | PostgreSQL 18 with 8 normalized tables (`users`, `farms`, `plots`, `workers`, `economy_transactions`, `achievements`, `reports`, `refresh_tokens`) and automatic migration runner |
+| **Server-Authoritative Anti-Cheat (§A1)** | Client calculates elapsed time & income | ✅ **Delivered** | Authoritative game engine: validates timestamps, enforces 1:4 time ratio, calculates biological health decay, tree death trigger at 20h streak, wood salvage, and rejects client time warp attempts |
+| **Authentication (§A2)** | Anonymous local guest profile | ✅ **Delivered** | Bcrypt (cost 12), short-lived JWTs (15m), secure HTTP-only SameSite=Strict refresh cookies, Google OAuth2 token verification with dev/test sandbox, and seamless guest $\to$ registered account upgrade |
+| **Countdown Sync** | Client-side `setInterval` | ✅ **Delivered** | WebSocket server (`ws`) mounted on `/ws` with token authentication, heartbeat keep-alive, and broadcast notifications |
+| **Global Leaderboards** | Local simulation stub | ✅ **Delivered** | Ranked leaderboard endpoints (Oxygen, Net Worth, Eco Score) backed by Redis caching with transparent in-memory fallback |
+| **Audit Ledger** | None | ✅ **Delivered** | Append-only `economy_transactions` double-entry ledger tracking all currency and O2 movements with running balances |
+| **Regional Biomes** | Germany Grassland (6 plots) | ⏳ *Phase 3 Backlog* | 10 unlockable global biomes with climate modifiers |
+| **Educational Quiz Engine** | Static hint toasts & facts | ⏳ *Phase 3 Backlog* | Interactive sustainability quizzes with coin/seed rewards |
 
 ---
 
 *Generated and verified for branch `mvp-v1` — searchO2 Project Evolution.*
+

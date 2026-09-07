@@ -421,6 +421,223 @@ function freshState(){
   };
 }
 
+// ================= BACKEND & AUTHENTICATION BRIDGE =================
+var API_BASE_URL = 'http://localhost:5000/api';
+var WS_BASE_URL = 'ws://localhost:5000/ws';
+var apiUser = null;
+var authToken = null;
+var backendOnline = false;
+var wsConnection = null;
+
+var ApiClient = {
+  init: function(){
+    var self = this;
+    fetch(API_BASE_URL + '/health', { method: 'GET' })
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if (data.status === 'healthy'){
+          backendOnline = true;
+          console.log('✅ Connected to searchO2 backend on', API_BASE_URL);
+          var savedToken = localStorage.getItem('searchO2_token');
+          if (savedToken){
+            authToken = savedToken;
+            self.fetchMe();
+          } else {
+            render();
+          }
+        }
+      })
+      .catch(function(err){
+        backendOnline = false;
+        console.log('ℹ️ Backend offline — running in local standalone mode');
+      });
+  },
+  fetchMe: function(){
+    var self = this;
+    if (!authToken) return;
+    fetch(API_BASE_URL + '/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    })
+    .then(function(res){ return res.json(); })
+    .then(function(data){
+      if (data.user){
+        apiUser = data.user;
+        render();
+        self.connectWs();
+        self.syncFarm();
+      } else {
+        authToken = null;
+        localStorage.removeItem('searchO2_token');
+        render();
+      }
+    })
+    .catch(function(){});
+  },
+  connectWs: function(){
+    if (!authToken || wsConnection) return;
+    try {
+      wsConnection = new WebSocket(WS_BASE_URL + '?token=' + authToken);
+      wsConnection.onmessage = function(ev){
+        try {
+          var msg = JSON.parse(ev.data);
+          if (msg.type === 'TICK' || msg.type === 'TASK_COMPLETE'){
+            showNotification('⚡', msg.payload.message || 'Server synchronized farm progress', 'plot', 0);
+          }
+        } catch(e){}
+      };
+      wsConnection.onclose = function(){ wsConnection = null; };
+    } catch(e){}
+  },
+  register: function(email, password, displayName){
+    var self = this;
+    return fetch(API_BASE_URL + '/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password, displayName: displayName })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.error) throw new Error(d.error);
+      authToken = d.accessToken;
+      apiUser = d.user;
+      localStorage.setItem('searchO2_token', authToken);
+      showNotification('🎉', 'Welcome ' + d.user.displayName + '! Cloud save active.', 'bank', null);
+      self.connectWs();
+      closeModal();
+      render();
+    });
+  },
+  login: function(email, password){
+    var self = this;
+    return fetch(API_BASE_URL + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.error) throw new Error(d.error);
+      authToken = d.accessToken;
+      apiUser = d.user;
+      localStorage.setItem('searchO2_token', authToken);
+      showNotification('✅', 'Signed in as ' + d.user.displayName, 'bank', null);
+      self.connectWs();
+      closeModal();
+      render();
+    });
+  },
+  loginGoogle: function(idToken){
+    var self = this;
+    return fetch(API_BASE_URL + '/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: idToken || 'mock_google_user_' + Date.now() })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.error) throw new Error(d.error);
+      authToken = d.accessToken;
+      apiUser = d.user;
+      localStorage.setItem('searchO2_token', authToken);
+      showNotification('🚀', 'Signed in with Google! Cloud save active.', 'bank', null);
+      self.connectWs();
+      closeModal();
+      render();
+    });
+  },
+  loginGuest: function(){
+    var self = this;
+    return fetch(API_BASE_URL + '/auth/guest', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.error) throw new Error(d.error);
+      authToken = d.accessToken;
+      apiUser = d.user;
+      localStorage.setItem('searchO2_token', authToken);
+      showNotification('🌱', 'Guest session created. Upgrade anytime!', 'bank', null);
+      self.connectWs();
+      closeModal();
+      render();
+    });
+  },
+  upgrade: function(provider, payload){
+    var self = this;
+    if (!authToken) return Promise.reject(new Error('No active guest session'));
+    payload.provider = provider;
+    return fetch(API_BASE_URL + '/auth/upgrade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify(payload)
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.error) throw new Error(d.error);
+      authToken = d.accessToken;
+      apiUser = d.user;
+      localStorage.setItem('searchO2_token', authToken);
+      showNotification('🏆', 'Account upgraded! Your farm is permanently saved.', 'bank', null);
+      closeModal();
+      render();
+    });
+  },
+  logout: function(){
+    var self = this;
+    if (authToken){
+      fetch(API_BASE_URL + '/auth/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + authToken } }).catch(function(){});
+    }
+    authToken = null;
+    apiUser = null;
+    localStorage.removeItem('searchO2_token');
+    if (wsConnection) { wsConnection.close(); wsConnection = null; }
+    showNotification('👋', 'Signed out. Playing offline.', 'bank', null);
+    closeModal();
+    render();
+  },
+  syncFarm: function(){
+    if (!authToken || !backendOnline) return;
+    fetch(API_BASE_URL + '/farm', {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.farm && d.plots){
+        state.money = Number(d.farm.money);
+        state.totalO2 = Number(d.farm.total_o2);
+        state.totalO2AllTime = Number(d.farm.total_o2_all_time);
+        state.treesPlanted = d.farm.trees_planted;
+        state.treesRemoved = d.farm.trees_removed || 0;
+        state.gameHour = Number(d.farm.game_hour);
+        if (d.farm.storage_state) state.storage = d.farm.storage_state;
+        if (d.farm.buildings_state) state.buildings = d.farm.buildings_state;
+        if (d.farm.loan_state) state.loan = d.farm.loan_state;
+        d.plots.forEach(function(sp, idx){
+          if (state.plots[idx]){
+            state.plots[idx].status = sp.status;
+            state.plots[idx].treeType = sp.tree_type;
+            state.plots[idx].treeId = sp.tree_id;
+            state.plots[idx].health = Number(sp.health);
+            state.plots[idx].growHours = Number(sp.grow_hours);
+            state.plots[idx].taskHours = Number(sp.task_hours);
+            state.plots[idx].weedHours = Number(sp.weed_hours);
+            state.plots[idx].zeroHealthStreakHours = Number(sp.zero_health_streak_hours || 0);
+            state.plots[idx].pendingHarvest = Number(sp.pending_harvest);
+            if (sp.accessories) state.plots[idx].accessories = sp.accessories;
+          }
+        });
+        render();
+      }
+    })
+    .catch(function(){});
+  }
+};
+
+if (!window.storage){
+  window.storage = {
+    get: function(k){ return Promise.resolve({ value: localStorage.getItem(k) }); },
+    set: function(k, v){ try{ localStorage.setItem(k, v); return Promise.resolve(); }catch(e){ return Promise.reject(e); } }
+  };
+}
+
 // ================= PERSISTENCE =================
 // Every action used to call storage.set() immediately (14 call sites) on top of a
 // 15s auto-save interval. Rapid clicking (or several harvests finishing back-to-back)
@@ -1603,11 +1820,70 @@ function bankModalHtml(){
   html += '</div></div>';
   return html;
 }
+
+function authModalHtml(){
+  var html = '<div class="overlay" id="modalOverlay"><div class="modal" style="max-width:440px;">'+
+    '<h2>👤 Account & Cloud Save<button class="close-modal" data-closemodal="1">✕</button></h2>'+
+    '<div class="sub" style="margin-bottom:8px;">Save your farm to PostgreSQL 18, prevent progress loss, and sync across devices.</div>';
+
+  var statusBadge = backendOnline
+    ? '<span style="color:#2E7D32;font-weight:800;">● Online (PostgreSQL 18)</span>'
+    : '<span style="color:#C62828;font-weight:800;">○ Offline (Local Storage)</span>';
+
+  html += '<div style="background:white;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:0.75rem;border:1px solid rgba(44,74,50,0.15);display:flex;justify-content:space-between;align-items:center;">'+
+    '<span>Backend API:</span>'+statusBadge+'</div>';
+
+  if (apiUser && apiUser.role !== 'guest'){
+    html += '<div style="background:#E8F5E9;border-radius:12px;padding:12px;margin-bottom:12px;font-size:0.82rem;color:#1B5E20;">'+
+      '<b>Signed in as '+apiUser.displayName+'</b><br>'+
+      '<span style="font-size:0.75rem;color:#2E7D32;">Email: '+(apiUser.email||'Google Account')+' · Provider: '+(apiUser.authProvider||'local')+'</span><br>'+
+      '<div style="margin-top:6px;font-size:0.75rem;">Your farm is securely persisted with server-authoritative anti-cheat and real-time syncing.</div>'+
+      '<button class="secondary" data-authlogout="1" style="margin-top:10px;padding:6px;font-size:0.78rem;">Sign Out</button>'+
+    '</div>';
+  } else if (apiUser && apiUser.role === 'guest'){
+    html += '<div style="background:#FFF8E1;border-radius:12px;padding:12px;margin-bottom:12px;font-size:0.82rem;color:#7A5506;">'+
+      '<b>Currently playing as: '+apiUser.displayName+' (Guest)</b><br>'+
+      '<span style="font-size:0.74rem;">Guest sessions are temporary. Upgrade now to preserve your trees, balance, and buildings!</span>'+
+      '<div class="section" style="margin-top:8px;padding-top:8px;">'+
+        '<h4>🌟 Upgrade to Permanent Account</h4>'+
+        '<button class="primary" data-upgrade="google" style="background:#4285F4;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;">'+
+          '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#FFF" d="M21.35 11.1h-9.17v2.98h5.27c-.23 1.25-.94 2.31-2 3.02v2.51h3.24c1.89-1.74 2.98-4.31 2.98-7.41 0-.71-.06-1.4-.32-2.1z"/><path fill="#FFF" d="M12.18 22c2.7 0 4.96-.9 6.62-2.43l-3.24-2.51c-.9.6-2.04.96-3.38.96-2.6 0-4.81-1.76-5.6-4.12H3.21v2.59C4.87 19.78 8.27 22 12.18 22z"/><path fill="#FFF" d="M6.58 13.9c-.2-.6-.31-1.25-.31-1.9s.11-1.3.31-1.9V7.51H3.21C2.55 8.83 2.18 10.37 2.18 12s.37 3.17 1.03 4.49l3.37-2.59z"/><path fill="#FFF" d="M12.18 5.96c1.47 0 2.79.51 3.82 1.5l2.86-2.86C17.13 2.97 14.88 2 12.18 2 8.27 2 4.87 4.22 3.21 7.51l3.37 2.59c.79-2.36 3-4.14 5.6-4.14z"/></svg> Upgrade with Google'+
+        '</button>'+
+        '<div style="text-align:center;font-size:0.75rem;color:var(--pine-soft);margin:4px 0;">— or with Email & Password —</div>'+
+        '<input type="email" id="upgEmail" placeholder="Your Email" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;margin-bottom:6px;font-size:0.8rem;box-sizing:border-box;">'+
+        '<input type="password" id="upgPassword" placeholder="New Password (min 8 chars)" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;margin-bottom:6px;font-size:0.8rem;box-sizing:border-box;">'+
+        '<button class="primary" data-upgrade="local" style="margin-top:4px;">Upgrade with Email</button>'+
+      '</div>'+
+    '</div>';
+  } else {
+    html += '<div style="display:flex;flex-direction:column;gap:10px;">'+
+      '<button class="primary" data-auth="google" style="background:#4285F4;display:flex;align-items:center;justify-content:center;gap:8px;">'+
+        '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#FFF" d="M21.35 11.1h-9.17v2.98h5.27c-.23 1.25-.94 2.31-2 3.02v2.51h3.24c1.89-1.74 2.98-4.31 2.98-7.41 0-.71-.06-1.4-.32-2.1z"/><path fill="#FFF" d="M12.18 22c2.7 0 4.96-.9 6.62-2.43l-3.24-2.51c-.9.6-2.04.96-3.38.96-2.6 0-4.81-1.76-5.6-4.12H3.21v2.59C4.87 19.78 8.27 22 12.18 22z"/><path fill="#FFF" d="M6.58 13.9c-.2-.6-.31-1.25-.31-1.9s.11-1.3.31-1.9V7.51H3.21C2.55 8.83 2.18 10.37 2.18 12s.37 3.17 1.03 4.49l3.37-2.59z"/><path fill="#FFF" d="M12.18 5.96c1.47 0 2.79.51 3.82 1.5l2.86-2.86C17.13 2.97 14.88 2 12.18 2 8.27 2 4.87 4.22 3.21 7.51l3.37 2.59c.79-2.36 3-4.14 5.6-4.14z"/></svg> Continue with Google'+
+      '</button>'+
+      '<button class="secondary" data-auth="guest">Instant Guest Mode (No signup)</button>'+
+      '<div class="section" style="margin-top:6px;padding-top:8px;">'+
+        '<h4>Email Sign In / Register</h4>'+
+        '<input type="text" id="authDisplayName" placeholder="Display Name (new accounts only)" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;margin-bottom:6px;font-size:0.8rem;box-sizing:border-box;">'+
+        '<input type="email" id="authEmail" placeholder="Email Address" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;margin-bottom:6px;font-size:0.8rem;box-sizing:border-box;">'+
+        '<input type="password" id="authPassword" placeholder="Password" style="width:100%;padding:8px;border-radius:8px;border:1px solid #ccc;margin-bottom:6px;font-size:0.8rem;box-sizing:border-box;">'+
+        '<div style="display:flex;gap:8px;margin-top:4px;">'+
+          '<button class="primary" data-auth="login" style="flex:1;">Sign In</button>'+
+          '<button class="secondary" data-auth="register" style="flex:1;">Register</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
 function modalHtml(){
   if (!activeModal) return '';
   if (activeModal.type==='storage') return storageModalHtml();
   if (activeModal.type==='bank') return bankModalHtml();
   if (activeModal.type==='building') return buildingModalHtml(activeModal.plotId);
+  if (activeModal.type==='auth') return authModalHtml();
   var p = state.plots[activeModal.plotId];
   var def = p.treeType ? TREE_TYPES[p.treeType] : null;
   var stageInfo = plotStageInfo(p);
@@ -1775,7 +2051,12 @@ function topbarStatsHtml(){
   var gameDay = Math.floor(state.gameHour/24)+1;
   var season = currentSeason();
   var dailyWage = state.workers.reduce(function(s,w){return s+WORKER_TYPES[w.type].wage;},0);
-  return '<div class="stat-pill'+(state.money<0?' warn':'')+'"><span class="val">€'+state.money.toFixed(2)+'</span><span class="lbl">balance</span></div>'+
+  var authPill = '<div class="stat-pill" data-openauth="1" style="cursor:pointer;background:'+(apiUser ? (apiUser.role==='guest'?'#44724E':'#204E2D'):(backendOnline?'#F0AC3D':'#8A7D6B'))+';color:white;" title="Account & Cloud Save">'+
+    '<span class="val">👤 '+(apiUser ? apiUser.displayName : (backendOnline ? 'Sign In' : 'Offline'))+'</span>'+
+    '<span class="lbl">'+(apiUser ? (apiUser.role==='guest'?'Guest (Upgrade)':'Cloud Active') : (backendOnline ? 'Sign In / Register' : 'Local Storage'))+'</span>'+
+  '</div>';
+  return authPill +
+    '<div class="stat-pill'+(state.money<0?' warn':'')+'"><span class="val">€'+state.money.toFixed(2)+'</span><span class="lbl">balance</span></div>'+
     '<div class="stat-pill"><span class="val">'+state.totalO2.toFixed(1)+'</span><span class="lbl">O₂</span></div>'+
     '<div class="stat-pill"><span class="val">Day '+gameDay+'</span><span class="lbl">'+season.emoji+' '+season.name+'</span></div>'+
     '<div class="stat-pill"><span class="val">⭐ '+farmReputation()+'</span><span class="lbl">reputation</span></div>'+
@@ -1935,11 +2216,42 @@ function wireEvents(){
   document.querySelectorAll('[data-buyacc]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); buyAccessory(parseInt(b.getAttribute('data-buyplot')), b.getAttribute('data-buyacc')); }; });
   document.querySelectorAll('[data-assign]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); assignWorker(parseInt(b.getAttribute('data-assign')), parseInt(b.getAttribute('data-assignplot'))); }; });
   document.querySelectorAll('[data-unassign]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); unassignWorker(parseInt(b.getAttribute('data-unassign'))); }; });
+  document.querySelectorAll('[data-openauth]').forEach(function(b){ b.onclick=function(){ openModal('auth', null); }; });
+  document.querySelectorAll('[data-authlogout]').forEach(function(b){ b.onclick=function(){ ApiClient.logout(); }; });
+  document.querySelectorAll('[data-auth="google"]').forEach(function(b){ b.onclick=function(){ ApiClient.loginGoogle(); }; });
+  document.querySelectorAll('[data-auth="guest"]').forEach(function(b){ b.onclick=function(){ ApiClient.loginGuest(); }; });
+  document.querySelectorAll('[data-auth="login"]').forEach(function(b){
+    b.onclick=function(){
+      var em = (document.getElementById('authEmail') || {}).value || '';
+      var pw = (document.getElementById('authPassword') || {}).value || '';
+      if (!em || !pw) return alert('Please enter email and password');
+      ApiClient.login(em, pw).catch(function(err){ alert('Login failed: ' + err.message); });
+    };
+  });
+  document.querySelectorAll('[data-auth="register"]').forEach(function(b){
+    b.onclick=function(){
+      var em = (document.getElementById('authEmail') || {}).value || '';
+      var pw = (document.getElementById('authPassword') || {}).value || '';
+      var dn = (document.getElementById('authDisplayName') || {}).value || '';
+      if (!em || !pw || !dn) return alert('Please enter email, password, and display name');
+      ApiClient.register(em, pw, dn).catch(function(err){ alert('Registration failed: ' + err.message); });
+    };
+  });
+  document.querySelectorAll('[data-upgrade="google"]').forEach(function(b){ b.onclick=function(){ ApiClient.upgrade('google', {}).catch(function(err){ alert('Upgrade failed: ' + err.message); }); }; });
+  document.querySelectorAll('[data-upgrade="local"]').forEach(function(b){
+    b.onclick=function(){
+      var em = (document.getElementById('upgEmail') || {}).value || '';
+      var pw = (document.getElementById('upgPassword') || {}).value || '';
+      if (!em || !pw) return alert('Please enter email and password');
+      ApiClient.upgrade('local', { email: em, password: pw }).catch(function(err){ alert('Upgrade failed: ' + err.message); });
+    };
+  });
   var closeOffline = document.getElementById('closeOffline');
   if (closeOffline) closeOffline.onclick = function(){ offlineSummary=null; render(); };
 }
 
 loadState();
+ApiClient.init();
 })();
 </script>
 </body>
