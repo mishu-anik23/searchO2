@@ -302,7 +302,77 @@ npm run build
 | **Global Leaderboards** | Local simulation stub | ✅ **Delivered** | Ranked leaderboard endpoints (Oxygen, Net Worth, Eco Score) backed by Redis caching with transparent in-memory fallback |
 | **Audit Ledger** | None | ✅ **Delivered** | Append-only `economy_transactions` double-entry ledger tracking all currency and O2 movements with running balances |
 | **Regional Biomes** | Germany Grassland (6 plots) | ✅ **Delivered** | Interactive 3D World Globe + 8 regional biomes with country flags, lock/unlock mechanics, native flora tooltips, and 3 view modes (`searchO2-prototype-v4.html`) |
+| **Regional Soundscapes & Music** | None (Silent prototype) | ✅ **Delivered** | Zero-dependency procedural Web Audio API engine (`SoundTrackEngine`): 9 regional instrumental compositions (60s/70s/80s folk, bossa nova, pastoral lullabies) + activity SFX & collapsible music player dock |
 | **Educational Quiz Engine** | Static hint toasts & facts | ⏳ *Phase 3 Backlog* | Interactive sustainability quizzes with coin/seed rewards |
+
+---
+
+## 7. Procedural Regional Soundtrack & SFX Engine (searchO2 v4 Addendum)
+
+To fulfill the vision of an emotionally immersive, peaceful eco-simulation, a zero-dependency, procedural Web Audio API audio subsystem (`SoundTrackEngine`) was designed and integrated directly into `searchO2-prototype-v4.html`.
+
+### 7.1 Musical Design & Zero-Dependency Architecture
+- **100% Procedural Synthesis:** No external `.mp3` or `.wav` assets, streaming audio files, or third-party audio frameworks. Everything is synthesized in real time from mathematical waveforms using `AudioContext`, custom Biquad filters, and multi-node envelopes.
+- **Tonal Flavors:** Classic 60s, 70s, and 80s love songs and children's song structures ($I - vi - IV - V$ doo-wop/ballad warmth, $I - V - vi - IV$ 70s acoustic folk-pop, 60s Bossa Nova, Andalusian romance, and pentatonic children's folk songs).
+- **Procedural Physical Instruments:**
+  1. **Acoustic Pluck (Folk Guitar / Balafon):** Triangle oscillator fed into a dynamically sweeping low-pass filter with exponential decay envelope.
+  2. **Rhodes Electric Piano:** Dual-sine oscillators with slight detune and harmonic second-order ring, creating vintage warm 70s bell-like keys.
+  3. **Wooden Marimba:** Frequency-tuned sine/triangle strike with high initial transient punch and rapid wooden body dampening.
+  4. **Pastoral Flute:** Gentle sine wave with subtle vibrato LFO and soft attack envelope.
+  5. **Acoustic Bass:** Warm fundamental sine/triangle with tight low-pass filtering.
+  6. **Music Box / Celestial Chimes:** High-register harmonic sine pairs with long metallic reverb resonance.
+
+### 7.2 The 9 Regional Instrumental Compositions
+1. 🇩🇪 **Germany — "Schwarzwald Lullaby" (Pastoral Folk Waltz):**
+   - *Key:* C Major, $3/4$ waltz meter, 92 BPM.
+   - *Progression:* $I - vi - IV - V$ ($C - Am - F - G$).
+   - *Instrumentation:* Warm fingerpicked acoustic guitar, Rhodes piano, flute, and woody bass.
+2. 🌍 **Global Earth — "Blue Marble Serenade" (70s Acoustic Earth Ballad):**
+   - *Key:* C Major, $4/4$ ballad meter, 80 BPM.
+   - *Progression:* $I - V - vi - IV$ ($C - G - Am - F$).
+   - *Instrumentation:* Nostalgic acoustic plucks, Rhodes accompaniment, and soothing flutes.
+3. 🇧🇷 **Brazil — "Bossa das Árvores" (60s Tropical Bossa Nova):**
+   - *Key:* C Major / D Dorian, $4/4$ syncopated bossa, 115 BPM.
+   - *Progression:* $Cmaj7 - A7 - Dm7 - G7$.
+   - *Instrumentation:* Syncopated nylon guitar, warm acoustic bass, and wooden marimba.
+4. 🇪🇸 **Spain — "Brisa del Sol" (70s Spanish Romance Ballad):**
+   - *Key:* A Minor, $3/4$ romance meter, 88 BPM.
+   - *Progression:* $Am - G - F - E7$ (Andalusian Cadence).
+   - *Instrumentation:* Spanish acoustic guitar arpeggios, expressive pastoral flute, and deep bass.
+5. 🇯🇵 **Japan — "Sakura Nostalgia" (70s Showa Folk Lullaby):**
+   - *Key:* C Major Yo-Pentatonic ($C, D, F, G, A$), 72 BPM.
+   - *Instrumentation:* Music box bells, wooden koto/marimba, and warm pastoral flute.
+6. 🇺🇸 **USA — "Redwood Sunrise" (70s Americana Folk Fingerpicking):**
+   - *Key:* G Major, $4/4$ country-folk meter, 96 BPM.
+   - *Progression:* $G - D - Em - C$.
+   - *Instrumentation:* Travis-style fingerpicking guitar, walking acoustic bass, and Rhodes counterpoint.
+7. 🇸🇳 **Senegal — "Kora Dawn" (West African Pastoral Lullaby):**
+   - *Key:* F Major pentatonic, 100 BPM.
+   - *Instrumentation:* Fast cascading Kora-style plucks, rhythmic wooden balafon, and marimba.
+8. 🇸🇪 **Sweden — "Nordic Solstice" (Scandinavian Folk Song):**
+   - *Key:* D Minor / F Major, $3/4$ folk meter, 78 BPM.
+   - *Progression:* $Dm - Bb - C - F$.
+   - *Instrumentation:* Clear pastoral flute melody, wooden marimba, and celestial chimes.
+9. 🇲🇬 **Madagascar — "Baobab Joy" (Island Children's Melody):**
+   - *Key:* G Major, $4/4$ upbeat rhythm, 108 BPM.
+   - *Progression:* $G - C - D - G$.
+   - *Instrumentation:* Valiha-inspired zither plucks, wooden marimba, and bouncy bass.
+
+### 7.3 Synthesized Activity SFX & Event Jingles
+- 🌱 **Tree Planting (`plant`):** 3-note rising acoustic arpeggio ($C4 \to E4 \to G4$).
+- 📋 **Task / Dig / Clear (`task`):** Crisp marimba confirmation chime ($G4 \to C5$).
+- 🧺 **Harvest & Sales (`harvest`):** Bright Rhodes & metallic coin chimes ($E5 \to G5 \to C6$).
+- 💧 **Plot Watering (`water`):** Ascending gentle liquid water drops.
+- ✂️ **Plot Pruning (`prune`):** Double wooden click with crisp resonance.
+- 🍂 **Season Change (`season`):** Slow 4-note pastoral transition chord.
+- 🏆 **Achievement Unlocked (`achieve`):** Victorious 4-note brassy Rhodes & bell jingle ($C5 \to E5 \to G5 \to C6$).
+
+### 7.4 Floating Music Player Dock
+- Rendered in bottom-left corner with glassmorphic styling, collapsed/expanded mode toggle.
+- Track information display with country flag, title, and musical genre.
+- Standard media controls: Play / Pause, Previous Track, Next Track, Track Select dropdown.
+- Volume slider with mute toggle icon, and dedicated Sound Effects (SFX) toggle button.
+- Autonomous reactive switching: Automatically syncs to Germany theme on farm screen, Earth theme on 3D globe view, and previews regional tracks on country beacon or chip selection.
 
 ---
 

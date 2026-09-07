@@ -432,6 +432,69 @@
     .globe-canvas-container{ height: 380px; }
   }
 
+  /* ================= REGIONAL MUSIC & AUDIO CONTROLLER DOCK ================= */
+  .music-player-dock{
+    position: fixed; bottom: 16px; left: 16px; z-index: 95;
+    background: rgba(18, 38, 25, 0.92); backdrop-filter: blur(12px);
+    border: 1.5px solid rgba(129, 199, 132, 0.35); border-radius: 20px;
+    padding: 6px 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    display: flex; align-items: center; gap: 10px; color: #E8F5E9;
+    font-family: 'Baloo 2', sans-serif; transition: all 0.25s ease;
+    user-select: none; max-width: 95vw;
+  }
+  .music-player-dock.is-playing{
+    border-color: #69F0AE; box-shadow: 0 10px 35px rgba(0,0,0,0.5), 0 0 15px rgba(76,175,80,0.3);
+  }
+  .music-player-dock.collapsed .music-dock-controls{
+    display: none;
+  }
+  .music-dock-handle{
+    display: flex; align-items: center; gap: 6px; cursor: pointer;
+    font-weight: 800; font-size: 0.82rem; color: #A5D6A7;
+  }
+  .music-dock-handle:hover{ color: #FFF; }
+  .music-dock-label{
+    max-width: 175px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 0.78rem; font-weight: 700; color: #C8E6C9;
+  }
+  .music-dock-controls{
+    display: flex; align-items: center; gap: 6px;
+  }
+  .music-btn{
+    background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.15);
+    color: #E8F5E9; border-radius: 10px; width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 0.82rem; transition: all 0.15s ease;
+  }
+  .music-btn:hover{
+    background: var(--forest); border-color: #81C784; transform: scale(1.08); color: #FFF;
+  }
+  .music-btn.active{
+    background: #2E7D32; border-color: #69F0AE;
+  }
+  .music-vol-wrap{
+    display: flex; align-items: center; gap: 5px; font-size: 0.82rem; margin: 0 4px;
+  }
+  .music-slider{
+    width: 60px; height: 5px; accent-color: #4CAF50; cursor: pointer;
+    background: rgba(255,255,255,0.2); border-radius: 4px;
+  }
+  .music-track-select{
+    background: rgba(10, 25, 16, 0.92); color: #C8E6C9;
+    border: 1px solid rgba(129,199,132,0.3); border-radius: 10px;
+    font-family: 'Baloo 2'; font-size: 0.76rem; font-weight: 700;
+    padding: 3px 8px; outline: none; cursor: pointer; max-width: 155px;
+  }
+  .music-track-select option{
+    background: #10261b; color: #E8F5E9;
+  }
+  @media (max-width: 640px){
+    .music-player-dock{ bottom: 8px; left: 8px; padding: 5px 8px; font-size: 0.75rem; }
+    .music-dock-label{ max-width: 100px; }
+    .music-slider{ width: 45px; }
+    .music-track-select{ max-width: 110px; }
+  }
+
   /* ================= INITIAL AUTH OVERLAY & MODAL ================= */
   .initial-auth-overlay{
     position:fixed; inset:0; z-index:100;
@@ -532,6 +595,25 @@
   </div>
 
   <!-- ================= COMMON LAYERS & NOTIFICATIONS ================= -->
+  <!-- Music Controller Dock -->
+  <div class="music-player-dock" id="musicPlayerDock">
+    <div class="music-dock-handle" id="musicDockToggle" title="Click to collapse / expand music player">
+      <span id="musicDockIcon">🎵</span>
+      <span class="music-dock-label" id="musicTrackLabel">Music: Standby (Click Play)</span>
+    </div>
+    <div class="music-dock-controls" id="musicDockControls">
+      <button class="music-btn" id="btnMusicPlayPause" title="Play / Pause Background Music">▶️</button>
+      <button class="music-btn" id="btnMusicPrev" title="Previous Track">⏮️</button>
+      <button class="music-btn" id="btnMusicNext" title="Next Track">⏭️</button>
+      <div class="music-vol-wrap" title="Adjust Music Volume">
+        <span id="musicVolIcon" style="cursor:pointer;" title="Mute / Unmute">🔊</span>
+        <input type="range" id="musicVolSlider" min="0" max="100" value="70" class="music-slider">
+      </div>
+      <button class="music-btn active" id="btnSfxToggle" title="Toggle Sound Effects">🔔</button>
+      <select id="musicTrackSelect" class="music-track-select" title="Choose Regional Music Track"></select>
+    </div>
+  </div>
+
   <div id="modalLayer"></div>
   <div class="hint-toast" id="hintToast"></div>
   <div class="floating-tooltip" id="toolTip"></div>
@@ -1406,6 +1488,9 @@ var GlobeEngine = (function(){
   }
 
   function handleRegionClick(b){
+    if (typeof SoundTrackEngine !== 'undefined'){
+      SoundTrackEngine.playTrackById(b.id);
+    }
     if (b.id === 'germany'){
       rotateTo(b.lat, b.lon, function(){
         switchScreen('farm');
@@ -1458,6 +1543,770 @@ var GlobeEngine = (function(){
   };
 })();
 
+// ================= PROCEDURAL REGIONAL SOUNDTRACK & SFX ENGINE (WEB AUDIO API) =================
+var SoundTrackEngine = (function(){
+  var audioCtx = null;
+  var masterGain = null;
+  var musicGain = null;
+  var sfxGain = null;
+  var isPlaying = false;
+  var isMuted = false;
+  var sfxEnabled = true;
+  var volume = 0.70;
+  var currentTrackIdx = 0;
+  var currentStep = 0;
+  var nextStepTime = 0;
+  var scheduleAheadTime = 0.12;
+  var lookaheadMs = 40;
+  var schedulerTimer = null;
+
+  var NOTE_SEMITONES = { 'C':0, 'C#':1, 'Db':1, 'D':2, 'D#':3, 'Eb':3, 'E':4, 'F':5, 'F#':6, 'Gb':6, 'G':7, 'G#':8, 'Ab':8, 'A':9, 'A#':10, 'Bb':10, 'B':11 };
+
+  function noteToFreq(noteStr){
+    if (!noteStr) return 0;
+    var m = noteStr.match(/^([A-Ga-g][#b]?)([0-8])$/);
+    if (!m) return 0;
+    var name = m[1].toUpperCase();
+    if (name.length === 2 && name[1] === 'B') name = name[0] + 'b';
+    var oct = parseInt(m[2], 10);
+    var semi = NOTE_SEMITONES[name];
+    if (semi === undefined) return 0;
+    var midi = (oct + 1) * 12 + semi;
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+
+  function initContext(){
+    if (!audioCtx){
+      var AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtxClass) return null;
+      audioCtx = new AudioCtxClass();
+
+      masterGain = audioCtx.createGain();
+      masterGain.gain.setValueAtTime(isMuted ? 0 : volume, audioCtx.currentTime);
+      masterGain.connect(audioCtx.destination);
+
+      musicGain = audioCtx.createGain();
+      musicGain.gain.setValueAtTime(0.65, audioCtx.currentTime);
+      musicGain.connect(masterGain);
+
+      sfxGain = audioCtx.createGain();
+      sfxGain.gain.setValueAtTime(0.85, audioCtx.currentTime);
+      sfxGain.connect(masterGain);
+    }
+    if (audioCtx.state === 'suspended'){
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  // --- PROCEDURAL SYNTHESIS INSTRUMENTS ---
+  function playPluck(freq, startTime, dur, vol){
+    if (!freq || !audioCtx) return;
+    var osc = audioCtx.createOscillator();
+    var filter = audioCtx.createBiquadFilter();
+    var g = audioCtx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(Math.min(3200, freq * 4.5), startTime);
+    filter.frequency.exponentialRampToValueAtTime(Math.max(250, freq * 1.1), startTime + dur);
+
+    var v = vol || 0.45;
+    g.gain.setValueAtTime(0.0001, startTime);
+    g.gain.linearRampToValueAtTime(v, startTime + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+
+    osc.connect(filter);
+    filter.connect(g);
+    g.connect(musicGain);
+
+    osc.start(startTime);
+    osc.stop(startTime + dur + 0.05);
+  }
+
+  function playRhodes(freq, startTime, dur, vol){
+    if (!freq || !audioCtx) return;
+    var osc1 = audioCtx.createOscillator();
+    var osc2 = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(freq, startTime);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(freq * 2, startTime);
+
+    var v = vol || 0.4;
+    g.gain.setValueAtTime(0.0001, startTime);
+    g.gain.linearRampToValueAtTime(v, startTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+
+    osc1.connect(g);
+    osc2.connect(g);
+    g.connect(musicGain);
+
+    osc1.start(startTime);
+    osc2.start(startTime);
+    osc1.stop(startTime + dur + 0.05);
+    osc2.stop(startTime + dur + 0.05);
+  }
+
+  function playMarimba(freq, startTime, dur, vol){
+    if (!freq || !audioCtx) return;
+    var osc = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    var v = vol || 0.48;
+    g.gain.setValueAtTime(0.0001, startTime);
+    g.gain.linearRampToValueAtTime(v, startTime + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, startTime + Math.min(0.35, dur));
+
+    osc.connect(g);
+    g.connect(musicGain);
+
+    osc.start(startTime);
+    osc.stop(startTime + dur + 0.05);
+  }
+
+  function playFlute(freq, startTime, dur, vol){
+    if (!freq || !audioCtx) return;
+    var osc = audioCtx.createOscillator();
+    var filter = audioCtx.createBiquadFilter();
+    var g = audioCtx.createGain();
+    var lfo = audioCtx.createOscillator();
+    var lfoGain = audioCtx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    lfo.frequency.setValueAtTime(5.2, startTime);
+    lfoGain.gain.setValueAtTime(freq * 0.015, startTime);
+    lfo.connect(osc.frequency);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(Math.min(2200, freq * 2.8), startTime);
+
+    var v = vol || 0.42;
+    var att = Math.min(0.05, dur * 0.2);
+    g.gain.setValueAtTime(0.0001, startTime);
+    g.gain.linearRampToValueAtTime(v, startTime + att);
+    g.gain.setValueAtTime(v * 0.85, startTime + dur - 0.04);
+    g.gain.linearRampToValueAtTime(0.0001, startTime + dur);
+
+    osc.connect(filter);
+    filter.connect(g);
+    g.connect(musicGain);
+
+    lfo.start(startTime);
+    osc.start(startTime);
+    lfo.stop(startTime + dur + 0.05);
+    osc.stop(startTime + dur + 0.05);
+  }
+
+  function playBass(freq, startTime, dur, vol){
+    if (!freq || !audioCtx) return;
+    var osc = audioCtx.createOscillator();
+    var filter = audioCtx.createBiquadFilter();
+    var g = audioCtx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(320, startTime);
+
+    var v = vol || 0.55;
+    g.gain.setValueAtTime(0.0001, startTime);
+    g.gain.linearRampToValueAtTime(v, startTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+
+    osc.connect(filter);
+    filter.connect(g);
+    g.connect(musicGain);
+
+    osc.start(startTime);
+    osc.stop(startTime + dur + 0.05);
+  }
+
+  function playChime(freq, startTime, dur, vol){
+    if (!freq || !audioCtx) return;
+    var osc = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    var v = vol || 0.35;
+    g.gain.setValueAtTime(0.0001, startTime);
+    g.gain.linearRampToValueAtTime(v, startTime + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+
+    osc.connect(g);
+    g.connect(musicGain);
+
+    osc.start(startTime);
+    osc.stop(startTime + dur + 0.05);
+  }
+
+  function triggerInstrument(inst, noteStr, startTime, dur, vol){
+    var freq = noteToFreq(noteStr);
+    if (!freq) return;
+    if (inst === 'flute') playFlute(freq, startTime, dur, vol);
+    else if (inst === 'rhodes') playRhodes(freq, startTime, dur, vol);
+    else if (inst === 'marimba') playMarimba(freq, startTime, dur, vol);
+    else if (inst === 'chime') playChime(freq, startTime, dur, vol);
+    else if (inst === 'bass') playBass(freq, startTime, dur, vol);
+    else playPluck(freq, startTime, dur, vol);
+  }
+
+  // --- 9 INSTRUMENTAL REGIONAL TRACK COMPOSITIONS ---
+  var TRACKS = [
+    {
+      id: 'germany',
+      flag: '🇩🇪',
+      title: 'Schwarzwald Lullaby',
+      country: 'Germany (Active Farm)',
+      genre: '60s Pastoral Folk Waltz',
+      stepLen: 0.3125,
+      steps: [
+        // C major waltz: Bass, Chords, Lullaby Flute Lead
+        { bass: 'C3', chords: ['E4', 'G4'], lead: 'E5', leadInst: 'flute' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'G5', leadInst: 'flute' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'C6', leadInst: 'flute' },
+        { bass: 'C3', chords: ['E4', 'G4'], lead: 'B5', leadInst: 'flute' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'A5', leadInst: 'flute' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'G5', leadInst: 'flute' },
+        // A minor
+        { bass: 'A2', chords: ['C4', 'E4'], lead: 'A5', leadInst: 'flute' },
+        { bass: null, chords: ['C4', 'E4'], lead: 'E5', leadInst: 'flute' },
+        { bass: null, chords: ['C4', 'E4'], lead: 'C5', leadInst: 'flute' },
+        { bass: 'A2', chords: ['C4', 'E4'], lead: 'E5', leadInst: 'flute' },
+        { bass: null, chords: ['C4', 'E4'], lead: 'D5', leadInst: 'flute' },
+        { bass: null, chords: ['C4', 'E4'], lead: 'C5', leadInst: 'flute' },
+        // F major
+        { bass: 'F2', chords: ['C4', 'F4', 'A4'], lead: 'F5', leadInst: 'flute' },
+        { bass: null, chords: ['A4', 'C5'], lead: 'A5', leadInst: 'flute' },
+        { bass: null, chords: ['A4', 'C5'], lead: 'C6', leadInst: 'flute' },
+        { bass: 'F2', chords: ['A4', 'C5'], lead: 'A5', leadInst: 'flute' },
+        { bass: null, chords: ['A4', 'C5'], lead: 'F5', leadInst: 'flute' },
+        { bass: null, chords: ['A4', 'C5'], lead: 'A5', leadInst: 'flute' },
+        // G major
+        { bass: 'G2', chords: ['B4', 'D5', 'G5'], lead: 'G5', leadInst: 'flute' },
+        { bass: null, chords: ['B4', 'D5'], lead: 'F5', leadInst: 'flute' },
+        { bass: null, chords: ['B4', 'D5'], lead: 'D5', leadInst: 'flute' },
+        { bass: 'G2', chords: ['B4', 'D5'], lead: 'B4', leadInst: 'flute' },
+        { bass: null, chords: ['B4', 'D5'], lead: 'D5', leadInst: 'flute' },
+        { bass: null, chords: ['B4', 'D5'], lead: 'C5', leadInst: 'flute' }
+      ]
+    },
+    {
+      id: 'globe',
+      flag: '🌍',
+      title: 'Blue Marble Serenade',
+      country: 'Global Earth',
+      genre: '70s Acoustic Earth Ballad',
+      stepLen: 0.357,
+      steps: [
+        { bass: 'C3', chords: ['E4', 'G4', 'C5'], lead: 'G5', leadInst: 'rhodes' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'A5', leadInst: 'rhodes' },
+        { bass: 'G2', chords: ['E4', 'G4'], lead: 'G5', leadInst: 'rhodes' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'E5', leadInst: 'rhodes' },
+        { bass: 'G2', chords: ['D4', 'G4', 'B4'], lead: 'D5', leadInst: 'rhodes' },
+        { bass: null, chords: ['D4', 'G4'], lead: 'E5', leadInst: 'rhodes' },
+        { bass: 'B2', chords: ['D4', 'G4'], lead: 'D5', leadInst: 'rhodes' },
+        { bass: null, chords: ['D4', 'G4'], lead: 'B4', leadInst: 'rhodes' },
+        { bass: 'A2', chords: ['C4', 'E4', 'A4'], lead: 'C5', leadInst: 'rhodes' },
+        { bass: null, chords: ['C4', 'E4'], lead: 'D5', leadInst: 'rhodes' },
+        { bass: 'E2', chords: ['C4', 'E4'], lead: 'E5', leadInst: 'rhodes' },
+        { bass: null, chords: ['C4', 'E4'], lead: 'A5', leadInst: 'rhodes' },
+        { bass: 'F2', chords: ['C4', 'F4', 'A4'], lead: 'G5', leadInst: 'rhodes' },
+        { bass: null, chords: ['C4', 'F4'], lead: 'F5', leadInst: 'rhodes' },
+        { bass: 'C3', chords: ['C4', 'F4'], lead: 'E5', leadInst: 'rhodes' },
+        { bass: null, chords: ['C4', 'F4'], lead: 'D5', leadInst: 'rhodes' }
+      ]
+    },
+    {
+      id: 'brazil',
+      flag: '🇧🇷',
+      title: 'Bossa das Árvores',
+      country: 'Brazil',
+      genre: '60s Tropical Bossa Nova',
+      stepLen: 0.277,
+      steps: [
+        { bass: 'C3', chords: ['E4', 'B4', 'D5'], lead: 'E5', leadInst: 'marimba' },
+        { bass: null, chords: null, lead: 'G5', leadInst: 'marimba' },
+        { bass: 'G2', chords: ['E4', 'B4'], lead: null, leadInst: 'marimba' },
+        { bass: null, chords: ['E4', 'B4'], lead: 'B5', leadInst: 'marimba' },
+        { bass: 'A2', chords: ['G4', 'C#5', 'E5'], lead: 'A5', leadInst: 'marimba' },
+        { bass: null, chords: null, lead: 'G5', leadInst: 'marimba' },
+        { bass: 'E2', chords: ['G4', 'C#5'], lead: 'E5', leadInst: 'marimba' },
+        { bass: null, chords: ['G4', 'C#5'], lead: 'G5', leadInst: 'marimba' },
+        { bass: 'D3', chords: ['F4', 'C5', 'E5'], lead: 'F5', leadInst: 'marimba' },
+        { bass: null, chords: null, lead: 'A5', leadInst: 'marimba' },
+        { bass: 'A2', chords: ['F4', 'C5'], lead: null, leadInst: 'marimba' },
+        { bass: null, chords: ['F4', 'C5'], lead: 'C6', leadInst: 'marimba' },
+        { bass: 'G2', chords: ['F4', 'B4', 'D5'], lead: 'B5', leadInst: 'marimba' },
+        { bass: null, chords: null, lead: 'G5', leadInst: 'marimba' },
+        { bass: 'D3', chords: ['F4', 'B4'], lead: 'F5', leadInst: 'marimba' },
+        { bass: null, chords: ['F4', 'B4'], lead: 'D5', leadInst: 'marimba' }
+      ]
+    },
+    {
+      id: 'spain',
+      flag: '🇪🇸',
+      title: 'Brisa del Sol',
+      country: 'Spain',
+      genre: '70s Spanish Romantic Romance',
+      stepLen: 0.312,
+      steps: [
+        { bass: 'A2', chords: ['C4', 'E4', 'A4'], lead: 'E5', leadInst: 'flute' },
+        { bass: null, chords: ['E4', 'A4'], lead: 'A5', leadInst: 'flute' },
+        { bass: 'E2', chords: ['C4', 'E4'], lead: 'B5', leadInst: 'flute' },
+        { bass: null, chords: ['E4', 'A4'], lead: 'C6', leadInst: 'flute' },
+        { bass: 'G2', chords: ['B3', 'D4', 'G4'], lead: 'B5', leadInst: 'flute' },
+        { bass: null, chords: ['D4', 'G4'], lead: 'G5', leadInst: 'flute' },
+        { bass: 'D2', chords: ['B3', 'D4'], lead: 'A5', leadInst: 'flute' },
+        { bass: null, chords: ['D4', 'G4'], lead: 'B5', leadInst: 'flute' },
+        { bass: 'F2', chords: ['A3', 'C4', 'F4'], lead: 'A5', leadInst: 'flute' },
+        { bass: null, chords: ['C4', 'F4'], lead: 'F5', leadInst: 'flute' },
+        { bass: 'C2', chords: ['A3', 'C4'], lead: 'G5', leadInst: 'flute' },
+        { bass: null, chords: ['C4', 'F4'], lead: 'A5', leadInst: 'flute' },
+        { bass: 'E2', chords: ['G#3', 'D4', 'E4'], lead: 'G#5', leadInst: 'flute' },
+        { bass: null, chords: ['D4', 'E4'], lead: 'E5', leadInst: 'flute' },
+        { bass: 'B2', chords: ['G#3', 'D4'], lead: 'B4', leadInst: 'flute' },
+        { bass: null, chords: ['D4', 'E4'], lead: 'E5', leadInst: 'flute' }
+      ]
+    },
+    {
+      id: 'japan',
+      flag: '🇯🇵',
+      title: 'Sakura Nostalgia',
+      country: 'Japan',
+      genre: '70s Showa Folk Lullaby',
+      stepLen: 0.384,
+      steps: [
+        { bass: 'G2', chords: ['D4', 'G4', 'B4'], lead: 'D5', leadInst: 'chime' },
+        { bass: null, chords: ['G4', 'B4'], lead: 'E5', leadInst: 'flute' },
+        { bass: 'D2', chords: ['D4', 'G4'], lead: 'G5', leadInst: 'flute' },
+        { bass: null, chords: ['G4', 'B4'], lead: 'A5', leadInst: 'flute' },
+        { bass: 'E2', chords: ['B3', 'E4', 'G4'], lead: 'B5', leadInst: 'chime' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'A5', leadInst: 'flute' },
+        { bass: 'B2', chords: ['B3', 'E4'], lead: 'G5', leadInst: 'flute' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'E5', leadInst: 'flute' },
+        { bass: 'C2', chords: ['G3', 'C4', 'E4'], lead: 'D5', leadInst: 'chime' },
+        { bass: null, chords: ['C4', 'E4'], lead: 'E5', leadInst: 'flute' },
+        { bass: 'G2', chords: ['G3', 'C4'], lead: 'G5', leadInst: 'flute' },
+        { bass: null, chords: ['C4', 'E4'], lead: 'E5', leadInst: 'flute' },
+        { bass: 'D2', chords: ['A3', 'D4', 'F#4'], lead: 'D5', leadInst: 'chime' },
+        { bass: null, chords: ['D4', 'F#4'], lead: 'B4', leadInst: 'flute' },
+        { bass: 'A2', chords: ['A3', 'D4'], lead: 'A4', leadInst: 'flute' },
+        { bass: null, chords: ['D4', 'F#4'], lead: 'G4', leadInst: 'flute' }
+      ]
+    },
+    {
+      id: 'usa',
+      flag: '🇺🇸',
+      title: 'Redwood Sunrise',
+      country: 'United States',
+      genre: '70s Americana Folk Fingerpicking',
+      stepLen: 0.300,
+      steps: [
+        { bass: 'G2', chords: ['B3', 'D4', 'G4'], lead: 'B4', leadInst: 'pluck' },
+        { bass: null, chords: ['D4', 'G4'], lead: 'D5', leadInst: 'pluck' },
+        { bass: 'D3', chords: ['B3', 'G4'], lead: 'G5', leadInst: 'pluck' },
+        { bass: null, chords: ['D4', 'G4'], lead: 'D5', leadInst: 'pluck' },
+        { bass: 'D3', chords: ['A3', 'D4', 'F#4'], lead: 'F#5', leadInst: 'pluck' },
+        { bass: null, chords: ['D4', 'F#4'], lead: 'E5', leadInst: 'pluck' },
+        { bass: 'A2', chords: ['A3', 'D4'], lead: 'D5', leadInst: 'pluck' },
+        { bass: null, chords: ['D4', 'F#4'], lead: 'A4', leadInst: 'pluck' },
+        { bass: 'E2', chords: ['G3', 'B3', 'E4'], lead: 'G5', leadInst: 'pluck' },
+        { bass: null, chords: ['B3', 'E4'], lead: 'F#5', leadInst: 'pluck' },
+        { bass: 'B2', chords: ['G3', 'E4'], lead: 'E5', leadInst: 'pluck' },
+        { bass: null, chords: ['B3', 'E4'], lead: 'B4', leadInst: 'pluck' },
+        { bass: 'C3', chords: ['G3', 'C4', 'E4'], lead: 'C5', leadInst: 'pluck' },
+        { bass: null, chords: ['C4', 'E4'], lead: 'D5', leadInst: 'pluck' },
+        { bass: 'G2', chords: ['G3', 'C4'], lead: 'E5', leadInst: 'pluck' },
+        { bass: null, chords: ['C4', 'E4'], lead: 'D5', leadInst: 'pluck' }
+      ]
+    },
+    {
+      id: 'senegal',
+      flag: '🇸🇳',
+      title: 'Kora Dawn',
+      country: 'Senegal',
+      genre: 'West African Kora & Balafon Lullaby',
+      stepLen: 0.326,
+      steps: [
+        { bass: 'F2', chords: ['A3', 'C4'], lead: 'F4', leadInst: 'pluck' },
+        { bass: null, chords: ['C4', 'F4'], lead: 'A4', leadInst: 'marimba' },
+        { bass: 'C3', chords: ['A3', 'C4'], lead: 'C5', leadInst: 'pluck' },
+        { bass: null, chords: ['C4', 'F4'], lead: 'D5', leadInst: 'marimba' },
+        { bass: 'G2', chords: ['B3', 'D4'], lead: 'G5', leadInst: 'pluck' },
+        { bass: null, chords: ['D4', 'G4'], lead: 'F5', leadInst: 'marimba' },
+        { bass: 'D3', chords: ['B3', 'D4'], lead: 'D5', leadInst: 'pluck' },
+        { bass: null, chords: ['D4', 'G4'], lead: 'C5', leadInst: 'marimba' },
+        { bass: 'A2', chords: ['C4', 'E4'], lead: 'A4', leadInst: 'pluck' },
+        { bass: null, chords: ['C4', 'E4'], lead: 'C5', leadInst: 'marimba' },
+        { bass: 'E3', chords: ['C4', 'E4'], lead: 'E5', leadInst: 'pluck' },
+        { bass: null, chords: ['C4', 'E4'], lead: 'D5', leadInst: 'marimba' },
+        { bass: 'F2', chords: ['A3', 'C4'], lead: 'C5', leadInst: 'pluck' },
+        { bass: null, chords: ['C4', 'F4'], lead: 'A4', leadInst: 'marimba' },
+        { bass: 'C3', chords: ['A3', 'C4'], lead: 'G4', leadInst: 'pluck' },
+        { bass: null, chords: ['C4', 'F4'], lead: 'F4', leadInst: 'marimba' }
+      ]
+    },
+    {
+      id: 'sweden',
+      flag: '🇸🇪',
+      title: 'Nordic Solstice',
+      country: 'Sweden',
+      genre: 'Scandinavian Folk Song & Bell Taiga',
+      stepLen: 0.375,
+      steps: [
+        { bass: 'D3', chords: ['F4', 'A4'], lead: 'D5', leadInst: 'flute' },
+        { bass: null, chords: ['A4', 'D5'], lead: 'F5', leadInst: 'chime' },
+        { bass: 'A2', chords: ['F4', 'A4'], lead: 'A5', leadInst: 'flute' },
+        { bass: null, chords: ['A4', 'D5'], lead: 'G5', leadInst: 'chime' },
+        { bass: 'Bb2', chords: ['D4', 'F4', 'Bb4'], lead: 'F5', leadInst: 'flute' },
+        { bass: null, chords: ['F4', 'Bb4'], lead: 'D5', leadInst: 'chime' },
+        { bass: 'F2', chords: ['D4', 'F4'], lead: 'F5', leadInst: 'flute' },
+        { bass: null, chords: ['F4', 'Bb4'], lead: 'Bb5', leadInst: 'chime' },
+        { bass: 'F2', chords: ['C4', 'F4', 'A4'], lead: 'A5', leadInst: 'flute' },
+        { bass: null, chords: ['C4', 'F4'], lead: 'G5', leadInst: 'chime' },
+        { bass: 'C3', chords: ['C4', 'F4'], lead: 'F5', leadInst: 'flute' },
+        { bass: null, chords: ['C4', 'F4'], lead: 'E5', leadInst: 'chime' },
+        { bass: 'C3', chords: ['E4', 'G4', 'C5'], lead: 'D5', leadInst: 'flute' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'C5', leadInst: 'chime' },
+        { bass: 'G2', chords: ['E4', 'G4'], lead: 'B4', leadInst: 'flute' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'C5', leadInst: 'chime' }
+      ]
+    },
+    {
+      id: 'madagascar',
+      flag: '🇲🇬',
+      title: 'Baobab Joy',
+      country: 'Madagascar',
+      genre: 'Island Zither & Marimba Groove',
+      stepLen: 0.267,
+      steps: [
+        { bass: 'C3', chords: ['E4', 'G4'], lead: 'C5', leadInst: 'marimba' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'E5', leadInst: 'marimba' },
+        { bass: 'G2', chords: ['E4', 'G4'], lead: 'G5', leadInst: 'marimba' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'E5', leadInst: 'marimba' },
+        { bass: 'F2', chords: ['A4', 'C5'], lead: 'F5', leadInst: 'marimba' },
+        { bass: null, chords: ['A4', 'C5'], lead: 'A5', leadInst: 'marimba' },
+        { bass: 'C3', chords: ['A4', 'C5'], lead: 'C6', leadInst: 'marimba' },
+        { bass: null, chords: ['A4', 'C5'], lead: 'A5', leadInst: 'marimba' },
+        { bass: 'G2', chords: ['B4', 'D5'], lead: 'G5', leadInst: 'marimba' },
+        { bass: null, chords: ['B4', 'D5'], lead: 'B5', leadInst: 'marimba' },
+        { bass: 'D3', chords: ['B4', 'D5'], lead: 'D6', leadInst: 'marimba' },
+        { bass: null, chords: ['B4', 'D5'], lead: 'B5', leadInst: 'marimba' },
+        { bass: 'C3', chords: ['E4', 'G4'], lead: 'C6', leadInst: 'marimba' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'G5', leadInst: 'marimba' },
+        { bass: 'G2', chords: ['E4', 'G4'], lead: 'E5', leadInst: 'marimba' },
+        { bass: null, chords: ['E4', 'G4'], lead: 'C5', leadInst: 'marimba' }
+      ]
+    }
+  ];
+
+  // --- SEQUENCER SCHEDULER ---
+  function scheduleStep(){
+    if (!isPlaying || !audioCtx) return;
+    var track = TRACKS[currentTrackIdx];
+
+    while (nextStepTime < audioCtx.currentTime + scheduleAheadTime){
+      var s = track.steps[currentStep];
+      var stepDur = track.stepLen;
+
+      // Bass note
+      if (s.bass){
+        playBass(noteToFreq(s.bass), nextStepTime, stepDur * 1.5, 0.5);
+      }
+      // Chords / Arpeggio
+      if (s.chords && s.chords.length){
+        for (var c = 0; c < s.chords.length; c++){
+          playPluck(noteToFreq(s.chords[c]), nextStepTime, stepDur * 1.2, 0.32);
+        }
+      }
+      // Lead melody
+      if (s.lead){
+        triggerInstrument(s.leadInst || 'flute', s.lead, nextStepTime, stepDur * 1.1, 0.45);
+      }
+
+      nextStepTime += stepDur;
+      currentStep = (currentStep + 1) % track.steps.length;
+    }
+  }
+
+  function startScheduler(){
+    if (schedulerTimer) clearInterval(schedulerTimer);
+    schedulerTimer = setInterval(scheduleStep, lookaheadMs);
+  }
+
+  function stopScheduler(){
+    if (schedulerTimer){
+      clearInterval(schedulerTimer);
+      schedulerTimer = null;
+    }
+  }
+
+  // --- ACTIVITY SFX & JINGLES ---
+  function playSFX(name, param){
+    if (!sfxEnabled || isMuted) return;
+    initContext();
+    if (!audioCtx) return;
+    var t = audioCtx.currentTime;
+
+    if (name === 'plant'){
+      // Sprout Arpeggio: Rapid 5-note rising major 7th on marimba + chime
+      var notes = ['C4', 'E4', 'G4', 'B4', 'D5', 'C6'];
+      notes.forEach(function(n, idx){
+        var st = t + idx * 0.055;
+        playMarimba(noteToFreq(n), st, 0.28, 0.45);
+        if (idx >= 3) playChime(noteToFreq(n), st, 0.5, 0.3);
+      });
+    } else if (name === 'task'){
+      // 70s/80s triumph cadence: Horn-like synth brass + glockenspiel resolution chord
+      playRhodes(noteToFreq('F4'), t, 0.16, 0.4);
+      playRhodes(noteToFreq('A4'), t, 0.16, 0.35);
+      playRhodes(noteToFreq('G4'), t + 0.14, 0.16, 0.45);
+      playRhodes(noteToFreq('B4'), t + 0.14, 0.16, 0.4);
+      // Glorious resolution C chord
+      playRhodes(noteToFreq('C4'), t + 0.30, 0.55, 0.55);
+      playRhodes(noteToFreq('E4'), t + 0.30, 0.55, 0.5);
+      playRhodes(noteToFreq('G4'), t + 0.30, 0.55, 0.5);
+      playChime(noteToFreq('C6'), t + 0.30, 0.8, 0.4);
+    } else if (name === 'harvest'){
+      // Two-stroke acoustic guitar strum + wooden xylophone cascade
+      playPluck(noteToFreq('C4'), t, 0.2, 0.5);
+      playPluck(noteToFreq('E4'), t + 0.02, 0.2, 0.45);
+      playPluck(noteToFreq('G4'), t + 0.04, 0.2, 0.45);
+      playPluck(noteToFreq('G3'), t + 0.12, 0.25, 0.5);
+      playPluck(noteToFreq('D4'), t + 0.14, 0.25, 0.45);
+      // Marimba cascade
+      var cascade = ['G5', 'E5', 'C5', 'G4', 'C5'];
+      cascade.forEach(function(cn, i){
+        playMarimba(noteToFreq(cn), t + 0.22 + i * 0.05, 0.2, 0.42);
+      });
+    } else if (name === 'water'){
+      // Crystal water droplet resonance
+      var osc = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, t);
+      osc.frequency.exponentialRampToValueAtTime(880, t + 0.08);
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.linearRampToValueAtTime(0.4, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      osc.connect(g);
+      g.connect(sfxGain);
+      osc.start(t);
+      osc.stop(t + 0.25);
+    } else if (name === 'prune'){
+      // Crisp organic shear snip with harmonic overtone
+      var osc2 = audioCtx.createOscillator();
+      var g2 = audioCtx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(1400, t);
+      osc2.frequency.exponentialRampToValueAtTime(450, t + 0.06);
+      g2.gain.setValueAtTime(0.001, t);
+      g2.gain.linearRampToValueAtTime(0.35, t + 0.005);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      osc2.connect(g2);
+      g2.connect(sfxGain);
+      osc2.start(t);
+      osc2.stop(t + 0.1);
+      playChime(noteToFreq('E6'), t + 0.02, 0.35, 0.25);
+    } else if (name === 'season'){
+      // Seasonal Audio Cue
+      var sname = (param || '').toLowerCase();
+      if (sname.indexOf('spring') >= 0){
+        var spr = ['E5', 'G5', 'B5', 'C6'];
+        spr.forEach(function(n, i){ playFlute(noteToFreq(n), t + i * 0.07, 0.2, 0.4); });
+      } else if (sname.indexOf('summer') >= 0){
+        playPluck(noteToFreq('G3'), t, 0.6, 0.5);
+        playPluck(noteToFreq('D4'), t + 0.03, 0.6, 0.45);
+        playPluck(noteToFreq('F#4'), t + 0.06, 0.6, 0.45);
+        playPluck(noteToFreq('B4'), t + 0.09, 0.7, 0.45);
+      } else if (sname.indexOf('autumn') >= 0){
+        var aut = ['A4', 'G4', 'E4', 'D4'];
+        aut.forEach(function(n, i){ playPluck(noteToFreq(n), t + i * 0.12, 0.35, 0.45); });
+      } else { // Winter
+        var win = ['C6', 'G5', 'E6', 'C6'];
+        win.forEach(function(n, i){ playChime(noteToFreq(n), t + i * 0.09, 0.6, 0.35); });
+      }
+    } else if (name === 'achieve'){
+      // Milestone retro fanfare
+      playRhodes(noteToFreq('F4'), t, 0.25, 0.4);
+      playRhodes(noteToFreq('A4'), t, 0.25, 0.4);
+      playRhodes(noteToFreq('C5'), t, 0.25, 0.4);
+      playRhodes(noteToFreq('G4'), t + 0.22, 0.25, 0.45);
+      playRhodes(noteToFreq('B4'), t + 0.22, 0.25, 0.45);
+      playRhodes(noteToFreq('D5'), t + 0.22, 0.25, 0.45);
+      playRhodes(noteToFreq('C4'), t + 0.44, 0.75, 0.55);
+      playRhodes(noteToFreq('E4'), t + 0.44, 0.75, 0.5);
+      playRhodes(noteToFreq('G4'), t + 0.44, 0.75, 0.5);
+      playRhodes(noteToFreq('B4'), t + 0.44, 0.75, 0.45);
+      playChime(noteToFreq('C6'), t + 0.44, 1.2, 0.4);
+    }
+  }
+
+  // --- UI SYNC & CONTROLS ---
+  function syncUI(){
+    var track = TRACKS[currentTrackIdx];
+    var lbl = document.getElementById('musicTrackLabel');
+    if (lbl){
+      lbl.textContent = isPlaying
+        ? (track.flag + ' ' + track.title)
+        : (isMuted ? '🔇 Muted' : '🎵 Standby (Paused)');
+      lbl.title = track.country + ' · ' + track.genre;
+    }
+    var dock = document.getElementById('musicPlayerDock');
+    if (dock){
+      dock.classList.toggle('is-playing', isPlaying && !isMuted);
+    }
+    var btnPlay = document.getElementById('btnMusicPlayPause');
+    if (btnPlay){
+      btnPlay.innerHTML = isPlaying ? '⏸️' : '▶️';
+      btnPlay.title = isPlaying ? 'Pause Background Music' : 'Play Background Music';
+    }
+    var sel = document.getElementById('musicTrackSelect');
+    if (sel && sel.options.length === 0){
+      sel.innerHTML = TRACKS.map(function(tr, idx){
+        return '<option value="' + idx + '">' + tr.flag + ' ' + tr.country + '</option>';
+      }).join('');
+    }
+    if (sel){
+      sel.value = currentTrackIdx;
+    }
+    var sfxBtn = document.getElementById('btnSfxToggle');
+    if (sfxBtn){
+      sfxBtn.innerHTML = sfxEnabled ? '🔔' : '🔕';
+      sfxBtn.classList.toggle('active', sfxEnabled);
+      sfxBtn.title = sfxEnabled ? 'SFX: Enabled' : 'SFX: Muted';
+    }
+    var volIcon = document.getElementById('musicVolIcon');
+    if (volIcon){
+      volIcon.textContent = isMuted ? '🔇' : (volume > 0.5 ? '🔊' : (volume > 0 ? '🔉' : '🔈'));
+    }
+  }
+
+  function play(){
+    initContext();
+    if (!audioCtx) return;
+    if (!isPlaying){
+      isPlaying = true;
+      currentStep = 0;
+      nextStepTime = audioCtx.currentTime + 0.05;
+      startScheduler();
+      syncUI();
+    }
+  }
+
+  function pause(){
+    isPlaying = false;
+    stopScheduler();
+    syncUI();
+  }
+
+  function toggle(){
+    if (isPlaying) pause();
+    else play();
+  }
+
+  function nextTrack(){
+    currentTrackIdx = (currentTrackIdx + 1) % TRACKS.length;
+    currentStep = 0;
+    if (audioCtx) nextStepTime = audioCtx.currentTime + 0.05;
+    syncUI();
+    showNotification('🎵', TRACKS[currentTrackIdx].flag + ' Now Playing: ' + TRACKS[currentTrackIdx].title + ' (' + TRACKS[currentTrackIdx].genre + ')', 'bank', null);
+  }
+
+  function prevTrack(){
+    currentTrackIdx = (currentTrackIdx - 1 + TRACKS.length) % TRACKS.length;
+    currentStep = 0;
+    if (audioCtx) nextStepTime = audioCtx.currentTime + 0.05;
+    syncUI();
+    showNotification('🎵', TRACKS[currentTrackIdx].flag + ' Now Playing: ' + TRACKS[currentTrackIdx].title + ' (' + TRACKS[currentTrackIdx].genre + ')', 'bank', null);
+  }
+
+  function playTrackById(id){
+    var idx = TRACKS.findIndex(function(t){ return t.id === id; });
+    if (idx >= 0 && idx !== currentTrackIdx){
+      currentTrackIdx = idx;
+      currentStep = 0;
+      if (audioCtx) nextStepTime = audioCtx.currentTime + 0.05;
+      syncUI();
+    }
+  }
+
+  function selectTrackByIndex(idx){
+    if (idx >= 0 && idx < TRACKS.length){
+      currentTrackIdx = idx;
+      currentStep = 0;
+      if (audioCtx) nextStepTime = audioCtx.currentTime + 0.05;
+      if (!isPlaying) play();
+      else syncUI();
+      showNotification('🎵', TRACKS[currentTrackIdx].flag + ' Now Playing: ' + TRACKS[currentTrackIdx].title + ' (' + TRACKS[currentTrackIdx].genre + ')', 'bank', null);
+    }
+  }
+
+  function setVolume(val){
+    volume = Math.max(0, Math.min(1, val));
+    if (masterGain && audioCtx && !isMuted){
+      masterGain.gain.setValueAtTime(volume, audioCtx.currentTime);
+    }
+    syncUI();
+  }
+
+  function toggleMute(){
+    isMuted = !isMuted;
+    if (masterGain && audioCtx){
+      masterGain.gain.setValueAtTime(isMuted ? 0 : volume, audioCtx.currentTime);
+    }
+    syncUI();
+  }
+
+  function toggleSfx(){
+    sfxEnabled = !sfxEnabled;
+    syncUI();
+  }
+
+  return {
+    init: function(){
+      syncUI();
+      // Unlock on first user gesture
+      var unlockAudio = function(){
+        initContext();
+        window.removeEventListener('click', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
+      };
+      window.addEventListener('click', unlockAudio);
+      window.addEventListener('keydown', unlockAudio);
+      window.addEventListener('touchstart', unlockAudio);
+    },
+    play: play,
+    pause: pause,
+    toggle: toggle,
+    nextTrack: nextTrack,
+    prevTrack: prevTrack,
+    playTrackById: playTrackById,
+    selectTrackByIndex: selectTrackByIndex,
+    setVolume: setVolume,
+    toggleMute: toggleMute,
+    toggleSfx: toggleSfx,
+    playSFX: playSFX,
+    isPlaying: function(){ return isPlaying; },
+    getCurrentTrack: function(){ return TRACKS[currentTrackIdx]; },
+    syncUI: syncUI
+  };
+})();
+
 function switchScreen(screenName){
   currentScreen = screenName;
   var rScreen = document.getElementById('regionScreen');
@@ -1467,9 +2316,15 @@ function switchScreen(screenName){
     if (fScreen) fScreen.style.display = 'block';
     buildSeasonChipOnce();
     buildToolStripOnce();
+    if (typeof SoundTrackEngine !== 'undefined'){
+      SoundTrackEngine.playTrackById('germany');
+    }
   } else {
     if (rScreen) rScreen.style.display = 'block';
     if (fScreen) fScreen.style.display = 'none';
+    if (typeof SoundTrackEngine !== 'undefined'){
+      SoundTrackEngine.playTrackById('globe');
+    }
   }
   render();
 }
@@ -2069,6 +2924,7 @@ function afterLoad(){
   lastRealTs = Date.now();
   buildToolStripOnce();
   buildSeasonChipOnce();
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.init();
   startLoop();
   render();
   startHintLoop();
@@ -2131,15 +2987,20 @@ function plotKpi(p){
 
 function advanceGame(dh){
   if (dh<=0) return;
-  var season = currentSeason();
+  var prevSeasonName = currentSeason().name;
   var totalMult = 1 + forestBonus() + diversityBonus() + engineerBonus();
   state.gameHour += dh;
+  var nextSeason = currentSeason();
+  if (nextSeason.name !== prevSeasonName && typeof SoundTrackEngine !== 'undefined'){
+    SoundTrackEngine.playSFX('season', nextSeason.name);
+  }
 
   if (state.storage.building){
     state.storage.buildHours += dh;
     if (state.storage.buildHours >= STORAGE_BUILD_HOURS){
       state.storage.building=false; state.storage.built=true; state.storage.capacity=STORAGE_BASE_CAPACITY; state.storage.level=1;
       pushReport('🏚 Storage Room construction complete! Capacity: €'+state.storage.capacity+' of harvested value.');
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
     }
   }
   if (state.storage.expanding){
@@ -2147,6 +3008,7 @@ function advanceGame(dh){
     if (state.storage.expandHours >= STORAGE_EXPAND_HOURS){
       state.storage.expanding=false; state.storage.capacity += STORAGE_EXPAND_CAPACITY; state.storage.level += 1;
       pushReport('🏚 Storage expanded to level '+state.storage.level+'! New capacity: €'+state.storage.capacity+'.');
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
     }
   }
 
@@ -2157,6 +3019,7 @@ function advanceGame(dh){
       if (b.buildHours >= def.buildHours){
         b.building=false; b.built=true;
         pushReport(def.icon+' '+def.label+' construction complete! '+(def.category==='decorative' ? 'Reputation +'+def.reputationBonus+'.' : 'Ready to sell to visitors.'));
+        if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
         if (key==='garden') showNotification('🌷','Your Garden is ready — choose what to plant!','building',key);
         else if (key==='pond') showNotification('🪷','Your Pond is ready — choose Fish Farm or Duck Farm!','building',key);
         checkAchievements();
@@ -2217,11 +3080,17 @@ function advanceGame(dh){
     } else if (p.status==='clearing'){
       var clearMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : 1;
       p.taskHours += dh * clearMult;
-      if (p.taskHours >= CLEAR_DURATION_HOURS){ p.status='barren'; p.weedHours=0; p.taskHours=0; }
+      if (p.taskHours >= CLEAR_DURATION_HOURS){
+        p.status='barren'; p.weedHours=0; p.taskHours=0;
+        if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+      }
     } else if (p.status==='preparing'){
       var prepMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : 1;
       p.taskHours += dh * prepMult;
-      if (p.taskHours >= PREP_DURATION_HOURS){ p.status='ready'; p.weedHours=0; }
+      if (p.taskHours >= PREP_DURATION_HOURS){
+        p.status='ready'; p.weedHours=0;
+        if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+      }
     } else if (p.status==='removing'){
       var remDef = TREE_TYPES[p.treeType]; var remCfg = REMOVE_CONFIG[remDef.category];
       var remMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : 1;
@@ -2364,7 +3233,12 @@ function plotStageInfo(p){
   return { def:def, idx:idx, name:def.stages[idx].n, pct:pct, isFinal: dur>9000 };
 }
 function checkAchievements(){
-  ACHIEVEMENTS.forEach(function(a){ if (!state.achUnlocked[a.id] && a.check(state)) state.achUnlocked[a.id]=true; });
+  ACHIEVEMENTS.forEach(function(a){
+    if (!state.achUnlocked[a.id] && a.check(state)){
+      state.achUnlocked[a.id]=true;
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+    }
+  });
 }
 
 // ================= ACTIONS =================
@@ -2393,6 +3267,7 @@ function plantTree(plotId, type){
   state.money -= def.cost; p.status='growing'; p.treeType=type; p.treeId = state.nextTreeId++;
   p.growHours=0; p.health=100; p.o2Produced=0; p.ageHours=0; p.downtimeHours=0; p.pendingHarvest=0;
   state.treesPlanted += 1;
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('plant');
   checkAchievements(); closeModal(); requestSave();
 }
 function setSpeed(factor){ state.speedFactor = factor; requestSave(); render(); }
@@ -2432,6 +3307,7 @@ function waterPlot(plotId){
   if (state.money<cost) return;
   state.money -= cost; p.health = Math.min(100, p.health+30);
   p.careAnimUntil = Date.now()+2200; p.careAnimType='water';
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('water');
   render(); requestSave();
 }
 function prunePlot(plotId){
@@ -2441,6 +3317,7 @@ function prunePlot(plotId){
   if (state.money<cost) return;
   state.money -= cost; p.health = Math.min(100, p.health+40);
   p.careAnimUntil = Date.now()+2200; p.careAnimType='prune';
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('prune');
   render(); requestSave();
 }
 function startHarvest(plotId){
@@ -2474,6 +3351,7 @@ function sellStorage(){
   state.money += amt;
   state.storage.stored = 0;
   state.storage.warnedFull = false;
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('harvest');
   pushReport('💰 Sold €'+amt.toFixed(2)+' worth of stored harvest.');
   render(); requestSave();
 }
@@ -2604,6 +3482,7 @@ function processHarvests(){
       } else {
         pushReport('🧺 Harvested €'+amt.toFixed(2)+' worth of '+TREE_TYPES[p.treeType].label+' from Plot '+(p.id+1)+' and moved it into storage.');
       }
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('harvest');
       p.pendingHarvest = Math.max(0, p.pendingHarvest-amt);
       p.harvesting=false; p.harvestAmount=0;
       spawnCarryAnimation(PLOT_LAYOUT[p.id], STORAGE_SPOT);
@@ -3573,6 +4452,9 @@ function wireEvents(){
       var reg = REGIONAL_BIOMES.find(function(x){ return x.id === regId; });
       if (reg){
         GlobeEngine.rotateTo(reg.lat, reg.lon);
+        if (typeof SoundTrackEngine !== 'undefined'){
+          SoundTrackEngine.playTrackById(regId);
+        }
         if (reg.id === 'germany'){
           showNotification('🇩🇪', 'Centered on Central European Plains (Germany) — Active Farm', 'bank', null);
         } else {
@@ -3714,6 +4596,65 @@ function wireEvents(){
   });
   var closeOffline = document.getElementById('closeOffline');
   if (closeOffline) closeOffline.onclick = function(){ offlineSummary=null; render(); };
+
+  // Music Player Dock Controls
+  var dockToggle = document.getElementById('musicDockToggle');
+  if (dockToggle){
+    dockToggle.onclick = function(e){
+      e.stopPropagation();
+      var dock = document.getElementById('musicPlayerDock');
+      if (dock) dock.classList.toggle('collapsed');
+    };
+  }
+  var btnMusicPlayPause = document.getElementById('btnMusicPlayPause');
+  if (btnMusicPlayPause){
+    btnMusicPlayPause.onclick = function(e){
+      e.stopPropagation();
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.toggle();
+    };
+  }
+  var btnMusicPrev = document.getElementById('btnMusicPrev');
+  if (btnMusicPrev){
+    btnMusicPrev.onclick = function(e){
+      e.stopPropagation();
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.prevTrack();
+    };
+  }
+  var btnMusicNext = document.getElementById('btnMusicNext');
+  if (btnMusicNext){
+    btnMusicNext.onclick = function(e){
+      e.stopPropagation();
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.nextTrack();
+    };
+  }
+  var musicVolIcon = document.getElementById('musicVolIcon');
+  if (musicVolIcon){
+    musicVolIcon.onclick = function(e){
+      e.stopPropagation();
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.toggleMute();
+    };
+  }
+  var musicVolSlider = document.getElementById('musicVolSlider');
+  if (musicVolSlider){
+    musicVolSlider.oninput = function(e){
+      e.stopPropagation();
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.setVolume(parseFloat(this.value) / 100);
+    };
+  }
+  var btnSfxToggle = document.getElementById('btnSfxToggle');
+  if (btnSfxToggle){
+    btnSfxToggle.onclick = function(e){
+      e.stopPropagation();
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.toggleSfx();
+    };
+  }
+  var musicTrackSelect = document.getElementById('musicTrackSelect');
+  if (musicTrackSelect){
+    musicTrackSelect.onchange = function(e){
+      e.stopPropagation();
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.selectTrackByIndex(parseInt(this.value, 10));
+    };
+  }
 }
 
 loadState();
