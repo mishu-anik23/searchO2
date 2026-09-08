@@ -253,6 +253,9 @@ The complete chronological commit tree on `mvp-v1` starting from repository init
 | **12** | `bb4d814` | mishu-anik23 | 2026-09-07 | `feat(backend): implement production-grade Node.js/TypeScript backend, PostgreSQL 18 DB, auth, anti-cheat engine, and frontend bridge`<br>Delivers complete Express.js backend with PostgreSQL migrations, Bcrypt/JWT/cookie auth, Google OAuth2, authoritative game engine, ledger audit, WebSockets, 14/14 Jest tests, and v4 ApiClient bridge. | `backend/*`<br>`searchO2-prototype-v4.html`<br>`searchO2-MVP-v1-Branch-History.md` |
 | **13** | `24a4411` | mishu-anik23 | 2026-09-07 | `feat(ui): implement Regional Biome Selection screen, blurred initial auth flow, and German farm navigation`<br>Adds 8 global biomes with country flags, initial blurred background preview, 1-click guest start, and dual world map navigation. | `searchO2-prototype-v4.html`<br>`searchO2-MVP-v1-Branch-History.md` |
 | **14** | `9852cb7` | mishu-anik23 | 2026-09-07 | `feat(ui): add interactive 3D World Globe with draggable rotation, regional beacons, and flora tooltips`<br>Adds zero-dependency HTML5 2D Canvas 3D spherical projection engine, interactive rotation drag with momentum physics and idle auto-spin, regional beacons with pulsing concentric rings for Germany, dynamic hover billboards with native flora and tree emoji icons, 3 view modes (3D Globe, Split View, Biome Cards), and quick-center region chips. | `searchO2-prototype-v4.html` |
+| **15** | `03a9851` | mishu-anik3 | 2026-09-07 | `feat(audio): add procedural regional soundtrack engine, activity SFX, and music player dock`<br>Synthesizes zero-dependency Web Audio API regional soundtracks for Germany, Kenya, Brazil, Japan, and Arctic biomes, along with activity SFX for planting, harvesting, watering, pruning, achievements, and seasons, backed by a collapsible floating music player dock. | `searchO2-prototype-v4.html` |
+| **16** | `8885476` | mishu-anik3 | 2026-09-07 | `fix(tasks): fix ReferenceError in advanceGame, restore multi-plot digging progression, and enhance seeding/task completion feedback`<br>Fixes unhandled season reference error, restores percentage progress and laborer assignment in plot digging modal, adds distinct tilled seedling mound visuals, and enhances task panel rows. | `searchO2-prototype-v4.html` |
+| **17** | `Pending` | mishu-anik3 | 2026-09-08 | `feat(prototype-v5): realistic village architecture, non-overlapping promenade, and full v4 audio/task integration`<br>Eliminates stretched cards and overlapping road line with an elegant pedestrian promenade; delivers detailed architectural SVG illustrations for the Coffee House, Juice Bar, Road Gateway, and Storage Barn; integrates procedural audio engine with dedicated village SFX; and achieves full v4 feature parity. | `searchO2-prototype-v5.html`<br>`searchO2-MVP-v1-Branch-History.md` |
 
 ---
 
@@ -373,6 +376,34 @@ To fulfill the vision of an emotionally immersive, peaceful eco-simulation, a ze
 - Standard media controls: Play / Pause, Previous Track, Next Track, Track Select dropdown.
 - Volume slider with mute toggle icon, and dedicated Sound Effects (SFX) toggle button.
 - Autonomous reactive switching: Automatically syncs to Germany theme on farm screen, Earth theme on 3D globe view, and previews regional tracks on country beacon or chip selection.
+
+---
+
+## 8. Prototype v5 — Village Commons, Realistic Architectural SVGs & Audio Integration (`searchO2-prototype-v5.html`)
+
+**Implemented in Commit:** `Pending` (`feat(prototype-v5): realistic village architecture, non-overlapping promenade, and full v4 audio/task integration`)  
+**File Size:** ~294 KB | ~5,300 lines  
+**Blueprint Traceability:** Village Expansion (§Delivery Phasing §1), Commercial Revenue Loop, Infrastructure Prerequisites, Audio-Visual Polish.
+
+### 8.1 Village Layout & Promenade Architecture
+- **Elimination of Card Stretching:** Replaced raw percentage translucent rectangles with cohesive `.village-building-card` styling featuring subtle timber/flagstone borders, soft depth elevation shadows, hover micro-interactions, and standardized `viewBox="0 0 160 120"` SVG aspect ratios with `preserveAspectRatio="xMidYMid meet"`.
+- **Pedestrian Flagstone Promenade (`roadPromenadeHtml`):** Removed the conflicting straight line at `top: 48%` that previously overlapped the flower garden and duck pond. Introduced a continuous cobblestone promenade running along the base of the village structures (`top: 56.6%`, `height: 3.8%`, `left: 17%` to `98%`), connecting the Road Gateway past the flower beds and duck pond to the storefronts with glowing bollard lanterns and zero visual clipping.
+
+### 8.2 Architectural SVG Illustrations
+- **Coffee House (`drawCoffeeShopScene`):** European timber-framed café with terracotta tiled roof, brick chimney, animated drifting steam curls, burgundy-and-cream scalloped awning, warm glowing bay window with flower planters, espresso barista bar, outdoor patio with bistro table, checkered tablecloth, and café parasol.
+- **Juice & Ice Bar (`drawJuiceBarScene`):** Tropical eco-timber pavilion with bamboo posts, citrus lemon/lime canopy, hanging colorful bunting flags, refrigerated counter with stacked fresh fruits (apples, oranges, lemons, berries), twin transparent smoothie dispensers with rising bubbles, iced tumbler with straw and citrus garnish, and wooden bar stools.
+- **Village Road Gateway (`drawRoadScene`):** Paved entrance avenue with interlocking cobblestones, dual Victorian cast-iron streetlamps with amber lanterns, wooden fingerpost pointing to Farm and Shops, and stone milestone (`KM 0 · VILLAGE`).
+- **Storage Barn Depot (`drawStorageScene`):** Red timber barn with gambrel roof, hayloft pulley, white trim, sliding doors with "X" braces, and stacked harvest crates and barrels.
+
+### 8.3 Infrastructure Prerequisite & Audio-Visual Stitching
+- **Road Construction Prerequisite UX:** If the player inspects the Coffee House or Juice Bar before the Road is paved, a clear guidance card explains the requirement and provides a 1-click **"Pave Road Now (€250 · 4h)"** action.
+- **Dedicated Village SFX:**
+  - `pave`: Crisp stone mallet taps and stone block seating.
+  - `brew`: Warm espresso extraction and frothy steam hiss.
+  - `pour`: High-speed blender whirl and refreshing juice splash.
+  - `tend`: Light botanical chime.
+  - `feed`: Water droplet splash.
+- **Complete v4 Feature Parity:** Merged the full procedural Web Audio soundtrack engine (`SoundTrackEngine`), floating music dock (`#musicPlayerDock`), interactive 3D globe with rotation physics, and task/digging progression bugfixes from commit `8885476`.
 
 ---
 
