@@ -457,12 +457,49 @@ To fulfill the vision of an emotionally immersive, peaceful eco-simulation, a ze
   - **Heavy Timber Logging Truck (`drawTimberTruckSvg`):** Rugged industrial truck with protective steel headache rack, vertical diesel stacks, and bolstered flatbed carrying strapped tree logs (`🪵`).
   - **Multi-Cargo Farm Hauler (`drawMixedHaulerSvg`):** Covered canvas curtainsider hauler for mixed goods.
 - **4-Step Real-Time Road Animation Sequence (`animateTransportLogistics`):**
-  1. *Arrival:* Truck enters from off-screen left along the Main Road through the Farm Main Gate and pulls into the Storage loading bay (`left: 14%`).
+  1. *Arrival:* Truck enters from off-screen left along the Main Road through the Farm Main Gate and pulls into the Storage loading bay.
   2. *Loading:* Assigned Laborer sprite animates back and forth between Storage doors and truck bed carrying crates/timber logs with thud sounds and dust particles.
   3. *Departure:* Laborer waves goodbye (`👋`), truck accelerates along the paved road, and exits through the Farm Gate.
   4. *Settlement:* Revenue credited to player balance, coin SFX plays (`'coin'`), floating `🪙 +€XX.XX` cash burst appears, and shipment report is logged.
 
 ---
 
+## 10. Milestone 10: Grid Architecture, Opposing Roadside Amenities, Feeder Paths & Waypoint Navigation
+
+### 10.1 Storage Relocation & Upper Yard Placement
+- **Storage Barn Behind Plot 1:** Relocated the Storage Barn to `top: 2%, left: 41.5%, w: 17%, h: 15%`, situated directly behind Plot 1 (`top: 18.5%, left: 41.5%, w: 17%, h: 23%`).
+- **Eliminated Grey Card Backgrounds:** Removed grey rectangular backgrounds (`rgba(251, 246, 236, 0.35)`), borders, and box shadows from village cards (`.village-building-card`). Structures sit natively on the green field turf.
+
+### 10.2 Opposing Roadside Village Amenities
+- **Broken Single-Line Staggering:** Eliminated the single horizontal line of village objects.
+- **Opposing Curbs Across Main Road (`top: 44% - 50%`):**
+  - **North Curb (`top: 24%`):** Duck & Fish Pond (`left: 21%`) and The Coffee House (`left: 60%`).
+  - **South Curb (`top: 51%`):** Botanical Flower Garden (`left: 21%`) and The Juice & Ice Bar (`left: 60%`).
+  - **Direct Spatial Symmetry:**
+    - Pond and Botanical Garden face each other directly across the Main Road.
+    - Coffee House and Juice Bar face each other directly across the Main Road.
+
+### 10.3 Visible Connecting Road Network Layer (`drawFarmRoadNetworkSvg`)
+- **Main Arterial Road Corridor:** Runs horizontally across the field at `y = 44% - 50%` (`Y_center = 47%`), starting at the Farm Main Entry Gate (`GATE_SPOT: top: 38%, left: 0.5%`).
+- **6 Plot Feeder Roads:** Visible vertical stone/cobblestone feeder paths connecting each of the 6 plots to the Main Road:
+  - North feeders to Plot 0 (`x = 11%`) and Plot 2 (`x = 86%`).
+  - South feeders to Plot 3 (`x = 11%`), Plot 4 (`x = 39%`), and Plot 5 (`x = 86%`).
+- **Central Access Road to Storage:** Runs along `x = 39%` from Main Road up past Plot 1 directly to the Storage loading dock.
+- **Village Amenity Aprons:** Paved curbside aprons linking Pond (`x = 28.5%`), Garden (`x = 28.5%`), Coffee House (`x = 68%`), and Juice Bar (`x = 68%`) to the road.
+- **Dynamic Road Construction:** Shows natural dirt paths before construction, construction cones and progress bars during paving, and authentic cobblestone/stone pavement with curbs, centerline dashes, crosswalks, and streetlamps once built.
+
+### 10.4 Waypoint Pathfinding & Optimal Navigation Engine
+- **Manhattan Waypoint Routing (`calculateGridRoute`):**
+  - Computes exact junction waypoints along feeder paths and the Main Road.
+  - No vehicle or worker ever walks or drives across green turf.
+- **Vehicle Logistics:**
+  - **Timber Salvage Truck (`spawnVehicleAnimation`):** Enters Main Gate $\to$ travels along Main Road $\to$ turns onto plot's feeder path $\to$ loads timber $\to$ drives back to Main Road $\to$ exits through Main Gate.
+  - **Harvest Transport Truck (`animateTransportLogistics`):** Enters Main Gate $\to$ travels along Main Road $\to$ turns up Central Access Road to Storage (behind Plot 1) $\to$ laborer loads crates $\to$ truck drives back down Central Access Road to Main Road $\to$ exits through Main Gate.
+- **Worker & Botanist Assignment (`animateWorkerPathWalk`):**
+  - Upon assignment via `assignWorker`, `assignWorkerToBuilding`, or `assignLaborerToStorage`, worker sprite (`🧑‍🌾` / `👩‍🔬` / `👷`) walks from Main Gate along Main Road and connecting feeder paths directly to their assigned plot or building.
+
+---
+
 *Generated and verified for branch `mvp-v1` — searchO2 Project Evolution.*
+
 

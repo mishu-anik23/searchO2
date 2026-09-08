@@ -499,18 +499,26 @@
 
   /* ================= VILLAGE COMMONS & ARCHITECTURE STYLES ================= */
   .village-building-card{
-    background: rgba(251, 246, 236, 0.35);
-    backdrop-filter: blur(4px);
+    background: transparent;
     border-radius: 14px;
-    border: 1.5px solid rgba(255, 255, 255, 0.5);
-    box-shadow: 0 4px 14px rgba(44, 74, 50, 0.12);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    transition: transform 0.18s ease, filter 0.18s ease;
     overflow: visible;
   }
   .village-building-card:hover{
-    transform: translateY(-3px) scale(1.01);
-    box-shadow: 0 8px 24px rgba(44, 74, 50, 0.22);
-    border-color: rgba(240, 172, 61, 0.7);
+    transform: translateY(-3px) scale(1.02);
+    filter: drop-shadow(0 6px 14px rgba(44, 74, 50, 0.25));
+  }
+  .farm-roads-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 4;
   }
   .village-building-card.is-locked{
     opacity: 0.7;
@@ -786,13 +794,7 @@
 
   /* Promenade & Road Styling */
   .village-promenade-wrap{
-    position: absolute;
-    top: 57.5%;
-    left: 0%;
-    width: 100%;
-    height: 4.2%;
-    pointer-events: none;
-    z-index: 10;
+    display: none;
   }
 
 </style>
@@ -893,42 +895,45 @@ var LOAN_PENALTY_RATE = 0.05; // added to remaining balance for each missed inst
 // it was previously squeezed into a 7%-tall sliver purely to dodge the plot rows above
 // and below it, not because there was genuinely no space. Buildings now get a footprint
 // comparable to a tree plot instead of a thin icon strip.
-// Grand Farm Entry Gate & Modern Terraced Village Landscape
-var GATE_SPOT = {top:32, left:1, w:11.5, h:24};
-var STORAGE_SPOT = {top:34, left:13.5, w:13.5, h:22};
+// ================= FARM GRID & INFRASTRUCTURE LAYOUT =================
+// Storage Barn situated directly behind Plot 1 in the upper yard
+var STORAGE_SPOT = { top: 2, left: 41.5, w: 17, h: 15 };
+
+// Grand Farm Main Entry Gate at the western entrance of the Main Road
+var GATE_SPOT    = { top: 38, left: 0.5, w: 11, h: 18 };
 
 // ---- Buildings & Infrastructure Framework ----
 var BUILDING_TYPES = {
   road:        { label:'Main Road & Gate', icon:'⛩️', cost:250, buildHours:4, category:'infrastructure', reputationBonus:6,
     desc:'Grand Farm Main Entry Gate and Arterial Transport Road connecting to Storage and the Village. Enables motorized freight trucks and shop visitor access.' },
   garden:      { label:'Garden',           icon:'🌷', cost:300, buildHours:4, category:'decorative',     reputationBonus:8,
-    desc:'A tended botanical flower garden boosts farm reputation and eco appeal.' },
+    desc:'A tended botanical flower garden situated on the south curb opposite the pond.' },
   pond:        { label:'Pond',             icon:'🪷', cost:400, buildHours:5, category:'decorative',     reputationBonus:10,
-    desc:'A duck and fish pond boosting reputation and supplying fresh market harvest.' },
+    desc:'A serene duck and fish pond on the north curb opposite the botanical flower garden.' },
   coffee_shop: { label:'Coffee Shop',      icon:'☕', cost:800, buildHours:8, category:'revenue',        reputationBonus:5, requiresRoad:true,
     upkeep:15, processRate:6, conversionRate:1.8,
-    desc:'Serves farm visitors artisan coffee and pastries, generating steady visitor revenue. Needs a Road.' },
+    desc:'Artisan coffee house on the north curb opposite the juice bar. Needs a Road.' },
   juice_bar:   { label:'Juice Bar',        icon:'🧃', cost:700, buildHours:7, category:'revenue',        reputationBonus:5, requiresRoad:true,
     upkeep:12, processRate:5, conversionRate:1.6,
-    desc:'Sells fruit-based beverages and treats to visitors for cash income. Needs a Road.' }
+    desc:'Fresh juice & ice bar on the south curb opposite the coffee shop. Needs a Road.' }
 };
 
 // Block-wise walking roads & paths
 var ROAD_SEGMENTS = {
-  main: { label:'Main Arterial Road', icon:'🛣️', cost:250, buildHours:4, desc:'Connects Farm Main Gate to Storage & Village. Enables freight trucks and visitor shops.' },
+  main: { label:'Main Arterial Road', icon:'🛣️', cost:250, buildHours:4, desc:'Connects Farm Main Gate past Storage to Village. Enables freight trucks and visitor shops.' },
   garden_walk: { label:'Garden Nature Walkway', icon:'🌸', cost:180, buildHours:3, desc:'Cobblestone walking path linking Storage to Garden & Pond. +4 Reputation, +25% flower freshness retention.' },
   market_promenade: { label:'Marketplace Promenade', icon:'🏛️', cost:220, buildHours:3, desc:'Lamp-lit flagstone boulevard connecting Pond, Café, and Juice Bar. +6 Reputation, +15% visitor sales.' }
 };
 
-var BUILDING_ORDER = ['road','garden','pond','coffee_shop','juice_bar'];
+var BUILDING_ORDER = ['road','pond','garden','coffee_shop','juice_bar'];
 
-// Organic terraced elevation — breaks the flat line and creates scenic visual depth
+// Opposing roadside layout: Road runs in between, Pond & Coffee on North curb, Garden & Juice on South curb
 var VILLAGE_LAYOUT = {
-  road:        GATE_SPOT,                        // Grand Farm Entrance Gate
-  garden:      {top:30, left:28,   w:15,   h:22}, // Elevated floral terrace
-  pond:        {top:37, left:44.5, w:16.5, h:23}, // Nestled water hollow
-  coffee_shop: {top:31, left:62.5, w:16.5, h:23}, // Elevated stone café terrace
-  juice_bar:   {top:36, left:80.5, w:16.5, h:23}  // Sunken promenade pavilion
+  road:        GATE_SPOT,
+  pond:        { top: 24, left: 21, w: 15, h: 19 }, // North curb
+  coffee_shop: { top: 24, left: 60, w: 16, h: 19 }, // North curb
+  garden:      { top: 51, left: 21, w: 15, h: 19 }, // South curb (Directly opposite Pond!)
+  juice_bar:   { top: 51, left: 60, w: 16, h: 19 }  // South curb (Directly opposite Coffee Shop!)
 };
 
 // A built Garden asks what to plant; a built Pond asks what to stock. Both now need
@@ -1078,13 +1083,16 @@ var ACHIEVEMENTS = [
 ];
 
 var PLOT_COUNT = 6;
+// Grid-wise Plot Allocation:
+// Plot 0 (Upper West), Plot 1 (Upper Mid, directly in front of Storage), Plot 2 (Upper East)
+// Plot 3 (Lower West), Plot 4 (Lower Mid), Plot 5 (Lower East)
 var PLOT_LAYOUT = [
-  {top:7,  left:2,  w:22, h:29},
-  {top:5,  left:39, w:22, h:27},
-  {top:8,  left:76, w:22, h:29},
-  {top:62, left:2,  w:22, h:29},
-  {top:65, left:39, w:22, h:27},
-  {top:61, left:76, w:22, h:29}
+  { top: 6,    left: 2,    w: 18, h: 24 }, // Plot 0: Upper West
+  { top: 18.5, left: 41.5, w: 17, h: 23 }, // Plot 1: Upper Mid (In front of Storage)
+  { top: 6,    left: 77,   w: 21, h: 24 }, // Plot 2: Upper East
+  { top: 68,   left: 2,    w: 18, h: 24 }, // Plot 3: Lower West
+  { top: 68,   left: 41.5, w: 17, h: 24 }, // Plot 4: Lower Mid
+  { top: 68,   left: 77,   w: 21, h: 24 }  // Plot 5: Lower East
 ];
 
 // ================= STATE =================
@@ -3634,6 +3642,7 @@ function assignWorker(workerId, plotId){
   if (w.assignedBuilding){ state.buildings[w.assignedBuilding].assignedWorker=null; w.assignedBuilding=null; }
   if (p.assignedWorker!==null){ var prev = state.workers.find(function(x){return x.id===p.assignedWorker;}); if (prev) prev.assignedPlot=null; }
   w.assignedPlot = plotId; p.assignedWorker = w.id;
+  if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, plotId);
   render(); requestSave();
 }
 function unassignWorker(plotId){
@@ -3648,6 +3657,7 @@ function assignWorkerToBuilding(workerId, key){
   if (w.assignedBuilding){ state.buildings[w.assignedBuilding].assignedWorker=null; }
   if (b.assignedWorker){ var prev = state.workers.find(function(x){return x.id===b.assignedWorker;}); if (prev) prev.assignedBuilding=null; }
   w.assignedBuilding = key; b.assignedWorker = w.id;
+  if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, key);
   render(); requestSave();
 }
 function unassignWorkerFromBuilding(key){
@@ -3732,6 +3742,7 @@ function assignLaborerToStorage(workerId){
   }
   state.storage.assignedLaborerId = w.id;
   pushReport('👷 Assigned Laborer ' + (w.name || ('#' + w.id)) + ' to Storage loading bay.');
+  if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'storage');
   render(); requestSave();
 }
 
@@ -3897,37 +3908,37 @@ function animateTransportLogistics(vehicleType, totalRevenue, itemCount, laborer
 
   var truckEl = document.createElement('div');
   truckEl.className = 'logistics-truck-sprite';
-  truckEl.style.left = '-20%';
-  truckEl.style.transition = 'left 1.8s cubic-bezier(0.25, 1, 0.5, 1)';
+  truckEl.style.cssText = 'position:absolute;width:140px;height:70px;z-index:26;filter:drop-shadow(0 6px 14px rgba(0,0,0,0.3));';
   truckEl.innerHTML = vehicleSvg;
   truckLayer.appendChild(truckEl);
 
   var laborerEl = document.createElement('div');
   laborerEl.className = 'logistics-laborer-sprite';
-  laborerEl.style.opacity = '0';
-  laborerEl.style.transition = 'all 0.35s ease';
+  laborerEl.style.cssText = 'position:absolute;z-index:27;opacity:0;transition:all 0.35s ease;';
   laborerEl.innerHTML = '<div style="font-size:24px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">👷</div>';
   truckLayer.appendChild(laborerEl);
 
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
-  pushReport('🚛 ' + vehicleName + ' arrived through Farm Main Gate and docked at Storage loading bay.');
+  pushReport('🚛 ' + vehicleName + ' arrived through Farm Main Gate and navigating along road to Storage loading dock.');
 
-  // Step 1: Drive in to storage loading bay (left: 14%)
-  requestAnimationFrame(function(){
-    requestAnimationFrame(function(){
-      truckEl.style.left = '14%';
-    });
-  });
+  // Step 1: Drive in through Farm Main Gate, along Main Road, up Central Access Road to Storage (Behind Plot 1)
+  var inRoute = [
+    { x: -12, y: 47 },
+    { x: 1,   y: 47 },
+    { x: 39,  y: 47 },
+    { x: 39,  y: 8 }
+  ];
 
-  // Step 2: Loading crates (1.8s - 4.2s)
-  setTimeout(function(){
+  animateAlongWaypoints(truckEl, inRoute, 2500, function(){
+    // Step 2: Loading crates at Storage loading dock (x: 39%, y: 8%)
     laborerEl.style.opacity = '1';
-    laborerEl.style.left = '14.5%';
+    laborerEl.style.left = '36%';
+    laborerEl.style.top = '7%';
     var passes = 0;
     var loadInterval = setInterval(function(){
       passes++;
       var isAtTruck = (passes % 2 === 1);
-      laborerEl.style.left = isAtTruck ? '18.5%' : '14.5%';
+      laborerEl.style.left = isAtTruck ? '39%' : '36%';
       laborerEl.innerHTML = '<div style="font-size:24px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));">' +
         (isAtTruck ? (vehicleType === 'timber' ? '🪵' : '📦') : '👷') + '</div>';
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
@@ -3936,21 +3947,25 @@ function animateTransportLogistics(vehicleType, totalRevenue, itemCount, laborer
         setTimeout(finishLoading, 400);
       }
     }, 550);
-  }, 1800);
+  });
 
-  // Step 3: Departure & Revenue settlement (4.2s - 6.5s)
+  // Step 3: Departure along central access corridor past Plot 1 -> Main Road -> Main Gate
   function finishLoading(){
-    laborerEl.style.left = '13.5%';
+    laborerEl.style.left = '35%';
     laborerEl.innerHTML = '<div style="font-size:24px;">👋</div>';
     setTimeout(function(){ laborerEl.style.opacity = '0'; }, 1000);
 
-    pushReport('🚚 ' + vehicleName + ' fully loaded with ' + itemCount + ' items. Departing along Main Road through Farm Gate!');
+    pushReport('🚚 ' + vehicleName + ' fully loaded with ' + itemCount + ' items. Departing from Storage down access road past Plot 1 and through Farm Main Gate!');
     if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
 
-    truckEl.style.transition = 'left 2.0s cubic-bezier(0.5, 0, 0.75, 0)';
-    truckEl.style.left = '105%';
+    var outRoute = [
+      { x: 39,  y: 8 },
+      { x: 39,  y: 47 },
+      { x: 1,   y: 47 },
+      { x: -16, y: 47 }
+    ];
 
-    setTimeout(function(){
+    animateAlongWaypoints(truckEl, outRoute, 2800, function(){
       state.money += totalRevenue;
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
       pushReport('💰 Transport delivered! Earned €' + totalRevenue.toFixed(2) + ' from farm harvest sales.');
@@ -3958,8 +3973,8 @@ function animateTransportLogistics(vehicleType, totalRevenue, itemCount, laborer
 
       var coinBadge = document.createElement('div');
       coinBadge.className = 'logistics-coin-burst';
-      coinBadge.style.left = '16%';
-      coinBadge.style.top = '48%';
+      coinBadge.style.left = '39%';
+      coinBadge.style.top = '10%';
       coinBadge.innerHTML = '🪙 +€' + totalRevenue.toFixed(2);
       scene.appendChild(coinBadge);
       setTimeout(function(){ if (coinBadge.parentNode) coinBadge.parentNode.removeChild(coinBadge); }, 2500);
@@ -3968,7 +3983,7 @@ function animateTransportLogistics(vehicleType, totalRevenue, itemCount, laborer
       checkAchievements();
       render();
       requestSave();
-    }, 2000);
+    });
   }
 }
 
@@ -4234,20 +4249,325 @@ function spawnCarryAnimation(fromLayout, toLayout){
   requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.style.left=tx+'px'; el.style.top=ty+'px'; }); });
   setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 1800);
 }
-// A truck hauls cut timber off the right edge of the field — used when removing
-// larger dead trees that need vehicle transport rather than a hand-carried basket.
-function spawnVehicleAnimation(fromLayout){
-  var scene = document.querySelector('.field-scene'); if (!scene) return;
-  var rect = scene.getBoundingClientRect();
-  var fx = rect.left + rect.width*(fromLayout.left+fromLayout.w/2)/100;
-  var fy = rect.top + rect.height*(fromLayout.top+fromLayout.h/2)/100;
-  var el = document.createElement('div');
-  el.style.position='fixed'; el.style.left=fx+'px'; el.style.top=fy+'px'; el.style.fontSize='26px'; el.style.zIndex='60';
-  el.style.transition='left 2.2s ease-in, opacity 2.2s ease-in'; el.textContent='🚚';
-  document.body.appendChild(el);
-  requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.style.left=(rect.right+60)+'px'; el.style.opacity='0'; }); });
-  setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 2400);
+
+// ================= VISIBLE ROAD NETWORK (MAIN ROAD + FEEDER PATHS) =================
+function drawFarmRoadNetworkSvg(){
+  var r = (typeof state !== 'undefined' && state && state.buildings) ? state.buildings.road : null;
+  var isBuilt = r && r.built;
+  var isBuilding = r && r.building;
+  var pct = isBuilding ? Math.round(Math.min(100, (r.buildHours / 4) * 100)) : 0;
+
+  var hasGardenWalk = (typeof state !== 'undefined' && state && state.roads && state.roads.garden_walk) ? state.roads.garden_walk.built : false;
+  var hasPromenade = (typeof state !== 'undefined' && state && state.roads && state.roads.market_promenade) ? state.roads.market_promenade.built : false;
+
+  var roadFill = isBuilt ? '#8D6E63' : (isBuilding ? '#A1887F' : '#6D4C41');
+  var roadStroke = isBuilt ? '#5D4037' : '#4E342E';
+  var roadOpacity = isBuilt ? '1' : (isBuilding ? '0.85' : '0.45');
+
+  var svg = '<svg viewBox="0 0 1000 1000" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
+    '<defs>' +
+      '<linearGradient id="mainRoadGrad" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="#9E8D7B"/>' +
+        '<stop offset="50%" stop-color="#8D6E63"/>' +
+        '<stop offset="100%" stop-color="#6D4C41"/>' +
+      '</linearGradient>' +
+      '<pattern id="cobblePat" width="20" height="20" patternUnits="userSpaceOnUse">' +
+        '<rect width="20" height="20" fill="#8D6E63"/>' +
+        '<rect x="1" y="1" width="8" height="8" rx="2" fill="#A1887F" opacity="0.6"/>' +
+        '<rect x="11" y="1" width="8" height="8" rx="2" fill="#BCAAA4" opacity="0.5"/>' +
+        '<rect x="1" y="11" width="8" height="8" rx="2" fill="#BCAAA4" opacity="0.5"/>' +
+        '<rect x="11" y="11" width="8" height="8" rx="2" fill="#A1887F" opacity="0.6"/>' +
+      '</pattern>' +
+      '<filter id="roadGlow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3" result="blur"/><feComposite in="SourceGraphic" in2="blur" operator="over"/></filter>' +
+    '</defs>';
+
+  // --- CONNECTING FEEDER ROADS (NORTH BRANCHES) ---
+  // North Path to Plot 0 (from y=290 down to Main Road at y=440, centered at x=110)
+  svg += '<rect x="95" y="290" width="32" height="155" rx="3" fill="' + (isBuilt ? 'url(#cobblePat)' : '#8D6E63') + '" opacity="' + roadOpacity + '" stroke="' + roadStroke + '" stroke-width="1.2"/>';
+  // Central Access Road to Storage Barn & Plot 1 (from y=40 down past Plot 1 to Main Road at y=440, centered at x=390)
+  svg += '<rect x="374" y="40" width="34" height="405" rx="3" fill="' + (isBuilt ? 'url(#cobblePat)' : '#8D6E63') + '" opacity="' + roadOpacity + '" stroke="' + roadStroke + '" stroke-width="1.2"/>';
+  // Central Branch into Storage Loading Bay
+  svg += '<rect x="406" y="50" width="30" height="24" rx="2" fill="' + (isBuilt ? 'url(#cobblePat)' : '#8D6E63') + '" opacity="' + roadOpacity + '"/>';
+  // Central Branch into Plot 1
+  svg += '<rect x="406" y="230" width="22" height="24" rx="2" fill="' + (isBuilt ? 'url(#cobblePat)' : '#8D6E63') + '" opacity="' + roadOpacity + '"/>';
+  // North Path to Plot 2 (from y=290 down to Main Road at y=440, centered at x=860)
+  svg += '<rect x="844" y="290" width="32" height="155" rx="3" fill="' + (isBuilt ? 'url(#cobblePat)' : '#8D6E63') + '" opacity="' + roadOpacity + '" stroke="' + roadStroke + '" stroke-width="1.2"/>';
+
+  // --- CONNECTING FEEDER ROADS (SOUTH BRANCHES) ---
+  // South Path to Plot 3 (from Main Road at y=495 down to y=690, centered at x=110)
+  svg += '<rect x="95" y="495" width="32" height="195" rx="3" fill="' + (isBuilt ? 'url(#cobblePat)' : '#8D6E63') + '" opacity="' + roadOpacity + '" stroke="' + roadStroke + '" stroke-width="1.2"/>';
+  // South Path to Plot 4 (from Main Road at y=495 down to y=690, centered at x=390)
+  svg += '<rect x="374" y="495" width="34" height="195" rx="3" fill="' + (isBuilt ? 'url(#cobblePat)' : '#8D6E63') + '" opacity="' + roadOpacity + '" stroke="' + roadStroke + '" stroke-width="1.2"/>';
+  svg += '<rect x="406" y="690" width="22" height="24" rx="2" fill="' + (isBuilt ? 'url(#cobblePat)' : '#8D6E63') + '" opacity="' + roadOpacity + '"/>';
+  // South Path to Plot 5 (from Main Road at y=495 down to y=690, centered at x=860)
+  svg += '<rect x="844" y="495" width="32" height="195" rx="3" fill="' + (isBuilt ? 'url(#cobblePat)' : '#8D6E63') + '" opacity="' + roadOpacity + '" stroke="' + roadStroke + '" stroke-width="1.2"/>';
+
+  // --- VILLAGE AMENITIES APRONS ---
+  // Apron to Pond (North curb, centered at x=285)
+  svg += '<rect x="255" y="425" width="60" height="20" rx="3" fill="' + (hasGardenWalk ? '#BCAAA4' : roadFill) + '" opacity="' + roadOpacity + '"/>';
+  // Apron to Garden (South curb, directly opposite Pond!)
+  svg += '<rect x="255" y="495" width="60" height="20" rx="3" fill="' + (hasGardenWalk ? '#BCAAA4' : roadFill) + '" opacity="' + roadOpacity + '"/>';
+  // Apron to Coffee Shop (North curb, centered at x=680)
+  svg += '<rect x="650" y="425" width="60" height="20" rx="3" fill="' + (hasPromenade ? '#BCAAA4' : roadFill) + '" opacity="' + roadOpacity + '"/>';
+  // Apron to Juice Bar (South curb, directly opposite Coffee Shop!)
+  svg += '<rect x="650" y="495" width="60" height="20" rx="3" fill="' + (hasPromenade ? '#BCAAA4' : roadFill) + '" opacity="' + roadOpacity + '"/>';
+
+  // --- MAIN ARTERIAL ROAD (HORIZONTAL CORRIDOR) ---
+  svg += '<rect x="0" y="440" width="1000" height="60" fill="' + (isBuilt ? 'url(#mainRoadGrad)' : '#795548') + '" opacity="' + (isBuilt ? '1' : '0.5') + '"/>';
+  // Curbs
+  svg += '<rect x="0" y="438" width="1000" height="3" fill="#4E342E"/>';
+  svg += '<rect x="0" y="499" width="1000" height="3" fill="#3E2723"/>';
+
+  if (isBuilt){
+    // Dashed white/cream centerline
+    svg += '<line x1="10" y1="470" x2="990" y2="470" stroke="#FFF8E1" stroke-width="2.5" stroke-dasharray="24,18" opacity="0.75"/>';
+    // Junction Crosswalk markings
+    [110, 285, 390, 680, 860].forEach(function(jx){
+      for (var cy = 445; cy <= 490; cy += 8){
+        svg += '<line x1="' + (jx - 14) + '" y1="' + cy + '" x2="' + (jx + 14) + '" y2="' + cy + '" stroke="#FFF8E1" stroke-width="2.2" opacity="0.6"/>';
+      }
+    });
+    // Streetlamps along Main Road
+    [150, 340, 530, 750, 930].forEach(function(lx){
+      svg += '<g transform="translate(' + lx + ', 440)">' +
+        '<circle cx="0" cy="0" r="12" fill="#FFE082" opacity="0.4" filter="url(#roadGlow)"/>' +
+        '<circle cx="0" cy="0" r="4" fill="#FFF59D"/>' +
+        '<rect x="-2" y="-14" width="4" height="14" fill="#263238"/>' +
+      '</g>';
+    });
+    // Decorative promenade visitors if promenade built
+    if (hasPromenade){
+      svg += '<g class="bob" transform="translate(670, 465)"><circle cx="0" cy="-6" r="3.2" fill="#FFE0B2"/><rect x="-3" y="-3" width="6" height="8" rx="2" fill="#E91E63"/></g>' +
+             '<g class="bob-fast" transform="translate(705, 475)"><circle cx="0" cy="-6" r="3.2" fill="#D7CCC8"/><rect x="-3" y="-3" width="6" height="8" rx="2" fill="#1976D2"/></g>' +
+             '<g class="bob" transform="translate(735, 468)"><circle cx="0" cy="-6" r="3.2" fill="#FFE0B2"/><rect x="-3" y="-3" width="6" height="8" rx="2" fill="#388E3C"/></g>';
+    }
+    // Decorative garden walkway florals if garden walk built
+    if (hasGardenWalk){
+      svg += '<line x1="255" y1="440" x2="315" y2="440" stroke="#4CAF50" stroke-width="2" opacity="0.8"/>' +
+             '<line x1="255" y1="500" x2="315" y2="500" stroke="#4CAF50" stroke-width="2" opacity="0.8"/>';
+    }
+  } else if (isBuilding){
+    // Construction progress bar & cones along road
+    var pWidth = Math.max(30, pct * 10);
+    svg += '<rect x="0" y="440" width="' + pWidth + '" height="60" fill="#8D6E63"/>';
+    svg += '<line x1="0" y1="470" x2="1000" y2="470" stroke="#FF6D00" stroke-width="2" stroke-dasharray="12,10"/>';
+    for (var cx = 80; cx < 980; cx += 140){
+      svg += '<polygon points="' + (cx - 8) + ',490 ' + (cx + 8) + ',490 ' + cx + ',456" fill="#FF6D00"/>' +
+             '<rect x="' + (cx - 4) + '" y="470" width="8" height="4" fill="#FFF"/>';
+    }
+  } else {
+    // Natural dirt path markings without any grey rectangle card
+    svg += '<line x1="0" y1="470" x2="1000" y2="470" stroke="#5D4037" stroke-width="2" stroke-dasharray="16,16" opacity="0.5"/>';
+    for (var px = 100; px < 950; px += 180){
+      svg += '<circle cx="' + px + '" cy="442" r="3" fill="#8D6E63" opacity="0.6"/>';
+      svg += '<circle cx="' + px + '" cy="498" r="3" fill="#8D6E63" opacity="0.6"/>';
+    }
+  }
+
+  svg += '</svg>';
+  return svg;
 }
+
+function farmRoadNetworkHtml(){
+  return '<div class="farm-roads-layer" id="farmRoadsLayer">' + drawFarmRoadNetworkSvg() + '</div>';
+}
+
+// ================= OPTIMAL GRID-BASED PATHFINDING & ROUTING =================
+// Computes optimal Manhattan waypoint route along connecting paths & Main Road
+function getPlotJunctionX(plotId){
+  if (plotId === 0 || plotId === 3) return 11;
+  if (plotId === 1 || plotId === 4) return 39;
+  return 86; // plot 2 & 5
+}
+
+function getPlotDestY(plotId){
+  if (plotId === 0 || plotId === 2) return 18;
+  if (plotId === 1) return 30;
+  return 80; // plot 3, 4, 5
+}
+
+function calculateGridRoute(startPoint, endPoint){
+  var waypoints = [];
+  var mainRoadY = 47; // center line of Main Road
+
+  waypoints.push({ x: startPoint.x, y: startPoint.y });
+
+  // 1. Move from start to Main Road junction if not already on Main Road
+  if (Math.abs(startPoint.y - mainRoadY) > 2){
+    waypoints.push({ x: startPoint.x, y: mainRoadY });
+  }
+
+  // 2. Travel along Main Road to destination column
+  if (Math.abs(startPoint.x - endPoint.x) > 2){
+    waypoints.push({ x: endPoint.x, y: mainRoadY });
+  }
+
+  // 3. Move along feeder path from Main Road to destination
+  if (Math.abs(startPoint.y - endPoint.y) > 2 || Math.abs(startPoint.x - endPoint.x) > 2){
+    waypoints.push({ x: endPoint.x, y: endPoint.y });
+  }
+  return waypoints;
+}
+
+// Generic multi-segment waypoint animator
+function animateAlongWaypoints(el, waypoints, totalDurationMs, onComplete){
+  if (!waypoints || waypoints.length < 2){
+    if (onComplete) onComplete();
+    return;
+  }
+  var currentIdx = 0;
+  var stepDuration = totalDurationMs / (waypoints.length - 1);
+
+  el.style.left = waypoints[0].x + '%';
+  el.style.top = waypoints[0].y + '%';
+  el.style.transition = 'left ' + (stepDuration / 1000) + 's linear, top ' + (stepDuration / 1000) + 's linear';
+
+  function nextStep(){
+    currentIdx++;
+    if (currentIdx >= waypoints.length){
+      if (onComplete) onComplete();
+      return;
+    }
+    var prev = waypoints[currentIdx - 1];
+    var curr = waypoints[currentIdx];
+    if (curr.x < prev.x){
+      el.style.transform = 'scaleX(-1)';
+    } else if (curr.x > prev.x){
+      el.style.transform = 'scaleX(1)';
+    }
+    el.style.left = curr.x + '%';
+    el.style.top = curr.y + '%';
+    setTimeout(nextStep, stepDuration);
+  }
+
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      nextStep();
+    });
+  });
+}
+
+// Tree Cutting / Wood Salvage Vehicle Animation — navigates along road grid
+function spawnVehicleAnimation(fromLayoutOrId){
+  var scene = document.querySelector('.field-scene');
+  if (!scene) return;
+
+  var plotId = 0;
+  if (typeof fromLayoutOrId === 'number'){
+    plotId = fromLayoutOrId;
+  } else if (fromLayoutOrId && state.plots){
+    for (var i = 0; i < PLOT_LAYOUT.length; i++){
+      if (Math.abs(PLOT_LAYOUT[i].left - fromLayoutOrId.left) < 1 && Math.abs(PLOT_LAYOUT[i].top - fromLayoutOrId.top) < 1){
+        plotId = i; break;
+      }
+    }
+  }
+
+  var junctionX = getPlotJunctionX(plotId);
+  var plotY = getPlotDestY(plotId);
+
+  var truckLayer = document.getElementById('logisticsTruckLayer');
+  if (!truckLayer){
+    truckLayer = document.createElement('div');
+    truckLayer.id = 'logisticsTruckLayer';
+    truckLayer.className = 'logistics-transport-layer';
+    truckLayer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:25;';
+    scene.appendChild(truckLayer);
+  }
+
+  var truckEl = document.createElement('div');
+  truckEl.className = 'logistics-truck-sprite';
+  truckEl.style.cssText = 'position:absolute;width:130px;height:65px;z-index:26;filter:drop-shadow(0 6px 12px rgba(0,0,0,0.3));';
+  truckEl.innerHTML = drawTimberTruckSvg();
+  truckLayer.appendChild(truckEl);
+
+  pushReport('🚛 Logging flatbed truck entered through Farm Main Gate and navigated along road to Plot ' + (plotId + 1) + '.');
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
+
+  // Waypoints: Enter Gate -> Main Road Junction -> Feeder path to Plot
+  var inRoute = [
+    { x: -12, y: 47 },
+    { x: 1,   y: 47 },
+    { x: junctionX, y: 47 },
+    { x: junctionX, y: plotY }
+  ];
+
+  animateAlongWaypoints(truckEl, inRoute, 2400, function(){
+    // At plot: pause for wood loading & sawing SFX
+    if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+    pushReport('🪵 Timber logs loaded securely onto truck bolsters at Plot ' + (plotId + 1) + '.');
+
+    setTimeout(function(){
+      // Route out: Feeder path -> Main Road -> Exit through Main Gate
+      var outRoute = [
+        { x: junctionX, y: plotY },
+        { x: junctionX, y: 47 },
+        { x: 1,   y: 47 },
+        { x: -16, y: 47 }
+      ];
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
+      animateAlongWaypoints(truckEl, outRoute, 2600, function(){
+        if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
+        pushReport('✓ Logging truck departed through Farm Main Gate.');
+        if (truckEl.parentNode) truckEl.parentNode.removeChild(truckEl);
+      });
+    }, 1200);
+  });
+}
+
+// Worker / Botanist Walking Animation along road network
+function animateWorkerPathWalk(worker, destination){
+  var scene = document.querySelector('.field-scene');
+  if (!scene) return;
+
+  var destX = 11, destY = 18;
+  if (typeof destination === 'number'){
+    destX = getPlotJunctionX(destination);
+    destY = getPlotDestY(destination);
+  } else if (destination === 'storage'){
+    destX = 39; destY = 8;
+  } else if (destination === 'pond'){
+    destX = 28; destY = 34;
+  } else if (destination === 'garden'){
+    destX = 28; destY = 60;
+  } else if (destination === 'coffee_shop'){
+    destX = 68; destY = 34;
+  } else if (destination === 'juice_bar'){
+    destX = 68; destY = 60;
+  }
+
+  var workerEl = document.createElement('div');
+  workerEl.style.cssText = 'position:absolute;width:32px;height:42px;z-index:28;font-size:24px;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.25));';
+  var icon = '👷';
+  if (worker && worker.type === 'botanist') icon = '👩‍🔬';
+  else if (worker && worker.type === 'farmer') icon = '🧑‍🌾';
+  workerEl.textContent = icon;
+
+  var truckLayer = document.getElementById('logisticsTruckLayer');
+  if (!truckLayer){
+    truckLayer = document.createElement('div');
+    truckLayer.id = 'logisticsTruckLayer';
+    truckLayer.className = 'logistics-transport-layer';
+    truckLayer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:25;';
+    scene.appendChild(truckLayer);
+  }
+  truckLayer.appendChild(workerEl);
+
+  // Walk route along road: Main Gate (1, 47) -> Main Road Junction (destX, 47) -> Destination (destX, destY)
+  var walkRoute = [
+    { x: 1,     y: 47 },
+    { x: destX, y: 47 },
+    { x: destX, y: destY }
+  ];
+
+  animateAlongWaypoints(workerEl, walkRoute, 2200, function(){
+    if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+    setTimeout(function(){
+      if (workerEl.parentNode) workerEl.parentNode.removeChild(workerEl);
+    }, 800);
+  });
+}
+
 
 // Task notification toasts — separate from the ambient educational hint toast. These
 // fire on newly-triggered actionable events (dead tree, overgrown plot, wildlife,
@@ -5158,78 +5478,7 @@ function buildingSpotHtml(key){
 }
 
 function roadPromenadeHtml(){
-  var r = state.buildings.road;
-  var isBuilt = r && r.built;
-  var isBuilding = r && r.building;
-  var pct = isBuilt ? 100 : (isBuilding ? Math.round(Math.min(100, (r.buildHours / BUILDING_TYPES.road.buildHours) * 100)) : 0);
-
-  var hasGardenWalk = state.roads && state.roads.garden_walk && state.roads.garden_walk.built;
-  var hasPromenade = state.roads && state.roads.market_promenade && state.roads.market_promenade.built;
-
-  var content = '';
-  if (isBuilt){
-    content = '<svg viewBox="0 0 1000 40" preserveAspectRatio="none" style="width:100%;height:100%;display:block;overflow:visible;">' +
-      '<defs>' +
-        '<linearGradient id="promG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#BCAAA4"/><stop offset="100%" stop-color="#8D6E63"/></linearGradient>' +
-        '<filter id="glowGold" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3" result="blur"/><feComposite in="SourceGraphic" in2="blur" operator="over"/></filter>' +
-      '</defs>' +
-      // Main Arterial Highway Strip
-      '<rect x="0" y="4" width="1000" height="32" rx="4" fill="url(#promG)"/>' +
-      '<rect x="0" y="2" width="1000" height="3" fill="#5D4037"/>' +
-      '<rect x="0" y="35" width="1000" height="3" fill="#4E342E"/>' +
-      // Arterial Centerline Dashes
-      '<line x1="0" y1="20" x2="1000" y2="20" stroke="#FFF8E1" stroke-width="1.8" stroke-dasharray="24,18" opacity="0.65"/>' +
-      // Garden Walkway Segment (left: 280 to 520)
-      (hasGardenWalk
-        ? '<rect x="270" y="6" width="230" height="28" fill="#A1887F" opacity="0.55"/>' +
-          (function(){
-            var s = '';
-            for (var gx = 275; gx < 495; gx += 18){
-              s += '<circle cx="' + gx + '" cy="14" r="3.5" fill="#D7CCC8" opacity="0.6"/>' +
-                   '<circle cx="' + (gx + 9) + '" cy="26" r="3.5" fill="#CFD8DC" opacity="0.6"/>';
-            }
-            return s;
-          })() +
-          '<line x1="270" y1="6" x2="500" y2="6" stroke="#4CAF50" stroke-width="2.5" opacity="0.8"/>'
-        : '') +
-      // Marketplace Plaza Promenade (left: 500 to 980)
-      (hasPromenade
-        ? '<rect x="520" y="5" width="460" height="30" fill="#8D6E63" opacity="0.4"/>' +
-          (function(){
-            var s = '';
-            for (var px = 525; px < 975; px += 26){
-              s += '<line x1="' + px + '" y1="6" x2="' + px + '" y2="34" stroke="#5D4037" stroke-width="1.4" opacity="0.75"/>';
-            }
-            return s;
-          })() +
-          // Strolling visitor silhouettes
-          '<g class="bob" transform="translate(680, 18)"><circle cx="0" cy="-6" r="3.2" fill="#FFE0B2"/><rect x="-3" y="-3" width="6" height="8" rx="2" fill="#E91E63"/></g>' +
-          '<g class="bob-fast" transform="translate(710, 20)"><circle cx="0" cy="-6" r="3.2" fill="#D7CCC8"/><rect x="-3" y="-3" width="6" height="8" rx="2" fill="#1976D2"/></g>' +
-          '<g class="bob" transform="translate(860, 19)"><circle cx="0" cy="-6" r="3.2" fill="#FFE0B2"/><rect x="-3" y="-3" width="6" height="8" rx="2" fill="#388E3C"/></g>'
-        : '') +
-      // Ornamental Coach Lanterns
-      '<g transform="translate(140, 20)"><circle cx="0" cy="0" r="10" fill="#FFE082" opacity="0.5" filter="url(#glowGold)"/><circle cx="0" cy="0" r="3.5" fill="#FFF59D"/><rect x="-2" y="-12" width="4" height="12" fill="#263238"/></g>' +
-      '<g transform="translate(380, 20)"><circle cx="0" cy="0" r="10" fill="#FFE082" opacity="0.5" filter="url(#glowGold)"/><circle cx="0" cy="0" r="3.5" fill="#FFF59D"/><rect x="-2" y="-12" width="4" height="12" fill="#263238"/></g>' +
-      '<g transform="translate(640, 20)"><circle cx="0" cy="0" r="10" fill="#FFE082" opacity="0.5" filter="url(#glowGold)"/><circle cx="0" cy="0" r="3.5" fill="#FFF59D"/><rect x="-2" y="-12" width="4" height="12" fill="#263238"/></g>' +
-      '<g transform="translate(920, 20)"><circle cx="0" cy="0" r="10" fill="#FFE082" opacity="0.5" filter="url(#glowGold)"/><circle cx="0" cy="0" r="3.5" fill="#FFF59D"/><rect x="-2" y="-12" width="4" height="12" fill="#263238"/></g>' +
-    '</svg>';
-  } else if (isBuilding){
-    var widthPaved = Math.max(30, pct * 10);
-    content = '<svg viewBox="0 0 1000 40" preserveAspectRatio="none" style="width:100%;height:100%;display:block;overflow:visible;">' +
-      '<rect x="0" y="6" width="1000" height="28" rx="4" fill="#A1887F" stroke="#8D6E63" stroke-width="1.5" stroke-dasharray="8,6"/>' +
-      '<rect x="0" y="4" width="' + widthPaved + '" height="32" rx="4" fill="#BCAAA4"/>' +
-      '<rect x="0" y="2" width="' + widthPaved + '" height="4" fill="#5D4037"/>' +
-      '<rect x="0" y="34" width="' + widthPaved + '" height="4" fill="#4E342E"/>' +
-      '<polygon points="' + (widthPaved - 12) + ',36 ' + (widthPaved + 12) + ',36 ' + widthPaved + ',8" fill="#FF6D00"/>' +
-    '</svg>';
-  } else {
-    content = '<svg viewBox="0 0 1000 40" preserveAspectRatio="none" style="width:100%;height:100%;display:block;overflow:visible;">' +
-      '<rect x="0" y="8" width="1000" height="24" rx="4" fill="#BCAAA4" opacity="0.3" stroke="#8D6E63" stroke-width="1.5" stroke-dasharray="10,8"/>' +
-      '<line x1="0" y1="20" x2="1000" y2="20" stroke="#8D6E63" stroke-width="1" stroke-dasharray="14,14" opacity="0.4"/>' +
-    '</svg>';
-  }
-
-  return '<div class="village-promenade-wrap">' + content + '</div>';
+  return '';
 }
 
 function villageSpotsHtml(){
@@ -5953,7 +6202,7 @@ function render(){
     if (bonusSpan) bonusSpan.textContent = bonusText();
     document.getElementById('iconDock').innerHTML = dockHtml();
     replacePreservingScroll('floatPanel', '.float-panel', panelHtml());
-    document.getElementById('fieldPlots').innerHTML = state.plots.map(function(p,i){ return plotSpotHtml(p, PLOT_LAYOUT[i]); }).join('') + storageSpotHtml() + villageSpotsHtml();
+    document.getElementById('fieldPlots').innerHTML = farmRoadNetworkHtml() + state.plots.map(function(p,i){ return plotSpotHtml(p, PLOT_LAYOUT[i]); }).join('') + storageSpotHtml() + villageSpotsHtml();
 
     var bgEl = document.getElementById('fieldBg');
     if (bgEl && !bgEl.dataset.built){ bgEl.innerHTML = fieldBackgroundSVG(); bgEl.dataset.built='1'; }
