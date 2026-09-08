@@ -407,5 +407,62 @@ To fulfill the vision of an emotionally immersive, peaceful eco-simulation, a ze
 
 ---
 
+## 9. Prototype v5 Modernization — Main Gate, Block-Wise Roads, Itemized Storage & Truck Logistics
+
+**Implemented in Commit:** (Current)  
+**File Modified:** `searchO2-prototype-v5.html`  
+**File Size:** ~337 KB | ~6,150 lines  
+**Focus Areas:** Organic Terraced Layout, Grand Farm Main Entry Gate, Multi-Segment Block Roads, Cold Cellar Climate & Itemized Storage, Animated Freight Logistics (Food Container Van & Timber Truck), Laborer Operations.
+
+### 9.1 Organic Terraced Village Layout & Grand Farm Main Entry Gate
+- **Break the Flat Line:** Re-aligned all village structures from a flat horizontal row (`top: 36.5%`) into an organic terraced landscape with natural elevation and depth:
+  - **Farm Main Entry Gate (`GATE_SPOT`):** `{top:32, left:1, w:11.5, h:24}`
+  - **Storage Barn & Loading Bay (`STORAGE_SPOT`):** `{top:34, left:13.5, w:13.5, h:22}`
+  - **Botanical Flower Garden (`garden`):** `{top:30, left:28, w:15, h:22}` (Elevated floral terrace)
+  - **Duck & Fish Pond (`pond`):** `{top:37, left:44.5, w:16.5, h:23}` (Sunken water hollow)
+  - **The Coffee House (`coffee_shop`):** `{top:31, left:62.5, w:16.5, h:23}` (Stone café terrace)
+  - **The Juice & Ice Bar (`juice_bar`):** `{top:36, left:80.5, w:16.5, h:23}` (Promenade pavilion deck)
+- **Grand Farm Main Entry Gate (`drawMainGateScene`):**
+  - Ashlar stone masonry pillars with carved stone capstones and iron reinforcement brackets.
+  - Carved timber archway with gold-embossed lettering: `"🌿 searchO2 ECO-FARM 🌿 SANCTUARY & BIO-GROUNDS"`.
+  - Brass coach carriage lanterns mounted on pillars casting golden light (`#FFE082`).
+  - Open rustic timber and iron gates welcoming visitors and transport trucks.
+  - Colorful flower planter boxes at pillar bases.
+
+### 9.2 Road Modernization & Block-Wise Walking Paths
+- **Multi-Segment Road Network (`state.roads`):**
+  - **Main Arterial Road (`main`):** Paved highway connecting Main Gate past Storage to the Village. Enables motorized heavy freight trucks and unlocks visitor shops.
+  - **Garden Nature Walkway (`garden_walk`):** Cobblestone path with flower borders linking Storage to the Botanical Garden and Duck Pond (+4 Reputation, +25% flower freshness retention).
+  - **Marketplace Plaza Promenade (`market_promenade`):** Lamp-lit flagstone boulevard linking Pond, Coffee House, and Juice Bar (+6 Reputation, +15% visitor sales bonus).
+- **Dynamic Promenade Visuals (`roadPromenadeHtml`):**
+  - Spans across the entire village front (`top: 57.5%`, `left: 0%`, `width: 100%`) without clipping or plot overlap.
+  - Renders dashed arterial road markings, garden cobblestones, plaza flagstones, and animated strolling visitor silhouettes.
+
+### 9.3 Itemized Storage Condition & Crop Preservation
+- **Zero Passive Auto-Drain:** Eliminated passive continuous draining of storage by Coffee House and Juice Bar. Stored harvest is 100% preserved for manual player dispatch. Shops earn visitor foot-traffic revenue when open.
+- **Climate-Controlled Cold Cellar Panel (`storageModalHtml`):**
+  - Temperature: 4.2°C (optimal cold storage).
+  - Relative Humidity: 85% (produce freshness preservation).
+  - Dynamic preservation status and capacity utilization meter.
+- **Itemized Crop Batches (`state.storage.items`):**
+  - Discrete batches created upon tree harvest and pond yield:
+    `{ id, cropKey, name, category, icon, source, value, qty, freshness, harvestedHour }`.
+  - Filter pills: `[All Items]`, `[🍏 Produce]`, `[🪵 Timber]`, `[🐟 Pond Yield]`.
+  - Checkboxes and quick `Select All` / `Clear` controls for selective selling.
+
+### 9.4 Animated Manual Selling Logistics Simulation
+- **Assigned Laborer Requirement:** Requires an assigned or available Laborer (`state.workers.find(w => w.type === 'laborer')`) to operate the loading dock and load crates. 1-click hire/assign buttons guide the player if unassigned.
+- **Specialized Transport Vehicle SVGs:**
+  - **Refrigerated Food Container Van (`drawFoodContainerTruckSvg`):** Aerodynamic cab, insulated white box with Thermo-King cooling unit, and `"searchO2 Fresh Foods 🍏"` livery for produce and pond harvests.
+  - **Heavy Timber Logging Truck (`drawTimberTruckSvg`):** Rugged industrial truck with protective steel headache rack, vertical diesel stacks, and bolstered flatbed carrying strapped tree logs (`🪵`).
+  - **Multi-Cargo Farm Hauler (`drawMixedHaulerSvg`):** Covered canvas curtainsider hauler for mixed goods.
+- **4-Step Real-Time Road Animation Sequence (`animateTransportLogistics`):**
+  1. *Arrival:* Truck enters from off-screen left along the Main Road through the Farm Main Gate and pulls into the Storage loading bay (`left: 14%`).
+  2. *Loading:* Assigned Laborer sprite animates back and forth between Storage doors and truck bed carrying crates/timber logs with thud sounds and dust particles.
+  3. *Departure:* Laborer waves goodbye (`👋`), truck accelerates along the paved road, and exits through the Farm Gate.
+  4. *Settlement:* Revenue credited to player balance, coin SFX plays (`'coin'`), floating `🪙 +€XX.XX` cash burst appears, and shipment report is logged.
+
+---
+
 *Generated and verified for branch `mvp-v1` — searchO2 Project Evolution.*
 
