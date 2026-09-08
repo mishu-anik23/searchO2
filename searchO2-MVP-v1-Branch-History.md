@@ -500,6 +500,49 @@ To fulfill the vision of an emotionally immersive, peaceful eco-simulation, a ze
 
 ---
 
+## 11. Milestone 11: 3 Collapsible Corner Menus for Full Unobstructed Farm View
+
+### 11.1 Overview & Motivation
+- **Problem Solved:** Previously, 3 persistent floating toolbars (top-left vertical dock, top-right wide stats bar, and bottom-middle 92vw tool strip) severely obstructed the view of the farm fields, village amenities, plots, and road networks.
+- **Solution:** Converted all 3 toolbars into sleek, compact corner toggle containers (`uiCornersState`) that stay collapsed by default, allowing players to enjoy a 100% full, panoramic, unobstructed view of their farm during gameplay.
+
+### 11.2 Corner 1: Top-Left Operations & Actions Menu (`#cornerTopLeft`)
+- **Collapsed Mode:** Sits at `top: 12px; left: 12px;` as a compact `[ 🧭 Menu ▾ ]` button with active task/alert badge (`#topLeftBadge`).
+- **Expanded Mode:** On click, expands downwards directly below the button, revealing all 6 action buttons in glassmorphic tray (`#topLeftTray`):
+  - 🗺️ Planetary Biome Map (`data-navscreen="region_select"`)
+  - 📋 Farm Tasks (`data-panel="tasks"`) with pending count badge
+  - 👷 Workers Management (`data-panel="workers"`)
+  - 🏆 Achievements Showcase (`data-panel="achievements"`)
+  - 📰 Health & Daily Reports (`data-panel="reports"`) with badge
+  - 🏦 Bank & Credit (`data-openbank="1"`) with loan/overdraft badge
+- **Smooth Toggling:** Clicking the button toggles between `▾` (collapsed) and `▴` (expanded). The floating panel (`#floatPanel`) sits cleanly below the button without blocking the screen.
+
+### 11.3 Corner 2: Top-Right Telemetry & Speed Dashboard (`#cornerTopRight`)
+- **Collapsed Mode:** Sits at `top: 12px; right: 12px;` as a compact live telemetry capsule:
+  `[ 🪙 €XX.XX · 🌿 XX.X O₂ · Day X ▾ ]`. Takes up virtually no screen space while keeping essential vital metrics visible.
+- **Expanded Mode:** On click, expands downwards into `#topRightTray` displaying the full stats suite:
+  - 🗺️ World Map & Region selector pill (`🇩🇪 Germany`, etc.)
+  - 👤 User Profile / Guest Account Upgrade / Cloud Save status pill
+  - Detailed stat pills (Balance, O2, Day, Season, Star Reputation, Daily Payroll, Active Loans, Storage Utilization bar, Demerits)
+  - Game speed controller dropdown (`1x`, `2x`, `5x`) and active farm synergy bonus chips.
+
+### 11.4 Corner 3: Bottom-Right Crew & Equipment Drawer (`#cornerBottomTools`)
+- **Relocated from Center to Corner:** Replaced the persistent 92vw middle strip that covered the lower plots and roads with a compact button at `bottom: 16px; right: 16px;`:
+  `[ 🧑‍🌾 Crew & Tools ▴ ]` with an idle worker notification badge.
+- **Toggled Upstraight:** On click, slides straight upward into an elegant drawer (`#bottomToolsTray`) above the button:
+  - Header: `🧑‍🌾 Farm Crew & Equipment` with quick `✕ Close` button.
+  - Worker hiring chips: Farmer (`🧑‍🌾`), Laborer (`👷`), Botanist (`👩‍🔬`) with wages and roles.
+  - Farm accessories: Fence, Trellis, Irrigation, Lighting, Scarecrow.
+  - Care & plot tools: Water (`💧`), Prune (`✂️`), Storage (`🏚️`).
+- **Unobstructed View:** Clicking `✕ Close` or the toggle collapses the drawer straight down, completely clearing the bottom field.
+
+### 11.5 Zen View & Persistent State Management
+- **Persistent State (`uiCornersState`):** All 3 corner states (`topLeftExpanded`, `topRightExpanded`, `bottomToolsExpanded`) are preserved across the 1-second game tick and action renders.
+- **Bare-Field Background Tap:** Tapping the bare grass field (`#fieldBg`) automatically collapses any open corner menus, instantly returning to full unobstructed farm view.
+
+---
+
 *Generated and verified for branch `mvp-v1` — searchO2 Project Evolution.*
+
 
 
