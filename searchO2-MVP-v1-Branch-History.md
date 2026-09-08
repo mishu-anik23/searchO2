@@ -255,7 +255,7 @@ The complete chronological commit tree on `mvp-v1` starting from repository init
 | **14** | `9852cb7` | mishu-anik23 | 2026-09-07 | `feat(ui): add interactive 3D World Globe with draggable rotation, regional beacons, and flora tooltips`<br>Adds zero-dependency HTML5 2D Canvas 3D spherical projection engine, interactive rotation drag with momentum physics and idle auto-spin, regional beacons with pulsing concentric rings for Germany, dynamic hover billboards with native flora and tree emoji icons, 3 view modes (3D Globe, Split View, Biome Cards), and quick-center region chips. | `searchO2-prototype-v4.html` |
 | **15** | `03a9851` | mishu-anik3 | 2026-09-07 | `feat(audio): add procedural regional soundtrack engine, activity SFX, and music player dock`<br>Synthesizes zero-dependency Web Audio API regional soundtracks for Germany, Kenya, Brazil, Japan, and Arctic biomes, along with activity SFX for planting, harvesting, watering, pruning, achievements, and seasons, backed by a collapsible floating music player dock. | `searchO2-prototype-v4.html` |
 | **16** | `8885476` | mishu-anik3 | 2026-09-07 | `fix(tasks): fix ReferenceError in advanceGame, restore multi-plot digging progression, and enhance seeding/task completion feedback`<br>Fixes unhandled season reference error, restores percentage progress and laborer assignment in plot digging modal, adds distinct tilled seedling mound visuals, and enhances task panel rows. | `searchO2-prototype-v4.html` |
-| **17** | `Pending` | mishu-anik3 | 2026-09-08 | `feat(prototype-v5): realistic village architecture, non-overlapping promenade, and full v4 audio/task integration`<br>Eliminates stretched cards and overlapping road line with an elegant pedestrian promenade; delivers detailed architectural SVG illustrations for the Coffee House, Juice Bar, Road Gateway, and Storage Barn; integrates procedural audio engine with dedicated village SFX; and achieves full v4 feature parity. | `searchO2-prototype-v5.html`<br>`searchO2-MVP-v1-Branch-History.md` |
+| **17** | `41bbb81` | mishu-anik3 | 2026-09-08 | `feat(prototype-v5): realistic village architecture, non-overlapping promenade, and full v4 audio/task integration`<br>Eliminates stretched cards and overlapping road line with an elegant pedestrian promenade; delivers detailed architectural SVG illustrations for the Coffee House, Juice Bar, Road Gateway, and Storage Barn; integrates procedural audio engine with dedicated village SFX; and achieves full v4 feature parity. | `searchO2-prototype-v5.html`<br>`searchO2-MVP-v1-Branch-History.md` |
 
 ---
 
@@ -381,7 +381,7 @@ To fulfill the vision of an emotionally immersive, peaceful eco-simulation, a ze
 
 ## 8. Prototype v5 — Village Commons, Realistic Architectural SVGs & Audio Integration (`searchO2-prototype-v5.html`)
 
-**Implemented in Commit:** `Pending` (`feat(prototype-v5): realistic village architecture, non-overlapping promenade, and full v4 audio/task integration`)  
+**Implemented in Commit:** `41bbb81` (`feat(prototype-v5): realistic village architecture, non-overlapping promenade, and full v4 audio/task integration`)  
 **File Size:** ~294 KB | ~5,300 lines  
 **Blueprint Traceability:** Village Expansion (§Delivery Phasing §1), Commercial Revenue Loop, Infrastructure Prerequisites, Audio-Visual Polish.
 
