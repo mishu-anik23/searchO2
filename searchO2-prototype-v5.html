@@ -665,7 +665,7 @@
   }
 
   .globe-3d-tooltip{
-    position: absolute; z-index: 25; pointer-events: none;
+    position: absolute; z-index: 25; pointer-events: auto; cursor: pointer;
     background: rgba(13, 30, 20, 0.94); border: 1.5px solid #81C784;
     border-radius: 16px; padding: 12px 16px; color: #E8F5E9;
     box-shadow: 0 14px 35px rgba(0,0,0,0.6), 0 0 20px rgba(76,175,80,0.35);
@@ -1724,11 +1724,12 @@ var GlobeEngine = (function(){
     var targetLam = -lon * Math.PI / 180;
     var targetPhi = lat * Math.PI / 180;
 
-    // Shortest angular path
-    while (targetLam - rotY > Math.PI) targetLam -= Math.PI * 2;
-    while (targetLam - rotY < -Math.PI) targetLam += Math.PI * 2;
+    // Shortest angular path using deterministic modulo arithmetic (never hangs)
+    var diff = (targetLam - rotY) % (Math.PI * 2);
+    if (diff > Math.PI) diff -= Math.PI * 2;
+    if (diff < -Math.PI) diff += Math.PI * 2;
 
-    targetRotY = targetLam;
+    targetRotY = rotY + diff;
     targetRotX = Math.max(-1.15, Math.min(1.15, targetPhi));
     isAnimatingTo = true;
     velX = 0;
@@ -1736,7 +1737,7 @@ var GlobeEngine = (function(){
     idleTicks = 0;
 
     if (onComplete){
-      setTimeout(onComplete, 420);
+      setTimeout(onComplete, 350);
     }
   }
 
@@ -1773,6 +1774,10 @@ var GlobeEngine = (function(){
   }
 
   function render(){
+    if (typeof currentScreen !== 'undefined' && currentScreen !== 'region_select'){
+      animId = requestAnimationFrame(render);
+      return;
+    }
     if (!ctx || width === 0 || height === 0){
       animId = requestAnimationFrame(render);
       return;
@@ -1977,7 +1982,7 @@ var GlobeEngine = (function(){
         var topY = bp.y - poleH;
         var dTop = Math.hypot(mx - topX, my - topY);
         var dBase = Math.hypot(mx - bp.x, my - bp.y);
-        if (dTop < 24 || dBase < 18){
+        if (dTop < 36 || dBase < 26){
           return { region: b, proj: bp, topX: topX, topY: topY };
         }
       }
@@ -2018,6 +2023,14 @@ var GlobeEngine = (function(){
     tt.style.left = hit.topX + 'px';
     tt.style.top = hit.topY + 'px';
     tt.classList.add('visible');
+
+    tt.onclick = function(e){
+      e.stopPropagation();
+      if (b.id === 'germany'){
+        switchScreen('farm');
+        showNotification('🇩🇪', 'Welcome to your Central European Farm in Germany!', 'bank', null);
+      }
+    };
   }
 
   function onPointerDown(e){
@@ -2061,7 +2074,7 @@ var GlobeEngine = (function(){
     isDragging = false;
     if (canvas) canvas.style.cursor = hoveredRegion ? 'pointer' : 'grab';
 
-    if (dragDistance < 8){ // Clean click without drag
+    if (dragDistance < 15){ // Clean click without drag
       if (!canvas) return;
       var rect = canvas.getBoundingClientRect();
       var mx = e.clientX - rect.left;
@@ -3530,7 +3543,18 @@ function loadState(){
         var loaded = JSON.parse(res.value);
         var elapsedReal = Date.now() - (loaded.lastSaveReal || Date.now());
         state = loaded;
+        if (!state.roads) state.roads = {
+          main: {built:false,building:false,buildHours:0},
+          garden_walk: {built:false,building:false,buildHours:0},
+          market_promenade: {built:false,building:false,buildHours:0}
+        };
+        if (!state.roads.main) state.roads.main = {built:false,building:false,buildHours:0};
+        if (!state.roads.garden_walk) state.roads.garden_walk = {built:false,building:false,buildHours:0};
+        if (!state.roads.market_promenade) state.roads.market_promenade = {built:false,building:false,buildHours:0};
+
         if (!state.storage) state.storage = { built:false, building:false, buildHours:0, capacity:0, stored:0, level:0, expanding:false, expandHours:0, warnedFull:false };
+        if (state.storage.items===undefined) state.storage.items = [];
+        if (state.storage.assignedLaborerId===undefined) state.storage.assignedLaborerId = null;
         if (state.storage.capacity===undefined) state.storage.capacity = state.storage.built ? STORAGE_BASE_CAPACITY : 0;
         if (state.storage.stored===undefined) state.storage.stored = 0;
         if (state.storage.level===undefined) state.storage.level = state.storage.built ? 1 : 0;
@@ -3538,18 +3562,25 @@ function loadState(){
         if (state.storage.expandHours===undefined) state.storage.expandHours = 0;
         if (state.storage.warnedFull===undefined) state.storage.warnedFull = false;
         if (state.loan===undefined) state.loan = null;
-        if (!state.buildings) state.buildings = { road:{built:false,building:false,buildHours:0}, garden:{built:false,building:false,buildHours:0}, pond:{built:false,building:false,buildHours:0},
-          coffee_shop:{built:false,building:false,buildHours:0}, juice_bar:{built:false,building:false,buildHours:0} };
+
+        if (!state.buildings) state.buildings = {};
         if (!state.buildings.road) state.buildings.road = {built:false,building:false,buildHours:0};
+        if (!state.buildings.garden) state.buildings.garden = {built:false,building:false,buildHours:0,flowerType:null,freshness:100,warnedLow:false,careAnimUntil:0};
+        if (!state.buildings.pond) state.buildings.pond = {built:false,building:false,buildHours:0,specialization:null,freshness:100,warnedLow:false,careAnimUntil:0,assignedWorker:null,pendingCollect:0,collecting:false,collectStartReal:0,collectAmount:0};
+        if (!state.buildings.coffee_shop) state.buildings.coffee_shop = {built:false,building:false,buildHours:0};
+        if (!state.buildings.juice_bar) state.buildings.juice_bar = {built:false,building:false,buildHours:0};
+
         if (state.treesRemoved===undefined) state.treesRemoved = 0;
-        state.plots.forEach(function(p){ if (p.zeroHealthStreakHours===undefined) p.zeroHealthStreakHours = 0; });
+        if (state.plots) state.plots.forEach(function(p){ if (p.zeroHealthStreakHours===undefined) p.zeroHealthStreakHours = 0; });
         if (state.buildings.garden.flowerType===undefined) state.buildings.garden.flowerType = null;
         if (state.buildings.pond.specialization===undefined) state.buildings.pond.specialization = null;
         ['garden','pond'].forEach(function(bk){
           var bb = state.buildings[bk];
-          if (bb.freshness===undefined) bb.freshness = 100;
-          if (bb.warnedLow===undefined) bb.warnedLow = false;
-          if (bb.careAnimUntil===undefined) bb.careAnimUntil = 0;
+          if (bb){
+            if (bb.freshness===undefined) bb.freshness = 100;
+            if (bb.warnedLow===undefined) bb.warnedLow = false;
+            if (bb.careAnimUntil===undefined) bb.careAnimUntil = 0;
+          }
         });
         var pondB = state.buildings.pond;
         if (pondB.assignedWorker===undefined) pondB.assignedWorker = null;
@@ -6419,6 +6450,7 @@ function bonusText(){
 // The speed <select> is built ONCE and never rebuilt — replacing it every tick was
 // destroying the native dropdown mid-interaction, which is why selection wasn't sticking.
 function buildSeasonChipOnce(){
+  if (!state) return;
   var speedOpts = SPEED_OPTIONS.map(function(o){ return '<option value="'+o.factor+'" '+(o.factor===state.speedFactor?'selected':'')+'>'+o.label+'</option>'; }).join('');
   var el = document.getElementById('seasonChipStatic');
   if (!el) return;
@@ -6427,13 +6459,16 @@ function buildSeasonChipOnce(){
   if (sel) sel.addEventListener('change', function(e){ setSpeed(parseInt(e.target.value, 10)); });
 }
 function countPendingTasks(){
+  if (!state) return 0;
   var n = 0;
-  if (!state.storage.built && !state.storage.building) n++;
-  state.plots.forEach(function(p){
-    if (['barren','overgrown','ready','dead'].indexOf(p.status) >= 0) n++;
-  });
-  if (state.buildings.garden.built && !state.buildings.garden.flowerType) n++;
-  if (state.buildings.pond.built && !state.buildings.pond.specialization) n++;
+  if (state.storage && !state.storage.built && !state.storage.building) n++;
+  if (state.plots){
+    state.plots.forEach(function(p){
+      if (['barren','overgrown','ready','dead'].indexOf(p.status) >= 0) n++;
+    });
+  }
+  if (state.buildings && state.buildings.garden && state.buildings.garden.built && !state.buildings.garden.flowerType) n++;
+  if (state.buildings && state.buildings.pond && state.buildings.pond.built && !state.buildings.pond.specialization) n++;
   return n;
 }
 function dockHtml(){
@@ -6524,6 +6559,16 @@ function closeAllCorners(){
   uiCornersState.topRightExpanded = false;
   uiCornersState.bottomToolsExpanded = false;
   renderCornersUI();
+}
+
+// Expose globally for inline event handlers and window scope
+window.toggleCorner = toggleCorner;
+window.closeAllCorners = closeAllCorners;
+window.uiCornersState = uiCornersState;
+if (typeof globalThis !== 'undefined'){
+  globalThis.toggleCorner = toggleCorner;
+  globalThis.closeAllCorners = closeAllCorners;
+  globalThis.uiCornersState = uiCornersState;
 }
 
 function renderCornersUI(){
@@ -6645,6 +6690,42 @@ function wireEvents(){
     };
   }
 
+  // 3 Corner Menus Toggles & Tray Click Protection
+  var btnTL = document.getElementById('btnToggleTopLeft');
+  if (btnTL){
+    btnTL.onclick = function(e){
+      e.stopPropagation();
+      toggleCorner('topLeftExpanded');
+    };
+  }
+  var btnTR = document.getElementById('btnToggleTopRight');
+  if (btnTR){
+    btnTR.onclick = function(e){
+      e.stopPropagation();
+      toggleCorner('topRightExpanded');
+    };
+  }
+  var btnBT = document.getElementById('btnToggleBottomTools');
+  if (btnBT){
+    btnBT.onclick = function(e){
+      e.stopPropagation();
+      toggleCorner('bottomToolsExpanded');
+    };
+  }
+  var btnCloseBT = document.getElementById('btnCloseBottomTools');
+  if (btnCloseBT){
+    btnCloseBT.onclick = function(e){
+      e.stopPropagation();
+      toggleCorner('bottomToolsExpanded');
+    };
+  }
+  ['topLeftTray', 'topRightTray', 'bottomToolsTray'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el){
+      el.onclick = function(e){ e.stopPropagation(); };
+    }
+  });
+
   // Regional screen view modes
   document.querySelectorAll('[data-viewmode]').forEach(function(b){
     b.onclick = function(e){
@@ -6653,17 +6734,20 @@ function wireEvents(){
       renderRegionScreen();
     };
   });
-  // Regional screen globe quick-center chips
+  // Regional screen globe quick-center chips & active farm enter
   document.querySelectorAll('[data-centerregion]').forEach(function(b){
     b.onclick = function(e){
       e.stopPropagation();
       var regId = b.getAttribute('data-centerregion');
       var reg = REGIONAL_BIOMES.find(function(x){ return x.id === regId; });
       if (reg){
-        GlobeEngine.rotateTo(reg.lat, reg.lon);
         if (reg.id === 'germany'){
-          showNotification('🇩🇪', 'Centered on Central European Plains (Germany) — Active Farm', 'bank', null);
+          GlobeEngine.rotateTo(reg.lat, reg.lon, function(){
+            switchScreen('farm');
+            showNotification('🇩🇪', 'Welcome to your Central European Farm in Germany!', 'bank', null);
+          });
         } else {
+          GlobeEngine.rotateTo(reg.lat, reg.lon);
           showNotification('🔒', reg.flag + ' ' + reg.title + ' (' + reg.country + ') requires ' + reg.unlockO2.toLocaleString() + ' O₂ to unlock.', 'bank', null);
         }
       }
