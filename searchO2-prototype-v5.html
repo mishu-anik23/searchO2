@@ -5220,51 +5220,171 @@ function farmRoadNetworkHtml(){
   return '<div class="farm-roads-layer" id="farmRoadsLayer">' + drawFarmRoadNetworkSvg() + '</div>';
 }
 
-// ================= OPTIMAL GRID-BASED PATHFINDING & ROUTING =================
-// Computes optimal Manhattan waypoint route along connecting paths & Main Road
+// ================= STRICT MANHATTAN ROAD NETWORK PATHFINDING =================
+// Computes exact paved road waypoints connecting any origin to any destination,
+// strictly following Avenue subways, East-West spurs, and the 50px cross-lane L-turn into Storage Barn.
+
+function getRoadNetworkWaypoints(origin, destination){
+  var mainRoadY = 47.0;
+
+  // Exact path from location to Main Road junction [loc -> ... -> Main Road]
+  function toMainRoad(loc){
+    if (typeof loc === 'object' && loc !== null && 'x' in loc && 'y' in loc){
+      if (Math.abs(loc.y - mainRoadY) < 1) return [{ x: loc.x, y: mainRoadY }];
+      return [{ x: loc.x, y: loc.y }, { x: loc.x, y: mainRoadY }];
+    }
+    if (loc === 'main_gate'){
+      return [{ x: 1.0, y: mainRoadY }];
+    }
+    if (loc === 'crew_shed'){
+      // Crew Shed Porch (x:12.7, y:66) up Crew Trail to Main Road (x:12.7, y:47)
+      return [{ x: 12.7, y: 66.0 }, { x: 12.7, y: mainRoadY }];
+    }
+    if (loc === 'storage'){
+      // Storage Apron (x:52.5, y:18) -> 50px cross-lane (x:52.5, y:21.7) -> L-Turn East to Avenue 2 (x:60.2, y:21.7) -> Avenue 2 South to Main Road (x:60.2, y:47)
+      return [{ x: 52.5, y: 18.0 }, { x: 52.5, y: 21.7 }, { x: 60.2, y: 21.7 }, { x: 60.2, y: mainRoadY }];
+    }
+    if (loc === 0){
+      // Plot 0 South Gate (x:24, y:31.4) -> East Spur to Avenue 1 (x:31, y:31.4) -> Avenue 1 South to Main Road (x:31, y:47)
+      return [{ x: 24.0, y: 31.4 }, { x: 31.0, y: 31.4 }, { x: 31.0, y: mainRoadY }];
+    }
+    if (loc === 1){
+      // Plot 1 South Gate (x:52, y:41.4) -> East Spur to Avenue 2 (x:60.2, y:41.4) -> Avenue 2 South to Main Road (x:60.2, y:47)
+      return [{ x: 52.0, y: 41.4 }, { x: 60.2, y: 41.4 }, { x: 60.2, y: mainRoadY }];
+    }
+    if (loc === 2){
+      // Plot 2 South Gate (x:80.5, y:31.4) -> West Spur to Avenue 3 (x:73.8, y:31.4) -> Avenue 3 South to Main Road (x:73.8, y:47)
+      return [{ x: 80.5, y: 31.4 }, { x: 73.8, y: 31.4 }, { x: 73.8, y: mainRoadY }];
+    }
+    if (loc === 3){
+      // Plot 3 North Gate (x:24, y:65.4) -> East Spur to Avenue 1 (x:31, y:65.4) -> Avenue 1 North to Main Road (x:31, y:47)
+      return [{ x: 24.0, y: 65.4 }, { x: 31.0, y: 65.4 }, { x: 31.0, y: mainRoadY }];
+    }
+    if (loc === 4){
+      // Plot 4 North Gate (x:52.5, y:66) -> Avenue 2 South branch straight up to Main Road (x:52.5, y:47)
+      return [{ x: 52.5, y: 66.0 }, { x: 52.5, y: mainRoadY }];
+    }
+    if (loc === 5){
+      // Plot 5 North Gate (x:80.5, y:65.4) -> West Spur to Avenue 3 (x:73.8, y:65.4) -> Avenue 3 North to Main Road (x:73.8, y:47)
+      return [{ x: 80.5, y: 65.4 }, { x: 73.8, y: 65.4 }, { x: 73.8, y: mainRoadY }];
+    }
+    if (loc === 'garage'){
+      return [{ x: 93.5, y: 34.0 }, { x: 93.5, y: mainRoadY }];
+    }
+    if (loc === 'pond'){
+      return [{ x: 38.0, y: 34.0 }, { x: 38.0, y: mainRoadY }];
+    }
+    if (loc === 'garden'){
+      return [{ x: 38.0, y: 66.0 }, { x: 38.0, y: mainRoadY }];
+    }
+    if (loc === 'coffee_shop'){
+      return [{ x: 67.0, y: 34.0 }, { x: 67.0, y: mainRoadY }];
+    }
+    if (loc === 'juice_bar'){
+      return [{ x: 67.0, y: 66.0 }, { x: 67.0, y: mainRoadY }];
+    }
+    if (loc === 'rocks'){
+      return [{ x: 47.0, y: 28.0 }, { x: 47.0, y: mainRoadY }];
+    }
+    if (loc === 'lawn'){
+      return [{ x: 50.0, y: 56.0 }, { x: 50.0, y: mainRoadY }];
+    }
+    return [{ x: 24.0, y: mainRoadY }];
+  }
+
+  var originPts = toMainRoad(origin);
+  var destPtsReversed = toMainRoad(destination);
+  var destPts = destPtsReversed.slice().reverse();
+
+  var originJunction = originPts[originPts.length - 1];
+  var destJunction = destPts[0];
+
+  var fullRoute = [];
+  originPts.forEach(function(pt){ fullRoute.push(pt); });
+
+  // Travel horizontally along Main Road if junctions differ
+  if (Math.abs(originJunction.x - destJunction.x) > 0.5){
+    fullRoute.push({ x: destJunction.x, y: mainRoadY });
+  }
+
+  destPts.forEach(function(pt, idx){
+    if (idx > 0) fullRoute.push(pt);
+  });
+
+  // Deduplicate consecutive identical waypoints
+  var cleanRoute = [];
+  fullRoute.forEach(function(pt){
+    if (!cleanRoute.length){
+      cleanRoute.push(pt);
+    } else {
+      var last = cleanRoute[cleanRoute.length - 1];
+      if (Math.hypot(last.x - pt.x, last.y - pt.y) > 0.3){
+        cleanRoute.push(pt);
+      }
+    }
+  });
+
+  return cleanRoute;
+}
+
 function getPlotJunctionX(plotId){
-  if (plotId === 0 || plotId === 3) return 24.5;
-  if (plotId === 1 || plotId === 4) return 52.5;
-  return 80.5; // plot 2 & 5
+  if (plotId === 0 || plotId === 3) return 31.0; // Avenue 1
+  if (plotId === 1) return 60.2;                 // Avenue 2 North
+  if (plotId === 4) return 52.5;                 // Avenue 2 South
+  return 73.8;                                   // Avenue 3 (Plots 2 & 5)
 }
 
 function getPlotDestY(plotId){
-  if (plotId === 0 || plotId === 2) return 20;
-  if (plotId === 1) return 32;
-  return 78; // plot 3, 4, 5
+  if (plotId === 0 || plotId === 2) return 31.4;
+  if (plotId === 1) return 41.4;
+  if (plotId === 3 || plotId === 5) return 65.4;
+  if (plotId === 4) return 66.0;
+  return 47.0;
 }
 
 function calculateGridRoute(startPoint, endPoint){
-  var waypoints = [];
-  var mainRoadY = 47; // center line of Main Road
-
-  waypoints.push({ x: startPoint.x, y: startPoint.y });
-
-  // 1. Move from start to Main Road junction if not already on Main Road
-  if (Math.abs(startPoint.y - mainRoadY) > 2){
-    waypoints.push({ x: startPoint.x, y: mainRoadY });
-  }
-
-  // 2. Travel along Main Road to destination column
-  if (Math.abs(startPoint.x - endPoint.x) > 2){
-    waypoints.push({ x: endPoint.x, y: mainRoadY });
-  }
-
-  // 3. Move along feeder path from Main Road to destination
-  if (Math.abs(startPoint.y - endPoint.y) > 2 || Math.abs(startPoint.x - endPoint.x) > 2){
-    waypoints.push({ x: endPoint.x, y: endPoint.y });
-  }
-  return waypoints;
+  return getRoadNetworkWaypoints(startPoint, endPoint);
 }
 
-// Enhanced multi-segment waypoint animator with smooth cornering, rotation banking, and proportional velocities
-function animateAlongWaypoints(el, waypoints, totalDurationMs, onComplete){
-  if (!waypoints || waypoints.length < 2){
+// Enhanced multi-segment waypoint animator with smooth cornering curves and continuous rotational heading
+function animateAlongWaypoints(el, rawWaypoints, totalDurationMs, onComplete){
+  if (!rawWaypoints || rawWaypoints.length < 2){
     if (onComplete) onComplete();
     return;
   }
 
-  // Calculate Euclidean distance for each leg to achieve constant realistic speed
+  var isPedestrian = el.classList.contains('human-walker-sprite');
+
+  // For vehicles: insert smooth filleted cornering points at sharp 90° intersections
+  var waypoints = [];
+  if (isPedestrian){
+    waypoints = rawWaypoints;
+  } else {
+    for (var w = 0; w < rawWaypoints.length; w++){
+      if (w > 0 && w < rawWaypoints.length - 1){
+        var p0 = rawWaypoints[w - 1];
+        var p1 = rawWaypoints[w];
+        var p2 = rawWaypoints[w + 1];
+        var d1 = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+        var d2 = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        // If corner turn detected, fillet corner with curved control point
+        if (d1 > 4 && d2 > 4){
+          var cut1 = Math.min(2.5, d1 * 0.25);
+          var cut2 = Math.min(2.5, d2 * 0.25);
+          var entry = { x: p1.x - (p1.x - p0.x) * (cut1 / d1), y: p1.y - (p1.y - p0.y) * (cut1 / d1) };
+          var apex  = { x: (p1.x * 2 + entry.x + p2.x) / 4,   y: (p1.y * 2 + entry.y + p2.y) / 4 };
+          var exit  = { x: p1.x + (p2.x - p1.x) * (cut2 / d2), y: p1.y + (p2.y - p1.y) * (cut2 / d2) };
+          waypoints.push(entry);
+          waypoints.push(apex);
+          waypoints.push(exit);
+          continue;
+        }
+      }
+      waypoints.push(rawWaypoints[w]);
+    }
+  }
+
+  // Calculate Euclidean distance for proportional velocities
   var legDists = [];
   var totalDist = 0;
   for (var i = 1; i < waypoints.length; i++){
@@ -5275,6 +5395,7 @@ function animateAlongWaypoints(el, waypoints, totalDurationMs, onComplete){
   if (totalDist < 0.1) totalDist = 0.1;
 
   var currentIdx = 0;
+  var currentAngle = 0;
   el.style.left = waypoints[0].x + '%';
   el.style.top = waypoints[0].y + '%';
 
@@ -5289,24 +5410,26 @@ function animateAlongWaypoints(el, waypoints, totalDurationMs, onComplete){
     var legDist = legDists[currentIdx - 1] || 1;
     var stepDuration = Math.max(120, Math.round(totalDurationMs * (legDist / totalDist)));
 
-    // Calculate heading angle for realistic directional vehicle rotation
     var dx = curr.x - prev.x;
     var dy = curr.y - prev.y;
-    var rotDeg = 0;
-    if (el.classList.contains('human-walker-sprite')){
-      // Human pedestrians walk upright with directional horizontal flip
-      if (dx > 0.5) el.style.transform = 'scaleX(1)';
-      else if (dx < -0.5) el.style.transform = 'scaleX(-1)';
-    } else if (Math.abs(dx) >= Math.abs(dy)){
-      rotDeg = dx >= 0 ? 0 : 180;
-      el.style.transform = dx >= 0 ? 'scaleX(1) rotate(0deg)' : 'scaleX(-1) rotate(0deg)';
+
+    if (isPedestrian){
+      // Pedestrians face walking direction without tilting or snapping
+      if (dx > 0.4) el.style.transform = 'scaleX(1)';
+      else if (dx < -0.4) el.style.transform = 'scaleX(-1)';
+      el.style.transition = 'left ' + (stepDuration / 1000) + 's linear, top ' + (stepDuration / 1000) + 's linear';
     } else {
-      rotDeg = dy >= 0 ? 90 : -90;
-      var flip = prev.x > 50 ? 1 : -1;
-      el.style.transform = 'scaleX(' + flip + ') rotate(' + (rotDeg * flip) + 'deg)';
+      // Vehicles: Continuous rotational heading tracking without abrupt flipping
+      if (Math.hypot(dx, dy) > 0.1){
+        var targetAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+        // Shortest angular difference unwrapping
+        var diff = ((targetAngle - currentAngle + 540) % 360) - 180;
+        currentAngle += diff;
+      }
+      el.style.transform = 'rotate(' + currentAngle + 'deg)';
+      el.style.transition = 'left ' + (stepDuration / 1000) + 's linear, top ' + (stepDuration / 1000) + 's linear, transform ' + Math.min(0.35, stepDuration / 1000) + 's ease-in-out';
     }
 
-    el.style.transition = 'left ' + (stepDuration / 1000) + 's linear, top ' + (stepDuration / 1000) + 's linear, transform 0.28s ease-in-out';
     el.style.left = curr.x + '%';
     el.style.top = curr.y + '%';
     setTimeout(nextStep, stepDuration);
@@ -5356,29 +5479,35 @@ function spawnVehicleAnimation(fromLayoutOrId){
   pushReport('🚛 Logging flatbed truck entered through Farm Main Gate and navigated along road to Plot ' + (plotId + 1) + '.');
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
 
-  // Waypoints: Enter Gate -> Main Road Junction -> Feeder path to Plot
+  // Waypoints: Enter Gate -> Main Road Junction -> Feeder Subway to Plot
   var inRoute = [
-    { x: -12, y: 47 },
-    { x: 1,   y: 47 },
-    { x: junctionX, y: 47 },
+    { x: -12, y: 47.0 },
+    { x: 1.0, y: 47.0 },
+    { x: junctionX, y: 47.0 },
     { x: junctionX, y: plotY }
   ];
 
   animateAlongWaypoints(truckEl, inRoute, 2400, function(){
-    // At plot: pause for wood loading & sawing SFX
     if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
     pushReport('🪵 Timber logs loaded securely onto truck bolsters at Plot ' + (plotId + 1) + '.');
 
     setTimeout(function(){
-      // Route out: Feeder path -> Main Road -> Exit through Main Gate
-      var outRoute = [
+      // Smooth Turnaround Loop at Plot (sweeping semicircular arc rather than sudden flip)
+      var isNorthPlot = plotY < 47;
+      var loopDir = isNorthPlot ? 1 : -1;
+      var turnaroundArc = [
         { x: junctionX, y: plotY },
-        { x: junctionX, y: 47 },
-        { x: 1,   y: 47 },
-        { x: -16, y: 47 }
+        { x: junctionX + 3.2, y: plotY - 1.8 * loopDir },
+        { x: junctionX + 4.5, y: plotY + 2.0 * loopDir },
+        { x: junctionX + 1.5, y: plotY + 4.5 * loopDir },
+        { x: junctionX, y: plotY + 6.0 * loopDir },
+        { x: junctionX, y: 47.0 },
+        { x: 1.0, y: 47.0 },
+        { x: -16.0, y: 47.0 }
       ];
+
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
-      animateAlongWaypoints(truckEl, outRoute, 2600, function(){
+      animateAlongWaypoints(truckEl, turnaroundArc, 3100, function(){
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
         pushReport('✓ Logging truck departed through Farm Main Gate.');
         if (truckEl.parentNode) truckEl.parentNode.removeChild(truckEl);
@@ -5472,14 +5601,20 @@ function drawHumanWorkerSvg(type, tool, isWalking, isWorking){
   '</g>';
 }
 
-// Two-way Worker Walking Animation: Full-human walking model along Manhattan road network
+// Two-way Worker Walking Animation: Full-human walking model along strict Manhattan road network
 function animateWorkerPathWalk(worker, destination, origin){
   var scene = document.querySelector('.field-scene');
   if (!scene) return;
 
   var isReturnWalk = (destination === 'crew_shed');
-  var startPt = isReturnWalk ? getFarmLocationCoords(origin || 0) : { x: 12.7, y: 76 };
-  var endPt = isReturnWalk ? { x: 12.7, y: 76 } : getFarmLocationCoords(destination);
+  var fromKey = isReturnWalk ? (origin !== undefined ? origin : 0) : 'crew_shed';
+  var toKey = isReturnWalk ? 'crew_shed' : destination;
+
+  // Single consistent worker visuals: Set inTransit flag while pedestrian sprite walks
+  if (worker && !isReturnWalk){
+    worker.inTransit = true;
+    render();
+  }
 
   var workerType = worker ? worker.type : 'farmer';
   var workerTool = WORKER_TYPES[workerType] ? WORKER_TYPES[workerType].tool : 'shovel';
@@ -5511,33 +5646,24 @@ function animateWorkerPathWalk(worker, destination, origin){
   }
   truckLayer.appendChild(workerEl);
 
-  var walkRoute = [];
-  if (isReturnWalk){
-    // Inbound recall: Origin -> Feeder Subway -> Main Road (y:47) -> Crew Trail (x:12.7, y:47) -> Crew Shed (x:12.7, y:76)
-    walkRoute = [
-      { x: startPt.x, y: startPt.y },
-      { x: startPt.x, y: 47 },
-      { x: 12.7,      y: 47 },
-      { x: 12.7,      y: 76 }
-    ];
-  } else {
-    // Outbound dispatch: Crew Shed (x:12.7, y:76) -> Crew Trail -> Main Road (y:47) -> Destination Subway -> Destination
-    walkRoute = [
-      { x: 12.7,    y: 76 },
-      { x: 12.7,    y: 47 },
-      { x: endPt.x, y: 47 },
-      { x: endPt.x, y: endPt.y }
-    ];
+  // Strictly follow paved road network waypoints (Crew Trail -> Main Road -> Avenue -> Spur -> Gate)
+  var walkRoute = getRoadNetworkWaypoints(fromKey, toKey);
+
+  // Compute realistic travel time proportional to actual road path length
+  var totalDist = 0;
+  for (var r = 1; r < walkRoute.length; r++){
+    totalDist += Math.hypot(walkRoute[r].x - walkRoute[r-1].x, walkRoute[r].y - walkRoute[r-1].y);
   }
+  var walkDuration = Math.max(1600, Math.min(3400, Math.round(totalDist * 42)));
 
-  var dist = Math.abs(startPt.x - endPt.x) + Math.abs(startPt.y - 47) + Math.abs(47 - endPt.y);
-  var duration = Math.round(2400 + dist * 26);
-
-  animateAlongWaypoints(workerEl, walkRoute, duration, function(){
-    if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
-    setTimeout(function(){
-      if (workerEl.parentNode) workerEl.parentNode.removeChild(workerEl);
-    }, 400);
+  animateAlongWaypoints(workerEl, walkRoute, walkDuration, function(){
+    if (workerEl.parentNode) workerEl.parentNode.removeChild(workerEl);
+    if (!isReturnWalk){
+      if (worker) worker.inTransit = false;
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+      // Mount on-site working figure seamlessly upon arrival
+      render();
+    }
   });
 }
 
@@ -5888,9 +6014,10 @@ function plotSvg(p){
       '<rect x="-54" y="-12" width="108" height="24" rx="6" fill="rgba(38,50,56,0.94)" stroke="' + strokeClr + '" stroke-width="1.3"/>' +
       '<rect x="-48" y="4" width="96" height="4" rx="2" fill="#263238"/>' +
       '<rect x="-48" y="4" width="' + (96 * tPct / 100) + '" height="4" rx="2" fill="' + strokeClr + '"/>' +
-      '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="' + textClr + '">' + tLabel + ' ' + tPct + '%</text>' +
+      '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="' + textClr + '">' + (w && w.inTransit ? '🥾 En Route ' + tPct + '%' : tLabel + ' ' + tPct + '%') + '</text>' +
     '</g>';
-    if (w){
+    // Single visual: only draw worker on-site once they have finished walking to plot!
+    if (w && !w.inTransit){
       content += personSvg(w.type, true, 148, 52, false, toolUsed);
     }
   } else if (p.status==='dead'){
@@ -5905,9 +6032,10 @@ function plotSvg(p){
       '<rect x="-54" y="-12" width="108" height="24" rx="6" fill="rgba(38,50,56,0.94)" stroke="#E57373" stroke-width="1.3"/>' +
       '<rect x="-48" y="4" width="96" height="4" rx="2" fill="#263238"/>' +
       '<rect x="-48" y="4" width="' + (96 * rPct / 100) + '" height="4" rx="2" fill="#E57373"/>' +
-      '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="#FFCDD2">🪓 Felling Tree ' + rPct + '%</text>' +
+      '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="#FFCDD2">' + (w && w.inTransit ? '🥾 En Route ' + rPct + '%' : '🪓 Felling Tree ' + rPct + '%') + '</text>' +
     '</g>';
-    if (w){
+    // Single visual: only draw woodcutter on-site once they have arrived at the tree!
+    if (w && !w.inTransit){
       content += personSvg(w.type, true, 60, 52, false, remCfg2.tool || 'axe');
       content += '<g class="dust" style="transform-origin:75px 82px;"><rect x="75" y="82" width="4" height="4" fill="#8D6E63"/></g>'+
                  '<g class="dust" style="transform-origin:85px 78px; animation-delay:0.35s;"><rect x="85" y="78" width="3.5" height="3.5" fill="#D7CCC8"/></g>';
@@ -5948,7 +6076,7 @@ function plotSvg(p){
         '<circle r="14" fill="none" stroke="#00000022" stroke-width="5"/>'+
         '<circle r="14" fill="none" stroke="'+ 'var(--blue,#5A8FBF)' +'" stroke-width="5" stroke-dasharray="'+(2*Math.PI*14)+'" stroke-dashoffset="'+((2*Math.PI*14)-(2*Math.PI*14*hpct/100))+'" stroke-linecap="round" transform="rotate(-90)"/>'+
         '<text x="0" y="4" font-size="8" text-anchor="middle" fill="#2C4A32" font-weight="700">🧺'+hpct+'%</text></g>';
-    } else if (w){
+    } else if (w && !w.inTransit){
       content += personSvg(w.type, true, 158, 60);
     }
 
@@ -6418,51 +6546,81 @@ function drawMainGateScene(road){
   var pct = isBuilding ? Math.round(Math.min(100, (road.buildHours / 4) * 100)) : 0;
 
   var statusBadge = isBuilt
-    ? '<text x="80" y="114" font-size="6.5" font-weight="800" fill="#2E7D32" text-anchor="middle">✓ GATE & MAIN ROAD OPEN</text>'
+    ? '<text x="80" y="115" font-size="6.5" font-weight="800" fill="#2E7D32" text-anchor="middle">✓ GATE & MAIN ROAD OPEN</text>'
     : (isBuilding
-      ? '<text x="80" y="114" font-size="6.5" font-weight="800" fill="#E65100" text-anchor="middle">🚧 PAVING ROAD (' + pct + '%)</text>'
-      : '<text x="80" y="114" font-size="6" font-weight="800" fill="#795548" text-anchor="middle">🔒 GATEWAY · CLICK TO PAVE</text>');
+      ? '<text x="80" y="115" font-size="6.5" font-weight="800" fill="#E65100" text-anchor="middle">🚧 PAVING ROAD (' + pct + '%)</text>'
+      : '<text x="80" y="115" font-size="6" font-weight="800" fill="#795548" text-anchor="middle">🔒 GATEWAY · CLICK TO PAVE</text>');
 
+  // Reoriented horizontal gate aligned West-to-East directly into Main Road
   return '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
-    '<ellipse cx="80" cy="110" rx="74" ry="10" fill="#3E2723" opacity="0.3"/>' +
+    // Ground shadow
+    '<rect x="0" y="36" width="160" height="50" fill="#1B2E15" opacity="0.45" rx="3"/>' +
+
+    // 1. Horizontal Roadway Surface (West entrance -> East farm boundary)
     (isBuilt
-      ? '<polygon points="32,108 128,108 114,64 46,64" fill="#9E8D7B" stroke="#6D4C41" stroke-width="1.2"/>' +
-        '<line x1="80" y1="108" x2="80" y2="64" stroke="#D7CCC8" stroke-width="1.5" stroke-dasharray="6,6"/>'
-      : '<polygon points="34,108 126,108 112,66 48,66" fill="#8D6E63" stroke="#6D4C41" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>') +
-    '<rect x="14" y="38" width="22" height="70" rx="2" fill="#B0BEC5" stroke="#546E7A" stroke-width="1.5"/>' +
-    '<line x1="14" y1="52" x2="36" y2="52" stroke="#78909C" stroke-width="1"/>' +
-    '<line x1="14" y1="68" x2="36" y2="68" stroke="#78909C" stroke-width="1"/>' +
-    '<line x1="14" y1="84" x2="36" y2="84" stroke="#78909C" stroke-width="1"/>' +
-    '<line x1="14" y1="98" x2="36" y2="98" stroke="#78909C" stroke-width="1"/>' +
-    '<polygon points="10,38 40,38 36,30 14,30" fill="#CFD8DC" stroke="#546E7A" stroke-width="1.5"/>' +
-    '<polygon points="14,30 36,30 25,24" fill="#90A4AE"/>' +
-    '<rect x="124" y="38" width="22" height="70" rx="2" fill="#B0BEC5" stroke="#546E7A" stroke-width="1.5"/>' +
-    '<line x1="124" y1="52" x2="146" y2="52" stroke="#78909C" stroke-width="1"/>' +
-    '<line x1="124" y1="68" x2="146" y2="68" stroke="#78909C" stroke-width="1"/>' +
-    '<line x1="124" y1="84" x2="146" y2="84" stroke="#78909C" stroke-width="1"/>' +
-    '<line x1="124" y1="98" x2="146" y2="98" stroke="#78909C" stroke-width="1"/>' +
-    '<polygon points="120,38 150,38 146,30 124,30" fill="#CFD8DC" stroke="#546E7A" stroke-width="1.5"/>' +
-    '<polygon points="124,30 146,30 135,24" fill="#90A4AE"/>' +
-    '<path d="M18,36 Q80,24 142,36 L140,44 Q80,32 20,44 Z" fill="#5D4037" stroke="#3E2723" stroke-width="1.5"/>' +
-    '<rect x="34" y="24" width="92" height="15" rx="3" fill="#FBF6EC" stroke="#8D6E63" stroke-width="1.2"/>' +
-    '<text x="80" y="32" font-size="6" font-weight="900" fill="#1B5E20" text-anchor="middle">🌿 searchO2 ECO-FARM 🌿</text>' +
-    '<text x="80" y="37" font-size="4.5" font-weight="800" fill="#4E342E" text-anchor="middle">SANCTUARY & BIO-GROUNDS</text>' +
-    '<line x1="36" y1="58" x2="42" y2="54" stroke="#263238" stroke-width="1.5"/>' +
-    '<rect x="40" y="52" width="6" height="10" rx="1.5" fill="#FFE082" stroke="#263238" stroke-width="1"/>' +
-    '<circle cx="43" cy="57" r="5" fill="#FFF59D" opacity="0.6"/>' +
-    '<line x1="124" y1="58" x2="118" y2="54" stroke="#263238" stroke-width="1.5"/>' +
-    '<rect x="114" y="52" width="6" height="10" rx="1.5" fill="#FFE082" stroke="#263238" stroke-width="1"/>' +
-    '<circle cx="117" cy="57" r="5" fill="#FFF59D" opacity="0.6"/>' +
-    '<polygon points="36,66 48,64 48,102 36,104" fill="#6D4C41" stroke="#3E2723" stroke-width="1" opacity="0.85"/>' +
-    '<line x1="36" y1="76" x2="48" y2="74" stroke="#263238" stroke-width="1.5"/>' +
-    '<line x1="36" y1="94" x2="48" y2="92" stroke="#263238" stroke-width="1.5"/>' +
-    '<polygon points="124,66 112,64 112,102 124,104" fill="#6D4C41" stroke="#3E2723" stroke-width="1" opacity="0.85"/>' +
-    '<line x1="124" y1="76" x2="112" y2="74" stroke="#263238" stroke-width="1.5"/>' +
-    '<line x1="124" y1="94" x2="112" y2="92" stroke="#263238" stroke-width="1.5"/>' +
-    '<rect x="8" y="96" width="10" height="12" rx="2" fill="#8D6E63" stroke="#5D4037" stroke-width="1"/>' +
-    '<circle cx="11" cy="95" r="3" fill="#E91E63"/><circle cx="15" cy="94" r="3" fill="#9C27B0"/>' +
-    '<rect x="142" y="96" width="10" height="12" rx="2" fill="#8D6E63" stroke="#5D4037" stroke-width="1"/>' +
-    '<circle cx="145" cy="95" r="3" fill="#FF9800"/><circle cx="149" cy="94" r="3" fill="#4CAF50"/>' +
+      ? '<rect x="0" y="38" width="160" height="44" fill="#37474F" stroke="#263238" stroke-width="1.2"/>' +
+        // Stone curb curbs flanking North and South
+        '<line x1="0" y1="38" x2="160" y2="38" stroke="#90A4AE" stroke-width="2"/>' +
+        '<line x1="0" y1="82" x2="160" y2="82" stroke="#90A4AE" stroke-width="2"/>' +
+        // Central dashed road stripe leading straight into Main Road
+        '<line x1="0" y1="60" x2="160" y2="60" stroke="#FFE082" stroke-width="1.8" stroke-dasharray="10,7"/>'
+      : '<rect x="0" y="40" width="160" height="40" fill="#5D4037" stroke="#3E2723" stroke-width="1.2" stroke-dasharray="6,4"/>' +
+        '<line x1="0" y1="60" x2="160" y2="60" stroke="#A1887F" stroke-width="1.4" stroke-dasharray="6,5"/>') +
+
+    // 2. North Masonry Gatehouse Tower & Pillar
+    '<g transform="translate(68, 12)">' +
+      '<rect x="0" y="0" width="24" height="26" rx="3" fill="#78909C" stroke="#37474F" stroke-width="1.4"/>' +
+      '<rect x="2" y="2" width="20" height="22" rx="2" fill="#B0BEC5"/>' +
+      '<polygon points="-2,2 12,-7 26,2" fill="#546E7A" stroke="#263238" stroke-width="1.2"/>' +
+      '<circle cx="12" cy="-7" r="2.5" fill="#FFB300"/>' +
+      // Lantern
+      '<rect x="23" y="10" width="5" height="8" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
+      '<circle cx="25.5" cy="14" r="4" fill="#FFF59D" opacity="0.5"/>' +
+    '</g>' +
+
+    // 3. South Masonry Gatehouse Tower & Pillar
+    '<g transform="translate(68, 82)">' +
+      '<rect x="0" y="0" width="24" height="26" rx="3" fill="#78909C" stroke="#37474F" stroke-width="1.4"/>' +
+      '<rect x="2" y="4" width="20" height="20" rx="2" fill="#B0BEC5"/>' +
+      '<polygon points="-2,24 12,33 26,24" fill="#546E7A" stroke="#263238" stroke-width="1.2"/>' +
+      '<circle cx="12" cy="33" r="2.5" fill="#FFB300"/>' +
+      // Lantern
+      '<rect x="23" y="8" width="5" height="8" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
+      '<circle cx="25.5" cy="12" r="4" fill="#FFF59D" opacity="0.5"/>' +
+    '</g>' +
+
+    // 4. Overhead Craftsman Entry Arch spanning North to South across driveway
+    '<path d="M80,26 Q100,60 80,94" stroke="#4E342E" stroke-width="7" fill="none" stroke-linecap="round"/>' +
+    '<path d="M78,28 Q96,60 78,92" stroke="#795548" stroke-width="4.5" fill="none" stroke-linecap="round"/>' +
+    // Signboard welcoming traffic Eastward into the Eco-Farm
+    '<g transform="translate(84, 48)">' +
+      '<rect x="-6" y="-12" width="16" height="48" rx="3" fill="#FBF6EC" stroke="#8D6E63" stroke-width="1.2"/>' +
+      '<text x="2" y="0" font-size="6.5" font-weight="900" fill="#1B5E20" transform="rotate(90, 2, 0)" text-anchor="middle">🌿 searchO2 🌿</text>' +
+      '<text x="2" y="7" font-size="4.8" font-weight="800" fill="#4E342E" transform="rotate(90, 2, 7)" text-anchor="middle">ECO-FARM</text>' +
+    '</g>' +
+
+    // 5. Ornamental Wrought-Iron & Timber Gates (Open Eastward into farm)
+    (isBuilt
+      ? '<g stroke="#3E2723" stroke-width="1.5">' +
+          // North Gate Wing swings open along North curb
+          '<line x1="82" y1="38" x2="114" y2="35"/>' +
+          '<line x1="90" y1="37" x2="90" y2="32"/><line x1="102" y1="36" x2="102" y2="32"/>' +
+          '<circle cx="114" cy="35" r="2" fill="#FFB300"/>' +
+          // South Gate Wing swings open along South curb
+          '<line x1="82" y1="82" x2="114" y2="85"/>' +
+          '<line x1="90" y1="83" x2="90" y2="88"/><line x1="102" y1="84" x2="102" y2="88"/>' +
+          '<circle cx="114" cy="85" r="2" fill="#FFB300"/>' +
+        '</g>'
+      : '<g stroke="#D32F2F" stroke-width="2" stroke-dasharray="4,3">' +
+          '<line x1="80" y1="38" x2="80" y2="82"/>' +
+          '<circle cx="80" cy="60" r="5" fill="#EF5350"/><text x="80" y="63" font-size="7" fill="white" font-weight="900" text-anchor="middle">✕</text>' +
+        '</g>') +
+
+    // 6. Planters & Landscaping Flanking Pillars
+    '<rect x="52" y="16" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
+    '<circle cx="57" cy="18" r="4" fill="#43A047"/><circle cx="57" cy="14" r="3" fill="#E91E63"/>' +
+    '<rect x="52" y="90" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
+    '<circle cx="57" cy="98" r="4" fill="#43A047"/><circle cx="57" cy="102" r="3" fill="#FF9800"/>' +
     statusBadge +
   '</svg>';
 }
@@ -7895,6 +8053,9 @@ window.hasAvailableLaborer = hasAvailableLaborer;
 window.unassignWorkerById = unassignWorkerById;
 window.assignWorkerToTask = assignWorkerToTask;
 window.drawHumanWorkerSvg = drawHumanWorkerSvg;
+window.getRoadNetworkWaypoints = getRoadNetworkWaypoints;
+window.drawMainGateScene = drawMainGateScene;
+window.drawRoadScene = drawRoadScene;
 window.animateWorkerPathWalk = animateWorkerPathWalk;
 window.getPendingTasksList = getPendingTasksList;
 window.buildingModalHtml = buildingModalHtml;
@@ -7950,6 +8111,9 @@ if (typeof globalThis !== 'undefined'){
   globalThis.unassignWorkerById = unassignWorkerById;
   globalThis.assignWorkerToTask = assignWorkerToTask;
   globalThis.drawHumanWorkerSvg = drawHumanWorkerSvg;
+  globalThis.getRoadNetworkWaypoints = getRoadNetworkWaypoints;
+  globalThis.drawMainGateScene = drawMainGateScene;
+  globalThis.drawRoadScene = drawRoadScene;
   globalThis.animateWorkerPathWalk = animateWorkerPathWalk;
   globalThis.getPendingTasksList = getPendingTasksList;
   globalThis.buildingModalHtml = buildingModalHtml;
