@@ -1269,7 +1269,7 @@ var LOAN_PENALTY_RATE = 0.05; // added to remaining balance for each missed inst
 // comparable to a tree plot instead of a thin icon strip.
 // ================= FARM GRID & INFRASTRUCTURE LAYOUT =================
 // Storage Barn grounded cleanly in the central upper yard and aligned with Central subway corridor
-var STORAGE_SPOT   = { top: 6, left: 45.5, w: 14, h: 15 };
+var STORAGE_SPOT   = { top: 5, left: 45.5, w: 14, h: 14 };
 
 // Grand Farm Main Entry Gate at the western entrance of the Main Road (zero crossroad overlap)
 var GATE_SPOT      = { top: 40, left: 0.5, w: 6.5, h: 16 };
@@ -1497,7 +1497,7 @@ var PLOT_COUNT = 6;
 // Plot 3 (Lower West), Plot 4 (Lower Mid), Plot 5 (Lower East)
 var PLOT_LAYOUT = [
   { top: 8,  left: 18.5, w: 12, h: 24 }, // Plot 0: Upper West (Col 2 North)
-  { top: 23, left: 45.5, w: 14, h: 19 }, // Plot 1: Upper Mid (Col 4 North, in front of Storage Barn)
+  { top: 24, left: 45.5, w: 14, h: 18 }, // Plot 1: Upper Mid (Col 4 North, with wide lane to Storage Barn): Upper Mid (Col 4 North, in front of Storage Barn)
   { top: 8,  left: 74.5, w: 12, h: 24 }, // Plot 2: Upper East (Col 6 North)
   { top: 66, left: 18.5, w: 12, h: 24 }, // Plot 3: Lower West (Col 2 South)
   { top: 66, left: 45.5, w: 14, h: 24 }, // Plot 4: Lower Mid (Col 4 South)
@@ -1543,6 +1543,9 @@ function freshState(){
       coffee_shop: {built:false,building:false,buildHours:0},
       juice_bar: {built:false,building:false,buildHours:0}
     },
+    hasTractor: false,
+    rocksCleared: false, rocksClearing: false, rocksClearHours: 0,
+    lawnOvergrowth: 0, lawnMowing: false, lawnMowHours: 0,
     marketplaceUnlocked: {}
   };
 }
@@ -3651,6 +3654,13 @@ function loadState(){
         if (state.storage.expanding===undefined) state.storage.expanding = false;
         if (state.storage.expandHours===undefined) state.storage.expandHours = 0;
         if (state.storage.warnedFull===undefined) state.storage.warnedFull = false;
+        if (state.hasTractor===undefined) state.hasTractor = false;
+        if (state.rocksCleared===undefined) state.rocksCleared = false;
+        if (state.rocksClearing===undefined) state.rocksClearing = false;
+        if (state.rocksClearHours===undefined) state.rocksClearHours = 0;
+        if (state.lawnOvergrowth===undefined) state.lawnOvergrowth = 0;
+        if (state.lawnMowing===undefined) state.lawnMowing = false;
+        if (state.lawnMowHours===undefined) state.lawnMowHours = 0;
         if (state.loan===undefined) state.loan = null;
 
         if (!state.buildings) state.buildings = {};
@@ -3750,6 +3760,7 @@ function farmReputation(){
   var species = {}; state.plots.forEach(function(p){ if (p.treeType) species[p.treeType]=true; });
   rep += Object.keys(species).length * 3;
   if (visitorMagnetActive()) rep += 10;
+  if (state.lawnOvergrowth && state.lawnOvergrowth >= 50) rep -= 5;
   rep -= state.demerits*2;
   return Math.max(0, Math.round(rep));
 }
@@ -3812,6 +3823,33 @@ function advanceGame(dh){
       }
     }
   });
+  // Rocks / boulder clearing timer
+  if (state.rocksClearing){
+    state.rocksClearHours += dh;
+    if (state.rocksClearHours >= 2){
+      state.rocksClearing = false;
+      state.rocksCleared = true;
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+      pushReport('🪨 Boulders and rock obstacles successfully cleared from road corridor! Paving unlocked.');
+      showNotification('🪨', 'Boulders cleared! Road corridor is ready for paving.', 'building', 'road');
+    }
+  }
+
+  // Lawn overgrowth & mowing simulation
+  if (state.lawnMowing){
+    state.lawnMowHours += dh;
+    if (state.lawnMowHours >= 1.5){
+      state.lawnMowing = false;
+      state.lawnOvergrowth = 0;
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+      pushReport('🌿 Estate lawn mowed and manicured! Pristine grounds restored (+5 reputation).');
+      showNotification('🌿', 'Lawn manicured! Farm curb appeal restored.', 'tasks', null);
+    }
+  } else {
+    // Lawn grass gradually grows over time (1.2% per game hour)
+    state.lawnOvergrowth = Math.min(100, (state.lawnOvergrowth || 0) + dh * 1.2);
+  }
+
   // Block-wise road construction timers
   if (state.roads){
     ['subway','crew_trail','garden_walk','market_promenade'].forEach(function(rk){
@@ -4044,12 +4082,20 @@ function checkAchievements(){
 // ================= ACTIONS =================
 function startPrep(plotId){
   var p = state.plots[plotId]; if (p.status!=='barren') return;
+  if (!hasAvailableLaborer()){
+    showNotification('👷', 'Hire a Laborer from the Crew Shed to dig and till barren land!', 'building', 'crew_shed');
+    return;
+  }
   if (state.money < LABOR_COST) return;
   state.money -= LABOR_COST; p.status='preparing'; p.taskHours=0;
   render(); requestSave();
 }
 function startClear(plotId){
   var p = state.plots[plotId]; if (p.status!=='overgrown') return;
+  if (!hasAvailableLaborer()){
+    showNotification('👷', 'Hire a Laborer from the Crew Shed to clear overgrown brush!', 'building', 'crew_shed');
+    return;
+  }
   if (state.money < CLEAR_COST) return;
   state.money -= CLEAR_COST; p.status='clearing'; p.taskHours=0;
   render(); requestSave();
@@ -4057,6 +4103,10 @@ function startClear(plotId){
 function startRemoveTree(plotId){
   var p = state.plots[plotId]; if (p.status!=='dead') return;
   var def = TREE_TYPES[p.treeType]; var cfg = REMOVE_CONFIG[def.category];
+  if (!hasAvailableLaborer()){
+    showNotification('👷', 'Hire a Laborer from the Crew Shed to cut down dead trees!', 'building', 'crew_shed');
+    return;
+  }
   if (state.money < cfg.cost) return;
   state.money -= cfg.cost; p.status='removing'; p.taskHours=0;
   render(); requestSave();
@@ -4071,15 +4121,73 @@ function plantTree(plotId, type){
 }
 function setSpeed(factor){ state.speedFactor = factor; requestSave(); render(); }
 
+
+function hasTractor(){
+  return !!(state && (state.hasTractor || (state.marketplaceUnlocked && state.marketplaceUnlocked['utility_tractor'])));
+}
+function acquireTractor(){
+  if (hasTractor()) return;
+  var cost = 350;
+  if (state.money < cost){
+    showNotification('🪙', 'Insufficient funds (€' + cost + ' needed) to acquire a tractor.', 'building', 'garage');
+    return;
+  }
+  state.money -= cost;
+  state.hasTractor = true;
+  if (!state.marketplaceUnlocked) state.marketplaceUnlocked = {};
+  state.marketplaceUnlocked['utility_tractor'] = true;
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+  pushReport('🚜 Acquired Farm Utility Tractor (€' + cost + ')! Harvesting is now mechanized, 3x faster, and direct-delivered to storage.');
+  showNotification('🚜', 'Farm Utility Tractor acquired! Mechanized harvesting unlocked.', 'building', 'garage');
+  render(); requestSave();
+}
+function startClearRocks(){
+  if (state.rocksCleared || state.rocksClearing) return;
+  if (!hasAvailableLaborer()){
+    showNotification('👷', 'Hire a Laborer from the Crew Shed to clear road boulders!', 'building', 'crew_shed');
+    return;
+  }
+  var cost = 50;
+  if (state.money < cost){
+    showNotification('🪙', 'Insufficient funds (€' + cost + ' needed) to clear boulders.', 'tasks', null);
+    return;
+  }
+  state.money -= cost;
+  state.rocksClearing = true;
+  state.rocksClearHours = 0;
+  var lab = state.workers.find(function(w){ return w.type === 'laborer' && w.assignedPlot === null && !w.assignedBuilding; });
+  if (lab && typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(lab, 'rocks');
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+  pushReport('🪨 Dispatched Laborer to clear boulder obstacles from the road corridor (€' + cost + ' · 2h).');
+  render(); requestSave();
+}
+function startMowLawn(){
+  if (state.lawnMowing || (state.lawnOvergrowth || 0) < 30) return;
+  if (!hasAvailableLaborer()){
+    showNotification('👷', 'Hire a Laborer from the Crew Shed to mow the lawn!', 'building', 'crew_shed');
+    return;
+  }
+  var cost = 15;
+  if (state.money < cost){
+    showNotification('🪙', 'Insufficient funds (€' + cost + ' needed) to mow lawn.', 'tasks', null);
+    return;
+  }
+  state.money -= cost;
+  state.lawnMowing = true;
+  state.lawnMowHours = 0;
+  var lab = state.workers.find(function(w){ return w.type === 'laborer' && w.assignedPlot === null && !w.assignedBuilding; });
+  if (lab && typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(lab, 'lawn');
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+  pushReport('🌿 Dispatched Laborer to mow estate lawn and trim wild weeds (€' + cost + ' · 1.5h).');
+  render(); requestSave();
+}
+
 function hireWorker(type){
   if (!state.buildings.crew_shed || !state.buildings.crew_shed.built){
     showNotification('🏠', 'Construct the Crew Shed before hiring farm workers!', 'building', 'crew_shed');
     return;
   }
-  if (!state.roads || !state.roads.crew_trail || !state.roads.crew_trail.built){
-    showNotification('🥾', 'Pave the Crew Trail before workers can report for duty!', 'building', 'road');
-    return;
-  }
+  // Crew Shed is the sole prerequisite for worker recruitment
   var newWorker = { id: nextWorkerId++, type: type, assignedPlot: null, assignedBuilding: null };
   state.workers.push(newWorker);
   pushReport('👷 Hired ' + WORKER_TYPES[type].label + ' #' + newWorker.id + ' stationed at the Crew Shed.');
@@ -4225,6 +4333,10 @@ function unassignLaborerFromStorage(){
 }
 
 function startBuildRoadSegment(segmentKey){
+  if (!state.rocksCleared){
+    showNotification('🪨', 'Clear boulders and rock obstacles before paving roads!', 'tasks', 'rocks');
+    return;
+  }
   if (segmentKey === 'main'){
     startBuildBuilding('road');
     return;
@@ -4470,6 +4582,10 @@ function startExpandStorage(){
 function startBuildBuilding(key){
   var b = state.buildings[key]; var def = BUILDING_TYPES[key];
   if (!b || b.built || b.building) return;
+  if (key === 'road' && !state.rocksCleared){
+    showNotification('🪨', 'Clear boulders and rock obstacles before grading the road!', 'tasks', 'rocks');
+    return;
+  }
   if (def.requiresRoad && !state.buildings.road.built) return;
   if (state.money < def.cost) return;
   state.money -= def.cost; b.building = true; b.buildHours = 0;
@@ -4584,7 +4700,8 @@ function startLoop(){
 }
 function processHarvests(){
   state.plots.forEach(function(p){
-    if (p.harvesting && Date.now()-p.harvestStartReal >= 4000){
+    var hDur = hasTractor() ? 3500 : 10000;
+    if (p.harvesting && Date.now() - p.harvestStartReal >= hDur){
       var amt = p.harvestAmount||0;
       var room = Math.max(0, state.storage.capacity - state.storage.stored);
       var accepted = Math.min(amt, room);
@@ -4853,64 +4970,72 @@ function drawFarmRoadNetworkSvg(){
 
   // ================= 2. THINNER FEEDER SUBWAYS (MANHATTAN L-SHAPED NETWORK) =================
   if (isSubwayBuilt){
-    // Avenue 1: West Feeder Subway in street corridor between Plot 0/3 and Pond/Garden (x: 310)
-    // North branch (y: 320 to 445) with spur turning West into Plot 0's South Gate
-    svg += '<rect x="301" y="320" width="18" height="125" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+    // Avenue 1: West Feeder Subway (x: 301 to 319)
+    // North branch (y: 314 to 445) connecting to Plot 0 South Gate at x: 245, y: 320
+    svg += '<rect x="301" y="314" width="18" height="131" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
            '<polygon points="301,445 292,445 301,436" fill="url(#subwayHerringbone)"/>' +
            '<polygon points="319,445 328,445 319,436" fill="url(#subwayHerringbone)"/>' +
-           // Spur entering Plot 0 South Gate
-           '<rect x="250" y="420" width="55" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>';
-    // South branch (y: 500 to 660) with spur turning West into Plot 3's North Gate
-    svg += '<rect x="301" y="500" width="18" height="160" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+           // Precision Spur entering Plot 0 South Gate (x: 245, y: 320) with threshold paver
+           '<rect x="240" y="314" width="65" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>' +
+           '<rect x="235" y="312" width="14" height="20" rx="2" fill="#CFD8DC" stroke="#90A4AE" stroke-width="1"/>';
+    // South branch (y: 500 to 666) connecting to Plot 3 North Gate at x: 245, y: 660
+    svg += '<rect x="301" y="500" width="18" height="166" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
            '<polygon points="301,500 292,500 301,509" fill="url(#subwayHerringbone)"/>' +
            '<polygon points="319,500 328,500 319,509" fill="url(#subwayHerringbone)"/>' +
-           // Spur entering Plot 3 North Gate
-           '<rect x="250" y="650" width="55" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>';
+           // Precision Spur entering Plot 3 North Gate (x: 245, y: 660) with threshold paver
+           '<rect x="240" y="654" width="65" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>' +
+           '<rect x="235" y="652" width="14" height="20" rx="2" fill="#CFD8DC" stroke="#90A4AE" stroke-width="1"/>';
 
-    // Avenue 2: Central Feeder Subway with L-SHAPED CONNECTION TO STORAGE BARN (ZERO PLOT 1/2 OVERLAP)
-    // Runs in the open street corridor between Plot 1 and Coffee Shop at x: 602 (from Main Road y:445 up to y:135)
-    svg += '<rect x="593" y="135" width="18" height="310" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+    // Avenue 2: Central Feeder Subway with L-SHAPED CONNECTION TO STORAGE BARN (ZERO OVERLAP ON STORAGE ROOM)
+    // Runs in the open street corridor between Plot 1 and Coffee Shop at x: 593 to 611 (from Main Road y:445 up to y:210)
+    svg += '<rect x="593" y="210" width="18" height="235" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
            '<polygon points="593,445 584,445 593,436" fill="url(#subwayHerringbone)"/>' +
            '<polygon points="611,445 620,445 611,436" fill="url(#subwayHerringbone)"/>' +
-           // 90-DEGREE L-SHAPED SPUR: Turns West along the lane between Storage Barn and Plot 1 straight into Storage loading bay!
-           '<rect x="520" y="126" width="91" height="18" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
-           '<polygon points="593,126 611,126 611,144" fill="url(#subwayHerringbone)"/>' + // L-turn fillet corner
-           '<rect x="495" y="120" width="35" height="26" rx="3" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' + // Storage Barn loading apron
-           // Access Spur into Plot 1 South Gate (connects from Avenue 2 at y:420)
-           '<rect x="530" y="420" width="67" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>';
+           // 90-DEGREE L-SHAPED SPUR: Turns West along the 50px northern cross-lane (y:208 to 226) directly into Storage loading apron
+           '<rect x="528" y="208" width="83" height="18" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+           '<polygon points="593,208 611,208 611,226" fill="url(#subwayHerringbone)"/>' + // L-turn fillet corner
+           // Storage Barn loading apron (y: 192 to 212, x: 512 to 544) — meets front foundation curb cleanly outside barn walls!
+           '<rect x="512" y="192" width="32" height="20" rx="3" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+           '<rect x="516" y="190" width="24" height="5" rx="1.5" fill="#CFD8DC" stroke="#90A4AE" stroke-width="0.8"/>' + // apron stone threshold
+           // Precision Access Spur into Plot 1 South Gate (x: 525, y: 420)
+           '<rect x="520" y="414" width="77" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>' +
+           '<rect x="515" y="412" width="14" height="20" rx="2" fill="#CFD8DC" stroke="#90A4AE" stroke-width="1"/>';
 
     // South branch to Plot 4 (y: 500 to 660 at x: 525 directly into Plot 4 North Gate)
     svg += '<rect x="516" y="500" width="18" height="160" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
            '<polygon points="516,500 507,500 516,509" fill="url(#subwayHerringbone)"/>' +
-           '<polygon points="534,500 543,500 534,509" fill="url(#subwayHerringbone)"/>';
+           '<polygon points="534,500 543,500 534,509" fill="url(#subwayHerringbone)"/>' +
+           '<rect x="517" y="654" width="16" height="12" rx="2" fill="#CFD8DC" stroke="#90A4AE" stroke-width="1"/>';
 
-    // Avenue 3: East Feeder Subway in street corridor between Coffee Shop and Plot 2/5 (x: 738)
-    // North branch (y: 320 to 445) with spur turning East into Plot 2's South Gate
-    svg += '<rect x="729" y="320" width="18" height="125" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+    // Avenue 3: East Feeder Subway (x: 729 to 747)
+    // North branch (y: 314 to 445) with spur turning East into Plot 2's South Gate (x: 805, y: 320)
+    svg += '<rect x="729" y="314" width="18" height="131" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
            '<polygon points="729,445 720,445 729,436" fill="url(#subwayHerringbone)"/>' +
            '<polygon points="747,445 756,445 747,436" fill="url(#subwayHerringbone)"/>' +
-           // Spur entering Plot 2 South Gate (clears Plot 2 grounds cleanly)
-           '<rect x="745" y="420" width="55" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>';
-    // South branch (y: 500 to 660) with spur turning East into Plot 5's North Gate
-    svg += '<rect x="729" y="500" width="18" height="160" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+           // Precision Spur entering Plot 2 South Gate (x: 805, y: 320) with threshold paver
+           '<rect x="745" y="314" width="65" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>' +
+           '<rect x="800" y="312" width="14" height="20" rx="2" fill="#CFD8DC" stroke="#90A4AE" stroke-width="1"/>';
+    // South branch (y: 500 to 666) with spur turning East into Plot 5's North Gate (x: 805, y: 660)
+    svg += '<rect x="729" y="500" width="18" height="166" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
            '<polygon points="729,500 720,500 729,509" fill="url(#subwayHerringbone)"/>' +
            '<polygon points="747,500 756,500 747,509" fill="url(#subwayHerringbone)"/>' +
-           // Spur entering Plot 5 North Gate
-           '<rect x="745" y="650" width="55" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>';
+           // Precision Spur entering Plot 5 North Gate (x: 805, y: 660) with threshold paver
+           '<rect x="745" y="654" width="65" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>' +
+           '<rect x="800" y="652" width="14" height="20" rx="2" fill="#CFD8DC" stroke="#90A4AE" stroke-width="1"/>';
   } else if (isSubwayBuilding){
     // Guide lines for L-shaped network
-    svg += '<line x1="310" y1="320" x2="310" y2="445" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
+    svg += '<line x1="310" y1="314" x2="310" y2="445" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
            '<line x1="310" y1="500" x2="310" y2="660" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
-           '<line x1="602" y1="135" x2="602" y2="445" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
-           '<line x1="602" y1="135" x2="520" y2="135" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
+           '<line x1="602" y1="210" x2="602" y2="445" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
+           '<line x1="602" y1="217" x2="528" y2="217" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
            '<line x1="525" y1="500" x2="525" y2="660" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
-           '<line x1="738" y1="320" x2="738" y2="445" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
+           '<line x1="738" y1="314" x2="738" y2="445" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
            '<line x1="738" y1="500" x2="738" y2="660" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
-           '<circle cx="525" cy="135" r="4" fill="#8D6E63"/>' +
-           '<circle cx="602" cy="135" r="4" fill="#8D6E63"/>';
+           '<circle cx="528" cy="217" r="4" fill="#8D6E63"/>' +
+           '<circle cx="602" cy="217" r="4" fill="#8D6E63"/>';
   }
 
-  // ================= 3. CREW TRAIL & GARAGE SPUR (AMPLE VISIBLE LENGTH) =================
+    // ================= 3. CREW TRAIL & GARAGE SPUR (AMPLE VISIBLE LENGTH) =================
   if (isCrewBuilt){
     // West Crew Trail: Timber-bordered gravel path connecting Crew Shed (x:127, y:660) to Main Road (y:500) — 160px long!
     svg += '<rect x="118" y="500" width="18" height="160" rx="2" fill="url(#trailGravel)" stroke="#4E342E" stroke-width="1"/>' +
@@ -5003,18 +5128,26 @@ function calculateGridRoute(startPoint, endPoint){
   return waypoints;
 }
 
-// Generic multi-segment waypoint animator
+// Enhanced multi-segment waypoint animator with smooth cornering, rotation banking, and proportional velocities
 function animateAlongWaypoints(el, waypoints, totalDurationMs, onComplete){
   if (!waypoints || waypoints.length < 2){
     if (onComplete) onComplete();
     return;
   }
-  var currentIdx = 0;
-  var stepDuration = totalDurationMs / (waypoints.length - 1);
 
+  // Calculate Euclidean distance for each leg to achieve constant realistic speed
+  var legDists = [];
+  var totalDist = 0;
+  for (var i = 1; i < waypoints.length; i++){
+    var d = Math.hypot(waypoints[i].x - waypoints[i-1].x, waypoints[i].y - waypoints[i-1].y);
+    legDists.push(d);
+    totalDist += d;
+  }
+  if (totalDist < 0.1) totalDist = 0.1;
+
+  var currentIdx = 0;
   el.style.left = waypoints[0].x + '%';
   el.style.top = waypoints[0].y + '%';
-  el.style.transition = 'left ' + (stepDuration / 1000) + 's linear, top ' + (stepDuration / 1000) + 's linear';
 
   function nextStep(){
     currentIdx++;
@@ -5024,11 +5157,23 @@ function animateAlongWaypoints(el, waypoints, totalDurationMs, onComplete){
     }
     var prev = waypoints[currentIdx - 1];
     var curr = waypoints[currentIdx];
-    if (curr.x < prev.x){
-      el.style.transform = 'scaleX(-1)';
-    } else if (curr.x > prev.x){
-      el.style.transform = 'scaleX(1)';
+    var legDist = legDists[currentIdx - 1] || 1;
+    var stepDuration = Math.max(120, Math.round(totalDurationMs * (legDist / totalDist)));
+
+    // Calculate heading angle for realistic directional vehicle rotation
+    var dx = curr.x - prev.x;
+    var dy = curr.y - prev.y;
+    var rotDeg = 0;
+    if (Math.abs(dx) >= Math.abs(dy)){
+      rotDeg = dx >= 0 ? 0 : 180;
+      el.style.transform = dx >= 0 ? 'scaleX(1) rotate(0deg)' : 'scaleX(-1) rotate(0deg)';
+    } else {
+      rotDeg = dy >= 0 ? 90 : -90;
+      var flip = prev.x > 50 ? 1 : -1;
+      el.style.transform = 'scaleX(' + flip + ') rotate(' + (rotDeg * flip) + 'deg)';
     }
+
+    el.style.transition = 'left ' + (stepDuration / 1000) + 's linear, top ' + (stepDuration / 1000) + 's linear, transform 0.28s ease-in-out';
     el.style.left = curr.x + '%';
     el.style.top = curr.y + '%';
     setTimeout(nextStep, stepDuration);
@@ -5178,6 +5323,7 @@ function triggerHarvestCartSequence(plotId, onComplete){
 
   var junctionX = getPlotJunctionX(plotId);
   var plotY = getPlotDestY(plotId);
+  var tractorMode = typeof hasTractor === 'function' ? hasTractor() : false;
 
   var truckLayer = document.getElementById('logisticsTruckLayer');
   if (!truckLayer){
@@ -5188,17 +5334,19 @@ function triggerHarvestCartSequence(plotId, onComplete){
     scene.appendChild(truckLayer);
   }
 
-  // Sprite containing Farmer pulling 2-wheel wooden cart
+  // Sprite containing Tractor + Trailer OR Farmer + 2-wheel cart
   var cartSprite = document.createElement('div');
-  cartSprite.style.cssText = 'position:absolute;width:72px;height:46px;z-index:33;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3));display:flex;align-items:center;';
-  cartSprite.innerHTML = '<span style="font-size:24px;margin-right:-8px;z-index:2;">🧑‍🌾</span>' +
-                         '<div id="cartCargoBox" style="width:48px;height:32px;">' + drawHarvestCartSvg(false) + '</div>';
+  cartSprite.style.cssText = 'position:absolute;width:' + (tractorMode ? '84px' : '72px') + ';height:46px;z-index:33;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3));display:flex;align-items:center;';
+  cartSprite.innerHTML = (tractorMode ?
+    '<span style="font-size:28px;margin-right:-6px;z-index:2;">🚜</span><div id="cartCargoBox" style="width:52px;height:34px;">' + drawHarvestCartSvg(false) + '</div>' :
+    '<span style="font-size:24px;margin-right:-8px;z-index:2;">🧑‍🌾</span><div id="cartCargoBox" style="width:48px;height:32px;">' + drawHarvestCartSvg(false) + '</div>');
   truckLayer.appendChild(cartSprite);
 
-  pushReport('🚜 Farmer retrieved a 2-wheel harvest cart from the East Farm Garage and is en route to Plot ' + (plotId + 1) + '.');
+  pushReport((tractorMode ? '🚜 Farm Utility Tractor' : '🧑‍🌾 Farmer with 2-wheel cart') + ' dispatched from East Farm Garage to Plot ' + (plotId + 1) + '.');
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
 
   // Leg 1: East Farm Garage (x: 93.5, y: 23) -> Main Road (x: 93.5, y: 47) -> Junction (junctionX, 47) -> Plot (junctionX, plotY)
+  var legDuration = tractorMode ? 2200 : 3600;
   var legToPlot = [
     { x: 93.5, y: 23 },
     { x: 93.5, y: 47 },
@@ -5206,57 +5354,54 @@ function triggerHarvestCartSequence(plotId, onComplete){
     { x: junctionX, y: plotY }
   ];
 
-  animateAlongWaypoints(cartSprite, legToPlot, 3600, function(){
-    // At plot: pause for picking produce into cart
+  animateAlongWaypoints(cartSprite, legToPlot, legDuration, function(){
     var box = cartSprite.querySelector('#cartCargoBox');
     if (box) box.innerHTML = drawHarvestCartSvg(true, '🍎');
     if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
-    pushReport('🧺 Harvesting crops into 2-wheel cart at Plot ' + (plotId + 1) + '...');
+    pushReport((tractorMode ? '🚜 Mechanized loading into tractor trailer at Plot ' : '🧺 Picking crops into 2-wheel cart at Plot ') + (plotId + 1) + '...');
 
     setTimeout(function(){
-      // Leg 2: Plot (junctionX, plotY) -> Main Road (junctionX, 47) -> Avenue 2 (x: 60.2, y: 47) -> L-Turn (x: 60.2, y: 13.5) -> Storage Barn Loading Bay (x: 52.5, y: 13.5)
+      // Leg 2: Plot (junctionX, plotY) -> Main Road (junctionX, 47) -> Avenue 2 (x: 60.2, y: 47) -> L-Turn (x: 60.2, y: 21.5) -> Storage Barn Loading Apron (x: 52.8, y: 20.5)
       var legToStorage = [
         { x: junctionX, y: plotY },
         { x: junctionX, y: 47 },
         { x: 60.2, y: 47 },
-        { x: 60.2, y: 13.5 },
-        { x: 52.5, y: 13.5 }
+        { x: 60.2, y: 21.5 },
+        { x: 52.8, y: 20.5 }
       ];
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
-      animateAlongWaypoints(cartSprite, legToStorage, 3800, function(){
-        // At Storage Barn: unload cargo with currency/harvest burst!
+      animateAlongWaypoints(cartSprite, legToStorage, legDuration, function(){
         if (box) box.innerHTML = drawHarvestCartSvg(false);
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
-        pushReport('✓ Delivered harvested produce to Storage Barn loading bay via L-shaped subway.');
+        pushReport('✓ Delivered harvested produce directly to Storage Barn loading bay.');
         
-        // Floating currency burst above storage barn
         var burst = document.createElement('div');
-        burst.style.cssText = 'position:absolute;left:52.5%;top:8%;font-size:18px;font-weight:800;color:#2E7D32;z-index:40;transition:all 1.4s ease-out;pointer-events:none;';
-        burst.textContent = '🧺 +Harvest Stored!';
+        burst.style.cssText = 'position:absolute;left:52.5%;top:10%;font-size:18px;font-weight:800;color:#2E7D32;z-index:40;transition:all 1.4s ease-out;pointer-events:none;';
+        burst.textContent = tractorMode ? '🚜 +Mechanized Harvest Stored!' : '🧺 +Harvest Stored!';
         scene.appendChild(burst);
         requestAnimationFrame(function(){
-          burst.style.top = '2%';
+          burst.style.top = '3%';
           burst.style.opacity = '0';
         });
         setTimeout(function(){ if (burst.parentNode) burst.parentNode.removeChild(burst); }, 1400);
 
         setTimeout(function(){
-          // Leg 3: Return empty cart from Storage Barn via L-turn: (52.5, 13.5) -> (60.2, 13.5) -> Avenue 2 to Main Road (60.2, 47) -> East Road (93.5, 47) -> East Farm Garage (93.5, 23)
+          // Leg 3: Return to Garage: (52.8, 20.5) -> (60.2, 21.5) -> (60.2, 47) -> (93.5, 47) -> (93.5, 23)
           var legToGarage = [
-            { x: 52.5, y: 13.5 },
-            { x: 60.2, y: 13.5 },
+            { x: 52.8, y: 20.5 },
+            { x: 60.2, y: 21.5 },
             { x: 60.2, y: 47 },
             { x: 93.5, y: 47 },
             { x: 93.5, y: 23 }
           ];
-          animateAlongWaypoints(cartSprite, legToGarage, 3200, function(){
-            pushReport('🚜 2-wheel harvest cart parked securely back at the Farm Garage.');
+          animateAlongWaypoints(cartSprite, legToGarage, Math.round(legDuration * 0.9), function(){
+            pushReport((tractorMode ? '🚜 Utility Tractor' : '🚜 2-wheel cart') + ' parked securely back at the Farm Garage.');
             if (cartSprite.parentNode) cartSprite.parentNode.removeChild(cartSprite);
             if (onComplete) onComplete();
           });
-        }, 1000);
+        }, 800);
       });
-    }, 2200);
+    }, tractorMode ? 1200 : 2200);
   });
 }
 
@@ -5311,14 +5456,43 @@ function fieldBackgroundSVG(){
     '<path d="M40,600 Q300,540 500,580 T980,590" stroke="#C9A374" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="14 16" opacity="0.7"/>'+
     (function(){
       var s='';
-      var rocks=[[110,330],[890,310],[470,255],[60,470],[930,460],[300,240],[700,410]];
-      rocks.forEach(function(r){
-        s+='<g transform="translate('+r[0]+','+r[1]+')" opacity="0.9">'+
-           '<ellipse cx="0" cy="10" rx="17" ry="6" fill="rgba(0,0,0,0.12)"/>'+
-           '<path d="M-14,6 Q-16,-8 -2,-11 Q14,-13 15,2 Q13,9 -14,6Z" fill="#9C9184"/>'+
-           '<path d="M-8,3 Q-6,-6 4,-7" stroke="#B7ACA0" stroke-width="2.5" fill="none" opacity="0.7"/>'+
-           '</g>';
-      });
+      // 1. Rock Obstacles: Visible only until cleared
+      if (!state || !state.rocksCleared){
+        var rocks=[[110,330],[890,310],[470,255],[60,470],[930,460],[300,240],[700,410]];
+        rocks.forEach(function(r){
+          s+='<g transform="translate('+r[0]+','+r[1]+')" opacity="0.9">'+
+             '<ellipse cx="0" cy="10" rx="17" ry="6" fill="rgba(0,0,0,0.12)"/>'+
+             '<path d="M-14,6 Q-16,-8 -2,-11 Q14,-13 15,2 Q13,9 -14,6Z" fill="#9C9184"/>'+
+             '<path d="M-8,3 Q-6,-6 4,-7" stroke="#B7ACA0" stroke-width="2.5" fill="none" opacity="0.7"/>'+
+             '</g>';
+        });
+        if (state && state.rocksClearing){
+          var rkPct = Math.round(Math.min(100, (state.rocksClearHours/2)*100));
+          s += '<g transform="translate(470, 230)">' +
+                 '<rect x="-50" y="-14" width="100" height="26" rx="6" fill="rgba(38,50,56,0.92)" stroke="#F0AC3D" stroke-width="1.5"/>' +
+                 '<text x="0" y="4" font-size="10" text-anchor="middle" font-weight="800" fill="#FFE082">🪨 Clearing ' + rkPct + '%</text>' +
+               '</g>';
+        }
+      }
+
+      // 2. Wild Grass & Weed Overgrowth: Appears when lawnOvergrowth >= 40%
+      if (state && state.lawnOvergrowth >= 40){
+        var wildWeeds = [[120,400],[240,380],[460,390],[620,380],[780,410],[880,430],[320,530],[650,520]];
+        wildWeeds.forEach(function(w){
+          s += '<g transform="translate('+w[0]+','+w[1]+')">' +
+            '<path d="M-7,8 Q-9,-10 -2,-18 Q5,-10 3,8" fill="#558B2F" opacity="0.85"/>' +
+            '<path d="M0,8 Q-2,-14 5,-22 Q9,-9 5,8" fill="#689F38" opacity="0.75"/>' +
+            '<circle cx="2" cy="-20" r="2" fill="#C8E6C9"/>' +
+          '</g>';
+        });
+      }
+      if (state && state.lawnMowing){
+        var mowPct = Math.round(Math.min(100, (state.lawnMowHours/1.5)*100));
+        s += '<g transform="translate(500, 520)">' +
+               '<rect x="-55" y="-14" width="110" height="26" rx="6" fill="rgba(46,125,50,0.92)" stroke="#81C784" stroke-width="1.5"/>' +
+               '<text x="0" y="4" font-size="10" text-anchor="middle" font-weight="800" fill="#FFFFFF">🌿 Mowing ' + mowPct + '%</text>' +
+             '</g>';
+      }
       var bushes=[[70,360],[930,340],[500,270],[210,470],[770,480],[350,410],[640,420]];
       bushes.forEach(function(b){
         s+='<g transform="translate('+b[0]+','+b[1]+')" opacity="0.85">'+
@@ -5409,12 +5583,14 @@ function plotSvg(p){
 
   if (p.status==='barren' || p.status==='ready'){
     content = (p.status==='barren') ? tillLines : tillLines + '<g transform="translate(100,86)">'+
-      '<ellipse cx="0" cy="0" rx="34" ry="14" fill="#5A3A22"/>'+
-      '<ellipse cx="0" cy="-2" rx="28" ry="10" fill="#6E4429"/>'+
+      '<ellipse cx="0" cy="0" rx="36" ry="15" fill="#4E342E"/>'+
+      '<ellipse cx="0" cy="-2" rx="30" ry="11" fill="#5D4037"/>'+
+      '<polygon points="38,-16 40,-12 44,-11 40,-10 38,-6 36,-10 32,-11 36,-12" fill="#FFD54F"/>' +
+      '<polygon points="-38,-14 -36,-10 -32,-9 -36,-8 -38,-4 -40,-8 -44,-9 -40,-10" fill="#FFD54F"/>' +
       '<g class="pulse"><circle cx="0" cy="-2" r="14" fill="#F0AC3D" opacity="0.95"/>'+
       '<text x="0" y="4" font-size="16" text-anchor="middle" font-weight="900" fill="#543A0F">+</text></g>'+
-      '<rect x="-35" y="16" width="70" height="18" rx="9" fill="rgba(251,246,236,0.95)" stroke="#6FA85A" stroke-width="1.5"/>'+
-      '<text x="0" y="29" font-size="9" text-anchor="middle" font-weight="800" fill="#2C4A32">Ready to Plant</text>'+
+      '<rect x="-38" y="16" width="76" height="18" rx="9" fill="rgba(251,246,236,0.95)" stroke="#4CAF50" stroke-width="1.5"/>'+
+      '<text x="0" y="29" font-size="9" text-anchor="middle" font-weight="800" fill="#1B5E20">✓ Tilled &amp; Ready</text>'+
       '</g>';
     var weedPct = Math.min(1, p.weedHours/OVERGROWN_THRESHOLD);
     var tufts = Math.round(weedPct*6);
@@ -5430,14 +5606,35 @@ function plotSvg(p){
       '<ellipse cx="65" cy="100" rx="16" ry="8" fill="#5C7A3E" opacity="0.6"/><ellipse cx="128" cy="100" rx="16" ry="8" fill="#4F6B33" opacity="0.6"/>'+
       '</g>';
   } else if (p.status==='preparing' || p.status==='clearing'){
-    content = '<g opacity="0.7"><rect x="30" y="80" width="140" height="7" rx="3" fill="#5A3A22"/><rect x="30" y="95" width="140" height="7" rx="3" fill="#5A3A22"/></g>';
+    var tDur = p.status==='preparing' ? PREP_DURATION_HOURS : CLEAR_DURATION_HOURS;
+    var tPct = Math.min(100, Math.round((p.taskHours / tDur) * 100));
+    var tLabel = p.status==='preparing' ? '⛏️ Digging Soil' : '🌾 Clearing Brush';
+    content = '<g opacity="0.8">' +
+      '<rect x="25" y="76" width="150" height="10" rx="3" fill="#4E342E"/>' +
+      '<rect x="25" y="92" width="150" height="10" rx="3" fill="#4E342E"/>' +
+      '<ellipse cx="100" cy="85" rx="45" ry="16" fill="#3E2723" opacity="0.6"/>' +
+    '</g>';
+    content += '<g transform="translate(100, 44)">' +
+      '<rect x="-50" y="-12" width="100" height="24" rx="6" fill="rgba(38,50,56,0.92)" stroke="#F0AC3D" stroke-width="1.2"/>' +
+      '<rect x="-44" y="4" width="88" height="4" rx="2" fill="#263238"/>' +
+      '<rect x="-44" y="4" width="' + (88 * tPct / 100) + '" height="4" rx="2" fill="#F0AC3D"/>' +
+      '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="#FFE082">' + tLabel + ' ' + tPct + '%</text>' +
+    '</g>';
     if (w){ content += personSvg('laborer', true, 150, 55); content += '<g class="dust" style="transform-origin:150px 90px;"><circle cx="150" cy="90" r="5" fill="#C9A374"/></g>'; }
   } else if (p.status==='dead'){
     var deadDefStatic = TREE_TYPES[p.treeType];
     content = drawDeadTreeShape(deadDefStatic) + '<text x="150" y="40" font-size="18">💀</text>';
   } else if (p.status==='removing'){
     var remTreeDef = TREE_TYPES[p.treeType]; var remCfg2 = REMOVE_CONFIG[remTreeDef.category];
+    var rDur = remCfg2.hours;
+    var rPct = Math.min(100, Math.round((p.taskHours / rDur) * 100));
     content = drawDeadTreeShape(remTreeDef);
+    content += '<g transform="translate(100, 44)">' +
+      '<rect x="-50" y="-12" width="100" height="24" rx="6" fill="rgba(38,50,56,0.92)" stroke="#E57373" stroke-width="1.2"/>' +
+      '<rect x="-44" y="4" width="88" height="4" rx="2" fill="#263238"/>' +
+      '<rect x="-44" y="4" width="' + (88 * rPct / 100) + '" height="4" rx="2" fill="#E57373"/>' +
+      '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="#FFCDD2">🪓 Felling ' + rPct + '%</text>' +
+    '</g>';
     if (w && w.type==='laborer'){
       content += personSvg('laborer', true, 60, 55, false, remCfg2.tool);
       content += '<g class="dust" style="transform-origin:75px 82px;"><rect x="75" y="82" width="4" height="4" fill="#8A6A45"/></g>'+
@@ -5498,6 +5695,17 @@ function plotSvg(p){
   if (p.accessories && p.accessories.irrigation) content += '<text x="22" y="145" font-size="15">💧</text>';
   if (p.accessories && p.accessories.fertilizer) content += '<text x="44" y="145" font-size="15">🌾</text>';
 
+  if (p.harvesting){
+    var hTotal = typeof hasTractor === 'function' && hasTractor() ? 3500 : 10000;
+    var hPct = Math.min(100, Math.round(((Date.now() - p.harvestStartReal) / hTotal) * 100));
+    var hLabel = typeof hasTractor === 'function' && hasTractor() ? '🚜 Tractor' : '🧺 Picking';
+    content += '<g transform="translate(100, 44)">' +
+      '<rect x="-52" y="-12" width="104" height="24" rx="6" fill="rgba(46,125,50,0.92)" stroke="#81C784" stroke-width="1.2"/>' +
+      '<rect x="-46" y="4" width="92" height="4" rx="2" fill="#1B5E20"/>' +
+      '<rect x="-46" y="4" width="' + (92 * hPct / 100) + '" height="4" rx="2" fill="#A5D6A7"/>' +
+      '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="#FFFFFF">' + hLabel + ' ' + hPct + '%</text>' +
+    '</g>';
+  }
   if (p.animal){
     var an = ANIMALS.find(function(x){return x.key===p.animal.key;});
     content += '<g class="critter-bounce" transform="translate(40,50)"><text x="0" y="0" font-size="26">'+an.emoji+'</text></g>';
@@ -6490,7 +6698,14 @@ function buildingModalHtml(key){
                 '<div class="row"><span>Bypass Pruners</span><span class="v" style="color:#2E7D32;">✓ Ready</span></div>' +
                 '<div class="row"><span>Botanist Flasks</span><span class="v" style="color:#2E7D32;">✓ Ready</span></div>' +
               '</div>' +
-              '<button class="primary" style="margin-top:10px;" onclick="closeModal();toggleCorner(\'bottomToolsExpanded\');">Manage & Recruit Workers in Tool Strip ➔</button>';
+              '<div style="margin-top:10px;background:#F1F8E9;padding:9px 12px;border-radius:10px;border:1px solid #C5E1A5;">' +
+         '<div style="font-weight:800;font-size:0.78rem;color:#2E7D32;margin-bottom:6px;">Recruit Farm Personnel:</div>' +
+         '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+           '<button class="claim-btn" onclick="hireWorker(\'laborer\')">👷 Laborer (€15/d)</button>' +
+           '<button class="claim-btn" onclick="hireWorker(\'farmer\')">🧑‍🌾 Farmer (€25/d)</button>' +
+           '<button class="claim-btn" onclick="hireWorker(\'botanist\')">👩‍🔬 Botanist (€40/d)</button>' +
+         '</div>' +
+       '</div>';
     } else if (b.building){
       html += '<div class="row"><span>Construction Progress</span><span class="v">' + Math.round(Math.min(100,(b.buildHours/def.buildHours)*100)) + '%</span></div>';
     } else {
@@ -6506,7 +6721,10 @@ function buildingModalHtml(key){
               '<div class="row"><span>2-Wheel Harvest Carts</span><span class="v" style="color:#2E7D32;">2 Carts Ready</span></div>' +
               '<div class="row"><span>Timber Bolster Winch</span><span class="v" style="color:#2E7D32;">Operational</span></div>' +
               '<div class="row"><span>Haulage Logistics</span><span class="v" style="color:#2E7D32;">Automated</span></div>' +
-              '<div class="empty-note" style="margin-top:8px;">When harvesting any mature plot, workers now retrieve a 2-wheel cart from here, haul crops to storage, and return the cart!</div>';
+              (hasTractor() ?
+                '<div class="row"><span>Farm Utility Tractor</span><span class="v" style="color:#2E7D32;">✓ Equipped (3.5s Mechanized Harvest to Storage)</span></div>' :
+                '<button class="primary" style="margin-top:8px;" onclick="acquireTractor()" ' + (state.money<350?'disabled':'') + '>🚜 Acquire Farm Utility Tractor — €350 (Fast 3.5s Harvest)</button>') +
+              '<div class="empty-note" style="margin-top:8px;">When harvesting mature plots, farm vehicles haul crops directly to the Storage Barn loading bay.</div>';
     } else if (b.building){
       html += '<div class="row"><span>Construction Progress</span><span class="v">' + Math.round(Math.min(100,(b.buildHours/def.buildHours)*100)) + '%</span></div>';
     } else {
@@ -7002,6 +7220,28 @@ function panelHtml(){
         rows += '<div class="task-row"><div><div class="name">🧺 Harvest waiting in storage</div><div class="meta">€'+state.storage.stored.toFixed(0)+' ready to sell</div></div><button class="claim-btn" data-sellstorage="1">Sell</button></div>';
       }
     }
+    // Rock Clearing Task
+    if (!state.rocksCleared){
+      any = true;
+      if (state.rocksClearing){
+        var rkPct = Math.round(Math.min(100,(state.rocksClearHours/2)*100));
+        rows += '<div class="task-row" style="border-left:3px solid #F0AC3D;"><div><div class="name">🪨 Clearing Road Obstacles…</div><div class="meta">'+rkPct+'% complete · Laborer clearing corridor</div></div><button class="claim-btn" disabled style="opacity:0.8;">'+rkPct+'%</button></div>';
+      } else {
+        rows += '<div class="task-row" style="border-left:3px solid #78909C;"><div><div class="name">🪨 Clear Boulder Obstacles from Road Corridor</div><div class="meta">€50 · 2h · clears rocks for Main Road & Subways · needs Laborer</div></div><button class="claim-btn" onclick="startClearRocks()" '+(state.money<50?'disabled':'')+'>Clear Rocks (€50)</button></div>';
+      }
+    }
+
+    // Lawn Mowing Task
+    if ((state.lawnOvergrowth || 0) >= 40){
+      any = true;
+      if (state.lawnMowing){
+        var mowPct = Math.round(Math.min(100,(state.lawnMowHours/1.5)*100));
+        rows += '<div class="task-row" style="border-left:3px solid #66BB6A;"><div><div class="name">🌿 Mowing Estate Lawn…</div><div class="meta">'+mowPct+'% complete · manicuring grounds</div></div><button class="claim-btn" disabled style="opacity:0.8;">'+mowPct+'%</button></div>';
+      } else {
+        rows += '<div class="task-row" style="border-left:3px solid #81C784;"><div><div class="name">🌿 Mow Estate Lawn & Trim Weeds</div><div class="meta">€15 · 1.5h · manicures turf, restores +5 reputation · needs Laborer</div></div><button class="claim-btn" onclick="startMowLawn()" '+(state.money<15?'disabled':'')+'>Mow Lawn (€15)</button></div>';
+      }
+    }
+
     state.plots.forEach(function(p){
       if (!p.accessories || !p.accessories.boundary){
         any=true; rows+='<div class="task-row" style="border-left:3px solid #8D6E63;"><div><div class="name">⛩️ Plot '+(p.id+1)+' — Erect Boundary Fence & Gate</div><div class="meta">€'+ACCESSORIES.boundary.cost+' · timber estate fence · dynamic entrance gate</div></div><button class="claim-btn" data-buyacc="boundary" data-buyplot="'+p.id+'" '+(state.money<ACCESSORIES.boundary.cost?'disabled':'')+'>Build (€'+ACCESSORIES.boundary.cost+')</button></div>';
@@ -7039,8 +7279,16 @@ function panelHtml(){
       var loc = w.assignedPlot!==null ? 'Plot '+(w.assignedPlot+1) : 'Idle';
       return '<div class="roster-chip"><span>'+WORKER_TYPES[w.type].label+' · '+loc+'</span><button class="fire" data-fire="'+w.id+'">Let go</button></div>';
     }).join('') : '<div class="empty-note">No workers hired yet. Hire from the tool strip at the bottom of the screen.</div>';
+    var recruitBox = '<div class="recruit-box" style="margin-top:10px;background:#F1F8E9;padding:9px 12px;border-radius:10px;border:1px solid #C5E1A5;">' +
+      '<div style="font-weight:800;font-size:0.78rem;color:#2E7D32;margin-bottom:6px;">Recruit Farm Personnel:</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+        '<button class="claim-btn" onclick="hireWorker(\'laborer\')">👷 Laborer (€15/d)</button>' +
+        '<button class="claim-btn" onclick="hireWorker(\'farmer\')">🧑‍🌾 Farmer (€25/d)</button>' +
+        '<button class="claim-btn" onclick="hireWorker(\'botanist\')">👩‍🔬 Botanist (€40/d)</button>' +
+      '</div>' +
+    '</div>';
     return '<div class="float-panel"><h2>👷 Workers<span class="close-x" data-closepanel="1">✕</span></h2>'+
-      (dailyWage?'<div class="empty-note">Payroll: €'+dailyWage+'/day</div>':'')+'<div class="roster">'+roster+'</div></div>';
+      (dailyWage?'<div class="empty-note">Payroll: €'+dailyWage+'/day</div>':'')+'<div class="roster">'+roster+'</div>'+recruitBox+'</div>';
   }
   if (openPanel==='achievements'){
     var ach = ACHIEVEMENTS.map(function(a){ return '<div class="ach'+(state.achUnlocked[a.id]?' unlocked':'')+'">'+a.label+'</div>'; }).join('');
@@ -7124,16 +7372,16 @@ function toolStripHtml(){
   var hasCrewTrail = state && state.roads && state.roads.crew_trail && state.roads.crew_trail.built;
   var chips = '';
   
-  if (!hasCrewShed || !hasCrewTrail){
+  if (!hasCrewShed){
     chips += '<div class="crew-shed-lock-banner">' +
-      '<span>🏠 <b>Crew Shed Required:</b> Build Crew Shed & Trail to recruit workers.</span>' +
+      '<span>🏠 <b>Crew Shed Required:</b> Build Crew Shed to recruit workers.</span>' +
       '<button onclick="startBuildBuilding(\'crew_shed\')">Build (€200)</button>' +
     '</div>';
   }
 
   Object.keys(WORKER_TYPES).forEach(function(k){
     var wt = WORKER_TYPES[k];
-    var locked = (!hasCrewShed || !hasCrewTrail);
+    var locked = !hasCrewShed;
     var lockTip = locked ? '\\n(Locked: Construct Crew Shed & Trail first)' : '';
     chips += '<div class="tool-chip ' + (locked ? 'info' : '') + '" data-tip="' + wt.label + '\\n€' + wt.wage + '/day\\n' + wt.desc + lockTip + '" ' + (locked ? '' : 'data-hire="' + k + '"') + ' style="' + (locked ? 'opacity:0.6;cursor:not-allowed;' : '') + '">' +
       '<span class="em">' + (locked ? '🔒' : '👷') + '</span>' + wt.label +
@@ -7147,6 +7395,9 @@ function toolStripHtml(){
   chips += '<div class="tool-chip info" data-tip="Pruning cost varies by tree\\ncategory (€14-24).\\nOpen a growing plot to prune."><span class="em">✂️</span>Prune</div>';
   chips += '<div class="tool-chip info" data-tip="Build a Storage Room (€'+STORAGE_COST+')\\nto hold €'+STORAGE_BASE_CAPACITY+' of harvest.\\nClick the building on the field\\nto sell stock or expand capacity."><span class="em">🏚</span>Storage</div>';
   return chips;
+}
+function updateToolStrip(){
+  buildToolStripOnce();
 }
 function buildToolStripOnce(){
   var ts = document.getElementById('toolStrip');
@@ -7245,6 +7496,19 @@ window.plotSvg = plotSvg;
 window.buyAccessory = buyAccessory;
 window.panelHtml = panelHtml;
 window.togglePanel = togglePanel;
+window.hasTractor = hasTractor;
+window.acquireTractor = acquireTractor;
+window.startClearRocks = startClearRocks;
+window.startMowLawn = startMowLawn;
+window.startPrep = startPrep;
+window.startClear = startClear;
+window.startRemoveTree = startRemoveTree;
+window.startHarvest = startHarvest;
+window.startBuildBuilding = startBuildBuilding;
+window.advanceGame = advanceGame;
+window.farmReputation = farmReputation;
+window.fieldBackgroundSVG = fieldBackgroundSVG;
+window.updateToolStrip = updateToolStrip;
 window.switchScreen = switchScreen;
 window.freshState = freshState;
 try {
@@ -7278,6 +7542,18 @@ if (typeof globalThis !== 'undefined'){
   globalThis.buyAccessory = buyAccessory;
   globalThis.panelHtml = panelHtml;
   globalThis.togglePanel = togglePanel;
+  globalThis.hasTractor = hasTractor;
+  globalThis.acquireTractor = acquireTractor;
+  globalThis.startClearRocks = startClearRocks;
+  globalThis.startMowLawn = startMowLawn;
+  globalThis.startPrep = startPrep;
+  globalThis.startClear = startClear;
+  globalThis.startRemoveTree = startRemoveTree;
+  globalThis.startHarvest = startHarvest;
+  globalThis.startBuildBuilding = startBuildBuilding;
+  globalThis.advanceGame = advanceGame;
+  globalThis.farmReputation = farmReputation;
+  globalThis.fieldBackgroundSVG = fieldBackgroundSVG;
   globalThis.switchScreen = switchScreen;
   globalThis.freshState = freshState;
   try {
@@ -7465,7 +7741,14 @@ function render(){
     renderCornersUI();
 
     var bgEl = document.getElementById('fieldBg');
-    if (bgEl && !bgEl.dataset.built){ bgEl.innerHTML = fieldBackgroundSVG(); bgEl.dataset.built='1'; }
+    if (bgEl){
+      var bgKey = (state.rocksCleared ? '1' : '0') + '_' + (state.rocksClearing ? '1' : '0') + '_' + Math.floor((state.lawnOvergrowth||0)/20) + '_' + (state.lawnMowing ? '1' : '0');
+      if (bgEl.dataset.bgKey !== bgKey){
+        bgEl.innerHTML = fieldBackgroundSVG();
+        bgEl.dataset.bgKey = bgKey;
+      }
+    }
+    if (typeof updateToolStrip === 'function') updateToolStrip();
   }
 
   replacePreservingScroll('modalLayer', '.modal', modalHtml());
