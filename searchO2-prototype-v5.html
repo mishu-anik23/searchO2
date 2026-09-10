@@ -468,6 +468,41 @@
   .wingflap{ animation: flap 0.5s ease-in-out infinite alternate; transform-origin:center; }
   @keyframes flap{ 0%{transform:scaleY(1);} 100%{transform:scaleY(0.55);} }
 
+  /* Human Worker Walk & Work Keyframes */
+  @keyframes legWalkLeft {
+    0%, 100% { transform: rotate(-22deg); }
+    50% { transform: rotate(22deg); }
+  }
+  @keyframes legWalkRight {
+    0%, 100% { transform: rotate(22deg); }
+    50% { transform: rotate(-22deg); }
+  }
+  @keyframes armWorkSwing {
+    0%, 100% { transform: rotate(-24deg); }
+    50% { transform: rotate(28deg); }
+  }
+  @keyframes chipSpark {
+    0% { opacity: 0.9; transform: translate(0,0) scale(0.6); }
+    50% { opacity: 1; transform: translate(5px,-9px) scale(1.1); }
+    100% { opacity: 0; transform: translate(10px,3px) scale(0.3); }
+  }
+  @keyframes lawnSpray {
+    0% { opacity: 0.8; transform: translate(0,0) scale(0.5); }
+    100% { opacity: 0; transform: translate(-12px,-14px) scale(1.2); }
+  }
+  .human-walker-sprite {
+    position: absolute;
+    width: 38px;
+    height: 60px;
+    z-index: 34;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.32));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform-origin: center bottom;
+    pointer-events: none;
+  }
+
   @media (max-width:640px){
     .float-panel{ width: calc(100vw - 84px); }
     .tool-chip{ width:58px; height:52px; font-size:0.58rem; }
@@ -3927,16 +3962,16 @@ function advanceGame(dh){
       p.weedHours += dh;
       if (p.weedHours >= OVERGROWN_THRESHOLD){ p.status='overgrown'; showNotification('🌿','Plot '+(p.id+1)+' is overgrown and needs clearing.','plot',p.id); }
     } else if (p.status==='clearing'){
-      var clearMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : 1;
+      var clearMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : (w ? 1.25 : 1);
       p.taskHours += dh * clearMult;
       if (p.taskHours >= CLEAR_DURATION_HOURS){ p.status='barren'; p.weedHours=0; p.taskHours=0; }
     } else if (p.status==='preparing'){
-      var prepMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : 1;
+      var prepMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : (w ? 1.25 : 1);
       p.taskHours += dh * prepMult;
       if (p.taskHours >= PREP_DURATION_HOURS){ p.status='ready'; p.weedHours=0; showNotification('🌱','Plot '+(p.id+1)+' is prepared and ready for planting!','plot',p.id); if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task'); }
     } else if (p.status==='removing'){
       var remDef = TREE_TYPES[p.treeType]; var remCfg = REMOVE_CONFIG[remDef.category];
-      var remMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : 1;
+      var remMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : (w ? 1.25 : 1);
       p.taskHours += dh * remMult;
       if (p.taskHours >= remCfg.hours){
         var salvage = Math.round(remDef.cost * remCfg.salvagePct * 100)/100;
@@ -4079,36 +4114,63 @@ function checkAchievements(){
   ACHIEVEMENTS.forEach(function(a){ if (!state.achUnlocked[a.id] && a.check(state)) state.achUnlocked[a.id]=true; });
 }
 
-// ================= ACTIONS =================
+// ================= ACTIONS & WORKER DISPATCH HUB =================
+function hasAvailableFieldWorker(){
+  return state.workers.some(function(w){
+    return w.type==='laborer' || w.type==='farmer';
+  });
+}
+function hasAvailableLaborer(){
+  return hasAvailableFieldWorker();
+}
+
 function startPrep(plotId){
   var p = state.plots[plotId]; if (p.status!=='barren') return;
-  if (!hasAvailableLaborer()){
-    showNotification('👷', 'Hire a Laborer from the Crew Shed to dig and till barren land!', 'building', 'crew_shed');
+  if (!hasAvailableFieldWorker()){
+    showNotification('👷', 'Recruit a Farmer or Laborer from the Crew Shed to dig and till barren land!', 'building', 'crew_shed');
     return;
   }
   if (state.money < LABOR_COST) return;
   state.money -= LABOR_COST; p.status='preparing'; p.taskHours=0;
+  var avail = state.workers.find(function(w){
+    return (w.type==='laborer' || w.type==='farmer') && w.assignedPlot===null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId!==w.id);
+  });
+  if (avail){
+    assignWorker(avail.id, plotId);
+  }
   render(); requestSave();
 }
 function startClear(plotId){
   var p = state.plots[plotId]; if (p.status!=='overgrown') return;
-  if (!hasAvailableLaborer()){
-    showNotification('👷', 'Hire a Laborer from the Crew Shed to clear overgrown brush!', 'building', 'crew_shed');
+  if (!hasAvailableFieldWorker()){
+    showNotification('👷', 'Recruit a Farmer or Laborer from the Crew Shed to clear overgrown brush!', 'building', 'crew_shed');
     return;
   }
   if (state.money < CLEAR_COST) return;
   state.money -= CLEAR_COST; p.status='clearing'; p.taskHours=0;
+  var avail = state.workers.find(function(w){
+    return (w.type==='laborer' || w.type==='farmer') && w.assignedPlot===null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId!==w.id);
+  });
+  if (avail){
+    assignWorker(avail.id, plotId);
+  }
   render(); requestSave();
 }
 function startRemoveTree(plotId){
   var p = state.plots[plotId]; if (p.status!=='dead') return;
   var def = TREE_TYPES[p.treeType]; var cfg = REMOVE_CONFIG[def.category];
-  if (!hasAvailableLaborer()){
-    showNotification('👷', 'Hire a Laborer from the Crew Shed to cut down dead trees!', 'building', 'crew_shed');
+  if (!hasAvailableFieldWorker()){
+    showNotification('🪓', 'Recruit a Farmer or Laborer from the Crew Shed to cut down dead trees!', 'building', 'crew_shed');
     return;
   }
   if (state.money < cfg.cost) return;
   state.money -= cfg.cost; p.status='removing'; p.taskHours=0;
+  var avail = state.workers.find(function(w){
+    return (w.type==='laborer' || w.type==='farmer') && w.assignedPlot===null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId!==w.id);
+  });
+  if (avail){
+    assignWorker(avail.id, plotId);
+  }
   render(); requestSave();
 }
 function plantTree(plotId, type){
@@ -4143,8 +4205,8 @@ function acquireTractor(){
 }
 function startClearRocks(){
   if (state.rocksCleared || state.rocksClearing) return;
-  if (!hasAvailableLaborer()){
-    showNotification('👷', 'Hire a Laborer from the Crew Shed to clear road boulders!', 'building', 'crew_shed');
+  if (!hasAvailableFieldWorker()){
+    showNotification('👷', 'Recruit a Laborer or Farmer from the Crew Shed to clear road boulders!', 'building', 'crew_shed');
     return;
   }
   var cost = 50;
@@ -4155,16 +4217,18 @@ function startClearRocks(){
   state.money -= cost;
   state.rocksClearing = true;
   state.rocksClearHours = 0;
-  var lab = state.workers.find(function(w){ return w.type === 'laborer' && w.assignedPlot === null && !w.assignedBuilding; });
-  if (lab && typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(lab, 'rocks');
+  var worker = state.workers.find(function(w){
+    return (w.type === 'laborer' || w.type === 'farmer') && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
+  });
+  if (worker && typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'rocks');
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
-  pushReport('🪨 Dispatched Laborer to clear boulder obstacles from the road corridor (€' + cost + ' · 2h).');
+  pushReport('🪨 Dispatched ' + (worker ? WORKER_TYPES[worker.type].label : 'Worker') + ' to clear boulder obstacles from the road corridor (€' + cost + ' · 2h).');
   render(); requestSave();
 }
 function startMowLawn(){
   if (state.lawnMowing || (state.lawnOvergrowth || 0) < 30) return;
-  if (!hasAvailableLaborer()){
-    showNotification('👷', 'Hire a Laborer from the Crew Shed to mow the lawn!', 'building', 'crew_shed');
+  if (!hasAvailableFieldWorker()){
+    showNotification('👷', 'Recruit a Laborer or Farmer from the Crew Shed to mow the lawn!', 'building', 'crew_shed');
     return;
   }
   var cost = 15;
@@ -4175,10 +4239,12 @@ function startMowLawn(){
   state.money -= cost;
   state.lawnMowing = true;
   state.lawnMowHours = 0;
-  var lab = state.workers.find(function(w){ return w.type === 'laborer' && w.assignedPlot === null && !w.assignedBuilding; });
-  if (lab && typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(lab, 'lawn');
+  var worker = state.workers.find(function(w){
+    return (w.type === 'laborer' || w.type === 'farmer') && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
+  });
+  if (worker && typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'lawn');
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
-  pushReport('🌿 Dispatched Laborer to mow estate lawn and trim wild weeds (€' + cost + ' · 1.5h).');
+  pushReport('🌿 Dispatched ' + (worker ? WORKER_TYPES[worker.type].label : 'Worker') + ' to mow estate lawn and trim wild weeds (€' + cost + ' · 1.5h).');
   render(); requestSave();
 }
 
@@ -4211,10 +4277,37 @@ function assignWorker(workerId, plotId){
   if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, plotId);
   render(); requestSave();
 }
+function unassignWorkerById(workerId){
+  var w = state.workers.find(function(x){ return x.id === workerId; });
+  if (!w) return;
+  var origin = null;
+  if (w.assignedPlot !== null){
+    origin = w.assignedPlot;
+    state.plots[w.assignedPlot].assignedWorker = null;
+    w.assignedPlot = null;
+  } else if (w.assignedBuilding){
+    origin = w.assignedBuilding;
+    state.buildings[w.assignedBuilding].assignedWorker = null;
+    w.assignedBuilding = null;
+  } else if (state.storage && state.storage.assignedLaborerId === w.id){
+    origin = 'storage';
+    state.storage.assignedLaborerId = null;
+  }
+  pushReport('↩️ Recalled ' + WORKER_TYPES[w.type].label + ' #' + w.id + ' back to Crew Shed.');
+  if (origin !== null && typeof animateWorkerPathWalk === 'function'){
+    animateWorkerPathWalk(w, 'crew_shed', origin);
+  }
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+  render(); requestSave();
+}
+
 function unassignWorker(plotId){
   var p = state.plots[plotId];
-  if (p.assignedWorker!==null){ var w = state.workers.find(function(x){return x.id===p.assignedWorker;}); if (w) w.assignedPlot=null; p.assignedWorker=null; }
-  render(); requestSave();
+  if (p && p.assignedWorker !== null){
+    unassignWorkerById(p.assignedWorker);
+  } else {
+    render(); requestSave();
+  }
 }
 function assignWorkerToBuilding(workerId, key){
   var w = state.workers.find(function(x){return x.id===workerId;}); var b = state.buildings[key];
@@ -4228,7 +4321,45 @@ function assignWorkerToBuilding(workerId, key){
 }
 function unassignWorkerFromBuilding(key){
   var b = state.buildings[key];
-  if (b.assignedWorker){ var w = state.workers.find(function(x){return x.id===b.assignedWorker;}); if (w) w.assignedBuilding=null; b.assignedWorker=null; }
+  if (b && b.assignedWorker){
+    unassignWorkerById(b.assignedWorker);
+  } else {
+    render(); requestSave();
+  }
+}
+
+function assignWorkerToTask(workerId, taskType, targetId){
+  var w = state.workers.find(function(x){ return x.id === workerId; });
+  if (!w) return;
+  if (taskType === 'dig'){
+    startPrep(targetId);
+    assignWorker(workerId, targetId);
+  } else if (taskType === 'clear'){
+    startClear(targetId);
+    assignWorker(workerId, targetId);
+  } else if (taskType === 'removeTree'){
+    startRemoveTree(targetId);
+    assignWorker(workerId, targetId);
+  } else if (taskType === 'harvest'){
+    assignWorker(workerId, targetId);
+    harvestPlot(targetId);
+  } else if (taskType === 'water'){
+    assignWorker(workerId, targetId);
+    waterPlot(targetId);
+  } else if (taskType === 'prune'){
+    assignWorker(workerId, targetId);
+    prunePlot(targetId);
+  } else if (taskType === 'plot'){
+    assignWorker(workerId, targetId);
+  } else if (taskType === 'rocks'){
+    startClearRocks();
+  } else if (taskType === 'lawn'){
+    startMowLawn();
+  } else if (taskType === 'storage'){
+    assignLaborerToStorage(workerId);
+  } else if (taskType === 'building'){
+    assignWorkerToBuilding(workerId, targetId);
+  }
   render(); requestSave();
 }
 function buyAccessory(plotId, kind){
@@ -4302,9 +4433,7 @@ function workerOnStorage(){
 }
 
 function hasAvailableLaborer(){
-  var w = workerOnStorage();
-  if (w && w.type === 'laborer') return true;
-  return state.workers.some(function(w){ return w.type === 'laborer' && w.assignedPlot === null && !w.assignedBuilding; });
+  return hasAvailableFieldWorker();
 }
 
 function assignLaborerToStorage(workerId){
@@ -4325,9 +4454,9 @@ function assignLaborerToStorage(workerId){
 }
 
 function unassignLaborerFromStorage(){
-  if (state.storage.assignedLaborerId){
-    state.storage.assignedLaborerId = null;
-    pushReport('👷 Unassigned Laborer from Storage loading bay.');
+  if (state.storage && state.storage.assignedLaborerId){
+    unassignWorkerById(state.storage.assignedLaborerId);
+  } else {
     render(); requestSave();
   }
 }
@@ -5164,7 +5293,11 @@ function animateAlongWaypoints(el, waypoints, totalDurationMs, onComplete){
     var dx = curr.x - prev.x;
     var dy = curr.y - prev.y;
     var rotDeg = 0;
-    if (Math.abs(dx) >= Math.abs(dy)){
+    if (el.classList.contains('human-walker-sprite')){
+      // Human pedestrians walk upright with directional horizontal flip
+      if (dx > 0.5) el.style.transform = 'scaleX(1)';
+      else if (dx < -0.5) el.style.transform = 'scaleX(-1)';
+    } else if (Math.abs(dx) >= Math.abs(dy)){
       rotDeg = dx >= 0 ? 0 : 180;
       el.style.transform = dx >= 0 ? 'scaleX(1) rotate(0deg)' : 'scaleX(-1) rotate(0deg)';
     } else {
@@ -5254,64 +5387,157 @@ function spawnVehicleAnimation(fromLayoutOrId){
   });
 }
 
-// Worker Dispatch Walking Animation: Starts from Crew Shed, equips tool, walks at normal human speed
-function animateWorkerPathWalk(worker, destination){
+// Helper: Get point coordinates for destination or origin
+function getFarmLocationCoords(loc){
+  if (typeof loc === 'number'){
+    return { x: getPlotJunctionX(loc), y: getPlotDestY(loc) };
+  }
+  if (loc === 'storage') return { x: 52.5, y: 14 };
+  if (loc === 'pond') return { x: 38, y: 23 };
+  if (loc === 'garden') return { x: 38, y: 77 };
+  if (loc === 'coffee_shop') return { x: 67, y: 23 };
+  if (loc === 'juice_bar') return { x: 67, y: 77 };
+  if (loc === 'garage') return { x: 93.5, y: 23 };
+  if (loc === 'rocks') return { x: 47, y: 28 };
+  if (loc === 'lawn') return { x: 50, y: 56 };
+  if (loc === 'crew_shed') return { x: 12.7, y: 76 };
+  return { x: 24.5, y: 47 };
+}
+
+// Full-Human Vector Character & Walking Physics
+function drawHumanWorkerSvg(type, tool, isWalking, isWorking){
+  var wt = WORKER_TYPES[type] || WORKER_TYPES.farmer;
+  var skin = '#F2C79B';
+  var shirtColor = '#455A64';
+  var pantsColor = '#263238';
+  var vestOverlay = '';
+
+  if (type === 'farmer'){
+    shirtColor = '#8D6E63'; // Plaid / rustic work shirt
+    pantsColor = '#1565C0'; // Denim dungarees
+    vestOverlay = '<path d="M-6,14 L6,14 L5,28 L-5,28 Z" fill="#1976D2"/><line x1="-4" y1="14" x2="-4" y2="8" stroke="#1976D2" stroke-width="2"/><line x1="4" y1="14" x2="4" y2="8" stroke="#1976D2" stroke-width="2"/><circle cx="-4" cy="14" r="1.2" fill="#FFB300"/><circle cx="4" cy="14" r="1.2" fill="#FFB300"/>';
+  } else if (type === 'laborer'){
+    shirtColor = '#37474F';
+    pantsColor = '#37474F';
+    vestOverlay = '<rect x="-6" y="10" width="12" height="18" rx="2" fill="#FF6D00"/><rect x="-6" y="15" width="12" height="3" fill="#EEEEEE" opacity="0.9"/><rect x="-6" y="21" width="12" height="3" fill="#EEEEEE" opacity="0.9"/>';
+  } else if (type === 'botanist'){
+    shirtColor = '#2E7D32';
+    pantsColor = '#455A64';
+    vestOverlay = '<rect x="-6" y="10" width="12" height="19" rx="2" fill="#FAFAFA"/><line x1="0" y1="10" x2="0" y2="29" stroke="#CFD8DC" stroke-width="1.2"/><circle cx="3" cy="14" r="1.5" fill="#43A047"/>';
+  }
+
+  // Authentic Headwear
+  var headwear = '';
+  if (type === 'farmer'){
+    headwear = '<ellipse cx="0" cy="-6" rx="14" ry="4.5" fill="#FDD835" stroke="#F57F17" stroke-width="0.8"/>' +
+               '<path d="M-8,-6 Q0,-16 8,-6" fill="#FBC02D"/>' +
+               '<path d="M-7,-6 Q0,-8 7,-6" stroke="#33691E" stroke-width="1.6" fill="none"/>';
+  } else if (type === 'laborer'){
+    headwear = '<path d="M-8,-4 Q0,-14 8,-4 Z" fill="#FF9800" stroke="#E65100" stroke-width="0.8"/>' +
+               '<rect x="-10" y="-4" width="20" height="3" rx="1.5" fill="#FFA726"/>';
+  } else if (type === 'botanist'){
+    headwear = '<ellipse cx="0" cy="-6" rx="9" ry="3" fill="#CFD8DC"/>' +
+               '<rect x="-7" y="-5" width="14" height="4" rx="1" fill="#ECEFF1" stroke="#90A4AE" stroke-width="0.6"/>' +
+               '<ellipse cx="-3" cy="-1" rx="2.5" ry="2.2" fill="none" stroke="#26A69A" stroke-width="1"/>' +
+               '<ellipse cx="3" cy="-1" rx="2.5" ry="2.2" fill="none" stroke="#26A69A" stroke-width="1"/>' +
+               '<line x1="-0.5" y1="-1" x2="0.5" y2="-1" stroke="#26A69A" stroke-width="1"/>';
+  }
+
+  // Walking or Standing Legs
+  var leftLegStyle = isWalking ? 'style="animation: legWalkLeft 0.5s infinite ease-in-out; transform-origin: -3px 26px;"' : '';
+  var rightLegStyle = isWalking ? 'style="animation: legWalkRight 0.5s infinite ease-in-out; transform-origin: 3px 26px;"' : '';
+  var legsSvg = '<g ' + leftLegStyle + '><rect x="-5.5" y="26" width="4.5" height="11" rx="2" fill="' + pantsColor + '"/><ellipse cx="-3.2" cy="37" rx="3.5" ry="2.2" fill="#212121"/></g>' +
+                '<g ' + rightLegStyle + '><rect x="1" y="26" width="4.5" height="11" rx="2" fill="' + pantsColor + '"/><ellipse cx="3.2" cy="37" rx="3.5" ry="2.2" fill="#212121"/></g>';
+
+  // Active Tool and Arm swing
+  var activeTool = tool || (WORKER_TYPES[type] ? WORKER_TYPES[type].tool : 'shovel');
+  var armClass = isWorking ? 'style="animation: armWorkSwing 0.65s infinite ease-in-out; transform-origin: 6px 14px;"' : '';
+  var toolItemSvg = toolSvg(activeTool, isWorking);
+
+  var armsSvg = '<g><rect x="-8.5" y="11" width="3.5" height="12" rx="1.7" fill="' + shirtColor + '"/><circle cx="-6.7" cy="23" r="2" fill="' + skin + '"/></g>' +
+                '<g ' + armClass + '><rect x="5" y="11" width="3.5" height="12" rx="1.7" fill="' + shirtColor + '"/><circle cx="6.7" cy="23" r="2" fill="' + skin + '"/>' +
+                '<g transform="translate(7, 21)">' + toolItemSvg + '</g></g>';
+
+  return '<g class="human-worker">' +
+    '<ellipse cx="0" cy="38" rx="12" ry="4" fill="rgba(0,0,0,0.22)"/>' +
+    legsSvg +
+    '<rect x="-6" y="8" width="12" height="19" rx="3" fill="' + shirtColor + '"/>' +
+    vestOverlay +
+    armsSvg +
+    '<circle cx="0" cy="-1" r="6.5" fill="' + skin + '"/>' +
+    '<circle cx="-2" cy="-1.5" r="0.8" fill="#3E2723"/>' +
+    '<circle cx="2" cy="-1.5" r="0.8" fill="#3E2723"/>' +
+    '<path d="M-1.5,1.5 Q0,3 1.5,1.5" stroke="#D9A377" stroke-width="0.8" fill="none"/>' +
+    headwear +
+  '</g>';
+}
+
+// Two-way Worker Walking Animation: Full-human walking model along Manhattan road network
+function animateWorkerPathWalk(worker, destination, origin){
   var scene = document.querySelector('.field-scene');
   if (!scene) return;
 
-  var destX = 24.5, destY = 20;
-  if (typeof destination === 'number'){
-    destX = getPlotJunctionX(destination);
-    destY = getPlotDestY(destination);
-  } else if (destination === 'storage'){
-    destX = 52.5; destY = 14;
-  } else if (destination === 'pond'){
-    destX = 38; destY = 23;
-  } else if (destination === 'garden'){
-    destX = 38; destY = 77;
-  } else if (destination === 'coffee_shop'){
-    destX = 67; destY = 23;
-  } else if (destination === 'juice_bar'){
-    destX = 67; destY = 77;
-  } else if (destination === 'garage'){
-    destX = 93.5; destY = 23;
+  var isReturnWalk = (destination === 'crew_shed');
+  var startPt = isReturnWalk ? getFarmLocationCoords(origin || 0) : { x: 12.7, y: 76 };
+  var endPt = isReturnWalk ? { x: 12.7, y: 76 } : getFarmLocationCoords(destination);
+
+  var workerType = worker ? worker.type : 'farmer';
+  var workerTool = WORKER_TYPES[workerType] ? WORKER_TYPES[workerType].tool : 'shovel';
+  if (destination === 'rocks') workerTool = 'pickaxe';
+  else if (destination === 'lawn') workerTool = 'mower';
+  else if (typeof destination === 'number'){
+    var p = state.plots[destination];
+    if (p){
+      if (p.status === 'preparing') workerTool = 'shovel';
+      else if (p.status === 'clearing') workerTool = 'scythe';
+      else if (p.status === 'removing') workerTool = 'axe';
+      else if (p.harvesting) workerTool = 'basket';
+    }
   }
 
   var workerEl = document.createElement('div');
-  workerEl.className = 'bob-fast';
-  workerEl.style.cssText = 'position:absolute;width:34px;height:44px;z-index:32;font-size:26px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3));';
-  var icon = '👷';
-  if (worker && worker.type === 'botanist') icon = '👩‍🔬';
-  else if (worker && worker.type === 'farmer') icon = '🧑‍🌾';
-  workerEl.textContent = icon;
+  workerEl.className = 'human-walker-sprite';
+  workerEl.innerHTML = '<svg viewBox="-18 -20 36 65" width="38" height="60" style="overflow:visible;">' +
+    drawHumanWorkerSvg(workerType, workerTool, true, false) +
+  '</svg>';
 
   var truckLayer = document.getElementById('logisticsTruckLayer');
   if (!truckLayer){
     truckLayer = document.createElement('div');
     truckLayer.id = 'logisticsTruckLayer';
     truckLayer.className = 'logistics-transport-layer';
-    truckLayer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:28;';
+    truckLayer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:34;';
     scene.appendChild(truckLayer);
   }
   truckLayer.appendChild(workerEl);
 
-  // Manhattan Waypoints from Crew Shed (x: 12.7, y: 76) along Crew Trail -> Main Road -> Subway -> Destination
-  var walkRoute = [
-    { x: 12.7,  y: 76 }, // Emerging from Crew Shed porch
-    { x: 12.7,  y: 47 }, // Joining Main Road via Crew Trail
-    { x: destX, y: 47 }, // Walking along Main Road
-    { x: destX, destY: destY, y: destY }  // Feeder Subway into Destination
-  ];
+  var walkRoute = [];
+  if (isReturnWalk){
+    // Inbound recall: Origin -> Feeder Subway -> Main Road (y:47) -> Crew Trail (x:12.7, y:47) -> Crew Shed (x:12.7, y:76)
+    walkRoute = [
+      { x: startPt.x, y: startPt.y },
+      { x: startPt.x, y: 47 },
+      { x: 12.7,      y: 47 },
+      { x: 12.7,      y: 76 }
+    ];
+  } else {
+    // Outbound dispatch: Crew Shed (x:12.7, y:76) -> Crew Trail -> Main Road (y:47) -> Destination Subway -> Destination
+    walkRoute = [
+      { x: 12.7,    y: 76 },
+      { x: 12.7,    y: 47 },
+      { x: endPt.x, y: 47 },
+      { x: endPt.x, y: endPt.y }
+    ];
+  }
 
-  // Scale duration to authentic human walking pace (~3.6s to 4.4s)
-  var dist = Math.abs(12.7 - destX) + Math.abs(76 - 47) + Math.abs(47 - destY);
-  var duration = Math.round(2600 + dist * 26);
+  var dist = Math.abs(startPt.x - endPt.x) + Math.abs(startPt.y - 47) + Math.abs(47 - endPt.y);
+  var duration = Math.round(2400 + dist * 26);
 
   animateAlongWaypoints(workerEl, walkRoute, duration, function(){
     if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
     setTimeout(function(){
       if (workerEl.parentNode) workerEl.parentNode.removeChild(workerEl);
-    }, 600);
+    }, 400);
   });
 }
 
@@ -5468,9 +5694,16 @@ function fieldBackgroundSVG(){
         });
         if (state && state.rocksClearing){
           var rkPct = Math.round(Math.min(100, (state.rocksClearHours/2)*100));
-          s += '<g transform="translate(470, 230)">' +
-                 '<rect x="-50" y="-14" width="100" height="26" rx="6" fill="rgba(38,50,56,0.92)" stroke="#F0AC3D" stroke-width="1.5"/>' +
-                 '<text x="0" y="4" font-size="10" text-anchor="middle" font-weight="800" fill="#FFE082">🪨 Clearing ' + rkPct + '%</text>' +
+          s += personSvg('laborer', true, 440, 222, false, 'pickaxe');
+          s += '<g class="chip-spark" style="animation: chipSpark 0.6s infinite ease-out; transform-origin: 470px 255px;">' +
+                 '<circle cx="468" cy="248" r="2.2" fill="#FFD54F"/>' +
+                 '<rect x="472" y="246" width="2.8" height="2.8" fill="#ECEFF1"/>' +
+               '</g>';
+          s += '<g transform="translate(470, 208)">' +
+                 '<rect x="-54" y="-13" width="108" height="25" rx="6" fill="rgba(38,50,56,0.94)" stroke="#F0AC3D" stroke-width="1.4"/>' +
+                 '<rect x="-48" y="4" width="96" height="4" rx="2" fill="#263238"/>' +
+                 '<rect x="-48" y="4" width="' + (96 * rkPct / 100) + '" height="4" rx="2" fill="#F0AC3D"/>' +
+                 '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="#FFE082">🪨 Clearing Boulders ' + rkPct + '%</text>' +
                '</g>';
         }
       }
@@ -5488,9 +5721,16 @@ function fieldBackgroundSVG(){
       }
       if (state && state.lawnMowing){
         var mowPct = Math.round(Math.min(100, (state.lawnMowHours/1.5)*100));
-        s += '<g transform="translate(500, 520)">' +
-               '<rect x="-55" y="-14" width="110" height="26" rx="6" fill="rgba(46,125,50,0.92)" stroke="#81C784" stroke-width="1.5"/>' +
-               '<text x="0" y="4" font-size="10" text-anchor="middle" font-weight="800" fill="#FFFFFF">🌿 Mowing ' + mowPct + '%</text>' +
+        s += personSvg('laborer', true, 490, 505, false, 'mower');
+        s += '<g style="animation: lawnSpray 0.5s infinite linear; transform-origin: 480px 525px;">' +
+               '<line x1="480" y1="525" x2="472" y2="520" stroke="#7CB342" stroke-width="2.2"/>' +
+               '<line x1="482" y1="527" x2="474" y2="523" stroke="#8BC34A" stroke-width="2"/>' +
+             '</g>';
+        s += '<g transform="translate(500, 482)">' +
+               '<rect x="-54" y="-13" width="108" height="25" rx="6" fill="rgba(46,125,50,0.94)" stroke="#81C784" stroke-width="1.4"/>' +
+               '<rect x="-48" y="4" width="96" height="4" rx="2" fill="#1B5E20"/>' +
+               '<rect x="-48" y="4" width="' + (96 * mowPct / 100) + '" height="4" rx="2" fill="#A5D6A7"/>' +
+               '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="#FFFFFF">🌿 Mowing Grounds ' + mowPct + '%</text>' +
              '</g>';
       }
       var bushes=[[70,360],[930,340],[500,270],[210,470],[770,480],[350,410],[640,420]];
@@ -5523,23 +5763,39 @@ function fieldBackgroundSVG(){
 // ================= WORKER / TOOL ART =================
 function toolSvg(tool, working){
   var cls = working ? ' class="tool-swing"' : '';
-  if (tool==='shovel') return '<g'+cls+'><rect x="0" y="0" width="4" height="20" fill="#B0B0B0"/><rect x="-4" y="18" width="12" height="8" rx="2" fill="#8A8A8A"/></g>';
-  if (tool==='can') return '<g'+cls+'><rect x="-6" y="0" width="14" height="10" rx="3" fill="#5A8FBF"/><rect x="6" y="2" width="10" height="3" fill="#5A8FBF"/></g>';
-  if (tool==='flask') return '<g'+cls+'><path d="M-3,0 L3,0 L5,14 Q0,18 -5,14 Z" fill="#7A5FA8" opacity="0.85"/></g>';
+  if (tool==='shovel' || tool==='spade') {
+    return '<g' + cls + '><rect x="0" y="0" width="3" height="18" rx="1" fill="#8D6E63"/><path d="M-4,15 L7,15 L5,24 L-2,24 Z" fill="#78909C" stroke="#546E7A" stroke-width="0.8"/></g>';
+  }
+  if (tool==='scythe') {
+    return '<g' + cls + '><rect x="0" y="-6" width="3" height="26" rx="1" fill="#8D6E63"/><path d="M2,-6 Q16,-12 20,-2 Q14,-4 2,-3" fill="#CFD8DC" stroke="#90A4AE" stroke-width="0.8"/></g>';
+  }
+  if (tool==='axe' || tool==='timber_axe') {
+    return '<g' + cls + '><rect x="0" y="-4" width="3.5" height="24" rx="1" fill="#795548"/><path d="M2,14 L12,11 L14,20 L2,17 Z" fill="#607D8B" stroke="#37474F" stroke-width="0.8"/><rect x="1" y="13" width="3" height="6" fill="#455A64"/></g>';
+  }
+  if (tool==='can' || tool==='water') {
+    return '<g' + cls + '><rect x="-4" y="2" width="14" height="12" rx="3" fill="#607D8B"/><path d="M-2,2 Q3,-5 8,2" fill="none" stroke="#455A64" stroke-width="2"/><line x1="10" y1="6" x2="17" y2="12" stroke="#78909C" stroke-width="2.5"/><circle cx="17" cy="12" r="2.5" fill="#B0BEC5"/></g>';
+  }
+  if (tool==='pruner' || tool==='shears') {
+    return '<g' + cls + '><line x1="-3" y1="2" x2="6" y2="14" stroke="#D32F2F" stroke-width="2.5"/><line x1="6" y1="2" x2="-3" y2="14" stroke="#D32F2F" stroke-width="2.5"/><line x1="1" y1="7" x2="9" y2="3" stroke="#B0BEC5" stroke-width="2"/><line x1="1" y1="7" x2="9" y2="11" stroke="#B0BEC5" stroke-width="2"/></g>';
+  }
+  if (tool==='pickaxe') {
+    return '<g' + cls + '><rect x="0" y="-4" width="3.5" height="24" rx="1" fill="#8D6E63"/><path d="M-8,14 Q2,11 12,14 L10,17 Q2,14 -6,17 Z" fill="#37474F" stroke="#263238" stroke-width="0.8"/></g>';
+  }
+  if (tool==='mower') {
+    return '<g' + cls + '><line x1="0" y1="0" x2="8" y2="14" stroke="#37474F" stroke-width="2.5"/><rect x="6" y="12" width="12" height="8" rx="2" fill="#E53935"/><circle cx="9" cy="20" r="3" fill="#212121"/><circle cx="15" cy="20" r="3" fill="#212121"/></g>';
+  }
   if (tool==='chainsaw') return '<g'+cls+'><rect x="-2" y="4" width="18" height="6" rx="2" fill="#D9822B"/><rect x="14" y="0" width="4" height="14" rx="1" fill="#8A8A8A"/><rect x="-2" y="4" width="4" height="4" fill="#5A3A22"/></g>';
   if (tool==='saw') return '<g'+cls+'><rect x="-2" y="2" width="16" height="3" fill="#B0B0B0"/><path d="M-2,5 L1,8 L4,5 L7,8 L10,5 L13,8" stroke="#8A8A8A" stroke-width="1.4" fill="none"/><rect x="-4" y="0" width="4" height="6" rx="1" fill="#7A5334"/></g>';
+  if (tool==='flask') return '<g'+cls+'><path d="M-3,0 L3,0 L5,14 Q0,18 -5,14 Z" fill="#7A5FA8" opacity="0.85"/><rect x="-2" y="-3" width="4" height="3" fill="#BA68C8"/></g>';
+  if (tool==='basket') return '<g'+cls+'><ellipse cx="8" cy="14" rx="8" ry="6" fill="#BCAAA4" stroke="#8D6E63" stroke-width="1.2"/><circle cx="6" cy="11" r="2.5" fill="#E53935"/><circle cx="10" cy="11" r="2.5" fill="#FB8C00"/></g>';
   if (tool==='hand') return '';
   return '<g'+cls+'><circle r="7" fill="none" stroke="#3E6B8B" stroke-width="3"/><circle r="2" fill="#3E6B8B"/></g>';
 }
+
 function personSvg(type, working, x, y, basket, toolOverride){
-  var wt = WORKER_TYPES[type] || WORKER_TYPES.farmer;
-  var tool = toolOverride || wt.tool;
-  return '<g transform="translate('+x+','+y+')" class="'+(working?'bob':'')+'">'+
-    '<ellipse cx="0" cy="30" rx="12" ry="4" fill="rgba(0,0,0,0.15)"/>'+
-    '<rect x="-7" y="4" width="14" height="20" rx="5" fill="'+wt.color+'"/>'+
-    '<circle cx="0" cy="-4" r="8" fill="#F2C79B"/>'+
-    '<rect x="-9" y="-11" width="18" height="6" rx="3" fill="'+wt.color+'"/>'+
-    (basket ? '<text x="10" y="18" font-size="14">🧺</text>' : '<g transform="translate(9,6)">'+toolSvg(tool, working)+'</g>')+
+  var tool = toolOverride || (basket ? 'basket' : (WORKER_TYPES[type] ? WORKER_TYPES[type].tool : 'shovel'));
+  return '<g transform="translate('+x+','+y+')">' +
+    drawHumanWorkerSvg(type, tool, false, working) +
   '</g>';
 }
 function drawCanopy(def, cx, cy, canopyR){
@@ -5608,19 +5864,35 @@ function plotSvg(p){
   } else if (p.status==='preparing' || p.status==='clearing'){
     var tDur = p.status==='preparing' ? PREP_DURATION_HOURS : CLEAR_DURATION_HOURS;
     var tPct = Math.min(100, Math.round((p.taskHours / tDur) * 100));
-    var tLabel = p.status==='preparing' ? '⛏️ Digging Soil' : '🌾 Clearing Brush';
-    content = '<g opacity="0.8">' +
+    var isPrep = p.status==='preparing';
+    var tLabel = isPrep ? '⛏️ Digging Soil' : '🌾 Clearing Brush';
+    var strokeClr = isPrep ? '#F0AC3D' : '#81C784';
+    var textClr = isPrep ? '#FFE082' : '#C8E6C9';
+    var toolUsed = isPrep ? 'shovel' : 'scythe';
+
+    content = '<g opacity="0.85">' +
       '<rect x="25" y="76" width="150" height="10" rx="3" fill="#4E342E"/>' +
       '<rect x="25" y="92" width="150" height="10" rx="3" fill="#4E342E"/>' +
       '<ellipse cx="100" cy="85" rx="45" ry="16" fill="#3E2723" opacity="0.6"/>' +
     '</g>';
-    content += '<g transform="translate(100, 44)">' +
-      '<rect x="-50" y="-12" width="100" height="24" rx="6" fill="rgba(38,50,56,0.92)" stroke="#F0AC3D" stroke-width="1.2"/>' +
-      '<rect x="-44" y="4" width="88" height="4" rx="2" fill="#263238"/>' +
-      '<rect x="-44" y="4" width="' + (88 * tPct / 100) + '" height="4" rx="2" fill="#F0AC3D"/>' +
-      '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="#FFE082">' + tLabel + ' ' + tPct + '%</text>' +
+
+    if (isPrep){
+      content += '<g class="dust" style="transform-origin:140px 84px;"><circle cx="140" cy="84" r="4" fill="#6D4C41"/></g>' +
+                 '<g class="dust" style="transform-origin:148px 80px; animation-delay:0.3s;"><circle cx="148" cy="80" r="3.5" fill="#4E342E"/></g>';
+    } else {
+      content += '<g class="dust" style="transform-origin:140px 84px;"><path d="M138,82 L144,78" stroke="#7CB342" stroke-width="2.5"/></g>' +
+                 '<g class="dust" style="transform-origin:148px 80px; animation-delay:0.3s;"><path d="M146,78 L152,74" stroke="#558B2F" stroke-width="2.5"/></g>';
+    }
+
+    content += '<g transform="translate(100, 42)">' +
+      '<rect x="-54" y="-12" width="108" height="24" rx="6" fill="rgba(38,50,56,0.94)" stroke="' + strokeClr + '" stroke-width="1.3"/>' +
+      '<rect x="-48" y="4" width="96" height="4" rx="2" fill="#263238"/>' +
+      '<rect x="-48" y="4" width="' + (96 * tPct / 100) + '" height="4" rx="2" fill="' + strokeClr + '"/>' +
+      '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="' + textClr + '">' + tLabel + ' ' + tPct + '%</text>' +
     '</g>';
-    if (w){ content += personSvg('laborer', true, 150, 55); content += '<g class="dust" style="transform-origin:150px 90px;"><circle cx="150" cy="90" r="5" fill="#C9A374"/></g>'; }
+    if (w){
+      content += personSvg(w.type, true, 148, 52, false, toolUsed);
+    }
   } else if (p.status==='dead'){
     var deadDefStatic = TREE_TYPES[p.treeType];
     content = drawDeadTreeShape(deadDefStatic) + '<text x="150" y="40" font-size="18">💀</text>';
@@ -5629,16 +5901,16 @@ function plotSvg(p){
     var rDur = remCfg2.hours;
     var rPct = Math.min(100, Math.round((p.taskHours / rDur) * 100));
     content = drawDeadTreeShape(remTreeDef);
-    content += '<g transform="translate(100, 44)">' +
-      '<rect x="-50" y="-12" width="100" height="24" rx="6" fill="rgba(38,50,56,0.92)" stroke="#E57373" stroke-width="1.2"/>' +
-      '<rect x="-44" y="4" width="88" height="4" rx="2" fill="#263238"/>' +
-      '<rect x="-44" y="4" width="' + (88 * rPct / 100) + '" height="4" rx="2" fill="#E57373"/>' +
-      '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="#FFCDD2">🪓 Felling ' + rPct + '%</text>' +
+    content += '<g transform="translate(100, 42)">' +
+      '<rect x="-54" y="-12" width="108" height="24" rx="6" fill="rgba(38,50,56,0.94)" stroke="#E57373" stroke-width="1.3"/>' +
+      '<rect x="-48" y="4" width="96" height="4" rx="2" fill="#263238"/>' +
+      '<rect x="-48" y="4" width="' + (96 * rPct / 100) + '" height="4" rx="2" fill="#E57373"/>' +
+      '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="#FFCDD2">🪓 Felling Tree ' + rPct + '%</text>' +
     '</g>';
-    if (w && w.type==='laborer'){
-      content += personSvg('laborer', true, 60, 55, false, remCfg2.tool);
-      content += '<g class="dust" style="transform-origin:75px 82px;"><rect x="75" y="82" width="4" height="4" fill="#8A6A45"/></g>'+
-                 '<g class="dust" style="transform-origin:85px 78px; animation-delay:0.4s;"><rect x="85" y="78" width="3" height="3" fill="#6E5B45"/></g>';
+    if (w){
+      content += personSvg(w.type, true, 60, 52, false, remCfg2.tool || 'axe');
+      content += '<g class="dust" style="transform-origin:75px 82px;"><rect x="75" y="82" width="4" height="4" fill="#8D6E63"/></g>'+
+                 '<g class="dust" style="transform-origin:85px 78px; animation-delay:0.35s;"><rect x="85" y="78" width="3.5" height="3.5" fill="#D7CCC8"/></g>';
     }
   } else if (p.status==='growing'){
     var def = TREE_TYPES[p.treeType]; var idx = stageInfo.idx;
@@ -5682,12 +5954,21 @@ function plotSvg(p){
 
     if (careActive){
       if (p.careAnimType==='water'){
-        content += '<g transform="translate(60,50)">'+personSvg('farmer', true, 0, 0)+'</g>';
-        content += '<g class="drop" style="transform-origin:78px 62px;"><circle cx="78" cy="62" r="2.5" fill="#5A8FBF"/></g>'+
-                   '<g class="drop" style="animation-delay:0.3s; transform-origin:84px 66px;"><circle cx="84" cy="66" r="2.2" fill="#5A8FBF"/></g>';
+        content += '<g transform="translate(56,48)">'+personSvg(w ? w.type : 'farmer', true, 0, 0, false, 'water')+'</g>';
+        content += '<g class="drop" style="transform-origin:78px 62px;"><circle cx="78" cy="62" r="2.6" fill="#42A5F5"/></g>'+
+                   '<g class="drop" style="animation-delay:0.3s; transform-origin:84px 66px;"><circle cx="84" cy="66" r="2.4" fill="#29B6F6"/></g>';
+        content += '<g transform="translate(100, 42)">' +
+          '<rect x="-50" y="-12" width="100" height="22" rx="6" fill="rgba(38,50,56,0.92)" stroke="#64B5F6" stroke-width="1.2"/>' +
+          '<text x="0" y="3" font-size="8.5" text-anchor="middle" font-weight="800" fill="#BBDEFB">💧 Irrigating Tree</text>' +
+        '</g>';
       } else if (p.careAnimType==='prune'){
-        content += '<g transform="translate(60,50)">'+personSvg('laborer', true, 0, 0)+'</g>';
-        content += '<g class="snip" style="transform-origin:82px 58px;"><path d="M78,54 L88,62 M88,54 L78,62" stroke="#8A8A8A" stroke-width="2.4" stroke-linecap="round"/></g>';
+        content += '<g transform="translate(56,48)">'+personSvg(w ? w.type : 'farmer', true, 0, 0, false, 'pruner')+'</g>';
+        content += '<g class="snip" style="transform-origin:82px 58px;"><path d="M78,54 L88,62 M88,54 L78,62" stroke="#B0BEC5" stroke-width="2.4" stroke-linecap="round"/></g>' +
+                   '<g class="drop" style="animation-delay:0.25s; transform-origin:80px 70px;"><circle cx="80" cy="70" r="2.2" fill="#81C784"/></g>';
+        content += '<g transform="translate(100, 42)">' +
+          '<rect x="-50" y="-12" width="100" height="22" rx="6" fill="rgba(38,50,56,0.92)" stroke="#81C784" stroke-width="1.2"/>' +
+          '<text x="0" y="3" font-size="8.5" text-anchor="middle" font-weight="800" fill="#C8E6C9">✂️ Pruning &amp; Shaping</text>' +
+        '</g>';
       }
     }
   }
@@ -6615,6 +6896,43 @@ function villageSpotsHtml(){
 }
 
 // ================= MODAL CONTENT =================
+
+function getPendingTasksList(){
+  var tasks = [];
+  if (!state) return tasks;
+  if (!state.rocksCleared && !state.rocksClearing){
+    tasks.push({ type: 'rocks', targetId: null, label: '🪨 Clear Boulders (€50)', cost: 50 });
+  }
+  if ((state.lawnOvergrowth || 0) >= 30 && !state.lawnMowing){
+    tasks.push({ type: 'lawn', targetId: null, label: '🌿 Mow Lawn (€15)', cost: 15 });
+  }
+  state.plots.forEach(function(p, idx){
+    if (p.status === 'barren'){
+      tasks.push({ type: 'dig', targetId: idx, label: '⛏️ Plot ' + (idx+1) + ' — Dig (€' + LABOR_COST + ')', cost: LABOR_COST });
+    } else if (p.status === 'overgrown'){
+      tasks.push({ type: 'clear', targetId: idx, label: '🌾 Plot ' + (idx+1) + ' — Clear Brush (€' + CLEAR_COST + ')', cost: CLEAR_COST });
+    } else if (p.status === 'dead'){
+      var def = TREE_TYPES[p.treeType]; var cfg = REMOVE_CONFIG[def.category];
+      tasks.push({ type: 'removeTree', targetId: idx, label: '🪓 Plot ' + (idx+1) + ' — Cut ' + def.label + ' (€' + cfg.cost + ')', cost: cfg.cost });
+    } else if (p.status === 'growing'){
+      if (p.pendingHarvest >= 0.5 && !p.harvesting){
+        tasks.push({ type: 'harvest', targetId: idx, label: '🧺 Plot ' + (idx+1) + ' — Harvest (€' + p.pendingHarvest.toFixed(2) + ')', cost: 0 });
+      } else if (p.health < 60){
+        tasks.push({ type: 'water', targetId: idx, label: '💧 Plot ' + (idx+1) + ' — Water', cost: 0 });
+      } else if (p.assignedWorker === null){
+        tasks.push({ type: 'plot', targetId: idx, label: '🌱 Plot ' + (idx+1) + ' — Tend Plant', cost: 0 });
+      }
+    }
+  });
+  if (state.storage && state.storage.built && !state.storage.assignedLaborerId){
+    tasks.push({ type: 'storage', targetId: null, label: '📦 Storage Depot Loading', cost: 0 });
+  }
+  if (state.buildings && state.buildings.pond && state.buildings.pond.built && !state.buildings.pond.assignedWorker){
+    tasks.push({ type: 'building', targetId: 'pond', label: '🪷 Pond Aquaculture', cost: 0 });
+  }
+  return tasks;
+}
+
 function buildingModalHtml(key){
   var b = state.buildings[key]; var def = BUILDING_TYPES[key];
   var html = '<div class="overlay" id="modalOverlay"><div class="modal">'+
@@ -6687,11 +7005,67 @@ function buildingModalHtml(key){
       '<div class="sub">Provides living quarters and equipment racks for farm personnel. Required before hiring Laborers, Farmers, or Botanists.</div>';
     if (b.built){
       html += '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Operational</span></div>';
-      var idleWorkers = state.workers.filter(function(w){ return w.assignedPlot === null && !w.assignedBuilding; });
-      var activeWorkers = state.workers.filter(function(w){ return w.assignedPlot !== null || w.assignedBuilding; });
+      var idleWorkers = state.workers.filter(function(w){ return w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id); });
+      var activeWorkers = state.workers.filter(function(w){ return w.assignedPlot !== null || w.assignedBuilding || (state.storage && state.storage.assignedLaborerId === w.id); });
+      var pendingTasks = getPendingTasksList();
+
       html += '<div class="row"><span>Total Crew</span><span class="v">' + state.workers.length + ' workers</span></div>' +
-              '<div class="row"><span>Stationed at Shed (Idle)</span><span class="v">' + idleWorkers.length + '</span></div>' +
-              '<div class="row"><span>Dispatched in Field</span><span class="v">' + activeWorkers.length + '</span></div>' +
+              '<div class="row"><span>Stationed at Shed (Idle)</span><span class="v" style="color:#2E7D32;font-weight:800;">' + idleWorkers.length + '</span></div>' +
+              '<div class="row"><span>Dispatched in Field</span><span class="v" style="color:#1565C0;font-weight:800;">' + activeWorkers.length + '</span></div>';
+
+      html += '<div class="section" style="margin-top:10px;">' +
+        '<h4>👷 Active Crew Operations &amp; Quick Dispatch Hub</h4>';
+
+      if (state.workers.length === 0){
+        html += '<div class="empty-note" style="margin:8px 0;">No personnel hired yet. Recruit crew members below to perform farm tasks!</div>';
+      } else {
+        html += '<div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;">';
+        state.workers.forEach(function(w){
+          var isAssigned = (w.assignedPlot !== null || w.assignedBuilding || (state.storage && state.storage.assignedLaborerId === w.id));
+          var locLabel = '● Idle in Bunkhouse';
+          var locColor = '#2E7D32';
+          if (w.assignedPlot !== null){
+            var p = state.plots[w.assignedPlot];
+            var taskDesc = p.status === 'preparing' ? 'Digging Soil' : (p.status === 'clearing' ? 'Clearing Brush' : (p.status === 'removing' ? 'Felling Dead Tree' : (p.harvesting ? 'Harvesting' : 'Tending Crop')));
+            locLabel = 'Plot ' + (w.assignedPlot + 1) + ' (' + taskDesc + ')';
+            locColor = '#1565C0';
+          } else if (w.assignedBuilding){
+            locLabel = BUILDING_TYPES[w.assignedBuilding] ? BUILDING_TYPES[w.assignedBuilding].label : w.assignedBuilding;
+            locColor = '#6A1B9A';
+          } else if (state.storage && state.storage.assignedLaborerId === w.id){
+            locLabel = 'Storage Loading Apron';
+            locColor = '#D84315';
+          }
+
+          html += '<div style="background:#FFF;border:1px solid rgba(44,74,50,0.18);border-radius:10px;padding:8px 10px;box-shadow:0 2px 6px rgba(0,0,0,0.04);">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+              '<div>' +
+                '<span style="font-weight:800;font-size:0.85rem;color:var(--pine);">' + WORKER_TYPES[w.type].label + ' #' + w.id + '</span> ' +
+                '<span style="font-size:0.75rem;font-weight:700;color:' + locColor + ';">[' + locLabel + ']</span>' +
+              '</div>' +
+              (isAssigned
+                ? '<button class="secondary mini-btn" onclick="unassignWorkerById(' + w.id + ')" title="Recall worker to bunkhouse">↩️ Recall to Shed</button>'
+                : '<button class="fire mini-btn" onclick="fireWorker(' + w.id + ')" title="Dismiss worker">Let go</button>') +
+            '</div>';
+
+          if (!isAssigned){
+            if (pendingTasks.length > 0){
+              html += '<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(44,74,50,0.15);">' +
+                '<div style="font-size:0.72rem;font-weight:800;color:#546E7A;margin-bottom:4px;">⚡ 1-Click Task Dispatch:</div>' +
+                '<div style="display:flex;gap:4px;flex-wrap:wrap;">';
+              pendingTasks.slice(0, 5).forEach(function(tsk){
+                html += '<button class="claim-btn mini-btn" onclick="assignWorkerToTask(' + w.id + ',\'' + tsk.type + '\',' + (tsk.targetId !== null ? tsk.targetId : 'null') + ')" ' + (state.money < tsk.cost ? 'disabled' : '') + '>' + tsk.label + '</button>';
+              });
+              html += '</div></div>';
+            } else {
+              html += '<div style="margin-top:4px;font-size:0.72rem;color:#78909C;">✓ All active plots currently maintained. Ready for new orders.</div>';
+            }
+          }
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+      html += '</div>' +
               '<div class="section"><h4>🧰 Available Equipment Racks</h4>' +
                 '<div class="row"><span>Digging Spades</span><span class="v" style="color:#2E7D32;">✓ Ready</span></div>' +
                 '<div class="row"><span>Watering Cans</span><span class="v" style="color:#2E7D32;">✓ Ready</span></div>' +
@@ -7108,13 +7482,13 @@ function modalHtml(){
     html += '<div class="sub">'+(p.status==='preparing'?'Digging in progress. Soil will be ready for planting once complete.':'Clearing overgrowth.')+'</div>'+
       '<div class="row"><span>Progress</span><span class="v">'+pct+'%</span></div>'+
       '<div class="healthbar" style="margin-bottom:12px;"><div class="fill" style="width:'+pct+'%;background:#F0AC3D;"></div></div>'+
-      (w ? ('<div class="row"><span>Assisted by</span><span class="v">'+WORKER_TYPES[w.type].label+' (+50% speed)</span></div>'+
-            '<button class="secondary" data-unassign="'+p.id+'" style="margin-top:6px;">Unassign Worker</button>')
+      (w ? ('<div class="row"><span>Assisted by</span><span class="v">'+WORKER_TYPES[w.type].label+' (#'+w.id+')</span></div>'+
+            '<button class="secondary" onclick="unassignWorkerById('+w.id+')" style="margin-top:6px;">↩️ Recall Worker to Shed</button>')
          : (function(){
-            var idleLaborers = state.workers.filter(function(x){return x.assignedPlot===null && x.type==='laborer';});
-            if (!idleLaborers.length) return '<div class="empty-note">Tip: Hire a Laborer from the bottom tool strip to speed up digging by +50%.</div>';
-            return '<div class="section"><h4>👷 Assign a Laborer (+50% speed)</h4>'+
-              idleLaborers.map(function(iw){ return '<div class="worker-opt"><span>Laborer (idle)</span><button data-assign="'+iw.id+'" data-assignplot="'+p.id+'">Assign</button></div>'; }).join('')+'</div>';
+            var idleCrew = state.workers.filter(function(x){return x.assignedPlot===null && !x.assignedBuilding && (x.type==='laborer' || x.type==='farmer');});
+            if (!idleCrew.length) return '<div class="empty-note">Tip: Recruit a Farmer or Laborer from the Crew Shed to assist with digging (+50% speed).</div>';
+            return '<div class="section"><h4>👷 Assign Available Field Worker</h4>'+
+              idleCrew.map(function(iw){ return '<div class="worker-opt"><span>'+WORKER_TYPES[iw.type].label+' #'+iw.id+' (idle)</span><button data-assign="'+iw.id+'" data-assignplot="'+p.id+'">Assign</button></div>'; }).join('')+'</div>';
           })());
   } else if (p.status==='dead'){
     var remCfg = REMOVE_CONFIG[def.category];
@@ -7130,9 +7504,11 @@ function modalHtml(){
       '<div class="row"><span>Progress</span><span class="v">'+Math.round(Math.min(100,(p.taskHours/remCfg2.hours)*100))+'%</span></div>'+
       (w ? '<div class="row"><span>Assisted by</span><span class="v">'+WORKER_TYPES[w.type].label+'</span></div>'
          : '<div class="empty-note">No worker assigned — this will take the full '+remCfg2.hours+'h. Assign a Laborer below to speed it up.</div>');
-    var idleLaborers = state.workers.filter(function(x){return x.assignedPlot===null && x.type==='laborer';});
-    if (!w && idleLaborers.length){
-      html += idleLaborers.map(function(iw){ return '<div class="worker-opt"><span>Laborer (idle)</span><button data-assign="'+iw.id+'" data-assignplot="'+p.id+'">Assign</button></div>'; }).join('');
+    var idleCrew = state.workers.filter(function(x){return x.assignedPlot===null && !x.assignedBuilding && (x.type==='laborer' || x.type==='farmer');});
+    if (!w && idleCrew.length){
+      html += idleCrew.map(function(iw){ return '<div class="worker-opt"><span>'+WORKER_TYPES[iw.type].label+' #'+iw.id+' (idle)</span><button data-assign="'+iw.id+'" data-assignplot="'+p.id+'">Assign</button></div>'; }).join('');
+    } else if (w) {
+      html += '<button class="secondary" onclick="unassignWorkerById('+w.id+')" style="margin-top:6px;">↩️ Recall Worker to Shed</button>';
     }
   } else if (p.status==='ready'){
     html += '<div class="sub">Soil is ready — but weeds will creep back if it sits unplanted too long. Every species from the blueprint\'s tree categories is available.</div>'+
@@ -7179,11 +7555,11 @@ function modalHtml(){
         }).join('')+
       '</div>'+
       '<div class="section"><h4>👷 Worker</h4>'+
-        (w ? ('<div class="worker-opt"><span>'+WORKER_TYPES[w.type].label+' is assigned here</span><button data-unassign="'+p.id+'">Unassign</button></div>')
+        (w ? ('<div class="worker-opt"><span>'+WORKER_TYPES[w.type].label+' #'+w.id+' is assigned here</span><button class="secondary mini-btn" onclick="unassignWorkerById('+w.id+')">↩️ Recall to Shed</button></div>')
            : (function(){
-              var idle = state.workers.filter(function(x){return x.assignedPlot===null && WORKER_TYPES[x.type].role==='grow';});
-              if (!idle.length) return '<div class="empty-note">No idle Farmer/Botanist available — hire one from the tool strip below.</div>';
-              return idle.map(function(iw){ return '<div class="worker-opt"><span>'+WORKER_TYPES[iw.type].label+' (idle)</span><button data-assign="'+iw.id+'" data-assignplot="'+p.id+'">Assign</button></div>'; }).join('');
+              var idle = state.workers.filter(function(x){return x.assignedPlot===null && !x.assignedBuilding;});
+              if (!idle.length) return '<div class="empty-note">No idle personnel available — recruit from the Crew Shed.</div>';
+              return idle.map(function(iw){ return '<div class="worker-opt"><span>'+WORKER_TYPES[iw.type].label+' #'+iw.id+' (idle)</span><button data-assign="'+iw.id+'" data-assignplot="'+p.id+'">Assign</button></div>'; }).join('');
             })())+
       '</div>'+
       '<div class="section"><h4>💡 About this species</h4><div style="font-size:0.78rem;color:var(--pine-soft);">'+def.fact+'</div></div>';
@@ -7511,6 +7887,18 @@ window.fieldBackgroundSVG = fieldBackgroundSVG;
 window.updateToolStrip = updateToolStrip;
 window.switchScreen = switchScreen;
 window.freshState = freshState;
+window.assignWorker = assignWorker;
+window.unassignWorker = unassignWorker;
+window.fireWorker = fireWorker;
+window.hasAvailableFieldWorker = hasAvailableFieldWorker;
+window.hasAvailableLaborer = hasAvailableLaborer;
+window.unassignWorkerById = unassignWorkerById;
+window.assignWorkerToTask = assignWorkerToTask;
+window.drawHumanWorkerSvg = drawHumanWorkerSvg;
+window.animateWorkerPathWalk = animateWorkerPathWalk;
+window.getPendingTasksList = getPendingTasksList;
+window.buildingModalHtml = buildingModalHtml;
+window.modalHtml = modalHtml;
 try {
   Object.defineProperty(window, 'currentScreen', { get: function(){ return currentScreen; }, set: function(v){ currentScreen = v; }, configurable: true });
   Object.defineProperty(window, 'state', { get: function(){ return state; }, set: function(v){ state = v; }, configurable: true });
@@ -7554,8 +7942,18 @@ if (typeof globalThis !== 'undefined'){
   globalThis.advanceGame = advanceGame;
   globalThis.farmReputation = farmReputation;
   globalThis.fieldBackgroundSVG = fieldBackgroundSVG;
-  globalThis.switchScreen = switchScreen;
-  globalThis.freshState = freshState;
+  globalThis.assignWorker = assignWorker;
+  globalThis.unassignWorker = unassignWorker;
+  globalThis.fireWorker = fireWorker;
+  globalThis.hasAvailableFieldWorker = hasAvailableFieldWorker;
+  globalThis.hasAvailableLaborer = hasAvailableLaborer;
+  globalThis.unassignWorkerById = unassignWorkerById;
+  globalThis.assignWorkerToTask = assignWorkerToTask;
+  globalThis.drawHumanWorkerSvg = drawHumanWorkerSvg;
+  globalThis.animateWorkerPathWalk = animateWorkerPathWalk;
+  globalThis.getPendingTasksList = getPendingTasksList;
+  globalThis.buildingModalHtml = buildingModalHtml;
+  globalThis.modalHtml = modalHtml;
   try {
     Object.defineProperty(globalThis, 'state', { get: function(){ return state; }, set: function(v){ state = v; }, configurable: true });
     Object.defineProperty(globalThis, 'openPanel', { get: function(){ return openPanel; }, set: function(v){ openPanel = v; }, configurable: true });
@@ -7742,7 +8140,7 @@ function render(){
 
     var bgEl = document.getElementById('fieldBg');
     if (bgEl){
-      var bgKey = (state.rocksCleared ? '1' : '0') + '_' + (state.rocksClearing ? '1' : '0') + '_' + Math.floor((state.lawnOvergrowth||0)/20) + '_' + (state.lawnMowing ? '1' : '0');
+      var bgKey = (state.rocksCleared ? '1' : '0') + '_' + (state.rocksClearing ? Math.floor((state.rocksClearHours||0)*10) : '0') + '_' + Math.floor((state.lawnOvergrowth||0)/10) + '_' + (state.lawnMowing ? Math.floor((state.lawnMowHours||0)*10) : '0');
       if (bgEl.dataset.bgKey !== bgKey){
         bgEl.innerHTML = fieldBackgroundSVG();
         bgEl.dataset.bgKey = bgKey;
