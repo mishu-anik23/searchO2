@@ -1432,7 +1432,8 @@ var WORKER_TYPES = {
 
 var ACCESSORIES = {
   irrigation: { label:'Irrigation', emoji:'💧', cost:110, desc:'+15% growth speed on this plot' },
-  fertilizer: { label:'Fertilizer', emoji:'🌾', cost:85, desc:'+20% oxygen output (Healthy Soil Bonus)' }
+  fertilizer: { label:'Fertilizer', emoji:'🌾', cost:85, desc:'+20% oxygen output (Healthy Soil Bonus)' },
+  boundary:   { label:'Estate Fence & Gate', emoji:'⛩️', cost:80, desc:'Craftsman timber post-and-rail fence with dynamic swing gate. +20% pest resistance & Manhattan estate curb appeal.' }
 };
 
 var CARE_COST = {
@@ -1517,7 +1518,7 @@ function freshState(){
   for (var i=0;i<PLOT_COUNT;i++){
     plots.push({ id:i, status:'barren', treeType:null, treeId:null, growHours:0, taskHours:0, weedHours:0,
       health:100, ageHours:0, downtimeHours:0, zeroHealthStreakHours:0, o2Produced:0, pendingHarvest:0, harvesting:false, harvestStartReal:0, harvestAmount:0,
-      careAnimUntil:0, careAnimType:null, assignedWorker:null, accessories:{irrigation:false, fertilizer:false}, animal:null });
+      careAnimUntil:0, careAnimType:null, assignedWorker:null, accessories:{irrigation:false, fertilizer:false, boundary:false}, animal:null });
   }
   return {
     money: 10000, totalO2: 0, totalO2AllTime: 0, treesPlanted: 0, treesRemoved: 0, gameHour: 0,
@@ -3956,7 +3957,7 @@ function advanceGame(dh){
   if (!anyActive){
     var prob = 1 - Math.pow(1-ANIMAL_SPAWN_RATE, dh);
     if (Math.random() < prob){
-      var eligible = state.plots.filter(function(p){ return ['barren','overgrown','preparing','clearing','ready'].indexOf(p.status)>=0; });
+      var eligible = state.plots.filter(function(p){ return ['barren','overgrown','preparing','clearing','ready'].indexOf(p.status)>=0 && (!p.accessories || !p.accessories.boundary); });
       if (eligible.length){
         var target = eligible[Math.floor(Math.random()*eligible.length)];
         var animal = ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
@@ -4124,8 +4125,17 @@ function unassignWorkerFromBuilding(key){
 }
 function buyAccessory(plotId, kind){
   var p = state.plots[plotId]; var acc = ACCESSORIES[kind];
-  if (p.accessories[kind] || state.money<acc.cost) return;
-  state.money -= acc.cost; p.accessories[kind]=true;
+  if (!p || !acc || (p.accessories && p.accessories[kind]) || state.money < acc.cost) return;
+  state.money -= acc.cost;
+  if (!p.accessories) p.accessories = { irrigation:false, fertilizer:false, boundary:false };
+  p.accessories[kind] = true;
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+  if (kind === 'boundary'){
+    pushReport('⛩️ Erected craftsman timber boundary fence and dynamic entrance gate on Plot ' + (plotId + 1) + '.');
+    showNotification('⛩️', 'Plot ' + (plotId + 1) + ' enclosed with boundary fence & gate!', 'plot', plotId);
+  } else {
+    pushReport('🧰 Installed ' + acc.label + ' on Plot ' + (plotId + 1) + '.');
+  }
   render(); requestSave();
 }
 function waterPlot(plotId){
@@ -4841,48 +4851,63 @@ function drawFarmRoadNetworkSvg(){
     }
   }
 
-  // ================= 2. THINNER FEEDER SUBWAYS (MANHATTAN AVENUES) =================
+  // ================= 2. THINNER FEEDER SUBWAYS (MANHATTAN L-SHAPED NETWORK) =================
   if (isSubwayBuilt){
-    // Avenue 1: West Feeder Subway to Plots 0 & 3 (x: 245)
-    // North to Plot 0 (y: 320 to 445)
-    svg += '<rect x="236" y="320" width="18" height="125" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
-           '<polygon points="236,445 227,445 236,436" fill="url(#subwayHerringbone)"/>' +
-           '<polygon points="254,445 263,445 254,436" fill="url(#subwayHerringbone)"/>';
-    // South to Plot 3 (y: 500 to 660)
-    svg += '<rect x="236" y="500" width="18" height="160" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
-           '<polygon points="236,500 227,500 236,509" fill="url(#subwayHerringbone)"/>' +
-           '<polygon points="254,500 263,500 254,509" fill="url(#subwayHerringbone)"/>';
+    // Avenue 1: West Feeder Subway in street corridor between Plot 0/3 and Pond/Garden (x: 310)
+    // North branch (y: 320 to 445) with spur turning West into Plot 0's South Gate
+    svg += '<rect x="301" y="320" width="18" height="125" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+           '<polygon points="301,445 292,445 301,436" fill="url(#subwayHerringbone)"/>' +
+           '<polygon points="319,445 328,445 319,436" fill="url(#subwayHerringbone)"/>' +
+           // Spur entering Plot 0 South Gate
+           '<rect x="250" y="420" width="55" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>';
+    // South branch (y: 500 to 660) with spur turning West into Plot 3's North Gate
+    svg += '<rect x="301" y="500" width="18" height="160" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+           '<polygon points="301,500 292,500 301,509" fill="url(#subwayHerringbone)"/>' +
+           '<polygon points="319,500 328,500 319,509" fill="url(#subwayHerringbone)"/>' +
+           // Spur entering Plot 3 North Gate
+           '<rect x="250" y="650" width="55" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>';
 
-    // Avenue 2: Central Feeder Subway to Storage Barn, Plot 1 & Plot 4 (x: 525)
-    // North branch (y: 210 to 445)
-    svg += '<rect x="516" y="210" width="18" height="235" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
-           '<polygon points="516,445 507,445 516,436" fill="url(#subwayHerringbone)"/>' +
-           '<polygon points="534,445 543,445 534,436" fill="url(#subwayHerringbone)"/>' +
-           // Spur into Storage Barn loading bay
-           '<rect x="516" y="210" width="45" height="18" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>' +
-           // Spur into Plot 1
-           '<rect x="516" y="270" width="30" height="16" rx="2" fill="url(#subwayHerringbone)"/>';
-    // South to Plot 4 (y: 500 to 660)
+    // Avenue 2: Central Feeder Subway with L-SHAPED CONNECTION TO STORAGE BARN (ZERO PLOT 1/2 OVERLAP)
+    // Runs in the open street corridor between Plot 1 and Coffee Shop at x: 602 (from Main Road y:445 up to y:135)
+    svg += '<rect x="593" y="135" width="18" height="310" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+           '<polygon points="593,445 584,445 593,436" fill="url(#subwayHerringbone)"/>' +
+           '<polygon points="611,445 620,445 611,436" fill="url(#subwayHerringbone)"/>' +
+           // 90-DEGREE L-SHAPED SPUR: Turns West along the lane between Storage Barn and Plot 1 straight into Storage loading bay!
+           '<rect x="520" y="126" width="91" height="18" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+           '<polygon points="593,126 611,126 611,144" fill="url(#subwayHerringbone)"/>' + // L-turn fillet corner
+           '<rect x="495" y="120" width="35" height="26" rx="3" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' + // Storage Barn loading apron
+           // Access Spur into Plot 1 South Gate (connects from Avenue 2 at y:420)
+           '<rect x="530" y="420" width="67" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>';
+
+    // South branch to Plot 4 (y: 500 to 660 at x: 525 directly into Plot 4 North Gate)
     svg += '<rect x="516" y="500" width="18" height="160" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
            '<polygon points="516,500 507,500 516,509" fill="url(#subwayHerringbone)"/>' +
            '<polygon points="534,500 543,500 534,509" fill="url(#subwayHerringbone)"/>';
 
-    // Avenue 3: East Feeder Subway to Plots 2 & 5 (x: 805) — COMPLETELY CLEARS GARAGE AT x: 880-990!
-    // North to Plot 2 (y: 320 to 445)
-    svg += '<rect x="796" y="320" width="18" height="125" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
-           '<polygon points="796,445 787,445 796,436" fill="url(#subwayHerringbone)"/>' +
-           '<polygon points="814,445 823,445 814,436" fill="url(#subwayHerringbone)"/>';
-    // South to Plot 5 (y: 500 to 660)
-    svg += '<rect x="796" y="500" width="18" height="160" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
-           '<polygon points="796,500 787,500 796,509" fill="url(#subwayHerringbone)"/>' +
-           '<polygon points="814,500 823,500 814,509" fill="url(#subwayHerringbone)"/>';
+    // Avenue 3: East Feeder Subway in street corridor between Coffee Shop and Plot 2/5 (x: 738)
+    // North branch (y: 320 to 445) with spur turning East into Plot 2's South Gate
+    svg += '<rect x="729" y="320" width="18" height="125" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+           '<polygon points="729,445 720,445 729,436" fill="url(#subwayHerringbone)"/>' +
+           '<polygon points="747,445 756,445 747,436" fill="url(#subwayHerringbone)"/>' +
+           // Spur entering Plot 2 South Gate (clears Plot 2 grounds cleanly)
+           '<rect x="745" y="420" width="55" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>';
+    // South branch (y: 500 to 660) with spur turning East into Plot 5's North Gate
+    svg += '<rect x="729" y="500" width="18" height="160" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1.2"/>' +
+           '<polygon points="729,500 720,500 729,509" fill="url(#subwayHerringbone)"/>' +
+           '<polygon points="747,500 756,500 747,509" fill="url(#subwayHerringbone)"/>' +
+           // Spur entering Plot 5 North Gate
+           '<rect x="745" y="650" width="55" height="16" rx="2" fill="url(#subwayHerringbone)" stroke="#5D4037" stroke-width="1"/>';
   } else if (isSubwayBuilding){
-    [245, 525, 805].forEach(function(bx){
-      svg += '<line x1="' + bx + '" y1="320" x2="' + bx + '" y2="445" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
-             '<line x1="' + bx + '" y1="500" x2="' + bx + '" y2="660" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
-             '<circle cx="' + bx + '" cy="330" r="3.5" fill="#8D6E63"/>' +
-             '<circle cx="' + bx + '" cy="650" r="3.5" fill="#8D6E63"/>';
-    });
+    // Guide lines for L-shaped network
+    svg += '<line x1="310" y1="320" x2="310" y2="445" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
+           '<line x1="310" y1="500" x2="310" y2="660" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
+           '<line x1="602" y1="135" x2="602" y2="445" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
+           '<line x1="602" y1="135" x2="520" y2="135" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
+           '<line x1="525" y1="500" x2="525" y2="660" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
+           '<line x1="738" y1="320" x2="738" y2="445" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
+           '<line x1="738" y1="500" x2="738" y2="660" stroke="#FFB300" stroke-width="2" stroke-dasharray="8,6"/>' +
+           '<circle cx="525" cy="135" r="4" fill="#8D6E63"/>' +
+           '<circle cx="602" cy="135" r="4" fill="#8D6E63"/>';
   }
 
   // ================= 3. CREW TRAIL & GARAGE SPUR (AMPLE VISIBLE LENGTH) =================
@@ -5189,19 +5214,20 @@ function triggerHarvestCartSequence(plotId, onComplete){
     pushReport('🧺 Harvesting crops into 2-wheel cart at Plot ' + (plotId + 1) + '...');
 
     setTimeout(function(){
-      // Leg 2: Plot (junctionX, plotY) -> Main Road (junctionX, 47) -> Storage Barn Corridor (x: 52.5, y: 47) -> Storage Barn (x: 52.5, y: 14)
+      // Leg 2: Plot (junctionX, plotY) -> Main Road (junctionX, 47) -> Avenue 2 (x: 60.2, y: 47) -> L-Turn (x: 60.2, y: 13.5) -> Storage Barn Loading Bay (x: 52.5, y: 13.5)
       var legToStorage = [
         { x: junctionX, y: plotY },
         { x: junctionX, y: 47 },
-        { x: 52.5, y: 47 },
-        { x: 52.5, y: 14 }
+        { x: 60.2, y: 47 },
+        { x: 60.2, y: 13.5 },
+        { x: 52.5, y: 13.5 }
       ];
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
-      animateAlongWaypoints(cartSprite, legToStorage, 3600, function(){
+      animateAlongWaypoints(cartSprite, legToStorage, 3800, function(){
         // At Storage Barn: unload cargo with currency/harvest burst!
         if (box) box.innerHTML = drawHarvestCartSvg(false);
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
-        pushReport('✓ Delivered harvested produce to Storage Barn loading bay.');
+        pushReport('✓ Delivered harvested produce to Storage Barn loading bay via L-shaped subway.');
         
         // Floating currency burst above storage barn
         var burst = document.createElement('div');
@@ -5215,10 +5241,11 @@ function triggerHarvestCartSequence(plotId, onComplete){
         setTimeout(function(){ if (burst.parentNode) burst.parentNode.removeChild(burst); }, 1400);
 
         setTimeout(function(){
-          // Leg 3: Return empty cart from Storage Barn (x: 52.5, y: 14) -> Main Road (x: 52.5, y: 47) -> East Road (x: 93.5, y: 47) -> East Farm Garage (x: 93.5, y: 23)
+          // Leg 3: Return empty cart from Storage Barn via L-turn: (52.5, 13.5) -> (60.2, 13.5) -> Avenue 2 to Main Road (60.2, 47) -> East Road (93.5, 47) -> East Farm Garage (93.5, 23)
           var legToGarage = [
-            { x: 52.5, y: 14 },
-            { x: 52.5, y: 47 },
+            { x: 52.5, y: 13.5 },
+            { x: 60.2, y: 13.5 },
+            { x: 60.2, y: 47 },
             { x: 93.5, y: 47 },
             { x: 93.5, y: 23 }
           ];
@@ -5489,7 +5516,85 @@ function plotSvg(p){
       '<circle r="14" fill="none" stroke="#F0AC3D" stroke-width="5" stroke-dasharray="'+(2*Math.PI*14)+'" stroke-dashoffset="'+((2*Math.PI*14)-(2*Math.PI*14*progressPct/100))+'" stroke-linecap="round" transform="rotate(-90)"/>'+
       '<text x="0" y="4" font-size="9" text-anchor="middle" fill="#2C4A32" font-weight="700">'+progressPct+'%</text></g>';
   }
-  return '<svg viewBox="0 0 200 150">'+bed+content+ring+'</svg>';
+  // ================= ESTATE PERIMETER BOUNDARY & DYNAMIC ENTRANCE GATE =================
+  var hasBoundary = p.accessories && p.accessories.boundary;
+  var isNorthPlot = p.id < 3; // Plot 0, 1, 2 have entrance gate on South edge (y: 140)
+  var isGateOpen = (p.assignedWorker !== null) || p.harvesting || (p.careAnimUntil && Date.now() < p.careAnimUntil) ||
+                   (p.status === 'preparing' || p.status === 'clearing' || p.status === 'removing') || (p._vehicleActive);
+
+  var boundarySvg = '';
+  if (hasBoundary){
+    // Post-and-Rail Timber Fence with Corner Stone Pillars
+    boundarySvg += '<g class="plot-estate-boundary">' +
+      // Left & Right boundary timber rails
+      '<line x1="8" y1="10" x2="8" y2="140" stroke="#5D4037" stroke-width="2.5"/>' +
+      '<line x1="8" y1="18" x2="8" y2="132" stroke="#8D6E63" stroke-width="1.5"/>' +
+      '<line x1="192" y1="10" x2="192" y2="140" stroke="#5D4037" stroke-width="2.5"/>' +
+      '<line x1="192" y1="18" x2="192" y2="132" stroke="#8D6E63" stroke-width="1.5"/>' +
+      // Corner posts
+      '<rect x="5" y="6" width="6" height="8" rx="1.5" fill="#6D4C41" stroke="#3E2723" stroke-width="1"/>' +
+      '<rect x="189" y="6" width="6" height="8" rx="1.5" fill="#6D4C41" stroke="#3E2723" stroke-width="1"/>' +
+      '<rect x="5" y="136" width="6" height="8" rx="1.5" fill="#6D4C41" stroke="#3E2723" stroke-width="1"/>' +
+      '<rect x="189" y="136" width="6" height="8" rx="1.5" fill="#6D4C41" stroke="#3E2723" stroke-width="1"/>';
+
+    if (isNorthPlot){
+      // Full Top Fence
+      boundarySvg += '<line x1="8" y1="10" x2="192" y2="10" stroke="#5D4037" stroke-width="2.5"/>' +
+                     '<line x1="12" y1="14" x2="188" y2="14" stroke="#8D6E63" stroke-width="1.5"/>' +
+                     '<rect x="70" y="7" width="5" height="6" rx="1" fill="#6D4C41"/>' +
+                     '<rect x="125" y="7" width="5" height="6" rx="1" fill="#6D4C41"/>' +
+                     // South Fence with Entrance Gate Opening (x: 78 to 122)
+                     '<line x1="8" y1="140" x2="78" y2="140" stroke="#5D4037" stroke-width="2.5"/>' +
+                     '<line x1="122" y1="140" x2="192" y2="140" stroke="#5D4037" stroke-width="2.5"/>' +
+                     // Stone Gateposts with glowing golden lanterns
+                     '<rect x="74" y="132" width="7" height="15" rx="2" fill="#B0BEC5" stroke="#455A64" stroke-width="1.2"/>' +
+                     '<circle cx="77.5" cy="130" r="3" fill="#FFE082" stroke="#FFB300" stroke-width="0.8"/>' +
+                     '<rect x="119" y="132" width="7" height="15" rx="2" fill="#B0BEC5" stroke="#455A64" stroke-width="1.2"/>' +
+                     '<circle cx="122.5" cy="130" r="3" fill="#FFE082" stroke="#FFB300" stroke-width="0.8"/>' +
+                     // Threshold stone walkway
+                     '<rect x="80" y="136" width="40" height="9" rx="2" fill="#CFD8DC" opacity="0.8"/>' +
+                     // Dynamic Swing Gate Leaves (hinged at x:79 and x:121)
+                     (isGateOpen ?
+                       '<g transform="translate(80, 140) rotate(-70)"><rect x="0" y="-3" width="18" height="6" rx="1.5" fill="#8D6E63" stroke="#4E342E" stroke-width="0.8"/><line x1="4" y1="-3" x2="4" y2="3" stroke="#D7CCC8"/><line x1="12" y1="-3" x2="12" y2="3" stroke="#D7CCC8"/></g>' +
+                       '<g transform="translate(120, 140) rotate(70)"><rect x="-18" y="-3" width="18" height="6" rx="1.5" fill="#8D6E63" stroke="#4E342E" stroke-width="0.8"/><line x1="-4" y1="-3" x2="-4" y2="3" stroke="#D7CCC8"/><line x1="-12" y1="-3" x2="-12" y2="3" stroke="#D7CCC8"/></g>' :
+                       '<g transform="translate(80, 140)"><rect x="0" y="-3" width="20" height="6" rx="1.5" fill="#8D6E63" stroke="#4E342E" stroke-width="0.8"/><line x1="5" y1="-3" x2="5" y2="3" stroke="#D7CCC8"/><line x1="14" y1="-3" x2="14" y2="3" stroke="#D7CCC8"/></g>' +
+                       '<g transform="translate(120, 140)"><rect x="-20" y="-3" width="20" height="6" rx="1.5" fill="#8D6E63" stroke="#4E342E" stroke-width="0.8"/><line x1="-5" y1="-3" x2="-5" y2="3" stroke="#D7CCC8"/><line x1="-14" y1="-3" x2="-14" y2="3" stroke="#D7CCC8"/><circle cx="-20" cy="0" r="2" fill="#FFD54F"/></g>');
+    } else {
+      // Full Bottom Fence
+      boundarySvg += '<line x1="8" y1="140" x2="192" y2="140" stroke="#5D4037" stroke-width="2.5"/>' +
+                     '<line x1="12" y1="136" x2="188" y2="136" stroke="#8D6E63" stroke-width="1.5"/>' +
+                     '<rect x="70" y="137" width="5" height="6" rx="1" fill="#6D4C41"/>' +
+                     '<rect x="125" y="137" width="5" height="6" rx="1" fill="#6D4C41"/>' +
+                     // North Fence with Entrance Gate Opening (x: 78 to 122)
+                     '<line x1="8" y1="10" x2="78" y2="10" stroke="#5D4037" stroke-width="2.5"/>' +
+                     '<line x1="122" y1="10" x2="192" y2="10" stroke="#5D4037" stroke-width="2.5"/>' +
+                     // Stone Gateposts with lanterns
+                     '<rect x="74" y="3" width="7" height="15" rx="2" fill="#B0BEC5" stroke="#455A64" stroke-width="1.2"/>' +
+                     '<circle cx="77.5" cy="2" r="3" fill="#FFE082" stroke="#FFB300" stroke-width="0.8"/>' +
+                     '<rect x="119" y="3" width="7" height="15" rx="2" fill="#B0BEC5" stroke="#455A64" stroke-width="1.2"/>' +
+                     '<circle cx="122.5" cy="2" r="3" fill="#FFE082" stroke="#FFB300" stroke-width="0.8"/>' +
+                     // Threshold stone walkway
+                     '<rect x="80" y="6" width="40" height="9" rx="2" fill="#CFD8DC" opacity="0.8"/>' +
+                     // Dynamic Swing Gate Leaves
+                     (isGateOpen ?
+                       '<g transform="translate(80, 10) rotate(-70)"><rect x="0" y="-3" width="18" height="6" rx="1.5" fill="#8D6E63" stroke="#4E342E" stroke-width="0.8"/><line x1="4" y1="-3" x2="4" y2="3" stroke="#D7CCC8"/><line x1="12" y1="-3" x2="12" y2="3" stroke="#D7CCC8"/></g>' +
+                       '<g transform="translate(120, 10) rotate(70)"><rect x="-18" y="-3" width="18" height="6" rx="1.5" fill="#8D6E63" stroke="#4E342E" stroke-width="0.8"/><line x1="-4" y1="-3" x2="-4" y2="3" stroke="#D7CCC8"/><line x1="-12" y1="-3" x2="-12" y2="3" stroke="#D7CCC8"/></g>' :
+                       '<g transform="translate(80, 10)"><rect x="0" y="-3" width="20" height="6" rx="1.5" fill="#8D6E63" stroke="#4E342E" stroke-width="0.8"/><line x1="5" y1="-3" x2="5" y2="3" stroke="#D7CCC8"/><line x1="14" y1="-3" x2="14" y2="3" stroke="#D7CCC8"/></g>' +
+                       '<g transform="translate(120, 10)"><rect x="-20" y="-3" width="20" height="6" rx="1.5" fill="#8D6E63" stroke="#4E342E" stroke-width="0.8"/><line x1="-5" y1="-3" x2="-5" y2="3" stroke="#D7CCC8"/><line x1="-14" y1="-3" x2="-14" y2="3" stroke="#D7CCC8"/><circle cx="-20" cy="0" r="2" fill="#FFD54F"/></g>');
+    }
+    boundarySvg += '</g>';
+  } else {
+    // Surveyor Stakes & Dashed Plot Perimeter inviting player to build boundary
+    boundarySvg += '<g class="plot-unfenced-survey" opacity="0.45">' +
+      '<circle cx="8" cy="10" r="2.5" fill="#8D6E63"/>' +
+      '<circle cx="192" cy="10" r="2.5" fill="#8D6E63"/>' +
+      '<circle cx="8" cy="140" r="2.5" fill="#8D6E63"/>' +
+      '<circle cx="192" cy="140" r="2.5" fill="#8D6E63"/>' +
+      '<rect x="8" y="10" width="184" height="130" fill="none" stroke="#8D6E63" stroke-width="1" stroke-dasharray="6,4"/>' +
+    '</g>';
+  }
+
+  return '<svg viewBox="0 0 200 150">'+bed+content+ring+boundarySvg+'</svg>';
 }
 
 function plotSpotHtml(p, layout){
@@ -6898,6 +7003,9 @@ function panelHtml(){
       }
     }
     state.plots.forEach(function(p){
+      if (!p.accessories || !p.accessories.boundary){
+        any=true; rows+='<div class="task-row" style="border-left:3px solid #8D6E63;"><div><div class="name">⛩️ Plot '+(p.id+1)+' — Erect Boundary Fence & Gate</div><div class="meta">€'+ACCESSORIES.boundary.cost+' · timber estate fence · dynamic entrance gate</div></div><button class="claim-btn" data-buyacc="boundary" data-buyplot="'+p.id+'" '+(state.money<ACCESSORIES.boundary.cost?'disabled':'')+'>Build (€'+ACCESSORIES.boundary.cost+')</button></div>';
+      }
       if (p.status==='barren'){
         any=true; rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Dig Land</div><div class="meta">€'+LABOR_COST+' · 3h</div></div><button class="claim-btn" data-prep="'+p.id+'">Start</button></div>';
       } else if (p.status==='overgrown'){
@@ -7122,6 +7230,7 @@ window.GATE_SPOT = GATE_SPOT;
 window.PLOT_LAYOUT = PLOT_LAYOUT;
 window.CREW_SHED_SPOT = CREW_SHED_SPOT;
 window.GARAGE_SPOT = GARAGE_SPOT;
+window.ACCESSORIES = ACCESSORIES;
 window.BUILDING_TYPES = BUILDING_TYPES;
 window.ROAD_SEGMENTS = ROAD_SEGMENTS;
 window.MARKETPLACE_CATALOG = MARKETPLACE_CATALOG;
@@ -7132,11 +7241,16 @@ window.drawPondScene = drawPondScene;
 window.drawGardenScene = drawGardenScene;
 window.drawUnbuiltSpotMarker = drawUnbuiltSpotMarker;
 window.hireWorker = hireWorker;
+window.plotSvg = plotSvg;
+window.buyAccessory = buyAccessory;
+window.panelHtml = panelHtml;
+window.togglePanel = togglePanel;
 window.switchScreen = switchScreen;
 window.freshState = freshState;
 try {
   Object.defineProperty(window, 'currentScreen', { get: function(){ return currentScreen; }, set: function(v){ currentScreen = v; }, configurable: true });
   Object.defineProperty(window, 'state', { get: function(){ return state; }, set: function(v){ state = v; }, configurable: true });
+  Object.defineProperty(window, 'openPanel', { get: function(){ return openPanel; }, set: function(v){ openPanel = v; }, configurable: true });
 } catch(e){}
 if (typeof globalThis !== 'undefined'){
   globalThis.toggleCorner = toggleCorner;
@@ -7149,6 +7263,7 @@ if (typeof globalThis !== 'undefined'){
   globalThis.PLOT_LAYOUT = PLOT_LAYOUT;
   globalThis.CREW_SHED_SPOT = CREW_SHED_SPOT;
   globalThis.GARAGE_SPOT = GARAGE_SPOT;
+  globalThis.ACCESSORIES = ACCESSORIES;
   globalThis.BUILDING_TYPES = BUILDING_TYPES;
   globalThis.ROAD_SEGMENTS = ROAD_SEGMENTS;
   globalThis.MARKETPLACE_CATALOG = MARKETPLACE_CATALOG;
@@ -7159,10 +7274,15 @@ if (typeof globalThis !== 'undefined'){
   globalThis.drawGardenScene = drawGardenScene;
   globalThis.drawUnbuiltSpotMarker = drawUnbuiltSpotMarker;
   globalThis.hireWorker = hireWorker;
+  globalThis.plotSvg = plotSvg;
+  globalThis.buyAccessory = buyAccessory;
+  globalThis.panelHtml = panelHtml;
+  globalThis.togglePanel = togglePanel;
   globalThis.switchScreen = switchScreen;
   globalThis.freshState = freshState;
   try {
     Object.defineProperty(globalThis, 'state', { get: function(){ return state; }, set: function(v){ state = v; }, configurable: true });
+    Object.defineProperty(globalThis, 'openPanel', { get: function(){ return openPanel; }, set: function(v){ openPanel = v; }, configurable: true });
   } catch(e){}
 }
 
