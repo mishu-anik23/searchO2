@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>searchO2 — Farm & Village Eco-Sim Prototype v5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -19,12 +19,109 @@
   html,body{ height:100%; margin:0; overflow:hidden; font-family:'Nunito', sans-serif; color:var(--pine); }
   h1,h2,h3,h4,.title-font{ font-family:'Baloo 2', sans-serif; }
 
-  .game-root{ position:fixed; inset:0; overflow:hidden; }
-  .field-scene{ position:absolute; inset:0; }
+  .game-root{ position:fixed; inset:0; overflow:hidden; background:#1B2E15; }
+
+  /* ================= RESPONSIVE CANVAS VIEWPORT & ASSET FITTING ================= */
+  .farm-screen {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #CDEDE8 0%, #EAF6E7 40%, #79AD5C 40%, #588A46 100%);
+  }
+
+  .farm-canvas-viewport {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 100vw;
+    max-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: width 0.3s cubic-bezier(0.2,0,0,1), height 0.3s cubic-bezier(0.2,0,0,1), transform 0.35s cubic-bezier(0.2,0,0,1);
+  }
+
+  /* Aspect-ratio preserving field scene: Maintains 16:10 (1.6:1) coordinate fidelity across all screens */
+  .field-scene {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    inset: 0;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* Landscape / Panoramic Mode: Fit within screen preserving 1.6:1 ratio, centered */
+  .game-root.view-landscape .farm-canvas-viewport,
+  .game-root.view-auto:not(.is-portrait-device) .farm-canvas-viewport {
+    width: min(100vw, calc(100vh * 1.6));
+    height: min(100vh, calc(100vw / 1.6));
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+    border-radius: 4px;
+  }
+
+  /* Vertical / Portrait Mode: Fit cleanly to width with dedicated vertical focal space */
+  .game-root.view-portrait .farm-canvas-viewport,
+  .game-root.view-auto.is-portrait-device .farm-canvas-viewport {
+    width: 100vw;
+    height: min(62.5vw, calc(100vh - 120px));
+    margin-top: -30px; /* balance between topbar and bottom tools */
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Forced Landscape on Vertical/Portrait Device: Rotates canvas 90deg for handheld console widescreen view */
+  .game-root.view-landscape.is-portrait-device .farm-canvas-viewport {
+    width: 100vh !important;
+    height: 100vw !important;
+    transform: rotate(90deg);
+    transform-origin: center center;
+    position: absolute;
+    box-shadow: 0 0 50px rgba(0,0,0,0.6);
+  }
+
   .field-bg{ position:absolute; inset:0; }
   .field-bg svg{ width:100%; height:100%; display:block; }
   .field-plots{ position:absolute; inset:0; pointer-events:none; }
   .birds-layer{ position:absolute; inset:0; pointer-events:none; z-index:6; overflow:hidden; }
+
+  /* View Interchange Control Button */
+  .view-interchange-btn {
+    background: rgba(251, 246, 236, 0.95);
+    border: 1.5px solid rgba(44, 74, 50, 0.35);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: var(--pine);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: all 0.2s cubic-bezier(0.2,0,0,1);
+    white-space: nowrap;
+    touch-action: manipulation;
+  }
+  .view-interchange-btn:hover {
+    background: #FFF9EE;
+    border-color: var(--gold);
+    transform: translateY(-2px);
+  }
+  .view-interchange-btn:active {
+    transform: translateY(0);
+  }
+  .view-btn-icon {
+    font-size: 0.9rem;
+  }
+  .top-right-button-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
 
   /* ================= 3 COLLAPSIBLE CORNER MENUS (UNOBSTRUCTED FARM VIEW) ================= */
   .corner-menu {
@@ -503,13 +600,197 @@
     pointer-events: none;
   }
 
-  @media (max-width:640px){
-    .float-panel{ width: calc(100vw - 84px); }
-    .tool-chip{ width:58px; height:52px; font-size:0.58rem; }
-    .region-grid{ grid-template-columns: 1fr !important; }
-    .region-topbar{ flex-direction:column; align-items:stretch !important; gap:10px !important; }
-    .region-user-dock{ justify-content:space-between; }
-    .initial-auth-card{ padding:20px 16px !important; border-radius:20px !important; }
+  /* ================= MOBILE & TABLET RESPONSIVE ENHANCEMENTS ================= */
+  @media (max-width: 768px), (max-aspect-ratio: 1/1) {
+    /* Touch target minimum sizes */
+    button, .corner-toggle-btn, .dock-btn, .tool-chip, .claim-btn, .corner-close-btn {
+      min-height: 42px;
+      touch-action: manipulation;
+    }
+
+    /* Top Corner Menus: Compact Non-Overlapping Mobile Header */
+    .top-left-corner {
+      top: 8px;
+      left: 8px;
+      z-index: 45;
+    }
+    .top-right-corner {
+      top: 8px;
+      right: 8px;
+      z-index: 45;
+    }
+    .corner-toggle-btn {
+      padding: 5px 10px;
+      font-size: 0.72rem;
+    }
+    .corner-stat-capsule {
+      max-width: 48vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .topbar-fixed {
+      max-width: calc(100vw - 16px);
+      align-items: flex-end;
+    }
+    .stats {
+      max-width: calc(100vw - 20px);
+      gap: 4px;
+    }
+    .stat-pill {
+      padding: 4px 8px;
+      font-size: 0.72rem;
+    }
+
+    /* Floating Panels: Transform into Native Mobile Bottom Sheets */
+    .float-panel, .adjacent-dock .float-panel {
+      position: fixed !important;
+      top: auto !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      width: 100vw !important;
+      max-width: 100vw !important;
+      max-height: 75vh !important;
+      border-radius: 24px 24px 0 0 !important;
+      padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.45) !important;
+      border: 1.5px solid rgba(111, 168, 90, 0.35) !important;
+      border-bottom: none !important;
+      z-index: 85 !important;
+      animation: mobileSlideUp 0.28s cubic-bezier(0.2,0,0,1);
+    }
+
+    /* Bottom-Right Drawers: Mobile Bottom Sheet Trays */
+    .bottom-right-corner {
+      bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      right: 8px;
+      left: 8px;
+      align-items: center;
+    }
+    .bottom-buttons-stack {
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+      gap: 8px;
+      width: 100%;
+    }
+    .corner-marketplace-btn, .corner-tools-btn {
+      flex: 1;
+      max-width: 190px;
+      justify-content: center;
+      padding: 8px 12px;
+      font-size: 0.75rem;
+    }
+    .bottom-tools-tray {
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      width: 100vw !important;
+      max-width: 100vw !important;
+      max-height: 76vh !important;
+      border-radius: 24px 24px 0 0 !important;
+      padding: 14px 14px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5) !important;
+      z-index: 90 !important;
+    }
+    .bottom-tools-tray.marketplace-tray {
+      max-height: 82vh !important;
+    }
+    .marketplace-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    /* Mobile Modals: Native Bottom Sheet Alignment */
+    .modal-overlay {
+      align-items: flex-end;
+      padding: 0;
+    }
+    .modal {
+      width: 100vw !important;
+      max-width: 100vw !important;
+      max-height: 86vh !important;
+      border-radius: 24px 24px 0 0 !important;
+      padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+      animation: mobileSlideUp 0.28s cubic-bezier(0.2,0,0,1);
+    }
+
+    /* Music Controller Dock: Compact Mobile Pill */
+    .music-player-dock {
+      bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
+      left: 8px !important;
+      padding: 4px 8px !important;
+      font-size: 0.72rem !important;
+      border-radius: 16px !important;
+      max-width: calc(100vw - 16px) !important;
+      z-index: 40 !important;
+    }
+    .music-dock-label { max-width: 110px; font-size: 0.72rem; }
+    .music-slider { width: 44px; }
+    .music-track-select { max-width: 100px; font-size: 0.7rem; }
+
+    /* Region Selection Screen Responsiveness */
+    .region-topbar {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 8px !important;
+      padding: 10px 12px !important;
+    }
+    .region-user-dock {
+      justify-content: space-between !important;
+      flex-wrap: wrap !important;
+      gap: 6px !important;
+    }
+    .user-stat-chip {
+      font-size: 0.7rem !important;
+      padding: 4px 8px !important;
+    }
+    .region-hero {
+      padding: 12px 14px 8px !important;
+    }
+    .region-hero h1 {
+      font-size: 1.4rem !important;
+      margin-bottom: 4px !important;
+    }
+    .region-hero p {
+      font-size: 0.8rem !important;
+      margin-bottom: 10px !important;
+    }
+    .view-mode-tabs {
+      flex-wrap: wrap !important;
+      gap: 6px !important;
+    }
+    .view-tab-btn {
+      padding: 6px 12px !important;
+      font-size: 0.75rem !important;
+    }
+    .globe-canvas-container {
+      height: 280px !important;
+    }
+    .globe-chips-row {
+      overflow-x: auto !important;
+      padding-bottom: 6px !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+    .region-split-layout {
+      grid-template-columns: 1fr !important;
+      gap: 12px !important;
+    }
+    .region-grid {
+      grid-template-columns: 1fr !important;
+    }
+    .initial-auth-card {
+      width: 100vw !important;
+      max-width: 100vw !important;
+      border-radius: 24px 24px 0 0 !important;
+      padding: 20px 16px !important;
+    }
+  }
+
+  @keyframes mobileSlideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
   }
 
   /* ================= SCREEN VIEWS & BLURRED BACKDROP ================= */
@@ -1164,11 +1445,15 @@
 
   <!-- ================= ACTIVE FARM SCREEN ================= -->
   <div id="farmScreen" class="screen-view farm-screen" style="display:none;">
-    <div class="field-scene">
-      <div class="field-bg" id="fieldBg"></div>
-      <div class="field-plots" id="fieldPlots"></div>
+    <!-- RESPONSIVE CANVAS VIEWPORT: Preserves exact Manhattan grid coordinate fidelity across all devices -->
+    <div class="farm-canvas-viewport" id="farmCanvasViewport">
+      <div class="field-scene" id="fieldScene">
+        <div class="field-bg" id="fieldBg"></div>
+        <div class="field-plots" id="fieldPlots"></div>
+      </div>
+      <div class="birds-layer" id="birdsLayer"></div>
     </div>
-    <div class="birds-layer" id="birdsLayer"></div>
+
     <!-- CORNER 1: TOP-LEFT ACTIONS MENU -->
     <div class="corner-menu top-left-corner" id="cornerTopLeft">
       <button class="corner-toggle-btn" id="btnToggleTopLeft" title="Farm Actions & Management" onclick="toggleCorner('topLeftExpanded')">
@@ -1183,12 +1468,19 @@
     </div>
     <div id="floatPanel"></div>
 
-    <!-- CORNER 2: TOP-RIGHT STATS & SPEED DASHBOARD -->
+    <!-- CORNER 2: TOP-RIGHT STATS, VIEW INTERCHANGE & TELEMETRY -->
     <div class="corner-menu top-right-corner" id="cornerTopRight">
-      <button class="corner-toggle-btn corner-stat-capsule" id="btnToggleTopRight" title="Toggle Farm Telemetry & Dashboard" onclick="toggleCorner('topRightExpanded')">
-        <span id="topRightCapsuleContent">🌾 €0.00 · 0.0 O₂</span>
-        <span class="corner-btn-chevron" id="topRightChevron">▾</span>
-      </button>
+      <div class="top-right-button-group">
+        <!-- Responsive View Interchange: Toggle Auto, Vertical (Portrait), and Landscape -->
+        <button class="corner-toggle-btn view-interchange-btn" id="btnToggleViewOrientation" title="Switch Orientation View (Auto / Vertical / Landscape)" onclick="toggleViewOrientation()">
+          <span class="view-btn-icon" id="viewBtnIcon">🔄</span>
+          <span class="view-btn-label" id="viewBtnLabel">Auto</span>
+        </button>
+        <button class="corner-toggle-btn corner-stat-capsule" id="btnToggleTopRight" title="Toggle Farm Telemetry & Dashboard" onclick="toggleCorner('topRightExpanded')">
+          <span id="topRightCapsuleContent">🌾 €0.00 · 0.0 O₂</span>
+          <span class="corner-btn-chevron" id="topRightChevron">▾</span>
+        </button>
+      </div>
       <div class="top-right-tray is-collapsed" id="topRightTray">
         <div class="topbar-fixed" id="topbarFixed">
           <div class="stats" id="topbarStats"></div>
@@ -3252,6 +3544,9 @@ function renderRegionScreen(){
   var topbarHtml = '<div class="region-topbar">' +
     '<div class="region-logo">🌍 searchO2 <span class="tag">Planetary Biome Network</span></div>' +
     '<div class="region-user-dock" id="regionTopbarUserDock">' +
+      '<button class="corner-toggle-btn view-interchange-btn" id="btnToggleViewOrientationRegion" title="Switch Orientation View (Auto / Vertical / Landscape)" onclick="toggleViewOrientation()" style="padding:4px 10px;font-size:0.75rem;">' +
+        '<span class="view-btn-icon">🔄</span> <span class="view-btn-label">Auto</span>' +
+      '</button>' +
       '<div class="user-stat-chip">👤 ' + userDisplay + ' <span style="color:var(--pine-soft);font-size:0.7rem;">(' + userRole + ')</span></div>' +
       '<div class="user-stat-chip">🍃 ' + totalO2 + ' O₂</div>' +
       '<div class="user-stat-chip">💶 €' + treasury + '</div>' +
@@ -7979,8 +8274,82 @@ var uiCornersState = {
   topLeftExpanded: false,
   topRightExpanded: false,
   bottomToolsExpanded: false,
-  marketplaceExpanded: false
+  marketplaceExpanded: false,
+  viewOrientation: 'auto' // 'auto', 'portrait', 'landscape'
 };
+
+// ================= RESPONSIVE VIEW INTERCHANGE & DYNAMIC ASSET SCALING =================
+function updateViewportScale(){
+  var w = window.innerWidth;
+  var h = window.innerHeight;
+  var isPortrait = h > w;
+  var isMobile = w <= 768;
+  var isTablet = w > 768 && w <= 1024;
+
+  var root = document.getElementById('gameRoot');
+  if (root){
+    root.classList.toggle('is-portrait-device', isPortrait);
+    root.classList.toggle('is-landscape-device', !isPortrait);
+    root.classList.toggle('is-mobile', isMobile);
+    root.classList.toggle('is-tablet', isTablet);
+
+    var mode = uiCornersState.viewOrientation || 'auto';
+    root.classList.toggle('view-auto', mode === 'auto');
+    root.classList.toggle('view-portrait', mode === 'portrait');
+    root.classList.toggle('view-landscape', mode === 'landscape');
+  }
+
+  updateViewInterchangeButton();
+}
+
+function updateViewInterchangeButton(){
+  var mode = uiCornersState.viewOrientation || 'auto';
+  var icon = mode === 'auto' ? '🔄' : (mode === 'portrait' ? '📱' : '↻');
+  var text = mode === 'auto' ? 'Auto' : (mode === 'portrait' ? 'Vertical' : 'Landscape');
+
+  var btns = document.querySelectorAll('.view-interchange-btn');
+  btns.forEach(function(btn){
+    var iconEl = btn.querySelector('.view-btn-icon');
+    var labelEl = btn.querySelector('.view-btn-label');
+    if (iconEl) iconEl.textContent = icon;
+    if (labelEl) labelEl.textContent = text;
+    btn.setAttribute('title', 'View Mode: ' + text + ' (Click to cycle: Auto / Vertical / Landscape)');
+  });
+}
+
+function toggleViewOrientation(forcedMode){
+  var modes = ['auto', 'portrait', 'landscape'];
+  if (forcedMode && modes.indexOf(forcedMode) !== -1){
+    uiCornersState.viewOrientation = forcedMode;
+  } else {
+    var curr = uiCornersState.viewOrientation || 'auto';
+    var nextIdx = (modes.indexOf(curr) + 1) % modes.length;
+    uiCornersState.viewOrientation = modes[nextIdx];
+  }
+
+  try {
+    localStorage.setItem('searchO2_view_orientation', uiCornersState.viewOrientation);
+  } catch(e){}
+
+  updateViewportScale();
+
+  var labelMap = {
+    auto: 'Auto View (Device Adaptive)',
+    portrait: 'Vertical View (Portrait 📱)',
+    landscape: 'Landscape View (Panoramic ↻)'
+  };
+  var iconMap = {
+    auto: '🔄',
+    portrait: '📱',
+    landscape: '↻'
+  };
+
+  if (typeof showNotification === 'function'){
+    showNotification(iconMap[uiCornersState.viewOrientation], 'Switched to ' + labelMap[uiCornersState.viewOrientation], 'achievement');
+  }
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+  renderCornersUI();
+}
 
 function toggleCorner(cornerKey){
   if (uiCornersState.hasOwnProperty(cornerKey)){
@@ -8055,6 +8424,8 @@ window.assignWorkerToTask = assignWorkerToTask;
 window.drawHumanWorkerSvg = drawHumanWorkerSvg;
 window.getRoadNetworkWaypoints = getRoadNetworkWaypoints;
 window.drawMainGateScene = drawMainGateScene;
+window.toggleViewOrientation = toggleViewOrientation;
+window.updateViewportScale = updateViewportScale;
 window.drawRoadScene = drawRoadScene;
 window.animateWorkerPathWalk = animateWorkerPathWalk;
 window.getPendingTasksList = getPendingTasksList;
@@ -8113,6 +8484,8 @@ if (typeof globalThis !== 'undefined'){
   globalThis.drawHumanWorkerSvg = drawHumanWorkerSvg;
   globalThis.getRoadNetworkWaypoints = getRoadNetworkWaypoints;
   globalThis.drawMainGateScene = drawMainGateScene;
+globalThis.toggleViewOrientation = toggleViewOrientation;
+globalThis.updateViewportScale = updateViewportScale;
   globalThis.drawRoadScene = drawRoadScene;
   globalThis.animateWorkerPathWalk = animateWorkerPathWalk;
   globalThis.getPendingTasksList = getPendingTasksList;
@@ -8204,6 +8577,8 @@ function renderCornersUI(){
       fp.classList.remove('adjacent-dock');
     }
   }
+
+  updateViewInterchangeButton();
 }
 
 function buyMarketplaceItem(itemId){
@@ -8560,10 +8935,26 @@ function wireEvents(){
   });
   var closeOffline = document.getElementById('closeOffline');
   if (closeOffline) closeOffline.onclick = function(){ offlineSummary=null; render(); };
+
+  // Responsive device orientation & window resize listeners
+  window.addEventListener('resize', updateViewportScale);
+  window.addEventListener('orientationchange', function(){
+    setTimeout(updateViewportScale, 120);
+  });
+
+  // Restore saved view orientation preference
+  try {
+    var savedOrientation = localStorage.getItem('searchO2_view_orientation');
+    if (savedOrientation && ['auto', 'portrait', 'landscape'].indexOf(savedOrientation) !== -1){
+      uiCornersState.viewOrientation = savedOrientation;
+    }
+  } catch(e){}
+  updateViewportScale();
 }
 
 loadState();
 ApiClient.init();
+updateViewportScale();
 })();
 </script>
 </body>
