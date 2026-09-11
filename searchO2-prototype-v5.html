@@ -64,39 +64,73 @@
     user-select: none;
   }
 
-  /* Landscape / Panoramic Mode: Seamless edge-to-edge full width and height with zero empty margins */
-  .game-root:not(.view-portrait) .farm-canvas-viewport,
-  .game-root.is-landscape-device .farm-canvas-viewport {
+  /* -------------------------------------------------------------
+     RESPONSIVE VIEW INTERCHANGE MODES (Auto / Vertical / Landscape / 90° Turn)
+     ------------------------------------------------------------- */
+  /* MODE 1: AUTO (Device Adaptive) */
+  .game-root.view-auto.is-landscape-device .farm-canvas-viewport {
     width: 100% !important;
     height: 100% !important;
     max-width: 100vw !important;
     max-height: 100vh !important;
-    box-shadow: none !important;
+    transform: none !important;
     border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+  .game-root.view-auto.is-portrait-device .farm-canvas-viewport {
+    width: 100vw !important;
+    height: 100% !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    transform: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
     margin: 0 !important;
   }
 
-  /* Vertical / Portrait Mode: Fit cleanly to screen width, centered with continuous pastoral backdrop */
-  .game-root.view-portrait .farm-canvas-viewport,
-  .game-root.view-auto.is-portrait-device .farm-canvas-viewport {
-    width: 100vw;
-    height: min(65vw, calc(100vh - 80px));
-    margin: auto;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  /* MODE 2: VERTICAL (Mobile Phone Frame Simulation on any device) */
+  .game-root.view-portrait .farm-canvas-viewport {
+    width: min(440px, 92vw) !important;
+    height: min(820px, calc(100vh - 36px)) !important;
+    max-width: 440px !important;
+    max-height: 820px !important;
+    transform: none !important;
+    border-radius: 36px !important;
+    border: 3px solid rgba(255, 255, 255, 0.65) !important;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(44, 74, 50, 0.3) !important;
+    margin: auto !important;
+    position: absolute !important;
+    inset: 0 !important;
+    overflow: hidden !important;
   }
 
-  /* Forced Landscape on Vertical/Portrait Device: Rotates canvas 90deg for handheld console widescreen view */
+  /* MODE 3: LANDSCAPE (Full-Screen Edge-to-Edge Panoramic) */
+  .game-root.view-landscape .farm-canvas-viewport {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    transform: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+
+  /* MODE 4: ROTATE 90° (Handheld Console Widescreen 90-Degree Rotation) */
+  .game-root.view-rotate90 .farm-canvas-viewport,
   .game-root.view-landscape.is-portrait-device .farm-canvas-viewport {
-    width: 100vh !important;
-    height: 100vw !important;
+    width: min(100vh, 90vw) !important;
+    height: min(100vw, 90vh) !important;
     max-width: 100vh !important;
     max-height: 100vw !important;
-    transform: rotate(90deg);
-    transform-origin: center center;
-    position: absolute;
-    inset: 0;
-    margin: auto;
-    box-shadow: 0 0 60px rgba(0,0,0,0.6);
+    transform: rotate(90deg) !important;
+    transform-origin: center center !important;
+    position: absolute !important;
+    inset: 0 !important;
+    margin: auto !important;
+    border-radius: 24px !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7) !important;
   }
 
   .field-bg{ position:absolute; inset:0; }
@@ -8458,6 +8492,7 @@ function updateViewportScale(){
     root.classList.toggle('view-auto', mode === 'auto');
     root.classList.toggle('view-portrait', mode === 'portrait');
     root.classList.toggle('view-landscape', mode === 'landscape');
+    root.classList.toggle('view-rotate90', mode === 'rotate90');
   }
 
   updateViewInterchangeButton();
@@ -8465,8 +8500,8 @@ function updateViewportScale(){
 
 function updateViewInterchangeButton(){
   var mode = uiCornersState.viewOrientation || 'auto';
-  var icon = mode === 'auto' ? '🔄' : (mode === 'portrait' ? '📱' : '↻');
-  var text = mode === 'auto' ? 'Auto' : (mode === 'portrait' ? 'Vertical' : 'Landscape');
+  var icon = mode === 'auto' ? '🔄' : (mode === 'portrait' ? '📱' : (mode === 'landscape' ? '🖥️' : '↻'));
+  var text = mode === 'auto' ? 'Auto' : (mode === 'portrait' ? 'Vertical' : (mode === 'landscape' ? 'Landscape' : '90° Turn'));
 
   var btns = document.querySelectorAll('.view-interchange-btn');
   btns.forEach(function(btn){
@@ -8474,12 +8509,12 @@ function updateViewInterchangeButton(){
     var labelEl = btn.querySelector('.view-btn-label');
     if (iconEl) iconEl.textContent = icon;
     if (labelEl) labelEl.textContent = text;
-    btn.setAttribute('title', 'View Mode: ' + text + ' (Click to cycle: Auto / Vertical / Landscape)');
+    btn.setAttribute('title', 'View Mode: ' + text + ' (Click to cycle: Auto / Vertical / Landscape / 90° Turn)');
   });
 }
 
 function toggleViewOrientation(forcedMode){
-  var modes = ['auto', 'portrait', 'landscape'];
+  var modes = ['auto', 'portrait', 'landscape', 'rotate90'];
   if (forcedMode && modes.indexOf(forcedMode) !== -1){
     uiCornersState.viewOrientation = forcedMode;
   } else {
@@ -8496,13 +8531,15 @@ function toggleViewOrientation(forcedMode){
 
   var labelMap = {
     auto: 'Auto View (Device Adaptive)',
-    portrait: 'Vertical View (Portrait 📱)',
-    landscape: 'Landscape View (Panoramic ↻)'
+    portrait: 'Vertical View (Phone Frame 📱)',
+    landscape: 'Panoramic View (Full Widescreen 🖥️)',
+    rotate90: '90° Handheld Console View (Rotated ↻)'
   };
   var iconMap = {
     auto: '🔄',
     portrait: '📱',
-    landscape: '↻'
+    landscape: '🖥️',
+    rotate90: '↻'
   };
 
   if (typeof showNotification === 'function'){
@@ -9132,7 +9169,7 @@ function wireEvents(){
   // Restore saved view orientation preference
   try {
     var savedOrientation = localStorage.getItem('searchO2_view_orientation');
-    if (savedOrientation && ['auto', 'portrait', 'landscape'].indexOf(savedOrientation) !== -1){
+    if (savedOrientation && ['auto', 'portrait', 'landscape', 'rotate90'].indexOf(savedOrientation) !== -1){
       uiCornersState.viewOrientation = savedOrientation;
     }
   } catch(e){}
