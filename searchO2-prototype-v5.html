@@ -29,7 +29,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(180deg, #CDEDE8 0%, #EAF6E7 40%, #79AD5C 40%, #588A46 100%);
+    background: linear-gradient(180deg, #CDEDE8 0%, #E8F5E0 25%, #79AD5C 50%, #588A46 75%, #3E662F 100%);
+  }
+  .farm-screen-backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
   }
 
   .farm-canvas-viewport {
@@ -42,6 +50,7 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    z-index: 1;
     transition: width 0.3s cubic-bezier(0.2,0,0,1), height 0.3s cubic-bezier(0.2,0,0,1), transform 0.35s cubic-bezier(0.2,0,0,1);
   }
 
@@ -55,32 +64,39 @@
     user-select: none;
   }
 
-  /* Landscape / Panoramic Mode: Fit within screen preserving 1.6:1 ratio, centered */
-  .game-root.view-landscape .farm-canvas-viewport,
-  .game-root.view-auto:not(.is-portrait-device) .farm-canvas-viewport {
-    width: min(100vw, calc(100vh * 1.6));
-    height: min(100vh, calc(100vw / 1.6));
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
-    border-radius: 4px;
+  /* Landscape / Panoramic Mode: Seamless edge-to-edge full width and height with zero empty margins */
+  .game-root:not(.view-portrait) .farm-canvas-viewport,
+  .game-root.is-landscape-device .farm-canvas-viewport {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
   }
 
-  /* Vertical / Portrait Mode: Fit cleanly to width with dedicated vertical focal space */
+  /* Vertical / Portrait Mode: Fit cleanly to screen width, centered with continuous pastoral backdrop */
   .game-root.view-portrait .farm-canvas-viewport,
   .game-root.view-auto.is-portrait-device .farm-canvas-viewport {
     width: 100vw;
-    height: min(62.5vw, calc(100vh - 120px));
-    margin-top: -30px; /* balance between topbar and bottom tools */
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    height: min(65vw, calc(100vh - 80px));
+    margin: auto;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
   }
 
   /* Forced Landscape on Vertical/Portrait Device: Rotates canvas 90deg for handheld console widescreen view */
   .game-root.view-landscape.is-portrait-device .farm-canvas-viewport {
     width: 100vh !important;
     height: 100vw !important;
+    max-width: 100vh !important;
+    max-height: 100vw !important;
     transform: rotate(90deg);
     transform-origin: center center;
     position: absolute;
-    box-shadow: 0 0 50px rgba(0,0,0,0.6);
+    inset: 0;
+    margin: auto;
+    box-shadow: 0 0 60px rgba(0,0,0,0.6);
   }
 
   .field-bg{ position:absolute; inset:0; }
@@ -346,9 +362,9 @@
     font-size: 0.7rem;
   }
 
-  /* 3. Bottom-Right Corner (Crew & Tools Drawer) */
+  /* 3. Bottom-Right Corner (Crew & Tools Drawer) - Absolute inside canvas */
   .bottom-right-corner {
-    position: fixed;
+    position: absolute;
     bottom: 16px;
     right: 16px;
     z-index: 40;
@@ -462,10 +478,50 @@
     border-radius:12px; background:white; cursor:pointer; font-size:0.62rem; font-weight:800; color:var(--pine); text-align:center; padding:4px; }
   .tool-chip .em{ font-size:1.15rem; }
   .tool-chip.info{ cursor:default; opacity:0.92; }
-  .floating-tooltip{ position:fixed; z-index:300; background:#2C4A32; color:white; padding:7px 10px; border-radius:8px;
-    font-size:0.68rem; font-weight:600; line-height:1.35; white-space:pre-line; max-width:190px; pointer-events:none;
-    opacity:0; transition:opacity 0.12s ease; box-shadow:0 8px 20px rgba(0,0,0,0.3); }
-  .floating-tooltip.show{ opacity:1; }
+  /* Universal Whole Game Screen Tooltip */
+  .floating-tooltip {
+    position: fixed;
+    z-index: 99999;
+    background: rgba(28, 54, 34, 0.96);
+    color: #FFFFFF;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.76rem;
+    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: pre-line;
+    max-width: 250px;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(129, 199, 132, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .floating-tooltip.show {
+    opacity: 1;
+    visibility: visible;
+  }
+  .floating-tooltip::after {
+    content: '';
+    position: absolute;
+    border: 6px solid transparent;
+    pointer-events: none;
+  }
+  .floating-tooltip.tip-above::after {
+    top: 100%;
+    left: var(--tip-arrow-x, 50%);
+    transform: translateX(-50%);
+    border-top-color: rgba(28, 54, 34, 0.96);
+  }
+  .floating-tooltip.tip-below::after {
+    bottom: 100%;
+    left: var(--tip-arrow-x, 50%);
+    transform: translateX(-50%);
+    border-bottom-color: rgba(28, 54, 34, 0.96);
+  }
 
   .plot-spot{ position:absolute; pointer-events:auto; cursor:pointer; }
   .plot-spot svg{ width:100%; height:100%; overflow:visible; }
@@ -1445,82 +1501,85 @@
 
   <!-- ================= ACTIVE FARM SCREEN ================= -->
   <div id="farmScreen" class="screen-view farm-screen" style="display:none;">
-    <!-- RESPONSIVE CANVAS VIEWPORT: Preserves exact Manhattan grid coordinate fidelity across all devices -->
+    <!-- FULL-SCREEN SEAMLESS SCENIC BACKDROP: Continuous sky, hills, and lawn for all aspect ratios -->
+    <div class="farm-screen-backdrop" id="farmScreenBackdrop"></div>
+
+    <!-- RESPONSIVE CANVAS VIEWPORT: Encloses field scene AND all HUD overlays for unified scaling -->
     <div class="farm-canvas-viewport" id="farmCanvasViewport">
       <div class="field-scene" id="fieldScene">
         <div class="field-bg" id="fieldBg"></div>
         <div class="field-plots" id="fieldPlots"></div>
       </div>
       <div class="birds-layer" id="birdsLayer"></div>
-    </div>
 
-    <!-- CORNER 1: TOP-LEFT ACTIONS MENU -->
-    <div class="corner-menu top-left-corner" id="cornerTopLeft">
-      <button class="corner-toggle-btn" id="btnToggleTopLeft" title="Farm Actions & Management" onclick="toggleCorner('topLeftExpanded')">
-        <span class="corner-btn-icon">🧭</span>
-        <span class="corner-btn-label">Menu</span>
-        <span class="corner-btn-badge" id="topLeftBadge"></span>
-        <span class="corner-btn-chevron" id="topLeftChevron">▾</span>
-      </button>
-      <div class="top-left-tray is-collapsed" id="topLeftTray">
-        <div class="icon-dock" id="iconDock"></div>
-      </div>
-    </div>
-    <div id="floatPanel"></div>
-
-    <!-- CORNER 2: TOP-RIGHT STATS, VIEW INTERCHANGE & TELEMETRY -->
-    <div class="corner-menu top-right-corner" id="cornerTopRight">
-      <div class="top-right-button-group">
-        <!-- Responsive View Interchange: Toggle Auto, Vertical (Portrait), and Landscape -->
-        <button class="corner-toggle-btn view-interchange-btn" id="btnToggleViewOrientation" title="Switch Orientation View (Auto / Vertical / Landscape)" onclick="toggleViewOrientation()">
-          <span class="view-btn-icon" id="viewBtnIcon">🔄</span>
-          <span class="view-btn-label" id="viewBtnLabel">Auto</span>
+      <!-- CORNER 1: TOP-LEFT ACTIONS MENU -->
+      <div class="corner-menu top-left-corner" id="cornerTopLeft">
+        <button class="corner-toggle-btn" id="btnToggleTopLeft" title="Farm Actions & Management" onclick="toggleCorner('topLeftExpanded')">
+          <span class="corner-btn-icon">🧭</span>
+          <span class="corner-btn-label">Menu</span>
+          <span class="corner-btn-badge" id="topLeftBadge"></span>
+          <span class="corner-btn-chevron" id="topLeftChevron">▾</span>
         </button>
-        <button class="corner-toggle-btn corner-stat-capsule" id="btnToggleTopRight" title="Toggle Farm Telemetry & Dashboard" onclick="toggleCorner('topRightExpanded')">
-          <span id="topRightCapsuleContent">🌾 €0.00 · 0.0 O₂</span>
-          <span class="corner-btn-chevron" id="topRightChevron">▾</span>
-        </button>
-      </div>
-      <div class="top-right-tray is-collapsed" id="topRightTray">
-        <div class="topbar-fixed" id="topbarFixed">
-          <div class="stats" id="topbarStats"></div>
-          <div class="season-chip" id="seasonChipStatic"></div>
+        <div class="top-left-tray is-collapsed" id="topLeftTray">
+          <div class="icon-dock" id="iconDock"></div>
         </div>
       </div>
-    </div>
+      <div id="floatPanel"></div>
 
-    <!-- CORNER 3: BOTTOM-RIGHT WORKER CREW & TOOLS DRAWER -->
-    <div class="corner-menu bottom-right-corner" id="cornerBottomTools">
-      <div class="bottom-buttons-stack">
-        <button class="corner-toggle-btn corner-marketplace-btn" id="btnToggleMarketplace" title="Toggle Agricultural Marketplace" onclick="toggleCorner('marketplaceExpanded')">
-          <span class="corner-btn-icon">🛒</span>
-          <span class="corner-btn-label">Marketplace</span>
-          <span class="corner-btn-badge" id="marketplaceBadge"></span>
-          <span class="corner-btn-chevron" id="marketplaceChevron">▴</span>
-        </button>
-        <button class="corner-toggle-btn corner-tools-btn" id="btnToggleBottomTools" title="Toggle Crew & Equipment Drawer" onclick="toggleCorner('bottomToolsExpanded')">
-          <span class="corner-btn-icon">🧑‍🌾</span>
-          <span class="corner-btn-label">Crew & Tools</span>
-          <span class="corner-btn-badge" id="bottomToolsBadge"></span>
-          <span class="corner-btn-chevron" id="bottomToolsChevron">▴</span>
-        </button>
-      </div>
-      <div class="bottom-tools-tray marketplace-tray is-collapsed" id="marketplaceTray">
-        <div class="corner-drawer-header">
-          <span class="drawer-title">🛒 Agricultural Marketplace & Equipment</span>
-          <button class="corner-close-btn" id="btnCloseMarketplace" onclick="toggleCorner('marketplaceExpanded')" title="Close Marketplace">✕ Close</button>
+      <!-- CORNER 2: TOP-RIGHT STATS, VIEW INTERCHANGE & TELEMETRY -->
+      <div class="corner-menu top-right-corner" id="cornerTopRight">
+        <div class="top-right-button-group">
+          <!-- Responsive View Interchange: Toggle Auto, Vertical (Portrait), and Landscape -->
+          <button class="corner-toggle-btn view-interchange-btn" id="btnToggleViewOrientation" title="Switch Orientation View (Auto / Vertical / Landscape)" onclick="toggleViewOrientation()">
+            <span class="view-btn-icon" id="viewBtnIcon">🔄</span>
+            <span class="view-btn-label" id="viewBtnLabel">Auto</span>
+          </button>
+          <button class="corner-toggle-btn corner-stat-capsule" id="btnToggleTopRight" title="Toggle Farm Telemetry & Dashboard" onclick="toggleCorner('topRightExpanded')">
+            <span id="topRightCapsuleContent">🌾 €0.00 · 0.0 O₂</span>
+            <span class="corner-btn-chevron" id="topRightChevron">▾</span>
+          </button>
         </div>
-        <div class="marketplace-content" id="marketplaceContent"></div>
-      </div>
-      <div class="bottom-tools-tray is-collapsed" id="bottomToolsTray">
-        <div class="corner-drawer-header">
-          <span class="drawer-title">🧑‍🌾 Farm Crew & Equipment</span>
-          <button class="corner-close-btn" id="btnCloseBottomTools" onclick="toggleCorner('bottomToolsExpanded')" title="Close Drawer">✕ Close</button>
+        <div class="top-right-tray is-collapsed" id="topRightTray">
+          <div class="topbar-fixed" id="topbarFixed">
+            <div class="stats" id="topbarStats"></div>
+            <div class="season-chip" id="seasonChipStatic"></div>
+          </div>
         </div>
-        <div class="tool-strip" id="toolStrip"></div>
       </div>
-    </div>
-  </div>
+
+      <!-- CORNER 3: BOTTOM-RIGHT WORKER CREW & TOOLS DRAWER -->
+      <div class="corner-menu bottom-right-corner" id="cornerBottomTools">
+        <div class="bottom-buttons-stack">
+          <button class="corner-toggle-btn corner-marketplace-btn" id="btnToggleMarketplace" title="Toggle Agricultural Marketplace" onclick="toggleCorner('marketplaceExpanded')">
+            <span class="corner-btn-icon">🛒</span>
+            <span class="corner-btn-label">Marketplace</span>
+            <span class="corner-btn-badge" id="marketplaceBadge"></span>
+            <span class="corner-btn-chevron" id="marketplaceChevron">▴</span>
+          </button>
+          <button class="corner-toggle-btn corner-tools-btn" id="btnToggleBottomTools" title="Toggle Crew & Equipment Drawer" onclick="toggleCorner('bottomToolsExpanded')">
+            <span class="corner-btn-icon">🧑‍🌾</span>
+            <span class="corner-btn-label">Crew & Tools</span>
+            <span class="corner-btn-badge" id="bottomToolsBadge"></span>
+            <span class="corner-btn-chevron" id="bottomToolsChevron">▴</span>
+          </button>
+        </div>
+        <div class="bottom-tools-tray marketplace-tray is-collapsed" id="marketplaceTray">
+          <div class="corner-drawer-header">
+            <span class="drawer-title">🛒 Agricultural Marketplace & Equipment</span>
+            <button class="corner-close-btn" id="btnCloseMarketplace" onclick="toggleCorner('marketplaceExpanded')" title="Close Marketplace">✕ Close</button>
+          </div>
+          <div class="marketplace-content" id="marketplaceContent"></div>
+        </div>
+        <div class="bottom-tools-tray is-collapsed" id="bottomToolsTray">
+          <div class="corner-drawer-header">
+            <span class="drawer-title">🧑‍🌾 Farm Crew & Equipment</span>
+            <button class="corner-close-btn" id="btnCloseBottomTools" onclick="toggleCorner('bottomToolsExpanded')" title="Close Drawer">✕ Close</button>
+          </div>
+          <div class="tool-strip" id="toolStrip"></div>
+        </div>
+      </div>
+    </div> <!-- close farmCanvasViewport -->
+  </div> <!-- close farmScreen -->
 
   <!-- ================= INITIAL WELCOME / AUTH POPUP OVERLAY ================= -->
   <div class="initial-auth-overlay" id="initialAuthOverlay">
@@ -8232,24 +8291,126 @@ function buildToolStripOnce(){
   var ts = document.getElementById('toolStrip');
   if (!ts) return;
   ts.innerHTML = toolStripHtml();
-  var tip = document.getElementById('toolTip');
   document.querySelectorAll('.tool-chip').forEach(function(chip){
-    chip.addEventListener('mouseenter', function(){
-      var text = chip.getAttribute('data-tip');
-      tip.textContent = text;
-      var r = chip.getBoundingClientRect();
-      var left = Math.min(window.innerWidth-200, Math.max(10, r.left + r.width/2 - 95));
-      tip.style.left = left+'px';
-      tip.style.top = (r.top-8)+'px';
-      tip.style.transform = 'translateY(-100%)';
-      tip.classList.add('show');
-    });
-    chip.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
     chip.addEventListener('click', function(){
       var hireType = chip.getAttribute('data-hire');
       if (hireType) hireWorker(hireType);
     });
   });
+}
+
+// ================= WHOLE GAME SCREEN UNIVERSAL TOOLTIP ENGINE =================
+var activeTooltipTarget = null;
+var tooltipTimeout = null;
+
+function showGameTooltip(el, text){
+  var tip = document.getElementById('toolTip');
+  if (!tip || !text || !el) return;
+
+  if (tooltipTimeout) clearTimeout(tooltipTimeout);
+  activeTooltipTarget = el;
+  tip.textContent = text;
+  tip.classList.add('show');
+
+  var r = el.getBoundingClientRect();
+  var tipW = tip.offsetWidth || 180;
+  var tipH = tip.offsetHeight || 40;
+  var screenW = window.innerWidth;
+  var screenH = window.innerHeight;
+
+  // Horizontal clamping
+  var centerX = r.left + r.width / 2;
+  var left = Math.max(10, Math.min(screenW - tipW - 10, centerX - tipW / 2));
+  var arrowX = Math.max(12, Math.min(tipW - 12, centerX - left));
+  if (tip.style && tip.style.setProperty) tip.style.setProperty('--tip-arrow-x', arrowX + 'px');
+  tip.style.left = left + 'px';
+
+  // Vertical positioning: Above if space allows, otherwise Below
+  if (r.top - tipH - 12 >= 8){
+    tip.style.top = (r.top - tipH - 8) + 'px';
+    tip.classList.add('tip-above');
+    tip.classList.remove('tip-below');
+  } else {
+    tip.style.top = (r.bottom + 8) + 'px';
+    tip.classList.add('tip-below');
+    tip.classList.remove('tip-above');
+  }
+}
+
+function hideGameTooltip(){
+  var tip = document.getElementById('toolTip');
+  if (tip){
+    tip.classList.remove('show');
+    tip.classList.remove('tip-above');
+    tip.classList.remove('tip-below');
+  }
+  activeTooltipTarget = null;
+  if (tooltipTimeout) clearTimeout(tooltipTimeout);
+}
+
+function initGameTooltips(){
+  function convertTitles(root){
+    var targetRoot = root || document;
+    if (!targetRoot || !targetRoot.querySelectorAll) return;
+    var els = targetRoot.querySelectorAll('[title]:not([data-tip-converted])');
+    els.forEach(function(el){
+      var t = el.getAttribute('title');
+      if (t && t.trim()){
+        el.setAttribute('data-tip', t);
+        el.setAttribute('data-tip-converted', '1');
+        el.removeAttribute('title');
+      }
+    });
+  }
+
+  convertTitles();
+
+  if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined' && document.body){
+    var obs = new MutationObserver(function(mutations){
+      mutations.forEach(function(m){
+        m.addedNodes.forEach(function(n){
+          if (n && n.nodeType === 1){
+            if (n.hasAttribute && n.hasAttribute('title')) convertTitles(n);
+            if (n.querySelectorAll) convertTitles(n);
+          }
+        });
+      });
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+  }
+
+  if (typeof document !== 'undefined' && document && document.addEventListener){
+    // Pointer hover for desktop
+    document.addEventListener('pointerover', function(e){
+      var target = (e.target && e.target.closest) ? e.target.closest('[data-tip]') : null;
+      if (target){
+        var tipText = target.getAttribute('data-tip');
+        if (tipText) showGameTooltip(target, tipText);
+      }
+    }, true);
+
+    document.addEventListener('pointerout', function(e){
+      var target = (e.target && e.target.closest) ? e.target.closest('[data-tip]') : null;
+      if (target && target === activeTooltipTarget){
+        hideGameTooltip();
+      }
+    }, true);
+
+    // Mobile / Touch support: Tap on item shows tooltip, tap elsewhere dismisses
+    document.addEventListener('pointerdown', function(e){
+      var target = (e.target && e.target.closest) ? e.target.closest('[data-tip]') : null;
+      if (target){
+        var tipText = target.getAttribute('data-tip');
+        if (tipText){
+          showGameTooltip(target, tipText);
+          if (tooltipTimeout) clearTimeout(tooltipTimeout);
+          tooltipTimeout = setTimeout(hideGameTooltip, 3500);
+        }
+      } else {
+        hideGameTooltip();
+      }
+    }, true);
+  }
 }
 
 // Replaces a container's HTML while preserving the scrollTop of a named inner
@@ -8426,6 +8587,9 @@ window.getRoadNetworkWaypoints = getRoadNetworkWaypoints;
 window.drawMainGateScene = drawMainGateScene;
 window.toggleViewOrientation = toggleViewOrientation;
 window.updateViewportScale = updateViewportScale;
+window.showGameTooltip = showGameTooltip;
+window.hideGameTooltip = hideGameTooltip;
+window.initGameTooltips = initGameTooltips;
 window.drawRoadScene = drawRoadScene;
 window.animateWorkerPathWalk = animateWorkerPathWalk;
 window.getPendingTasksList = getPendingTasksList;
@@ -8486,6 +8650,9 @@ if (typeof globalThis !== 'undefined'){
   globalThis.drawMainGateScene = drawMainGateScene;
 globalThis.toggleViewOrientation = toggleViewOrientation;
 globalThis.updateViewportScale = updateViewportScale;
+globalThis.showGameTooltip = showGameTooltip;
+globalThis.hideGameTooltip = hideGameTooltip;
+globalThis.initGameTooltips = initGameTooltips;
   globalThis.drawRoadScene = drawRoadScene;
   globalThis.animateWorkerPathWalk = animateWorkerPathWalk;
   globalThis.getPendingTasksList = getPendingTasksList;
@@ -8684,6 +8851,26 @@ function render(){
         bgEl.innerHTML = fieldBackgroundSVG();
         bgEl.dataset.bgKey = bgKey;
       }
+    }
+
+    var backdropEl = document.getElementById('farmScreenBackdrop');
+    if (backdropEl && !backdropEl.innerHTML){
+      backdropEl.innerHTML = '<svg viewBox="0 0 1000 625" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;display:block;" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs>' +
+          '<linearGradient id="skyBackG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#CDEDE8"/><stop offset="100%" stop-color="#E8F5E0"/></linearGradient>' +
+          '<linearGradient id="hillBackG1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8FBF6E"/><stop offset="100%" stop-color="#79AD5C"/></linearGradient>' +
+          '<linearGradient id="hillBackG2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6FA85A"/><stop offset="100%" stop-color="#588A46"/></linearGradient>' +
+        '</defs>' +
+        '<rect x="0" y="0" width="1000" height="625" fill="url(#skyBackG)"/>' +
+        '<g class="cloud-drift" opacity="0.65">' +
+          '<ellipse cx="140" cy="65" rx="55" ry="18" fill="#FFFFFF"/><ellipse cx="190" cy="56" rx="36" ry="15" fill="#FFFFFF"/>' +
+          '<ellipse cx="760" cy="45" rx="60" ry="18" fill="#FFFFFF"/><ellipse cx="820" cy="55" rx="34" ry="13" fill="#FFFFFF"/>' +
+        '</g>' +
+        '<circle cx="920" cy="60" r="34" fill="#F7CB74" opacity="0.85"/>' +
+        '<path d="M0,140 C150,100 300,170 500,130 C700,90 850,150 1000,120 L1000,625 L0,625 Z" fill="url(#hillBackG1)"/>' +
+        '<path d="M0,220 C200,180 350,240 550,210 C750,180 880,230 1000,200 L1000,625 L0,625 Z" fill="url(#hillBackG2)"/>' +
+        '<path d="M0,300 Q250,340 500,305 T1000,300 L1000,625 L0,625 Z" fill="#4F8A45"/>' +
+      '</svg>';
     }
     if (typeof updateToolStrip === 'function') updateToolStrip();
   }
@@ -8950,11 +9137,13 @@ function wireEvents(){
     }
   } catch(e){}
   updateViewportScale();
+  initGameTooltips();
 }
 
 loadState();
 ApiClient.init();
 updateViewportScale();
+initGameTooltips();
 })();
 </script>
 </body>
