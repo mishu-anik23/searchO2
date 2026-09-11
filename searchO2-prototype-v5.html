@@ -65,9 +65,11 @@
   }
 
   /* -------------------------------------------------------------
-     RESPONSIVE VIEW INTERCHANGE MODES (Auto / Vertical / Landscape / 90° Turn)
+     RESPONSIVE VIEW INTERCHANGE MODES (PC Widescreen, Proportional Mobile & 90° Console)
      ------------------------------------------------------------- */
-  /* MODE 1: AUTO (Device Adaptive) */
+  /* DEFAULT & LANDSCAPE PC VIEW: Always full edge-to-edge on desktop/PC with zero empty background */
+  .game-root:not(.view-portrait):not(.view-rotate90) .farm-canvas-viewport,
+  .game-root.view-landscape .farm-canvas-viewport,
   .game-root.view-auto.is-landscape-device .farm-canvas-viewport {
     width: 100% !important;
     height: 100% !important;
@@ -75,53 +77,33 @@
     max-height: 100vh !important;
     transform: none !important;
     border-radius: 0 !important;
-    box-shadow: none !important;
-    margin: 0 !important;
-  }
-  .game-root.view-auto.is-portrait-device .farm-canvas-viewport {
-    width: 100vw !important;
-    height: 100% !important;
-    max-width: 100vw !important;
-    max-height: 100vh !important;
-    transform: none !important;
-    border-radius: 0 !important;
+    border: none !important;
     box-shadow: none !important;
     margin: 0 !important;
   }
 
-  /* MODE 2: VERTICAL (Mobile Phone Frame Simulation on any device) */
-  .game-root.view-portrait .farm-canvas-viewport {
-    width: min(440px, 92vw) !important;
-    height: min(820px, calc(100vh - 36px)) !important;
-    max-width: 440px !important;
-    max-height: 820px !important;
+  /* VERTICAL / PORTRAIT MODE: Preserves natural 16:10 aspect ratio so plots NEVER squeeze or overlap */
+  .game-root.view-portrait .farm-canvas-viewport,
+  .game-root.view-auto.is-portrait-device .farm-canvas-viewport {
+    width: 100vw !important;
+    height: min(65vh, calc(100vw / 1.55)) !important;
+    max-width: 100vw !important;
+    max-height: 70vh !important;
     transform: none !important;
-    border-radius: 36px !important;
-    border: 3px solid rgba(255, 255, 255, 0.65) !important;
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(44, 74, 50, 0.3) !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
     margin: auto !important;
     position: absolute !important;
     inset: 0 !important;
     overflow: hidden !important;
   }
 
-  /* MODE 3: LANDSCAPE (Full-Screen Edge-to-Edge Panoramic) */
-  .game-root.view-landscape .farm-canvas-viewport {
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100vw !important;
-    max-height: 100vh !important;
-    transform: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    margin: 0 !important;
-  }
-
-  /* MODE 4: ROTATE 90° (Handheld Console Widescreen 90-Degree Rotation) */
+  /* ROTATE 90° MODE: Handheld Console Widescreen Rotation */
   .game-root.view-rotate90 .farm-canvas-viewport,
   .game-root.view-landscape.is-portrait-device .farm-canvas-viewport {
-    width: min(100vh, 90vw) !important;
-    height: min(100vw, 90vh) !important;
+    width: min(100vh, 94vw) !important;
+    height: min(100vw, 94vh) !important;
     max-width: 100vh !important;
     max-height: 100vw !important;
     transform: rotate(90deg) !important;
@@ -129,8 +111,24 @@
     position: absolute !important;
     inset: 0 !important;
     margin: auto !important;
-    border-radius: 24px !important;
+    border-radius: 18px !important;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7) !important;
+  }
+
+  /* IN-VIEWPORT NOTIFICATION STACK: Moves and rotates with the game canvas */
+  .in-canvas-notif-stack {
+    position: absolute;
+    top: 66px;
+    right: 14px;
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: min(290px, 85vw);
+    pointer-events: none;
+  }
+  .in-canvas-notif-stack > * {
+    pointer-events: auto;
   }
 
   .field-bg{ position:absolute; inset:0; }
@@ -1609,10 +1607,13 @@
             <span class="drawer-title">🧑‍🌾 Farm Crew & Equipment</span>
             <button class="corner-close-btn" id="btnCloseBottomTools" onclick="toggleCorner('bottomToolsExpanded')" title="Close Drawer">✕ Close</button>
           </div>
-          <div class="tool-strip" id="toolStrip"></div>
-        </div>
+                  <div class="tool-strip" id="toolStrip"></div>
       </div>
-    </div> <!-- close farmCanvasViewport -->
+    </div>
+    <!-- IN-VIEWPORT NOTIFICATION STACK: Wildlife sightings ("Rabbit spotted!"), milestones, achievements -->
+    <div id="notifStack" class="in-canvas-notif-stack"></div>
+  </div>
+</div> <!-- close farmCanvasViewport -->
   </div> <!-- close farmScreen -->
 
   <!-- ================= INITIAL WELCOME / AUTH POPUP OVERLAY ================= -->
@@ -1642,7 +1643,7 @@
   <div id="modalLayer"></div>
   <div class="hint-toast" id="hintToast"></div>
   <div class="floating-tooltip" id="toolTip"></div>
-  <div id="notifStack" style="position:absolute; top:66px; right:12px; z-index:90; display:flex; flex-direction:column; gap:8px; max-width:270px;"></div>
+
 
 </div>
 
@@ -9166,13 +9167,21 @@ function wireEvents(){
     setTimeout(updateViewportScale, 120);
   });
 
-  // Restore saved view orientation preference
+  // Restore saved view orientation preference (defaults to Full PC View on desktop)
   try {
+    var isDesktopScreen = window.innerWidth > 768;
     var savedOrientation = localStorage.getItem('searchO2_view_orientation');
-    if (savedOrientation && ['auto', 'portrait', 'landscape', 'rotate90'].indexOf(savedOrientation) !== -1){
+    if (isDesktopScreen) {
+      // On PC / desktop monitors, always load into full-screen PC view by default
+      uiCornersState.viewOrientation = (savedOrientation === 'landscape' || savedOrientation === 'auto') ? savedOrientation : 'auto';
+    } else if (savedOrientation && ['auto', 'portrait', 'landscape', 'rotate90'].indexOf(savedOrientation) !== -1) {
       uiCornersState.viewOrientation = savedOrientation;
+    } else {
+      uiCornersState.viewOrientation = 'auto';
     }
-  } catch(e){}
+  } catch(e){
+    uiCornersState.viewOrientation = 'auto';
+  }
   updateViewportScale();
   initGameTooltips();
 }
