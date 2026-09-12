@@ -4,6 +4,12 @@ import { Client } from 'pg';
 import { env } from '../config/env';
 
 async function ensureDatabaseExists() {
+  const isLocal = env.DATABASE_URL.includes('localhost') || env.DATABASE_URL.includes('127.0.0.1');
+  if (!isLocal) {
+    // Managed cloud databases (Supabase, AWS RDS, Neon) already have the target database provisioned
+    return;
+  }
+
   const rootClient = new Client({
     host: env.PGHOST,
     port: env.PGPORT,
@@ -37,13 +43,15 @@ async function ensureDatabaseExists() {
 export async function runMigrations() {
   await ensureDatabaseExists();
 
+  const isLocal = env.DATABASE_URL.includes('localhost') || env.DATABASE_URL.includes('127.0.0.1');
   const client = new Client({
     connectionString: env.DATABASE_URL,
+    ssl: isLocal ? false : { rejectUnauthorized: false },
   });
 
   try {
     await client.connect();
-    console.log(`Connected to database "${env.PGDATABASE}" for migrations.`);
+    console.log(`Connected to database for migrations.`);
 
     // Create migrations table if not exists
     await client.query(`
@@ -53,7 +61,13 @@ export async function runMigrations() {
       );
     `);
 
-    const migrationsDir = path.join(__dirname, 'migrations');
+    let migrationsDir = path.join(__dirname, 'migrations');
+    if (!fs.existsSync(migrationsDir)) {
+      const srcMigrations = path.join(__dirname, '../../src/db/migrations');
+      if (fs.existsSync(srcMigrations)) {
+        migrationsDir = srcMigrations;
+      }
+    }
     const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
 
     for (const file of files) {
