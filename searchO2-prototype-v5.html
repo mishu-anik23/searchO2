@@ -331,6 +331,24 @@
     flex-direction: column;
     align-items: flex-end;
   }
+  .top-right-button-group {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .fullscreen-btn {
+    background: rgba(251, 246, 236, 0.95);
+    color: var(--pine);
+  }
+  .fullscreen-btn:hover {
+    background: #E8F5E9;
+    border-color: #4CAF50;
+  }
+  #gameRoot.is-fullscreen-active .fullscreen-btn {
+    background: #E8F5E9;
+    border-color: #2E7D32;
+    color: #1B5E20;
+  }
   .top-right-tray {
     position: absolute;
     top: calc(100% + 8px);
@@ -731,6 +749,10 @@
       padding: 4px 8px;
       font-size: 0.70rem;
     }
+    .fullscreen-btn {
+      padding: 4px 8px;
+      font-size: 0.70rem;
+    }
     .corner-stat-capsule {
       max-width: 44vw;
       overflow: hidden;
@@ -846,19 +868,61 @@
     }
 
     /* Mobile Modals: Native Bottom Sheet Alignment */
-    .modal-overlay {
-      align-items: flex-end;
-      padding: 0;
-      z-index: 120;
+    .overlay, .modal-overlay {
+      position: fixed !important;
+      inset: 0 !important;
+      background: rgba(18, 32, 22, 0.72) !important;
+      display: flex !important;
+      align-items: flex-end !important;
+      justify-content: center !important;
+      padding: 0 !important;
+      z-index: 120 !important;
+      backdrop-filter: blur(4px) !important;
+      -webkit-backdrop-filter: blur(4px) !important;
     }
     .modal {
       width: 100% !important;
       max-width: 100% !important;
       max-height: 86vh !important;
       border-radius: 24px 24px 0 0 !important;
-      padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+      padding: 18px 16px calc(24px + env(safe-area-inset-bottom, 0px)) !important;
+      box-sizing: border-box !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
       animation: none !important;
       z-index: 121 !important;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.55) !important;
+      border: 1.5px solid rgba(111, 168, 90, 0.45) !important;
+      border-bottom: none !important;
+    }
+    .crew-worker-header {
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      flex-wrap: wrap !important;
+      gap: 6px !important;
+    }
+    .crew-task-dispatch-group {
+      display: flex !important;
+      gap: 4px !important;
+      flex-wrap: wrap !important;
+      margin-top: 6px !important;
+    }
+    .crew-task-dispatch-group button {
+      flex: 1 1 calc(50% - 4px) !important;
+      min-height: 36px !important;
+      font-size: 0.72rem !important;
+    }
+    .storage-metrics-row {
+      grid-template-columns: repeat(2, 1fr) !important;
+      gap: 6px !important;
+    }
+    .storage-filter-strip {
+      gap: 4px !important;
+    }
+    .storage-filter-strip .pill-btn {
+      padding: 4px 8px !important;
+      font-size: 0.70rem !important;
     }
 
     /* Music Controller Dock: Elevated above bottom navigation bar */
@@ -1620,6 +1684,11 @@
             <span class="view-btn-icon" id="viewBtnIcon">🔄</span>
             <span class="view-btn-label" id="viewBtnLabel">Auto</span>
           </button>
+          <!-- Fullscreen View Toggle with Return Mode -->
+          <button class="corner-toggle-btn fullscreen-btn" id="btnToggleFullscreen" title="Toggle Fullscreen Mode (Return with ⛶ or Esc)" onclick="toggleFullscreenMode()">
+            <span class="fullscreen-btn-icon" id="fullscreenBtnIcon">⛶</span>
+            <span class="fullscreen-btn-label" id="fullscreenBtnLabel">Full</span>
+          </button>
           <button class="corner-toggle-btn corner-stat-capsule" id="btnToggleTopRight" title="Toggle Farm Telemetry & Dashboard" onclick="toggleCorner('topRightExpanded')">
             <span id="topRightCapsuleContent">🌾 €0.00 · 0.0 O₂</span>
             <span class="corner-btn-chevron" id="topRightChevron">▾</span>
@@ -1749,8 +1818,8 @@ var LOAN_PENALTY_RATE = 0.05; // added to remaining balance for each missed inst
 // Storage Barn grounded cleanly in the central upper yard and aligned with Central subway corridor
 var STORAGE_SPOT   = { top: 5, left: 45.5, w: 14, h: 14 };
 
-// Grand Farm Main Entry Gate at the western entrance of the Main Road (zero crossroad overlap)
-var GATE_SPOT      = { top: 40, left: 0.5, w: 6.5, h: 16 };
+// Grand Farm Main Entry Gate at the western entrance of the Main Road (zero crossroad overlap, exact width alignment)
+var GATE_SPOT      = { top: 38, left: 0, w: 6.8, h: 18 };
 
 // Crew Shed & Tool Workshop in the West Wing (160px timber-lined gravel trail to Main Road)
 var CREW_SHED_SPOT = { top: 66, left: 8, w: 9.5, h: 20 };
@@ -3698,6 +3767,9 @@ function renderRegionScreen(){
       '<button class="corner-toggle-btn view-interchange-btn" id="btnToggleViewOrientationRegion" title="Switch Orientation View (Auto / Vertical / Landscape)" onclick="toggleViewOrientation()" style="padding:4px 10px;font-size:0.75rem;">' +
         '<span class="view-btn-icon">🔄</span> <span class="view-btn-label">Auto</span>' +
       '</button>' +
+      '<button class="corner-toggle-btn fullscreen-btn" id="btnToggleFullscreenRegion" title="Toggle Fullscreen Mode (Return with ⛶ or Esc)" onclick="toggleFullscreenMode()" style="padding:4px 10px;font-size:0.75rem;">' +
+        '<span class="fullscreen-btn-icon">⛶</span> <span class="fullscreen-btn-label">Full</span>' +
+      '</button>' +
       '<div class="user-stat-chip">👤 ' + userDisplay + ' <span style="color:var(--pine-soft);font-size:0.7rem;">(' + userRole + ')</span></div>' +
       '<div class="user-stat-chip">🍃 ' + totalO2 + ' O₂</div>' +
       '<div class="user-stat-chip">💶 €' + treasury + '</div>' +
@@ -4313,6 +4385,13 @@ function advanceGame(dh){
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
       pushReport('🪨 Boulders and rock obstacles successfully cleared from road corridor! Paving unlocked.');
       showNotification('🪨', 'Boulders cleared! Road corridor is ready for paving.', 'building', 'road');
+      if (state.rocksWorkerId !== undefined){
+        var rkW = state.workers.find(function(w){ return w.id === state.rocksWorkerId; });
+        if (rkW && typeof animateWorkerPathWalk === 'function'){
+          animateWorkerPathWalk(rkW, 'crew_shed', 'rocks');
+        }
+        delete state.rocksWorkerId;
+      }
     }
   }
 
@@ -4325,6 +4404,13 @@ function advanceGame(dh){
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
       pushReport('🌿 Estate lawn mowed and manicured! Pristine grounds restored (+5 reputation).');
       showNotification('🌿', 'Lawn manicured! Farm curb appeal restored.', 'tasks', null);
+      if (state.lawnWorkerId !== undefined){
+        var lnW = state.workers.find(function(w){ return w.id === state.lawnWorkerId; });
+        if (lnW && typeof animateWorkerPathWalk === 'function'){
+          animateWorkerPathWalk(lnW, 'crew_shed', 'lawn');
+        }
+        delete state.lawnWorkerId;
+      }
     }
   } else {
     // Lawn grass gradually grows over time (1.2% per game hour)
@@ -4408,26 +4494,59 @@ function advanceGame(dh){
       p.weedHours += dh;
       if (p.weedHours >= OVERGROWN_THRESHOLD){ p.status='overgrown'; showNotification('🌿','Plot '+(p.id+1)+' is overgrown and needs clearing.','plot',p.id); }
     } else if (p.status==='clearing'){
-      var clearMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : (w ? 1.25 : 1);
-      p.taskHours += dh * clearMult;
-      if (p.taskHours >= CLEAR_DURATION_HOURS){ p.status='barren'; p.weedHours=0; p.taskHours=0; }
+      if (!(w && w.inTransit)){
+        var clearMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : (w ? 1.25 : 1);
+        p.taskHours += dh * clearMult;
+        if (p.taskHours >= CLEAR_DURATION_HOURS){
+          p.status='barren'; p.weedHours=0; p.taskHours=0;
+          if (w){
+            var retWorker1 = w; var retPlotId1 = p.id;
+            p.assignedWorker = null; retWorker1.assignedPlot = null;
+            if (typeof animateWorkerPathWalk === 'function'){
+              animateWorkerPathWalk(retWorker1, 'crew_shed', retPlotId1);
+            }
+          }
+        }
+      }
     } else if (p.status==='preparing'){
-      var prepMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : (w ? 1.25 : 1);
-      p.taskHours += dh * prepMult;
-      if (p.taskHours >= PREP_DURATION_HOURS){ p.status='ready'; p.weedHours=0; showNotification('🌱','Plot '+(p.id+1)+' is prepared and ready for planting!','plot',p.id); if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task'); }
+      if (!(w && w.inTransit)){
+        var prepMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : (w ? 1.25 : 1);
+        p.taskHours += dh * prepMult;
+        if (p.taskHours >= PREP_DURATION_HOURS){
+          p.status='ready'; p.weedHours=0; p.taskHours=0;
+          showNotification('🌱','Plot '+(p.id+1)+' is prepared and ready for planting!','plot',p.id);
+          if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+          if (w){
+            var retWorker2 = w; var retPlotId2 = p.id;
+            p.assignedWorker = null; retWorker2.assignedPlot = null;
+            if (typeof animateWorkerPathWalk === 'function'){
+              animateWorkerPathWalk(retWorker2, 'crew_shed', retPlotId2);
+            }
+          }
+        }
+      }
     } else if (p.status==='removing'){
-      var remDef = TREE_TYPES[p.treeType]; var remCfg = REMOVE_CONFIG[remDef.category];
-      var remMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : (w ? 1.25 : 1);
-      p.taskHours += dh * remMult;
-      if (p.taskHours >= remCfg.hours){
-        var salvage = Math.round(remDef.cost * remCfg.salvagePct * 100)/100;
-        state.money += salvage;
-        state.treesRemoved = (state.treesRemoved||0) + 1;
-        pushReport('🪓 Removed the dead '+remDef.label+' (#'+p.treeId+') from Plot '+(p.id+1)+'.'+(salvage>0?' Salvaged €'+salvage.toFixed(2)+' from the wood.':''));
-        if (remCfg.vehicle) spawnVehicleAnimation(PLOT_LAYOUT[p.id]);
-        p.status='barren'; p.treeType=null; p.treeId=null; p.growHours=0; p.taskHours=0; p.weedHours=0;
-        p.health=100; p.ageHours=0; p.downtimeHours=0; p.zeroHealthStreakHours=0; p.pendingHarvest=0;
-        checkAchievements();
+      if (!(w && w.inTransit)){
+        var remDef = TREE_TYPES[p.treeType]; var remCfg = REMOVE_CONFIG[remDef.category];
+        var remMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : (w ? 1.25 : 1);
+        p.taskHours += dh * remMult;
+        if (p.taskHours >= remCfg.hours){
+          var salvage = Math.round(remDef.cost * remCfg.salvagePct * 100)/100;
+          state.money += salvage;
+          state.treesRemoved = (state.treesRemoved||0) + 1;
+          pushReport('🪓 Removed the dead '+remDef.label+' (#'+p.treeId+') from Plot '+(p.id+1)+'.'+(salvage>0?' Salvaged €'+salvage.toFixed(2)+' from the wood.':''));
+          if (remCfg.vehicle) spawnVehicleAnimation(PLOT_LAYOUT[p.id]);
+          p.status='barren'; p.treeType=null; p.treeId=null; p.growHours=0; p.taskHours=0; p.weedHours=0;
+          p.health=100; p.ageHours=0; p.downtimeHours=0; p.zeroHealthStreakHours=0; p.pendingHarvest=0;
+          checkAchievements();
+          if (w){
+            var retWorker3 = w; var retPlotId3 = p.id;
+            p.assignedWorker = null; retWorker3.assignedPlot = null;
+            if (typeof animateWorkerPathWalk === 'function'){
+              animateWorkerPathWalk(retWorker3, 'crew_shed', retPlotId3);
+            }
+          }
+        }
       }
     } else if (p.status==='growing'){
       var def = TREE_TYPES[p.treeType];
@@ -4666,7 +4785,10 @@ function startClearRocks(){
   var worker = state.workers.find(function(w){
     return (w.type === 'laborer' || w.type === 'farmer') && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
   });
-  if (worker && typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'rocks');
+  if (worker){
+    state.rocksWorkerId = worker.id;
+    if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'rocks');
+  }
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
   pushReport('🪨 Dispatched ' + (worker ? WORKER_TYPES[worker.type].label : 'Worker') + ' to clear boulder obstacles from the road corridor (€' + cost + ' · 2h).');
   render(); requestSave();
@@ -4688,7 +4810,10 @@ function startMowLawn(){
   var worker = state.workers.find(function(w){
     return (w.type === 'laborer' || w.type === 'farmer') && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
   });
-  if (worker && typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'lawn');
+  if (worker){
+    state.lawnWorkerId = worker.id;
+    if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'lawn');
+  }
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
   pushReport('🌿 Dispatched ' + (worker ? WORKER_TYPES[worker.type].label : 'Worker') + ' to mow estate lawn and trim wild weeds (€' + cost + ' · 1.5h).');
   render(); requestSave();
@@ -5213,8 +5338,14 @@ function startCollectPond(){
   render(); requestSave();
 }
 
-function openModal(type, plotId){ activeModal = {type:type, plotId:plotId}; openPanel=null; render(); }
+function openModal(type, plotId){
+  if (typeof hideGameTooltip === 'function') hideGameTooltip();
+  activeModal = {type:type, plotId:plotId};
+  openPanel = null;
+  render();
+}
 function closeModal(){
+  if (typeof hideGameTooltip === 'function') hideGameTooltip();
   if (activeModal && activeModal.type==='bank') bankruptcyDismissed = true;
   activeModal=null; render();
 }
@@ -6048,17 +6179,21 @@ function drawHumanWorkerSvg(type, tool, isWalking, isWorking){
 }
 
 // Two-way Worker Walking Animation: Full-human walking model along strict Manhattan road network
-function animateWorkerPathWalk(worker, destination, origin){
+function animateWorkerPathWalk(worker, destination, origin, onComplete){
   var scene = document.querySelector('.field-scene');
-  if (!scene) return;
+  if (!scene){
+    if (typeof onComplete === 'function') onComplete();
+    return;
+  }
 
   var isReturnWalk = (destination === 'crew_shed');
   var fromKey = isReturnWalk ? (origin !== undefined ? origin : 0) : 'crew_shed';
   var toKey = isReturnWalk ? 'crew_shed' : destination;
 
   // Single consistent worker visuals: Set inTransit flag while pedestrian sprite walks
-  if (worker && !isReturnWalk){
+  if (worker){
     worker.inTransit = true;
+    if (isReturnWalk) worker.isReturning = true;
     render();
   }
 
@@ -6109,6 +6244,16 @@ function animateWorkerPathWalk(worker, destination, origin){
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
       // Mount on-site working figure seamlessly upon arrival
       render();
+      if (typeof onComplete === 'function') onComplete();
+    } else {
+      if (worker){
+        worker.inTransit = false;
+        worker.isReturning = false;
+        worker.assignedPlot = null;
+        worker.assignedBuilding = null;
+      }
+      render();
+      if (typeof onComplete === 'function') onComplete();
     }
   });
 }
@@ -6448,19 +6593,22 @@ function plotSvg(p){
       '<ellipse cx="100" cy="85" rx="45" ry="16" fill="#3E2723" opacity="0.6"/>' +
     '</g>';
 
-    if (isPrep){
-      content += '<g class="dust" style="transform-origin:140px 84px;"><circle cx="140" cy="84" r="4" fill="#6D4C41"/></g>' +
-                 '<g class="dust" style="transform-origin:148px 80px; animation-delay:0.3s;"><circle cx="148" cy="80" r="3.5" fill="#4E342E"/></g>';
-    } else {
-      content += '<g class="dust" style="transform-origin:140px 84px;"><path d="M138,82 L144,78" stroke="#7CB342" stroke-width="2.5"/></g>' +
-                 '<g class="dust" style="transform-origin:148px 80px; animation-delay:0.3s;"><path d="M146,78 L152,74" stroke="#558B2F" stroke-width="2.5"/></g>';
+    // Dust particles and working debris only active once worker has arrived on-site
+    if (!w || !w.inTransit){
+      if (isPrep){
+        content += '<g class="dust" style="transform-origin:140px 84px;"><circle cx="140" cy="84" r="4" fill="#6D4C41"/></g>' +
+                   '<g class="dust" style="transform-origin:148px 80px; animation-delay:0.3s;"><circle cx="148" cy="80" r="3.5" fill="#4E342E"/></g>';
+      } else {
+        content += '<g class="dust" style="transform-origin:140px 84px;"><path d="M138,82 L144,78" stroke="#7CB342" stroke-width="2.5"/></g>' +
+                   '<g class="dust" style="transform-origin:148px 80px; animation-delay:0.3s;"><path d="M146,78 L152,74" stroke="#558B2F" stroke-width="2.5"/></g>';
+      }
     }
 
     content += '<g transform="translate(100, 42)">' +
-      '<rect x="-54" y="-12" width="108" height="24" rx="6" fill="rgba(38,50,56,0.94)" stroke="' + strokeClr + '" stroke-width="1.3"/>' +
-      '<rect x="-48" y="4" width="96" height="4" rx="2" fill="#263238"/>' +
-      '<rect x="-48" y="4" width="' + (96 * tPct / 100) + '" height="4" rx="2" fill="' + strokeClr + '"/>' +
-      '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="' + textClr + '">' + (w && w.inTransit ? '🥾 En Route ' + tPct + '%' : tLabel + ' ' + tPct + '%') + '</text>' +
+      '<rect x="-56" y="-12" width="112" height="24" rx="6" fill="rgba(38,50,56,0.94)" stroke="' + strokeClr + '" stroke-width="1.3"/>' +
+      '<rect x="-50" y="4" width="100" height="4" rx="2" fill="#263238"/>' +
+      '<rect x="-50" y="4" width="' + (100 * tPct / 100) + '" height="4" rx="2" fill="' + strokeClr + '"/>' +
+      '<text x="0" y="-1" font-size="8" text-anchor="middle" font-weight="800" fill="' + textClr + '">' + (w && w.inTransit ? '🥾 Worker En Route…' : tLabel + ' ' + tPct + '%') + '</text>' +
     '</g>';
     // Single visual: only draw worker on-site once they have finished walking to plot!
     if (w && !w.inTransit){
@@ -6992,81 +7140,81 @@ function drawMainGateScene(road){
   var pct = isBuilding ? Math.round(Math.min(100, (road.buildHours / 4) * 100)) : 0;
 
   var statusBadge = isBuilt
-    ? '<text x="80" y="115" font-size="6.5" font-weight="800" fill="#2E7D32" text-anchor="middle">✓ GATE & MAIN ROAD OPEN</text>'
+    ? '<text x="34" y="172" font-size="5.2" font-weight="800" fill="#2E7D32" text-anchor="middle">✓ GATE OPEN</text>'
     : (isBuilding
-      ? '<text x="80" y="115" font-size="6.5" font-weight="800" fill="#E65100" text-anchor="middle">🚧 PAVING ROAD (' + pct + '%)</text>'
-      : '<text x="80" y="115" font-size="6" font-weight="800" fill="#795548" text-anchor="middle">🔒 GATEWAY · CLICK TO PAVE</text>');
+      ? '<text x="34" y="172" font-size="5.2" font-weight="800" fill="#E65100" text-anchor="middle">🚧 PAVING (' + pct + '%)</text>'
+      : '<text x="34" y="172" font-size="5.0" font-weight="800" fill="#795548" text-anchor="middle">🔒 CLICK TO PAVE</text>');
 
-  // Reoriented horizontal gate aligned West-to-East directly into Main Road
-  return '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
+  // Perfectly aligned horizontal gate connecting directly into Main Road (y: 65 to 120, height: 55 = 5.5% canvas)
+  return '<svg viewBox="0 0 68 180" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
     // Ground shadow
-    '<rect x="0" y="36" width="160" height="50" fill="#1B2E15" opacity="0.45" rx="3"/>' +
+    '<rect x="0" y="58" width="68" height="70" fill="#1B2E15" opacity="0.4" rx="2"/>' +
 
-    // 1. Horizontal Roadway Surface (West entrance -> East farm boundary)
+    // 1. Horizontal Roadway Surface (West entrance -> East farm boundary, meeting Main Road at x:68 with exact 55px height)
     (isBuilt
-      ? '<rect x="0" y="38" width="160" height="44" fill="#37474F" stroke="#263238" stroke-width="1.2"/>' +
-        // Stone curb curbs flanking North and South
-        '<line x1="0" y1="38" x2="160" y2="38" stroke="#90A4AE" stroke-width="2"/>' +
-        '<line x1="0" y1="82" x2="160" y2="82" stroke="#90A4AE" stroke-width="2"/>' +
-        // Central dashed road stripe leading straight into Main Road
-        '<line x1="0" y1="60" x2="160" y2="60" stroke="#FFE082" stroke-width="1.8" stroke-dasharray="10,7"/>'
-      : '<rect x="0" y="40" width="160" height="40" fill="#5D4037" stroke="#3E2723" stroke-width="1.2" stroke-dasharray="6,4"/>' +
-        '<line x1="0" y1="60" x2="160" y2="60" stroke="#A1887F" stroke-width="1.4" stroke-dasharray="6,5"/>') +
+      ? '<rect x="0" y="65" width="68" height="55" fill="url(#mainAsphaltGrad)"/>' +
+        // Stone curbs flanking North and South (North at 63, South at 120) matching Main Road
+        '<rect x="0" y="63" width="68" height="2.5" fill="#37474F"/>' +
+        '<rect x="0" y="120" width="68" height="3" fill="#263238"/>' +
+        // Central dashed road stripe leading straight into Main Road centerline (y: 92.5)
+        '<line x1="0" y1="92.5" x2="68" y2="92.5" stroke="#FFF8E1" stroke-width="2.5" stroke-dasharray="14,10" opacity="0.85"/>'
+      : (isBuilding
+        ? '<rect x="0" y="65" width="68" height="55" fill="#5D4037" opacity="0.9"/>' +
+          '<line x1="0" y1="92.5" x2="68" y2="92.5" stroke="#FF6D00" stroke-width="2" stroke-dasharray="8,6"/>' +
+          '<polygon points="26,110 36,110 31,85" fill="#FF6D00"/><rect x="28" y="95" width="6" height="2" fill="#FFF"/>'
+        : '<rect x="0" y="65" width="68" height="55" fill="#4E342E" stroke="#3E2723" stroke-width="1.2" stroke-dasharray="6,4"/>' +
+          '<line x1="0" y1="92.5" x2="68" y2="92.5" stroke="#8D6E63" stroke-width="1.5" stroke-dasharray="6,5"/>')) +
 
-    // 2. North Masonry Gatehouse Tower & Pillar
-    '<g transform="translate(68, 12)">' +
-      '<rect x="0" y="0" width="24" height="26" rx="3" fill="#78909C" stroke="#37474F" stroke-width="1.4"/>' +
-      '<rect x="2" y="2" width="20" height="22" rx="2" fill="#B0BEC5"/>' +
-      '<polygon points="-2,2 12,-7 26,2" fill="#546E7A" stroke="#263238" stroke-width="1.2"/>' +
-      '<circle cx="12" cy="-7" r="2.5" fill="#FFB300"/>' +
-      // Lantern
-      '<rect x="23" y="10" width="5" height="8" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
-      '<circle cx="25.5" cy="14" r="4" fill="#FFF59D" opacity="0.5"/>' +
+    // 2. North Masonry Gatehouse Tower & Pillar (flanking north curb from y: 22 to 63)
+    '<g transform="translate(24, 22)">' +
+      '<rect x="0" y="0" width="20" height="41" rx="3" fill="#78909C" stroke="#37474F" stroke-width="1.5"/>' +
+      '<rect x="2" y="2" width="16" height="37" rx="2" fill="#B0BEC5"/>' +
+      '<polygon points="-3,2 10,-10 23,2" fill="#546E7A" stroke="#263238" stroke-width="1.3"/>' +
+      '<circle cx="10" cy="-10" r="2.5" fill="#FFB300"/>' +
+      '<rect x="19" y="16" width="5" height="10" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
+      '<circle cx="21.5" cy="21" r="5" fill="#FFF59D" opacity="0.55"/>' +
     '</g>' +
 
-    // 3. South Masonry Gatehouse Tower & Pillar
-    '<g transform="translate(68, 82)">' +
-      '<rect x="0" y="0" width="24" height="26" rx="3" fill="#78909C" stroke="#37474F" stroke-width="1.4"/>' +
-      '<rect x="2" y="4" width="20" height="20" rx="2" fill="#B0BEC5"/>' +
-      '<polygon points="-2,24 12,33 26,24" fill="#546E7A" stroke="#263238" stroke-width="1.2"/>' +
-      '<circle cx="12" cy="33" r="2.5" fill="#FFB300"/>' +
-      // Lantern
-      '<rect x="23" y="8" width="5" height="8" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
-      '<circle cx="25.5" cy="12" r="4" fill="#FFF59D" opacity="0.5"/>' +
+    // 3. South Masonry Gatehouse Tower & Pillar (flanking south curb from y: 120 to 161)
+    '<g transform="translate(24, 120)">' +
+      '<rect x="0" y="0" width="20" height="41" rx="3" fill="#78909C" stroke="#37474F" stroke-width="1.5"/>' +
+      '<rect x="2" y="2" width="16" height="37" rx="2" fill="#B0BEC5"/>' +
+      '<polygon points="-3,39 10,51 23,39" fill="#546E7A" stroke="#263238" stroke-width="1.3"/>' +
+      '<circle cx="10" cy="51" r="2.5" fill="#FFB300"/>' +
+      '<rect x="19" y="15" width="5" height="10" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
+      '<circle cx="21.5" cy="20" r="5" fill="#FFF59D" opacity="0.55"/>' +
     '</g>' +
 
     // 4. Overhead Craftsman Entry Arch spanning North to South across driveway
-    '<path d="M80,26 Q100,60 80,94" stroke="#4E342E" stroke-width="7" fill="none" stroke-linecap="round"/>' +
-    '<path d="M78,28 Q96,60 78,92" stroke="#795548" stroke-width="4.5" fill="none" stroke-linecap="round"/>' +
+    '<path d="M34,42 Q56,92.5 34,143" stroke="#4E342E" stroke-width="7" fill="none" stroke-linecap="round"/>' +
+    '<path d="M32,44 Q52,92.5 32,141" stroke="#795548" stroke-width="4.5" fill="none" stroke-linecap="round"/>' +
     // Signboard welcoming traffic Eastward into the Eco-Farm
-    '<g transform="translate(84, 48)">' +
-      '<rect x="-6" y="-12" width="16" height="48" rx="3" fill="#FBF6EC" stroke="#8D6E63" stroke-width="1.2"/>' +
-      '<text x="2" y="0" font-size="6.5" font-weight="900" fill="#1B5E20" transform="rotate(90, 2, 0)" text-anchor="middle">🌿 searchO2 🌿</text>' +
-      '<text x="2" y="7" font-size="4.8" font-weight="800" fill="#4E342E" transform="rotate(90, 2, 7)" text-anchor="middle">ECO-FARM</text>' +
+    '<g transform="translate(42, 92.5)">' +
+      '<rect x="-8" y="-22" width="16" height="44" rx="3" fill="#FBF6EC" stroke="#8D6E63" stroke-width="1.2"/>' +
+      '<text x="2" y="-3" font-size="5.8" font-weight="900" fill="#1B5E20" transform="rotate(90, 2, -3)" text-anchor="middle">🌿 searchO2 🌿</text>' +
+      '<text x="2" y="5" font-size="4.5" font-weight="800" fill="#4E342E" transform="rotate(90, 2, 5)" text-anchor="middle">ECO-FARM</text>' +
     '</g>' +
 
     // 5. Ornamental Wrought-Iron & Timber Gates (Open Eastward into farm)
     (isBuilt
-      ? '<g stroke="#3E2723" stroke-width="1.5">' +
-          // North Gate Wing swings open along North curb
-          '<line x1="82" y1="38" x2="114" y2="35"/>' +
-          '<line x1="90" y1="37" x2="90" y2="32"/><line x1="102" y1="36" x2="102" y2="32"/>' +
-          '<circle cx="114" cy="35" r="2" fill="#FFB300"/>' +
-          // South Gate Wing swings open along South curb
-          '<line x1="82" y1="82" x2="114" y2="85"/>' +
-          '<line x1="90" y1="83" x2="90" y2="88"/><line x1="102" y1="84" x2="102" y2="88"/>' +
-          '<circle cx="114" cy="85" r="2" fill="#FFB300"/>' +
+      ? '<g stroke="#3E2723" stroke-width="1.8">' +
+          '<line x1="36" y1="63" x2="62" y2="58"/>' +
+          '<line x1="44" y1="62" x2="44" y2="55"/><line x1="54" y1="60" x2="54" y2="54"/>' +
+          '<circle cx="62" cy="58" r="2.2" fill="#FFB300"/>' +
+          '<line x1="36" y1="120" x2="62" y2="125"/>' +
+          '<line x1="44" y1="121" x2="44" y2="128"/><line x1="54" y1="123" x2="54" y2="129"/>' +
+          '<circle cx="62" cy="125" r="2.2" fill="#FFB300"/>' +
         '</g>'
-      : '<g stroke="#D32F2F" stroke-width="2" stroke-dasharray="4,3">' +
-          '<line x1="80" y1="38" x2="80" y2="82"/>' +
-          '<circle cx="80" cy="60" r="5" fill="#EF5350"/><text x="80" y="63" font-size="7" fill="white" font-weight="900" text-anchor="middle">✕</text>' +
+      : '<g stroke="#D32F2F" stroke-width="2.5" stroke-dasharray="5,3">' +
+          '<line x1="34" y1="63" x2="34" y2="120"/>' +
+          '<circle cx="34" cy="92.5" r="7" fill="#EF5350"/><text x="34" y="96" font-size="9" fill="white" font-weight="900" text-anchor="middle">✕</text>' +
         '</g>') +
 
     // 6. Planters & Landscaping Flanking Pillars
-    '<rect x="52" y="16" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
-    '<circle cx="57" cy="18" r="4" fill="#43A047"/><circle cx="57" cy="14" r="3" fill="#E91E63"/>' +
-    '<rect x="52" y="90" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
-    '<circle cx="57" cy="98" r="4" fill="#43A047"/><circle cx="57" cy="102" r="3" fill="#FF9800"/>' +
+    '<rect x="12" y="26" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
+    '<circle cx="17" cy="28" r="4" fill="#43A047"/><circle cx="17" cy="24" r="3" fill="#E91E63"/>' +
+    '<rect x="12" y="140" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
+    '<circle cx="17" cy="148" r="4" fill="#43A047"/><circle cx="17" cy="152" r="3" fill="#FF9800"/>' +
     statusBadge +
   '</svg>';
 }
@@ -7641,8 +7789,8 @@ function buildingModalHtml(key){
             locColor = '#D84315';
           }
 
-          html += '<div style="background:#FFF;border:1px solid rgba(44,74,50,0.18);border-radius:10px;padding:8px 10px;box-shadow:0 2px 6px rgba(0,0,0,0.04);">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+          html += '<div class="crew-worker-card" style="background:#FFF;border:1px solid rgba(44,74,50,0.18);border-radius:10px;padding:8px 10px;box-shadow:0 2px 6px rgba(0,0,0,0.04);">' +
+            '<div class="crew-worker-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">' +
               '<div>' +
                 '<span style="font-weight:800;font-size:0.85rem;color:var(--pine);">' + WORKER_TYPES[w.type].label + ' #' + w.id + '</span> ' +
                 '<span style="font-size:0.75rem;font-weight:700;color:' + locColor + ';">[' + locLabel + ']</span>' +
@@ -7656,7 +7804,7 @@ function buildingModalHtml(key){
             if (pendingTasks.length > 0){
               html += '<div style="margin-top:6px;padding-top:6px;border-top:1px dashed rgba(44,74,50,0.15);">' +
                 '<div style="font-size:0.72rem;font-weight:800;color:#546E7A;margin-bottom:4px;">⚡ 1-Click Task Dispatch:</div>' +
-                '<div style="display:flex;gap:4px;flex-wrap:wrap;">';
+                '<div class="crew-task-dispatch-group" style="display:flex;gap:4px;flex-wrap:wrap;">';
               pendingTasks.slice(0, 5).forEach(function(tsk){
                 html += '<button class="claim-btn mini-btn" onclick="assignWorkerToTask(' + w.id + ',\'' + tsk.type + '\',' + (tsk.targetId !== null ? tsk.targetId : 'null') + ')" ' + (state.money < tsk.cost ? 'disabled' : '') + '>' + tsk.label + '</button>';
               });
@@ -7678,7 +7826,7 @@ function buildingModalHtml(key){
               '</div>' +
               '<div style="margin-top:10px;background:#F1F8E9;padding:9px 12px;border-radius:10px;border:1px solid #C5E1A5;">' +
          '<div style="font-weight:800;font-size:0.78rem;color:#2E7D32;margin-bottom:6px;">Recruit Farm Personnel:</div>' +
-         '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+         '<div class="crew-recruit-grid" style="display:flex;gap:6px;flex-wrap:wrap;">' +
            '<button class="claim-btn" onclick="hireWorker(\'laborer\')">👷 Laborer (€15/d)</button>' +
            '<button class="claim-btn" onclick="hireWorker(\'farmer\')">🧑‍🌾 Farmer (€25/d)</button>' +
            '<button class="claim-btn" onclick="hireWorker(\'botanist\')">👩‍🔬 Botanist (€40/d)</button>' +
@@ -8404,28 +8552,34 @@ function showGameTooltip(el, text){
   tip.textContent = text;
   tip.classList.add('show');
 
+  var screenW = window.innerWidth;
+  var screenH = window.innerHeight;
+  tip.style.maxWidth = Math.max(160, screenW - 24) + 'px';
+
   var r = el.getBoundingClientRect();
   var tipW = tip.offsetWidth || 180;
   var tipH = tip.offsetHeight || 40;
-  var screenW = window.innerWidth;
-  var screenH = window.innerHeight;
 
-  // Horizontal clamping
+  // Horizontal clamping with 12px safe margin
   var centerX = r.left + r.width / 2;
-  var left = Math.max(10, Math.min(screenW - tipW - 10, centerX - tipW / 2));
-  var arrowX = Math.max(12, Math.min(tipW - 12, centerX - left));
+  var left = Math.max(12, Math.min(screenW - tipW - 12, centerX - tipW / 2));
+  var arrowX = Math.max(14, Math.min(tipW - 14, centerX - left));
   if (tip.style && tip.style.setProperty) tip.style.setProperty('--tip-arrow-x', arrowX + 'px');
   tip.style.left = left + 'px';
 
-  // Vertical positioning: Above if space allows, otherwise Below
+  // Vertical positioning: Above if space allows, otherwise Below, clamped safely inside screen
   if (r.top - tipH - 12 >= 8){
-    tip.style.top = (r.top - tipH - 8) + 'px';
+    tip.style.top = Math.max(8, r.top - tipH - 8) + 'px';
     tip.classList.add('tip-above');
     tip.classList.remove('tip-below');
-  } else {
+  } else if (r.bottom + tipH + 12 <= screenH){
     tip.style.top = (r.bottom + 8) + 'px';
     tip.classList.add('tip-below');
     tip.classList.remove('tip-above');
+  } else {
+    tip.style.top = Math.max(8, Math.min(screenH - tipH - 8, r.top)) + 'px';
+    tip.classList.remove('tip-above');
+    tip.classList.remove('tip-below');
   }
 }
 
@@ -8607,6 +8761,59 @@ function toggleViewOrientation(forcedMode){
   renderCornersUI();
 }
 
+// ================= FULLSCREEN VIEW ENGINE & RETURN MODE =================
+function isFullScreenActive(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+}
+
+function updateFullscreenBtnState(){
+  var isFull = isFullScreenActive();
+  var btns = document.querySelectorAll('.fullscreen-btn');
+  btns.forEach(function(btn){
+    var iconEl = btn.querySelector('.fullscreen-btn-icon');
+    var labelEl = btn.querySelector('.fullscreen-btn-label');
+    if (iconEl) iconEl.textContent = isFull ? '🗗' : '⛶';
+    if (labelEl) labelEl.textContent = isFull ? 'Exit' : 'Full';
+    btn.setAttribute('title', isFull ? 'Exit Fullscreen (Return to windowed view)' : 'Enter Fullscreen (Maximize view)');
+  });
+  var root = document.getElementById('gameRoot');
+  if (root){
+    root.classList.toggle('is-fullscreen-active', isFull);
+  }
+}
+
+function toggleFullscreenMode(){
+  if (isFullScreenActive()){
+    if (document.exitFullscreen){
+      document.exitFullscreen().catch(function(){});
+    } else if (document.webkitExitFullscreen){
+      document.webkitExitFullscreen();
+    } else if (document.mozCancelFullScreen){
+      document.mozCancelFullScreen();
+    } else if (document.msExitFullscreen){
+      document.msExitFullscreen();
+    }
+  } else {
+    var elem = document.documentElement || document.body;
+    if (elem.requestFullscreen){
+      elem.requestFullscreen().catch(function(){});
+    } else if (elem.webkitRequestFullscreen){
+      elem.webkitRequestFullscreen();
+    } else if (elem.mozRequestFullScreen){
+      elem.mozRequestFullScreen();
+    } else if (elem.msRequestFullscreen){
+      elem.msRequestFullscreen();
+    }
+  }
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+}
+
+if (typeof document !== 'undefined' && document && document.addEventListener){
+  ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(function(evt){
+    document.addEventListener(evt, updateFullscreenBtnState);
+  });
+}
+
 function toggleCorner(cornerKey){
   if (uiCornersState.hasOwnProperty(cornerKey)){
     var target = !uiCornersState[cornerKey];
@@ -8682,6 +8889,9 @@ window.getRoadNetworkWaypoints = getRoadNetworkWaypoints;
 window.drawMainGateScene = drawMainGateScene;
 window.toggleViewOrientation = toggleViewOrientation;
 window.updateViewportScale = updateViewportScale;
+window.isFullScreenActive = isFullScreenActive;
+window.toggleFullscreenMode = toggleFullscreenMode;
+window.updateFullscreenBtnState = updateFullscreenBtnState;
 window.showGameTooltip = showGameTooltip;
 window.hideGameTooltip = hideGameTooltip;
 window.initGameTooltips = initGameTooltips;
@@ -8743,9 +8953,12 @@ if (typeof globalThis !== 'undefined'){
   globalThis.drawHumanWorkerSvg = drawHumanWorkerSvg;
   globalThis.getRoadNetworkWaypoints = getRoadNetworkWaypoints;
   globalThis.drawMainGateScene = drawMainGateScene;
-globalThis.toggleViewOrientation = toggleViewOrientation;
-globalThis.updateViewportScale = updateViewportScale;
-globalThis.showGameTooltip = showGameTooltip;
+  globalThis.toggleViewOrientation = toggleViewOrientation;
+  globalThis.updateViewportScale = updateViewportScale;
+  globalThis.isFullScreenActive = isFullScreenActive;
+  globalThis.toggleFullscreenMode = toggleFullscreenMode;
+  globalThis.updateFullscreenBtnState = updateFullscreenBtnState;
+  globalThis.showGameTooltip = showGameTooltip;
 globalThis.hideGameTooltip = hideGameTooltip;
 globalThis.initGameTooltips = initGameTooltips;
   globalThis.drawRoadScene = drawRoadScene;
