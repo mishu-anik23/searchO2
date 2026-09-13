@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     email VARCHAR(255) UNIQUE,
     password_hash VARCHAR(255),
-    display_name VARCHAR(100) NOT NULL,
+    display_name VARCHAR(100) NOT NULL DEFAULT 'Farmer',
     role VARCHAR(32) NOT NULL DEFAULT 'guest' CHECK (role IN ('guest', 'user', 'admin')),
     auth_provider VARCHAR(32) NOT NULL DEFAULT 'local' CHECK (auth_provider IN ('local', 'google', 'guest')),
     google_id VARCHAR(255) UNIQUE,
@@ -17,6 +17,30 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure all production columns exist if the table was previously created with an earlier prototype schema
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255) UNIQUE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(100) NOT NULL DEFAULT 'Farmer';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(32) NOT NULL DEFAULT 'guest';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(32) NOT NULL DEFAULT 'local';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255) UNIQUE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(512);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+        -- Drop legacy NOT NULL constraints from earlier prototype schemas if present
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'username') THEN
+            ALTER TABLE users ALTER COLUMN username DROP NOT NULL;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'auth_token') THEN
+            ALTER TABLE users ALTER COLUMN auth_token DROP NOT NULL;
+        END IF;
+    END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);

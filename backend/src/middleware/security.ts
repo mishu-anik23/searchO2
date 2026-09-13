@@ -30,7 +30,13 @@ export const corsMiddleware = cors({
       'http://127.0.0.1:8080',
       'http://127.0.0.1:5500',
     ];
-    if (allowedOrigins.includes(origin) || env.NODE_ENV === 'development') {
+    const isAllowed =
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('searcho2.online') ||
+      origin.endsWith('.pages.dev') ||
+      env.NODE_ENV === 'development';
+
+    if (isAllowed) {
       return callback(null, true);
     }
     return callback(new Error('CORS blocked origin: ' + origin));
