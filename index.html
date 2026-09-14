@@ -8208,12 +8208,12 @@ function unassignLaborerFromStorage(){
 }
 
 function startBuildRoadSegment(segmentKey){
-  if (!state.rocksCleared){
-    showNotification('🪨', 'Clear boulders and rock obstacles before paving roads!', 'tasks', 'rocks');
-    return;
-  }
   if (segmentKey === 'main'){
     startBuildBuilding('road');
+    return;
+  }
+  if (!state.rocksCleared){
+    showNotification('🪨', 'Clear boulders and rock obstacles before paving roads!', 'tasks', 'rocks');
     return;
   }
   if (!state.roads){
@@ -8457,13 +8457,13 @@ function startExpandStorage(){
 function startBuildBuilding(key){
   var b = state.buildings[key]; var def = BUILDING_TYPES[key];
   if (!b || b.built || b.building) return;
-  if (key === 'road' && !state.rocksCleared){
-    showNotification('🪨', 'Clear boulders and rock obstacles before grading the road!', 'tasks', 'rocks');
-    return;
-  }
   if (def.requiresRoad && !state.buildings.road.built) return;
   if (state.money < def.cost) return;
   state.money -= def.cost; b.building = true; b.buildHours = 0;
+  if (key === 'road'){
+    state.rocksCleared = true;
+    state.rocksClearing = false;
+  }
   render(); requestSave();
 }
 function setGardenFlower(flowerKey){
@@ -10817,7 +10817,12 @@ function buildingSpotHtml(key){
 }
 
 function roadPromenadeHtml(){
-  return '';
+  var r = (typeof state !== 'undefined' && state && state.buildings) ? state.buildings.road : null;
+  var isBuilt = r && r.built;
+  var isBuilding = r && r.building;
+  var pct = isBuilding ? Math.round(Math.min(100, (r.buildHours / 4) * 100)) : 0;
+  var tip = isBuilt ? '⛩️ Main Arterial Road (Paved)' : (isBuilding ? ('⛩️ Paving Main Road (' + pct + '%)') : '⛩️ Main Arterial Road (Click to Pave)');
+  return '<div class="main-road-click-zone" onclick="openModal(\'building\',\'road\')" style="position:absolute;top:43.5%;left:0;width:100%;height:8%;cursor:pointer;z-index:9;touch-action:manipulation;" title="' + tip + '"></div>';
 }
 
 function villageSpotsHtml(){
@@ -10875,17 +10880,11 @@ function buildingModalHtml(key){
         '</span>' +
       '</div>' +
       '<div class="sub">Connects the Farm Main Entry Gate to Storage and the village. Required for heavy freight trucks and shop visitor access.</div>' +
-      (!state.rocksCleared
-        ? '<div style="background:#FFF3E0;border:1.5px solid #FFE0B2;border-radius:12px;padding:10px 12px;margin:8px 0;font-size:0.78rem;color:#E65100;display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
-            '<div><b>⚠️ Corridor Blocked by Boulders!</b><div style="font-size:0.72rem;color:#BF360C;margin-top:2px;">Clear boulder obstacles first before paving the arterial road.</div></div>' +
-            '<button class="primary mini-btn" onclick="startClearRocks()" ' + (state.money < 50 ? 'disabled' : '') + ' style="background:#E65100;color:#FFF;border-radius:8px;padding:6px 10px;font-weight:800;white-space:nowrap;">Clear Rocks (€50)</button>' +
-          '</div>'
-        : '') +
       (b.built
         ? '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built &amp; Paved</span></div>'
         : (b.building
           ? '<div class="row"><span>Paving Main Road</span><span class="v">' + Math.round(Math.min(100,(b.buildHours/def.buildHours)*100)) + '%</span></div>'
-          : '<button class="primary" data-build-road-segment="main" ' + (!state.rocksCleared || state.money<def.cost?'disabled':'') + '>' + (!state.rocksCleared ? '🔒 Clear Boulders First to Pave' : ('Pave Main Road — €' + def.cost + ' (' + def.buildHours + 'h)')) + '</button>')) +
+          : '<button class="primary" data-build-road-segment="main" ' + (state.money < def.cost ? 'disabled' : '') + '>Pave Main Road — €' + def.cost + ' (' + def.buildHours + 'h)</button>')) +
     '</div>';
 
     // Feeder Subways
@@ -11608,10 +11607,8 @@ function panelHtml(){
       if (state.buildings.road.building){
         var rdPct = Math.round(Math.min(100,(state.buildings.road.buildHours/BUILDING_TYPES.road.buildHours)*100));
         rows += '<div class="task-row" style="border-left:4px solid #F0AC3D;"><div class="task-info"><div class="name">⛩️ Paving Main Arterial Road…</div><div class="meta">'+rdPct+'% complete · paving cobblestone corridor</div></div><button class="claim-btn" disabled style="opacity:0.8;">'+rdPct+'%</button></div>';
-      } else if (state.rocksCleared){
-        rows += '<div class="task-row" style="border-left:4px solid #2E7D32;"><div class="task-info"><div class="name">⛩️ Pave Main Arterial Road & Grand Gate</div><div class="meta">€'+BUILDING_TYPES.road.cost+' · '+BUILDING_TYPES.road.buildHours+'h · connects Grand Gate to Storage · unlocks village shops</div></div><button class="claim-btn" onclick="startBuildRoadSegment(\'main\')" '+(state.money<BUILDING_TYPES.road.cost?'disabled':'')+'>Pave (€'+BUILDING_TYPES.road.cost+')</button></div>';
       } else {
-        rows += '<div class="task-row" style="border-left:4px solid #B0BEC5;"><div class="task-info"><div class="name">⛩️ Pave Main Arterial Road & Grand Gate</div><div class="meta">€'+BUILDING_TYPES.road.cost+' · 🔒 Corridor blocked by rocks · Clear boulders first</div></div><button class="claim-btn" onclick="openModal(\'building\',\'road\')">View</button></div>';
+        rows += '<div class="task-row" style="border-left:4px solid #2E7D32;"><div class="task-info"><div class="name">⛩️ Pave Main Arterial Road & Grand Gate</div><div class="meta">€'+BUILDING_TYPES.road.cost+' · '+BUILDING_TYPES.road.buildHours+'h · connects Grand Gate to Storage · unlocks village shops</div></div><button class="claim-btn" onclick="startBuildRoadSegment(\'main\')" '+(state.money<BUILDING_TYPES.road.cost?'disabled':'')+'>Pave (€'+BUILDING_TYPES.road.cost+')</button></div>';
       }
     }
 
@@ -11844,7 +11841,6 @@ function toolStripHtml(){
     '</div>';
   }
 
-  chips += '<div class="tool-chip" onclick="openModal(\'building\',\'road\')" data-tip="Main Arterial Road & Entry Gate\nPave with cobblestone to connect the entry gate and storage"><span class="em">⛩️</span>Road</div>';
   Object.keys(WORKER_TYPES).forEach(function(k){
     var wt = WORKER_TYPES[k];
     var locked = !hasCrewShed;
@@ -12212,6 +12208,9 @@ window.startClear = startClear;
 window.startRemoveTree = startRemoveTree;
 window.startHarvest = startHarvest;
 window.startBuildBuilding = startBuildBuilding;
+window.startBuildRoadSegment = startBuildRoadSegment;
+window.buildingModalHtml = buildingModalHtml;
+window.roadPromenadeHtml = roadPromenadeHtml;
 window.advanceGame = advanceGame;
 window.farmReputation = farmReputation;
 window.fieldBackgroundSVG = fieldBackgroundSVG;
