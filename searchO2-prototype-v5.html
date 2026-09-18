@@ -2254,12 +2254,74 @@
   }
   .market-card .m-info{ flex: 1 1 auto; min-width: 0; }
 
-  /* Canvas Road / Gate hit target */
+  /* Canvas Road / Gate hit target & Canvas Roadway */
   [data-building="road"]{
     min-width: 52px !important;
     min-height: 52px !important;
     cursor: pointer;
     touch-action: manipulation;
+    pointer-events: auto !important;
+    z-index: 15 !important;
+  }
+  .main-road-click-zone {
+    position: absolute;
+    pointer-events: auto !important;
+    cursor: pointer;
+    touch-action: manipulation;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 15;
+  }
+  .main-road-click-zone.is-unbuilt {
+    background: rgba(121, 85, 72, 0.22);
+    border-top: 2px dashed rgba(141, 110, 99, 0.65);
+    border-bottom: 2px dashed rgba(141, 110, 99, 0.65);
+    box-shadow: inset 0 0 12px rgba(93, 64, 55, 0.2);
+  }
+  .main-road-click-zone.is-building {
+    background: rgba(240, 172, 61, 0.22);
+    border-top: 2px dashed rgba(240, 172, 61, 0.7);
+    border-bottom: 2px dashed rgba(240, 172, 61, 0.7);
+  }
+  .main-road-canvas-badge {
+    pointer-events: auto !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 800;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+    touch-action: manipulation;
+    animation: roadPulse 2.4s infinite ease-in-out;
+  }
+  .main-road-canvas-badge.unbuilt {
+    background: #2E7D32;
+    color: #FFF;
+    border: 1.5px solid #C8E6C9;
+  }
+  .main-road-canvas-badge.building {
+    background: #E65100;
+    color: #FFF;
+    border: 1.5px solid #FFCC80;
+  }
+  @keyframes roadPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35); }
+    50% { transform: scale(1.05); box-shadow: 0 6px 18px rgba(46, 125, 50, 0.5); }
+  }
+  @media (max-width: 768px), (max-aspect-ratio: 1/1) {
+    .main-road-click-zone {
+      height: 11% !important;
+      top: 42% !important;
+    }
+    .main-road-canvas-badge {
+      font-size: 0.76rem !important;
+      padding: 5px 12px !important;
+    }
   }
 
   /* Music Archive Jukebox Panel */
@@ -11038,8 +11100,28 @@ function roadPromenadeHtml(){
   var isBuilt = r && r.built;
   var isBuilding = r && r.building;
   var pct = isBuilding ? Math.round(Math.min(100, (r.buildHours / 4) * 100)) : 0;
-  var tip = isBuilt ? '⛩️ Main Arterial Road (Paved)' : (isBuilding ? ('⛩️ Paving Main Road (' + pct + '%)') : '⛩️ Main Arterial Road (Click to Pave)');
-  return '<div class="main-road-click-zone" onclick="openModal(\'building\',\'road\')" style="position:absolute;top:43.5%;left:0;width:100%;height:8%;cursor:pointer;z-index:9;touch-action:manipulation;" title="' + tip + '"></div>';
+  var tip = isBuilt ? '⛩️ Main Arterial Road (Paved)' : (isBuilding ? ('⛩️ Paving Main Road (' + pct + '%)') : '⛩️ Main Arterial Road (Click to Pave — €250)');
+
+  var innerBadge = '';
+  if (!isBuilt && !isBuilding){
+    innerBadge = '<div class="main-road-canvas-badge unbuilt" onclick="openModal(\'building\',\'road\')">' +
+      '<span class="badge-icon">⛩️</span>' +
+      '<span class="badge-text">Pave Main Road — €250</span>' +
+    '</div>';
+  } else if (isBuilding){
+    innerBadge = '<div class="main-road-canvas-badge building" onclick="openModal(\'building\',\'road\')">' +
+      '<span class="badge-icon">🚧</span>' +
+      '<span class="badge-text">Paving Main Road (' + pct + '%)</span>' +
+    '</div>';
+  }
+
+  return '<div class="main-road-click-zone ' + (isBuilt ? 'is-built' : (isBuilding ? 'is-building' : 'is-unbuilt')) + '" ' +
+    'onclick="openModal(\'building\',\'road\')" ' +
+    'data-open-road-modal="1" ' +
+    'style="position:absolute;top:43.5%;left:0;width:100%;height:8%;cursor:pointer;z-index:15;pointer-events:auto;touch-action:manipulation;" ' +
+    'title="' + tip + '">' +
+    innerBadge +
+  '</div>';
 }
 
 function villageSpotsHtml(){
@@ -11050,6 +11132,9 @@ function villageSpotsHtml(){
 
 function getPendingTasksList(){
   var tasks = [];
+  if (state.buildings && state.buildings.road && !state.buildings.road.built && !state.buildings.road.building){
+    tasks.push({ type: 'building', targetId: 'road', label: '⛩️ Pave Main Road (€' + BUILDING_TYPES.road.cost + ')', cost: BUILDING_TYPES.road.cost });
+  }
   if (!state) return tasks;
   if (!state.rocksCleared && !state.rocksClearing){
     tasks.push({ type: 'rocks', targetId: null, label: '🪨 Clear Boulders (€50)', cost: 50 });
@@ -11101,7 +11186,7 @@ function buildingModalHtml(key){
         ? '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built &amp; Paved</span></div>'
         : (b.building
           ? '<div class="row"><span>Paving Main Road</span><span class="v">' + Math.round(Math.min(100,(b.buildHours/def.buildHours)*100)) + '%</span></div>'
-          : '<button class="primary" data-build-road-segment="main" ' + (state.money < def.cost ? 'disabled' : '') + '>Pave Main Road — €' + def.cost + ' (' + def.buildHours + 'h)</button>')) +
+          : '<button class="primary road-pave-btn" data-build-road-segment="main" onclick="startBuildRoadSegment(\'main\')" ' + (state.money < def.cost ? 'disabled' : '') + ' style="width:100%;min-height:44px;font-size:0.92rem;font-weight:800;margin-top:10px;">⛩️ Pave Main Road — €' + def.cost + ' (' + def.buildHours + 'h)</button>')) +
     '</div>';
 
     // Feeder Subways
@@ -12769,6 +12854,17 @@ function render(){
 }
 
 function wireEvents(){
+  // Main Road Canvas Click & Touch Listeners
+  document.querySelectorAll('[data-open-road-modal], .main-road-click-zone, .main-road-canvas-badge').forEach(function(el){
+    el.onclick = function(e){
+      if (e) e.stopPropagation();
+      openModal('building', 'road');
+    };
+    el.ontouchend = function(e){
+      if (e) e.stopPropagation();
+      openModal('building', 'road');
+    };
+  });
   // Background bare-field tap closes open corner menus for full unobstructed view
   var fieldBg = document.getElementById('fieldBg');
   if (fieldBg){
