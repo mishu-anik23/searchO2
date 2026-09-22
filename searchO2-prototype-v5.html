@@ -1274,6 +1274,128 @@
   .wingflap{ animation: flap 0.5s ease-in-out infinite alternate; transform-origin:center; }
   @keyframes flap{ 0%{transform:scaleY(1);} 100%{transform:scaleY(0.55);} }
 
+  /* Wild Animal Free-Roaming and Harvest Visuals */
+  .animals-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 8;
+    overflow: hidden;
+  }
+  .wild-animal-entity {
+    position: absolute;
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 8;
+    transform-origin: center bottom;
+    transition: left 2.2s linear, top 2.2s linear;
+    will-change: transform, left, top;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .animal-hop {
+    animation: animalHop 0.45s ease-in-out infinite alternate;
+  }
+  .animal-flee-hop {
+    animation: animalHop 0.17s ease-in-out infinite alternate;
+  }
+  .animal-trot {
+    animation: animalTrot 0.35s ease-in-out infinite alternate;
+  }
+  .animal-flee-trot {
+    animation: animalTrot 0.15s ease-in-out infinite alternate;
+  }
+  .animal-gallop {
+    animation: animalGallop 0.38s ease-in-out infinite alternate;
+  }
+  .animal-flee-gallop {
+    animation: animalGallop 0.16s ease-in-out infinite alternate;
+  }
+  @keyframes animalHop {
+    0% { transform: translateY(0) scaleY(1); }
+    50% { transform: translateY(-7px) scaleY(1.05); }
+    100% { transform: translateY(0) scaleY(0.95); }
+  }
+  @keyframes animalTrot {
+    0% { transform: translateY(0) rotate(-1.5deg); }
+    100% { transform: translateY(-3px) rotate(1.5deg); }
+  }
+  @keyframes animalGallop {
+    0% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-8px) rotate(2deg); }
+    100% { transform: translateY(0) rotate(-1deg); }
+  }
+  .tail-wag {
+    animation: tailWag 0.5s ease-in-out infinite alternate;
+  }
+  @keyframes tailWag {
+    0% { transform: rotate(-8deg); }
+    100% { transform: rotate(8deg); }
+  }
+  .ear-twitch {
+    animation: earTwitch 1.2s ease-in-out infinite;
+  }
+  @keyframes earTwitch {
+    0%, 80%, 100% { transform: rotate(0); }
+    85% { transform: rotate(-7deg); }
+    90% { transform: rotate(5deg); }
+  }
+  .animal-shoo-badge {
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(230, 81, 0, 0.95);
+    color: white;
+    font-size: 0.70rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 12px;
+    white-space: nowrap;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+    pointer-events: auto;
+    animation: pulseBadge 0.6s infinite alternate;
+  }
+  @keyframes pulseBadge {
+    0% { transform: translateX(-50%) scale(0.95); }
+    100% { transform: translateX(-50%) scale(1.08); }
+  }
+  .scaring-worker-runner {
+    position: absolute;
+    pointer-events: none;
+    z-index: 9;
+    transform-origin: center bottom;
+    transition: left 0.9s cubic-bezier(0.25, 1, 0.5, 1), top 0.9s cubic-bezier(0.25, 1, 0.5, 1);
+    will-change: transform, left, top;
+  }
+  .shoo-shout {
+    position: absolute;
+    top: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #D32F2F;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 900;
+    padding: 4px 10px;
+    border-radius: 14px;
+    white-space: nowrap;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+    animation: shoutPop 0.8s ease-out forwards;
+  }
+  @keyframes shoutPop {
+    0% { transform: translateX(-50%) scale(0.6); opacity: 0; }
+    40% { transform: translateX(-50%) scale(1.15); opacity: 1; }
+    100% { transform: translateX(-50%) scale(1.0) translateY(-8px); opacity: 1; }
+  }
+  .harvest-fruit-pop {
+    animation: harvestFruitPop 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes harvestFruitPop {
+    0% { transform: translate(100px, 36px) scale(0.95); }
+    100% { transform: translate(100px, 33px) scale(1.08); }
+  }
+
   /* Enhanced Avian Engine Styles */
   .bird-entity {
     position: absolute;
@@ -2992,6 +3114,7 @@
         <div class="field-plots" id="fieldPlots"></div>
       </div>
       <div class="birds-layer" id="birdsLayer"></div>
+      <div class="animals-layer" id="animalsLayer"></div>
 
       <!-- CORNER 1: TOP-LEFT ACTIONS MENU -->
       <div class="corner-menu top-left-corner" id="cornerTopLeft">
@@ -8981,15 +9104,212 @@ function startHarvest(plotId){
   }
   render(); requestSave();
 }
+// ================= FREE-ROAMING WILD ANIMAL ENGINE =================
+var activeAnimalEntities = {};
+
+function syncWildAnimals(){
+  var layer = document.getElementById('animalsLayer');
+  if (!layer) return;
+
+  var activePlotIds = {};
+  if (state && state.plots){
+    state.plots.forEach(function(p){
+      if (p.animal){
+        activePlotIds[p.id] = true;
+        if (!activeAnimalEntities[p.id]){
+          spawnWildAnimalEntity(p.id, p.animal.key);
+        }
+      }
+    });
+  }
+
+  // Remove any entities that expired or were cleared
+  for (var pid in activeAnimalEntities){
+    if (!activePlotIds[pid] && activeAnimalEntities[pid] && !activeAnimalEntities[pid].fleeing){
+      var el = document.getElementById('wildAnimal_' + pid);
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      if (activeAnimalEntities[pid].timer) clearInterval(activeAnimalEntities[pid].timer);
+      delete activeAnimalEntities[pid];
+    }
+  }
+}
+
+function spawnWildAnimalEntity(plotId, animalKey){
+  var layer = document.getElementById('animalsLayer');
+  if (!layer) return;
+
+  var p = PLOT_LAYOUT[plotId];
+  if (!p) return;
+
+  var startFromLeft = Math.random() < 0.5;
+  var startX = startFromLeft ? -6 : 106;
+  var startY = Math.max(12, Math.min(82, p.top + (Math.random() * 20 - 10)));
+
+  var el = document.createElement('div');
+  el.id = 'wildAnimal_' + plotId;
+  el.className = 'wild-animal-entity';
+  el.style.left = startX + '%';
+  el.style.top = startY + '%';
+
+  var facingLeft = !startFromLeft;
+  var renderer = ANIMAL_RENDERERS[animalKey] || drawRabbitSvg;
+  el.innerHTML = '<div class="animal-shoo-badge">🐾 Tap to Scare (€12)</div>' + renderer(facingLeft, false);
+
+  el.onclick = el.ontouchend = function(e){
+    e.stopPropagation();
+    e.preventDefault();
+    scareAnimal(plotId);
+  };
+
+  layer.appendChild(el);
+
+  var targetBaseX = p.left + p.w / 2;
+  var targetBaseY = p.top + p.h / 2;
+
+  var record = {
+    plotId: plotId,
+    animalKey: animalKey,
+    currX: startX,
+    currY: startY,
+    facingLeft: facingLeft,
+    fleeing: false,
+    timer: null
+  };
+  activeAnimalEntities[plotId] = record;
+
+  // First step: enter the farm smoothly onto open ground
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      var enterX = Math.max(10, Math.min(90, targetBaseX + (Math.random() * 8 - 4)));
+      var enterY = Math.max(12, Math.min(84, targetBaseY + (Math.random() * 8 - 4)));
+      el.style.left = enterX + '%';
+      el.style.top = enterY + '%';
+      record.currX = enterX;
+      record.currY = enterY;
+    });
+  });
+
+  // Roaming loop: animal wanders freely across open fields without grid or road restrictions
+  record.timer = setInterval(function(){
+    if (record.fleeing) return;
+    var angle = Math.random() * Math.PI * 2;
+    var dist = 3 + Math.random() * 8;
+    var nextX = Math.max(4, Math.min(94, targetBaseX + Math.cos(angle) * dist));
+    var nextY = Math.max(10, Math.min(86, targetBaseY + Math.sin(angle) * dist));
+    var newFacingLeft = nextX < record.currX;
+
+    record.currX = nextX;
+    record.currY = nextY;
+    record.facingLeft = newFacingLeft;
+
+    el.style.left = nextX + '%';
+    el.style.top = nextY + '%';
+    el.innerHTML = '<div class="animal-shoo-badge">🐾 Tap to Scare (€12)</div>' + renderer(newFacingLeft, false);
+  }, 3200 + Math.random() * 1800);
+}
+
 function scareAnimal(plotId){
-  var p = state.plots[plotId]; if (!p.animal) return;
-  if (state.money<SCARE_COST) return;
-  var a = ANIMALS.find(function(x){return x.key===p.animal.key;});
+  var p = state.plots[plotId];
+  if (!p || !p.animal) return;
+  if (state.money < SCARE_COST){
+    showNotification('⚠️', 'Need €' + SCARE_COST + ' to dispatch a worker to scare animals!', 'storage', 0);
+    return;
+  }
+
+  var a = ANIMALS.find(function(x){ return x.key === p.animal.key; });
   state.money -= SCARE_COST;
-  state.pestHandled = (state.pestHandled||0)+1;
-  pushReport('✅ Scared off a '+a.name+' near Plot '+(p.id+1)+'. '+a.fact);
+  state.pestHandled = (state.pestHandled || 0) + 1;
+  pushReport('✅ Dispatched worker to scare off a ' + a.name + ' near Plot ' + (p.id + 1) + '. ' + a.fact);
+
+  var animalKey = p.animal.key;
   p.animal = null;
-  checkAchievements(); render(); requestSave();
+  checkAchievements();
+  requestSave();
+
+  // Trigger high-fidelity visual scare sequence with worker running across open field
+  triggerWorkerScareSequence(plotId, animalKey, a);
+  render();
+}
+
+function triggerWorkerScareSequence(plotId, animalKey, animalDef){
+  var layer = document.getElementById('animalsLayer');
+  var animalRecord = activeAnimalEntities[plotId];
+  var animalEl = document.getElementById('wildAnimal_' + plotId);
+
+  // If entity exists, run the chase & flee animation
+  if (animalRecord && animalEl){
+    animalRecord.fleeing = true;
+    if (animalRecord.timer) clearInterval(animalRecord.timer);
+
+    var animalX = animalRecord.currX;
+    var animalY = animalRecord.currY;
+
+    // Worker starts from Crew Shed (left:8, top:66) or Gate (left:0, top:38)
+    var workerStartX = animalX > 40 ? 12 : 88;
+    var workerStartY = animalY > 50 ? 70 : 25;
+
+    // Spawn running worker
+    var runner = document.createElement('div');
+    runner.className = 'scaring-worker-runner';
+    runner.style.left = workerStartX + '%';
+    runner.style.top = workerStartY + '%';
+    runner.innerHTML = '<svg viewBox="0 0 34 44" width="34" height="44">' +
+      '<g class="running-legs">' +
+        personSvg('laborer', true, 0, 0, false, 'shovel') +
+      '</g>' +
+    '</svg>';
+    layer.appendChild(runner);
+
+    // Worker sprints directly towards animal across open terrain!
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        // Approach within 6% of animal
+        var approachX = animalX + (animalX > workerStartX ? -6 : 6);
+        var approachY = animalY + 2;
+        runner.style.left = approachX + '%';
+        runner.style.top = approachY + '%';
+
+        setTimeout(function(){
+          // Worker shouts and waves
+          var shout = document.createElement('div');
+          shout.className = 'shoo-shout';
+          shout.textContent = '📢 SHOO! GET OUT!';
+          runner.appendChild(shout);
+
+          // Animal panics and bolts across open ground towards nearest perimeter
+          var fleeTargetX = animalX < 50 ? -12 : 112;
+          var fleeTargetY = Math.max(5, Math.min(90, animalY + (Math.random() * 20 - 10)));
+          var fleeFacingLeft = fleeTargetX < animalX;
+
+          var renderer = ANIMAL_RENDERERS[animalKey] || drawRabbitSvg;
+          animalEl.innerHTML = '<div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:1.2rem;font-weight:900;color:#D32F2F;">❗</div>' +
+            renderer(fleeFacingLeft, true);
+
+          animalEl.style.transition = 'left 1.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 1.3s ease-in';
+          animalEl.style.left = fleeTargetX + '%';
+          animalEl.style.top = fleeTargetY + '%';
+
+          // Clean up animal and runner
+          setTimeout(function(){
+            if (animalEl.parentNode) animalEl.parentNode.removeChild(animalEl);
+            delete activeAnimalEntities[plotId];
+            showNotification('🌾', animalDef.name + ' fled the farm into the wild!', 'plot', plotId);
+          }, 1350);
+
+          setTimeout(function(){
+            runner.style.transition = 'opacity 0.6s ease';
+            runner.style.opacity = '0';
+            setTimeout(function(){
+              if (runner.parentNode) runner.parentNode.removeChild(runner);
+            }, 650);
+          }, 1200);
+
+        }, 850);
+      });
+    });
+  } else {
+    showNotification('✅', animalDef.name + ' was scared away!', 'plot', plotId);
+  }
 }
 function startBuildStorage(){
   if (state.storage.built || state.storage.building) return;
@@ -10708,6 +11028,781 @@ function personSvg(type, working, x, y, basket, toolOverride){
     drawHumanWorkerSvg(type, tool, false, working) +
   '</g>';
 }
+var SPECIES_RENDERERS = {
+  oak: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<path d="M88,84 L93,70 L93,52 L82,40 M93,56 L100,44 L100,28 M100,44 L114,36 M107,52 L107,70 L112,84" stroke="#5D4037" stroke-width="5" stroke-linecap="round" fill="none"/>' +
+        '<path d="M82,40 L76,32 M82,40 L86,30 M100,28 L94,18 M100,28 L106,18 M114,36 L124,28 M114,36 L118,24" stroke="#6D4C41" stroke-width="3" stroke-linecap="round" fill="none"/>' +
+      '</g>';
+    }
+    var trunk = '<path d="M88,84 Q94,76 94,56 Q94,46 100,42 Q106,46 106,56 Q106,76 112,84 Z" fill="#4E342E"/>' +
+      '<path d="M96,82 L96,56 M100,80 L100,50 M104,82 L104,56" stroke="#3E2723" stroke-width="1.2"/>';
+    // Grand lobed canopy
+    var canopy = '<g fill="#2E7D32">' +
+      '<ellipse cx="100" cy="40" rx="34" ry="24"/>' +
+      '<ellipse cx="76" cy="46" rx="22" ry="18" fill="#1B5E20"/>' +
+      '<ellipse cx="124" cy="46" rx="22" ry="18" fill="#1B5E20"/>' +
+      '<ellipse cx="82" cy="32" rx="20" ry="16" fill="#388E3C"/>' +
+      '<ellipse cx="118" cy="32" rx="20" ry="16" fill="#388E3C"/>' +
+      '<ellipse cx="100" cy="25" rx="24" ry="18" fill="#43A047"/>' +
+      '<ellipse cx="100" cy="18" rx="16" ry="12" fill="#4CAF50"/>' +
+    '</g>';
+    // Acorns when mature
+    var acorns = stage >= 3 ?
+      '<g transform="translate(0, 4)">' +
+        '<circle cx="82" cy="44" r="2.8" fill="#8D6E63"/><path d="M80,42 Q82,40 84,42" stroke="#5D4037" stroke-width="1.2"/>' +
+        '<circle cx="118" cy="44" r="2.8" fill="#8D6E63"/><path d="M116,42 Q118,40 120,42" stroke="#5D4037" stroke-width="1.2"/>' +
+        '<circle cx="100" cy="34" r="2.8" fill="#8D6E63"/><path d="M98,32 Q100,30 102,32" stroke="#5D4037" stroke-width="1.2"/>' +
+      '</g>' : '';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + canopy + acorns + '</g>';
+  },
+
+  pine: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<line x1="100" y1="84" x2="100" y2="18" stroke="#5A3A22" stroke-width="6" stroke-linecap="round"/>' +
+        '<path d="M100,68 L80,62 M100,68 L120,62 M100,52 L84,46 M100,52 L116,46 M100,36 L88,30 M100,36 L112,30" stroke="#7A5334" stroke-width="3" stroke-linecap="round"/>' +
+      '</g>';
+    }
+    var trunk = '<rect x="96" y="58" width="8" height="26" rx="2" fill="#5A3A22"/>' +
+      '<line x1="98" y1="62" x2="98" y2="82" stroke="#3E2723" stroke-width="1"/>';
+    // Tiered conical evergreen boughs
+    var boughs = '<g>' +
+      // Bottom Tier
+      '<polygon points="100,48 68,70 78,67 72,74 88,71 82,77 100,73 118,77 112,71 128,74 122,67 132,70" fill="#1B5E20"/>' +
+      // 3rd Tier
+      '<polygon points="100,36 74,54 82,51 78,57 92,54 87,60 100,57 113,60 108,54 122,57 118,51 126,54" fill="#2E4A34"/>' +
+      // 2nd Tier
+      '<polygon points="100,24 80,40 86,38 82,43 94,40 90,45 100,43 110,45 106,40 118,43 114,38 120,40" fill="#2F5D3A"/>' +
+      // Top Tier
+      '<polygon points="100,10 86,27 92,26 89,30 100,28 111,30 108,26 114,27" fill="#3E6B48"/>' +
+    '</g>';
+    // Pine cones
+    var cones = stage >= 3 ?
+      '<ellipse cx="88" cy="62" rx="3" ry="5" fill="#4E342E" transform="rotate(15 88 62)"/>' +
+      '<ellipse cx="112" cy="62" rx="3" ry="5" fill="#4E342E" transform="rotate(-15 112 62)"/>' +
+      '<ellipse cx="94" cy="46" rx="2.5" ry="4.5" fill="#5D4037" transform="rotate(10 94 46)"/>' : '';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + boughs + cones + '</g>';
+  },
+
+  maple: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<path d="M92,84 Q96,65 96,52 L84,38 M96,52 L100,42 L100,24 M100,42 L112,36 M104,52 Q104,68 108,84" stroke="#5D4037" stroke-width="5" stroke-linecap="round" fill="none"/>' +
+      '</g>';
+    }
+    var trunk = '<path d="M92,84 Q96,68 96,52 Q96,44 100,40 Q104,44 104,52 Q104,68 108,84 Z" fill="#5D4037"/>';
+    // Palmate lobed vibrant maple foliage with autumn-kissed hues
+    var canopy = '<g>' +
+      '<ellipse cx="100" cy="40" rx="32" ry="24" fill="#388E3C"/>' +
+      '<ellipse cx="78" cy="46" rx="20" ry="16" fill="#F57C00"/>' +
+      '<ellipse cx="122" cy="46" rx="20" ry="16" fill="#E65100"/>' +
+      '<ellipse cx="84" cy="30" rx="18" ry="15" fill="#FB8C00"/>' +
+      '<ellipse cx="116" cy="30" rx="18" ry="15" fill="#F57C00"/>' +
+      '<ellipse cx="100" cy="22" rx="22" ry="16" fill="#FFB300"/>' +
+      // Multi-pointed leaf lobe details
+      '<polygon points="100,8 96,16 104,16" fill="#D84315"/>' +
+      '<polygon points="74,26 80,30 76,34" fill="#E65100"/>' +
+      '<polygon points="126,26 120,30 124,34" fill="#BF360C"/>' +
+    '</g>';
+    // Winged samaras ("helicopters")
+    var samaras = stage >= 3 ?
+      '<g stroke="#FFD54F" stroke-width="1.2" fill="none">' +
+        '<path d="M88,48 Q84,54 80,52 M88,48 Q86,55 88,58"/>' +
+        '<path d="M112,48 Q116,54 120,52 M112,48 Q114,55 112,58"/>' +
+      '</g>' : '';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + canopy + samaras + '</g>';
+  },
+
+  poplar: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<line x1="100" y1="84" x2="100" y2="12" stroke="#78909C" stroke-width="5" stroke-linecap="round"/>' +
+        '<path d="M100,60 L92,44 M100,50 L108,36 M100,40 L93,28 M100,30 L107,20" stroke="#90A4AE" stroke-width="2.5" stroke-linecap="round"/>' +
+      '</g>';
+    }
+    var trunk = '<rect x="97" y="50" width="6" height="34" rx="2" fill="#B0BEC5"/>' +
+      '<line x1="97" y1="62" x2="103" y2="62" stroke="#546E7A" stroke-width="1"/>' +
+      '<line x1="97" y1="72" x2="103" y2="72" stroke="#546E7A" stroke-width="1"/>';
+    // Tall fastigiate columnar crown
+    var canopy = '<g>' +
+      '<ellipse cx="100" cy="40" rx="16" ry="34" fill="#4CAF50"/>' +
+      '<ellipse cx="98" cy="38" rx="13" ry="30" fill="#66BB6A"/>' +
+      '<ellipse cx="100" cy="34" rx="10" ry="24" fill="#81C784"/>' +
+      // Shimmering pale leaf undersides
+      '<circle cx="95" cy="32" r="2.5" fill="#C8E6C9" opacity="0.85"/>' +
+      '<circle cx="104" cy="24" r="2.2" fill="#E8F5E9" opacity="0.85"/>' +
+      '<circle cx="97" cy="46" r="2.4" fill="#C8E6C9" opacity="0.85"/>' +
+      '<circle cx="103" cy="54" r="2.2" fill="#E8F5E9" opacity="0.85"/>' +
+    '</g>';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + canopy + '</g>';
+  },
+
+  apple: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<path d="M91,84 Q95,68 95,54 L86,40 M95,54 L100,46 L100,32 M100,46 L112,38 M105,54 Q105,68 109,84" stroke="#6D4C41" stroke-width="5" stroke-linecap="round" fill="none"/>' +
+      '</g>';
+    }
+    var trunk = '<path d="M92,84 Q95,68 95,52 Q95,44 100,40 Q105,44 105,52 Q105,68 108,84 Z" fill="#6D4C41"/>' +
+      '<path d="M95,52 L88,44 M105,52 L112,44" stroke="#5D4037" stroke-width="3" stroke-linecap="round"/>';
+    var foliage = '<g fill="#388E3C">' +
+      '<ellipse cx="100" cy="42" rx="32" ry="22"/>' +
+      '<ellipse cx="78" cy="46" rx="18" ry="15" fill="#2E7D32"/>' +
+      '<ellipse cx="122" cy="46" rx="18" ry="15" fill="#2E7D32"/>' +
+      '<ellipse cx="86" cy="32" rx="18" ry="14" fill="#43A047"/>' +
+      '<ellipse cx="114" cy="32" rx="18" ry="14" fill="#43A047"/>' +
+      '<ellipse cx="100" cy="24" rx="20" ry="15" fill="#4CAF50"/>' +
+    '</g>';
+    // Flowering Stage (Stage 3): 5-petal blossoms
+    if (stage === 3) {
+      var blossom = function(x, y) {
+        return '<g transform="translate(' + x + ',' + y + ')">' +
+          '<circle cx="-3" cy="0" r="2.2" fill="#FFFFFF"/>' +
+          '<circle cx="3" cy="0" r="2.2" fill="#FFFFFF"/>' +
+          '<circle cx="0" cy="-3" r="2.2" fill="#FFEBEE"/>' +
+          '<circle cx="-2" cy="2.5" r="2.2" fill="#F8BBD0"/>' +
+          '<circle cx="2" cy="2.5" r="2.2" fill="#F8BBD0"/>' +
+          '<circle cx="0" cy="0" r="1.4" fill="#FDD835"/>' +
+        '</g>';
+      };
+      var flowers = blossom(82, 38) + blossom(118, 38) + blossom(100, 26) + blossom(90, 48) + blossom(110, 48);
+      return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + foliage + flowers + '</g>';
+    }
+    // Fruiting / Mature (Stage 4): Plump red apples
+    var appleItem = function(x, y) {
+      return '<g transform="translate(' + x + ',' + y + ')">' +
+        '<line x1="0" y1="-5" x2="1" y2="-7" stroke="#4E342E" stroke-width="1"/>' +
+        '<circle cx="0" cy="0" r="4.2" fill="#E53935"/>' +
+        '<circle cx="-1.2" cy="-1.2" r="1.5" fill="#FFCDD2" opacity="0.7"/>' +
+        '<path d="M1,-5 Q3,-6 4,-4 Q2,-3 1,-5" fill="#43A047"/>' +
+      '</g>';
+    };
+    var apples = (stage >= 4) ?
+      appleItem(76, 42) + appleItem(124, 42) + appleItem(92, 32) + appleItem(108, 32) + appleItem(100, 48) + appleItem(86, 52) + appleItem(114, 52) : '';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + foliage + apples + '</g>';
+  },
+
+  orange: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<path d="M93,84 L96,55 L86,42 M96,55 L106,42 M107,84 L104,55" stroke="#5D4037" stroke-width="4.5" stroke-linecap="round" fill="none"/>' +
+      '</g>';
+    }
+    var trunk = '<rect x="96" y="52" width="8" height="32" rx="2" fill="#5D4037"/>';
+    var foliage = '<g fill="#1B5E20">' +
+      '<ellipse cx="100" cy="40" rx="30" ry="22"/>' +
+      '<ellipse cx="78" cy="44" rx="17" ry="14" fill="#2E7D32"/>' +
+      '<ellipse cx="122" cy="44" rx="17" ry="14" fill="#2E7D32"/>' +
+      '<ellipse cx="88" cy="30" rx="16" ry="13" fill="#388E3C"/>' +
+      '<ellipse cx="112" cy="30" rx="16" ry="13" fill="#388E3C"/>' +
+      '<ellipse cx="100" cy="22" rx="18" ry="14" fill="#43A047"/>' +
+    '</g>';
+    if (stage === 3) {
+      // White orange blossoms
+      var flower = function(x, y) {
+        return '<circle cx="' + x + '" cy="' + y + '" r="2.8" fill="#FFFFFF"/><circle cx="' + x + '" cy="' + y + '" r="1.2" fill="#FFD54F"/>';
+      };
+      return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + foliage + flower(84,36) + flower(116,36) + flower(100,28) + flower(92,48) + flower(108,48) + '</g>';
+    }
+    var orangeItem = function(x, y) {
+      return '<g transform="translate(' + x + ',' + y + ')">' +
+        '<circle cx="0" cy="0" r="4.2" fill="#FF9800"/>' +
+        '<circle cx="-1" cy="-1" r="1.3" fill="#FFE082" opacity="0.6"/>' +
+        '<circle cx="0" cy="-3.5" r="1" fill="#2E7D32"/>' +
+      '</g>';
+    };
+    var oranges = (stage >= 4) ?
+      orangeItem(78, 42) + orangeItem(122, 42) + orangeItem(90, 32) + orangeItem(110, 32) + orangeItem(100, 46) + orangeItem(84, 52) + orangeItem(116, 52) : '';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + foliage + oranges + '</g>';
+  },
+
+  mango: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<path d="M90,84 L95,50 L84,36 M95,50 L100,38 L100,22 M100,38 L114,34 M110,84 L105,50" stroke="#4E342E" stroke-width="5.5" stroke-linecap="round" fill="none"/>' +
+      '</g>';
+    }
+    var trunk = '<path d="M90,84 Q95,66 95,50 L105,50 Q105,66 110,84 Z" fill="#4E342E"/>';
+    var foliage = '<g fill="#1B5E20">' +
+      '<ellipse cx="100" cy="38" rx="34" ry="24"/>' +
+      '<ellipse cx="76" cy="42" rx="20" ry="16" fill="#2E7D32"/>' +
+      '<ellipse cx="124" cy="42" rx="20" ry="16" fill="#2E7D32"/>' +
+      '<ellipse cx="86" cy="28" rx="18" ry="14" fill="#388E3C"/>' +
+      '<ellipse cx="114" cy="28" rx="18" ry="14" fill="#388E3C"/>' +
+      '<ellipse cx="100" cy="20" rx="22" ry="16" fill="#43A047"/>' +
+    '</g>';
+    if (stage === 3) {
+      // Mango flower panicles (copper-yellow spikes)
+      var panicle = function(x, y) {
+        return '<path d="M' + x + ',' + y + ' L' + (x-3) + ',' + (y-8) + ' L' + x + ',' + (y-12) + ' L' + (x+3) + ',' + (y-8) + ' Z" fill="#FDD835" stroke="#F57F17" stroke-width="0.8"/>';
+      };
+      return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + foliage + panicle(86,30) + panicle(114,30) + panicle(100,18) + '</g>';
+    }
+    // Tear-drop hanging mangoes (yellow with rosy red blush)
+    var mangoFruit = function(x, y) {
+      return '<g transform="translate(' + x + ',' + y + ')">' +
+        '<line x1="0" y1="-6" x2="0" y2="-1" stroke="#2E7D32" stroke-width="1"/>' +
+        '<path d="M0,0 C3,-1 5,3 4,7 C3,10 0,11 -2,9 C-4,7 -4,2 0,0 Z" fill="#FFB300"/>' +
+        '<path d="M1,2 C3,3 4,6 3,8 C2,9 1,9 0,8 Z" fill="#FF5722" opacity="0.85"/>' +
+      '</g>';
+    };
+    var mangoes = (stage >= 4) ?
+      mangoFruit(78, 44) + mangoFruit(120, 44) + mangoFruit(92, 34) + mangoFruit(108, 34) + mangoFruit(100, 48) : '';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + foliage + mangoes + '</g>';
+  },
+
+  lemon: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<path d="M94,84 L96,54 L88,42 M96,54 L106,44 M106,84 L104,54" stroke="#6D4C41" stroke-width="4" stroke-linecap="round" fill="none"/>' +
+      '</g>';
+    }
+    var trunk = '<rect x="96" y="54" width="8" height="30" rx="2" fill="#6D4C41"/>';
+    var foliage = '<g fill="#2E7D32">' +
+      '<ellipse cx="100" cy="40" rx="28" ry="20"/>' +
+      '<ellipse cx="80" cy="44" rx="16" ry="13" fill="#388E3C"/>' +
+      '<ellipse cx="120" cy="44" rx="16" ry="13" fill="#388E3C"/>' +
+      '<ellipse cx="90" cy="30" rx="15" ry="12" fill="#43A047"/>' +
+      '<ellipse cx="110" cy="30" rx="15" ry="12" fill="#43A047"/>' +
+      '<ellipse cx="100" cy="22" rx="17" ry="13" fill="#66BB6A"/>' +
+    '</g>';
+    if (stage === 3) {
+      // Purple-tipped white blossoms
+      var flower = function(x, y) {
+        return '<circle cx="' + x + '" cy="' + y + '" r="2.8" fill="#FFFFFF"/><circle cx="' + (x-2) + '" cy="' + y + '" r="1.2" fill="#CE93D8"/><circle cx="' + x + '" cy="' + y + '" r="1" fill="#FDD835"/>';
+      };
+      return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + foliage + flower(84,36) + flower(116,36) + flower(100,26) + '</g>';
+    }
+    // Oval lemons with pointed tips
+    var lemonFruit = function(x, y, rot) {
+      return '<g transform="translate(' + x + ',' + y + ') rotate(' + rot + ')">' +
+        '<path d="M-5,0 C-4,-3 4,-3 5,0 C4,3 -4,3 -5,0 Z" fill="#FDD835" stroke="#FBC02D" stroke-width="0.6"/>' +
+        '<circle cx="-1" cy="-0.8" r="1" fill="#FFF59D" opacity="0.7"/>' +
+      '</g>';
+    };
+    var lemons = (stage >= 4) ?
+      lemonFruit(80, 42, 20) + lemonFruit(120, 42, -25) + lemonFruit(92, 32, 10) + lemonFruit(108, 32, -15) + lemonFruit(100, 46, 0) + lemonFruit(86, 52, 30) + lemonFruit(114, 52, -30) : '';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + foliage + lemons + '</g>';
+  },
+
+  tomato: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<line x1="90" y1="84" x2="90" y2="44" stroke="#8D6E63" stroke-width="3"/>' +
+        '<line x1="110" y1="84" x2="110" y2="44" stroke="#8D6E63" stroke-width="3"/>' +
+        '<line x1="86" y1="56" x2="114" y2="56" stroke="#8D6E63" stroke-width="2"/>' +
+        '<path d="M90,78 Q100,68 110,60" stroke="#795548" stroke-width="2" fill="none"/>' +
+      '</g>';
+    }
+    // Trellis stakes
+    var trellis = '<g stroke="#8D6E63" stroke-linecap="round">' +
+      '<line x1="88" y1="84" x2="92" y2="40" stroke-width="3"/>' +
+      '<line x1="112" y1="84" x2="108" y2="40" stroke-width="3"/>' +
+      '<line x1="84" y1="52" x2="116" y2="52" stroke-width="2"/>' +
+      '<line x1="86" y1="68" x2="114" y2="68" stroke-width="2"/>' +
+    '</g>';
+    // Sprawling vine foliage
+    var foliage = '<g fill="#2E7D32">' +
+      '<ellipse cx="90" cy="62" rx="14" ry="11"/>' +
+      '<ellipse cx="110" cy="62" rx="14" ry="11"/>' +
+      '<ellipse cx="100" cy="50" rx="16" ry="12" fill="#388E3C"/>' +
+      '<ellipse cx="92" cy="42" rx="12" ry="9" fill="#43A047"/>' +
+      '<ellipse cx="108" cy="42" rx="12" ry="9" fill="#43A047"/>' +
+    '</g>';
+    if (stage === 3) {
+      // Yellow star flowers
+      var flower = function(x, y) {
+        return '<polygon points="' + x + ',' + (y-3) + ' ' + (x+2) + ',' + y + ' ' + (x+3) + ',' + (y+3) + ' ' + x + ',' + (y+1) + ' ' + (x-3) + ',' + (y+3) + ' ' + (x-2) + ',' + y + '" fill="#FDD835"/>';
+      };
+      return '<g class="sway" style="transform-origin:100px 84px;">' + trellis + foliage + flower(90,52) + flower(110,50) + flower(100,42) + '</g>';
+    }
+    // Glossy red vine tomatoes with green calyx stars
+    var tomatoFruit = function(x, y, r) {
+      return '<g transform="translate(' + x + ',' + y + ')">' +
+        '<circle cx="0" cy="0" r="' + r + '" fill="#E53935"/>' +
+        '<circle cx="' + (-r*0.3) + '" cy="' + (-r*0.3) + '" r="' + (r*0.35) + '" fill="#FFCDD2" opacity="0.7"/>' +
+        '<polygon points="0,' + (-r) + ' 1,' + (-r-2) + ' 0,' + (-r-1) + ' -1,' + (-r-2) + '" fill="#2E7D32"/>' +
+      '</g>';
+    };
+    var tomatoes = (stage >= 4) ?
+      tomatoFruit(84, 62, 5) + tomatoFruit(92, 68, 4.5) + tomatoFruit(114, 60, 5) + tomatoFruit(106, 68, 4.5) + tomatoFruit(98, 54, 4.8) + tomatoFruit(102, 44, 4) : '';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trellis + foliage + tomatoes + '</g>';
+  },
+
+  potato: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<ellipse cx="100" cy="84" rx="28" ry="8" fill="#4E342E"/>' +
+        '<path d="M85,82 L90,76 M100,82 L100,74 M115,82 L110,76" stroke="#8D6E63" stroke-width="2" fill="none"/>' +
+      '</g>';
+    }
+    var soilMound = '<ellipse cx="100" cy="84" rx="30" ry="10" fill="#3E2723"/>' +
+      '<ellipse cx="100" cy="82" rx="26" ry="8" fill="#4E342E"/>';
+    var foliage = '<g fill="#2E7D32">' +
+      '<ellipse cx="85" cy="70" rx="16" ry="12"/>' +
+      '<ellipse cx="115" cy="70" rx="16" ry="12"/>' +
+      '<ellipse cx="100" cy="62" rx="18" ry="14" fill="#388E3C"/>' +
+      '<ellipse cx="90" cy="52" rx="12" ry="9" fill="#43A047"/>' +
+      '<ellipse cx="110" cy="52" rx="12" ry="9" fill="#43A047"/>' +
+    '</g>';
+    if (stage === 3) {
+      // Lilac flowers
+      var flower = function(x, y) {
+        return '<circle cx="' + x + '" cy="' + y + '" r="2.5" fill="#D1C4E9"/><circle cx="' + x + '" cy="' + y + '" r="1" fill="#FDD835"/>';
+      };
+      return '<g class="sway" style="transform-origin:100px 84px;">' + soilMound + foliage + flower(90,56) + flower(110,56) + flower(100,48) + '</g>';
+    }
+    // Harvest ready: exposed golden-russet tubers nested in the soil mound
+    var tubers = (stage >= 4) ?
+      '<g>' +
+        '<ellipse cx="86" cy="83" rx="7" ry="4.5" fill="#C49A45" stroke="#8D6E63" stroke-width="0.8" transform="rotate(-10 86 83)"/>' +
+        '<ellipse cx="114" cy="83" rx="7.5" ry="4.8" fill="#BCAAA4" stroke="#8D6E63" stroke-width="0.8" transform="rotate(12 114 83)"/>' +
+        '<ellipse cx="100" cy="85" rx="8" ry="5.2" fill="#D7CCC8" stroke="#8D6E63" stroke-width="0.8"/>' +
+        '<circle cx="98" cy="84" r="0.6" fill="#5D4037"/><circle cx="102" cy="86" r="0.6" fill="#5D4037"/>' +
+      '</g>' : '';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + soilMound + foliage + tubers + '</g>';
+  },
+
+  carrot: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<ellipse cx="100" cy="84" rx="24" ry="7" fill="#4E342E"/>' +
+        '<path d="M92,82 L88,78 M100,82 L100,76 M108,82 L112,78" stroke="#8D6E63" stroke-width="2" fill="none"/>' +
+      '</g>';
+    }
+    var soilRidge = '<ellipse cx="100" cy="84" rx="26" ry="8" fill="#3E2723"/>' +
+      '<ellipse cx="100" cy="82" rx="22" ry="6" fill="#4E342E"/>';
+    // Feathery lacy fern tops
+    var fernTops = '<g stroke="#43A047" stroke-width="2" stroke-linecap="round" fill="none">' +
+      '<path d="M88,82 Q82,68 76,58 M88,82 Q86,64 88,54 M88,82 Q92,68 96,60"/>' +
+      '<path d="M100,82 Q94,66 92,52 M100,82 L100,48 M100,82 Q106,66 108,52"/>' +
+      '<path d="M112,82 Q108,68 104,60 M112,82 Q114,64 112,54 M112,82 Q118,68 124,58"/>' +
+      // Fern frond leaves
+      '<circle cx="76" cy="58" r="2.5" fill="#66BB6A" stroke="none"/>' +
+      '<circle cx="88" cy="54" r="2.5" fill="#66BB6A" stroke="none"/>' +
+      '<circle cx="100" cy="48" r="3" fill="#66BB6A" stroke="none"/>' +
+      '<circle cx="112" cy="54" r="2.5" fill="#66BB6A" stroke="none"/>' +
+      '<circle cx="124" cy="58" r="2.5" fill="#66BB6A" stroke="none"/>' +
+    '</g>';
+    // Crisp orange carrot crowns emerging from soil
+    var carrots = (stage >= 3) ?
+      '<g fill="#F57C00" stroke="#E65100" stroke-width="0.8">' +
+        '<path d="M85,82 C85,78 91,78 91,82 L89,86 C88,88 88,88 87,86 Z"/>' +
+        '<path d="M96,81 C96,77 104,77 104,81 L102,87 C101,89 99,89 98,87 Z"/>' +
+        '<path d="M109,82 C109,78 115,78 115,82 L113,86 C112,88 112,88 111,86 Z"/>' +
+      '</g>' : '';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + soilRidge + carrots + fernTops + '</g>';
+  },
+
+  onion: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<ellipse cx="100" cy="84" rx="24" ry="7" fill="#4E342E"/>' +
+        '<line x1="92" y1="82" x2="88" y2="76" stroke="#8D6E63" stroke-width="2"/>' +
+        '<line x1="100" y1="82" x2="100" y2="74" stroke="#8D6E63" stroke-width="2"/>' +
+        '<line x1="108" y1="82" x2="112" y2="76" stroke="#8D6E63" stroke-width="2"/>' +
+      '</g>';
+    }
+    var soil = '<ellipse cx="100" cy="84" rx="26" ry="8" fill="#3E2723"/>' +
+      '<ellipse cx="100" cy="82" rx="22" ry="6" fill="#4E342E"/>';
+    // Upright hollow tubular scallion shoots
+    var shoots = '<g stroke="#4CAF50" stroke-width="2.5" stroke-linecap="round" fill="none">' +
+      '<path d="M88,80 L84,54 M90,80 L90,48 M92,80 L95,56"/>' +
+      '<path d="M98,78 L96,44 M100,78 L100,38 M102,78 L104,46"/>' +
+      '<path d="M108,80 L105,56 M110,80 L110,48 M112,80 L116,54"/>' +
+    '</g>';
+    // Swelling papery onion bulbs
+    var bulbs = (stage >= 3) ?
+      '<g stroke="#8D6E63" stroke-width="0.8">' +
+        '<circle cx="89" cy="81" r="5.5" fill="#FFE082"/>' +
+        '<circle cx="100" cy="79" r="6.5" fill="#FFF8E1"/>' +
+        '<circle cx="111" cy="81" r="5.5" fill="#FFE082"/>' +
+        '<line x1="89" y1="78" x2="89" y2="84" stroke="#D7CCC8" stroke-width="0.8"/>' +
+        '<line x1="100" y1="75" x2="100" y2="83" stroke="#D7CCC8" stroke-width="0.8"/>' +
+        '<line x1="111" y1="78" x2="111" y2="84" stroke="#D7CCC8" stroke-width="0.8"/>' +
+      '</g>' : '';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + soil + bulbs + shoots + '</g>';
+  },
+
+  teak: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<line x1="100" y1="84" x2="100" y2="16" stroke="#4E342E" stroke-width="8" stroke-linecap="round"/>' +
+        '<path d="M100,56 L82,42 M100,42 L118,30 M100,30 L86,18" stroke="#3E2723" stroke-width="4" stroke-linecap="round"/>' +
+      '</g>';
+    }
+    // High-value thick timber trunk with deep grain
+    var trunk = '<rect x="94" y="44" width="12" height="40" rx="3" fill="#4E342E"/>' +
+      '<line x1="97" y1="46" x2="97" y2="82" stroke="#3E2723" stroke-width="1.2"/>' +
+      '<line x1="103" y1="46" x2="103" y2="82" stroke="#3E2723" stroke-width="1.2"/>';
+    // Massive broad tropical crown
+    var canopy = '<g fill="#33691E">' +
+      '<ellipse cx="100" cy="38" rx="36" ry="26"/>' +
+      '<ellipse cx="74" cy="44" rx="22" ry="18" fill="#2E5016"/>' +
+      '<ellipse cx="126" cy="44" rx="22" ry="18" fill="#2E5016"/>' +
+      '<ellipse cx="84" cy="28" rx="20" ry="16" fill="#558B2F"/>' +
+      '<ellipse cx="116" cy="28" rx="20" ry="16" fill="#558B2F"/>' +
+      '<ellipse cx="100" cy="20" rx="24" ry="18" fill="#689F38"/>' +
+    '</g>';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + canopy + '</g>';
+  },
+
+  cedar: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<line x1="100" y1="84" x2="100" y2="16" stroke="#5D4037" stroke-width="7" stroke-linecap="round"/>' +
+        '<line x1="72" y1="62" x2="128" y2="62" stroke="#6D4C41" stroke-width="3.5" stroke-linecap="round"/>' +
+        '<line x1="78" y1="46" x2="122" y2="46" stroke="#6D4C41" stroke-width="3" stroke-linecap="round"/>' +
+        '<line x1="84" y1="30" x2="116" y2="30" stroke="#6D4C41" stroke-width="2.5" stroke-linecap="round"/>' +
+      '</g>';
+    }
+    // Cinnamon-red fluted cedar trunk
+    var trunk = '<polygon points="93,84 96,44 104,44 107,84" fill="#5D4037"/>' +
+      '<line x1="97" y1="48" x2="96" y2="82" stroke="#3E2723" stroke-width="1.2"/>' +
+      '<line x1="103" y1="48" x2="104" y2="82" stroke="#3E2723" stroke-width="1.2"/>';
+    // Distinctive stately tiered horizontal tabulate branch pads
+    var foliage = '<g>' +
+      // Bottom Tier Pad
+      '<ellipse cx="78" cy="62" rx="22" ry="7" fill="#1B5E20"/>' +
+      '<ellipse cx="122" cy="62" rx="22" ry="7" fill="#1B5E20"/>' +
+      '<ellipse cx="100" cy="60" rx="30" ry="8" fill="#2E4A34"/>' +
+      // Mid Tier Pad
+      '<ellipse cx="82" cy="46" rx="18" ry="6" fill="#1B5E20"/>' +
+      '<ellipse cx="118" cy="46" rx="18" ry="6" fill="#1B5E20"/>' +
+      '<ellipse cx="100" cy="44" rx="24" ry="7" fill="#2E4A34"/>' +
+      // Top Tier Pad
+      '<ellipse cx="88" cy="30" rx="14" ry="5" fill="#2F5D3A"/>' +
+      '<ellipse cx="112" cy="30" rx="14" ry="5" fill="#2F5D3A"/>' +
+      '<ellipse cx="100" cy="28" rx="18" ry="6" fill="#388E3C"/>' +
+      // Spire
+      '<polygon points="100,14 96,24 104,24" fill="#3E6B48"/>' +
+    '</g>';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + foliage + '</g>';
+  },
+
+  eucalyptus: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<line x1="100" y1="84" x2="100" y2="14" stroke="#B0BEC5" stroke-width="5" stroke-linecap="round"/>' +
+        '<path d="M100,54 Q88,46 80,56 M100,42 Q112,34 120,44 M100,30 Q90,24 84,32" stroke="#90A4AE" stroke-width="2.5" fill="none"/>' +
+      '</g>';
+    }
+    // Mottled rainbow gum trunk with peeling ribbons
+    var trunk = '<rect x="97" y="44" width="6" height="40" rx="2" fill="#D7CCC8"/>' +
+      '<path d="M97,52 L103,50 L101,62 L97,60" fill="#B0BEC5"/>' +
+      '<path d="M103,66 L97,68 L99,78 L103,76" fill="#8D6E63"/>';
+    // Weeping airy sickle-shaped blue-green canopy
+    var foliage = '<g fill="#546E7A" opacity="0.95">' +
+      '<ellipse cx="100" cy="36" rx="28" ry="22"/>' +
+      '<ellipse cx="78" cy="40" rx="16" ry="14" fill="#607D8B"/>' +
+      '<ellipse cx="122" cy="40" rx="16" ry="14" fill="#607D8B"/>' +
+      '<ellipse cx="88" cy="26" rx="15" ry="12" fill="#78909C"/>' +
+      '<ellipse cx="112" cy="26" rx="15" ry="12" fill="#78909C"/>' +
+      '<ellipse cx="100" cy="18" rx="16" ry="12" fill="#90A4AE"/>' +
+      // Drooping sickle leaf strands
+      '<path d="M80,48 Q74,60 76,66 M120,48 Q126,60 124,66 M100,50 Q100,62 102,68" stroke="#455A64" stroke-width="1.8" fill="none"/>' +
+    '</g>';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + foliage + '</g>';
+  },
+
+  cherryblossom: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<path d="M92,84 Q95,66 95,50 L84,36 M95,50 L100,42 L100,26 M100,42 L112,34 M108,84 L105,50" stroke="#3E2723" stroke-width="4.5" stroke-linecap="round" fill="none"/>' +
+      '</g>';
+    }
+    var trunk = '<path d="M93,84 Q96,66 96,50 Q96,44 100,40 Q104,44 104,50 Q104,66 107,84 Z" fill="#3E2723"/>' +
+      '<line x1="95" y1="56" x2="88" y2="44" stroke="#4E342E" stroke-width="3" stroke-linecap="round"/>' +
+      '<line x1="105" y1="56" x2="112" y2="44" stroke="#4E342E" stroke-width="3" stroke-linecap="round"/>';
+    // Billowing cloud of sakura cherry blossom petals
+    var canopy = '<g fill="#F8BBD0">' +
+      '<ellipse cx="100" cy="38" rx="34" ry="24"/>' +
+      '<ellipse cx="76" cy="42" rx="20" ry="16" fill="#F48FB1"/>' +
+      '<ellipse cx="124" cy="42" rx="20" ry="16" fill="#F48FB1"/>' +
+      '<ellipse cx="86" cy="28" rx="18" ry="15" fill="#FFCDD2"/>' +
+      '<ellipse cx="114" cy="28" rx="18" ry="15" fill="#FFCDD2"/>' +
+      '<ellipse cx="100" cy="20" rx="22" ry="16" fill="#FFEBEE"/>' +
+      // Petal cluster accents
+      '<circle cx="82" cy="40" r="3" fill="#FFFFFF"/>' +
+      '<circle cx="118" cy="40" r="3" fill="#FFFFFF"/>' +
+      '<circle cx="100" cy="30" r="3.2" fill="#FFFFFF"/>' +
+    '</g>';
+    // Falling drifting cherry blossom petals
+    var fallingPetals = '<g class="rise">' +
+      '<ellipse cx="68" cy="50" rx="2" ry="1.2" fill="#F48FB1" transform="rotate(30 68 50)"/>' +
+      '<ellipse cx="132" cy="54" rx="2" ry="1.2" fill="#F8BBD0" transform="rotate(-20 132 54)"/>' +
+      '<ellipse cx="100" cy="58" rx="2.2" ry="1.3" fill="#FFCDD2" transform="rotate(15 100 58)"/>' +
+    '</g>';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + canopy + fallingPetals + '</g>';
+  },
+
+  acacia: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<path d="M96,84 L96,52 L78,40 M96,52 L114,40 M96,48 L100,32" stroke="#4E342E" stroke-width="4.5" stroke-linecap="round" fill="none"/>' +
+      '</g>';
+    }
+    // Sinuous branching trunk
+    var trunk = '<path d="M96,84 L96,54 L80,42 M96,54 L112,42 M96,48 L100,36" stroke="#4E342E" stroke-width="4" stroke-linecap="round" fill="none"/>';
+    // Flat-topped umbrella savanna canopy
+    var canopy = '<g fill="#689F38">' +
+      '<ellipse cx="100" cy="32" rx="38" ry="11"/>' +
+      '<ellipse cx="78" cy="36" rx="24" ry="9" fill="#558B2F"/>' +
+      '<ellipse cx="122" cy="36" rx="24" ry="9" fill="#558B2F"/>' +
+      '<ellipse cx="100" cy="26" rx="30" ry="8" fill="#7CB342"/>' +
+      // Golden puffball blossom accents
+      '<circle cx="70" cy="34" r="2.2" fill="#FFD54F"/>' +
+      '<circle cx="88" cy="30" r="2.2" fill="#FFD54F"/>' +
+      '<circle cx="112" cy="30" r="2.2" fill="#FFD54F"/>' +
+      '<circle cx="130" cy="34" r="2.2" fill="#FFD54F"/>' +
+    '</g>';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + canopy + '</g>';
+  },
+
+  birch: function(stage, dead) {
+    if (dead) {
+      return '<g class="sway" style="transform-origin:100px 84px;">' +
+        '<line x1="100" y1="84" x2="100" y2="16" stroke="#CFD8DC" stroke-width="5" stroke-linecap="round"/>' +
+        '<path d="M100,56 Q88,50 82,62 M100,44 Q112,38 118,50 M100,32 Q92,26 86,38" stroke="#90A4AE" stroke-width="2.5" fill="none"/>' +
+      '</g>';
+    }
+    // Chalk-white papery trunk with horizontal charcoal lenticels
+    var trunk = '<rect x="97" y="44" width="6" height="40" rx="2" fill="#ECEFF1"/>' +
+      '<line x1="97" y1="52" x2="101" y2="52" stroke="#263238" stroke-width="1.2"/>' +
+      '<line x1="99" y1="60" x2="103" y2="60" stroke="#263238" stroke-width="1.2"/>' +
+      '<line x1="97" y1="68" x2="102" y2="68" stroke="#263238" stroke-width="1.2"/>' +
+      '<line x1="98" y1="76" x2="103" y2="76" stroke="#263238" stroke-width="1.2"/>';
+    // Delicate weeping birch boughs
+    var foliage = '<g fill="#7CB342">' +
+      '<ellipse cx="100" cy="36" rx="26" ry="22"/>' +
+      '<ellipse cx="80" cy="40" rx="16" ry="14" fill="#689F38"/>' +
+      '<ellipse cx="120" cy="40" rx="16" ry="14" fill="#689F38"/>' +
+      '<ellipse cx="88" cy="26" rx="14" ry="12" fill="#8BC34A"/>' +
+      '<ellipse cx="112" cy="26" rx="14" ry="12" fill="#8BC34A"/>' +
+      '<ellipse cx="100" cy="18" rx="16" ry="12" fill="#9CCC65"/>' +
+      // Weeping bough strands
+      '<path d="M82,46 Q76,56 78,62 M118,46 Q124,56 122,62" stroke="#558B2F" stroke-width="1.5" fill="none"/>' +
+    '</g>';
+    return '<g class="sway" style="transform-origin:100px 84px;">' + trunk + foliage + '</g>';
+  }
+};
+
+// ================= VECTOR WILD ANIMALS ARTWORK =================
+function drawRabbitSvg(facingLeft, isFleeing) {
+  var hopClass = isFleeing ? 'animal-flee-hop' : 'animal-hop';
+  return '<svg viewBox="0 0 54 44" width="46" height="38" style="overflow:visible;' + (facingLeft ? 'transform:scaleX(-1);' : '') + '">' +
+    '<g class="' + hopClass + '">' +
+      '<circle cx="8" cy="26" r="5" fill="#FFFFFF"/>' +
+      '<ellipse cx="18" cy="28" rx="10" ry="8" fill="#C5A089"/>' +
+      '<ellipse cx="14" cy="36" rx="6" ry="3.5" fill="#D7CCC8"/>' +
+      '<ellipse cx="26" cy="25" rx="14" ry="11" fill="#D7CCC8"/>' +
+      '<ellipse cx="26" cy="27" rx="11" ry="8" fill="#EFEBE9"/>' +
+      '<ellipse cx="34" cy="34" rx="4" ry="7" transform="rotate(-15 34 34)" fill="#C5A089"/>' +
+      '<ellipse cx="40" cy="18" rx="8" ry="7.5" fill="#D7CCC8"/>' +
+      '<ellipse cx="42" cy="21" rx="5" ry="4" fill="#FFFFFF"/>' +
+      '<circle cx="44" cy="19" r="1.5" fill="#F48FB1"/>' +
+      '<circle cx="39" cy="16" r="2" fill="#212121"/>' +
+      '<circle cx="38.5" cy="15.5" r="0.7" fill="#FFFFFF"/>' +
+      '<g class="ear-twitch" style="transform-origin:36px 12px;">' +
+        '<ellipse cx="34" cy="6" rx="3.5" ry="10" transform="rotate(-15 34 6)" fill="#D7CCC8"/>' +
+        '<ellipse cx="34" cy="6" rx="2" ry="7.5" transform="rotate(-15 34 6)" fill="#F8BBD0"/>' +
+        '<ellipse cx="39" cy="5" rx="3.2" ry="9.5" transform="rotate(5 39 5)" fill="#D7CCC8"/>' +
+        '<ellipse cx="39" cy="5" rx="1.8" ry="7" transform="rotate(5 39 5)" fill="#F8BBD0"/>' +
+      '</g>' +
+    '</g>' +
+  '</svg>';
+}
+
+function drawFoxSvg(facingLeft, isFleeing) {
+  var trotClass = isFleeing ? 'animal-flee-trot' : 'animal-trot';
+  return '<svg viewBox="0 0 68 44" width="58" height="38" style="overflow:visible;' + (facingLeft ? 'transform:scaleX(-1);' : '') + '">' +
+    '<g class="' + trotClass + '">' +
+      '<g class="tail-wag" style="transform-origin:14px 22px;">' +
+        '<path d="M14,22 C6,18 0,26 2,34 C4,40 12,38 18,28 Z" fill="#E65100"/>' +
+        '<path d="M2,34 C1,37 3,41 6,40 C9,39 12,36 12,33 Z" fill="#FFFFFF"/>' +
+      '</g>' +
+      '<ellipse cx="22" cy="23" rx="9" ry="8" fill="#F57C00"/>' +
+      '<path d="M18,28 L15,38 L18,39" stroke="#E65100" stroke-width="3" stroke-linecap="round" fill="none"/>' +
+      '<rect x="14" y="35" width="4" height="4" rx="1" fill="#212121"/>' +
+      '<ellipse cx="34" cy="21" rx="15" ry="9" fill="#F57C00"/>' +
+      '<path d="M26,26 Q35,28 42,20 Q35,21 26,26 Z" fill="#FFFFFF"/>' +
+      '<path d="M40,24 L42,38 L45,39" stroke="#E65100" stroke-width="3" stroke-linecap="round" fill="none"/>' +
+      '<rect x="41" y="35" width="4" height="4" rx="1" fill="#212121"/>' +
+      '<ellipse cx="48" cy="15" rx="8" ry="6.5" fill="#F57C00"/>' +
+      '<polygon points="46,16 57,17 50,21" fill="#FFFFFF"/>' +
+      '<circle cx="57" cy="17" r="1.5" fill="#212121"/>' +
+      '<ellipse cx="47" cy="13" rx="1.8" ry="2.2" fill="#212121"/>' +
+      '<circle cx="46.5" cy="12.5" r="0.7" fill="#FFFFFF"/>' +
+      '<polygon points="44,11 41,2 47,8" fill="#212121"/>' +
+      '<polygon points="43,9 42,4 46,8" fill="#FFE0B2"/>' +
+      '<polygon points="49,11 48,2 53,8" fill="#212121"/>' +
+      '<polygon points="49,9 49,4 52,8" fill="#FFE0B2"/>' +
+    '</g>' +
+  '</svg>';
+}
+
+function drawBoarSvg(facingLeft, isFleeing) {
+  var runClass = isFleeing ? 'animal-flee-trot' : 'animal-trot';
+  return '<svg viewBox="0 0 66 46" width="56" height="40" style="overflow:visible;' + (facingLeft ? 'transform:scaleX(-1);' : '') + '">' +
+    '<g class="' + runClass + '">' +
+      '<path d="M8,24 Q3,26 4,32" stroke="#3E2723" stroke-width="2" fill="none"/>' +
+      '<circle cx="4" cy="33" r="1.5" fill="#212121"/>' +
+      '<rect x="14" y="28" width="5" height="12" rx="2" fill="#3E2723"/>' +
+      '<rect x="14" y="38" width="5" height="3" fill="#212121"/>' +
+      '<rect x="36" y="28" width="5" height="12" rx="2" fill="#3E2723"/>' +
+      '<rect x="36" y="38" width="5" height="3" fill="#212121"/>' +
+      '<ellipse cx="26" cy="22" rx="18" ry="13" fill="#4E342E"/>' +
+      '<path d="M12,16 Q20,10 32,9 Q40,11 46,17" stroke="#212121" stroke-width="3" stroke-linecap="round" fill="none"/>' +
+      '<path d="M36,15 L52,19 L52,28 L40,30 Z" fill="#3E2723"/>' +
+      '<ellipse cx="52" cy="24" rx="3" ry="4" fill="#5D4037"/>' +
+      '<circle cx="53" cy="23" r="1" fill="#212121"/>' +
+      '<circle cx="42" cy="18" r="1.8" fill="#F57C00"/>' +
+      '<circle cx="42" cy="18" r="1" fill="#212121"/>' +
+      '<path d="M47,28 Q50,28 51,23" stroke="#ECEFF1" stroke-width="2" stroke-linecap="round" fill="none"/>' +
+      '<polygon points="36,15 33,9 39,12" fill="#3E2723"/>' +
+    '</g>' +
+  '</svg>';
+}
+
+function drawDeerSvg(facingLeft, isFleeing) {
+  var leapClass = isFleeing ? 'animal-flee-gallop' : 'animal-trot';
+  return '<svg viewBox="0 0 68 56" width="58" height="48" style="overflow:visible;' + (facingLeft ? 'transform:scaleX(-1);' : '') + '">' +
+    '<g class="' + leapClass + '">' +
+      '<path d="M10,24 Q6,26 8,30" stroke="#FFFFFF" stroke-width="3" fill="none"/>' +
+      '<path d="M16,28 L14,40 L12,50" stroke="#8D6E63" stroke-width="2.6" stroke-linecap="round" fill="none"/>' +
+      '<rect x="10.5" y="48" width="3" height="3" fill="#212121"/>' +
+      '<ellipse cx="26" cy="26" rx="16" ry="10" fill="#A1887F"/>' +
+      '<ellipse cx="26" cy="28" rx="12" ry="7" fill="#D7CCC8"/>' +
+      '<path d="M36,28 L38,40 L38,50" stroke="#8D6E63" stroke-width="2.6" stroke-linecap="round" fill="none"/>' +
+      '<rect x="36.5" y="48" width="3" height="3" fill="#212121"/>' +
+      '<path d="M34,24 L44,12 L48,15 L40,26 Z" fill="#8D6E63"/>' +
+      '<ellipse cx="48" cy="12" rx="7" ry="5" fill="#A1887F"/>' +
+      '<ellipse cx="53" cy="13" rx="3.5" ry="2.5" fill="#D7CCC8"/>' +
+      '<circle cx="55" cy="13" r="1.2" fill="#212121"/>' +
+      '<circle cx="47" cy="10" r="1.8" fill="#212121"/>' +
+      '<circle cx="46.5" cy="9.5" r="0.6" fill="#FFFFFF"/>' +
+      '<ellipse cx="42" cy="7" rx="2" ry="5" transform="rotate(-30 42 7)" fill="#A1887F"/>' +
+      '<g stroke="#D7CCC8" stroke-width="1.8" stroke-linecap="round" fill="none">' +
+        '<path d="M43,9 Q41,0 36,-6 M41,2 L44,-2 M38,-2 L35,-4"/>' +
+        '<path d="M46,8 Q47,-1 51,-7 M47,1 L50,-1 M49,-3 L53,-4"/>' +
+      '</g>' +
+    '</g>' +
+  '</svg>';
+}
+
+var ANIMAL_RENDERERS = {
+  rabbit: drawRabbitSvg,
+  fox: drawFoxSvg,
+  boar: drawBoarSvg,
+  deer: drawDeerSvg
+};
+
+// ================= BOTANICAL FLORA RENDERING ENGINE =================
+function drawSpeciesFlora(p, stageInfo, isDead) {
+  var type = p.treeType;
+  var stageIdx = stageInfo.idx;
+  var swayClass = isDead ? '' : 'sway';
+  var swayOrigin = 'style="transform-origin:100px 84px;"';
+
+  // Stage 0: Sown seedling bed
+  if (stageIdx === 0) {
+    return '<g transform="translate(100, 84)">' +
+      '<ellipse cx="0" cy="0" rx="14" ry="7" fill="#3E2723" opacity="0.9"/>' +
+      '<ellipse cx="0" cy="-2" rx="10" ry="5" fill="#4E342E"/>' +
+      '<circle cx="-2" cy="-2" r="3.5" fill="#6D4C41"/>' +
+      '<circle cx="2" cy="-3" r="2.8" fill="#8D6E63"/>' +
+      '<path d="M-1,-2 Q0,-7 3,-9 Q5,-7 4,-5 Z" fill="#81C784"/>' +
+    '</g>';
+  }
+
+  // Stage 1: Species-tailored young tender sprout
+  if (stageIdx === 1) {
+    var sproutGreen = isDead ? '#8D6E63' : '#66BB6A';
+    var sproutStem = isDead ? '#6D4C41' : '#4CAF50';
+    if (type === 'pine' || type === 'cedar') {
+      return '<g class="' + swayClass + '" ' + swayOrigin + '>' +
+        '<line x1="100" y1="84" x2="100" y2="68" stroke="' + sproutStem + '" stroke-width="2.8" stroke-linecap="round"/>' +
+        '<path d="M100,68 L92,58 M100,68 L96,54 M100,68 L104,54 M100,68 L108,58" stroke="' + sproutGreen + '" stroke-width="2" stroke-linecap="round"/>' +
+      '</g>';
+    }
+    if (type === 'carrot') {
+      return '<g class="' + swayClass + '" ' + swayOrigin + '>' +
+        '<line x1="100" y1="84" x2="100" y2="70" stroke="' + sproutStem + '" stroke-width="2"/>' +
+        '<path d="M100,70 Q92,62 89,58 M100,70 Q108,62 111,58 M100,70 L100,56" stroke="' + sproutGreen + '" stroke-width="1.8" fill="none"/>' +
+      '</g>';
+    }
+    if (type === 'onion') {
+      return '<g class="' + swayClass + '" ' + swayOrigin + '>' +
+        '<path d="M98,84 Q99,68 97,56 M101,84 Q102,70 105,58" stroke="' + sproutGreen + '" stroke-width="2.2" stroke-linecap="round" fill="none"/>' +
+      '</g>';
+    }
+    return '<g class="' + swayClass + '" ' + swayOrigin + '>' +
+      '<path d="M100,84 Q99,72 100,64" stroke="' + sproutStem + '" stroke-width="2.6" fill="none" stroke-linecap="round"/>' +
+      '<ellipse cx="94" cy="62" rx="6" ry="3.5" transform="rotate(-25 94 62)" fill="' + sproutGreen + '"/>' +
+      '<ellipse cx="106" cy="62" rx="6" ry="3.5" transform="rotate(25 106 62)" fill="' + sproutGreen + '"/>' +
+    '</g>';
+  }
+
+  // Stage 2: Young sapling or growing vine
+  if (stageIdx === 2) {
+    if (type === 'tomato') {
+      var tClr = isDead ? '#8D6E63' : '#388E3C';
+      return '<g class="' + swayClass + '" ' + swayOrigin + '>' +
+        '<line x1="97" y1="84" x2="97" y2="52" stroke="#8D6E63" stroke-width="2.5"/>' +
+        '<path d="M97,82 Q103,72 98,64 Q94,58 98,54" stroke="#4CAF50" stroke-width="2" fill="none"/>' +
+        '<circle cx="92" cy="70" r="6" fill="' + tClr + '"/>' +
+        '<circle cx="105" cy="65" r="7" fill="' + tClr + '"/>' +
+        '<circle cx="98" cy="55" r="5" fill="' + tClr + '"/>' +
+      '</g>';
+    }
+    if (type === 'potato') {
+      var pClr = isDead ? '#8D6E63' : '#2E7D32';
+      return '<g class="' + swayClass + '" ' + swayOrigin + '>' +
+        '<ellipse cx="100" cy="84" rx="20" ry="7" fill="#4E342E"/>' +
+        '<ellipse cx="92" cy="74" rx="9" ry="7" fill="' + pClr + '"/>' +
+        '<ellipse cx="108" cy="74" rx="9" ry="7" fill="' + pClr + '"/>' +
+        '<ellipse cx="100" cy="68" rx="10" ry="8" fill="' + pClr + '"/>' +
+      '</g>';
+    }
+    if (type === 'carrot') {
+      var cClr = isDead ? '#8D6E63' : '#43A047';
+      return '<g class="' + swayClass + '" ' + swayOrigin + '>' +
+        '<ellipse cx="100" cy="84" rx="16" ry="5" fill="#4E342E"/>' +
+        '<path d="M100,84 Q92,72 88,64 M100,84 Q108,72 112,64 M100,84 L100,60" stroke="' + cClr + '" stroke-width="2.4" fill="none"/>' +
+        '<circle cx="88" cy="64" r="3" fill="' + cClr + '"/>' +
+        '<circle cx="112" cy="64" r="3" fill="' + cClr + '"/>' +
+        '<circle cx="100" cy="60" r="3" fill="' + cClr + '"/>' +
+      '</g>';
+    }
+    if (type === 'onion') {
+      var oClr = isDead ? '#8D6E63' : '#4CAF50';
+      return '<g class="' + swayClass + '" ' + swayOrigin + '>' +
+        '<ellipse cx="100" cy="84" rx="16" ry="5" fill="#4E342E"/>' +
+        '<path d="M96,84 L94,58 M98,84 L98,54 M102,84 L103,55 M104,84 L107,60" stroke="' + oClr + '" stroke-width="2.2" stroke-linecap="round"/>' +
+      '</g>';
+    }
+    var tTrunk = isDead ? '#6D4C41' : (type === 'birch' ? '#ECEFF1' : (type === 'poplar' ? '#90A4AE' : '#7A5334'));
+    var tCanopy = isDead ? '#8D6E63' : (type === 'cherryblossom' ? '#F48FB1' : (type === 'pine' || type === 'cedar' ? '#1B5E20' : '#4CAF50'));
+    return '<g class="' + swayClass + '" ' + swayOrigin + '>' +
+      '<line x1="100" y1="84" x2="100" y2="52" stroke="' + tTrunk + '" stroke-width="4.5" stroke-linecap="round"/>' +
+      '<circle cx="100" cy="46" r="15" fill="' + tCanopy + '"/>' +
+      '<circle cx="92" cy="49" r="10" fill="' + tCanopy + '"/>' +
+      '<circle cx="108" cy="49" r="10" fill="' + tCanopy + '"/>' +
+    '</g>';
+  }
+
+  // Stages 3 & 4: Species Specific Renderers
+  var fn = SPECIES_RENDERERS[type];
+  if (fn) {
+    return fn(stageIdx, isDead);
+  }
+
+  // Fallback
+  return '<circle cx="100" cy="50" r="30" fill="#4CAF50"/>';
+}
+
 function drawCanopy(def, cx, cy, canopyR){
   var shape = def.shape, color = def.canopy;
   if (shape==='conifer'){
@@ -10728,7 +11823,51 @@ function drawCanopy(def, cx, cy, canopyR){
   }
   return '<circle cx="'+cx+'" cy="'+cy+'" r="'+canopyR+'" fill="'+color+'"/>';
 }
+
 function drawDeadTreeShape(def){
+  // Check if def has a key in SPECIES_RENDERERS
+  var matchedKey = null;
+  if (typeof TREE_TYPES !== 'undefined') {
+    for (var k in TREE_TYPES) {
+      if (TREE_TYPES[k] === def || TREE_TYPES[k].label === def.label) {
+        matchedKey = k;
+        break;
+      }
+    }
+  }
+  if (matchedKey && SPECIES_RENDERERS[matchedKey]) {
+    return SPECIES_RENDERERS[matchedKey](4, true);
+  }
+  if (def.shape==='bush'){
+    return '<ellipse cx="86" cy="86" rx="16" ry="12" fill="#A69B7A"/><ellipse cx="114" cy="86" rx="16" ry="12" fill="#A69B7A"/><ellipse cx="100" cy="78" rx="18" ry="13" fill="#A69B7A"/>';
+  }
+  var trunkH=42, canopyR=35;
+  var deadDef = Object.assign({}, def, {canopy:'#A69B7A'});
+  return '<rect x="94" y="'+(84-trunkH)+'" width="12" height="'+trunkH+'" rx="4" fill="#6E5B45"/>'+drawCanopy(deadDef, 100, 84-trunkH-canopyR*0.5, canopyR);
+}
+
+function drawCanopy(def, cx, cy, canopyR){
+  var shape = def.shape, color = def.canopy;
+  if (shape==='conifer'){
+    return '<g fill="'+color+'">'+
+      '<polygon points="'+cx+','+(cy-canopyR*1.5)+' '+(cx-canopyR*0.8)+','+(cy-canopyR*0.5)+' '+(cx+canopyR*0.8)+','+(cy-canopyR*0.5)+'"/>'+
+      '<polygon points="'+cx+','+(cy-canopyR*1.0)+' '+(cx-canopyR*0.95)+','+(cy+canopyR*0.15)+' '+(cx+canopyR*0.95)+','+(cy+canopyR*0.15)+'"/>'+
+      '<polygon points="'+cx+','+(cy-canopyR*0.5)+' '+(cx-canopyR*1.05)+','+cy+' '+(cx+canopyR*1.05)+','+cy+'"/>'+
+    '</g>';
+  }
+  if (shape==='umbrella'){
+    return '<g fill="'+color+'">'+
+      '<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(canopyR*1.35)+'" ry="'+(canopyR*0.42)+'"/>'+
+      '<ellipse cx="'+cx+'" cy="'+(cy-canopyR*0.28)+'" rx="'+(canopyR*1.1)+'" ry="'+(canopyR*0.32)+'"/>'+
+    '</g>';
+  }
+  if (shape==='tallRound'){
+    return '<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(canopyR*0.72)+'" ry="'+(canopyR*1.2)+'" fill="'+color+'"/>';
+  }
+  return '<circle cx="'+cx+'" cy="'+cy+'" r="'+canopyR+'" fill="'+color+'"/>';
+}
+// legacy
+function _legacyDead(def){
   if (def.shape==='bush'){
     return '<ellipse cx="86" cy="86" rx="16" ry="12" fill="#A69B7A"/><ellipse cx="114" cy="86" rx="16" ry="12" fill="#A69B7A"/><ellipse cx="100" cy="78" rx="18" ry="13" fill="#A69B7A"/>';
   }
@@ -10830,29 +11969,21 @@ function plotSvg(p){
   } else if (p.status==='growing'){
     var def = TREE_TYPES[p.treeType]; var idx = stageInfo.idx;
     var dead = p.health<=0;
-    if (idx===0){ content = '<circle cx="100" cy="82" r="6" fill="#4A3320"/>'; }
-    else if (idx===1){ content = '<g class="'+(dead?'':'sway')+'"><rect x="97" y="60" width="6" height="26" fill="'+(dead?'#7A6A4E':'#588A46')+'"/><circle cx="100" cy="58" r="9" fill="'+(dead?'#A69B7A':'#79B25F')+'"/></g>'; }
-    else if (def.shape==='bush'){
-      var dots='';
-      var dotsFromIdx = def.stages.length-1;
-      if (def.dotColor && idx>=dotsFromIdx && !dead) dots = '<circle cx="86" cy="78" r="4" fill="'+def.dotColor+'"/><circle cx="112" cy="82" r="4" fill="'+def.dotColor+'"/><circle cx="100" cy="70" r="4" fill="'+def.dotColor+'"/>';
-      var bc = dead ? '#A69B7A' : def.canopy;
-      content = '<g class="'+(dead?'':'sway')+'" style="transform-origin:100px 86px;">'+
-        '<ellipse cx="86" cy="86" rx="16" ry="12" fill="'+bc+'"/><ellipse cx="114" cy="86" rx="16" ry="12" fill="'+bc+'"/><ellipse cx="100" cy="78" rx="18" ry="13" fill="'+bc+'"/>'+
-        dots + '</g>';
-    } else {
-      var trunkH = 42; var canopyR = 26 + Math.min(idx,3)*3;
-      var dots2=''; var dotsFromIdx2 = def.stages.length-2;
-      if (def.dotColor && idx>=dotsFromIdx2 && !dead) dots2 = '<circle cx="86" cy="42" r="4" fill="'+def.dotColor+'"/><circle cx="114" cy="38" r="4" fill="'+def.dotColor+'"/><circle cx="100" cy="26" r="4" fill="'+def.dotColor+'"/>';
-      var barkMarks = def.barkMarks ? '<line x1="97" y1="55" x2="103" y2="52" stroke="#8A8578" stroke-width="1.5"/><line x1="96" y1="68" x2="102" y2="66" stroke="#8A8578" stroke-width="1.5"/>' : '';
-      var defDrawn = dead ? Object.assign({}, def, {canopy:'#A69B7A'}) : def;
-      content = '<g class="'+(dead?'':'sway')+'" style="transform-origin:100px 84px;">'+
-        '<rect x="94" y="'+(84-trunkH)+'" width="12" height="'+trunkH+'" rx="4" fill="'+(def.trunk||'#7A5334')+'"/>'+ barkMarks +
-        drawCanopy(defDrawn, 100, 84-trunkH-canopyR*0.5, canopyR) + dots2 + '</g>';
-      if (def.o2AtStage[idx]>0 && !dead){
-        content += '<g class="rise"><circle cx="72" cy="40" r="3.5" fill="#F0AC3D" opacity="0.8"/></g>'+
-                   '<g class="rise2"><circle cx="128" cy="46" r="2.8" fill="#F0AC3D" opacity="0.7"/></g>';
-      }
+    content = drawSpeciesFlora(p, stageInfo, dead);
+
+    if (def.o2AtStage[idx]>0 && !dead){
+      content += '<g class="rise"><circle cx="72" cy="40" r="3.5" fill="#F0AC3D" opacity="0.8"/></g>'+
+                 '<g class="rise2"><circle cx="128" cy="46" r="2.8" fill="#F0AC3D" opacity="0.7"/></g>';
+    }
+    // Ripe Harvest Produce Basket indicator when crops/fruits are ready
+    if (p.pendingHarvest > 0.5 && !p.harvesting && !dead) {
+      content += '<g transform="translate(142, 68)" class="critter-bounce" style="cursor:pointer;" onclick="harvestCrop(' + p.id + ')">' +
+        '<ellipse cx="0" cy="0" rx="14" ry="10" fill="#8D6E63" stroke="#5D4037" stroke-width="1.2"/>' +
+        '<ellipse cx="0" cy="-3" rx="12" ry="7" fill="#BCAAA4"/>' +
+        '<text x="0" y="0" font-size="13" text-anchor="middle">' + (def ? def.icon : '🧺') + '</text>' +
+        '<circle cx="10" cy="-8" r="4.5" fill="#F0AC3D"/>' +
+        '<text x="10" y="-6" font-size="7" font-weight="900" text-anchor="middle" fill="#2E7D32">✓</text>' +
+      '</g>';
     }
     if (dead && idx>1){ content += '<text x="150" y="35" font-size="16">💤</text>'; }
 
@@ -10903,9 +12034,8 @@ function plotSvg(p){
     '</g>';
   }
   if (p.animal){
-    var an = ANIMALS.find(function(x){return x.key===p.animal.key;});
-    content += '<g class="critter-bounce" transform="translate(40,50)"><text x="0" y="0" font-size="26">'+an.emoji+'</text></g>';
-    content += '<g class="pulse" transform="translate(40,24)"><circle r="9" fill="#E8785A"/><text x="0" y="4" font-size="11" text-anchor="middle" fill="white" font-weight="800">!</text></g>';
+    // Subtle ground footprint alert marker while free-roaming animal explores the farm
+    content += '<g class="pulse" transform="translate(36,24)"><circle r="9" fill="#E8785A"/><text x="0" y="4" font-size="11" text-anchor="middle" fill="white" font-weight="800">!</text></g>';
   }
 
   var progressPct=0;
@@ -13481,6 +14611,10 @@ window.PLOT_LAYOUT = PLOT_LAYOUT;
 window.CREW_SHED_SPOT = CREW_SHED_SPOT;
 window.GARAGE_SPOT = GARAGE_SPOT;
 window.ACCESSORIES = ACCESSORIES;
+window.TREE_TYPES = TREE_TYPES;
+window.SPECIES_RENDERERS = SPECIES_RENDERERS;
+window.ANIMAL_RENDERERS = ANIMAL_RENDERERS;
+window.scareAnimal = scareAnimal;
 window.BUILDING_TYPES = BUILDING_TYPES;
 window.ROAD_SEGMENTS = ROAD_SEGMENTS;
 window.MARKETPLACE_CATALOG = MARKETPLACE_CATALOG;
@@ -13805,6 +14939,7 @@ function render(){
 
   replacePreservingScroll('modalLayer', '.modal-body-scroll', modalHtml());
   wireEvents();
+  syncWildAnimals();
 }
 
 function wireEvents(){
