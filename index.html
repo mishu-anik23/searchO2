@@ -1488,8 +1488,10 @@
   }
   .human-walker-sprite {
     position: absolute;
-    width: 38px;
-    height: 60px;
+    width: 36px;
+    height: 80px;
+    margin-left: -18px;
+    margin-top: -72px;
     z-index: 34;
     filter: drop-shadow(0 4px 8px rgba(0,0,0,0.32));
     display: flex;
@@ -1497,6 +1499,70 @@
     justify-content: center;
     transform-origin: center bottom;
     pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+  .human-walker-bobbing {
+    animation: humanWalkBob 0.38s ease-in-out infinite alternate;
+  }
+  @keyframes humanWalkBob {
+    0% { transform: translateY(0px); }
+    100% { transform: translateY(-3px); }
+  }
+  .visitor-balloon-sway {
+    animation: balloonSway 2.2s ease-in-out infinite alternate;
+    transform-origin: bottom center;
+  }
+  @keyframes balloonSway {
+    0% { transform: rotate(-5deg); }
+    100% { transform: rotate(6deg); }
+  }
+  .visitor-thought-bubble {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    margin-top: -12px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #1B5E20;
+    border: 1.5px solid #81C784;
+    border-radius: 12px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.22);
+    pointer-events: none;
+    z-index: 45;
+    animation: bubblePopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .visitor-thought-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px 6px 0;
+    border-style: solid;
+    border-color: rgba(255, 255, 255, 0.96) transparent;
+    display: block;
+    width: 0;
+  }
+  @keyframes bubblePopIn {
+    0% { opacity: 0; transform: translate(-50%, -75%) scale(0.6); }
+    100% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+  }
+  .logistics-truck-sprite {
+    position: absolute;
+    width: 84px;
+    height: 42px;
+    margin-left: -42px;
+    margin-top: -21px;
+    z-index: 32;
+    transform-origin: 50% 50%;
+    pointer-events: none;
+    filter: drop-shadow(0 6px 12px rgba(0,0,0,0.36));
   }
 
   /* ================= DEV REGION PREVIEW BUTTON (PC ONLY) ================= */
@@ -4630,24 +4696,90 @@ function toggleDevRegionPreview(){
 
 // ================= VISITOR SYSTEM =================
 var VISITOR_DEST_COORDS = {
-  pond:        { x: 38.0, y: 34.0 },
-  garden:      { x: 38.0, y: 66.0 },
-  coffee_shop: { x: 67.0, y: 34.0 },
-  juice_bar:   { x: 67.0, y: 66.0 }
+  pond:          { x: 38.0, y: 34.0 },
+  garden:        { x: 38.0, y: 66.0 },
+  coffee_shop:   { x: 67.0, y: 34.0 },
+  juice_bar:     { x: 67.0, y: 66.0 },
+  storage:       { x: 52.5, y: 18.0 },
+  east_overlook: { x: 96.0, y: 47.0 },
+  0:             { x: 24.0, y: 31.4 },
+  1:             { x: 52.0, y: 41.4 },
+  2:             { x: 80.5, y: 31.4 },
+  3:             { x: 24.0, y: 65.4 },
+  4:             { x: 52.5, y: 66.0 },
+  5:             { x: 80.5, y: 65.4 }
 };
-var VISITOR_MAX_CONCURRENT = 2;
-var VISITOR_MIN_REPUTATION = 20;
-var VISITOR_SPAWN_RATE = 0.08;
-var VISITOR_VISIT_DURATION_MS = 3000;
+var VISITOR_MAX_CONCURRENT = 5;
+var VISITOR_MIN_REPUTATION = 10;
+var VISITOR_SPAWN_RATE = 0.16;
+var VISITOR_VISIT_DURATION_MS = 4500;
 var VISITOR_SPEND = { coffee_shop:[8,18], juice_bar:[6,14] };
 var activeVisitorCount = 0;
 
 function visitorEligibleDestinations(){
   var list = [];
-  if (state.buildings.pond.built && state.buildings.pond.specialization) list.push({key:'pond', shop:false});
-  if (state.buildings.garden.built && state.buildings.garden.flowerType) list.push({key:'garden', shop:false});
-  if (state.buildings.coffee_shop.built) list.push({key:'coffee_shop', shop:true});
-  if (state.buildings.juice_bar.built) list.push({key:'juice_bar', shop:true});
+
+  // 1. Top Plots (Plots 0, 1, 2) and Bottom Plots (Plots 3, 4, 5)
+  if (state.plots && state.plots.length){
+    state.plots.forEach(function(p){
+      if (p.treeType && p.status !== 'dead'){
+        var def = typeof TREE_TYPES !== 'undefined' ? TREE_TYPES[p.treeType] : null;
+        var treeName = def ? def.label : 'Planted Tree';
+        list.push({
+          key: p.id,
+          type: 'plot',
+          plotId: p.id,
+          label: 'Plot ' + (p.id + 1) + ' (' + treeName + ')',
+          treeType: p.treeType,
+          treeName: treeName,
+          shop: false
+        });
+      } else {
+        list.push({
+          key: p.id,
+          type: 'plot',
+          plotId: p.id,
+          label: 'Plot ' + (p.id + 1) + ' Meadow',
+          shop: false
+        });
+      }
+    });
+  }
+
+  // 2. East Scenic Overlook & Mountain Promenade (Eastern end of Main Road)
+  list.push({
+    key: 'east_overlook',
+    type: 'scenic',
+    label: 'East Scenic Promenade & Mountain Overlook',
+    shop: false
+  });
+
+  // 3. Storage Barn (Agricultural eco-produce display)
+  if (state.storage && state.storage.built){
+    list.push({
+      key: 'storage',
+      type: 'storage',
+      label: 'Storage Barn & Farm Storehouse',
+      shop: false
+    });
+  }
+
+  // 4. Village Amenities (Coffee Shop, Juice Bar, Pond, Garden)
+  if (state.buildings){
+    if (state.buildings.coffee_shop && state.buildings.coffee_shop.built){
+      list.push({key:'coffee_shop', type:'shop', label:'Organic Coffee Shop', shop:true});
+    }
+    if (state.buildings.juice_bar && state.buildings.juice_bar.built){
+      list.push({key:'juice_bar', type:'shop', label:'Fresh Juice Bar', shop:true});
+    }
+    if (state.buildings.pond && state.buildings.pond.built){
+      list.push({key:'pond', type:'amenity', label:'Tranquil Koi Pond', shop:false});
+    }
+    if (state.buildings.garden && state.buildings.garden.built){
+      list.push({key:'garden', type:'amenity', label:'Botanical Flower Garden', shop:false});
+    }
+  }
+
   return list;
 }
 function computeVisitorRating(key, fastTravel){
@@ -4842,6 +4974,8 @@ function drawVisitorCharacterSvg(arch, isWalking){
 
 function spawnVisitor(dest){
   var scene = document.querySelector('.field-scene'); if (!scene) return;
+  var maxConcurrent = Math.min(6, 3 + Math.floor(farmReputation() / 20));
+  if (activeVisitorCount >= maxConcurrent) return;
   activeVisitorCount++;
 
   var walkerLayer = document.getElementById('logisticsTruckLayer');
@@ -4852,69 +4986,169 @@ function spawnVisitor(dest){
     walkerLayer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:34;';
     scene.appendChild(walkerLayer);
   }
+
+  var arch = VISITOR_ARCHETYPES[Math.floor(Math.random() * VISITOR_ARCHETYPES.length)];
   var el = document.createElement('div');
   el.className = 'human-walker-sprite';
-  var arch = VISITOR_ARCHETYPES[Math.floor(Math.random() * VISITOR_ARCHETYPES.length)];
-  el.innerHTML = '<svg viewBox="-20 -60 40 102" width="36" height="88" style="overflow:visible;">' +
+  
+  // PRE-POSITION COORDINATES BEFORE INSERTION INTO DOM — ELIMINATES PLOT 0 POPPING COMPLETELY!
+  el.style.left = '-8%';
+  el.style.top = '47%';
+  el.style.opacity = '0';
+  
+  var balloonClass = (arch.tool === 'balloon') ? ' visitor-balloon-sway' : '';
+  el.innerHTML = '<svg class="' + balloonClass + '" viewBox="-20 -60 40 102" width="36" height="88" style="overflow:visible;">' +
     drawVisitorCharacterSvg(arch, true) +
   '</svg>';
   walkerLayer.appendChild(el);
 
-  var fastTravel = (dest.key==='pond' || dest.key==='garden')
-    ? !!(state.roads && state.roads.garden_walk && state.roads.garden_walk.built)
-    : !!(state.roads && state.roads.market_promenade && state.roads.market_promenade.built);
-
-  var inRoute = getRoadNetworkWaypoints('main_gate', dest.key);
-  var inDist = 0;
-  for (var i=1;i<inRoute.length;i++){ inDist += Math.hypot(inRoute[i].x-inRoute[i-1].x, inRoute[i].y-inRoute[i-1].y); }
-  var travelTime = Math.max(1800, Math.min(3600, Math.round(inDist * 42)));
-
-  animateAlongWaypoints(el, inRoute, travelTime, function(){
-    setTimeout(function(){
-      var rating = computeVisitorRating(dest.key, fastTravel);
-      var spend = 0;
-      if (dest.shop){
-        var range = VISITOR_SPEND[dest.key] || [6, 14];
-        var magnetMult = visitorMagnetActive() ? 1.2 : 1.0;
-        spend = Math.round((range[0] + Math.random()*(range[1]-range[0])) * magnetMult * 100)/100;
-        state.money += spend;
-        if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
-      }
-      if (!state.visitorStats) state.visitorStats = { totalVisitors:0, totalIncome:0, ratingSum:0, ratingCount:0 };
-      state.visitorStats.totalVisitors += 1;
-      state.visitorStats.totalIncome += spend;
-      state.visitorStats.ratingSum += rating;
-      state.visitorStats.ratingCount += 1;
-      if (!state.visitorStats.demographics) state.visitorStats.demographics = {};
-      state.visitorStats.demographics[arch.gender] = (state.visitorStats.demographics[arch.gender] || 0) + 1;
-      state.visitorStats.demographics[arch.age] = (state.visitorStats.demographics[arch.age] || 0) + 1;
-
-      var coords = VISITOR_DEST_COORDS[dest.key] || { x: 50, y: 50 };
-      var badge = document.createElement('div');
-      badge.className = 'logistics-coin-burst';
-      badge.style.left = coords.x + '%';
-      badge.style.top = coords.y + '%';
-      badge.innerHTML = (spend>0 ? ('🪙 +€'+spend.toFixed(2)+' ') : '') + '⭐'.repeat(rating);
-      scene.appendChild(badge);
-      setTimeout(function(){ if (badge.parentNode) badge.parentNode.removeChild(badge); }, 2500);
-
-      pushReport(arch.emoji + ' ' + arch.label + ' ' + (spend>0
-        ? ('spent €'+spend.toFixed(2)+' at '+BUILDING_TYPES[dest.key].label)
-        : ('admired the '+BUILDING_TYPES[dest.key].label)) + ' — rated ' + rating + '★' + (fastTravel?' (walkway bonus)':''));
-      checkAchievements();
-      render();
-      requestSave();
-
-      var outRoute = getRoadNetworkWaypoints(dest.key, 'main_gate');
-      animateAlongWaypoints(el, outRoute, travelTime, function(){
-        if (el.parentNode) el.parentNode.removeChild(el);
-        activeVisitorCount = Math.max(0, activeVisitorCount-1);
-      });
-    }, VISITOR_VISIT_DURATION_MS);
+  // Smooth fade-in as visitor walks in through the farm boundary
+  requestAnimationFrame(function(){
+    el.style.opacity = '1';
   });
+
+  // Multi-stop tour itinerary:
+  // Stop 1: Selected destination (Top plot 0/1/2, bottom plot 3/4/5, east overlook, etc.)
+  // Stop 2: Optional secondary amenity stop (shop or garden if available, ~55% probability)
+  var allDests = visitorEligibleDestinations();
+  var stop2 = null;
+  if (Math.random() < 0.55 && allDests.length > 1){
+    var candidates = allDests.filter(function(d){ return d.key !== dest.key; });
+    if (candidates.length > 0){
+      // Prefer shops or gardens for stop 2 if primary stop was a plot/overlook
+      var shopOrGarden = candidates.filter(function(d){ return d.shop || d.key === 'garden' || d.key === 'pond'; });
+      if (shopOrGarden.length > 0) stop2 = shopOrGarden[Math.floor(Math.random() * shopOrGarden.length)];
+      else stop2 = candidates[Math.floor(Math.random() * candidates.length)];
+    }
+  }
+
+  // Leg 1: Outside Countryside (x:-8, y:47) -> Main Gate (x:1, y:47) -> Stop 1 along Manhattan Grid
+  var inRoute = [{ x: -8.0, y: 47.0 }].concat(getRoadNetworkWaypoints('main_gate', dest.key));
+  var inDist = 0;
+  for (var i = 1; i < inRoute.length; i++){
+    inDist += Math.hypot(inRoute[i].x - inRoute[i-1].x, inRoute[i].y - inRoute[i-1].y);
+  }
+  // Realistic leisurely walking pace: ~6% farm distance per second
+  var travelTime1 = Math.max(3800, Math.round(inDist * 165));
+
+  function showThoughtBubble(targetKey, text, icon){
+    var coords = VISITOR_DEST_COORDS[targetKey] || { x: 50, y: 47 };
+    var bubble = document.createElement('div');
+    bubble.className = 'visitor-thought-bubble';
+    bubble.style.left = coords.x + '%';
+    bubble.style.top = coords.y + '%';
+    bubble.innerHTML = '<span style="font-size:14px;">' + (icon || '💭') + '</span><span>' + text + '</span>';
+    scene.appendChild(bubble);
+    setTimeout(function(){
+      if (bubble.parentNode) bubble.parentNode.removeChild(bubble);
+    }, 3200);
+  }
+
+  function generateDwellReaction(destObj){
+    if (typeof destObj.plotId === 'number'){
+      var p = state.plots ? state.plots[destObj.plotId] : null;
+      if (p && p.treeType && p.status !== 'dead'){
+        var def = typeof TREE_TYPES !== 'undefined' ? TREE_TYPES[p.treeType] : null;
+        var tName = def ? def.label : 'Tree';
+        var remarks = [
+          'Admiring the lovely ' + tName + '!',
+          'Magnificent shade from Plot ' + (p.id + 1) + '!',
+          'Incredible fresh oxygen!',
+          'Taking a high-res photo 📸'
+        ];
+        return { text: remarks[Math.floor(Math.random() * remarks.length)], icon: '🌳', repBonus: 1 };
+      }
+      return { text: 'Enjoying the open meadow breeze!', icon: '🍃', repBonus: 1 };
+    }
+    if (destObj.key === 'east_overlook'){
+      var overlookQuotes = [
+        'Panoramic mountain vistas!',
+        'Breath-taking forest sunrise!',
+        'Scenic farm photography 📷',
+        'Pure alpine mountain air!'
+      ];
+      return { text: overlookQuotes[Math.floor(Math.random() * overlookQuotes.length)], icon: '🌄', repBonus: 1 };
+    }
+    if (destObj.key === 'storage'){
+      return { text: 'Touring sustainable crop storehouse!', icon: '📦', repBonus: 1 };
+    }
+    if (destObj.key === 'garden'){
+      return { text: 'Inhaling sweet botanical aromas!', icon: '🌸', repBonus: 1 };
+    }
+    if (destObj.key === 'pond'){
+      return { text: 'Watching peaceful ripples on the koi pond!', icon: '🪷', repBonus: 1 };
+    }
+    return { text: 'Touring SearchO2 ecological reserve!', icon: '🚶', repBonus: 1 };
+  }
+
+  // Begin walking along Leg 1
+  animateAlongWaypoints(el, inRoute, travelTime1, function(){
+    // Dwell at Stop 1
+    var reaction = generateDwellReaction(dest);
+    showThoughtBubble(dest.key, reaction.text, reaction.icon);
+    pushReport(arch.emoji + ' ' + arch.label + ' visited ' + (dest.label || dest.key) + ': "' + reaction.text + '"');
+    
+    // Spend if Stop 1 is a shop
+    if (dest.shop){
+      var range = VISITOR_SPEND[dest.key] || [8, 18];
+      var magnetMult = typeof visitorMagnetActive === 'function' && visitorMagnetActive() ? 1.2 : 1.0;
+      var spend = Math.round((range[0] + Math.random() * (range[1] - range[0])) * magnetMult * 100) / 100;
+      state.money += spend;
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
+      pushReport('🪙 ' + arch.label + ' purchased organic refreshments (€' + spend.toFixed(2) + ').');
+    }
+
+    var dwellTime1 = 3800 + Math.floor(Math.random() * 1800);
+    setTimeout(function(){
+      if (stop2){
+        // Walk from Stop 1 to Stop 2 along Manhattan Grid
+        var midRoute = getRoadNetworkWaypoints(dest.key, stop2.key);
+        var midDist = 0;
+        for (var m = 1; m < midRoute.length; m++){
+          midDist += Math.hypot(midRoute[m].x - midRoute[m-1].x, midRoute[m].y - midRoute[m-1].y);
+        }
+        var travelTime2 = Math.max(3400, Math.round(midDist * 165));
+        
+        animateAlongWaypoints(el, midRoute, travelTime2, function(){
+          // Dwell at Stop 2
+          var reaction2 = generateDwellReaction(stop2);
+          showThoughtBubble(stop2.key, reaction2.text, reaction2.icon);
+          if (stop2.shop){
+            var range2 = VISITOR_SPEND[stop2.key] || [8, 18];
+            var spend2 = Math.round((range2[0] + Math.random() * (range2[1] - range2[0])) * 100) / 100;
+            state.money += spend2;
+            if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
+            pushReport('🪙 ' + arch.label + ' bought artisan goods (€' + spend2.toFixed(2) + ') at ' + stop2.label + '.');
+          }
+          var dwellTime2 = 3600 + Math.floor(Math.random() * 1500);
+          setTimeout(function(){
+            departFarm(stop2.key);
+          }, dwellTime2);
+        });
+      } else {
+        departFarm(dest.key);
+      }
+    }, dwellTime1);
+  });
+
+  function departFarm(fromKey){
+    // Depart through Grand Main Gate into the Countryside (x:-8, y:47)
+    var outRoute = getRoadNetworkWaypoints(fromKey, 'main_gate').concat([{ x: -8.0, y: 47.0 }]);
+    var outDist = 0;
+    for (var o = 1; o < outRoute.length; o++){
+      outDist += Math.hypot(outRoute[o].x - outRoute[o-1].x, outRoute[o].y - outRoute[o-1].y);
+    }
+    var travelTimeOut = Math.max(3800, Math.round(outDist * 165));
+
+    animateAlongWaypoints(el, outRoute, travelTimeOut, function(){
+      el.style.opacity = '0';
+      setTimeout(function(){
+        if (el.parentNode) el.parentNode.removeChild(el);
+        activeVisitorCount = Math.max(0, activeVisitorCount - 1);
+      }, 400);
+    });
+  }
 }
-
-
 
 // ================= TIMED POP QUIZ SYSTEM (10 QUESTIONS) =================
 var QUIZ_INTERVAL_HOURS = 28;
@@ -10437,8 +10671,9 @@ function advanceGame(dh){
   }
 
   // Physical Visitor Spawning along Manhattan Road Network
-  if (farmReputation() >= (typeof VISITOR_MIN_REPUTATION !== 'undefined' ? VISITOR_MIN_REPUTATION : 20) && activeVisitorCount < (typeof VISITOR_MAX_CONCURRENT !== 'undefined' ? VISITOR_MAX_CONCURRENT : 2)){
-    if (Math.random() < (typeof VISITOR_SPAWN_RATE !== 'undefined' ? VISITOR_SPAWN_RATE : 0.08)){
+  var curMaxVisitors = Math.min(6, 3 + Math.floor(farmReputation() / 20));
+  if (farmReputation() >= (typeof VISITOR_MIN_REPUTATION !== 'undefined' ? VISITOR_MIN_REPUTATION : 10) && activeVisitorCount < curMaxVisitors){
+    if (Math.random() < (typeof VISITOR_SPAWN_RATE !== 'undefined' ? VISITOR_SPAWN_RATE : 0.18)){
       var dests = visitorEligibleDestinations();
       if (dests.length > 0){
         var chosenDest = dests[Math.floor(Math.random() * dests.length)];
@@ -11461,12 +11696,12 @@ function animateTransportLogistics(vehicleType, totalRevenue, itemCount, laborer
   }
   truckLayer.innerHTML = '';
 
-  var vehicleSvg = vehicleType === 'timber' ? drawTimberTruckSvg() : (vehicleType === 'produce' ? drawFoodContainerTruckSvg() : drawMixedHaulerSvg());
-  var vehicleName = vehicleType === 'timber' ? 'Timber Logging Truck' : (vehicleType === 'produce' ? 'Refrigerated Food Container Van' : 'Farm Hauler');
+  var vehicleSvg = vehicleType === 'timber' ? drawTimberTruckSvg() : (vehicleType === 'produce' ? drawFoodContainerTruckSvg() : drawFoodContainerTruckSvg());
+  var vehicleName = vehicleType === 'timber' ? 'Timber Logging Truck' : (vehicleType === 'produce' ? 'Refrigerated Food Container Van' : 'Farm Logistics Van');
 
   var truckEl = document.createElement('div');
   truckEl.className = 'logistics-truck-sprite';
-  truckEl.style.cssText = 'position:absolute;width:78px;height:40px;margin-left:-39px;margin-top:-20px;z-index:26;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));';
+  truckEl.style.cssText = 'position:absolute;width:84px;height:42px;margin-left:-42px;margin-top:-21px;z-index:26;left:-12%;top:47%;transform-origin:50% 50%;pointer-events:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,0.36));';
   truckEl.innerHTML = vehicleSvg;
   truckLayer.appendChild(truckEl);
 
@@ -11480,9 +11715,12 @@ function animateTransportLogistics(vehicleType, totalRevenue, itemCount, laborer
   pushReport('🚛 ' + vehicleName + ' arrived through Farm Main Gate and navigating along Manhattan road grid to Storage loading apron.');
 
   // Manhattan Grid: Main Gate -> Main Road -> Avenue 2 Subway -> 50px cross-lane to Storage Apron
-  var inRoute = [{ x: -12, y: 47.0 }].concat(getRoadNetworkWaypoints('main_gate', 'storage'));
+  var inRoute = [{ x: -12.0, y: 47.0 }].concat(getRoadNetworkWaypoints('main_gate', 'storage'));
+  var sellDistIn = 0;
+  for (var si = 1; si < inRoute.length; si++){ sellDistIn += Math.hypot(inRoute[si].x - inRoute[si-1].x, inRoute[si].y - inRoute[si-1].y); }
+  var sellDurationIn = Math.max(3800, Math.round(sellDistIn * 70));
 
-  animateAlongWaypoints(truckEl, inRoute, 2500, function(){
+  animateAlongWaypoints(truckEl, inRoute, sellDurationIn, function(){
     // Step 2: Loading crates at Storage loading apron (x: 52.5%, y: 18%)
     laborerEl.style.opacity = '1';
     laborerEl.style.left = '49.5%';
@@ -11513,7 +11751,10 @@ function animateTransportLogistics(vehicleType, totalRevenue, itemCount, laborer
 
     var outRoute = getRoadNetworkWaypoints('storage', 'main_gate').concat([{ x: -16.0, y: 47.0 }]);
 
-    animateAlongWaypoints(truckEl, outRoute, 2800, function(){
+    var sellDistOut = 0;
+    for (var so = 1; so < outRoute.length; so++){ sellDistOut += Math.hypot(outRoute[so].x - outRoute[so-1].x, outRoute[so].y - outRoute[so-1].y); }
+    var sellDurationOut = Math.max(4000, Math.round(sellDistOut * 70));
+    animateAlongWaypoints(truckEl, outRoute, sellDurationOut, function(){
       state.money += totalRevenue;
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
       pushReport('💰 Transport delivered! Earned €' + totalRevenue.toFixed(2) + ' from farm harvest sales.');
@@ -12291,6 +12532,12 @@ function getRoadNetworkWaypoints(origin, destination){
     if (loc === 'main_gate'){
       return [{ x: 1.0, y: mainRoadY }];
     }
+    if (loc === 'countryside_west'){
+      return [{ x: -8.0, y: mainRoadY }];
+    }
+    if (loc === 'east_overlook' || loc === 'main_road_east'){
+      return [{ x: 96.0, y: mainRoadY }];
+    }
     if (loc === 'crew_shed'){
       // Crew Shed Porch (x:12.7, y:66) up Crew Trail to Main Road (x:12.7, y:47)
       return [{ x: 12.7, y: 66.0 }, { x: 12.7, y: mainRoadY }];
@@ -12410,7 +12657,7 @@ function animateAlongWaypoints(el, rawWaypoints, totalDurationMs, onComplete){
 
   var isPedestrian = el.classList.contains('human-walker-sprite');
 
-  // For vehicles: insert smooth filleted cornering points at sharp 90° intersections
+  // For vehicles: insert smooth filleted cornering waypoints at sharp 90° intersections
   var waypoints = [];
   if (isPedestrian){
     waypoints = rawWaypoints;
@@ -12422,8 +12669,8 @@ function animateAlongWaypoints(el, rawWaypoints, totalDurationMs, onComplete){
         var p2 = rawWaypoints[w + 1];
         var d1 = Math.hypot(p1.x - p0.x, p1.y - p0.y);
         var d2 = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-        // If corner turn detected, fillet corner with curved control point
-        if (d1 > 4 && d2 > 4){
+        // If corner turn detected, fillet corner with curved entry, apex, and exit
+        if (d1 > 3.5 && d2 > 3.5){
           var cut1 = Math.min(2.5, d1 * 0.25);
           var cut2 = Math.min(2.5, d2 * 0.25);
           var entry = { x: p1.x - (p1.x - p0.x) * (cut1 / d1), y: p1.y - (p1.y - p0.y) * (cut1 / d1) };
@@ -12439,7 +12686,7 @@ function animateAlongWaypoints(el, rawWaypoints, totalDurationMs, onComplete){
     }
   }
 
-  // Calculate Euclidean distance for proportional velocities
+  // Calculate Euclidean distances for proportional velocities
   var legDists = [];
   var totalDist = 0;
   for (var i = 1; i < waypoints.length; i++){
@@ -12451,46 +12698,53 @@ function animateAlongWaypoints(el, rawWaypoints, totalDurationMs, onComplete){
 
   var currentIdx = 0;
   var currentAngle = 0;
+
+  // Initialize starting position
   el.style.left = waypoints[0].x + '%';
   el.style.top = waypoints[0].y + '%';
+
+  // For vehicles, determine initial heading from first leg
+  if (!isPedestrian && waypoints.length > 1){
+    var initDx = waypoints[1].x - waypoints[0].x;
+    var initDy = waypoints[1].y - waypoints[0].y;
+    currentAngle = Math.atan2(initDy, initDx) * 180 / Math.PI;
+    el.style.transform = 'rotate(' + currentAngle + 'deg)';
+  } else if (isPedestrian){
+    el.classList.add('human-walker-bobbing');
+  }
 
   function nextStep(){
     currentIdx++;
     if (currentIdx >= waypoints.length){
+      if (isPedestrian) el.classList.remove('human-walker-bobbing');
       if (onComplete) onComplete();
       return;
     }
     var prev = waypoints[currentIdx - 1];
     var curr = waypoints[currentIdx];
     var legDist = legDists[currentIdx - 1] || 1;
-    var stepDuration = Math.max(120, Math.round(totalDurationMs * (legDist / totalDist)));
+    var stepDuration = Math.max(140, Math.round(totalDurationMs * (legDist / totalDist)));
 
     var dx = curr.x - prev.x;
     var dy = curr.y - prev.y;
 
     if (isPedestrian){
-      // Pedestrians face walking direction without tilting or snapping
-      if (dx > 0.4) el.style.transform = 'scaleX(1)';
-      else if (dx < -0.4) el.style.transform = 'scaleX(-1)';
+      // Pedestrians face walking direction horizontally without tilting or snapping
+      if (dx > 0.3) el.style.transform = 'scaleX(1)';
+      else if (dx < -0.3) el.style.transform = 'scaleX(-1)';
       el.style.transition = 'left ' + (stepDuration / 1000) + 's linear, top ' + (stepDuration / 1000) + 's linear';
     } else {
-      // Vehicles: Side-profile 2D vehicle orientation (scaleX horizontal flip so wheels stay on ground, subtle pitch for North/South road travel)
-      if (dx > 0.3){
-        currentAngle = 1; // Facing East (Right)
-      } else if (dx < -0.3){
-        currentAngle = -1; // Facing West (Left)
+      // True continuous rotational steering for vehicles — zero flipping!
+      if (Math.hypot(dx, dy) > 0.1){
+        var targetAngle = Math.atan2(dy, dx) * 180 / Math.PI;
+        var delta = targetAngle - currentAngle;
+        while (delta < -180) delta += 360;
+        while (delta > 180) delta -= 360;
+        currentAngle += delta;
       }
-      var isFacingRight = currentAngle >= 0;
-      var pitch = 0;
-      if (dy < -0.4){
-        // Driving North up the avenue
-        pitch = isFacingRight ? -12 : 12;
-      } else if (dy > 0.4){
-        // Driving South down the avenue
-        pitch = isFacingRight ? 12 : -12;
-      }
-      el.style.transform = (isFacingRight ? 'scaleX(1)' : 'scaleX(-1)') + ' rotate(' + pitch + 'deg)';
-      el.style.transition = 'left ' + (stepDuration / 1000) + 's linear, top ' + (stepDuration / 1000) + 's linear, transform ' + Math.min(0.28, stepDuration / 1000) + 's ease-in-out';
+      var turnEase = Math.min(0.36, Math.max(0.18, (stepDuration / 1000) * 0.8));
+      el.style.transform = 'rotate(' + currentAngle + 'deg)';
+      el.style.transition = 'left ' + (stepDuration / 1000) + 's linear, top ' + (stepDuration / 1000) + 's linear, transform ' + turnEase + 's cubic-bezier(0.4, 0.0, 0.2, 1)';
     }
 
     el.style.left = curr.x + '%';
@@ -12532,31 +12786,37 @@ function spawnVehicleAnimation(fromLayoutOrId){
 
   var truckEl = document.createElement('div');
   truckEl.className = 'logistics-truck-sprite';
-  truckEl.style.cssText = 'position:absolute;width:78px;height:40px;margin-left:-39px;margin-top:-20px;z-index:26;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35));';
+  truckEl.style.cssText = 'position:absolute;width:84px;height:42px;margin-left:-42px;margin-top:-21px;z-index:26;left:-12%;top:47%;transform-origin:50% 50%;pointer-events:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,0.36));';
   truckEl.innerHTML = drawTimberTruckSvg();
   truckLayer.appendChild(truckEl);
 
   pushReport('🚛 Logging flatbed truck entered through Farm Main Gate and navigated along Manhattan road grid to Plot ' + (plotId + 1) + '.');
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
 
-  // Manhattan Grid: Enter Gate -> Main Road -> Avenue Feeder Subway -> Plot
-  var inRoute = [{ x: -12, y: 47.0 }].concat(getRoadNetworkWaypoints('main_gate', plotId));
+  // Manhattan Grid: Enter Countryside (x:-12, y:47) -> Main Gate -> Main Road -> Avenue Feeder Subway -> Plot
+  var inRoute = [{ x: -12.0, y: 47.0 }].concat(getRoadNetworkWaypoints('main_gate', plotId));
+  var distIn = 0;
+  for (var di = 1; di < inRoute.length; di++){ distIn += Math.hypot(inRoute[di].x - inRoute[di-1].x, inRoute[di].y - inRoute[di-1].y); }
+  var durationIn = Math.max(3800, Math.round(distIn * 70));
 
-  animateAlongWaypoints(truckEl, inRoute, 2400, function(){
+  animateAlongWaypoints(truckEl, inRoute, durationIn, function(){
     if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
     pushReport('🪵 Timber logs loaded securely onto truck bolsters at Plot ' + (plotId + 1) + '.');
 
     setTimeout(function(){
-      // Departure via reverse Manhattan road network back through Farm Main Gate
+      // Departure via reverse Manhattan road network back through Farm Main Gate to Countryside
       var outRoute = getRoadNetworkWaypoints(plotId, 'main_gate').concat([{ x: -16.0, y: 47.0 }]);
+      var distOut = 0;
+      for (var do_ = 1; do_ < outRoute.length; do_++){ distOut += Math.hypot(outRoute[do_].x - outRoute[do_-1].x, outRoute[do_].y - outRoute[do_-1].y); }
+      var durationOut = Math.max(4000, Math.round(distOut * 70));
 
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
-      animateAlongWaypoints(truckEl, outRoute, 2800, function(){
+      animateAlongWaypoints(truckEl, outRoute, durationOut, function(){
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
         pushReport('✓ Logging truck departed through Farm Main Gate.');
         if (truckEl.parentNode) truckEl.parentNode.removeChild(truckEl);
       });
-    }, 1200);
+    }, 1400);
   });
 }
 
@@ -12751,44 +13011,48 @@ function triggerHarvestCartSequence(plotId, onComplete){
     scene.appendChild(truckLayer);
   }
 
-  // Sprite containing Tractor + Trailer OR Farmer + 2-wheel cart
+  // Pre-position sprite at East Farm Garage (x: 93.5%, y: 23%)
   var cartSprite = document.createElement('div');
-  cartSprite.style.cssText = 'position:absolute;width:' + (tractorMode ? '84px' : '72px') + ';height:46px;z-index:33;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3));display:flex;align-items:center;';
-  cartSprite.innerHTML = (tractorMode ?
-    '<span style="font-size:28px;margin-right:-6px;z-index:2;">🚜</span><div id="cartCargoBox" style="width:52px;height:34px;">' + drawHarvestCartSvg(false) + '</div>' :
-    '<span style="font-size:24px;margin-right:-8px;z-index:2;">🧑‍🌾</span><div id="cartCargoBox" style="width:48px;height:32px;">' + drawHarvestCartSvg(false) + '</div>');
+  cartSprite.className = 'logistics-truck-sprite';
+  cartSprite.style.cssText = 'position:absolute;width:84px;height:42px;margin-left:-42px;margin-top:-21px;z-index:33;left:93.5%;top:23%;pointer-events:none;transform-origin:50% 50%;filter:drop-shadow(0 6px 12px rgba(0,0,0,0.32));';
+  cartSprite.innerHTML = tractorMode ? drawHarvestTractorSvg(false) : drawHarvestHandcartSvg(false);
   truckLayer.appendChild(cartSprite);
 
-  pushReport((tractorMode ? '🚜 Farm Utility Tractor' : '🧑‍🌾 Farmer with 2-wheel cart') + ' dispatched from East Farm Garage to Plot ' + (plotId + 1) + '.');
+  pushReport((tractorMode ? '🚜 Farm Utility Tractor' : '🧑‍🌾 Farmer with orchard cart') + ' dispatched from East Farm Garage to Plot ' + (plotId + 1) + '.');
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
 
-  // Leg 1: East Farm Garage (x: 93.5, y: 23) -> Main Road (x: 93.5, y: 47) -> Junction (junctionX, 47) -> Plot (junctionX, plotY)
-  var legDuration = tractorMode ? 2200 : 3600;
+  // Leg 1: East Farm Garage (93.5, 23) -> Main Road (93.5, 47) -> Junction (junctionX, 47) -> Plot (junctionX, plotY)
   var legToPlot = [
     { x: 93.5, y: 23 },
     { x: 93.5, y: 47 },
     { x: junctionX, y: 47 },
     { x: junctionX, y: plotY }
   ];
+  var dist1 = 0;
+  for (var d = 1; d < legToPlot.length; d++){ dist1 += Math.hypot(legToPlot[d].x - legToPlot[d-1].x, legToPlot[d].y - legToPlot[d-1].y); }
+  var legDuration1 = Math.max(3400, Math.round(dist1 * (tractorMode ? 65 : 120)));
 
-  animateAlongWaypoints(cartSprite, legToPlot, legDuration, function(){
-    var box = cartSprite.querySelector('#cartCargoBox');
-    if (box) box.innerHTML = drawHarvestCartSvg(true, '🍎');
+  animateAlongWaypoints(cartSprite, legToPlot, legDuration1, function(){
+    cartSprite.innerHTML = tractorMode ? drawHarvestTractorSvg(true, '🍎') : drawHarvestHandcartSvg(true, '🍎');
     if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
-    pushReport((tractorMode ? '🚜 Mechanized loading into tractor trailer at Plot ' : '🧺 Picking crops into 2-wheel cart at Plot ') + (plotId + 1) + '...');
+    pushReport((tractorMode ? '🚜 Mechanized loading into tractor trailer at Plot ' : '🧺 Picking crops into orchard cart at Plot ') + (plotId + 1) + '...');
 
     setTimeout(function(){
-      // Leg 2: Plot (junctionX, plotY) -> Main Road (junctionX, 47) -> Avenue 2 (x: 60.2, y: 47) -> L-Turn (x: 60.2, y: 21.5) -> Storage Barn Loading Apron (x: 52.8, y: 20.5)
+      // Leg 2: Plot (junctionX, plotY) -> Main Road (junctionX, 47) -> Avenue 2 (60.2, 47) -> L-Turn (60.2, 21.7) -> Storage Apron (52.5, 18.0)
       var legToStorage = [
         { x: junctionX, y: plotY },
         { x: junctionX, y: 47 },
         { x: 60.2, y: 47 },
-        { x: 60.2, y: 21.5 },
-        { x: 52.8, y: 20.5 }
+        { x: 60.2, y: 21.7 },
+        { x: 52.5, y: 18.0 }
       ];
+      var dist2 = 0;
+      for (var d2 = 1; d2 < legToStorage.length; d2++){ dist2 += Math.hypot(legToStorage[d2].x - legToStorage[d2-1].x, legToStorage[d2].y - legToStorage[d2-1].y); }
+      var legDuration2 = Math.max(3600, Math.round(dist2 * (tractorMode ? 65 : 120)));
+
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
-      animateAlongWaypoints(cartSprite, legToStorage, legDuration, function(){
-        if (box) box.innerHTML = drawHarvestCartSvg(false);
+      animateAlongWaypoints(cartSprite, legToStorage, legDuration2, function(){
+        cartSprite.innerHTML = tractorMode ? drawHarvestTractorSvg(false) : drawHarvestHandcartSvg(false);
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
         pushReport('✓ Delivered harvested produce directly to Storage Barn loading bay.');
         
@@ -12803,25 +13067,28 @@ function triggerHarvestCartSequence(plotId, onComplete){
         setTimeout(function(){ if (burst.parentNode) burst.parentNode.removeChild(burst); }, 1400);
 
         setTimeout(function(){
-          // Leg 3: Return to Garage: (52.8, 20.5) -> (60.2, 21.5) -> (60.2, 47) -> (93.5, 47) -> (93.5, 23)
+          // Leg 3: Return to Garage: Storage Apron (52.5, 18.0) -> Avenue 2 (60.2, 21.7) -> Main Road (60.2, 47) -> Garage Spur (93.5, 47) -> Garage (93.5, 23)
           var legToGarage = [
-            { x: 52.8, y: 20.5 },
-            { x: 60.2, y: 21.5 },
+            { x: 52.5, y: 18.0 },
+            { x: 60.2, y: 21.7 },
             { x: 60.2, y: 47 },
             { x: 93.5, y: 47 },
             { x: 93.5, y: 23 }
           ];
-          animateAlongWaypoints(cartSprite, legToGarage, Math.round(legDuration * 0.9), function(){
-            pushReport((tractorMode ? '🚜 Utility Tractor' : '🚜 2-wheel cart') + ' parked securely back at the Farm Garage.');
+          var dist3 = 0;
+          for (var d3 = 1; d3 < legToGarage.length; d3++){ dist3 += Math.hypot(legToGarage[d3].x - legToGarage[d3-1].x, legToGarage[d3].y - legToGarage[d3-1].y); }
+          var legDuration3 = Math.max(3400, Math.round(dist3 * (tractorMode ? 65 : 120)));
+
+          animateAlongWaypoints(cartSprite, legToGarage, legDuration3, function(){
+            pushReport((tractorMode ? '🚜 Utility Tractor' : '🧑‍🌾 Orchard cart') + ' parked securely back at the Farm Garage.');
             if (cartSprite.parentNode) cartSprite.parentNode.removeChild(cartSprite);
             if (onComplete) onComplete();
           });
-        }, 800);
+        }, 1000);
       });
-    }, tractorMode ? 1200 : 2200);
+    }, tractorMode ? 1400 : 2400);
   });
 }
-
 
 // Task notification toasts — separate from the ambient educational hint toast. These
 // fire on newly-triggered actionable events (dead tree, overgrown plot, wildlife,
@@ -14363,397 +14630,174 @@ function drawJuiceBarScene(b, tending){
 
 
 function drawFoodContainerTruckSvg(){
-  return '<svg viewBox="0 0 160 80" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
-    '<ellipse cx="80" cy="74" rx="72" ry="6" fill="#1B3320" opacity="0.35"/>' +
-    '<rect x="14" y="58" width="134" height="8" rx="2" fill="#37474F"/>' +
-    '<rect x="10" y="14" width="96" height="46" rx="4" fill="#F8FAFC" stroke="#CFD8DC" stroke-width="1.8"/>' +
-    '<line x1="58" y1="14" x2="58" y2="60" stroke="#ECEFF1" stroke-width="2"/>' +
-    '<rect x="94" y="10" width="14" height="18" rx="2" fill="#37474F" stroke="#263238" stroke-width="1"/>' +
-    '<circle cx="101" cy="19" r="4.5" fill="#0288D1"/>' +
-    '<path d="M99,19 L103,19 M101,17 L101,21" stroke="#FFF" stroke-width="1.2"/>' +
-    '<path d="M14,46 Q58,36 102,46 L102,52 Q58,42 14,52 Z" fill="#81C784" opacity="0.85"/>' +
-    '<circle cx="30" cy="32" r="9" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5"/>' +
-    '<text x="30" y="36" font-size="11" text-anchor="middle">🍏</text>' +
-    '<text x="44" y="31" font-size="7" font-weight="900" fill="#1B5E20">searchO2</text>' +
-    '<text x="44" y="39" font-size="5.5" font-weight="700" fill="#2E7D32">FRESH FOODS</text>' +
-    '<rect x="12" y="54" width="92" height="4" fill="#E0E0E0"/>' +
-    '<line x1="12" y1="18" x2="12" y2="56" stroke="#90A4AE" stroke-width="2"/>' +
-    '<path d="M106,60 L106,30 L128,30 L146,44 L146,60 Z" fill="#2E7D32" stroke="#1B5E20" stroke-width="1.5"/>' +
-    '<polygon points="126,33 141,44 126,44" fill="#81D4FA" opacity="0.9" stroke="#0277BD" stroke-width="1"/>' +
-    '<circle cx="129" cy="40" r="3" fill="#37474F"/>' +
-    '<rect x="144" y="52" width="6" height="8" rx="1.5" fill="#B0BEC5"/>' +
-    '<polygon points="146,54 150,54 150,58 146,58" fill="#FFF59D"/>' +
-    '<line x1="150" y1="56" x2="165" y2="56" stroke="#FFF59D" stroke-width="2" opacity="0.6"/>' +
-    '<rect x="108" y="50" width="36" height="4" fill="#1B5E20"/>' +
-    '<g transform="translate(30,62)"><circle r="9.5" fill="#263238"/><circle r="5" fill="#ECEFF1" stroke="#90A4AE" stroke-width="1.2"/><circle r="2" fill="#37474F"/></g>' +
-    '<g transform="translate(56,62)"><circle r="9.5" fill="#263238"/><circle r="5" fill="#ECEFF1" stroke="#90A4AE" stroke-width="1.2"/><circle r="2" fill="#37474F"/></g>' +
-    '<g transform="translate(132,62)"><circle r="9.5" fill="#263238"/><circle r="5" fill="#ECEFF1" stroke="#90A4AE" stroke-width="1.2"/><circle r="2" fill="#37474F"/></g>' +
+  return '<svg viewBox="0 0 120 54" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
+    '<ellipse cx="60" cy="27" rx="56" ry="22" fill="rgba(15,25,18,0.32)"/>' +
+    '<!-- Commercial Van Wheels -->' +
+    '<rect x="22" y="3" width="14" height="7" rx="3" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+    '<rect x="82" y="3" width="14" height="7" rx="3" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+    '<rect x="22" y="44" width="14" height="7" rx="3" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+    '<rect x="82" y="44" width="14" height="7" rx="3" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+    '<!-- Refrigerated Container Box Body -->' +
+    '<rect x="12" y="10" width="68" height="34" rx="3" fill="#FFFFFF" stroke="#B0BEC5" stroke-width="1.6"/>' +
+    '<rect x="14" y="12" width="64" height="30" rx="2" fill="#F8FAFC"/>' +
+    '<!-- Branding & Green Energy Stripe -->' +
+    '<rect x="14" y="24" width="64" height="6" fill="#81C784" opacity="0.9"/>' +
+    '<text x="46" y="28.5" font-size="5" font-weight="900" fill="#1B5E20" text-anchor="middle" letter-spacing="0.5">searchO2 FRESH</text>' +
+    '<!-- Roof Thermo-King Cooling Unit -->' +
+    '<rect x="36" y="14" width="18" height="7" rx="2" fill="#ECEFF1" stroke="#90A4AE" stroke-width="1"/>' +
+    '<line x1="39" y1="16" x2="51" y2="16" stroke="#78909C" stroke-width="1"/>' +
+    '<line x1="39" y1="18" x2="51" y2="18" stroke="#78909C" stroke-width="1"/>' +
+    '<!-- Rear Roll-up Door Frame & Latches -->' +
+    '<line x1="12" y1="10" x2="12" y2="44" stroke="#78909C" stroke-width="2"/>' +
+    '<rect x="9" y="23" width="3" height="8" rx="1" fill="#455A64"/>' +
+    '<!-- Aerodynamic Delivery Cab -->' +
+    '<path d="M80,12 L105,14 L112,21 L112,33 L105,40 L80,42 Z" fill="#2E7D32" stroke="#1B5E20" stroke-width="1.5"/>' +
+    '<rect x="82" y="16" width="16" height="22" rx="2" fill="#388E3C"/>' +
+    '<!-- Panoramic Curved Windshield -->' +
+    '<path d="M100,16 L108,20 L108,34 L100,38 Z" fill="#81D4FA" stroke="#0288D1" stroke-width="1"/>' +
+    '<!-- Side Mirrors -->' +
+    '<rect x="94" y="8" width="4" height="3" rx="1" fill="#1B5E20"/>' +
+    '<rect x="94" y="43" width="4" height="3" rx="1" fill="#1B5E20"/>' +
+    '<!-- Front Headlights -->' +
+    '<polygon points="112,20 114,21 114,24 112,24" fill="#FFF59D"/>' +
+    '<polygon points="112,30 114,30 114,33 112,34" fill="#FFF59D"/>' +
   '</svg>';
 }
 
 function drawTimberTruckSvg(){
-  return '<svg viewBox="0 0 180 80" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
-    '<ellipse cx="90" cy="74" rx="82" ry="6" fill="#2E1B0E" opacity="0.35"/>' +
-    '<rect x="12" y="56" width="156" height="8" rx="2" fill="#263238" stroke="#37474F" stroke-width="1"/>' +
-    '<line x1="120" y1="12" x2="120" y2="56" stroke="#455A64" stroke-width="4"/>' +
-    '<line x1="120" y1="18" x2="120" y2="56" stroke="#CFD8DC" stroke-width="1.5" stroke-dasharray="3,3"/>' +
-    '<line x1="20" y1="26" x2="20" y2="58" stroke="#FF8F00" stroke-width="3" stroke-linecap="round"/>' +
-    '<line x1="56" y1="26" x2="56" y2="58" stroke="#FF8F00" stroke-width="3" stroke-linecap="round"/>' +
-    '<line x1="92" y1="26" x2="92" y2="58" stroke="#FF8F00" stroke-width="3" stroke-linecap="round"/>' +
-    '<line x1="116" y1="26" x2="116" y2="58" stroke="#FF8F00" stroke-width="3" stroke-linecap="round"/>' +
-    '<rect x="16" y="40" width="102" height="15" rx="5" fill="#8D6E63" stroke="#5D4037" stroke-width="1.5"/>' +
-    '<ellipse cx="18" cy="47.5" rx="4" ry="7.5" fill="#D7CCC8" stroke="#5D4037" stroke-width="1.2"/>' +
-    '<ellipse cx="18" cy="47.5" rx="1.8" ry="3.5" fill="#A1887F"/>' +
-    '<line x1="24" y1="45" x2="114" y2="45" stroke="#6D4C41" stroke-width="1.5"/>' +
-    '<rect x="22" y="26" width="94" height="15" rx="5" fill="#A1887F" stroke="#5D4037" stroke-width="1.5"/>' +
-    '<ellipse cx="24" cy="33.5" rx="4" ry="7.5" fill="#D7CCC8" stroke="#5D4037" stroke-width="1.2"/>' +
-    '<ellipse cx="24" cy="33.5" rx="1.8" ry="3.5" fill="#8D6E63"/>' +
-    '<line x1="30" y1="31" x2="112" y2="31" stroke="#6D4C41" stroke-width="1.5"/>' +
-    '<line x1="38" y1="24" x2="38" y2="56" stroke="#FFD600" stroke-width="2.5"/>' +
-    '<line x1="76" y1="24" x2="76" y2="56" stroke="#FFD600" stroke-width="2.5"/>' +
-    '<path d="M122,58 L122,26 L146,26 L166,42 L166,58 Z" fill="#E65100" stroke="#BF360C" stroke-width="1.5"/>' +
-    '<polygon points="144,29 161,42 144,42" fill="#B3E5FC" opacity="0.9" stroke="#0277BD" stroke-width="1"/>' +
-    '<rect x="123" y="8" width="4" height="24" rx="1.5" fill="#ECEFF1" stroke="#78909C" stroke-width="1"/>' +
-    '<ellipse cx="125" cy="8" rx="2" ry="1" fill="#455A64"/>' +
-    '<rect x="164" y="50" width="8" height="10" rx="2" fill="#37474F"/>' +
-    '<circle cx="168" cy="54" r="2.5" fill="#FFF59D"/>' +
-    '<circle cx="130" cy="24" r="1.5" fill="#FFAB00"/>' +
-    '<circle cx="136" cy="24" r="1.5" fill="#FFAB00"/>' +
-    '<circle cx="142" cy="24" r="1.5" fill="#FFAB00"/>' +
-    '<g transform="translate(32,60)"><circle r="10" fill="#212121"/><circle r="5" fill="#757575" stroke="#BDBDBD" stroke-width="1.5"/><circle r="2" fill="#212121"/></g>' +
-    '<g transform="translate(56,60)"><circle r="10" fill="#212121"/><circle r="5" fill="#757575" stroke="#BDBDBD" stroke-width="1.5"/><circle r="2" fill="#212121"/></g>' +
-    '<g transform="translate(150,60)"><circle r="10" fill="#212121"/><circle r="5" fill="#757575" stroke="#BDBDBD" stroke-width="1.5"/><circle r="2" fill="#212121"/></g>' +
+  return '<svg viewBox="0 0 120 54" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
+    '<ellipse cx="60" cy="27" rx="56" ry="22" fill="rgba(20,20,20,0.32)"/>' +
+    '<!-- Rugged Truck Wheels (Treaded Tires) -->' +
+    '<rect x="18" y="2" width="14" height="8" rx="3" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+    '<rect x="36" y="2" width="14" height="8" rx="3" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+    '<rect x="86" y="2" width="14" height="8" rx="3" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+    '<rect x="18" y="44" width="14" height="8" rx="3" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+    '<rect x="36" y="44" width="14" height="8" rx="3" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+    '<rect x="86" y="44" width="14" height="8" rx="3" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+    '<!-- Steel Chassis Frame -->' +
+    '<rect x="10" y="9" width="98" height="36" rx="4" fill="#263238" stroke="#37474F" stroke-width="1.5"/>' +
+    '<!-- Timber Logging Bed -->' +
+    '<rect x="12" y="11" width="62" height="32" rx="2" fill="#3E2723" stroke="#271810" stroke-width="1"/>' +
+    '<!-- Timber Logs Stacked with Woodgrain Ends -->' +
+    '<g>' +
+      '<rect x="14" y="13" width="58" height="8" rx="3" fill="#8D6E63" stroke="#5D4037" stroke-width="1"/>' +
+      '<ellipse cx="15" cy="17" rx="2" ry="3.5" fill="#D7CCC8" stroke="#5D4037" stroke-width="0.8"/>' +
+      '<ellipse cx="71" cy="17" rx="2" ry="3.5" fill="#D7CCC8" stroke="#5D4037" stroke-width="0.8"/>' +
+      '<rect x="14" y="23" width="58" height="8" rx="3" fill="#A1887F" stroke="#5D4037" stroke-width="1"/>' +
+      '<ellipse cx="15" cy="27" rx="2" ry="3.5" fill="#D7CCC8" stroke="#5D4037" stroke-width="0.8"/>' +
+      '<ellipse cx="71" cy="27" rx="2" ry="3.5" fill="#D7CCC8" stroke="#5D4037" stroke-width="0.8"/>' +
+      '<rect x="14" y="33" width="58" height="8" rx="3" fill="#795548" stroke="#4E342E" stroke-width="1"/>' +
+      '<ellipse cx="15" cy="37" rx="2" ry="3.5" fill="#D7CCC8" stroke="#4E342E" stroke-width="0.8"/>' +
+      '<ellipse cx="71" cy="37" rx="2" ry="3.5" fill="#D7CCC8" stroke="#4E342E" stroke-width="0.8"/>' +
+      '<!-- Ratchet Tie-Down Straps -->' +
+      '<rect x="28" y="11" width="3" height="32" fill="#FFD600" opacity="0.95"/>' +
+      '<rect x="52" y="11" width="3" height="32" fill="#FFD600" opacity="0.95"/>' +
+    '</g>' +
+    '<!-- Steel Headache Rack -->' +
+    '<rect x="72" y="10" width="4" height="34" rx="1" fill="#455A64" stroke="#263238" stroke-width="1"/>' +
+    '<!-- Heavy Duty Forestry Cab -->' +
+    '<path d="M76,12 L104,14 L110,21 L110,33 L104,40 L76,42 Z" fill="#E65100" stroke="#BF360C" stroke-width="1.5"/>' +
+    '<rect x="80" y="16" width="18" height="22" rx="2" fill="#F57C00"/>' +
+    '<!-- Front Windshield -->' +
+    '<path d="M99,17 L106,21 L106,33 L99,37 Z" fill="#81D4FA" stroke="#0288D1" stroke-width="1"/>' +
+    '<!-- Amber Rotating Beacon Light -->' +
+    '<circle cx="88" cy="27" r="3.5" fill="#FFD600" stroke="#FF8F00" stroke-width="1"/>' +
+    '<circle cx="88" cy="27" r="1.5" fill="#FFF"/>' +
+    '<!-- Front Bumper & Headlights -->' +
+    '<rect x="108" y="18" width="4" height="18" rx="1.5" fill="#37474F" stroke="#212121" stroke-width="0.8"/>' +
+    '<polygon points="112,20 114,21 114,24 112,24" fill="#FFF59D"/>' +
+    '<polygon points="112,30 114,30 114,33 112,34" fill="#FFF59D"/>' +
   '</svg>';
 }
 
 function drawMixedHaulerSvg(){
-  return '<svg viewBox="0 0 165 80" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
-    '<ellipse cx="82" cy="74" rx="74" ry="6" fill="#1B3320" opacity="0.35"/>' +
-    '<rect x="12" y="58" width="140" height="8" rx="2" fill="#37474F"/>' +
-    '<path d="M12,20 Q60,16 104,20 L104,58 L12,58 Z" fill="#33691E" stroke="#1B5E20" stroke-width="1.5"/>' +
-    '<line x1="36" y1="20" x2="36" y2="58" stroke="#1B5E20" stroke-width="1.5" stroke-dasharray="4,3"/>' +
-    '<line x1="68" y1="18" x2="68" y2="58" stroke="#1B5E20" stroke-width="1.5" stroke-dasharray="4,3"/>' +
-    '<rect x="22" y="32" width="70" height="20" rx="3" fill="#558B2F"/>' +
-    '<text x="57" y="45" font-size="8" font-weight="900" fill="#DCEDC8" text-anchor="middle">📦 searchO2 HAULER</text>' +
-    '<path d="M106,60 L106,28 L130,28 L150,44 L150,60 Z" fill="#558B2F" stroke="#33691E" stroke-width="1.5"/>' +
-    '<polygon points="128,31 145,44 128,44" fill="#B3E5FC" opacity="0.9"/>' +
-    '<rect x="148" y="52" width="6" height="8" rx="1.5" fill="#B0BEC5"/>' +
-    '<circle cx="151" cy="56" r="2.5" fill="#FFF59D"/>' +
-    '<g transform="translate(32,62)"><circle r="9.5" fill="#263238"/><circle r="5" fill="#CFD8DC"/><circle r="2" fill="#263238"/></g>' +
-    '<g transform="translate(60,62)"><circle r="9.5" fill="#263238"/><circle r="5" fill="#CFD8DC"/><circle r="2" fill="#263238"/></g>' +
-    '<g transform="translate(136,62)"><circle r="9.5" fill="#263238"/><circle r="5" fill="#CFD8DC"/><circle r="2" fill="#263238"/></g>' +
-  '</svg>';
+  return drawFoodContainerTruckSvg();
 }
 
-function drawMainGateScene(road){
-  var isBuilt = road && road.built;
-  var isBuilding = road && road.building;
-  var pct = isBuilding ? Math.round(Math.min(100, (road.buildHours / 4) * 100)) : 0;
-
-  var statusBadge = isBuilt
-    ? '<text x="34" y="172" font-size="5.2" font-weight="800" fill="#2E7D32" text-anchor="middle">✓ GATE OPEN</text>'
-    : (isBuilding
-      ? '<text x="34" y="172" font-size="5.2" font-weight="800" fill="#E65100" text-anchor="middle">🚧 PAVING (' + pct + '%)</text>'
-      : '<text x="34" y="172" font-size="5.0" font-weight="800" fill="#795548" text-anchor="middle">🔒 CLICK TO PAVE</text>');
-
-  // Perfectly aligned horizontal gate connecting directly into Main Road (y: 65 to 120, height: 55 = 5.5% canvas)
-  return '<svg viewBox="0 0 68 180" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
-    // Ground shadow
-    '<rect x="0" y="58" width="68" height="70" fill="#1B2E15" opacity="0.4" rx="2"/>' +
-
-    // 1. Horizontal Roadway Surface (West entrance -> East farm boundary, meeting Main Road at x:68 with exact 55px height)
-    (isBuilt
-      ? '<rect x="0" y="65" width="68" height="55" fill="url(#mainAsphaltGrad)"/>' +
-        // Stone curbs flanking North and South (North at 63, South at 120) matching Main Road
-        '<rect x="0" y="63" width="68" height="2.5" fill="#37474F"/>' +
-        '<rect x="0" y="120" width="68" height="3" fill="#263238"/>' +
-        // Central dashed road stripe leading straight into Main Road centerline (y: 92.5)
-        '<line x1="0" y1="92.5" x2="68" y2="92.5" stroke="#FFF8E1" stroke-width="2.5" stroke-dasharray="14,10" opacity="0.85"/>'
-      : (isBuilding
-        ? '<rect x="0" y="65" width="68" height="55" fill="#5D4037" opacity="0.9"/>' +
-          '<line x1="0" y1="92.5" x2="68" y2="92.5" stroke="#FF6D00" stroke-width="2" stroke-dasharray="8,6"/>' +
-          '<polygon points="26,110 36,110 31,85" fill="#FF6D00"/><rect x="28" y="95" width="6" height="2" fill="#FFF"/>'
-        : '<rect x="0" y="65" width="68" height="55" fill="#4E342E" stroke="#3E2723" stroke-width="1.2" stroke-dasharray="6,4"/>' +
-          '<line x1="0" y1="92.5" x2="68" y2="92.5" stroke="#8D6E63" stroke-width="1.5" stroke-dasharray="6,5"/>')) +
-
-    // 2. North Masonry Gatehouse Tower & Pillar (flanking north curb from y: 22 to 63)
-    '<g transform="translate(24, 22)">' +
-      '<rect x="0" y="0" width="20" height="41" rx="3" fill="#78909C" stroke="#37474F" stroke-width="1.5"/>' +
-      '<rect x="2" y="2" width="16" height="37" rx="2" fill="#B0BEC5"/>' +
-      '<polygon points="-3,2 10,-10 23,2" fill="#546E7A" stroke="#263238" stroke-width="1.3"/>' +
-      '<circle cx="10" cy="-10" r="2.5" fill="#FFB300"/>' +
-      '<rect x="19" y="16" width="5" height="10" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
-      '<circle cx="21.5" cy="21" r="5" fill="#FFF59D" opacity="0.55"/>' +
-    '</g>' +
-
-    // 3. South Masonry Gatehouse Tower & Pillar (flanking south curb from y: 120 to 161)
-    '<g transform="translate(24, 120)">' +
-      '<rect x="0" y="0" width="20" height="41" rx="3" fill="#78909C" stroke="#37474F" stroke-width="1.5"/>' +
-      '<rect x="2" y="2" width="16" height="37" rx="2" fill="#B0BEC5"/>' +
-      '<polygon points="-3,39 10,51 23,39" fill="#546E7A" stroke="#263238" stroke-width="1.3"/>' +
-      '<circle cx="10" cy="51" r="2.5" fill="#FFB300"/>' +
-      '<rect x="19" y="15" width="5" height="10" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
-      '<circle cx="21.5" cy="20" r="5" fill="#FFF59D" opacity="0.55"/>' +
-    '</g>' +
-
-    // 4. Overhead Craftsman Entry Arch spanning North to South across driveway
-    '<path d="M34,42 Q56,92.5 34,143" stroke="#4E342E" stroke-width="7" fill="none" stroke-linecap="round"/>' +
-    '<path d="M32,44 Q52,92.5 32,141" stroke="#795548" stroke-width="4.5" fill="none" stroke-linecap="round"/>' +
-    // Signboard welcoming traffic Eastward into the Eco-Farm
-    '<g transform="translate(42, 92.5)">' +
-      '<rect x="-8" y="-22" width="16" height="44" rx="3" fill="#FBF6EC" stroke="#8D6E63" stroke-width="1.2"/>' +
-      '<text x="2" y="-3" font-size="5.8" font-weight="900" fill="#1B5E20" transform="rotate(90, 2, -3)" text-anchor="middle">🌿 searchO2 🌿</text>' +
-      '<text x="2" y="5" font-size="4.5" font-weight="800" fill="#4E342E" transform="rotate(90, 2, 5)" text-anchor="middle">ECO-FARM</text>' +
-    '</g>' +
-
-    // 5. Ornamental Wrought-Iron & Timber Gates (Open Eastward into farm)
-    (isBuilt
-      ? '<g stroke="#3E2723" stroke-width="1.8">' +
-          '<line x1="36" y1="63" x2="62" y2="58"/>' +
-          '<line x1="44" y1="62" x2="44" y2="55"/><line x1="54" y1="60" x2="54" y2="54"/>' +
-          '<circle cx="62" cy="58" r="2.2" fill="#FFB300"/>' +
-          '<line x1="36" y1="120" x2="62" y2="125"/>' +
-          '<line x1="44" y1="121" x2="44" y2="128"/><line x1="54" y1="123" x2="54" y2="129"/>' +
-          '<circle cx="62" cy="125" r="2.2" fill="#FFB300"/>' +
+function drawHarvestTractorSvg(isLoaded, cropIcon){
+  return '<svg viewBox="0 0 132 52" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
+    '<ellipse cx="66" cy="26" rx="62" ry="21" fill="rgba(15,25,18,0.3)"/>' +
+    '<!-- Rear Harvest Produce Trailer -->' +
+    '<g id="harvestTrailer">' +
+      '<!-- Trailer Wheels -->' +
+      '<rect x="14" y="2" width="12" height="7" rx="2.5" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+      '<rect x="14" y="43" width="12" height="7" rx="2.5" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+      '<!-- Trailer Wooden Chassis -->' +
+      '<rect x="8" y="10" width="46" height="32" rx="3" fill="#8D6E63" stroke="#5D4037" stroke-width="1.5"/>' +
+      '<rect x="10" y="12" width="42" height="28" rx="2" fill="#A1887F"/>' +
+      '<!-- Slatted Cargo Crates -->' +
+      (isLoaded ? (
+        '<g transform="translate(13, 14)">' +
+          '<rect x="0" y="0" width="16" height="24" rx="2" fill="#D7CCC8" stroke="#8D6E63" stroke-width="1"/>' +
+          '<rect x="18" y="0" width="18" height="24" rx="2" fill="#D7CCC8" stroke="#8D6E63" stroke-width="1"/>' +
+          '<circle cx="8" cy="8" r="4.5" fill="#E53935"/>' +
+          '<circle cx="8" cy="16" r="4.5" fill="#43A047"/>' +
+          '<circle cx="27" cy="8" r="5" fill="#FB8C00"/>' +
+          '<circle cx="27" cy="16" r="4.5" fill="#E53935"/>' +
+          '<text x="17" y="15" font-size="12" text-anchor="middle">' + (cropIcon || '🍎') + '</text>' +
         '</g>'
-      : '<g stroke="#D32F2F" stroke-width="2.5" stroke-dasharray="5,3">' +
-          '<line x1="34" y1="63" x2="34" y2="120"/>' +
-          '<circle cx="34" cy="92.5" r="7" fill="#EF5350"/><text x="34" y="96" font-size="9" fill="white" font-weight="900" text-anchor="middle">✕</text>' +
-        '</g>') +
-
-    // 6. Planters & Landscaping Flanking Pillars
-    '<rect x="12" y="26" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
-    '<circle cx="17" cy="28" r="4" fill="#43A047"/><circle cx="17" cy="24" r="3" fill="#E91E63"/>' +
-    '<rect x="12" y="140" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
-    '<circle cx="17" cy="148" r="4" fill="#43A047"/><circle cx="17" cy="152" r="3" fill="#FF9800"/>' +
-    statusBadge +
-  '</svg>';
-}
-
-function drawRoadScene(r){
-  return drawMainGateScene(r);
-}
-function oldDrawRoadScene(r){
-  var isBuilding = r && r.building;
-  var isBuilt = r && r.built;
-
-  if (isBuilding){
-    var pct = Math.round(Math.min(100, (r.buildHours / BUILDING_TYPES.road.buildHours) * 100));
-    return '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
-      '<ellipse cx="80" cy="106" rx="72" ry="12" fill="#5D4037" opacity="0.3"/>' +
-      '<polygon points="20,110 140,110 120,50 40,50" fill="#8D6E63"/>' +
-      '<polygon points="20,110 ' + (20 + 1.2*pct) + ',110 ' + (40 + 0.8*pct) + ',50 40,50" fill="#A1887F"/>' +
-      '<polygon points="45,95 55,95 50,75" fill="#FF6D00"/>' +
-      '<rect x="47" y="85" width="6" height="3" fill="#FFF"/>' +
-      '<polygon points="115,95 125,95 120,75" fill="#FF6D00"/>' +
-      '<rect x="117" y="85" width="6" height="3" fill="#FFF"/>' +
-      '<g class="bob" transform="translate(80,80)">' +
-        '<path d="M-12,8 L8,8 L12,-2 L-10,-2 Z" fill="#546E7A"/>' +
-        '<circle cx="10" cy="10" r="4" fill="#263238"/>' +
-        '<circle cx="-2" cy="1" r="2.5" fill="#9E9E9E"/><circle cx="3" cy="1" r="2.5" fill="#BDBDBD"/>' +
-      '</g>' +
-      '<g transform="translate(80,45)">' +
-        '<circle r="16" fill="#FBF6EC" stroke="#E0E0E0" stroke-width="4"/>' +
-        '<circle r="16" fill="none" stroke="#F0AC3D" stroke-width="4" stroke-dasharray="' + (2*Math.PI*16) + '" stroke-dashoffset="' + ((2*Math.PI*16)*(1 - pct/100)) + '" stroke-linecap="round" transform="rotate(-90)"/>' +
-        '<text x="0" y="4" font-size="9.5" text-anchor="middle" font-weight="800" fill="#543A0F">' + pct + '%</text>' +
-      '</g>' +
-    '</svg>';
-  }
-
-  if (!isBuilt){
-    return '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
-      '<ellipse cx="80" cy="106" rx="72" ry="12" fill="#5D4037" opacity="0.25"/>' +
-      '<polygon points="20,110 140,110 115,55 45,55" fill="#A1887F" stroke="#8D6E63" stroke-width="1.5" stroke-dasharray="6,4"/>' +
-      '<line x1="38" y1="102" x2="38" y2="78" stroke="#795548" stroke-width="3"/>' +
-      '<polygon points="38,80 48,83 38,87" fill="#FF5722"/>' +
-      '<line x1="122" y1="102" x2="122" y2="78" stroke="#795548" stroke-width="3"/>' +
-      '<polygon points="122,80 132,83 122,87" fill="#FF5722"/>' +
-      '<rect x="36" y="46" width="88" height="34" rx="6" fill="#FFF8E1" stroke="#FFA000" stroke-width="2"/>' +
-      '<text x="80" y="60" font-size="9" font-weight="800" fill="#E65100" text-anchor="middle">🚧 Village Road</text>' +
-      '<text x="80" y="72" font-size="7.5" font-weight="700" fill="#795548" text-anchor="middle">Connects Farm to Shops</text>' +
-    '</svg>';
-  }
-
-  return '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
-    '<ellipse cx="80" cy="108" rx="76" ry="12" fill="#4E342E" opacity="0.3"/>' +
-    '<polygon points="15,112 145,112 120,48 40,48" fill="#9E8D7B" stroke="#6D4C41" stroke-width="1.5"/>' +
-    '<path d="M22,102 Q80,102 138,102 M28,90 Q80,90 132,90 M34,78 Q80,78 126,78 M38,66 Q80,66 122,66 M40,54 Q80,54 120,54" stroke="#795548" stroke-width="1.2" fill="none" opacity="0.75"/>' +
-    '<path d="M50,112 L54,102 M80,112 L80,102 M110,112 L106,102 M38,102 L42,90 M68,102 L70,90 M98,102 L96,90 M124,102 L120,90 M52,90 L55,78 M82,90 L82,78 M112,90 L109,78" stroke="#795548" stroke-width="1" opacity="0.6"/>' +
-    '<line x1="15" y1="112" x2="40" y2="48" stroke="#5D4037" stroke-width="3"/>' +
-    '<line x1="145" y1="112" x2="120" y2="48" stroke="#5D4037" stroke-width="3"/>' +
-    '<rect x="24" y="32" width="3" height="60" fill="#263238"/>' +
-    '<polygon points="20,92 31,92 27,90 24,90" fill="#37474F"/>' +
-    '<circle cx="25.5" cy="30" r="7" fill="#FFE082" opacity="0.85"/>' +
-    '<circle cx="25.5" cy="30" r="4" fill="#FFF59D"/>' +
-    '<polygon points="21,25 30,25 28,34 23,34" fill="none" stroke="#263238" stroke-width="1.2"/>' +
-    '<polygon points="20,25 31,25 25.5,20" fill="#263238"/>' +
-    '<rect x="133" y="32" width="3" height="60" fill="#263238"/>' +
-    '<polygon points="129,92 140,92 136,90 133,90" fill="#37474F"/>' +
-    '<circle cx="134.5" cy="30" r="7" fill="#FFE082" opacity="0.85"/>' +
-    '<circle cx="134.5" cy="30" r="4" fill="#FFF59D"/>' +
-    '<polygon points="130,25 139,25 137,34 132,34" fill="none" stroke="#263238" stroke-width="1.2"/>' +
-    '<polygon points="129,25 140,25 134.5,20" fill="#263238"/>' +
-    '<rect x="78" y="38" width="5" height="54" fill="#5D4037"/>' +
-    '<path d="M78,44 L52,44 L46,49 L52,54 L78,54 Z" fill="#D7CCC8" stroke="#5D4037" stroke-width="1.2"/>' +
-    '<text x="63" y="51" font-size="6" font-weight="800" fill="#3E2723" text-anchor="middle">⬅ Farm</text>' +
-    '<path d="M83,56 L110,56 L116,61 L110,66 L83,66 Z" fill="#D7CCC8" stroke="#5D4037" stroke-width="1.2"/>' +
-    '<text x="98" y="63" font-size="5.5" font-weight="800" fill="#3E2723" text-anchor="middle">Café & Juice ➡</text>' +
-    '<path d="M48,84 C48,77 62,77 62,84 L62,102 L48,102 Z" fill="#CFD8DC" stroke="#78909C" stroke-width="1.2"/>' +
-    '<text x="55" y="92" font-size="5.5" font-weight="800" fill="#263238" text-anchor="middle">KM 0</text>' +
-    '<text x="55" y="98" font-size="4.5" font-weight="700" fill="#455A64" text-anchor="middle">VILLAGE</text>' +
-  '</svg>';
-}
-
-// Detailed Architectural SVG: Farm Crew Shed & Tool Workshop
-function drawCrewShedScene(b){
-  var isBuilt = b && b.built;
-  var isBuilding = b && b.building;
-  if (!isBuilt && !isBuilding){
-    return drawUnbuiltSpotMarker('crew_shed', BUILDING_TYPES.crew_shed, false);
-  }
-  if (isBuilding){
-    var pct = Math.round(Math.min(100, (b.buildHours / 3) * 100));
-    return '<svg viewBox="0 0 160 160" preserveAspectRatio="none" style="width:100%;height:100%;">' +
-      '<rect x="15" y="30" width="130" height="105" rx="8" fill="#D7CCC8" stroke="#8D6E63" stroke-width="2"/>' +
-      '<line x1="25" y1="130" x2="135" y2="35" stroke="#FF6D00" stroke-width="3" stroke-dasharray="10,6"/>' +
-      '<text x="80" y="75" text-anchor="middle" font-size="24">🔨</text>' +
-      '<text x="80" y="105" text-anchor="middle" font-size="12" font-weight="800" fill="#3E2723">Framing Shed...</text>' +
-      '<text x="80" y="122" text-anchor="middle" font-size="10" font-weight="700" fill="#D84315">' + pct + '%</text>' +
-    '</svg>';
-  }
-  // Craftsman Wood Bunkhouse with Tool Bench and Idle Worker Avatars
-  var idleCount = (typeof state !== 'undefined' && state && state.workers) ? state.workers.filter(function(w){ return w.assignedPlot === null && !w.assignedBuilding; }).length : 0;
-  return '<svg viewBox="0 0 160 160" preserveAspectRatio="none" style="width:100%;height:100%;">' +
-    '<defs>' +
-      '<linearGradient id="shedRoofGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4E342E"/><stop offset="100%" stop-color="#271914"/></linearGradient>' +
-      '<linearGradient id="shedWallGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8D6E63"/><stop offset="100%" stop-color="#5D4037"/></linearGradient>' +
-    '</defs>' +
-    // Stone Foundation
-    '<rect x="18" y="125" width="124" height="14" rx="3" fill="#78909C" stroke="#455A64" stroke-width="1.5"/>' +
-    // Clapboard Siding
-    '<rect x="22" y="55" width="116" height="72" fill="url(#shedWallGrad)" stroke="#3E2723" stroke-width="1.5"/>' +
-    '<line x1="22" y1="70" x2="138" y2="70" stroke="#4E342E" stroke-width="1"/>' +
-    '<line x1="22" y1="85" x2="138" y2="85" stroke="#4E342E" stroke-width="1"/>' +
-    '<line x1="22" y1="100" x2="138" y2="100" stroke="#4E342E" stroke-width="1"/>' +
-    '<line x1="22" y1="115" x2="138" y2="115" stroke="#4E342E" stroke-width="1"/>' +
-    // Stone Chimney with Smoke
-    '<rect x="110" y="24" width="16" height="32" rx="2" fill="#607D8B" stroke="#37474F" stroke-width="1"/>' +
-    '<circle cx="118" cy="18" r="4" fill="#B0BEC5" opacity="0.6"/>' +
-    '<circle cx="124" cy="10" r="5" fill="#CFD8DC" opacity="0.4"/>' +
-    // Pitched Cedar Roof Gable
-    '<polygon points="12,56 80,18 148,56" fill="url(#shedRoofGrad)" stroke="#271914" stroke-width="2"/>' +
-    '<line x1="80" y1="18" x2="80" y2="55" stroke="#3E2723" stroke-width="1.5"/>' +
-    // Glowing Windows
-    '<rect x="34" y="72" width="22" height="26" rx="2" fill="#FFE082" stroke="#3E2723" stroke-width="1.5"/>' +
-    '<line x1="45" y1="72" x2="45" y2="98" stroke="#3E2723" stroke-width="1"/>' +
-    '<line x1="34" y1="85" x2="56" y2="85" stroke="#3E2723" stroke-width="1"/>' +
-    // Heavy Oak Door
-    '<rect x="68" y="75" width="24" height="50" rx="2" fill="#3E2723"/>' +
-    '<circle cx="86" cy="102" r="2" fill="#FFD54F"/>' +
-    // Covered Porch with Timber Posts
-    '<polygon points="60,70 100,70 106,75 54,75" fill="#4E342E"/>' +
-    '<rect x="62" y="75" width="4" height="50" fill="#3E2723"/>' +
-    '<rect x="94" y="75" width="4" height="50" fill="#3E2723"/>' +
-    // Porch Lantern
-    '<circle cx="80" cy="72" r="3" fill="#FFD54F" filter="url(#roadGlow)"/>' +
-    // Tool Bench on Porch (Spade, Rake, Watering Can)
-    '<rect x="104" y="96" width="28" height="29" rx="2" fill="#4E342E"/>' +
-    '<line x1="110" y1="74" x2="110" y2="96" stroke="#BCAAA4" stroke-width="2"/>' +
-    '<polygon points="107,74 113,74 110,68" fill="#78909C"/>' +
-    '<text x="120" y="90" font-size="11">💧</text>' +
-    // Stationed Idle Crew Indicator
-    (idleCount > 0 ?
-      '<g class="bob" transform="translate(45, 114)">' +
-        '<circle cx="0" cy="0" r="8" fill="#FFF" stroke="#2E7D32" stroke-width="1.5"/>' +
-        '<text x="0" y="3.5" text-anchor="middle" font-size="10" font-weight="800" fill="#2E7D32">' + idleCount + '</text>' +
-        '<text x="14" y="4" font-size="11">👷</text>' +
-      '</g>' : '') +
-  '</svg>';
-}
-
-// Detailed Architectural SVG: Farm Machinery & Harvest Depot Garage
-function drawGarageScene(b){
-  var isBuilt = b && b.built;
-  var isBuilding = b && b.building;
-  if (!isBuilt && !isBuilding){
-    return drawUnbuiltSpotMarker('garage', BUILDING_TYPES.garage, false);
-  }
-  if (isBuilding){
-    var pct = Math.round(Math.min(100, (b.buildHours / 4) * 100));
-    return '<svg viewBox="0 0 160 135" preserveAspectRatio="none" style="width:100%;height:100%;">' +
-      '<rect x="15" y="20" width="130" height="98" rx="8" fill="#CFD8DC" stroke="#607D8B" stroke-width="2"/>' +
-      '<line x1="25" y1="110" x2="135" y2="30" stroke="#FF9800" stroke-width="3" stroke-dasharray="10,6"/>' +
-      '<text x="80" y="65" text-anchor="middle" font-size="24">⚙️</text>' +
-      '<text x="80" y="90" text-anchor="middle" font-size="12" font-weight="800" fill="#263238">Erecting Depot...</text>' +
-      '<text x="80" y="106" text-anchor="middle" font-size="10" font-weight="700" fill="#E65100">' + pct + '%</text>' +
-    '</svg>';
-  }
-  // Modern Metal Workshop with Roll-up Doors and 2-Wheel Harvest Carts Parked
-  return '<svg viewBox="0 0 160 135" preserveAspectRatio="none" style="width:100%;height:100%;">' +
-    '<defs>' +
-      '<linearGradient id="garageWallGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#546E7A"/><stop offset="100%" stop-color="#37474F"/></linearGradient>' +
-      '<linearGradient id="doorRollGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ECEFF1"/><stop offset="100%" stop-color="#B0BEC5"/></linearGradient>' +
-    '</defs>' +
-    // Concrete Foundation Apron
-    '<rect x="12" y="110" width="136" height="15" rx="3" fill="#78909C" stroke="#455A64" stroke-width="1.5"/>' +
-    // Workshop Corrugated Body
-    '<rect x="16" y="38" width="128" height="74" rx="2" fill="url(#garageWallGrad)" stroke="#263238" stroke-width="2"/>' +
-    // Angled Modern Metal Roof
-    '<polygon points="8,40 80,14 152,40" fill="#263238"/>' +
-    '<polygon points="12,38 80,18 148,38" fill="#455A64"/>' +
-    // Clerestory Transom Window
-    '<rect x="45" y="24" width="70" height="9" rx="2" fill="#81D4FA" opacity="0.8"/>' +
-    '<line x1="70" y1="24" x2="70" y2="33" stroke="#263238" stroke-width="1"/>' +
-    '<line x1="90" y1="24" x2="90" y2="33" stroke="#263238" stroke-width="1"/>' +
-    // Bay 1: Roll-up Industrial Door
-    '<rect x="25" y="48" width="48" height="63" rx="2" fill="url(#doorRollGrad)" stroke="#263238" stroke-width="1.5"/>' +
-    '<line x1="25" y1="60" x2="73" y2="60" stroke="#78909C" stroke-width="1.2"/>' +
-    '<line x1="25" y1="72" x2="73" y2="72" stroke="#78909C" stroke-width="1.2"/>' +
-    '<line x1="25" y1="84" x2="73" y2="84" stroke="#78909C" stroke-width="1.2"/>' +
-    '<line x1="25" y1="96" x2="73" y2="96" stroke="#78909C" stroke-width="1.2"/>' +
-    '<circle cx="49" cy="104" r="2.5" fill="#37474F"/>' +
-    // Bay 2: Open Depot with 2-Wheel Harvest Carts Parked
-    '<rect x="85" y="48" width="50" height="63" rx="2" fill="#263238"/>' +
-    // Parked 2-Wheel Wooden Handcart Silhouette
-    '<g transform="translate(94, 66)">' +
-      '<rect x="0" y="10" width="28" height="16" rx="2" fill="#8D6E63" stroke="#4E342E" stroke-width="1"/>' +
-      '<line x1="28" y1="12" x2="38" y2="8" stroke="#3E2723" stroke-width="2"/>' +
-      '<line x1="28" y1="22" x2="38" y2="18" stroke="#3E2723" stroke-width="2"/>' +
-      '<circle cx="14" cy="28" r="8" fill="#4E342E" stroke="#212121" stroke-width="1.5"/>' +
-      '<circle cx="14" cy="28" r="2.5" fill="#FFD54F"/>' +
-      '<text x="6" y="22" font-size="10">🍎</text>' +
+      ) : (
+        '<g transform="translate(13, 14)">' +
+          '<rect x="0" y="0" width="16" height="24" rx="2" fill="#BCAAA4" stroke="#8D6E63" stroke-width="1" stroke-dasharray="3,2"/>' +
+          '<rect x="18" y="0" width="18" height="24" rx="2" fill="#BCAAA4" stroke="#8D6E63" stroke-width="1" stroke-dasharray="3,2"/>' +
+        '</g>'
+      )) +
     '</g>' +
-    // Outdoor Equipment & Timber Winch Sign
-    '<rect x="18" y="48" width="6" height="63" fill="#D32F2F"/>' +
-    '<text x="50" y="45" text-anchor="middle" font-size="7.5" font-weight="800" fill="#CFD8DC" letter-spacing="1">DEPOT</text>' +
+    '<!-- Articulated Tow Hitch -->' +
+    '<line x1="54" y1="26" x2="68" y2="26" stroke="#37474F" stroke-width="3" stroke-linecap="round"/>' +
+    '<circle cx="61" cy="26" r="2.5" fill="#78909C"/>' +
+    '<!-- John Deere Heritage Farm Tractor Body -->' +
+    '<g id="tractorCab">' +
+      '<!-- Big Rear Traction Agricultural Tires -->' +
+      '<rect x="68" y="1" width="16" height="9" rx="3.5" fill="#212121" stroke="#FDD835" stroke-width="1.2"/>' +
+      '<rect x="68" y="42" width="16" height="9" rx="3.5" fill="#212121" stroke="#FDD835" stroke-width="1.2"/>' +
+      '<!-- Front Steering Tires -->' +
+      '<rect x="106" y="5" width="12" height="6.5" rx="2.5" fill="#212121" stroke="#FDD835" stroke-width="1"/>' +
+      '<rect x="106" y="40.5" width="12" height="6.5" rx="2.5" fill="#212121" stroke="#FDD835" stroke-width="1"/>' +
+      '<!-- Green Tractor Hood & Chassis -->' +
+      '<path d="M68,14 L114,16 L118,21 L118,31 L114,36 L68,38 Z" fill="#2E7D32" stroke="#1B5E20" stroke-width="1.5"/>' +
+      '<rect x="88" y="17" width="26" height="18" rx="2" fill="#388E3C"/>' +
+      '<!-- Yellow Accent Trim -->' +
+      '<line x1="88" y1="26" x2="114" y2="26" stroke="#FDD835" stroke-width="2"/>' +
+      '<!-- Driver Seat & Steering Wheel -->' +
+      '<circle cx="78" cy="26" r="5" fill="#37474F"/>' +
+      '<circle cx="84" cy="26" r="3" fill="#212121"/>' +
+      '<!-- Vertical Exhaust Stack -->' +
+      '<circle cx="102" cy="18" r="2" fill="#263238"/>' +
+      '<!-- Headlights -->' +
+      '<polygon points="118,22 120,23 120,25 118,25" fill="#FFF59D"/>' +
+      '<polygon points="118,27 120,27 120,29 118,30" fill="#FFF59D"/>' +
+    '</g>' +
   '</svg>';
 }
 
-// 2-Wheel Wooden Harvest Cart Sprite SVG
-function drawHarvestCartSvg(isLoaded, cropIcon){
-  return '<svg viewBox="0 0 60 40" style="width:100%;height:100%;overflow:visible;">' +
-    // Pull Shafts
-    '<line x1="40" y1="18" x2="58" y2="12" stroke="#5D4037" stroke-width="2.5" stroke-linecap="round"/>' +
-    '<line x1="40" y1="26" x2="58" y2="20" stroke="#5D4037" stroke-width="2.5" stroke-linecap="round"/>' +
-    // Slatted Wooden Cargo Box
-    '<rect x="6" y="10" width="36" height="18" rx="2" fill="#8D6E63" stroke="#3E2723" stroke-width="1.5"/>' +
-    '<line x1="6" y1="16" x2="42" y2="16" stroke="#4E342E" stroke-width="1"/>' +
-    '<line x1="6" y1="22" x2="42" y2="22" stroke="#4E342E" stroke-width="1"/>' +
-    // Cargo Contents
-    (isLoaded ?
-      '<g transform="translate(12, 4)">' +
-        '<circle cx="4" cy="4" r="6" fill="#4CAF50" opacity="0.8"/>' +
-        '<circle cx="16" cy="3" r="7" fill="#E53935" opacity="0.85"/>' +
-        '<circle cx="10" cy="0" r="5" fill="#FB8C00" opacity="0.9"/>' +
-        '<text x="6" y="6" font-size="13">' + (cropIcon || '🍎') + '</text>' +
-      '</g>' : '') +
-    // Spoked Wheel with Iron Band
-    '<circle cx="24" cy="28" r="10" fill="#5D4037" stroke="#212121" stroke-width="2"/>' +
-    '<circle cx="24" cy="28" r="7.5" fill="#8D6E63"/>' +
-    '<line x1="14" y1="28" x2="34" y2="28" stroke="#3E2723" stroke-width="1.5"/>' +
-    '<line x1="24" y1="18" x2="24" y2="38" stroke="#3E2723" stroke-width="1.5"/>' +
-    '<circle cx="24" cy="28" r="2.5" fill="#FFD54F"/>' +
+function drawHarvestHandcartSvg(isLoaded, cropIcon){
+  return '<svg viewBox="0 0 100 48" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
+    '<ellipse cx="50" cy="24" rx="46" ry="18" fill="rgba(15,25,18,0.25)"/>' +
+    '<!-- 2-Wheel Wooden Handcart -->' +
+    '<rect x="22" y="2" width="10" height="6" rx="2.5" fill="#5D4037" stroke="#3E2723" stroke-width="1"/>' +
+    '<rect x="22" y="40" width="10" height="6" rx="2.5" fill="#5D4037" stroke="#3E2723" stroke-width="1"/>' +
+    '<rect x="14" y="10" width="40" height="28" rx="2" fill="#8D6E63" stroke="#5D4037" stroke-width="1.5"/>' +
+    (isLoaded ? (
+      '<g transform="translate(20, 14)">' +
+        '<circle cx="8" cy="10" r="6" fill="#E53935"/>' +
+        '<circle cx="20" cy="10" r="6" fill="#4CAF50"/>' +
+        '<text x="14" y="14" font-size="12" text-anchor="middle">' + (cropIcon || '🍎') + '</text>' +
+      '</g>'
+    ) : (
+      '<rect x="18" y="13" width="32" height="22" rx="1" fill="#A1887F" stroke="#795548" stroke-width="1" stroke-dasharray="3,2"/>'
+    )) +
+    '<!-- Pull Shafts to Farmer -->' +
+    '<line x1="54" y1="16" x2="78" y2="22" stroke="#5D4037" stroke-width="2.5" stroke-linecap="round"/>' +
+    '<line x1="54" y1="32" x2="78" y2="26" stroke="#5D4037" stroke-width="2.5" stroke-linecap="round"/>' +
+    '<!-- Farmer Silhouette Pulling Cart -->' +
+    '<circle cx="84" cy="24" r="5" fill="#F5D0A9"/>' +
+    '<ellipse cx="84" cy="24" rx="8" ry="4" fill="#FFF9C4" stroke="#FBC02D" stroke-width="0.8"/>' +
   '</svg>';
+}
+
+function drawHarvestCartSvg(isLoaded, cropIcon){
+  return drawHarvestTractorSvg(isLoaded, cropIcon);
 }
 
 function drawStorageScene(s){
@@ -14904,6 +14948,177 @@ function drawGardenScene(flowerType, freshness, tending, isBuilding){
   }
   s += '</svg>';
   return s;
+}
+
+function drawMainGateScene(road){
+  var isBuilt = road && road.built;
+  var isBuilding = road && road.building;
+  var pct = isBuilding ? Math.round(Math.min(100, (road.buildHours / 4) * 100)) : 0;
+
+  var statusBadge = isBuilt
+    ? '<text x="80" y="115" font-size="6.5" font-weight="800" fill="#2E7D32" text-anchor="middle">✓ GATE & MAIN ROAD OPEN</text>'
+    : (isBuilding
+      ? '<text x="80" y="115" font-size="6.5" font-weight="800" fill="#E65100" text-anchor="middle">🚧 PAVING ROAD (' + pct + '%)</text>'
+      : '<text x="80" y="115" font-size="6" font-weight="800" fill="#795548" text-anchor="middle">🔒 GATEWAY · CLICK TO PAVE</text>');
+
+  return '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
+    '<rect x="0" y="36" width="160" height="50" fill="#1B2E15" opacity="0.45" rx="3"/>' +
+    (isBuilt
+      ? '<rect x="0" y="38" width="160" height="44" fill="#37474F" stroke="#263238" stroke-width="1.2"/>' +
+        '<line x1="0" y1="38" x2="160" y2="38" stroke="#90A4AE" stroke-width="2"/>' +
+        '<line x1="0" y1="82" x2="160" y2="82" stroke="#90A4AE" stroke-width="2"/>' +
+        '<line x1="0" y1="60" x2="160" y2="60" stroke="#FFE082" stroke-width="1.8" stroke-dasharray="10,7"/>'
+      : '<rect x="0" y="40" width="160" height="40" fill="#5D4037" stroke="#3E2723" stroke-width="1.2" stroke-dasharray="6,4"/>' +
+        '<line x1="0" y1="60" x2="160" y2="60" stroke="#A1887F" stroke-width="1.4" stroke-dasharray="6,5"/>') +
+    '<g transform="translate(68, 12)">' +
+      '<rect x="0" y="0" width="24" height="26" rx="3" fill="#78909C" stroke="#37474F" stroke-width="1.4"/>' +
+      '<rect x="2" y="2" width="20" height="22" rx="2" fill="#B0BEC5"/>' +
+      '<polygon points="-2,2 12,-7 26,2" fill="#546E7A" stroke="#263238" stroke-width="1.2"/>' +
+      '<circle cx="12" cy="-7" r="2.5" fill="#FFB300"/>' +
+      '<rect x="23" y="10" width="5" height="8" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
+      '<circle cx="25.5" cy="14" r="4" fill="#FFF59D" opacity="0.5"/>' +
+    '</g>' +
+    '<g transform="translate(68, 82)">' +
+      '<rect x="0" y="0" width="24" height="26" rx="3" fill="#78909C" stroke="#37474F" stroke-width="1.4"/>' +
+      '<rect x="2" y="4" width="20" height="20" rx="2" fill="#B0BEC5"/>' +
+      '<polygon points="-2,24 12,33 26,24" fill="#546E7A" stroke="#263238" stroke-width="1.2"/>' +
+      '<circle cx="12" cy="33" r="2.5" fill="#FFB300"/>' +
+      '<rect x="23" y="8" width="5" height="8" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
+      '<circle cx="25.5" cy="12" r="4" fill="#FFF59D" opacity="0.5"/>' +
+    '</g>' +
+    '<path d="M80,26 Q100,60 80,94" stroke="#4E342E" stroke-width="7" fill="none" stroke-linecap="round"/>' +
+    '<path d="M78,28 Q96,60 78,92" stroke="#795548" stroke-width="4.5" fill="none" stroke-linecap="round"/>' +
+    '<g transform="translate(84, 48)">' +
+      '<rect x="-6" y="-12" width="16" height="48" rx="3" fill="#FBF6EC" stroke="#8D6E63" stroke-width="1.2"/>' +
+      '<text x="2" y="0" font-size="6.5" font-weight="900" fill="#1B5E20" transform="rotate(90, 2, 0)" text-anchor="middle">🌿 searchO2 🌿</text>' +
+      '<text x="2" y="7" font-size="4.8" font-weight="800" fill="#4E342E" transform="rotate(90, 2, 7)" text-anchor="middle">ECO-FARM</text>' +
+    '</g>' +
+    (isBuilt
+      ? '<g stroke="#3E2723" stroke-width="1.5">' +
+          '<line x1="82" y1="38" x2="114" y2="35"/>' +
+          '<line x1="90" y1="37" x2="90" y2="32"/><line x1="102" y1="36" x2="102" y2="32"/>' +
+          '<circle cx="114" cy="35" r="2" fill="#FFB300"/>' +
+          '<line x1="82" y1="82" x2="114" y2="85"/>' +
+          '<line x1="90" y1="83" x2="90" y2="88"/><line x1="102" y1="84" x2="102" y2="88"/>' +
+          '<circle cx="114" cy="85" r="2" fill="#FFB300"/>' +
+        '</g>'
+      : '<g stroke="#D32F2F" stroke-width="2" stroke-dasharray="4,3">' +
+          '<line x1="80" y1="38" x2="80" y2="82"/>' +
+          '<circle cx="80" cy="60" r="5" fill="#EF5350"/><text x="80" y="63" font-size="7" fill="white" font-weight="900" text-anchor="middle">✕</text>' +
+        '</g>') +
+    '<rect x="52" y="16" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
+    '<circle cx="57" cy="18" r="4" fill="#43A047"/><circle cx="57" cy="14" r="3" fill="#E91E63"/>' +
+    '<rect x="52" y="90" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
+    '<circle cx="57" cy="98" r="4" fill="#43A047"/><circle cx="57" cy="102" r="3" fill="#FF9800"/>' +
+    statusBadge +
+  '</svg>';
+}
+
+function drawRoadScene(road){
+  return drawMainGateScene(road);
+}
+
+function drawCrewShedScene(b){
+  var isBuilt = b && b.built;
+  var isBuilding = b && b.building;
+  if (!isBuilt && !isBuilding){
+    return drawUnbuiltSpotMarker('crew_shed', BUILDING_TYPES.crew_shed, false);
+  }
+  if (isBuilding){
+    var pct = Math.round(Math.min(100, (b.buildHours / 3) * 100));
+    return '<svg viewBox="0 0 160 160" preserveAspectRatio="none" style="width:100%;height:100%;">' +
+      '<rect x="15" y="30" width="130" height="105" rx="8" fill="#D7CCC8" stroke="#8D6E63" stroke-width="2"/>' +
+      '<line x1="25" y1="130" x2="135" y2="35" stroke="#FF6D00" stroke-width="3" stroke-dasharray="10,6"/>' +
+      '<text x="80" y="75" text-anchor="middle" font-size="24">🔨</text>' +
+      '<text x="80" y="105" text-anchor="middle" font-size="12" font-weight="800" fill="#3E2723">Framing Shed...</text>' +
+      '<text x="80" y="122" text-anchor="middle" font-size="10" font-weight="700" fill="#D84315">' + pct + '%</text>' +
+    '</svg>';
+  }
+  var idleCount = (typeof state !== 'undefined' && state && state.workers) ? state.workers.filter(function(w){ return w.assignedPlot === null && !w.assignedBuilding; }).length : 0;
+  return '<svg viewBox="0 0 160 160" preserveAspectRatio="none" style="width:100%;height:100%;">' +
+    '<defs>' +
+      '<linearGradient id="shedRoofGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4E342E"/><stop offset="100%" stop-color="#271914"/></linearGradient>' +
+      '<linearGradient id="shedWallGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8D6E63"/><stop offset="100%" stop-color="#5D4037"/></linearGradient>' +
+    '</defs>' +
+    '<rect x="18" y="125" width="124" height="14" rx="3" fill="#78909C" stroke="#455A64" stroke-width="1.5"/>' +
+    '<rect x="22" y="55" width="116" height="72" fill="url(#shedWallGrad)" stroke="#3E2723" stroke-width="1.5"/>' +
+    '<line x1="22" y1="70" x2="138" y2="70" stroke="#4E342E" stroke-width="1"/>' +
+    '<line x1="22" y1="85" x2="138" y2="85" stroke="#4E342E" stroke-width="1"/>' +
+    '<line x1="22" y1="100" x2="138" y2="100" stroke="#4E342E" stroke-width="1"/>' +
+    '<line x1="22" y1="115" x2="138" y2="115" stroke="#4E342E" stroke-width="1"/>' +
+    '<rect x="110" y="24" width="16" height="32" rx="2" fill="#607D8B" stroke="#37474F" stroke-width="1"/>' +
+    '<circle cx="118" cy="18" r="4" fill="#B0BEC5" opacity="0.6"/>' +
+    '<circle cx="124" cy="10" r="5" fill="#CFD8DC" opacity="0.4"/>' +
+    '<polygon points="12,56 80,18 148,56" fill="url(#shedRoofGrad)" stroke="#271914" stroke-width="2"/>' +
+    '<line x1="80" y1="18" x2="80" y2="55" stroke="#3E2723" stroke-width="1.5"/>' +
+    '<rect x="34" y="72" width="22" height="26" rx="2" fill="#FFE082" stroke="#3E2723" stroke-width="1.5"/>' +
+    '<line x1="45" y1="72" x2="45" y2="98" stroke="#3E2723" stroke-width="1"/>' +
+    '<line x1="34" y1="85" x2="56" y2="85" stroke="#3E2723" stroke-width="1"/>' +
+    '<rect x="68" y="75" width="24" height="50" rx="2" fill="#3E2723"/>' +
+    '<circle cx="86" cy="102" r="2" fill="#FFD54F"/>' +
+    '<polygon points="60,70 100,70 106,75 54,75" fill="#4E342E"/>' +
+    '<rect x="62" y="75" width="4" height="50" fill="#3E2723"/>' +
+    '<rect x="94" y="75" width="4" height="50" fill="#3E2723"/>' +
+    '<circle cx="80" cy="72" r="3" fill="#FFD54F"/>' +
+    '<rect x="104" y="96" width="28" height="29" rx="2" fill="#4E342E"/>' +
+    '<line x1="110" y1="74" x2="110" y2="96" stroke="#BCAAA4" stroke-width="2"/>' +
+    '<polygon points="107,74 113,74 110,68" fill="#78909C"/>' +
+    '<text x="120" y="90" font-size="11">💧</text>' +
+    (idleCount > 0 ?
+      '<g class="bob" transform="translate(45, 114)">' +
+        '<circle cx="0" cy="0" r="8" fill="#FFF" stroke="#2E7D32" stroke-width="1.5"/>' +
+        '<text x="0" y="3.5" text-anchor="middle" font-size="10" font-weight="800" fill="#2E7D32">' + idleCount + '</text>' +
+        '<text x="14" y="4" font-size="11">👷</text>' +
+      '</g>' : '') +
+  '</svg>';
+}
+
+function drawGarageScene(b){
+  var isBuilt = b && b.built;
+  var isBuilding = b && b.building;
+  if (!isBuilt && !isBuilding){
+    return drawUnbuiltSpotMarker('garage', BUILDING_TYPES.garage, false);
+  }
+  if (isBuilding){
+    var pct = Math.round(Math.min(100, (b.buildHours / 4) * 100));
+    return '<svg viewBox="0 0 160 135" preserveAspectRatio="none" style="width:100%;height:100%;">' +
+      '<rect x="15" y="20" width="130" height="98" rx="8" fill="#CFD8DC" stroke="#607D8B" stroke-width="2"/>' +
+      '<line x1="25" y1="110" x2="135" y2="30" stroke="#FF9800" stroke-width="3" stroke-dasharray="10,6"/>' +
+      '<text x="80" y="65" text-anchor="middle" font-size="24">⚙️</text>' +
+      '<text x="80" y="90" text-anchor="middle" font-size="12" font-weight="800" fill="#263238">Erecting Depot...</text>' +
+      '<text x="80" y="106" text-anchor="middle" font-size="10" font-weight="700" fill="#E65100">' + pct + '%</text>' +
+    '</svg>';
+  }
+  return '<svg viewBox="0 0 160 135" preserveAspectRatio="none" style="width:100%;height:100%;">' +
+    '<defs>' +
+      '<linearGradient id="garageWallGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#546E7A"/><stop offset="100%" stop-color="#37474F"/></linearGradient>' +
+      '<linearGradient id="doorRollGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ECEFF1"/><stop offset="100%" stop-color="#B0BEC5"/></linearGradient>' +
+    '</defs>' +
+    '<rect x="12" y="110" width="136" height="15" rx="3" fill="#78909C" stroke="#455A64" stroke-width="1.5"/>' +
+    '<rect x="16" y="38" width="128" height="74" rx="2" fill="url(#garageWallGrad)" stroke="#263238" stroke-width="2"/>' +
+    '<polygon points="8,40 80,14 152,40" fill="#263238"/>' +
+    '<polygon points="12,38 80,18 148,38" fill="#455A64"/>' +
+    '<rect x="45" y="24" width="70" height="9" rx="2" fill="#81D4FA" opacity="0.8"/>' +
+    '<line x1="70" y1="24" x2="70" y2="33" stroke="#263238" stroke-width="1"/>' +
+    '<line x1="90" y1="24" x2="90" y2="33" stroke="#263238" stroke-width="1"/>' +
+    '<rect x="25" y="48" width="48" height="63" rx="2" fill="url(#doorRollGrad)" stroke="#263238" stroke-width="1.5"/>' +
+    '<line x1="25" y1="60" x2="73" y2="60" stroke="#78909C" stroke-width="1.2"/>' +
+    '<line x1="25" y1="72" x2="73" y2="72" stroke="#78909C" stroke-width="1.2"/>' +
+    '<line x1="25" y1="84" x2="73" y2="84" stroke="#78909C" stroke-width="1.2"/>' +
+    '<line x1="25" y1="96" x2="73" y2="96" stroke="#78909C" stroke-width="1.2"/>' +
+    '<circle cx="49" cy="104" r="2.5" fill="#37474F"/>' +
+    '<rect x="85" y="48" width="50" height="63" rx="2" fill="#263238"/>' +
+    '<g transform="translate(94, 66)">' +
+      '<rect x="0" y="10" width="28" height="16" rx="2" fill="#8D6E63" stroke="#4E342E" stroke-width="1"/>' +
+      '<line x1="28" y1="12" x2="38" y2="8" stroke="#3E2723" stroke-width="2"/>' +
+      '<line x1="28" y1="22" x2="38" y2="18" stroke="#3E2723" stroke-width="2"/>' +
+      '<circle cx="14" cy="28" r="8" fill="#4E342E" stroke="#212121" stroke-width="1.5"/>' +
+      '<circle cx="14" cy="28" r="2.5" fill="#FFD54F"/>' +
+      '<text x="6" y="22" font-size="10">🍎</text>' +
+    '</g>' +
+    '<rect x="18" y="48" width="6" height="63" fill="#D32F2F"/>' +
+    '<text x="50" y="45" text-anchor="middle" font-size="7.5" font-weight="800" fill="#CFD8DC" letter-spacing="1">DEPOT</text>' +
+  '</svg>';
 }
 
 function buildingSpotHtml(key){
@@ -16708,7 +16923,7 @@ window.unassignWorkerById = unassignWorkerById;
 window.assignWorkerToTask = assignWorkerToTask;
 window.drawHumanWorkerSvg = drawHumanWorkerSvg;
 window.getRoadNetworkWaypoints = getRoadNetworkWaypoints;
-window.drawMainGateScene = drawMainGateScene;
+if (typeof drawMainGateScene !== "undefined") window.drawMainGateScene = drawMainGateScene;
 window.openResetFarmModal = openResetFarmModal;
 window.toggleViewOrientation = toggleViewOrientation;
 window.updateViewportScale = updateViewportScale;
@@ -16718,7 +16933,7 @@ window.updateFullscreenBtnState = updateFullscreenBtnState;
 window.showGameTooltip = showGameTooltip;
 window.hideGameTooltip = hideGameTooltip;
 window.initGameTooltips = initGameTooltips;
-window.drawRoadScene = drawRoadScene;
+if (typeof drawRoadScene !== "undefined") window.drawRoadScene = drawRoadScene;
 window.animateWorkerPathWalk = animateWorkerPathWalk;
 window.getPendingTasksList = getPendingTasksList;
 window.buildingModalHtml = buildingModalHtml;
@@ -16746,6 +16961,8 @@ window.openModal = openModal;
 window.closeModal = closeModal;
 window.closePanel = closePanel;
 window.spawnVisitor = spawnVisitor;
+window.spawnVehicleAnimation = spawnVehicleAnimation;
+if (typeof sellStorage !== 'undefined') window.sellStorage = sellStorage;
 window.visitorEligibleDestinations = visitorEligibleDestinations;
 window.computeVisitorRating = computeVisitorRating;
 window.render = render;
@@ -16805,7 +17022,7 @@ if (typeof globalThis !== 'undefined'){
   globalThis.assignWorkerToTask = assignWorkerToTask;
   globalThis.drawHumanWorkerSvg = drawHumanWorkerSvg;
   globalThis.getRoadNetworkWaypoints = getRoadNetworkWaypoints;
-  globalThis.drawMainGateScene = drawMainGateScene;
+  if (typeof drawMainGateScene !== "undefined") globalThis.drawMainGateScene = drawMainGateScene;
   globalThis.openResetFarmModal = openResetFarmModal;
 globalThis.toggleViewOrientation = toggleViewOrientation;
   globalThis.updateViewportScale = updateViewportScale;
@@ -16815,7 +17032,7 @@ globalThis.toggleViewOrientation = toggleViewOrientation;
   globalThis.showGameTooltip = showGameTooltip;
 globalThis.hideGameTooltip = hideGameTooltip;
 globalThis.initGameTooltips = initGameTooltips;
-  globalThis.drawRoadScene = drawRoadScene;
+  if (typeof drawRoadScene !== "undefined") globalThis.drawRoadScene = drawRoadScene;
   globalThis.animateWorkerPathWalk = animateWorkerPathWalk;
   globalThis.getPendingTasksList = getPendingTasksList;
   globalThis.buildingModalHtml = buildingModalHtml;
