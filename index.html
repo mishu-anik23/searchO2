@@ -1584,15 +1584,15 @@
     width: 36px;
     height: 80px;
     margin-left: -18px;
-    margin-top: -72px;
-    z-index: 34;
+    margin-top: -56px;
+    z-index: 45;
     filter: drop-shadow(0 4px 8px rgba(0,0,0,0.32));
     display: flex;
     align-items: center;
     justify-content: center;
     transform-origin: center bottom;
     pointer-events: none;
-    opacity: 0;
+    opacity: 1;
     transition: opacity 0.35s ease;
   }
   .human-walker-bobbing {
@@ -3185,12 +3185,13 @@
   /* Logistics Transport Animation */
   .logistics-transport-layer {
     position: absolute;
-    top: 52%;
+    inset: 0;
+    top: 0;
     left: 0;
     width: 100%;
-    height: 14%;
+    height: 100%;
     pointer-events: none;
-    z-index: 25;
+    z-index: 45;
     overflow: visible;
   }
   .logistics-truck-sprite {
@@ -3618,6 +3619,7 @@
       <div class="field-scene" id="fieldScene">
         <div class="field-bg" id="fieldBg"></div>
         <div class="field-plots" id="fieldPlots"></div>
+        <div class="logistics-transport-layer" id="logisticsTruckLayer"></div>
       </div>
       <div class="birds-layer" id="birdsLayer"></div>
       <div class="animals-layer" id="animalsLayer"></div>
@@ -11195,6 +11197,7 @@ function startClearRocks(){
   });
   if (worker){
     state.rocksWorkerId = worker.id;
+    if (typeof activeModal !== 'undefined' && activeModal) closeModal();
     if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'rocks');
   }
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
@@ -11220,6 +11223,7 @@ function startMowLawn(){
   });
   if (worker){
     state.lawnWorkerId = worker.id;
+    if (typeof activeModal !== 'undefined' && activeModal) closeModal();
     if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'lawn');
   }
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
@@ -11253,7 +11257,7 @@ function assignWorker(workerId, plotId){
   if (w.assignedBuilding){ state.buildings[w.assignedBuilding].assignedWorker=null; w.assignedBuilding=null; }
   if (p.assignedWorker!==null){ var prev = state.workers.find(function(x){return x.id===p.assignedWorker;}); if (prev) prev.assignedPlot=null; }
   w.assignedPlot = plotId; p.assignedWorker = w.id;
-  if (typeof activeModal !== 'undefined' && activeModal && (activeModal.type === 'plot' || activeModal.type === 'building')){
+  if (typeof activeModal !== 'undefined' && activeModal){
     closeModal();
   }
   if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, plotId);
@@ -11276,7 +11280,7 @@ function unassignWorkerById(workerId){
     state.storage.assignedLaborerId = null;
   }
   pushReport('↩️ Recalled ' + WORKER_TYPES[w.type].label + ' #' + w.id + ' back to Crew Shed.');
-  if (typeof activeModal !== 'undefined' && activeModal && (activeModal.type === 'plot' || activeModal.type === 'building')){
+  if (typeof activeModal !== 'undefined' && activeModal){
     closeModal();
   }
   if (origin !== null && typeof animateWorkerPathWalk === 'function'){
@@ -11301,7 +11305,7 @@ function assignWorkerToBuilding(workerId, key){
   if (w.assignedBuilding){ state.buildings[w.assignedBuilding].assignedWorker=null; }
   if (b.assignedWorker){ var prev = state.workers.find(function(x){return x.id===b.assignedWorker;}); if (prev) prev.assignedBuilding=null; }
   w.assignedBuilding = key; b.assignedWorker = w.id;
-  if (typeof activeModal !== 'undefined' && activeModal && (activeModal.type === 'plot' || activeModal.type === 'building')){
+  if (typeof activeModal !== 'undefined' && activeModal){
     closeModal();
   }
   if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, key);
@@ -11319,15 +11323,39 @@ function unassignWorkerFromBuilding(key){
 function assignWorkerToTask(workerId, taskType, targetId){
   var w = state.workers.find(function(x){ return x.id === workerId; });
   if (!w) return;
+  if (typeof activeModal !== 'undefined' && activeModal){
+    closeModal();
+  }
+  if (typeof openPanel !== 'undefined' && openPanel === 'workers'){
+    openPanel = null;
+  }
   if (taskType === 'dig'){
-    startPrep(targetId);
-    assignWorker(workerId, targetId);
+    var p = state.plots[targetId];
+    if (p && p.status === 'barren' && state.money >= LABOR_COST){
+      state.money -= LABOR_COST;
+      p.status = 'preparing';
+      p.taskHours = 0;
+      assignWorker(workerId, targetId);
+    }
   } else if (taskType === 'clear'){
-    startClear(targetId);
-    assignWorker(workerId, targetId);
+    var p = state.plots[targetId];
+    if (p && p.status === 'overgrown' && state.money >= CLEAR_COST){
+      state.money -= CLEAR_COST;
+      p.status = 'clearing';
+      p.taskHours = 0;
+      assignWorker(workerId, targetId);
+    }
   } else if (taskType === 'removeTree'){
-    startRemoveTree(targetId);
-    assignWorker(workerId, targetId);
+    var p = state.plots[targetId];
+    if (p && p.status === 'dead'){
+      var def = TREE_TYPES[p.treeType]; var cfg = REMOVE_CONFIG[def.category];
+      if (state.money >= cfg.cost){
+        state.money -= cfg.cost;
+        p.status = 'removing';
+        p.taskHours = 0;
+        assignWorker(workerId, targetId);
+      }
+    }
   } else if (taskType === 'harvest'){
     assignWorker(workerId, targetId);
     harvestPlot(targetId);
@@ -11636,6 +11664,9 @@ function assignLaborerToStorage(workerId){
   }
   state.storage.assignedLaborerId = w.id;
   pushReport('👷 Assigned Laborer ' + (w.name || ('#' + w.id)) + ' to Storage loading bay.');
+  if (typeof activeModal !== 'undefined' && activeModal){
+    closeModal();
+  }
   if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'storage');
   render(); requestSave();
 }
@@ -12799,13 +12830,17 @@ function animateAlongWaypoints(el, rawWaypoints, totalDurationMs, onComplete){
     currentAngle = Math.atan2(initDy, initDx) * 180 / Math.PI;
     el.style.transform = 'rotate(' + currentAngle + 'deg)';
   } else if (isPedestrian){
-    el.classList.add('human-walker-bobbing');
+    var svgChild = el.querySelector('svg');
+    if (svgChild) svgChild.classList.add('human-walker-bobbing');
   }
 
   function nextStep(){
     currentIdx++;
     if (currentIdx >= waypoints.length){
-      if (isPedestrian) el.classList.remove('human-walker-bobbing');
+      if (isPedestrian){
+        var svgChild = el.querySelector('svg');
+        if (svgChild) svgChild.classList.remove('human-walker-bobbing');
+      }
       if (onComplete) onComplete();
       return;
     }
@@ -13014,9 +13049,14 @@ function animateWorkerPathWalk(worker, destination, origin, onComplete){
   var toKey = isReturnWalk ? 'crew_shed' : destination;
 
   // Single consistent worker visuals: Set inTransit flag while pedestrian sprite walks
+  var currentWalkId = 0;
   if (worker){
+    if (worker._activeWalkEl && worker._activeWalkEl.parentNode){
+      worker._activeWalkEl.parentNode.removeChild(worker._activeWalkEl);
+    }
     worker.inTransit = true;
     if (isReturnWalk) worker.isReturning = true;
+    currentWalkId = (worker._walkId = (worker._walkId || 0) + 1);
     render();
   }
 
@@ -13042,22 +13082,25 @@ function animateWorkerPathWalk(worker, destination, origin, onComplete){
   }
 
   var workerEl = document.createElement('div');
-  workerEl.className = 'human-walker-sprite human-walker-bobbing';
+  workerEl.className = 'human-walker-sprite';
   workerEl.style.position = 'absolute';
   // PRE-SET START POSITION BEFORE APPENDING TO DOM — ZERO FLASH OVER PLOT 0!
   workerEl.style.left = walkRoute[0].x + '%';
   workerEl.style.top = walkRoute[0].y + '%';
+  workerEl.style.opacity = '1';
   workerEl.style.transition = 'none';
-  workerEl.innerHTML = '<svg viewBox="-18 -20 36 65" width="38" height="60" style="overflow:visible;">' +
+  workerEl.innerHTML = '<svg class="human-walker-bobbing" viewBox="-18 -20 36 65" width="38" height="60" style="overflow:visible;">' +
     drawHumanWorkerSvg(workerType, workerTool, true, false) +
   '</svg>';
+
+  if (worker) worker._activeWalkEl = workerEl;
 
   var truckLayer = document.getElementById('logisticsTruckLayer');
   if (!truckLayer){
     truckLayer = document.createElement('div');
     truckLayer.id = 'logisticsTruckLayer';
     truckLayer.className = 'logistics-transport-layer';
-    truckLayer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:34;';
+    truckLayer.style.cssText = 'position:absolute;inset:0;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:45;';
     scene.appendChild(truckLayer);
   }
   truckLayer.appendChild(workerEl);
@@ -13067,10 +13110,12 @@ function animateWorkerPathWalk(worker, destination, origin, onComplete){
   for (var r = 1; r < walkRoute.length; r++){
     totalDist += Math.hypot(walkRoute[r].x - walkRoute[r-1].x, walkRoute[r].y - walkRoute[r-1].y);
   }
-  var walkDuration = Math.max(2600, Math.round(totalDist * 95));
+  var walkDuration = Math.max(2400, Math.min(6500, Math.round(totalDist * 80)));
 
   animateAlongWaypoints(workerEl, walkRoute, walkDuration, function(){
     if (workerEl.parentNode) workerEl.parentNode.removeChild(workerEl);
+    if (worker && worker._walkId !== currentWalkId) return;
+    if (worker) worker._activeWalkEl = null;
     if (!isReturnWalk){
       if (worker) worker.inTransit = false;
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
