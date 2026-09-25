@@ -4208,27 +4208,39 @@
   }
   @keyframes cattleGrazeMunch {
     0%, 100% { transform: translateY(0px) rotate(0deg); }
-    25% { transform: translateY(2px) rotate(-2.5deg); }
-    50% { transform: translateY(3.5px) rotate(1.5deg); }
-    75% { transform: translateY(1px) rotate(-1deg); }
+    25% { transform: translateY(1.8px) rotate(-2deg); }
+    50% { transform: translateY(3.2px) rotate(1.2deg); }
+    75% { transform: translateY(0.8px) rotate(-0.8deg); }
   }
   @keyframes cattleWalkTorso {
     0%, 100% { transform: translateY(0px) rotate(0deg); }
-    25% { transform: translateY(-1.8px) rotate(1.2deg); }
-    50% { transform: translateY(0px) rotate(0deg); }
-    75% { transform: translateY(-1.8px) rotate(-1.2deg); }
+    25% { transform: translateY(-2px) rotate(1.2deg); }
+    50% { transform: translateY(0.5px) rotate(0deg); }
+    75% { transform: translateY(-2px) rotate(-1.2deg); }
   }
-  @keyframes cattleLegWalkLeft {
-    0%, 100% { transform: rotate(0deg); }
-    25% { transform: rotate(18deg); }
-    50% { transform: rotate(0deg); }
-    75% { transform: rotate(-18deg); }
+  @keyframes cattleLegNearFront {
+    0%, 100% { transform: rotate(-18deg) translateY(0); }
+    25% { transform: rotate(0deg) translateY(-3px); }
+    50% { transform: rotate(24deg) translateY(-2px); }
+    75% { transform: rotate(8deg) translateY(0); }
   }
-  @keyframes cattleLegWalkRight {
-    0%, 100% { transform: rotate(0deg); }
-    25% { transform: rotate(-18deg); }
-    50% { transform: rotate(0deg); }
-    75% { transform: rotate(18deg); }
+  @keyframes cattleLegNearBack {
+    0%, 100% { transform: rotate(22deg) translateY(-2px); }
+    25% { transform: rotate(8deg) translateY(0); }
+    50% { transform: rotate(-18deg) translateY(0); }
+    75% { transform: rotate(0deg) translateY(-3px); }
+  }
+  @keyframes cattleLegFarFront {
+    0%, 100% { transform: rotate(24deg) translateY(-2px); }
+    25% { transform: rotate(8deg) translateY(0); }
+    50% { transform: rotate(-18deg) translateY(0); }
+    75% { transform: rotate(0deg) translateY(-3px); }
+  }
+  @keyframes cattleLegFarBack {
+    0%, 100% { transform: rotate(-18deg) translateY(0); }
+    25% { transform: rotate(0deg) translateY(-3px); }
+    50% { transform: rotate(22deg) translateY(-2px); }
+    75% { transform: rotate(8deg) translateY(0); }
   }
   @keyframes cattleRestChew {
     0%, 100% { transform: translateY(0px) scale(1, 1); }
@@ -4247,16 +4259,30 @@
     transform-origin: center bottom;
   }
   .cattle-walking {
-    animation: cattleWalkTorso 0.85s ease-in-out infinite;
+    animation: cattleWalkTorso 0.75s ease-in-out infinite;
     transform-origin: center bottom;
   }
+  .cattle-walking .leg-nf,
   .cattle-walking .leg-walk-left {
-    animation: cattleLegWalkLeft 0.85s ease-in-out infinite;
-    transform-origin: 50% 15%;
+    animation: cattleLegNearFront 0.75s ease-in-out infinite;
+    transform-origin: 50% 10%;
+    transform-box: fill-box;
   }
+  .cattle-walking .leg-nb,
   .cattle-walking .leg-walk-right {
-    animation: cattleLegWalkRight 0.85s ease-in-out infinite;
-    transform-origin: 50% 15%;
+    animation: cattleLegNearBack 0.75s ease-in-out infinite;
+    transform-origin: 50% 10%;
+    transform-box: fill-box;
+  }
+  .cattle-walking .leg-ff {
+    animation: cattleLegFarFront 0.75s ease-in-out infinite;
+    transform-origin: 50% 10%;
+    transform-box: fill-box;
+  }
+  .cattle-walking .leg-fb {
+    animation: cattleLegFarBack 0.75s ease-in-out infinite;
+    transform-origin: 50% 10%;
+    transform-box: fill-box;
   }
   .cattle-sitting {
     animation: cattleRestChew 4.2s ease-in-out infinite;
@@ -4276,7 +4302,7 @@
     cursor: pointer;
     z-index: 12;
     transform-origin: center bottom;
-    transition: left 3.6s ease-in-out, top 3.6s ease-in-out;
+    transition: left 3.5s linear, top 3.5s linear;
     will-change: transform, left, top;
     user-select: none;
     -webkit-user-select: none;
@@ -4291,7 +4317,7 @@
   .pasture-animal-svg {
     overflow: visible;
     display: block;
-    transition: transform 0.35s ease;
+    /* Instant flip — zero horizontal squashing or stretching */
   }
   /* Elegant Milk Glass / Wool Fleece Icon Tag (NO price text numbers) */
   .pasture-produce-tag {
@@ -13065,11 +13091,7 @@ function syncPastureLivestock(){
         rec.isGraze = (actionState !== 'walking');
 
         var isWalking = (actionState === 'walking');
-        if (isWalking){
-          el.style.transition = 'left 3.5s ease-in-out, top 3.5s ease-in-out';
-        } else {
-          el.style.transition = 'left 0.4s ease, top 0.4s ease';
-        }
+        el.style.transition = isWalking ? 'left 3.5s linear, top 3.5s linear' : 'none';
 
         // Pure Milk Glass / Wool Fleece Icon Tag (NO price text numbers)
         var badgeHtml = isReady
@@ -13079,7 +13101,11 @@ function syncPastureLivestock(){
             )
           : '';
 
-        el.innerHTML = badgeHtml + drawCattleAnimalSvg(a.species, a.age, actionState, 1.0, false);
+        var renderKey = [a.species, a.age, actionState, isReady ? 'ready' : 'not'].join('|');
+        if (el.dataset.renderKey !== renderKey){
+          el.dataset.renderKey = renderKey;
+          el.innerHTML = badgeHtml + drawCattleAnimalSvg(a.species, a.age, actionState, 1.0, false);
+        }
         var svgEl = el.querySelector('.pasture-animal-svg');
         if (svgEl){
           svgEl.style.transform = rec.facingLeft ? 'scaleX(-1)' : 'scaleX(1)';
@@ -17570,110 +17596,168 @@ function drawCattleAnimalSvg(species, age, actionState, scale, isReady){
     var h = isYoung ? 26 : 38;
     var animClass = isSitting ? 'cattle-sitting' : (isWalking ? 'cattle-walking' : (isDrink ? 'cattle-drinking' : (isHay ? 'cattle-eating-hay' : 'cattle-grazing')));
 
+    // Common 3D Shading Gradients
+    var defs = '<defs>' +
+      '<linearGradient id="cowBody3D" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="#FFFFFF"/>' +
+        '<stop offset="35%" stop-color="#F5F5F5"/>' +
+        '<stop offset="75%" stop-color="#E0E0E0"/>' +
+        '<stop offset="100%" stop-color="#B0BEC5"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="cowFarLegG" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="#90A4AE"/>' +
+        '<stop offset="100%" stop-color="#607D8B"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="cowNearLegG" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="#FFFFFF"/>' +
+        '<stop offset="100%" stop-color="#E0E0E0"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="cowMuzzleG" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0%" stop-color="#FFCDD2"/>' +
+        '<stop offset="100%" stop-color="#F48FB1"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="cowHornG" x1="0" y1="0" x2="1" y2="0">' +
+        '<stop offset="0%" stop-color="#FFF9C4"/>' +
+        '<stop offset="60%" stop-color="#FFE082"/>' +
+        '<stop offset="100%" stop-color="#5D4037"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="cowBellG" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="#FFE082"/>' +
+        '<stop offset="50%" stop-color="#FFB300"/>' +
+        '<stop offset="100%" stop-color="#E65100"/>' +
+      '</linearGradient>' +
+    '</defs>';
+
     if (isSitting){
       return '<svg class="pasture-animal-svg" viewBox="-28 -18 60 42" width="' + w + '" height="' + h + '" style="overflow:visible;">' +
+        defs +
         '<g class="' + animClass + '">' +
-          // Ground shadow under resting body
-          '<ellipse cx="0" cy="14" rx="20" ry="5.5" fill="rgba(0,0,0,0.20)"/>' +
-          // Folded Back Leg on Straw Bedding
+          // 3D Isometric Ground Shadow
+          '<ellipse cx="2" cy="14" rx="22" ry="6.5" fill="rgba(0,0,0,0.22)"/>' +
+          // Golden Straw Bedding around resting body
+          '<path d="M-18,12 L-23,15 M-15,14 L-19,17 M-10,13 L-12,17 M4,14 L7,17 M12,13 L17,16 M-5,14 L-4,17" stroke="#FFE082" stroke-width="1.3" stroke-linecap="round"/>' +
+          // Folded Back Leg tucked on straw
           '<path d="M-15,4 Q-12,12 -2,12 Q-9,13 -16,8 Z" fill="#E0E0E0"/>' +
           '<ellipse cx="-3" cy="11.5" rx="3.5" ry="2" fill="#212121"/>' +
           // Folded Front Leg tucked under chest
           '<path d="M5,5 Q11,11 16,10 Q10,11 4,8 Z" fill="#E0E0E0"/>' +
           '<ellipse cx="14" cy="10" rx="3" ry="1.8" fill="#212121"/>' +
-          // Main Body resting on straw
-          '<ellipse cx="0" cy="5" rx="19" ry="11" fill="#FAFAFA" stroke="#333333" stroke-width="1.1"/>' +
-          // Holstein Black Patches
-          '<path d="M-9,-2 Q-4,-7 3,-4 Q8,1 3,7 Q-3,10 -8,6 Z" fill="#212121"/>' +
-          '<path d="M6,2 Q13,-1 15,6 Q10,10 6,7 Z" fill="#212121"/>' +
-          '<ellipse cx="-12" cy="7" rx="4.5" ry="3.5" fill="#212121"/>' +
+          // 3D Isometric Barrel Torso resting low on straw
+          '<path d="M-18,1 Q-4,-6 14,-3 Q20,3 18,9 Q10,13 -6,13 Q-18,12 -20,5 Z" fill="url(#cowBody3D)" stroke="#90A4AE" stroke-width="0.8"/>' +
+          '<path d="M-16,0 Q-4,-4.5 12,-2.5" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.9"/>' +
+          // 3D Holstein Black Contour Patches
+          '<path d="M-17,2 Q-12,-4 -7,-2 Q-5,4 -10,7 Q-17,8 -17,2 Z" fill="#263238"/>' +
+          '<path d="M-2,-4 Q4,-6 8,-2 Q10,3 5,6 Q-2,5 -3,1 Z" fill="#263238"/>' +
+          '<ellipse cx="15" cy="5" rx="3.5" ry="3" fill="#263238"/>' +
           // Tail tucked along flank
-          '<path d="M-18,3 Q-22,8 -20,12" stroke="#FAFAFA" stroke-width="2.2" fill="none"/>' +
-          '<circle cx="-20" cy="12.5" r="2.2" fill="#212121"/>' +
+          '<path d="M-19,3 Q-23,8 -21,12" stroke="#FFFFFF" stroke-width="2.2" fill="none"/>' +
+          '<circle cx="-21" cy="12.5" r="2.2" fill="#263238"/>' +
           // Dairy Collar & Golden Bell
           (!isYoung ? (
             '<path d="M10,4 Q12,9 10,12" stroke="#5D4037" stroke-width="2.2" fill="none"/>' +
-            '<polygon points="9,11 13,15 7,15" fill="#FFD54F" stroke="#F57F17" stroke-width="0.7"/>' +
-            '<circle cx="10" cy="15" r="0.8" fill="#E65100"/>'
+            '<polygon points="9,11 13,15 7,15" fill="url(#cowBellG)" stroke="#F57F17" stroke-width="0.7"/>' +
+            '<circle cx="10" cy="15" r="0.8" fill="#BF360C"/>'
           ) : '') +
-          // Relaxed Resting Head
+          // 3D Head resting peacefully with cud chewing
           '<g transform="translate(16, 2) rotate(-2)">' +
-            '<ellipse cx="5" cy="3" rx="7.5" ry="5.8" fill="#FAFAFA" stroke="#333333" stroke-width="1"/>' +
-            '<circle cx="4" cy="1" r="3.2" fill="#212121"/><circle cx="5" cy="1" r="1" fill="#FFF"/>' +
-            (!isYoung ? '<path d="M2,-4 Q3,-7 6,-5" stroke="#FFF9C4" stroke-width="1.8" stroke-linecap="round" fill="none"/>' : '') +
-            '<ellipse cx="1" cy="0" rx="3.8" ry="1.6" fill="#FAFAFA" stroke="#333333" stroke-width="0.6" transform="rotate(-15)"/>' +
-            '<ellipse cx="1" cy="0" rx="2.2" ry="0.9" fill="#FFCDD2" transform="rotate(-15)"/>' +
+            '<path d="M-1,-4 Q6,-6 10,-2 Q12,3 7,5 Q-1,5 -1,-4 Z" fill="#FAFAFA" stroke="#CFD8DC" stroke-width="0.7"/>' +
+            '<path d="M1,-5 Q6,-5 6,-1 Q4,2 1,0 Z" fill="#263238"/>' +
+            '<ellipse cx="4.5" cy="-1.5" rx="2" ry="2.3" fill="#212121"/><circle cx="5.2" cy="-2.1" r="0.8" fill="#FFF"/>' +
+            (!isYoung ? '<path d="M3,-5 Q6,-10 9,-7" stroke="url(#cowHornG)" stroke-width="1.8" stroke-linecap="round" fill="none"/>' : '') +
+            '<ellipse cx="1" cy="-1" rx="3.8" ry="1.6" fill="#FAFAFA" stroke="#B0BEC5" stroke-width="0.6" transform="rotate(-15)"/>' +
+            '<ellipse cx="1" cy="-1" rx="2.2" ry="0.9" fill="#FFCDD2" transform="rotate(-15)"/>' +
             (!isYoung ? '<polygon points="0,0 2,-4 -1,-4" fill="#FDD835" stroke="#F57F17" stroke-width="0.5"/>' : '') +
-            '<ellipse cx="11" cy="5.2" rx="4.8" ry="3.2" fill="#FFCDD2" stroke="#E57373" stroke-width="0.6"/>' +
-            '<circle cx="10" cy="4.8" r="0.7" fill="#424242"/><circle cx="12" cy="4.8" r="0.7" fill="#424242"/>' +
+            '<ellipse cx="11" cy="3.5" rx="4.5" ry="3.2" fill="url(#cowMuzzleG)" stroke="#E57373" stroke-width="0.6"/>' +
+            '<circle cx="10" cy="3.2" r="0.8" fill="#37474F"/><circle cx="12.2" cy="3.2" r="0.8" fill="#37474F"/>' +
             // Golden straw sprig in mouth (cud chewing)
-            '<path d="M11,6 Q16,8 19,7" stroke="#FFE082" stroke-width="1.3" fill="none"/>' +
+            '<path d="M11,5 Q16,7 19,6" stroke="#FFE082" stroke-width="1.4" fill="none"/>' +
           '</g>' +
         '</g>' +
       '</svg>';
     }
 
-    // Standing / Walking / Grazing / Drinking / Eating Hay
+    // ================= 3D ISOMETRIC WALKING / GRAZING / DRINKING COW =================
     return '<svg class="pasture-animal-svg" viewBox="-28 -18 60 42" width="' + w + '" height="' + h + '" style="overflow:visible;">' +
+      defs +
       '<g class="' + animClass + '">' +
-        // Ground shadow
-        '<ellipse cx="0" cy="18" rx="22" ry="6.5" fill="rgba(0,0,0,0.22)"/>' +
-        // Back Left Leg (walk animated)
-        '<g class="leg-bl ' + (isWalking ? 'leg-walk-left' : '') + '">' +
-          '<rect x="-14" y="5" width="5.5" height="13" rx="1.8" fill="#E0E0E0"/>' +
-          '<rect x="-14" y="15" width="5.5" height="3.5" rx="1" fill="#212121"/>' +
+        // 3D Ground Shadow (isometric depth)
+        '<ellipse cx="2" cy="18" rx="23" ry="6.5" fill="rgba(0,0,0,0.22)"/>' +
+        // FAR LEGS (recessed in 3D depth, darker ambient shadow at y=14)
+        // 1. Far-Back Leg
+        '<g class="leg-fb ' + (isWalking ? 'leg-walk-left' : '') + '" style="transform-origin: -14px 5px; transform-box: fill-box;">' +
+          '<rect x="-16" y="4" width="5" height="11" rx="1.6" fill="url(#cowFarLegG)"/>' +
+          '<polygon points="-16,13 -11,13 -11.5,15.5 -16,15.5" fill="#37474F"/>' +
         '</g>' +
-        // Back Right Leg (walk animated)
-        '<g class="leg-br ' + (isWalking ? 'leg-walk-right' : '') + '">' +
-          '<rect x="-8" y="4" width="5.5" height="13" rx="1.8" fill="#FAFAFA"/>' +
-          '<rect x="-8" y="14" width="5.5" height="3.5" rx="1" fill="#212121"/>' +
+        // 2. Far-Front Leg
+        '<g class="leg-ff ' + (isWalking ? 'leg-walk-right' : '') + '" style="transform-origin: 8px 4px; transform-box: fill-box;">' +
+          '<rect x="6" y="4" width="5" height="11" rx="1.6" fill="url(#cowFarLegG)"/>' +
+          '<polygon points="6,13 11,13 10.5,15.5 6,15.5" fill="#37474F"/>' +
         '</g>' +
-        // Udder if adult cow
+        // Udder if adult cow (between hind legs)
         (!isYoung ? (
           '<ellipse cx="-4" cy="9.5" rx="6.5" ry="4" fill="#FFCDD2"/>' +
-          '<rect x="-7.5" y="12" width="1.8" height="3.5" rx="0.8" fill="#F48FB1"/>' +
-          '<rect x="-4.5" y="12.5" width="1.8" height="3.8" rx="0.8" fill="#F48FB1"/>' +
-          '<rect x="-1.5" y="12.5" width="1.8" height="3.8" rx="0.8" fill="#F48FB1"/>' +
-          '<rect x="1.5" y="12" width="1.8" height="3.5" rx="0.8" fill="#F48FB1"/>'
+          '<rect x="-7" y="12" width="1.6" height="3.2" rx="0.7" fill="#F48FB1"/>' +
+          '<rect x="-4.2" y="12.5" width="1.6" height="3.5" rx="0.7" fill="#F48FB1"/>' +
+          '<rect x="-1.5" y="12.5" width="1.6" height="3.5" rx="0.7" fill="#F48FB1"/>' +
+          '<rect x="1.2" y="12" width="1.6" height="3.2" rx="0.7" fill="#F48FB1"/>'
         ) : '') +
-        // Front Left Leg (walk animated)
-        '<g class="leg-fl ' + (isWalking ? 'leg-walk-right' : '') + '">' +
-          '<rect x="7" y="5" width="5.5" height="13" rx="1.8" fill="#E0E0E0"/>' +
-          '<rect x="7" y="15" width="5.5" height="3.5" rx="1" fill="#212121"/>' +
-        '</g>' +
-        // Front Right Leg (walk animated)
-        '<g class="leg-fr ' + (isWalking ? 'leg-walk-left' : '') + '">' +
-          '<rect x="13" y="4" width="5.5" height="13" rx="1.8" fill="#FAFAFA"/>' +
-          '<rect x="13" y="14" width="5.5" height="3.5" rx="1" fill="#212121"/>' +
-        '</g>' +
-        // Main Body Torso
-        '<ellipse cx="0" cy="2" rx="20" ry="13" fill="#FAFAFA" stroke="#333333" stroke-width="1.1"/>' +
-        // Holstein Black Patches
-        '<path d="M-10,-6 Q-5,-11 3,-8 Q9,-2 4,6 Q-3,9 -9,4 Z" fill="#212121"/>' +
-        '<path d="M7,-1 Q15,-5 17,3 Q12,8 7,5 Z" fill="#212121"/>' +
-        '<ellipse cx="-13" cy="5" rx="5" ry="4" fill="#212121"/>' +
-        // Tail with animated tip
-        '<path d="M-19,-1 Q-24,6 -21,12" stroke="#FAFAFA" stroke-width="2.4" fill="none"/>' +
-        '<circle cx="-21" cy="13" r="2.6" fill="#212121"/>' +
-        // Dairy Collar & Golden Bell
+        // 3D Isometric Barrel Torso (Volumetric rounded body with sunlight highlight)
+        '<path d="M-18,-3 Q-4,-9 14,-5 Q20,3 18,10 Q10,14 -6,14 Q-18,13 -20,5 Z" fill="url(#cowBody3D)" stroke="#90A4AE" stroke-width="0.9"/>' +
+        '<path d="M-16,-3 Q-4,-7.5 12,-4.5" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" fill="none" opacity="0.9"/>' +
+        '<path d="M-17,9 Q-4,15 15,10" stroke="#B0BEC5" stroke-width="2.2" fill="none" opacity="0.5"/>' +
+        // 3D Holstein Black Contour Patches (flowing along 3D body curves)
+        '<path d="M-19,0 Q-15,-6 -8,-4 Q-6,3 -11,8 Q-18,9 -19,4 Z" fill="#263238"/>' +
+        '<path d="M-2,-7 Q5,-9 9,-4 Q11,4 5,8 Q-2,7 -4,1 Z" fill="#263238"/>' +
+        '<path d="M12,-3 Q16,-4 18,3 Q15,7 12,4 Z" fill="#263238"/>' +
+        // Tail with 3D swish and tuft
+        '<path d="M-19,-1 Q-25,6 -22,13" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" fill="none"/>' +
+        '<path d="M-23,12 Q-25,16 -21,17 Q-20,14 -22,12 Z" fill="#263238"/>' +
+        // Dairy Collar & 3D Golden Bell
         (!isYoung ? (
-          '<path d="M11,1 Q13,7 11,10" stroke="#5D4037" stroke-width="2.5" fill="none"/>' +
-          '<polygon points="10,9 14,14 8,14" fill="#FFD54F" stroke="#F57F17" stroke-width="0.8"/>' +
-          '<circle cx="11" cy="14" r="0.9" fill="#E65100"/>'
+          '<path d="M11,1 Q13,7 11,10" stroke="#5D4037" stroke-width="2.4" fill="none"/>' +
+          '<polygon points="9,10 14,15 8,15" fill="url(#cowBellG)" stroke="#F57F17" stroke-width="0.8"/>' +
+          '<circle cx="11" cy="15" r="0.9" fill="#BF360C"/>'
         ) : '') +
-        // Head Group (adjusted dynamically per action)
-        '<g transform="translate(17, ' + (isDrink ? '5' : (isGraze ? '3' : (isHay ? '0' : '-1'))) + ') rotate(' + (isDrink ? '18' : (isGraze ? '14' : (isHay ? '-4' : '0'))) + ')">' +
-          '<ellipse cx="5" cy="3" rx="8" ry="6.2" fill="#FAFAFA" stroke="#333333" stroke-width="1"/>' +
-          '<circle cx="4" cy="1" r="3.5" fill="#212121"/>' +
-          '<circle cx="5" cy="1" r="1.1" fill="#FFF"/>' +
-          (!isYoung ? '<path d="M2,-4 Q3,-8 7,-6" stroke="#FFF9C4" stroke-width="2" stroke-linecap="round" fill="none"/>' : '') +
-          '<ellipse cx="1" cy="0" rx="4" ry="1.8" fill="#FAFAFA" stroke="#333333" stroke-width="0.7" transform="rotate(-25)"/>' +
-          '<ellipse cx="1" cy="0" rx="2.4" ry="1.0" fill="#FFCDD2" transform="rotate(-25)"/>' +
-          (!isYoung ? '<polygon points="0,0 2,-4 -1,-4" fill="#FDD835" stroke="#F57F17" stroke-width="0.5"/>' : '') +
-          '<ellipse cx="11" cy="5.5" rx="5" ry="3.5" fill="#FFCDD2" stroke="#E57373" stroke-width="0.7"/>' +
-          '<circle cx="10" cy="5" r="0.8" fill="#424242"/>' +
-          '<circle cx="12" cy="5" r="0.8" fill="#424242"/>' +
-          // Action-specific props: Clover sprig, golden hay, or water droplets
+        // NEAR LEGS (foreground in 3D isometric view, bright direct light at y=18)
+        // 3. Near-Back Leg
+        '<g class="leg-nb leg-walk-right" style="transform-origin: -10px 5px; transform-box: fill-box;">' +
+          '<rect x="-12" y="6" width="5.5" height="11" rx="1.8" fill="url(#cowNearLegG)" stroke="#CFD8DC" stroke-width="0.6"/>' +
+          '<polygon points="-12,15 -6.5,15 -7,18 -12,18" fill="#212121"/>' +
+          '<line x1="-9.5" y1="15" x2="-9.5" y2="18" stroke="#424242" stroke-width="0.7"/>' +
+        '</g>' +
+        // 4. Near-Front Leg
+        '<g class="leg-nf leg-walk-left" style="transform-origin: 10px 5px; transform-box: fill-box;">' +
+          '<rect x="8" y="6" width="5.5" height="11" rx="1.8" fill="url(#cowNearLegG)" stroke="#CFD8DC" stroke-width="0.6"/>' +
+          '<polygon points="8,15 13.5,15 13,18 8,18" fill="#212121"/>' +
+          '<line x1="10.5" y1="15" x2="10.5" y2="18" stroke="#424242" stroke-width="0.7"/>' +
+        '</g>' +
+        // 3D ISOMETRIC HEAD GROUP (3/4 perspective angled head)
+        '<g class="' + (isWalking ? 'head-walk-bob' : '') + '" transform="translate(17, ' + (isDrink ? '5' : (isGraze ? '3' : (isHay ? '0' : '-1'))) + ') rotate(' + (isDrink ? '18' : (isGraze ? '14' : (isHay ? '-4' : '0'))) + ')">' +
+          // Neck connection
+          '<path d="M-4,1 Q2,5 5,2 L4,-3 Z" fill="#ECEFF1"/>' +
+          // 3D Head wedge
+          '<path d="M-1,-5 Q7,-7 11,-2 Q13,4 7,6 Q-1,6 -1,-5 Z" fill="#FAFAFA" stroke="#CFD8DC" stroke-width="0.8"/>' +
+          // Black eye patch
+          '<path d="M2,-6 Q8,-6 8,-1 Q5,3 2,0 Z" fill="#263238"/>' +
+          // Glossy 3D Eye
+          '<ellipse cx="5" cy="-1.5" rx="2.2" ry="2.6" fill="#212121"/>' +
+          '<circle cx="5.6" cy="-2.2" r="0.9" fill="#FFFFFF"/>' +
+          '<circle cx="4.6" cy="-1" r="0.5" fill="#90A4AE" opacity="0.6"/>' +
+          // 3D Horns (Near and Far in isometric depth)
+          (!isYoung ? (
+            '<path d="M0,-5 Q2,-9 5,-7" stroke="#D7CCC8" stroke-width="1.8" stroke-linecap="round" fill="none"/>' +
+            '<path d="M4,-6 Q7,-11 11,-8" stroke="url(#cowHornG)" stroke-width="2.2" stroke-linecap="round" fill="none"/>'
+          ) : '') +
+          // 3D Ears
+          '<ellipse cx="1" cy="-2" rx="4.5" ry="2" fill="#FAFAFA" stroke="#B0BEC5" stroke-width="0.6" transform="rotate(-20 1 -2)"/>' +
+          '<ellipse cx="1" cy="-2" rx="2.8" ry="1" fill="#FFCDD2" transform="rotate(-20 1 -2)"/>' +
+          (!isYoung ? '<polygon points="0,-3 3,-6 0,-6" fill="#FDD835" stroke="#F57F17" stroke-width="0.5"/>' : '') +
+          // 3D Sculpted Muzzle & Nostrils
+          '<ellipse cx="12" cy="3.5" rx="5" ry="3.5" fill="url(#cowMuzzleG)" stroke="#E57373" stroke-width="0.7"/>' +
+          '<ellipse cx="11" cy="3.2" rx="1" ry="1.2" fill="#37474F"/>' +
+          '<ellipse cx="13.5" cy="3.2" rx="1" ry="1.2" fill="#37474F"/>' +
+          '<path d="M10,5.5 Q12,6.5 14,5.5" stroke="#D32F2F" stroke-width="0.7" fill="none"/>' +
+          // Props: Clover, Hay, or Water
           (isGraze ? (
             '<path d="M12,6.5 Q17,4 19,2" stroke="#4CAF50" stroke-width="1.6" fill="none"/>' +
             '<circle cx="19" cy="2" r="1.5" fill="#81C784"/>' +
@@ -17692,7 +17776,7 @@ function drawCattleAnimalSvg(species, age, actionState, scale, isReady){
       '</g>' +
     '</svg>';
   } else {
-    // Heritage Sheep
+    // ================= 3D ISOMETRIC HERITAGE SHEEP =================
     var w = isYoung ? 26 : 36;
     var h = isYoung ? 20 : 26;
     var animClass = isSitting ? 'cattle-sitting' : (isWalking ? 'cattle-walking' : (isDrink ? 'cattle-drinking' : (isHay ? 'cattle-eating-hay' : 'cattle-grazing-fast')));
@@ -17700,69 +17784,83 @@ function drawCattleAnimalSvg(species, age, actionState, scale, isReady){
     if (isSitting){
       return '<svg class="pasture-animal-svg" viewBox="-24 -18 48 38" width="' + w + '" height="' + h + '" style="overflow:visible;">' +
         '<g class="' + animClass + '">' +
-          // Ground shadow
-          '<ellipse cx="0" cy="12" rx="16" ry="4.8" fill="rgba(0,0,0,0.18)"/>' +
+          // 3D Ground Shadow
+          '<ellipse cx="1" cy="12" rx="16" ry="5" fill="rgba(0,0,0,0.20)"/>' +
           // Folded legs
           '<ellipse cx="-7" cy="9" rx="3.5" ry="1.8" fill="#3E2723"/>' +
           '<ellipse cx="7" cy="9" rx="3.5" ry="1.8" fill="#3E2723"/>' +
-          // Fluffy Merino Wool Fleece resting
-          '<g fill="#F5F5F5" stroke="#E0E0E0" stroke-width="0.8">' +
-            '<circle cx="-10" cy="3" r="6.5"/>' +
-            '<circle cx="-4" cy="-2" r="7"/>' +
-            '<circle cx="4" cy="-2" r="7"/>' +
-            '<circle cx="10" cy="3" r="6.5"/>' +
-            '<circle cx="6" cy="6" r="6"/>' +
-            '<circle cx="-5" cy="6" r="6"/>' +
-            '<circle cx="0" cy="2" r="8.5" fill="#FFFFFF"/>' +
+          // 3D Layered Merino Wool Cloud Body (resting low)
+          '<g stroke="#E0E0E0" stroke-width="0.7">' +
+            '<circle cx="-10" cy="3" r="6.5" fill="#CFD8DC"/>' +
+            '<circle cx="-4" cy="5" r="7" fill="#CFD8DC"/>' +
+            '<circle cx="4" cy="5" r="7" fill="#CFD8DC"/>' +
+            '<circle cx="10" cy="3" r="6.5" fill="#CFD8DC"/>' +
+            '<circle cx="-8" cy="-1" r="7.5" fill="#F5F5F5"/>' +
+            '<circle cx="0" cy="-2" r="8" fill="#F5F5F5"/>' +
+            '<circle cx="7" cy="-1" r="7.5" fill="#F5F5F5"/>' +
+            '<circle cx="-1" cy="2" r="8.5" fill="#FFFFFF"/>' +
+            '<circle cx="-3" cy="-4" r="5.5" fill="#FFFFFF"/>' +
+            '<circle cx="3" cy="-4" r="5.5" fill="#FFFFFF"/>' +
           '</g>' +
-          // Fluffy tail
-          '<circle cx="-12" cy="4" r="2.8" fill="#EEEEEE"/>' +
+          '<circle cx="-12" cy="4" r="2.8" fill="#ECEFF1"/>' +
           // Head resting
           '<g transform="translate(11, 2) rotate(-2)">' +
-            '<ellipse cx="4" cy="3" rx="5" ry="3.8" fill="#3E2723"/>' +
-            '<ellipse cx="1" cy="1" rx="3.2" ry="1.6" fill="#2E1B15" transform="rotate(25)"/>' +
-            '<circle cx="4" cy="2" r="0.9" fill="#FFF9C4"/>' +
+            '<path d="M0,0 Q6,-3 9,1 Q11,6 7,7 Q1,7 0,0 Z" fill="#3E2723"/>' +
+            '<ellipse cx="8.5" cy="4" rx="2.5" ry="2" fill="#2E1B15"/>' +
+            '<ellipse cx="2" cy="0" rx="3.5" ry="1.6" fill="#2E1B15" transform="rotate(30 2 0)"/>' +
+            '<circle cx="4.5" cy="1.5" r="1.1" fill="#FFE082"/><circle cx="4.5" cy="1.5" r="0.6" fill="#212121"/><circle cx="5" cy="1" r="0.3" fill="#FFF"/>' +
             '<path d="M7,5 Q11,6 14,5" stroke="#FFE082" stroke-width="1.2" fill="none"/>' +
           '</g>' +
         '</g>' +
       '</svg>';
     }
 
-    // Standing / Walking / Grazing Sheep
+    // Standing / Walking / Grazing 3D Sheep
     return '<svg class="pasture-animal-svg" viewBox="-24 -18 48 38" width="' + w + '" height="' + h + '" style="overflow:visible;">' +
       '<g class="' + animClass + '">' +
-        // Ground shadow
-        '<ellipse cx="0" cy="14" rx="18" ry="5.5" fill="rgba(0,0,0,0.22)"/>' +
-        // Legs with hooves (animated walk cycle)
-        '<g class="leg-bl ' + (isWalking ? 'leg-walk-left' : '') + '">' +
-          '<rect x="-10" y="5" width="3.8" height="10" rx="1.4" fill="#4E342E"/>' +
+        // 3D Ground Shadow
+        '<ellipse cx="1" cy="15" rx="17" ry="5.5" fill="rgba(0,0,0,0.20)"/>' +
+        // Far legs (darker in 3D shadow at y=12)
+        '<g class="leg-fb ' + (isWalking ? 'leg-walk-left' : '') + '" style="transform-origin: -8px 4px; transform-box: fill-box;">' +
+          '<rect x="-9.5" y="4" width="3.2" height="9" rx="1.2" fill="#2E1B15"/>' +
         '</g>' +
-        '<g class="leg-br ' + (isWalking ? 'leg-walk-right' : '') + '">' +
-          '<rect x="-4" y="4" width="3.8" height="10" rx="1.4" fill="#3E2723"/>' +
+        '<g class="leg-ff ' + (isWalking ? 'leg-walk-right' : '') + '" style="transform-origin: 5px 4px; transform-box: fill-box;">' +
+          '<rect x="4.5" y="4" width="3.2" height="9" rx="1.2" fill="#2E1B15"/>' +
         '</g>' +
-        '<g class="leg-fl ' + (isWalking ? 'leg-walk-right' : '') + '">' +
-          '<rect x="5" y="5" width="3.8" height="10" rx="1.4" fill="#4E342E"/>' +
+        // 3D Multi-Layered Fluffy Cloud Fleece
+        '<g stroke="#E0E0E0" stroke-width="0.8">' +
+          // Underbelly base shadow puffs
+          '<circle cx="-10" cy="2" r="7.5" fill="#CFD8DC"/>' +
+          '<circle cx="-4" cy="5" r="7.5" fill="#B0BEC5"/>' +
+          '<circle cx="5" cy="5" r="7.5" fill="#B0BEC5"/>' +
+          '<circle cx="10" cy="2" r="7.5" fill="#CFD8DC"/>' +
+          // Mid-body fleece
+          '<circle cx="-8" cy="-2" r="8" fill="#F5F5F5"/>' +
+          '<circle cx="0" cy="-3" r="8.5" fill="#F5F5F5"/>' +
+          '<circle cx="7" cy="-2" r="8" fill="#F5F5F5"/>' +
+          '<circle cx="-1" cy="2" r="9" fill="#FAFAFA"/>' +
+          // Top sunlight highlights
+          '<circle cx="-4" cy="-5" r="6" fill="#FFFFFF"/>' +
+          '<circle cx="3" cy="-5" r="6" fill="#FFFFFF"/>' +
         '</g>' +
-        '<g class="leg-fr ' + (isWalking ? 'leg-walk-left' : '') + '">' +
-          '<rect x="11" y="4" width="3.8" height="10" rx="1.4" fill="#3E2723"/>' +
+        '<circle cx="-14" cy="2" r="3.2" fill="#ECEFF1"/>' +
+        // Near legs (grounded forward in direct light at y=15)
+        '<g class="leg-nb leg-walk-right" style="transform-origin: -6px 5px; transform-box: fill-box;">' +
+          '<rect x="-7" y="6" width="3.6" height="10" rx="1.4" fill="#3E2723"/>' +
+          '<polygon points="-7,14 -3.4,14 -4,16 -7,16" fill="#1B100C"/>' +
         '</g>' +
-        // Fluffy Merino Wool Fleece
-        '<g fill="#F5F5F5" stroke="#E0E0E0" stroke-width="0.8">' +
-          '<circle cx="-11" cy="0" r="7.5"/>' +
-          '<circle cx="-5" cy="-6" r="8"/>' +
-          '<circle cx="5" cy="-6" r="8"/>' +
-          '<circle cx="11" cy="0" r="7.5"/>' +
-          '<circle cx="7" cy="5" r="7.5"/>' +
-          '<circle cx="-6" cy="5" r="7.5"/>' +
-          '<circle cx="0" cy="0" r="10" fill="#FFFFFF"/>' +
+        '<g class="leg-nf leg-walk-left" style="transform-origin: 5px 5px; transform-box: fill-box;">' +
+          '<rect x="4" y="6" width="3.6" height="10" rx="1.4" fill="#3E2723"/>' +
+          '<polygon points="4,14 7.6,14 7,16 4,16" fill="#1B100C"/>' +
         '</g>' +
-        // Fluffy tail
-        '<circle cx="-14" cy="2" r="3.4" fill="#EEEEEE"/>' +
-        // Head
-        '<g transform="translate(13, ' + (isDrink ? '4' : (isGraze ? '2' : (isHay ? '0' : '-1'))) + ') rotate(' + (isDrink ? '18' : (isGraze ? '15' : (isHay ? '-3' : '0'))) + ')">' +
-          '<ellipse cx="4" cy="3" rx="5.5" ry="4.2" fill="#3E2723"/>' +
-          '<ellipse cx="1" cy="1" rx="3.5" ry="1.8" fill="#2E1B15" transform="rotate(30)"/>' +
-          '<circle cx="4" cy="2" r="1" fill="#FFF9C4"/>' +
+        // 3D Angled Sheep Head
+        '<g class="' + (isWalking ? 'head-walk-bob' : '') + '" transform="translate(13, ' + (isDrink ? '4' : (isGraze ? '2' : (isHay ? '0' : '-1'))) + ') rotate(' + (isDrink ? '18' : (isGraze ? '15' : (isHay ? '-3' : '0'))) + ')">' +
+          '<path d="M0,0 Q6,-3 9,1 Q11,6 7,7 Q1,7 0,0 Z" fill="#3E2723"/>' +
+          '<ellipse cx="8.5" cy="4" rx="2.5" ry="2" fill="#2E1B15"/>' +
+          '<ellipse cx="2" cy="0" rx="3.8" ry="1.8" fill="#2E1B15" transform="rotate(30 2 0)"/>' +
+          '<circle cx="4.5" cy="1.5" r="1.3" fill="#FFE082"/><circle cx="4.5" cy="1.5" r="0.8" fill="#212121"/><circle cx="5" cy="1" r="0.4" fill="#FFF"/>' +
+          '<ellipse cx="1.5" cy="-1.5" rx="3.5" ry="2.2" fill="#FFFFFF"/>' +
+          // Props: Clover, Hay, or Water
           (isGraze ? (
             '<path d="M8,5 Q12,3 14,1" stroke="#4CAF50" stroke-width="1.5" fill="none"/>' +
             '<circle cx="14" cy="1" r="1.3" fill="#81C784"/>'
