@@ -4220,6 +4220,42 @@
     animation: cattleGrazeMunch 2.8s ease-in-out infinite 0.7s;
     transform-origin: center bottom;
   }
+  .pasture-cattle-entity {
+    position: absolute;
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 8;
+    transform-origin: center bottom;
+    transition: left 4.5s ease-in-out, top 4.5s ease-in-out;
+    will-change: transform, left, top;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .pasture-cattle-entity:hover {
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.3));
+  }
+  .pasture-produce-badge {
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(46, 125, 50, 0.95);
+    color: #FFF;
+    border: 1.5px solid #FFD54F;
+    border-radius: 12px;
+    padding: 2px 7px;
+    font-size: 0.72rem;
+    font-weight: 900;
+    white-space: nowrap;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+    cursor: pointer;
+    z-index: 10;
+    animation: cattleBadgePulse 1.2s infinite ease-in-out;
+  }
+  @keyframes cattleBadgePulse {
+    0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
+    50% { transform: translateX(-50%) translateY(-4px) scale(1.06); }
+  }
 
 </style>
 </head>
@@ -4438,7 +4474,7 @@ var VILLAGE_LAYOUT = {
   coffee_shop: { top: 12, left: 61, w: 12, h: 22 }, // North mid-east block (connected by 320px brick promenade)
   juice_bar:   { top: 66, left: 61, w: 12, h: 22 }, // South mid-east block (directly opposite Coffee Shop)
   crop_field:  { top: 72.0, left: 45.5, w: 14, h: 21 }, // South central polyculture block behind Plot 5
-  cattle_farm: { top: 21.0, left: 2.5, w: 15.0, h: 22.5 }, // North-west pasture paddock left of Plot 1
+  cattle_farm: { top: 21.5, left: 2.0, w: 7.2, h: 22.0 }, // North-west timber cattle shed left of Plot 0
   garage:      GARAGE_SPOT                          // North East mechanization block (top:12, left:88, w:11, h:22)
 };
 
@@ -4504,18 +4540,18 @@ var LIVESTOCK_TYPES = {
     youngLabel: 'Calf',
     icon: '🐄',
     youngIcon: '🐮',
-    cost: 80,
-    growHours: 4.0,
+    cost: 150,
+    growHours: 40.0,
     produceKey: 'milk',
     produceLabel: 'Farm Milk',
     produceIcon: '🥛',
-    produceHours: 3.0,
-    produceValue: 45,
-    produceYield: 45,
+    produceHours: 30.0,
+    produceValue: 350,
+    produceYield: 350,
     maxPerChamber: 1,
-    adultSaleValue: 220,
-    adultSale: 220,
-    fact: 'Dairy cattle convert pasture clover and sweet grass into nutrient-rich calcium milk, naturally aerating and fertilizing the meadow.'
+    adultSaleValue: 950,
+    adultSale: 950,
+    fact: 'Dairy cattle convert pasture clover and sweet grass into rich organic milk, aerating and fertilizing the meadow.'
   },
   sheep: {
     species: 'sheep',
@@ -4523,17 +4559,17 @@ var LIVESTOCK_TYPES = {
     youngLabel: 'Lamb',
     icon: '🐑',
     youngIcon: '🐑',
-    cost: 40,
-    growHours: 3.0,
+    cost: 75,
+    growHours: 30.0,
     produceKey: 'wool',
     produceLabel: 'Wool Fleece',
     produceIcon: '🧶',
-    produceHours: 2.5,
-    produceValue: 30,
-    produceYield: 30,
+    produceHours: 25.0,
+    produceValue: 220,
+    produceYield: 220,
     maxPerChamber: 2,
-    adultSaleValue: 115,
-    adultSale: 115,
+    adultSaleValue: 480,
+    adultSale: 480,
     fact: 'Gentle pasture grazers that produce warm, lanolin-rich wool fleece and keep meadow grasses manicured without soil compaction.'
   }
 };
@@ -5058,10 +5094,119 @@ NORDIC_SPECIES_KEYS.forEach(function(k){ TREE_TYPES[k] = NORDIC_TREE_TYPES[k]; }
 BRAZIL_SPECIES_KEYS.forEach(function(k){ TREE_TYPES[k] = BRAZIL_TREE_TYPES[k]; });
 SPAIN_SPECIES_KEYS.forEach(function(k){ TREE_TYPES[k] = SPAIN_TREE_TYPES[k]; });
 
+// ================= PARENT VILLAGE SVG PADDOCK FENCING =================
+
+function drawPaddockFenceSVG(){
+  if (!state) return '';
+  var isBuilt = state.cattleFenceBuilt;
+  var isBuilding = state.cattleFenceBuilding;
+  if (!isBuilt && !isBuilding) return '';
+
+  var s = '<g id="paddockFenceGroup">';
+  if (isBuilding){
+    var pct = Math.round(Math.min(100, ((state.cattleFenceHours || 0) / 2.5) * 100));
+    // Construction boundary stakes and caution ropes along meadow perimeter
+    s += '<line x1="18" y1="138" x2="182" y2="138" stroke="#FF9800" stroke-width="2.2" stroke-dasharray="8,5"/>' +
+         '<line x1="18" y1="272" x2="182" y2="272" stroke="#FF9800" stroke-width="2.2" stroke-dasharray="8,5"/>' +
+         '<line x1="18" y1="138" x2="18" y2="272" stroke="#FF9800" stroke-width="2.2" stroke-dasharray="8,5"/>' +
+         '<line x1="182" y1="138" x2="182" y2="272" stroke="#FF9800" stroke-width="2.2" stroke-dasharray="8,5"/>';
+    // Stakes with orange warning markers
+    [18, 58, 98, 140, 182].forEach(function(px){
+      s += '<rect x="' + (px - 2) + '" y="132" width="4" height="12" fill="#8D6E63"/>' +
+           '<circle cx="' + px + '" cy="132" r="2.5" fill="#FF5722"/>' +
+           '<rect x="' + (px - 2) + '" y="266" width="4" height="12" fill="#8D6E63"/>' +
+           '<circle cx="' + px + '" cy="266" r="2.5" fill="#FF5722"/>';
+    });
+    // Laborer with hammer working on fence
+    s += personSvg('laborer', true, 175, 215, false, 'hammer');
+    // Floating Progress Banner in Paddock Center
+    s += '<g transform="translate(100, 205)">' +
+           '<rect x="-56" y="-14" width="112" height="28" rx="6" fill="rgba(38,50,56,0.94)" stroke="#FFB74D" stroke-width="1.4"/>' +
+           '<rect x="-48" y="5" width="96" height="4" rx="2" fill="#263238"/>' +
+           '<rect x="-48" y="5" width="' + (96 * pct / 100) + '" height="4" rx="2" fill="#FFB74D"/>' +
+           '<text x="0" y="0" font-size="8.5" text-anchor="middle" font-weight="800" fill="#FFE082">⛩️ Erecting Fence ' + pct + '%</text>' +
+         '</g>';
+    s += '</g>';
+    return s;
+  }
+
+  // ================= PERMANENT POST-AND-RAIL WOODEN FENCE =================
+  // 1. North Backside Fence (y: 138, safely on green hill turf below sky horizon)
+  s += '<line x1="18" y1="136" x2="182" y2="136" stroke="#8D6E63" stroke-width="2.6"/>' +
+       '<line x1="18" y1="141" x2="182" y2="141" stroke="#5D4037" stroke-width="2.2"/>';
+  [18, 45, 72, 100, 127, 155, 182].forEach(function(px){
+    s += '<rect x="' + (px - 2) + '" y="132" width="4.2" height="13" rx="0.8" fill="#6D4C41" stroke="#3E2723" stroke-width="0.7"/>' +
+         '<ellipse cx="' + px + '" cy="132" rx="2.4" ry="1.2" fill="#8D6E63"/>';
+  });
+
+  // 2. South Fence (y: 272, directly above Main Road north curb at y: 278)
+  s += '<line x1="18" y1="270" x2="182" y2="270" stroke="#8D6E63" stroke-width="2.6"/>' +
+       '<line x1="18" y1="275" x2="182" y2="275" stroke="#5D4037" stroke-width="2.2"/>';
+  [18, 45, 72, 100, 127, 155, 182].forEach(function(px){
+    s += '<rect x="' + (px - 2) + '" y="266" width="4.2" height="13" rx="0.8" fill="#6D4C41" stroke="#3E2723" stroke-width="0.7"/>' +
+         '<ellipse cx="' + px + '" cy="266" rx="2.4" ry="1.2" fill="#8D6E63"/>';
+  });
+
+  // 3. West Backside Fence (x: 18, behind timber cattle shed)
+  s += '<line x1="16" y1="138" x2="16" y2="272" stroke="#8D6E63" stroke-width="2.6"/>' +
+       '<line x1="20" y1="138" x2="20" y2="272" stroke="#5D4037" stroke-width="2.2"/>';
+  [165, 192, 219, 246].forEach(function(py){
+    s += '<rect x="15" y="' + (py - 2) + '" width="6" height="4" rx="0.8" fill="#6D4C41" stroke="#3E2723" stroke-width="0.7"/>';
+  });
+
+  // 4. East Fence (x: 182) with East Ranch Gate meeting stone spur paver at (x: 175, y: 196)
+  // North section (y: 138 to 182)
+  s += '<line x1="180" y1="138" x2="180" y2="182" stroke="#8D6E63" stroke-width="2.6"/>' +
+       '<line x1="184" y1="138" x2="184" y2="182" stroke="#5D4037" stroke-width="2.2"/>' +
+       '<rect x="180" y="158" width="4.2" height="13" rx="0.8" fill="#6D4C41" stroke="#3E2723" stroke-width="0.7"/>';
+  // South section (y: 210 to 272)
+  s += '<line x1="180" y1="210" x2="180" y2="272" stroke="#8D6E63" stroke-width="2.6"/>' +
+       '<line x1="184" y1="210" x2="184" y2="272" stroke="#5D4037" stroke-width="2.2"/>' +
+       '<rect x="180" y="235" width="4.2" height="13" rx="0.8" fill="#6D4C41" stroke="#3E2723" stroke-width="0.7"/>' +
+       '<rect x="180" y="256" width="4.2" height="13" rx="0.8" fill="#6D4C41" stroke="#3E2723" stroke-width="0.7"/>';
+
+  // East Ranch Entrance Gate (y: 182 to 210)
+  s += '<rect x="178" y="174" width="7" height="20" rx="1.5" fill="#4E342E" stroke="#261713" stroke-width="1"/>' +
+       '<rect x="178" y="202" width="7" height="20" rx="1.5" fill="#4E342E" stroke="#261713" stroke-width="1"/>' +
+       '<path d="M181,174 Q188,172 188,196 Q188,220 181,218" stroke="#4E342E" stroke-width="3.2" fill="none"/>' +
+       '<circle cx="187" cy="196" r="6" fill="#3E2723" stroke="#FFD54F" stroke-width="0.9"/>' +
+       '<text x="187" y="198.5" text-anchor="middle" font-size="7">🐄</text>' +
+       // Open swing gate leaf angled inward into pasture
+       '<line x1="181" y1="182" x2="168" y2="192" stroke="#8D6E63" stroke-width="2.5"/>' +
+       '<line x1="181" y1="210" x2="168" y2="200" stroke="#8D6E63" stroke-width="2.5"/>' +
+       '<line x1="168" y1="192" x2="168" y2="200" stroke="#5D4037" stroke-width="2.2"/>';
+
+  // 5. Pasture Terrain Amenities (Water Trough & Clover Hay Feeder on parent grass)
+  // Sweet Clover Hay Rack in Northeast pasture
+  s += '<g transform="translate(145, 146)">' +
+         '<rect x="0" y="0" width="28" height="16" rx="2" fill="#5D4037" stroke="#3E2723" stroke-width="1"/>' +
+         '<ellipse cx="14" cy="8" rx="11" ry="6" fill="#FFF9C4" stroke="#FFE082" stroke-width="0.8"/>' +
+         '<line x1="6" y1="5" x2="22" y2="5" stroke="#FBC02D" stroke-width="1"/>' +
+         '<line x1="4" y1="8" x2="24" y2="8" stroke="#FBC02D" stroke-width="1"/>' +
+         '<text x="14" y="-2" text-anchor="middle" font-size="6.5" font-weight="800" fill="#FFF9C4">🌾 Clover Hay</text>' +
+       '</g>';
+  // Spring Water Trough in Southeast pasture
+  s += '<g transform="translate(135, 246)">' +
+         '<rect x="0" y="0" width="30" height="15" rx="3" fill="#5D4037" stroke="#3E2723" stroke-width="1"/>' +
+         '<rect x="2" y="2" width="26" height="11" rx="1.5" fill="#0288D1"/>' +
+         '<line x1="5" y1="5" x2="18" y2="5" stroke="#B3E5FC" stroke-width="0.9" opacity="0.8"/>' +
+         '<text x="15" y="-2" text-anchor="middle" font-size="6.5" font-weight="800" fill="#B3E5FC">💧 Spring Trough</text>' +
+       '</g>';
+  // Meadow clover flowers
+  s += '<g opacity="0.85">' +
+         '<circle cx="95" cy="165" r="1.8" fill="#FFF"/><circle cx="97" cy="166" r="1.5" fill="#FFF"/><circle cx="96" cy="165" r="0.9" fill="#FFE082"/>' +
+         '<circle cx="120" cy="230" r="1.8" fill="#FFF"/><circle cx="122" cy="231" r="1.5" fill="#FFF"/><circle cx="121" cy="230" r="0.9" fill="#FFE082"/>' +
+         '<circle cx="160" cy="225" r="1.8" fill="#FFF"/><circle cx="162" cy="226" r="1.5" fill="#FFF"/>' +
+       '</g>';
+
+  s += '</g>';
+  return s;
+}
+
 // ================= REGIONAL FIELD BACKGROUND OVERLAYS =================
 
 function rockAndLawnOverlaysSVG(){
-  var s = '';
+  var s = drawPaddockFenceSVG();
   if (!state || !state.rocksCleared){
     var rocks = [[110,330],[890,310],[470,255],[60,470],[930,460],[300,240],[700,410]];
     rocks.forEach(function(r){
@@ -6504,6 +6649,7 @@ function freshState(){
       }
     },
     hasTractor: false,
+    cattleFenceBuilt: false, cattleFenceBuilding: false, cattleFenceHours: 0,
     rocksCleared: false, rocksClearing: false, rocksClearHours: 0,
     lawnOvergrowth: 0, lawnMowing: false, lawnMowHours: 0,
     marketplaceUnlocked: {}
@@ -11356,6 +11502,9 @@ function loadState(){
             { id: 3, name: 'Stall 4 (South)', species: null, animals: [] }
           ];
         }
+        if (state.cattleFenceBuilt===undefined) state.cattleFenceBuilt = false;
+        if (state.cattleFenceBuilding===undefined) state.cattleFenceBuilding = false;
+        if (state.cattleFenceHours===undefined) state.cattleFenceHours = 0;
 
         if (state.treesRemoved===undefined) state.treesRemoved = 0;
         if (state.demerits===undefined) state.demerits = 0;
@@ -11554,7 +11703,7 @@ function advanceGame(dh){
       var animalCount = 0;
       cf.chambers.forEach(function(ch){ if (ch.animals) animalCount += ch.animals.length; });
       if (animalCount > 0){
-        var drainRate = 1.2 * (animalCount / 4);
+        var drainRate = 0.3 * (animalCount / 4);
         cf.feedLevel = Math.max(0, (cf.feedLevel !== undefined ? cf.feedLevel : 100) - dh * drainRate);
         cf.waterLevel = Math.max(0, (cf.waterLevel !== undefined ? cf.waterLevel : 100) - dh * drainRate * 1.25);
 
@@ -11641,6 +11790,28 @@ function advanceGame(dh){
           animateWorkerPathWalk(rkW, 'crew_shed', 'rocks');
         }
         delete state.rocksWorkerId;
+      }
+    }
+  }
+
+  // Cattle Paddock Fencing timer
+  if (state.cattleFenceBuilding){
+    state.cattleFenceHours = (state.cattleFenceHours || 0) + dh;
+    if (state.cattleFenceHours >= 2.5){
+      state.cattleFenceBuilding = false;
+      state.cattleFenceBuilt = true;
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+      pushReport('⛩️ Paddock fencing erected around the pasture! 4 stalls unlocked to adopt cows & sheep.');
+      showNotification('⛩️', 'Paddock fencing completed! 4 stalls unlocked for dairy cows and sheep.', 'building', 'cattle_farm');
+      if (state.cattleFenceWorkerId !== undefined){
+        var cfW = state.workers.find(function(w){ return w.id === state.cattleFenceWorkerId; });
+        if (cfW){
+          cfW.assignedBuilding = null;
+          if (typeof animateWorkerPathWalk === 'function'){
+            animateWorkerPathWalk(cfW, 'crew_shed', 'cattle_farm');
+          }
+        }
+        delete state.cattleFenceWorkerId;
       }
     }
   }
@@ -12259,9 +12430,33 @@ function assignWorkerToTask(workerId, taskType, targetId){
   } else if (taskType === 'cattle_water'){
     waterCattleFarm();
     if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'cattle_farm');
+  } else if (taskType === 'cattle_fence'){
+    startBuildCattleFence(workerId);
   } else if (taskType === 'building'){
     assignWorkerToBuilding(workerId, targetId);
   }
+  render(); requestSave();
+}
+
+function startBuildCattleFence(workerId){
+  if (state.money < 150){
+    showNotification('⚠️', 'Insufficient funds to erect paddock fencing (€150 needed).', 'building', 'cattle_farm');
+    return;
+  }
+  if (state.cattleFenceBuilt || state.cattleFenceBuilding) return;
+  state.money -= 150;
+  state.cattleFenceBuilding = true;
+  state.cattleFenceHours = 0;
+  state.cattleFenceWorkerId = workerId || null;
+  if (workerId){
+    var w = state.workers.find(function(x){ return x.id === workerId; });
+    if (w){
+      w.assignedBuilding = 'cattle_fence';
+      if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'cattle_farm');
+    }
+  }
+  pushReport('⛩️ Began erecting sturdy paddock fencing around the pasture (€150).');
+  showNotification('⛩️', 'Farmhand started erecting paddock fencing!', 'building', 'cattle_farm');
   render(); requestSave();
 }
 function buyAccessory(plotId, kind){
@@ -12513,6 +12708,167 @@ function triggerWorkerScareSequence(plotId, animalKey, animalDef){
     });
   } else {
     showNotification('✅', animalDef.name + ' was scared away!', 'plot', plotId);
+  }
+}
+
+// ================= PARENT TERRAIN PASTURE LIVESTOCK ENGINE =================
+var activePastureLivestock = {};
+
+function syncPastureLivestock(){
+  var layer = document.getElementById('animalsLayer');
+  if (!layer) return;
+
+  var cf = state && state.buildings && state.buildings.cattle_farm;
+  var isPaddockActive = cf && cf.built && state.cattleFenceBuilt;
+
+  if (!isPaddockActive){
+    for (var aid in activePastureLivestock){
+      var oldEl = document.getElementById('pastureCattle_' + aid);
+      if (oldEl && oldEl.parentNode) oldEl.parentNode.removeChild(oldEl);
+      delete activePastureLivestock[aid];
+    }
+    return;
+  }
+
+  var stallYs = [22.6, 28.1, 33.6, 39.1];
+  var activeIds = {};
+
+  if (cf.chambers){
+    cf.chambers.forEach(function(ch, cIdx){
+      if (!ch.animals) return;
+      ch.animals.forEach(function(a){
+        activeIds[a.id] = true;
+        var rec = activePastureLivestock[a.id];
+        var now = Date.now();
+
+        if (!rec){
+          var startInShed = Math.random() < 0.35;
+          rec = activePastureLivestock[a.id] = {
+            id: a.id,
+            chamberId: ch.id,
+            species: a.species,
+            age: a.age,
+            stallIdx: cIdx,
+            stallY: stallYs[cIdx] || 25,
+            state: startInShed ? 'in_shed' : 'grazing',
+            currX: startInShed ? 4.2 : (11.0 + Math.random() * 5.0),
+            currY: startInShed ? (stallYs[cIdx] || 25) : (24.0 + Math.random() * 16.0),
+            targetX: null,
+            targetY: null,
+            facingLeft: startInShed,
+            isGraze: true,
+            nextActionTs: now + (startInShed ? (8000 + Math.random() * 6000) : (14000 + Math.random() * 8000)),
+            wanderTs: now + 4000
+          };
+        }
+
+        rec.age = a.age;
+        var isReady = (a.species === 'cow' && a.milkReady) || (a.species === 'sheep' && a.woolReady);
+        rec.isReady = isReady;
+
+        // State Machine
+        // 1. GRAZING in meadow
+        if (rec.state === 'grazing'){
+          if (now >= rec.nextActionTs){
+            rec.state = 'walking_to_shed';
+            rec.facingLeft = true;
+            rec.isGraze = false;
+            rec.targetX = 8.2;
+            rec.targetY = rec.stallY;
+            rec.currX = 8.2;
+            rec.currY = rec.stallY;
+            rec.nextActionTs = now + 4800;
+          } else if (now >= rec.wanderTs){
+            var newX = Math.max(10.5, Math.min(17.0, rec.currX + (Math.random() - 0.5) * 3.5));
+            var newY = Math.max(23.8, Math.min(41.5, rec.currY + (Math.random() - 0.5) * 4.0));
+            rec.facingLeft = newX < rec.currX;
+            rec.currX = newX;
+            rec.currY = newY;
+            rec.isGraze = true;
+            rec.wanderTs = now + 4000 + Math.random() * 3000;
+          }
+        }
+        // 2. WALKING TO SHED
+        else if (rec.state === 'walking_to_shed'){
+          if (now >= rec.nextActionTs){
+            rec.state = 'in_shed';
+            rec.currX = 4.2;
+            rec.currY = rec.stallY;
+            rec.facingLeft = true;
+            rec.isGraze = true;
+            rec.nextActionTs = now + 12000 + Math.random() * 8000;
+          }
+        }
+        // 3. IN SHED (resting, eating clover hay at manger)
+        else if (rec.state === 'in_shed'){
+          rec.currX = 4.2;
+          rec.currY = rec.stallY;
+          rec.facingLeft = true;
+          rec.isGraze = true;
+          if (now >= rec.nextActionTs){
+            rec.state = 'walking_to_pasture';
+            rec.facingLeft = false;
+            rec.isGraze = false;
+            rec.targetX = 11.5 + Math.random() * 4.5;
+            rec.targetY = Math.max(24.0, Math.min(41.0, rec.stallY + (Math.random() * 6 - 3)));
+            rec.currX = rec.targetX;
+            rec.currY = rec.targetY;
+            rec.nextActionTs = now + 4800;
+          }
+        }
+        // 4. WALKING TO PASTURE
+        else if (rec.state === 'walking_to_pasture'){
+          if (now >= rec.nextActionTs){
+            rec.state = 'grazing';
+            rec.isGraze = true;
+            rec.nextActionTs = now + 16000 + Math.random() * 12000;
+            rec.wanderTs = now + 4500;
+          }
+        }
+
+        // DOM Entity Rendering
+        var elId = 'pastureCattle_' + a.id;
+        var el = document.getElementById(elId);
+        if (!el){
+          el = document.createElement('div');
+          el.id = elId;
+          el.className = 'pasture-cattle-entity';
+          el.style.left = rec.currX + '%';
+          el.style.top = rec.currY + '%';
+          layer.appendChild(el);
+        } else {
+          el.style.left = rec.currX + '%';
+          el.style.top = rec.currY + '%';
+        }
+
+        el.style.transform = rec.facingLeft ? 'scaleX(-1)' : 'scaleX(1)';
+
+        var scaleVal = (a.species === 'cow' ? 1.05 : 0.95);
+        var badgeHtml = isReady
+          ? ('<div class="pasture-produce-badge" onclick="event.stopPropagation();harvestLivestockProduce(' + ch.id + ',\'' + a.id + '\',\'sell\')" title="Click to harvest directly!">' + (a.species === 'cow' ? '🥛 €350' : '🧶 €220') + '</div>')
+          : '';
+
+        el.innerHTML = badgeHtml + drawCattleAnimalSvg(a.species, a.age, rec.isGraze, scaleVal, false);
+
+        el.onclick = function(e){
+          e.stopPropagation();
+          if (isReady){
+            harvestLivestockProduce(ch.id, a.id, 'sell');
+          } else {
+            openModal('building', 'cattle_farm');
+          }
+        };
+      });
+    });
+  }
+
+  // Cleanup removed animals
+  for (var aid in activePastureLivestock){
+    if (!activeIds[aid]){
+      var oldEl = document.getElementById('pastureCattle_' + aid);
+      if (oldEl && oldEl.parentNode) oldEl.parentNode.removeChild(oldEl);
+      delete activePastureLivestock[aid];
+    }
   }
 }
 function startBuildStorage(){
@@ -13599,7 +13955,7 @@ function getRoadNetworkWaypoints(origin, destination){
       // Crop Field Apron (x:52.5, y:73.5) -> cross-lane East to Avenue 2 (x:60.2, y:73.5) -> Avenue 2 North to Main Road (x:60.2, y:47)
       return [{ x: 52.5, y: 73.5 }, { x: 60.2, y: 73.5 }, { x: 60.2, y: mainRoadY }];
     }
-    if (loc === 'cattle_farm'){
+    if (loc === 'cattle_farm' || loc === 'cattle_fence'){
       // Cattle Farm East Gate (x:18.0, y:31.4) -> Plot 0 spur (x:24.0, y:31.4) -> Avenue 1 (x:31.0, y:31.4) -> Main Road (x:31.0, y:47)
       return [{ x: 18.0, y: 31.4 }, { x: 24.0, y: 31.4 }, { x: 31.0, y: 31.4 }, { x: 31.0, y: mainRoadY }];
     }
@@ -14194,6 +14550,7 @@ function fieldBackgroundSVG(){
     '<path d="M0,140 C150,100 300,170 500,130 C700,90 850,150 1000,120 L1000,625 L0,625 Z" fill="url(#hillG1)"/>'+
     '<path d="M0,220 C200,180 350,240 550,210 C750,180 880,230 1000,200 L1000,625 L0,625 Z" fill="url(#hillG2)"/>'+
     '<path d="M0,300 Q250,340 500,305 T1000,300 L1000,625 L0,625 Z" fill="#4F8A45"/>'+
+    drawPaddockFenceSVG()+
     '<path d="M40,600 Q300,540 500,580 T980,590" stroke="#B08858" stroke-width="26" fill="none" stroke-linecap="round" opacity="0.55"/>'+
     '<path d="M40,600 Q300,540 500,580 T980,590" stroke="#C9A374" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="14 16" opacity="0.7"/>'+
     (function(){
@@ -17001,7 +17358,7 @@ function drawCattleAnimalSvg(species, age, isGraze, scale, isReady){
         '<circle cx="11" cy="4.5" r="0.6" fill="#424242"/>' +
         (isGraze ? '<path d="M11,6 Q15,4 16,2" stroke="#4CAF50" stroke-width="1.3" fill="none"/><path d="M12,7 Q17,8 18,7" stroke="#81C784" stroke-width="1.1" fill="none"/>' : '') +
       '</g>' +
-      (isReady ? '<g transform="translate(0, -18)"><rect x="-18" y="-7" width="36" height="14" rx="4" fill="rgba(46,125,50,0.95)" stroke="#FFD54F" stroke-width="1"/><text x="0" y="3.5" text-anchor="middle" font-size="8.5" font-weight="900" fill="#FFF">🥛 €45</text></g>' : '') +
+      (isReady ? '<g transform="translate(0, -18)"><rect x="-18" y="-7" width="36" height="14" rx="4" fill="rgba(46,125,50,0.95)" stroke="#FFD54F" stroke-width="1"/><text x="0" y="3.5" text-anchor="middle" font-size="8.5" font-weight="900" fill="#FFF">🥛 €350</text></g>' : '') +
     '</g>';
   } else {
     // Sheep
@@ -17033,7 +17390,7 @@ function drawCattleAnimalSvg(species, age, isGraze, scale, isReady){
         '<circle cx="4" cy="2" r="0.8" fill="#FFF9C4"/>' +
         (isGraze ? '<path d="M7,5 Q11,3 12,1" stroke="#4CAF50" stroke-width="1.3" fill="none"/><circle cx="12" cy="1" r="1.1" fill="#81C784"/>' : '') +
       '</g>' +
-      (isReady ? '<g transform="translate(0, -16)"><rect x="-18" y="-7" width="36" height="14" rx="4" fill="rgba(46,125,50,0.95)" stroke="#FFD54F" stroke-width="1"/><text x="0" y="3.5" text-anchor="middle" font-size="8.5" font-weight="900" fill="#FFF">🧶 €30</text></g>' : '') +
+      (isReady ? '<g transform="translate(0, -16)"><rect x="-18" y="-7" width="36" height="14" rx="4" fill="rgba(46,125,50,0.95)" stroke="#FFD54F" stroke-width="1"/><text x="0" y="3.5" text-anchor="middle" font-size="8.5" font-weight="900" fill="#FFF">🧶 €220</text></g>' : '') +
     '</g>';
   }
   return svg;
@@ -17048,173 +17405,59 @@ function drawCattleFarmScene(b, tending){
   }
   if (isBuilding){
     var pct = Math.round(Math.min(100, (b.buildHours / (BUILDING_TYPES.cattle_farm.buildHours || 5)) * 100));
-    return '<svg viewBox="0 0 240 360" preserveAspectRatio="none" style="width:100%;height:100%;">' +
-      '<rect x="8" y="12" width="224" height="336" rx="4" fill="#3E2723" stroke="#FF6D00" stroke-width="2" stroke-dasharray="6,4" opacity="0.6"/>' +
-      '<rect x="14" y="24" width="72" height="312" rx="3" fill="#4E342E" stroke="#FFB74D" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.8"/>' +
-      '<circle cx="120" cy="180" r="32" fill="#3E2723" stroke="#FF9800" stroke-width="2"/>' +
-      '<text x="120" y="174" text-anchor="middle" font-size="22">🔨</text>' +
-      '<text x="120" y="192" text-anchor="middle" font-size="11" font-weight="800" fill="#FFE082">Building Shed &amp; Fence</text>' +
-      '<text x="120" y="206" text-anchor="middle" font-size="10" font-weight="700" fill="#FFB74D">' + pct + '%</text>' +
+    return '<svg viewBox="0 0 90 240" preserveAspectRatio="none" style="width:100%;height:100%;">' +
+      '<rect x="4" y="8" width="82" height="224" rx="4" fill="#3E2723" stroke="#FF6D00" stroke-width="2" stroke-dasharray="6,4" opacity="0.6"/>' +
+      '<circle cx="45" cy="110" r="22" fill="#3E2723" stroke="#FF9800" stroke-width="2"/>' +
+      '<text x="45" y="106" text-anchor="middle" font-size="16">🔨</text>' +
+      '<text x="45" y="122" text-anchor="middle" font-size="8" font-weight="800" fill="#FFE082">Framing Shed</text>' +
+      '<text x="45" y="134" text-anchor="middle" font-size="8" font-weight="700" fill="#FFB74D">' + pct + '%</text>' +
     '</svg>';
   }
 
-  // Built Pasture & 4-Stall Timber Cattle Shed
+  // Built 4-Stall Vertical Timber Cattle Shed (Facing East towards Plot 0)
   var chambers = (b && b.chambers) ? b.chambers : [];
-  var svg = '<svg viewBox="0 0 240 360" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;pointer-events:none;">' +
+  var svg = '<svg viewBox="0 0 90 240" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;pointer-events:none;">' +
     '<defs>' +
-      '<linearGradient id="pastureGrassGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3F7A34"/><stop offset="100%" stop-color="#2D5A24"/></linearGradient>' +
       '<linearGradient id="cattleBarnRoof" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#3E2723"/><stop offset="70%" stop-color="#5D4037"/><stop offset="100%" stop-color="#4E342E"/></linearGradient>' +
-      '<linearGradient id="troughWaterGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#81D4FA"/><stop offset="100%" stop-color="#0288D1"/></linearGradient>' +
     '</defs>' +
-    // Pasture Meadow Base
-    '<rect x="6" y="10" width="228" height="340" rx="4" fill="url(#pastureGrassGrad)"/>' +
-    // Wildflower and clover clumps across the meadow
-    '<circle cx="112" cy="80" r="2" fill="#FFF"/><circle cx="114" cy="81" r="1.8" fill="#FFF"/><circle cx="111" cy="82" r="1.8" fill="#FFF"/><circle cx="113" cy="81" r="1" fill="#FFE082"/>' +
-    '<circle cx="186" cy="140" r="2.2" fill="#FFEE58"/><circle cx="140" cy="220" r="2" fill="#FFF"/><circle cx="142" cy="221" r="1.8" fill="#FFF"/>' +
-    '<circle cx="205" cy="260" r="2.2" fill="#FFEE58"/><circle cx="160" cy="310" r="2" fill="#FFF"/>' +
+    // Shed Foundation Sill & Western Timber Wall (x: 4 to 84, y: 6 to 234)
+    '<rect x="4" y="6" width="82" height="228" rx="4" fill="url(#cattleBarnRoof)" stroke="#261713" stroke-width="2"/>' +
+    '<rect x="2" y="4" width="6" height="232" rx="1.5" fill="#2E1B15"/>' +
+    '<rect x="84" y="4" width="4" height="232" rx="1" fill="#3E2723"/>';
 
-    // Stone path from East Gate (x: 232, y: 180) to Shed Entrance (x: 86, y: 180)
-    '<path d="M232,180 L86,180" stroke="#8D6E63" stroke-width="12" stroke-dasharray="6,4" opacity="0.45"/>' +
-
-    // Water Trough in Southeast Pasture
-    '<g transform="translate(100, 296)">' +
-      '<rect x="0" y="0" width="46" height="24" rx="4" fill="#5D4037" stroke="#3E2723" stroke-width="1.5"/>' +
-      '<rect x="3" y="3" width="40" height="18" rx="2" fill="url(#troughWaterGrad)"/>' +
-      '<line x1="8" y1="8" x2="24" y2="8" stroke="#E1F5FE" stroke-width="1" opacity="0.8"/>' +
-      '<line x1="16" y1="14" x2="36" y2="14" stroke="#E1F5FE" stroke-width="1" opacity="0.8"/>' +
-      '<rect x="-4" y="-2" width="5" height="16" rx="1" fill="#3E2723"/>' +
-      '<text x="23" y="-3" text-anchor="middle" font-size="7.5" font-weight="800" fill="#B3E5FC">💧 Spring</text>' +
-    '</g>' +
-
-    // Hay Bale Feeder in Northeast Pasture
-    '<g transform="translate(168, 36)">' +
-      '<rect x="0" y="0" width="44" height="28" rx="3" fill="#5D4037" stroke="#3E2723" stroke-width="1.5"/>' +
-      '<ellipse cx="22" cy="14" rx="18" ry="10" fill="#FFF9C4" stroke="#FFE082" stroke-width="1"/>' +
-      '<line x1="10" y1="10" x2="34" y2="10" stroke="#FBC02D" stroke-width="1.2"/>' +
-      '<line x1="8" y1="14" x2="36" y2="14" stroke="#FBC02D" stroke-width="1.2"/>' +
-      '<line x1="12" y1="18" x2="32" y2="18" stroke="#FBC02D" stroke-width="1.2"/>' +
-      '<text x="22" y="-3" text-anchor="middle" font-size="7.5" font-weight="800" fill="#FFF9C4">🌾 Hay</text>' +
-    '</g>';
-
-  // Vertical 4-Stall Cattle Shed Structure on West (Facing East towards Plot 1)
-  // Shed Outer Walls & Foundation (x: 10 to 86, y: 18 to 342)
-  svg += '<rect x="10" y="18" width="76" height="324" rx="4" fill="url(#cattleBarnRoof)" stroke="#261713" stroke-width="2.5"/>' +
-         '<rect x="8" y="16" width="6" height="328" rx="1" fill="#2E1B15"/>' +
-         '<rect x="84" y="16" width="4" height="328" rx="1" fill="#3E2723"/>';
-
-  // Render 4 Stalls vertically
-  var stallYs = [22, 102, 182, 262];
-  var stallH = 76;
-  var grazingAnimals = [];
+  // 4 Stalls vertically spaced
+  var stallYs = [10, 66, 122, 178];
+  var stallH = 52;
 
   chambers.forEach(function(ch, idx){
-    var sy = stallYs[idx] || (22 + idx * 80);
+    var sy = stallYs[idx] || (10 + idx * 56);
     // Stall dividing timber beam
     if (idx > 0){
-      svg += '<rect x="10" y="' + (sy - 2) + '" width="76" height="4" fill="#3E2723" stroke="#21130F" stroke-width="0.8"/>';
+      svg += '<rect x="4" y="' + (sy - 2) + '" width="82" height="3.5" fill="#2E1B15" stroke="#1B100C" stroke-width="0.6"/>';
     }
     // Straw bedding floor
-    svg += '<rect x="14" y="' + (sy + 2) + '" width="68" height="' + (stallH - 6) + '" rx="2" fill="#FFFDE7" opacity="0.92"/>' +
-           '<line x1="18" y1="' + (sy + 15) + '" x2="42" y2="' + (sy + 15) + '" stroke="#FFE082" stroke-width="1"/>' +
-           '<line x1="30" y1="' + (sy + 35) + '" x2="65" y2="' + (sy + 35) + '" stroke="#FFE082" stroke-width="1"/>' +
-           '<line x1="20" y1="' + (sy + 55) + '" x2="55" y2="' + (sy + 55) + '" stroke="#FFE082" stroke-width="1"/>' +
+    svg += '<rect x="8" y="' + (sy + 2) + '" width="74" height="' + (stallH - 5) + '" rx="2" fill="#FFFDE7" opacity="0.94"/>' +
+           '<line x1="12" y1="' + (sy + 10) + '" x2="36" y2="' + (sy + 10) + '" stroke="#FFE082" stroke-width="1"/>' +
+           '<line x1="22" y1="' + (sy + 24) + '" x2="55" y2="' + (sy + 24) + '" stroke="#FFE082" stroke-width="1"/>' +
+           '<line x1="14" y1="' + (sy + 38) + '" x2="44" y2="' + (sy + 38) + '" stroke="#FFE082" stroke-width="1"/>' +
            // Stall Manger / Feed Box on West wall
-           '<rect x="14" y="' + (sy + 22) + '" width="12" height="32" rx="2" fill="#5D4037" stroke="#3E2723" stroke-width="1"/>' +
-           '<line x1="16" y1="' + (sy + 28) + '" x2="24" y2="' + (sy + 28) + '" stroke="#FFE082" stroke-width="1.5"/>' +
-           '<line x1="16" y1="' + (sy + 38) + '" x2="24" y2="' + (sy + 38) + '" stroke="#FFE082" stroke-width="1.5"/>' +
-           '<line x1="16" y1="' + (sy + 48) + '" x2="24" y2="' + (sy + 48) + '" stroke="#FFE082" stroke-width="1.5"/>' +
+           '<rect x="8" y="' + (sy + 14) + '" width="12" height="24" rx="2" fill="#5D4037" stroke="#3E2723" stroke-width="1"/>' +
+           '<line x1="10" y1="' + (sy + 18) + '" x2="18" y2="' + (sy + 18) + '" stroke="#FFE082" stroke-width="1.2"/>' +
+           '<line x1="10" y1="' + (sy + 26) + '" x2="18" y2="' + (sy + 26) + '" stroke="#FFE082" stroke-width="1.2"/>' +
            // Stall indicator pill
-           '<circle cx="76" cy="' + (sy + 12) + '" r="5.5" fill="#3E2723"/>' +
-           '<text x="76" y="' + (sy + 14.5) + '" text-anchor="middle" font-size="7.5" font-weight="900" fill="#FFE082">' + (idx + 1) + '</text>' +
+           '<circle cx="76" cy="' + (sy + 10) + '" r="5" fill="#3E2723"/>' +
+           '<text x="76" y="' + (sy + 12.5) + '" text-anchor="middle" font-size="7" font-weight="900" fill="#FFE082">' + (idx + 1) + '</text>' +
            // Open East Doorway Posts
            '<rect x="82" y="' + (sy + 2) + '" width="4" height="6" fill="#6D4C41"/>' +
-           '<rect x="82" y="' + (sy + stallH - 8) + '" width="4" height="6" fill="#6D4C41"/>';
-
-    if (ch.animals && ch.animals.length > 0){
-      // Primary animal rests/visible inside stall
-      var a0 = ch.animals[0];
-      var isReady0 = (a0.species === 'cow' && a0.milkReady) || (a0.species === 'sheep' && a0.woolReady);
-      svg += '<g transform="translate(48, ' + (sy + 40) + ')">' +
-        drawCattleAnimalSvg(a0.species, a0.age, false, 0.95, isReady0) +
-      '</g>';
-
-      // If sheep and has 2 animals, 2nd animal is also in stall
-      if (ch.animals.length > 1){
-        var a1 = ch.animals[1];
-        var isReady1 = a1.woolReady;
-        svg += '<g transform="translate(64, ' + (sy + 55) + ')">' +
-          drawCattleAnimalSvg(a1.species, a1.age, false, 0.85, isReady1) +
-        '</g>';
-      }
-
-      // Pasture roaming animals in fenced meadow
-      ch.animals.forEach(function(an, aIdx){
-        var posX = an.offsetX || (130 + (idx * 20) + (aIdx * 25));
-        var posY = an.offsetY || (60 + (idx * 65) + (aIdx * 20));
-        var isR = (an.species === 'cow' && an.milkReady) || (an.species === 'sheep' && an.woolReady);
-        grazingAnimals.push({ species: an.species, age: an.age, x: posX, y: posY, isReady: isR });
-      });
-    } else {
-      // Empty Stall indicator
-      svg += '<text x="46" y="' + (sy + 44) + '" text-anchor="middle" font-size="14" opacity="0.3">🌾</text>';
-    }
+           '<rect x="82" y="' + (sy + stallH - 9) + '" width="4" height="6" fill="#6D4C41"/>';
   });
-
-  // Render Grazing Animals in the Paddock
-  grazingAnimals.forEach(function(ga){
-    svg += '<g transform="translate(' + ga.x + ', ' + ga.y + ')">' +
-      drawCattleAnimalSvg(ga.species, ga.age, true, 1.05, ga.isReady) +
-    '</g>';
-  });
-
-  // ================= SURROUNDED POST-AND-RAIL FENCING =================
-  var postX = [8, 48, 88, 128, 168, 208, 232];
-  // 1. North Backside Fence (Under horizon/sky baseline)
-  svg += '<line x1="8" y1="10" x2="232" y2="10" stroke="#8D6E63" stroke-width="2.8"/>' +
-         '<line x1="8" y1="14" x2="232" y2="14" stroke="#5D4037" stroke-width="2.2"/>';
-  postX.forEach(function(px){
-    svg += '<circle cx="' + px + '" cy="12" r="3.2" fill="#6D4C41" stroke="#3E2723" stroke-width="0.8"/>';
-  });
-
-  // 2. South Fence (Above Main Road north curb)
-  svg += '<line x1="8" y1="346" x2="232" y2="346" stroke="#8D6E63" stroke-width="2.8"/>' +
-         '<line x1="8" y1="350" x2="232" y2="350" stroke="#5D4037" stroke-width="2.2"/>';
-  postX.forEach(function(px){
-    svg += '<circle cx="' + px + '" cy="348" r="3.2" fill="#6D4C41" stroke="#3E2723" stroke-width="0.8"/>';
-  });
-
-  // 3. West Fence
-  svg += '<line x1="6" y1="10" x2="6" y2="350" stroke="#8D6E63" stroke-width="2.8"/>' +
-         '<line x1="10" y1="10" x2="10" y2="350" stroke="#5D4037" stroke-width="2.2"/>';
-  [12, 68, 124, 180, 236, 292, 348].forEach(function(py){
-    svg += '<circle cx="8" cy="' + py + '" r="3.2" fill="#6D4C41" stroke="#3E2723" stroke-width="0.8"/>';
-  });
-
-  // 4. East Fence (Facing Plot 1) with East Ranch Entrance Gate
-  svg += '<line x1="230" y1="10" x2="230" y2="156" stroke="#8D6E63" stroke-width="2.8"/>' +
-         '<line x1="234" y1="10" x2="234" y2="156" stroke="#5D4037" stroke-width="2.2"/>';
-  [12, 60, 108, 156].forEach(function(py){
-    svg += '<circle cx="232" cy="' + py + '" r="3.2" fill="#6D4C41" stroke="#3E2723" stroke-width="0.8"/>';
-  });
-  svg += '<line x1="230" y1="204" x2="230" y2="350" stroke="#8D6E63" stroke-width="2.8"/>' +
-         '<line x1="234" y1="204" x2="234" y2="350" stroke="#5D4037" stroke-width="2.2"/>';
-  [204, 252, 300, 348].forEach(function(py){
-    svg += '<circle cx="232" cy="' + py + '" r="3.2" fill="#6D4C41" stroke="#3E2723" stroke-width="0.8"/>';
-  });
-
-  // East Entrance Ranch Gate (y: 156 to 204)
-  svg += '<rect x="226" y="160" width="12" height="40" rx="2" fill="#CFD8DC" stroke="#90A4AE" stroke-width="1"/>' +
-         '<circle cx="232" cy="156" r="4.2" fill="#4E342E" stroke="#FFB74D" stroke-width="1"/>' +
-         '<circle cx="232" cy="204" r="4.2" fill="#4E342E" stroke="#FFB74D" stroke-width="1"/>' +
-         '<line x1="232" y1="158" x2="216" y2="175" stroke="#8D6E63" stroke-width="3"/>' +
-         '<line x1="232" y1="202" x2="216" y2="185" stroke="#8D6E63" stroke-width="3"/>';
 
   // Tending worker animation overlay
   if (tending){
-    svg += '<g transform="translate(140, 160)">' +
-      '<circle cx="0" cy="0" r="16" fill="rgba(255,255,255,0.9)" stroke="#4CAF50" stroke-width="2"/>' +
-      '<text x="0" y="5" text-anchor="middle" font-size="14">❤️</text>' +
-      '<text x="0" y="24" text-anchor="middle" font-size="8" font-weight="800" fill="#2E7D32">Tending Cattle...</text>' +
+    svg += '<g transform="translate(45, 120)">' +
+      '<circle cx="0" cy="0" r="14" fill="rgba(255,255,255,0.92)" stroke="#4CAF50" stroke-width="2"/>' +
+      '<text x="0" y="4" text-anchor="middle" font-size="12">❤️</text>' +
+      '<text x="0" y="20" text-anchor="middle" font-size="7.5" font-weight="800" fill="#2E7D32">Tending</text>' +
     '</g>';
   }
 
@@ -17225,6 +17468,10 @@ function drawCattleFarmScene(b, tending){
 function adoptCattle(chamberId, species){
   var cf = state.buildings && state.buildings.cattle_farm;
   if (!cf || !cf.chambers) return;
+  if (!state.cattleFenceBuilt){
+    showNotification('⛩️', 'Paddock fencing must be erected before adopting livestock!', 'building', 'cattle_farm');
+    return;
+  }
   var chamber = cf.chambers.find(function(c){ return c.id === chamberId; });
   if (!chamber) return;
   var typeDef = LIVESTOCK_TYPES[species];
@@ -17445,6 +17692,21 @@ function cattleFarmModalHtml(){
     '<h2><span>🐄 Pasture Cattle Farm &amp; Sheep Paddock</span><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>' +
     '<div class="modal-body-scroll">';
 
+  // Paddock Fencing Requirement Notice
+  if (!state.cattleFenceBuilt){
+    var fencePct = Math.round(Math.min(100, ((state.cattleFenceHours || 0) / 2.5) * 100));
+    html += '<div style="background:#FFF3E0;border:1.5px solid #FF9800;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:12px;">' +
+      '<span style="font-size:1.8rem;">⛩️</span>' +
+      '<div style="flex:1;font-size:0.8rem;color:#E65100;line-height:1.4;">' +
+        '<b>Paddock Fencing Required:</b> Livestock cannot graze until the pasture is enclosed with post-and-rail fencing.' +
+        (state.cattleFenceBuilding
+          ? ('<div style="margin-top:6px;font-weight:700;color:#BF360C;">🚧 Erecting fencing: ' + fencePct + '% complete...</div>' +
+             '<div class="healthbar" style="margin-top:4px;"><div class="fill" style="width:' + fencePct + '%;background:#FF9800;"></div></div>')
+          : ('<br><button class="primary mini-btn" style="margin-top:8px;font-weight:800;" onclick="startBuildCattleFence()" ' + (state.money < 150 ? 'disabled' : '') + '>⛩️ Erect Paddock Fencing — €150 (2.5h)</button>')) +
+      '</div>' +
+    '</div>';
+  }
+
   // Farm Overview
   html += '<div class="cattle-farm-overview">' +
     '<div class="cattle-overview-title">🐄 4-Chamber Timber Shed &amp; Meadow Pasture</div>' +
@@ -17546,22 +17808,22 @@ function cattleFarmModalHtml(){
       if (!isOccupied || species === 'cow'){
         if (!isOccupied){
           var cowDef = LIVESTOCK_TYPES.cow;
-          var canCow = state.money >= cowDef.cost;
+          var canCow = state.cattleFenceBuilt && (state.money >= cowDef.cost);
           html += '<button class="cattle-adopt-btn" onclick="adoptCattle(' + ch.id + ',\'cow\')" ' + (!canCow ? 'disabled' : '') + '>' +
             '<div class="adopt-btn-icon">🐄</div>' +
             '<div class="adopt-btn-name">Adopt Dairy Calf — €' + cowDef.cost + '</div>' +
-            '<div class="adopt-btn-sub">Grows in 4h. Produces <b>Fresh Milk (€45)</b> every 3h. Capacity: 1 Cow / stall.</div>' +
+            '<div class="adopt-btn-sub">' + (!state.cattleFenceBuilt ? '⚠️ Erect paddock fencing first.<br>' : '') + 'Grows in ' + cowDef.growHours + 'h. Produces <b>' + cowDef.produceLabel + ' (€' + cowDef.produceYield + ')</b> every ' + cowDef.produceHours + 'h. Capacity: 1 Cow / stall.</div>' +
           '</button>';
         }
       }
 
       if (!isOccupied || species === 'sheep'){
         var sheepDef = LIVESTOCK_TYPES.sheep;
-        var canSheep = state.money >= sheepDef.cost;
+        var canSheep = state.cattleFenceBuilt && (state.money >= sheepDef.cost);
         html += '<button class="cattle-adopt-btn" onclick="adoptCattle(' + ch.id + ',\'sheep\')" ' + (!canSheep ? 'disabled' : '') + '>' +
           '<div class="adopt-btn-icon">🐑</div>' +
           '<div class="adopt-btn-name">Adopt Pasture Lamb — €' + sheepDef.cost + '</div>' +
-          '<div class="adopt-btn-sub">Grows in 3h. Produces <b>Spun Wool (€30)</b> every 2.5h. Capacity: 2 Sheep / stall.</div>' +
+          '<div class="adopt-btn-sub">' + (!state.cattleFenceBuilt ? '⚠️ Erect paddock fencing first.<br>' : '') + 'Grows in ' + sheepDef.growHours + 'h. Produces <b>' + sheepDef.produceLabel + ' (€' + sheepDef.produceYield + ')</b> every ' + sheepDef.produceHours + 'h. Capacity: 2 Sheep / stall.</div>' +
         '</button>';
       }
 
@@ -17735,6 +17997,9 @@ function getPendingTasksList(){
     tasks.push({ type: 'building', targetId: 'cattle_farm', label: '🐄 Build Cattle Farm (€' + BUILDING_TYPES.cattle_farm.cost + ')', cost: BUILDING_TYPES.cattle_farm.cost });
   }
   if (state.buildings && state.buildings.cattle_farm && state.buildings.cattle_farm.built){
+    if (!state.cattleFenceBuilt && !state.cattleFenceBuilding){
+      tasks.push({ type: 'cattle_fence', targetId: null, label: '⛩️ Erect Paddock Fencing (€150)', cost: 150 });
+    }
     var cf = state.buildings.cattle_farm;
     if ((cf.feedLevel || 100) < 40){
       tasks.push({ type: 'cattle_feed', targetId: null, label: '🌾 Feed Pasture Livestock (€10)', cost: 10 });
@@ -19435,6 +19700,10 @@ window.harvestAllLivestock = harvestAllLivestock;
 window.sellLivestockWhole = sellLivestockWhole;
 window.feedCattleFarm = feedCattleFarm;
 window.waterCattleFarm = waterCattleFarm;
+window.drawPaddockFenceSVG = drawPaddockFenceSVG;
+window.startBuildCattleFence = startBuildCattleFence;
+window.syncPastureLivestock = syncPastureLivestock;
+window.activePastureLivestock = activePastureLivestock;
 window.hireWorker = hireWorker;
 window.plotSvg = plotSvg;
 window.buyAccessory = buyAccessory;
@@ -19559,6 +19828,10 @@ if (typeof globalThis !== 'undefined'){
   globalThis.sellLivestockWhole = sellLivestockWhole;
   globalThis.feedCattleFarm = feedCattleFarm;
   globalThis.waterCattleFarm = waterCattleFarm;
+  globalThis.drawPaddockFenceSVG = drawPaddockFenceSVG;
+  globalThis.startBuildCattleFence = startBuildCattleFence;
+  globalThis.syncPastureLivestock = syncPastureLivestock;
+  globalThis.activePastureLivestock = activePastureLivestock;
   globalThis.hireWorker = hireWorker;
   globalThis.plotSvg = plotSvg;
   globalThis.buyAccessory = buyAccessory;
@@ -19819,7 +20092,7 @@ function render(){
 
     var bgEl = document.getElementById('fieldBg');
     if (bgEl){
-      var bgKey = devRegionPreview + '_' + (state.rocksCleared ? '1' : '0') + '_' + (state.rocksClearing ? Math.floor((state.rocksClearHours||0)*10) : '0') + '_' + Math.floor((state.lawnOvergrowth||0)/10) + '_' + (state.lawnMowing ? Math.floor((state.lawnMowHours||0)*10) : '0');
+      var bgKey = devRegionPreview + '_' + (state.rocksCleared ? '1' : '0') + '_' + (state.rocksClearing ? Math.floor((state.rocksClearHours||0)*10) : '0') + '_' + Math.floor((state.lawnOvergrowth||0)/10) + '_' + (state.lawnMowing ? Math.floor((state.lawnMowHours||0)*10) : '0') + '_' + (state.cattleFenceBuilt ? '1' : '0') + '_' + (state.cattleFenceBuilding ? Math.floor((state.cattleFenceHours||0)*10) : '0');
       if (bgEl.dataset.bgKey !== bgKey){
         bgEl.innerHTML = devActiveBackgroundSvg();
         bgEl.dataset.bgKey = bgKey;
@@ -19842,6 +20115,7 @@ function render(){
   replacePreservingScroll('modalLayer', '.modal-body-scroll', modalHtml());
   wireEvents();
   syncWildAnimals();
+  syncPastureLivestock();
 }
 
 function wireEvents(){
