@@ -5353,58 +5353,103 @@ function drawPaddockFenceSVG(){
 
 // ================= REGIONAL FIELD BACKGROUND OVERLAYS =================
 
-// Systematic Multi-Pass Serpentine Lawn Mowing across Grazing Meadow Turf
-function drawSystematicLawnMowingSvg(mowPct){
-  var s = '';
-  var passes = [
-    { id: 1, y: 156, startX: 32, endX: 148, dir: 1, pMin: 0, pMax: 25, stripFill: '#689F38' },
-    { id: 2, y: 188, startX: 148, endX: 32, dir: -1, pMin: 25, pMax: 50, stripFill: '#558B2F' },
-    { id: 3, y: 220, startX: 32, endX: 148, dir: 1, pMin: 50, pMax: 75, stripFill: '#689F38' },
-    { id: 4, y: 248, startX: 114, endX: 32, dir: -1, pMin: 75, pMax: 100, stripFill: '#558B2F' }
-  ];
+var BACKGROUND_WEED_PATCHES = [
+  { id: 1, x: 180, y: 510, clearPct: 15 },
+  { id: 2, x: 320, y: 535, clearPct: 32 },
+  { id: 3, x: 460, y: 495, clearPct: 50 },
+  { id: 4, x: 610, y: 530, clearPct: 68 },
+  { id: 5, x: 750, y: 500, clearPct: 84 },
+  { id: 6, x: 880, y: 525, clearPct: 98 }
+];
 
-  // 1. Manicured Mowed Stripes across Grazing Meadow
-  passes.forEach(function(pass){
-    if (mowPct > pass.pMin){
-      var progress = Math.min(1, (mowPct - pass.pMin) / (pass.pMax - pass.pMin));
-      var x1, x2;
-      if (pass.dir === 1){
-        x1 = pass.startX;
-        x2 = pass.startX + (pass.endX - pass.startX) * progress;
-      } else {
-        x1 = pass.startX - (pass.startX - pass.endX) * progress;
-        x2 = pass.startX;
-      }
-      var w = Math.max(0, x2 - x1);
-      if (w > 0){
-        s += '<rect x="' + x1.toFixed(1) + '" y="' + (pass.y - 12) + '" width="' + w.toFixed(1) + '" height="22" rx="3" fill="' + pass.stripFill + '" opacity="0.32"/>' +
-             '<line x1="' + x1.toFixed(1) + '" y1="' + pass.y + '" x2="' + x2.toFixed(1) + '" y2="' + pass.y + '" stroke="#A5D6A7" stroke-width="1.4" stroke-dasharray="6,4" opacity="0.65"/>';
-      }
+// Sequential Weed Clearing across Open Background Green Terrain
+function drawBackgroundWeedsSvg(mowPct){
+  var s = '';
+  var isMowing = (typeof state !== 'undefined' && state && state.lawnMowing);
+  var currentPct = isMowing ? (mowPct !== undefined ? mowPct : Math.round(Math.min(100, (state.lawnMowHours / 1.5) * 100))) : 0;
+
+  BACKGROUND_WEED_PATCHES.forEach(function(patch){
+    if (isMowing && currentPct >= patch.clearPct){
+      // 1. VISIBLY CLEARED WEED PATCH: Manicured circular cut lawn spot with scattered fresh clippings
+      s += '<g transform="translate(' + patch.x + ',' + patch.y + ')" opacity="0.88">' +
+             '<ellipse cx="0" cy="0" rx="16" ry="6.5" fill="#7CB342" opacity="0.45"/>' +
+             '<ellipse cx="0" cy="0" rx="16" ry="6.5" fill="none" stroke="#8BC34A" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.75"/>' +
+             '<line x1="-8" y1="-1.5" x2="-3" y2="0.8" stroke="#558B2F" stroke-width="1.3"/>' +
+             '<line x1="-1.5" y1="1.8" x2="3.5" y2="-0.8" stroke="#689F38" stroke-width="1.3"/>' +
+             '<line x1="5" y1="1" x2="10" y2="-1.8" stroke="#558B2F" stroke-width="1.3"/>' +
+             '<circle cx="-5" cy="1" r="1.1" fill="#8BC34A"/>' +
+             '<circle cx="6" cy="-1" r="1.2" fill="#AED581"/>' +
+           '</g>';
+    } else {
+      // 2. UNCLEARED TALL WILD WEED CLUMP: Tall blades, broad leaves, and dandelion seed heads
+      s += '<g transform="translate(' + patch.x + ',' + patch.y + ')" class="wild-weed-clump">' +
+             '<ellipse cx="0" cy="5" rx="14" ry="4" fill="rgba(0,0,0,0.15)"/>' +
+             '<path d="M-8,4 Q-13,-12 -6,-22 Q-2,-10 0,4" fill="#33691E" opacity="0.9"/>' +
+             '<path d="M-2,4 Q-4,-18 4,-26 Q8,-14 3,4" fill="#558B2F" opacity="0.88"/>' +
+             '<path d="M2,4 Q8,-12 12,-19 Q6,-8 4,4" fill="#3E7239" opacity="0.9"/>' +
+             '<path d="M-6,4 Q-16,-3 -12,-8" stroke="#2E5A1E" stroke-width="1.8" fill="none"/>' +
+             '<path d="M5,4 Q14,-3 12,-9" stroke="#2E5A1E" stroke-width="1.8" fill="none"/>' +
+             '<circle cx="-6" cy="-22" r="2.8" fill="#FDD835" stroke="#F57F17" stroke-width="0.6"/>' +
+             '<circle cx="4" cy="-26" r="3.2" fill="#FBC02D" stroke="#E65100" stroke-width="0.6"/>' +
+             '<circle cx="12" cy="-19" r="2.5" fill="#FFE082"/>' +
+           '</g>';
     }
   });
+  return s;
+}
 
-  // 2. Active Worker Position & Heading
-  var activePass = passes[0];
-  for (var i = 0; i < passes.length; i++){
-    if (mowPct >= passes[i].pMin && mowPct <= passes[i].pMax){
-      activePass = passes[i];
-      break;
-    }
-    if (i === passes.length - 1 && mowPct > passes[i].pMax){
-      activePass = passes[i];
+// Systematic Lawn Mowing strictly on Background Green Terrain (Zero presence in Cattle Farm)
+function drawSystematicLawnMowingSvg(mowPct){
+  var s = '';
+  var waypoints = [
+    { pct: 0, x: 130, y: 510 },
+    { pct: 15, x: 180, y: 510 },
+    { pct: 32, x: 320, y: 535 },
+    { pct: 50, x: 460, y: 495 },
+    { pct: 68, x: 610, y: 530 },
+    { pct: 84, x: 750, y: 500 },
+    { pct: 98, x: 880, y: 525 },
+    { pct: 100, x: 930, y: 525 }
+  ];
+
+  var curX = waypoints[0].x;
+  var curY = waypoints[0].y;
+  var facingLeft = false;
+
+  if (mowPct >= 100){
+    curX = waypoints[waypoints.length - 1].x;
+    curY = waypoints[waypoints.length - 1].y;
+  } else {
+    for (var i = 0; i < waypoints.length - 1; i++){
+      var p1 = waypoints[i];
+      var p2 = waypoints[i+1];
+      if (mowPct >= p1.pct && mowPct <= p2.pct){
+        var t = (mowPct - p1.pct) / (p2.pct - p1.pct || 1);
+        curX = p1.x + (p2.x - p1.x) * t;
+        curY = p1.y + (p2.y - p1.y) * t;
+        facingLeft = (p2.x < p1.x);
+        break;
+      }
     }
   }
 
-  var segT = Math.max(0, Math.min(1, (mowPct - activePass.pMin) / (activePass.pMax - activePass.pMin || 1)));
-  var curX = activePass.dir === 1
-    ? (activePass.startX + (activePass.endX - activePass.startX) * segT)
-    : (activePass.startX - (activePass.startX - activePass.endX) * segT);
-  var curY = activePass.y;
-  var facingLeft = (activePass.dir === -1);
+  // 1. Manicured Mowed Swath connecting path traversed so far on background green terrain
+  var pathPts = [waypoints[0].x + ',' + waypoints[0].y];
+  for (var w = 1; w < waypoints.length; w++){
+    if (mowPct >= waypoints[w].pct){
+      pathPts.push(waypoints[w].x + ',' + waypoints[w].y);
+    } else {
+      pathPts.push(curX.toFixed(1) + ',' + curY.toFixed(1));
+      break;
+    }
+  }
+  if (pathPts.length >= 2){
+    s += '<polyline points="' + pathPts.join(' ') + '" stroke="#689F38" stroke-width="18" fill="none" opacity="0.32" stroke-linecap="round" stroke-linejoin="round"/>' +
+         '<polyline points="' + pathPts.join(' ') + '" stroke="#A5D6A7" stroke-width="1.6" stroke-dasharray="6,4" fill="none" opacity="0.75" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
 
-  // 3. Grass Clippings Spray behind the mower
-  var sprayOffset = facingLeft ? 15 : -15;
-  s += '<g transform="translate(' + (curX + sprayOffset).toFixed(1) + ',' + (curY + 6).toFixed(1) + ')" opacity="0.9">' +
+  // 2. Flying grass clippings spray behind mower blades
+  s += '<g transform="translate(' + (curX - 16).toFixed(1) + ',' + (curY + 6).toFixed(1) + ')" opacity="0.9">' +
          '<circle cx="-2" cy="-4" r="1.4" fill="#8BC34A"/>' +
          '<circle cx="3" cy="-6" r="1.6" fill="#7CB342"/>' +
          '<circle cx="0" cy="-2" r="1.8" fill="#AED581"/>' +
@@ -5412,12 +5457,12 @@ function drawSystematicLawnMowingSvg(mowPct){
          '<line x1="-3" y1="0" x2="-6" y2="-5" stroke="#7CB342" stroke-width="1.2"/>' +
        '</g>';
 
-  // 4. Laborer Worker pushing Mower (adjusted -30 so feet line up with cut pass line)
+  // 3. Laborer Worker pushing Mower on background green terrain
   s += '<g transform="translate(' + curX.toFixed(1) + ',' + (curY - 30).toFixed(1) + ')' + (facingLeft ? ' scale(-1, 1)' : '') + '">' +
          drawHumanWorkerSvg('laborer', 'mower', true, true) +
        '</g>';
 
-  // 5. Floating HUD Progress Banner smoothly tracking worker position
+  // 4. Floating HUD Progress Banner smoothly tracking worker position
   s += '<g transform="translate(' + curX.toFixed(1) + ',' + (curY - 48).toFixed(1) + ')">' +
          '<rect x="-44" y="-11" width="88" height="20" rx="5" fill="rgba(33,33,33,0.92)" stroke="#81C784" stroke-width="1.2"/>' +
          '<rect x="-40" y="2" width="80" height="3" rx="1.5" fill="#1B5E20"/>' +
@@ -5454,27 +5499,9 @@ function rockAndLawnOverlaysSVG(){
            '</g>';
     }
   }
-  if (state && state.lawnOvergrowth > 10){
-    var grassTufts = [
-      [220, 220], [280, 260], [340, 230], [620, 225], [680, 260], [740, 220],
-      [140, 480], [220, 520], [310, 470], [640, 480], [720, 530], [820, 470],
-      [50, 160], [110, 170], [75, 195], [130, 210], [60, 230]
-    ];
-    var tuftCount = Math.min(grassTufts.length, Math.floor((state.lawnOvergrowth / 100) * grassTufts.length) + 2);
-    for (var g = 0; g < tuftCount; g++){
-      var gt = grassTufts[g];
-      // In grazing meadow (x < 165, y < 270), hide grass tufts if mower has mowed past this level
-      if (state.lawnMowing && gt[0] < 165 && gt[1] < 270){
-        var mowPctNow = (state.lawnMowHours / 1.5) * 100;
-        if ((gt[1] < 175 && mowPctNow >= 25) ||
-            (gt[1] < 205 && mowPctNow >= 50) ||
-            (gt[1] < 235 && mowPctNow >= 75) ||
-            (gt[1] < 265 && mowPctNow >= 100)) continue;
-      }
-      s += '<g transform="translate('+gt[0]+','+gt[1]+')" opacity="0.85">'+
-         '<path d="M-6,0 Q-8,-14 -12,-18 M-3,0 Q-4,-18 -4,-22 M0,0 Q2,-20 5,-24 M3,0 Q6,-17 10,-20 M6,0 Q8,-12 12,-15" stroke="#33691E" stroke-width="2.2" stroke-linecap="round" fill="none"/>'+
-         '</g>';
-    }
+  if (state && (state.lawnOvergrowth > 10 || state.lawnMowing)){
+    var mowPct = state.lawnMowing ? Math.round(Math.min(100, (state.lawnMowHours/1.5)*100)) : 0;
+    s += drawBackgroundWeedsSvg(mowPct);
   }
   if (state && state.lawnMowing){
     var mowPct = Math.round(Math.min(100, (state.lawnMowHours/1.5)*100));
@@ -14337,9 +14364,13 @@ function getRoadNetworkWaypoints(origin, destination){
       // Crop Field Apron (x:52.5, y:73.5) -> cross-lane East to Avenue 2 (x:60.2, y:73.5) -> Avenue 2 North to Main Road (x:60.2, y:47)
       return [{ x: 52.5, y: 73.5 }, { x: 60.2, y: 73.5 }, { x: 60.2, y: mainRoadY }];
     }
-    if (loc === 'cattle_farm' || loc === 'cattle_fence' || loc === 'lawn'){
-      // Cattle Farm & Grazing Meadow East Gate (x:16.5, y:31.4) -> Plot 0 spur (x:24.0, y:31.4) -> Avenue 1 (x:31.0, y:31.4) -> Main Road (x:31.0, y:47)
+    if (loc === 'cattle_farm' || loc === 'cattle_fence'){
+      // Cattle Farm East Gate (x:16.5, y:31.4) -> Plot 0 spur (x:24.0, y:31.4) -> Avenue 1 (x:31.0, y:31.4) -> Main Road (x:31.0, y:47)
       return [{ x: 16.5, y: 31.4 }, { x: 24.0, y: 31.4 }, { x: 31.0, y: 31.4 }, { x: 31.0, y: mainRoadY }];
+    }
+    if (loc === 'lawn'){
+      // Background green terrain entry near Crew Trail (x:18.0, y:56.0) -> Main Road (x:18.0, y:47)
+      return [{ x: 18.0, y: 56.0 }, { x: 18.0, y: mainRoadY }];
     }
     if (loc === 'garage'){
       return [{ x: 93.5, y: 34.0 }, { x: 93.5, y: mainRoadY }];
@@ -14604,7 +14635,7 @@ function getFarmLocationCoords(loc){
   if (loc === 'juice_bar') return { x: 67, y: 77 };
   if (loc === 'garage') return { x: 93.5, y: 23 };
   if (loc === 'rocks') return { x: 47, y: 28 };
-  if (loc === 'lawn') return { x: 16.5, y: 31.4 };
+  if (loc === 'lawn') return { x: 18.0, y: 56.0 };
   if (loc === 'crew_shed') return { x: 12.7, y: 76 };
   return { x: 24.5, y: 47 };
 }
@@ -14960,16 +14991,10 @@ function fieldBackgroundSVG(){
         }
       }
 
-      // 2. Wild Grass & Weed Overgrowth: Appears when lawnOvergrowth >= 40%
-      if (state && state.lawnOvergrowth >= 40){
-        var wildWeeds = [[120,400],[240,380],[460,390],[620,380],[780,410],[880,430],[320,530],[650,520]];
-        wildWeeds.forEach(function(w){
-          s += '<g transform="translate('+w[0]+','+w[1]+')">' +
-            '<path d="M-7,8 Q-9,-10 -2,-18 Q5,-10 3,8" fill="#558B2F" opacity="0.85"/>' +
-            '<path d="M0,8 Q-2,-14 5,-22 Q9,-9 5,8" fill="#689F38" opacity="0.75"/>' +
-            '<circle cx="2" cy="-20" r="2" fill="#C8E6C9"/>' +
-          '</g>';
-        });
+      // 2. Wild Grass & Weed Overgrowth: Sequential clearing across background green terrain
+      if (state && (state.lawnOvergrowth >= 30 || state.lawnMowing)){
+        var mowPct = state.lawnMowing ? Math.round(Math.min(100, (state.lawnMowHours/1.5)*100)) : 0;
+        s += drawBackgroundWeedsSvg(mowPct);
       }
       if (state && state.lawnMowing){
         var mowPct = Math.round(Math.min(100, (state.lawnMowHours/1.5)*100));
@@ -16532,81 +16557,129 @@ function drawCoffeeShopScene(b, tending){
 
   if (isBuilding){
     var pct = Math.round(Math.min(100, (b.buildHours / BUILDING_TYPES.coffee_shop.buildHours) * 100));
-    return '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
-      '<ellipse cx="80" cy="106" rx="72" ry="12" fill="#6E553B" opacity="0.35"/>' +
-      '<line x1="25" y1="105" x2="25" y2="30" stroke="#8D6E63" stroke-width="4" stroke-linecap="round"/>' +
-      '<line x1="135" y1="105" x2="135" y2="30" stroke="#8D6E63" stroke-width="4" stroke-linecap="round"/>' +
-      '<line x1="20" y1="65" x2="140" y2="65" stroke="#A1887F" stroke-width="3"/>' +
-      '<line x1="20" y1="35" x2="140" y2="35" stroke="#A1887F" stroke-width="3"/>' +
-      '<line x1="25" y1="105" x2="80" y2="35" stroke="#8D6E63" stroke-width="2" stroke-dasharray="6,4"/>' +
-      '<line x1="135" y1="105" x2="80" y2="35" stroke="#8D6E63" stroke-width="2" stroke-dasharray="6,4"/>' +
-      '<rect x="50" y="58" width="28" height="18" rx="2" fill="#1976D2" stroke="#FFF" stroke-width="1"/>' +
-      '<text x="64" y="70" font-size="7" fill="#FFF" font-weight="800" text-anchor="middle">CAFÉ</text>' +
-      '<rect x="35" y="80" width="90" height="25" rx="3" fill="#BCAAA4" stroke="#795548" stroke-width="2"/>' +
-      '<path d="M40,88 H120 M40,96 H120 M60,80 V88 M90,80 V88 M75,88 V96 M105,88 V96" stroke="#795548" stroke-width="1.2"/>' +
-      '<g class="bob" style="transform-origin:110px 50px;"><text x="110" y="55" font-size="20">🔨</text></g>' +
-      '<g transform="translate(80,45)">' +
-        '<circle r="16" fill="#FBF6EC" stroke="#E0E0E0" stroke-width="4"/>' +
-        '<circle r="16" fill="none" stroke="#F0AC3D" stroke-width="4" stroke-dasharray="' + (2*Math.PI*16) + '" stroke-dashoffset="' + ((2*Math.PI*16)*(1 - pct/100)) + '" stroke-linecap="round" transform="rotate(-90)"/>' +
-        '<text x="0" y="4" font-size="9.5" text-anchor="middle" font-weight="800" fill="#543A0F">' + pct + '%</text>' +
+    return '<svg viewBox="0 0 160 135" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
+      '<!-- Ground Contact Shadow -->' +
+      '<ellipse cx="80" cy="116" rx="72" ry="16" fill="rgba(24,18,12,0.3)"/>' +
+      '<!-- 3D Foundation Terrace Plinth -->' +
+      '<polygon points="20,106 80,126 144,106 152,113 80,133 12,113" fill="#BCAAA4" stroke="#8D6E63" stroke-width="1.2"/>' +
+      '<polygon points="20,106 80,126 144,106 84,86" fill="#D7CCC8" stroke="#A1887F" stroke-width="0.8"/>' +
+      '<!-- 3D Scaffolding Timber Posts -->' +
+      '<line x1="28" y1="102" x2="28" y2="38" stroke="#8D6E63" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<line x1="132" y1="102" x2="132" y2="38" stroke="#8D6E63" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<line x1="68" y1="116" x2="68" y2="52" stroke="#8D6E63" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<line x1="92" y1="92" x2="92" y2="28" stroke="#8D6E63" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<line x1="28" y1="65" x2="68" y2="76" stroke="#A1887F" stroke-width="2.5"/>' +
+      '<line x1="68" y1="76" x2="132" y2="65" stroke="#A1887F" stroke-width="2.5"/>' +
+      '<line x1="28" y1="42" x2="92" y2="32" stroke="#A1887F" stroke-width="2.2" stroke-dasharray="6,4"/>' +
+      '<line x1="132" y1="42" x2="92" y2="32" stroke="#A1887F" stroke-width="2.2" stroke-dasharray="6,4"/>' +
+      '<rect x="48" y="70" width="36" height="22" rx="3" fill="#1565C0" stroke="#E3F2FD" stroke-width="1.2"/>' +
+      '<text x="66" y="84" font-size="7.5" fill="#FFF" font-weight="900" text-anchor="middle" letter-spacing="0.5">3D CAFÉ</text>' +
+      '<g class="bob" style="transform-origin:115px 45px;"><text x="115" y="52" font-size="22">🔨</text></g>' +
+      '<g transform="translate(80,50)">' +
+        '<circle r="18" fill="#FBF6EC" stroke="#E0E0E0" stroke-width="4.5"/>' +
+        '<circle r="18" fill="none" stroke="#D84315" stroke-width="4.5" stroke-dasharray="' + (2*Math.PI*18) + '" stroke-dashoffset="' + ((2*Math.PI*18)*(1 - pct/100)) + '" stroke-linecap="round" transform="rotate(-90)"/>' +
+        '<text x="0" y="5" font-size="10.5" text-anchor="middle" font-weight="900" fill="#4E342E">' + pct + '%</text>' +
       '</g>' +
     '</svg>';
   }
 
+  // 3D Isometric Artisan Café (ENTRANCE & PATIO FACING SOUTH TOWARD THE MAIN ROAD & MARKET PROMENADE)
+  var s = '<svg viewBox="0 0 160 135" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
+    '<defs>' +
+      '<linearGradient id="cafe3dRoof" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="#E64A19"/><stop offset="45%" stop-color="#D84315"/><stop offset="100%" stop-color="#BF360C"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="cafe3dWallSouth" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="#FFF9C4"/><stop offset="100%" stop-color="#FFE082"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="cafe3dWallWest" x1="0" y1="0" x2="1" y2="0">' +
+        '<stop offset="0%" stop-color="#BCAAA4"/><stop offset="100%" stop-color="#8D6E63"/>' +
+      '</linearGradient>' +
+    '</defs>' +
+    '<!-- 1. Ground Contact Shadow -->' +
+    '<ellipse cx="80" cy="116" rx="72" ry="16" fill="rgba(24,18,12,0.3)"/>' +
+    '<!-- 2. Terracotta Stone Foundation Terrace Plinth (Facing South to Market Promenade) -->' +
+    '<polygon points="20,106 80,126 144,106 152,113 80,133 12,113" fill="#BCAAA4" stroke="#8D6E63" stroke-width="1.2"/>' +
+    '<polygon points="20,106 80,126 144,106 84,86" fill="#D7CCC8" stroke="#A1887F" stroke-width="0.8"/>' +
+    '<line x1="38" y1="102" x2="102" y2="122" stroke="#BCAAA4" stroke-width="0.8"/>' +
+    '<line x1="56" y1="98" x2="120" y2="118" stroke="#BCAAA4" stroke-width="0.8"/>' +
+    '<line x1="42" y1="120" x2="106" y2="100" stroke="#BCAAA4" stroke-width="0.8"/>' +
+    '<line x1="60" y1="124" x2="124" y2="104" stroke="#BCAAA4" stroke-width="0.8"/>' +
+    '<!-- 3. West Wall (Recessed 3D Depth) -->' +
+    '<polygon points="18,48 18,100 56,114 56,62" fill="url(#cafe3dWallWest)"/>' +
+    '<line x1="18" y1="62" x2="56" y2="76" stroke="#4E342E" stroke-width="1.2"/>' +
+    '<line x1="18" y1="76" x2="56" y2="90" stroke="#4E342E" stroke-width="1.2"/>' +
+    '<line x1="18" y1="90" x2="56" y2="104" stroke="#4E342E" stroke-width="1.2"/>' +
+    '<!-- West Arched Side Window with Timber Frame -->' +
+    '<polygon points="26,60 46,67 46,84 26,77" fill="#4E342E" stroke="#3E2723" stroke-width="0.8"/>' +
+    '<polygon points="28,62 44,68 44,82 28,76" fill="#FFE082" opacity="0.9"/>' +
+    '<line x1="36" y1="65" x2="36" y2="79" stroke="#5D4037" stroke-width="1"/>' +
+    '<path d="M20,98 Q24,85 22,72 Q26,65 24,55" stroke="#2E7D32" stroke-width="1.5" fill="none"/>' +
+    '<circle cx="21" cy="90" r="2" fill="#4CAF50"/><circle cx="25" cy="78" r="2.2" fill="#43A047"/><circle cx="22" cy="66" r="1.8" fill="#66BB6A"/>' +
+    '<!-- 4. South-Facing Main Facade (Facing South toward Main Road & Market Promenade) -->' +
+    '<polygon points="56,62 56,114 144,86 144,34" fill="url(#cafe3dWallSouth)"/>' +
+    '<!-- Double French Glass Entrance Doors Facing South Road -->' +
+    '<polygon points="66,74 66,110 94,101 94,65" fill="#3E2723" stroke="#271810" stroke-width="1.2"/>' +
+    '<polygon points="68,76 78,73 78,105 68,108" fill="#FFE082" opacity="0.92" stroke="#4E342E" stroke-width="0.8"/>' +
+    '<polygon points="80,72 90,69 90,101 80,104" fill="#FFE082" opacity="0.92" stroke="#4E342E" stroke-width="0.8"/>' +
+    '<circle cx="77" cy="92" r="1.5" fill="#FFD54F"/><circle cx="82" cy="90" r="1.5" fill="#FFD54F"/>' +
+    '<polygon points="64,110 96,100 98,104 66,114" fill="#6D4C41"/>' +
+    '<!-- Large Bistro Display Window with Espressos & Flowers -->' +
+    '<polygon points="102,62 136,51 136,79 102,90" fill="#4E342E" stroke="#2E1C14" stroke-width="1.2"/>' +
+    '<polygon points="104,64 134,54 134,77 104,87" fill="#FFE082" opacity="0.9"/>' +
+    '<rect x="108" y="70" width="10" height="9" rx="1.5" fill="#78909C" stroke="#37474F" stroke-width="0.7"/>' +
+    '<circle cx="115" cy="74" r="1.5" fill="#FF5252"/>' +
+    '<path class="steam-float-fast" d="M112,68 Q114,62 111,57" stroke="rgba(255,255,255,0.85)" stroke-width="1.2" fill="none"/>' +
+    '<ellipse cx="125" cy="74" rx="2.5" ry="1.2" fill="#FFF"/>' +
+    '<polygon points="100,88 138,76 138,82 100,94" fill="#5D4037" stroke="#3E2723" stroke-width="0.8"/>' +
+    '<circle cx="104" cy="87" r="2.4" fill="#E91E63"/><circle cx="111" cy="85" r="2.2" fill="#FFEB3B"/><circle cx="118" cy="83" r="2.5" fill="#E91E63"/><circle cx="125" cy="81" r="2.2" fill="#FF5722"/><circle cx="132" cy="79" r="2.4" fill="#E91E63"/>' +
+    '<!-- 5. 3D Projecting Striped Canvas Awning (Burgundy & Cream) -->' +
+    '<polygon points="60,65 140,40 144,52 64,77" fill="#880E4F" stroke="#4A148C" stroke-width="0.8"/>' +
+    '<polygon points="60,65 72,61 76,73 64,77" fill="#FCE4EC"/>' +
+    '<polygon points="84,57 96,53 100,65 88,69" fill="#FCE4EC"/>' +
+    '<polygon points="108,50 120,46 124,58 112,62" fill="#FCE4EC"/>' +
+    '<polygon points="132,42 140,40 144,52 136,54" fill="#FCE4EC"/>' +
+    '<circle cx="64" cy="77" r="2.2" fill="#880E4F"/><circle cx="76" cy="73" r="2.2" fill="#880E4F"/><circle cx="88" cy="69" r="2.2" fill="#880E4F"/><circle cx="100" cy="65" r="2.2" fill="#880E4F"/><circle cx="112" cy="62" r="2.2" fill="#880E4F"/><circle cx="124" cy="58" r="2.2" fill="#880E4F"/><circle cx="136" cy="54" r="2.2" fill="#880E4F"/><circle cx="144" cy="52" r="2.2" fill="#880E4F"/>' +
+    '<!-- 6. Hanging Wooden Artisan Signboard -->' +
+    '<line x1="72" y1="55" x2="72" y2="60" stroke="#263238" stroke-width="1"/>' +
+    '<line x1="90" y1="50" x2="90" y2="55" stroke="#263238" stroke-width="1"/>' +
+    '<polygon points="70,58 92,51 92,60 70,67" fill="#3E2723" stroke="#FFD54F" stroke-width="0.8"/>' +
+    '<text x="81" y="62" font-size="5" font-weight="900" fill="#FFD54F" text-anchor="middle" transform="rotate(-17 81 62)">☕ CAFÉ</text>' +
+    '<!-- 7. 3D Spanish Terracotta Tile Pitched Roof -->' +
+    '<polygon points="14,46 76,18 150,32 88,60" fill="url(#cafe3dRoof)" stroke="#5D4037" stroke-width="1.4"/>' +
+    '<line x1="76" y1="18" x2="150" y2="32" stroke="#BF360C" stroke-width="2.5" stroke-linecap="round"/>' +
+    '<line x1="28" y1="41" x2="88" y2="60" stroke="#D84315" stroke-width="1.2" opacity="0.7"/>' +
+    '<line x1="44" y1="33" x2="104" y2="52" stroke="#D84315" stroke-width="1.2" opacity="0.7"/>' +
+    '<line x1="60" y1="26" x2="120" y2="45" stroke="#D84315" stroke-width="1.2" opacity="0.7"/>' +
+    '<line x1="76" y1="18" x2="136" y2="37" stroke="#D84315" stroke-width="1.2" opacity="0.7"/>' +
+    '<!-- 8. Brick Chimney & Animated Espresso Steam -->' +
+    '<polygon points="112,16 122,19 122,32 112,29" fill="#B71C1C" stroke="#7F0000" stroke-width="0.8"/>' +
+    '<polygon points="122,19 130,22 130,35 122,32" fill="#880E4F" stroke="#7F0000" stroke-width="0.8"/>' +
+    '<polygon points="112,16 120,12 130,22 122,19" fill="#D32F2F"/>' +
+    '<rect x="110" y="10" width="22" height="3" rx="1" fill="#4E342E"/>' +
+    '<path class="steam-float" d="M121,8 Q126,-2 120,-12 Q115,-20 122,-28" stroke="rgba(255,255,255,0.85)" stroke-width="2.4" fill="none" stroke-linecap="round"/>' +
+    '<!-- 9. Outdoor Bistro Patio Facing South Road -->' +
+    '<ellipse cx="38" cy="114" rx="10" ry="4.5" fill="#ECEFF1" stroke="#90A4AE" stroke-width="1"/>' +
+    '<line x1="38" y1="114" x2="38" y2="123" stroke="#37474F" stroke-width="2.2"/>' +
+    '<ellipse cx="38" cy="123" rx="5" ry="2" fill="#263238"/>' +
+    '<ellipse cx="38" cy="113" rx="3" ry="1.4" fill="#FFFFFF" stroke="#B0BEC5" stroke-width="0.6"/>' +
+    '<circle cx="38" cy="113" r="1.3" fill="#4E342E"/>' +
+    '<path class="steam-float-fast" d="M38,111 Q40,105 37,100" stroke="rgba(255,255,255,0.8)" stroke-width="1" fill="none"/>' +
+    '<ellipse cx="26" cy="118" rx="4" ry="2" fill="#5D4037"/>' +
+    '<path d="M23,118 Q23,108 26,108 Q29,108 29,118" stroke="#37474F" stroke-width="1.2" fill="none"/>' +
+    '<ellipse cx="50" cy="116" rx="4" ry="2" fill="#5D4037"/>' +
+    '<path d="M47,116 Q47,106 50,106 Q53,106 53,116" stroke="#37474F" stroke-width="1.2" fill="none"/>' +
+    '<!-- Bistro patio umbrella -->' +
+    '<line x1="38" y1="78" x2="38" y2="114" stroke="#4E342E" stroke-width="1.8"/>' +
+    '<polygon points="20,82 56,82 38,64" fill="#880E4F" stroke="#4A148C" stroke-width="0.8"/>' +
+    '<polygon points="29,82 47,82 38,64" fill="#FCE4EC"/>' +
+    '<!-- Sidewalk A-frame Chalkboard Menu -->' +
+    '<polygon points="132,92 144,87 147,108 135,113" fill="#37474F" stroke="#5D4037" stroke-width="1.2"/>' +
+    '<polygon points="133,94 143,89 145,106 136,110" fill="#212121"/>' +
+    '<text x="139" y="99" font-size="4" fill="#FFF" font-weight="800" text-anchor="middle">CAFÉ</text>' +
+    '<text x="139" y="104" font-size="3.5" fill="#FFD54F" font-weight="700" text-anchor="middle">€2.50</text>';
 
-
-  // Full Realistic Architectural Café
-  var s = '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
-    '<ellipse cx="80" cy="108" rx="76" ry="12" fill="#5D4037" opacity="0.3"/>' +
-    '<polygon points="10,104 150,104 142,116 18,116" fill="#A1887F" stroke="#6D4C41" stroke-width="1.2"/>' +
-    '<rect x="26" y="34" width="108" height="72" rx="4" fill="#FBF6EC" stroke="#5D4037" stroke-width="2"/>' +
-    '<line x1="26" y1="70" x2="134" y2="70" stroke="#5D4037" stroke-width="2.5"/>' +
-    '<line x1="80" y1="34" x2="80" y2="70" stroke="#5D4037" stroke-width="2"/>' +
-    '<line x1="26" y1="34" x2="80" y2="70" stroke="#5D4037" stroke-width="1.5" opacity="0.4"/>' +
-    '<line x1="134" y1="34" x2="80" y2="70" stroke="#5D4037" stroke-width="1.5" opacity="0.4"/>' +
-    '<polygon points="18,36 80,10 142,36" fill="#C0392B"/>' +
-    '<polygon points="24,36 80,12 136,36" fill="#E74C3C" opacity="0.5"/>' +
-    '<line x1="80" y1="10" x2="80" y2="36" stroke="#962D22" stroke-width="2"/>' +
-    '<rect x="106" y="12" width="12" height="18" fill="#962D22" stroke="#641E16" stroke-width="1.2"/>' +
-    '<rect x="104" y="10" width="16" height="3" rx="1" fill="#4D130D"/>' +
-    '<path class="steam-float" d="M112,8 Q115,-2 110,-10 Q107,-18 112,-26" stroke="rgba(255,255,255,0.75)" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
-    '<rect x="34" y="44" width="34" height="24" rx="2" fill="#FFE082" stroke="#5D4037" stroke-width="1.8"/>' +
-    '<line x1="51" y1="44" x2="51" y2="68" stroke="#5D4037" stroke-width="1.5"/>' +
-    '<line x1="34" y1="56" x2="68" y2="56" stroke="#5D4037" stroke-width="1.5"/>' +
-    '<rect x="32" y="68" width="38" height="6" rx="1" fill="#795548"/>' +
-    '<circle cx="36" cy="67" r="2.8" fill="#E91E63"/><circle cx="43" cy="66" r="2.6" fill="#FFEB3B"/><circle cx="50" cy="67" r="2.8" fill="#E91E63"/><circle cx="57" cy="66" r="2.6" fill="#FF5722"/><circle cx="64" cy="67" r="2.8" fill="#E91E63"/>' +
-    '<path d="M72,42 L130,42 L134,56 L68,56 Z" fill="#880E4F"/>' +
-    '<polygon points="72,42 81,42 78,56 68,56" fill="#FCE4EC"/>' +
-    '<polygon points="90,42 99,42 97,56 87,56" fill="#FCE4EC"/>' +
-    '<polygon points="108,42 117,42 115,56 106,56" fill="#FCE4EC"/>' +
-    '<polygon points="126,42 130,42 128,56 124,56" fill="#FCE4EC"/>' +
-    '<circle cx="73" cy="56" r="3" fill="#880E4F"/><circle cx="82" cy="56" r="3" fill="#880E4F"/><circle cx="92" cy="56" r="3" fill="#880E4F"/><circle cx="101" cy="56" r="3" fill="#880E4F"/><circle cx="111" cy="56" r="3" fill="#880E4F"/><circle cx="120" cy="56" r="3" fill="#880E4F"/><circle cx="129" cy="56" r="3" fill="#880E4F"/>' +
-    '<rect x="74" y="62" width="54" height="42" fill="#5D4037"/>' +
-    '<rect x="78" y="66" width="46" height="18" fill="#FFE082" stroke="#3E2723" stroke-width="1.5"/>' +
-    '<rect x="82" y="70" width="16" height="13" rx="2" fill="#78909C" stroke="#37474F" stroke-width="1"/>' +
-    '<rect x="85" y="67" width="10" height="3" fill="#CFD8DC"/>' +
-    '<circle cx="95" cy="76" r="2" fill="#FF5252"/>' +
-    '<path class="steam-float-fast" d="M86,67 Q88,61 85,55" stroke="rgba(255,255,255,0.85)" stroke-width="1.5" fill="none"/>' +
-    '<ellipse cx="104" cy="80" rx="3.5" ry="1.8" fill="#FFF"/>' +
-    '<rect x="101" y="76" width="6" height="4" rx="1" fill="#FFF"/>' +
-    '<line x1="26" y1="46" x2="16" y2="46" stroke="#263238" stroke-width="1.8"/>' +
-    '<line x1="20" y1="46" x2="20" y2="52" stroke="#263238" stroke-width="1"/>' +
-    '<line x1="24" y1="46" x2="24" y2="52" stroke="#263238" stroke-width="1"/>' +
-    '<rect x="14" y="52" width="16" height="18" rx="2" fill="#D7CCC8" stroke="#5D4037" stroke-width="1.2"/>' +
-    '<text x="22" y="64" font-size="10" text-anchor="middle">☕</text>' +
-    '<ellipse cx="140" cy="98" rx="14" ry="5" fill="#4E342E" opacity="0.3"/>' +
-    '<polygon points="126,80 154,80 148,84 132,84" fill="#880E4F"/>' +
-    '<polygon points="126,80 134,80 137,84 132,84" fill="#FCE4EC"/>' +
-    '<polygon points="144,80 152,80 148,84 143,84" fill="#FCE4EC"/>' +
-    '<line x1="140" y1="76" x2="140" y2="98" stroke="#4E342E" stroke-width="1.8"/>' +
-    '<ellipse cx="140" cy="94" rx="10" ry="4" fill="#FFF" stroke="#6D4C41" stroke-width="1"/>' +
-    '<circle cx="140" cy="93" r="1.8" fill="#D7CCC8"/>' +
-    '<polygon points="14,84 24,84 28,105 10,105" fill="#263238" stroke="#5D4037" stroke-width="1.2"/>' +
-    '<rect x="14" y="86" width="10" height="14" fill="#37474F"/>' +
-    '<text x="19" y="93" font-size="5" fill="#FFF" text-anchor="middle" font-weight="700">Café</text>' +
-    '<text x="19" y="98" font-size="4" fill="#FFD54F" text-anchor="middle">€2.5</text>';
-
-  if (tending){ s += drawTendingFigure(74, 98, 'coffee'); }
+  if (tending){ s += drawTendingFigure(88, 116, 'coffee'); }
   s += '</svg>';
   return s;
 }
@@ -16623,83 +16696,113 @@ function drawJuiceBarScene(b, tending){
 
   if (isBuilding){
     var pct = Math.round(Math.min(100, (b.buildHours / BUILDING_TYPES.juice_bar.buildHours) * 100));
-    return '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
-      '<ellipse cx="80" cy="106" rx="72" ry="12" fill="#556B2F" opacity="0.35"/>' +
-      '<line x1="25" y1="105" x2="25" y2="30" stroke="#8D6E63" stroke-width="4" stroke-linecap="round"/>' +
-      '<line x1="135" y1="105" x2="135" y2="30" stroke="#8D6E63" stroke-width="4" stroke-linecap="round"/>' +
-      '<line x1="20" y1="50" x2="140" y2="50" stroke="#A1887F" stroke-width="3"/>' +
-      '<rect x="35" y="80" width="30" height="22" rx="2" fill="#D7CCC8" stroke="#8D6E63" stroke-width="1.5"/>' +
-      '<text x="50" y="94" font-size="12" text-anchor="middle">🍊</text>' +
-      '<rect x="95" y="80" width="30" height="22" rx="2" fill="#D7CCC8" stroke="#8D6E63" stroke-width="1.5"/>' +
-      '<text x="110" y="94" font-size="12" text-anchor="middle">🍎</text>' +
-      '<g class="bob" style="transform-origin:80px 45px;"><text x="80" y="45" font-size="20" text-anchor="middle">🔨</text></g>' +
-      '<g transform="translate(80,55)">' +
-        '<circle r="16" fill="#FBF6EC" stroke="#E0E0E0" stroke-width="4"/>' +
-        '<circle r="16" fill="none" stroke="#4CAF50" stroke-width="4" stroke-dasharray="' + (2*Math.PI*16) + '" stroke-dashoffset="' + ((2*Math.PI*16)*(1 - pct/100)) + '" stroke-linecap="round" transform="rotate(-90)"/>' +
-        '<text x="0" y="4" font-size="9.5" text-anchor="middle" font-weight="800" fill="#1B5E20">' + pct + '%</text>' +
+    return '<svg viewBox="0 0 160 160" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
+      '<!-- Ground Contact Shadow -->' +
+      '<ellipse cx="80" cy="118" rx="66" ry="24" fill="rgba(20,35,20,0.3)"/>' +
+      '<!-- 3D Timber Deck Foundation -->' +
+      '<polygon points="20,105 80,132 140,105 140,114 80,141 20,114" fill="#5D4037"/>' +
+      '<polygon points="20,105 80,132 80,141 20,114" fill="#8D6E63"/>' +
+      '<polygon points="80,132 140,105 140,114 80,141" fill="#6D4C41"/>' +
+      '<polygon points="20,105 80,132 140,105 80,78" fill="#C5E1A5" stroke="#689F38" stroke-width="1"/>' +
+      '<!-- 3D Uprights & Fruit Crates -->' +
+      '<line x1="28" y1="102" x2="28" y2="40" stroke="#558B2F" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<line x1="132" y1="102" x2="132" y2="40" stroke="#558B2F" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<line x1="68" y1="116" x2="68" y2="52" stroke="#558B2F" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<line x1="92" y1="92" x2="92" y2="30" stroke="#558B2F" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<rect x="34" y="90" width="22" height="15" rx="2" fill="#D7CCC8" stroke="#8D6E63" stroke-width="1.2"/>' +
+      '<text x="45" y="101" font-size="9" text-anchor="middle">🍊</text>' +
+      '<rect x="104" y="90" width="22" height="15" rx="2" fill="#D7CCC8" stroke="#8D6E63" stroke-width="1.2"/>' +
+      '<text x="115" y="101" font-size="9" text-anchor="middle">🍋</text>' +
+      '<g class="bob" style="transform-origin:115px 45px;"><text x="115" y="52" font-size="22">🔨</text></g>' +
+      '<g transform="translate(80,50)">' +
+        '<circle r="18" fill="#FBF6EC" stroke="#E0E0E0" stroke-width="4.5"/>' +
+        '<circle r="18" fill="none" stroke="#2E7D32" stroke-width="4.5" stroke-dasharray="' + (2*Math.PI*18) + '" stroke-dashoffset="' + ((2*Math.PI*18)*(1 - pct/100)) + '" stroke-linecap="round" transform="rotate(-90)"/>' +
+        '<text x="0" y="5" font-size="10.5" text-anchor="middle" font-weight="900" fill="#1B5E20">' + pct + '%</text>' +
       '</g>' +
     '</svg>';
   }
 
+  // 3D Isometric Tropical Juice & Smoothie Bar (ENTRANCE & COUNTER FACING NORTH TOWARD THE MAIN ROAD & MARKET PROMENADE)
+  var s = '<svg viewBox="0 0 160 160" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
+    '<defs>' +
+      '<linearGradient id="juice3dRoofCanopy" x1="0" y1="1" x2="0" y2="0">' +
+        '<stop offset="0%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#1B5E20"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="juice3dDeck" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="#D7CCC8"/><stop offset="100%" stop-color="#A1887F"/>' +
+      '</linearGradient>' +
+    '</defs>' +
+    '<!-- 1. Ground Contact Shadow -->' +
+    '<ellipse cx="80" cy="118" rx="66" ry="24" fill="rgba(20,35,20,0.3)"/>' +
+    '<!-- 2. 3D Raised Timber Boardwalk Platform Deck -->' +
+    '<polygon points="20,105 80,132 140,105 140,114 80,141 20,114" fill="#5D4037"/>' +
+    '<polygon points="20,105 80,132 80,141 20,114" fill="#8D6E63"/>' +
+    '<polygon points="80,132 140,105 140,114 80,141" fill="#6D4C41"/>' +
+    '<polygon points="20,105 80,132 140,105 80,78" fill="url(#juice3dDeck)" stroke="#8D6E63" stroke-width="1"/>' +
+    '<line x1="38" y1="101" x2="98" y2="128" stroke="#BCAAA4" stroke-width="0.8"/>' +
+    '<line x1="56" y1="97" x2="116" y2="124" stroke="#BCAAA4" stroke-width="0.8"/>' +
+    '<line x1="42" y1="123" x2="102" y2="96" stroke="#BCAAA4" stroke-width="0.8"/>' +
+    '<line x1="60" y1="127" x2="120" y2="100" stroke="#BCAAA4" stroke-width="0.8"/>' +
+    '<!-- 3. Open-Air Pergola Bamboo & Cedar Pillars -->' +
+    '<rect x="24" y="68" width="4" height="42" rx="1" fill="#4E342E" stroke="#2E1C14" stroke-width="0.7"/>' +
+    '<rect x="78" y="92" width="4" height="44" rx="1" fill="#4E342E" stroke="#2E1C14" stroke-width="0.7"/>' +
+    '<rect x="134" y="68" width="4" height="42" rx="1" fill="#3E2723" stroke="#2E1C14" stroke-width="0.7"/>' +
+    '<rect x="78" y="44" width="4" height="38" rx="1" fill="#2E1C14"/>' +
+    '<!-- 4. 3D Pitched Canopy Roof (Vibrant Green & Citrus Yellow Stripes) -->' +
+    '<polygon points="12,65 78,35 148,65 82,95" fill="url(#juice3dRoofCanopy)" stroke="#1B5E20" stroke-width="1.4"/>' +
+    '<polygon points="12,65 28,58 94,88 82,95" fill="#FFD54F"/>' +
+    '<polygon points="44,51 60,44 126,74 110,81" fill="#FFD54F"/>' +
+    '<polygon points="76,37 78,35 148,65 142,67" fill="#FFD54F"/>' +
+    '<circle cx="78" cy="35" r="3.5" fill="#FFB300" stroke="#E65100" stroke-width="0.8"/>' +
+    '<path d="M20,68 Q24,76 22,82" stroke="#388E3C" stroke-width="1.8" fill="none"/>' +
+    '<path d="M140,68 Q136,76 138,82" stroke="#388E3C" stroke-width="1.8" fill="none"/>' +
+    '<!-- 5. North-Facing Service Bar Counter (Facing South of Road toward Promenade) -->' +
+    '<polygon points="26,90 76,112 76,118 26,96" fill="#5D4037" stroke="#3E2723" stroke-width="1.2"/>' +
+    '<polygon points="26,90 76,112 70,105 20,83" fill="#8D6E63" stroke="#4E342E" stroke-width="0.8"/>' +
+    '<line x1="36" y1="94" x2="36" y2="102" stroke="#3E2723" stroke-width="1.2"/>' +
+    '<line x1="46" y1="99" x2="46" y2="107" stroke="#3E2723" stroke-width="1.2"/>' +
+    '<line x1="56" y1="103" x2="56" y2="111" stroke="#3E2723" stroke-width="1.2"/>' +
+    '<line x1="66" y1="108" x2="66" y2="116" stroke="#3E2723" stroke-width="1.2"/>' +
+    '<!-- 6. Cold Beverage Dispensers on Counter -->' +
+    '<rect x="28" y="76" width="9" height="13" rx="1.5" fill="rgba(255,255,255,0.85)" stroke="#78909C" stroke-width="0.8"/>' +
+    '<rect x="29" y="80" width="7" height="8" fill="#FF9800"/>' +
+    '<circle cx="32.5" cy="83" r="1.2" fill="#FFE082" class="bob"/>' +
+    '<rect x="27" y="86" width="3" height="2" fill="#37474F"/>' +
+    '<rect x="39" y="81" width="9" height="13" rx="1.5" fill="rgba(255,255,255,0.85)" stroke="#78909C" stroke-width="0.8"/>' +
+    '<rect x="40" y="85" width="7" height="8" fill="#E91E63"/>' +
+    '<circle cx="43.5" cy="88" r="1.2" fill="#F8BBD0" class="bob"/>' +
+    '<rect x="38" y="91" width="3" height="2" fill="#37474F"/>' +
+    '<rect x="50" y="86" width="9" height="13" rx="1.5" fill="rgba(255,255,255,0.85)" stroke="#78909C" stroke-width="0.8"/>' +
+    '<rect x="51" y="90" width="7" height="8" fill="#00E676"/>' +
+    '<circle cx="54.5" cy="93" r="1.2" fill="#B9F6CA" class="bob"/>' +
+    '<rect x="49" y="96" width="3" height="2" fill="#37474F"/>' +
+    '<!-- Tall Frosted Smoothie Glass with Straw & Garnish -->' +
+    '<polygon points="63,94 69,94 68,103 64,103" fill="rgba(255,255,255,0.8)" stroke="#81D4FA" stroke-width="0.8"/>' +
+    '<polygon points="64,96 68,96 67,102 65,102" fill="#FFB300"/>' +
+    '<line x1="68" y1="90" x2="66" y2="102" stroke="#E53935" stroke-width="1.4"/>' +
+    '<circle cx="68" cy="93" r="2.5" fill="#FF9800" stroke="#E65100" stroke-width="0.5"/>' +
+    '<!-- Fruit Crates: Oranges & Apples on Deck -->' +
+    '<rect x="84" y="98" width="18" height="12" rx="1.5" fill="#D7CCC8" stroke="#8D6E63" stroke-width="1"/>' +
+    '<circle cx="89" cy="102" r="2.8" fill="#FF9800"/><circle cx="96" cy="102" r="2.8" fill="#FF9800"/><circle cx="92.5" cy="106" r="2.8" fill="#FB8C00"/>' +
+    '<rect x="105" y="90" width="18" height="12" rx="1.5" fill="#D7CCC8" stroke="#8D6E63" stroke-width="1"/>' +
+    '<circle cx="110" cy="94" r="2.8" fill="#E53935"/><circle cx="117" cy="94" r="2.8" fill="#43A047"/><circle cx="113.5" cy="98" r="2.8" fill="#E53935"/>' +
+    '<!-- 7. High Wooden Barstools Facing North Road -->' +
+    '<ellipse cx="34" cy="114" rx="5.5" ry="2.6" fill="#FFE082" stroke="#5D4037" stroke-width="0.8"/>' +
+    '<line x1="32" y1="114" x2="31" y2="124" stroke="#5D4037" stroke-width="1.2"/>' +
+    '<line x1="36" y1="114" x2="37" y2="124" stroke="#5D4037" stroke-width="1.2"/>' +
+    '<ellipse cx="54" cy="122" rx="5.5" ry="2.6" fill="#FFE082" stroke="#5D4037" stroke-width="0.8"/>' +
+    '<line x1="52" y1="122" x2="51" y2="132" stroke="#5D4037" stroke-width="1.2"/>' +
+    '<line x1="56" y1="122" x2="57" y2="132" stroke="#5D4037" stroke-width="1.2"/>' +
+    '<!-- Hanging Tropical Signboard -->' +
+    '<polygon points="30,68 76,88 76,78 30,58" fill="#FFF9C4" stroke="#F57F17" stroke-width="1"/>' +
+    '<text x="53" y="75" font-size="5" font-weight="900" fill="#E65100" text-anchor="middle" transform="rotate(24 53 75)">🧃 FRESH JUICE</text>' +
+    '<!-- A-Frame Sidewalk Chalkboard Menu -->' +
+    '<polygon points="122,94 134,88 137,110 125,116" fill="#37474F" stroke="#5D4037" stroke-width="1.2"/>' +
+    '<polygon points="123,96 133,90 135,108 126,113" fill="#1B5E20"/>' +
+    '<text x="129" y="101" font-size="4" fill="#FFF" font-weight="800" text-anchor="middle">100%</text>' +
+    '<text x="129" y="106" font-size="3.5" fill="#FFEB3B" font-weight="700" text-anchor="middle">Fresh</text>';
 
-
-  // Full Realistic Architectural Juice & Ice Bar
-  var s = '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
-    '<ellipse cx="80" cy="108" rx="76" ry="12" fill="#4E342E" opacity="0.3"/>' +
-    '<polygon points="12,102 148,102 140,116 20,116" fill="#D7CCC8" stroke="#8D6E63" stroke-width="1.5"/>' +
-    '<rect x="22" y="32" width="7" height="74" rx="2" fill="#8D6E63" stroke="#5D4037" stroke-width="1.2"/>' +
-    '<rect x="131" y="32" width="7" height="74" rx="2" fill="#8D6E63" stroke="#5D4037" stroke-width="1.2"/>' +
-    '<rect x="58" y="32" width="5" height="74" rx="1.5" fill="#A1887F" stroke="#5D4037" stroke-width="1"/>' +
-    '<rect x="97" y="32" width="5" height="74" rx="1.5" fill="#A1887F" stroke="#5D4037" stroke-width="1"/>' +
-    '<rect x="26" y="36" width="108" height="68" fill="#E8F5E9" stroke="#81C784" stroke-width="1"/>' +
-    '<path d="M16,34 L144,34 L138,48 L22,48 Z" fill="#4CAF50"/>' +
-    '<polygon points="22,34 35,34 32,48 22,48" fill="#FFEB3B"/>' +
-    '<polygon points="48,34 61,34 58,48 45,48" fill="#FFEB3B"/>' +
-    '<polygon points="74,34 87,34 84,48 71,48" fill="#FFEB3B"/>' +
-    '<polygon points="100,34 113,34 110,48 97,48" fill="#FFEB3B"/>' +
-    '<polygon points="126,34 139,34 135,48 123,48" fill="#FFEB3B"/>' +
-    '<circle cx="27" cy="48" r="3" fill="#4CAF50"/><circle cx="39" cy="48" r="3" fill="#FFEB3B"/><circle cx="51" cy="48" r="3" fill="#4CAF50"/><circle cx="63" cy="48" r="3" fill="#FFEB3B"/><circle cx="76" cy="48" r="3" fill="#4CAF50"/><circle cx="89" cy="48" r="3" fill="#FFEB3B"/><circle cx="102" cy="48" r="3" fill="#4CAF50"/><circle cx="115" cy="48" r="3" fill="#FFEB3B"/><circle cx="128" cy="48" r="3" fill="#4CAF50"/>' +
-    '<path d="M72,20 Q80,12 88,20 Q80,26 72,20Z" fill="#2E7D32"/>' +
-    '<path d="M66,22 Q75,10 80,18" stroke="#1B5E20" stroke-width="2" fill="none"/>' +
-    '<path d="M94,22 Q85,10 80,18" stroke="#1B5E20" stroke-width="2" fill="none"/>' +
-    '<path d="M24,52 Q80,62 136,52" stroke="#558B2F" stroke-width="1.2" fill="none"/>' +
-    '<polygon points="36,54 42,54 39,60" fill="#FF9800"/>' +
-    '<polygon points="56,56 62,56 59,62" fill="#E91E63"/>' +
-    '<polygon points="78,57 84,57 81,63" fill="#FFEB3B"/>' +
-    '<polygon points="98,56 104,56 101,62" fill="#00BCD4"/>' +
-    '<polygon points="118,54 124,54 121,60" fill="#8BC34A"/>' +
-    '<rect x="20" y="66" width="120" height="9" rx="3" fill="#6D4C41" stroke="#3E2723" stroke-width="1.5"/>' +
-    '<rect x="25" y="75" width="110" height="29" fill="#2E7D32"/>' +
-    '<line x1="25" y1="84" x2="135" y2="84" stroke="#1B5E20" stroke-width="1"/>' +
-    '<line x1="25" y1="94" x2="135" y2="94" stroke="#1B5E20" stroke-width="1"/>' +
-    '<rect x="29" y="77" width="46" height="24" rx="2" fill="rgba(255,255,255,0.75)" stroke="#81C784" stroke-width="1.2"/>' +
-    '<circle cx="36" cy="84" r="4" fill="#E53935"/><circle cx="44" cy="84" r="4" fill="#FB8C00"/><circle cx="52" cy="84" r="4" fill="#FDD835"/><circle cx="60" cy="84" r="4" fill="#43A047"/><circle cx="68" cy="84" r="3.5" fill="#8E24AA"/>' +
-    '<circle cx="40" cy="93" r="4" fill="#FB8C00"/><circle cx="48" cy="93" r="4" fill="#E53935"/><circle cx="56" cy="93" r="4" fill="#FDD835"/><circle cx="64" cy="93" r="3.5" fill="#8E24AA"/>' +
-    '<rect x="80" y="50" width="14" height="17" rx="2" fill="rgba(255,255,255,0.85)" stroke="#78909C" stroke-width="1"/>' +
-    '<rect x="81" y="55" width="12" height="11" fill="#FF9800"/>' +
-    '<rect x="79" y="64" width="16" height="3" fill="#37474F"/>' +
-    '<circle cx="87" cy="58" r="1.5" fill="#FFE082" class="bob"/>' +
-    '<rect x="98" y="50" width="14" height="17" rx="2" fill="rgba(255,255,255,0.85)" stroke="#78909C" stroke-width="1"/>' +
-    '<rect x="99" y="54" width="12" height="12" fill="#E91E63"/>' +
-    '<rect x="97" y="64" width="16" height="3" fill="#37474F"/>' +
-    '<circle cx="105" cy="57" r="1.5" fill="#F8BBD0" class="bob"/>' +
-    '<polygon points="118,54 128,54 126,67 120,67" fill="rgba(255,255,255,0.8)" stroke="#81D4FA" stroke-width="1"/>' +
-    '<polygon points="119,57 127,57 125,66 121,66" fill="#00E676"/>' +
-    '<line x1="126" y1="48" x2="123" y2="65" stroke="#E53935" stroke-width="1.8"/>' +
-    '<circle cx="127" cy="53" r="3.5" fill="#FFB300" stroke="#FF6F00" stroke-width="0.8"/>' +
-    '<circle cx="127" cy="53" r="1.5" fill="#FFF"/>' +
-    '<rect x="52" y="24" width="56" height="15" rx="3" fill="#FFF9C4" stroke="#F57F17" stroke-width="1.5"/>' +
-    '<text x="80" y="34.5" font-size="8" font-weight="800" fill="#E65100" text-anchor="middle">🧃 Juice & Ice Bar</text>' +
-    '<ellipse cx="40" cy="100" rx="7" ry="3" fill="#A1887F" stroke="#5D4037" stroke-width="1"/>' +
-    '<line x1="40" y1="100" x2="40" y2="108" stroke="#5D4037" stroke-width="1.5"/>' +
-    '<ellipse cx="122" cy="100" rx="7" ry="3" fill="#A1887F" stroke="#5D4037" stroke-width="1"/>' +
-    '<line x1="122" y1="100" x2="122" y2="108" stroke="#5D4037" stroke-width="1.5"/>' +
-    '<polygon points="138,82 148,82 152,106 134,106" fill="#263238" stroke="#5D4037" stroke-width="1.2"/>' +
-    '<rect x="138" y="84" width="10" height="16" fill="#1B5E20"/>' +
-    '<text x="143" y="92" font-size="4.5" fill="#FFF" text-anchor="middle" font-weight="700">100%</text>' +
-    '<text x="143" y="97" font-size="4" fill="#FFEB3B" text-anchor="middle">Fresh</text>';
-
-  if (tending){ s += drawTendingFigure(88, 98, 'juice'); }
+  if (tending){ s += drawTendingFigure(46, 92, 'juice'); }
   s += '</svg>';
   return s;
 }
@@ -20675,6 +20778,8 @@ window.advanceGame = advanceGame;
 window.farmReputation = farmReputation;
 window.fieldBackgroundSVG = fieldBackgroundSVG;
 window.drawSystematicLawnMowingSvg = drawSystematicLawnMowingSvg;
+window.drawBackgroundWeedsSvg = drawBackgroundWeedsSvg;
+window.BACKGROUND_WEED_PATCHES = BACKGROUND_WEED_PATCHES;
 window.updateToolStrip = updateToolStrip;
 window.switchScreen = switchScreen;
 window.freshState = freshState;
@@ -20800,6 +20905,9 @@ if (typeof globalThis !== 'undefined'){
   globalThis.advanceGame = advanceGame;
   globalThis.farmReputation = farmReputation;
   globalThis.fieldBackgroundSVG = fieldBackgroundSVG;
+  globalThis.drawSystematicLawnMowingSvg = drawSystematicLawnMowingSvg;
+  globalThis.drawBackgroundWeedsSvg = drawBackgroundWeedsSvg;
+  globalThis.BACKGROUND_WEED_PATCHES = BACKGROUND_WEED_PATCHES;
   globalThis.assignWorker = assignWorker;
   globalThis.unassignWorker = unassignWorker;
   globalThis.fireWorker = fireWorker;
