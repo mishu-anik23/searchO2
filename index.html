@@ -1696,6 +1696,13 @@
       pointer-events: none !important;
       opacity: 0 !important;
     }
+    /* Planted Tree / Crop Plots on Mobile & Tablet: Position icon at slight left-bottom corner */
+    .plot-spot[data-plot] .plot-label:not(.is-barren) {
+      top: auto !important;
+      bottom: 4px !important;
+      left: 14% !important;
+      transform: none !important;
+    }
   }
 
   /* ================= LIVING BOTANICAL ENCYCLOPEDIA & POP QUIZ ================= */
@@ -2204,6 +2211,39 @@
       font-size: 12px !important;
       color: #2E7D32 !important;
       font-family: 'Baloo 2', sans-serif !important;
+    }
+
+    /* Planted Tree / Crop Plots on Mobile: Position icon at slight left-bottom corner so tree trunk, foliage & canopy remain 100% unobstructed */
+    .plot-spot[data-plot] .plot-label:not(.is-barren) {
+      top: auto !important;
+      bottom: 4px !important;
+      left: 14% !important;
+      transform: none !important;
+    }
+    .plot-spot[data-plot] .plot-label:not(.is-barren):hover,
+    .plot-spot[data-plot] .plot-label:not(.is-barren):active,
+    .plot-spot[data-plot] .plot-label:not(.is-barren).tag-active {
+      transform: scale(1.1) !important;
+    }
+    .plot-spot[data-plot] .plot-label:not(.is-barren) .plot-label-text {
+      bottom: calc(100% + 6px) !important;
+      top: auto !important;
+      left: 0 !important;
+      transform: scale(0.85) !important;
+      transform-origin: bottom left !important;
+    }
+    .plot-spot[data-plot] .plot-label:not(.is-barren):hover .plot-label-text,
+    .plot-spot[data-plot] .plot-label:not(.is-barren):active .plot-label-text,
+    .plot-spot[data-plot] .plot-label:not(.is-barren).tag-active .plot-label-text {
+      transform: scale(1) !important;
+    }
+    .plot-spot[data-plot] .plot-label:not(.is-barren) .plot-label-text::after {
+      bottom: -5px !important;
+      top: auto !important;
+      left: 12px !important;
+      transform: none !important;
+      border-width: 5px 5px 0 !important;
+      border-color: rgba(20, 36, 24, 0.96) transparent !important;
     }
 
     /* Floating Hover Modal for Identification Text on Mobile */
@@ -4301,6 +4341,7 @@
     pointer-events: auto;
     cursor: pointer;
     z-index: 12;
+    transform: translate(-50%, -95%);
     transform-origin: center bottom;
     transition: left 3.5s linear, top 3.5s linear;
     will-change: transform, left, top;
@@ -4519,8 +4560,8 @@ var LOAN_PENALTY_RATE = 0.05; // added to remaining balance for each missed inst
 // Storage Barn grounded cleanly in the central upper yard and aligned with Central subway corridor
 var STORAGE_SPOT   = { top: 5, left: 45.5, w: 14, h: 14 };
 
-// Grand Farm Main Entry Gate at the western entrance of the Main Road (zero crossroad overlap, exact width alignment)
-var GATE_SPOT      = { top: 38, left: 0, w: 6.8, h: 18 };
+// Grand Farm Main Entry Gate at the eastern entrance of the Main Road (facing West into the farm)
+var GATE_SPOT      = { top: 38, left: 93.2, w: 6.8, h: 18 };
 
 // Crew Shed & Tool Workshop in the West Wing (160px timber-lined gravel trail to Main Road)
 var CREW_SHED_SPOT = { top: 66, left: 8, w: 9.5, h: 20 };
@@ -4531,7 +4572,7 @@ var GARAGE_SPOT    = { top: 12, left: 88, w: 11, h: 22 };
 // ---- Buildings & Infrastructure Framework ----
 var BUILDING_TYPES = {
   road:        { label:'Main Road & Gate', icon:'⛩️', cost:250, buildHours:4, category:'infrastructure', reputationBonus:6,
-    desc:'Grand Farm Main Entry Gate and Arterial Transport Road connecting to Storage and the Village. Enables motorized freight trucks and shop visitor access.' },
+    desc:'Grand Farm Main Entry Gate at Eastern entrance and Arterial Transport Road connecting to Storage and the Village. Enables motorized freight trucks and shop visitor access.' },
   crew_shed:   { label:'Crew Shed',        icon:'🏠', cost:200, buildHours:3, category:'infrastructure', reputationBonus:4,
     desc:'Living quarters and tool workshop for farm workers. Must be constructed before hiring Laborers, Farmers, and Botanists.' },
   garage:      { label:'Farm Garage',      icon:'🚜', cost:350, buildHours:4, category:'infrastructure', reputationBonus:5,
@@ -5312,6 +5353,81 @@ function drawPaddockFenceSVG(){
 
 // ================= REGIONAL FIELD BACKGROUND OVERLAYS =================
 
+// Systematic Multi-Pass Serpentine Lawn Mowing across Grazing Meadow Turf
+function drawSystematicLawnMowingSvg(mowPct){
+  var s = '';
+  var passes = [
+    { id: 1, y: 156, startX: 32, endX: 148, dir: 1, pMin: 0, pMax: 25, stripFill: '#689F38' },
+    { id: 2, y: 188, startX: 148, endX: 32, dir: -1, pMin: 25, pMax: 50, stripFill: '#558B2F' },
+    { id: 3, y: 220, startX: 32, endX: 148, dir: 1, pMin: 50, pMax: 75, stripFill: '#689F38' },
+    { id: 4, y: 248, startX: 114, endX: 32, dir: -1, pMin: 75, pMax: 100, stripFill: '#558B2F' }
+  ];
+
+  // 1. Manicured Mowed Stripes across Grazing Meadow
+  passes.forEach(function(pass){
+    if (mowPct > pass.pMin){
+      var progress = Math.min(1, (mowPct - pass.pMin) / (pass.pMax - pass.pMin));
+      var x1, x2;
+      if (pass.dir === 1){
+        x1 = pass.startX;
+        x2 = pass.startX + (pass.endX - pass.startX) * progress;
+      } else {
+        x1 = pass.startX - (pass.startX - pass.endX) * progress;
+        x2 = pass.startX;
+      }
+      var w = Math.max(0, x2 - x1);
+      if (w > 0){
+        s += '<rect x="' + x1.toFixed(1) + '" y="' + (pass.y - 12) + '" width="' + w.toFixed(1) + '" height="22" rx="3" fill="' + pass.stripFill + '" opacity="0.32"/>' +
+             '<line x1="' + x1.toFixed(1) + '" y1="' + pass.y + '" x2="' + x2.toFixed(1) + '" y2="' + pass.y + '" stroke="#A5D6A7" stroke-width="1.4" stroke-dasharray="6,4" opacity="0.65"/>';
+      }
+    }
+  });
+
+  // 2. Active Worker Position & Heading
+  var activePass = passes[0];
+  for (var i = 0; i < passes.length; i++){
+    if (mowPct >= passes[i].pMin && mowPct <= passes[i].pMax){
+      activePass = passes[i];
+      break;
+    }
+    if (i === passes.length - 1 && mowPct > passes[i].pMax){
+      activePass = passes[i];
+    }
+  }
+
+  var segT = Math.max(0, Math.min(1, (mowPct - activePass.pMin) / (activePass.pMax - activePass.pMin || 1)));
+  var curX = activePass.dir === 1
+    ? (activePass.startX + (activePass.endX - activePass.startX) * segT)
+    : (activePass.startX - (activePass.startX - activePass.endX) * segT);
+  var curY = activePass.y;
+  var facingLeft = (activePass.dir === -1);
+
+  // 3. Grass Clippings Spray behind the mower
+  var sprayOffset = facingLeft ? 15 : -15;
+  s += '<g transform="translate(' + (curX + sprayOffset).toFixed(1) + ',' + (curY + 6).toFixed(1) + ')" opacity="0.9">' +
+         '<circle cx="-2" cy="-4" r="1.4" fill="#8BC34A"/>' +
+         '<circle cx="3" cy="-6" r="1.6" fill="#7CB342"/>' +
+         '<circle cx="0" cy="-2" r="1.8" fill="#AED581"/>' +
+         '<circle cx="5" cy="-3" r="1.3" fill="#C5E1A5"/>' +
+         '<line x1="-3" y1="0" x2="-6" y2="-5" stroke="#7CB342" stroke-width="1.2"/>' +
+       '</g>';
+
+  // 4. Laborer Worker pushing Mower (adjusted -30 so feet line up with cut pass line)
+  s += '<g transform="translate(' + curX.toFixed(1) + ',' + (curY - 30).toFixed(1) + ')' + (facingLeft ? ' scale(-1, 1)' : '') + '">' +
+         drawHumanWorkerSvg('laborer', 'mower', true, true) +
+       '</g>';
+
+  // 5. Floating HUD Progress Banner smoothly tracking worker position
+  s += '<g transform="translate(' + curX.toFixed(1) + ',' + (curY - 48).toFixed(1) + ')">' +
+         '<rect x="-44" y="-11" width="88" height="20" rx="5" fill="rgba(33,33,33,0.92)" stroke="#81C784" stroke-width="1.2"/>' +
+         '<rect x="-40" y="2" width="80" height="3" rx="1.5" fill="#1B5E20"/>' +
+         '<rect x="-40" y="2" width="' + Math.round(80 * mowPct / 100) + '" height="3" rx="1.5" fill="#81C784"/>' +
+         '<text x="0" y="-1.5" font-size="7.5" text-anchor="middle" font-weight="800" fill="#E8F5E9">🚜 Mowing ' + mowPct + '%</text>' +
+       '</g>';
+
+  return s;
+}
+
 function rockAndLawnOverlaysSVG(){
   var s = drawPaddockFenceSVG();
   if (!state || !state.rocksCleared){
@@ -5341,11 +5457,20 @@ function rockAndLawnOverlaysSVG(){
   if (state && state.lawnOvergrowth > 10){
     var grassTufts = [
       [220, 220], [280, 260], [340, 230], [620, 225], [680, 260], [740, 220],
-      [140, 480], [220, 520], [310, 470], [640, 480], [720, 530], [820, 470]
+      [140, 480], [220, 520], [310, 470], [640, 480], [720, 530], [820, 470],
+      [50, 160], [110, 170], [75, 195], [130, 210], [60, 230]
     ];
     var tuftCount = Math.min(grassTufts.length, Math.floor((state.lawnOvergrowth / 100) * grassTufts.length) + 2);
     for (var g = 0; g < tuftCount; g++){
       var gt = grassTufts[g];
+      // In grazing meadow (x < 165, y < 270), hide grass tufts if mower has mowed past this level
+      if (state.lawnMowing && gt[0] < 165 && gt[1] < 270){
+        var mowPctNow = (state.lawnMowHours / 1.5) * 100;
+        if ((gt[1] < 175 && mowPctNow >= 25) ||
+            (gt[1] < 205 && mowPctNow >= 50) ||
+            (gt[1] < 235 && mowPctNow >= 75) ||
+            (gt[1] < 265 && mowPctNow >= 100)) continue;
+      }
       s += '<g transform="translate('+gt[0]+','+gt[1]+')" opacity="0.85">'+
          '<path d="M-6,0 Q-8,-14 -12,-18 M-3,0 Q-4,-18 -4,-22 M0,0 Q2,-20 5,-24 M3,0 Q6,-17 10,-20 M6,0 Q8,-12 12,-15" stroke="#33691E" stroke-width="2.2" stroke-linecap="round" fill="none"/>'+
          '</g>';
@@ -5353,13 +5478,7 @@ function rockAndLawnOverlaysSVG(){
   }
   if (state && state.lawnMowing){
     var mowPct = Math.round(Math.min(100, (state.lawnMowHours/1.5)*100));
-    s += personSvg('laborer', true, 480, 520, false, 'mower');
-    s += '<g transform="translate(500, 510)">' +
-           '<rect x="-42" y="-12" width="84" height="20" rx="5" fill="rgba(38,50,56,0.92)" stroke="#81C784" stroke-width="1.2"/>' +
-           '<rect x="-38" y="2" width="76" height="3" rx="1.5" fill="#1B5E20"/>' +
-           '<rect x="-38" y="2" width="' + (76 * mowPct / 100) + '" height="3" rx="1.5" fill="#81C784"/>' +
-           '<text x="0" y="-2" font-size="8" text-anchor="middle" font-weight="800" fill="#E8F5E9">🚜 Mowing ' + mowPct + '%</text>' +
-         '</g>';
+    s += drawSystematicLawnMowingSvg(mowPct);
   }
   return s;
 }
@@ -6068,8 +6187,8 @@ function spawnVisitor(dest){
     }
   }
 
-  // Leg 1: Outside Countryside (x:-8, y:47) -> Main Gate (x:1, y:47) -> Stop 1 along Manhattan Grid
-  var inRoute = [{ x: -8.0, y: 47.0 }].concat(getRoadNetworkWaypoints('main_gate', dest.key));
+  // Leg 1: Outside Countryside East (x:108, y:47) -> East Main Gate (x:97, y:47) -> Stop 1 along Manhattan Grid
+  var inRoute = [{ x: 108.0, y: 47.0 }].concat(getRoadNetworkWaypoints('main_gate', dest.key));
   var inDist = 0;
   for (var i = 1; i < inRoute.length; i++){
     inDist += Math.hypot(inRoute[i].x - inRoute[i-1].x, inRoute[i].y - inRoute[i-1].y);
@@ -6196,8 +6315,8 @@ function spawnVisitor(dest){
   });
 
   function departFarm(fromKey){
-    // Depart through Grand Main Gate into the Countryside (x:-8, y:47)
-    var outRoute = getRoadNetworkWaypoints(fromKey, 'main_gate').concat([{ x: -8.0, y: 47.0 }]);
+    // Depart through East Main Gate into the Countryside (x:108, y:47)
+    var outRoute = getRoadNetworkWaypoints(fromKey, 'main_gate').concat([{ x: 108.0, y: 47.0 }]);
     var outDist = 0;
     for (var o = 1; o < outRoute.length; o++){
       outDist += Math.hypot(outRoute[o].x - outRoute[o-1].x, outRoute[o].y - outRoute[o-1].y);
@@ -12839,13 +12958,13 @@ function syncPastureLivestock(){
 
   var stallYs = [23.8, 28.9, 34.0, 39.1];
   var activeIds = {};
-  var hayX = 12.0, hayY = 24.8;
+  var hayX = 12.0, hayY = 22.5;
   var troughX = 12.0, troughY = 38.5;
 
   function clampMeadow(x, y){
     return {
       x: Math.max(9.8, Math.min(14.8, x)),
-      y: Math.max(24.5, Math.min(40.2, y))
+      y: Math.max(21.2, Math.min(39.8, y))
     };
   }
 
@@ -12919,7 +13038,7 @@ function syncPastureLivestock(){
             } else {
               // Graze clover meadow
               rec.state = 'grazing';
-              var pt = clampMeadow(10.0 + Math.random() * 5.5, 25.0 + Math.random() * 15.0);
+              var pt = clampMeadow(10.0 + Math.random() * 4.6, 22.0 + Math.random() * 17.0);
               rec.facingLeft = (pt.x < 9.4);
               rec.currX = pt.x;
               rec.currY = pt.y;
@@ -12951,7 +13070,7 @@ function syncPastureLivestock(){
               rec.nextActionTs = now + 3500;
             } else {
               rec.state = 'grazing';
-              var pt = clampMeadow(10.0 + Math.random() * 5.5, 25.0 + Math.random() * 15.0);
+              var pt = clampMeadow(10.0 + Math.random() * 4.6, 22.0 + Math.random() * 17.0);
               rec.facingLeft = (pt.x < hayX);
               rec.currX = pt.x;
               rec.currY = pt.y;
@@ -12983,7 +13102,7 @@ function syncPastureLivestock(){
               rec.nextActionTs = now + 3500;
             } else {
               rec.state = 'grazing';
-              var pt = clampMeadow(10.0 + Math.random() * 5.5, 25.0 + Math.random() * 15.0);
+              var pt = clampMeadow(10.0 + Math.random() * 4.6, 22.0 + Math.random() * 17.0);
               rec.facingLeft = (pt.x < troughX);
               rec.currX = pt.x;
               rec.currY = pt.y;
@@ -13018,20 +13137,20 @@ function syncPastureLivestock(){
           } else if (now >= rec.wanderTs){
             // Fence boundary detection: turn back when approaching perimeter
             var targetX, targetY;
-            if (rec.currX >= 14.4){
-              targetX = 10.2 + Math.random() * 3.4; // Turn back West
+            if (rec.currX >= 14.2){
+              targetX = 10.2 + Math.random() * 3.0; // Turn back West
             } else if (rec.currX <= 10.2){
               targetX = 11.8 + Math.random() * 2.6; // Turn back East
             } else {
               targetX = 9.8 + Math.random() * 4.8;
             }
 
-            if (rec.currY >= 39.5){
-              targetY = 25.5 + Math.random() * 8.0; // Turn back North away from South fence & road
-            } else if (rec.currY <= 25.0){
-              targetY = 28.0 + Math.random() * 10.0; // Turn back South away from sky curve
+            if (rec.currY >= 38.8){
+              targetY = 22.0 + Math.random() * 8.0; // Turn back North away from South fence & road
+            } else if (rec.currY <= 22.5){
+              targetY = 26.0 + Math.random() * 9.0; // Turn back South away from sky curve
             } else {
-              targetY = 24.5 + Math.random() * 15.5;
+              targetY = 21.5 + Math.random() * 17.5;
             }
 
             var pt = clampMeadow(targetX, targetY);
@@ -13070,7 +13189,7 @@ function syncPastureLivestock(){
 
         var isShed = (rec.state === 'in_shed');
         el.style.zIndex = isShed ? 4 : (Math.round(rec.currY * 2) + 6);
-        el.style.transform = 'none';
+        el.style.transform = 'translate(-50%, -95%)';
 
         var actionState = 'walking';
         if (rec.state === 'in_shed') actionState = 'sitting';
@@ -13329,7 +13448,7 @@ function animateTransportLogistics(vehicleType, totalRevenue, itemCount, laborer
 
   var truckEl = document.createElement('div');
   truckEl.className = 'logistics-truck-sprite';
-  truckEl.style.cssText = 'position:absolute;width:84px;height:42px;margin-left:-42px;margin-top:-21px;z-index:26;left:-12%;top:47%;transform-origin:50% 50%;pointer-events:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,0.36));';
+  truckEl.style.cssText = 'position:absolute;width:84px;height:42px;margin-left:-42px;margin-top:-21px;z-index:26;left:108%;top:47%;transform-origin:50% 50%;pointer-events:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,0.36));';
   truckEl.innerHTML = vehicleSvg;
   truckLayer.appendChild(truckEl);
 
@@ -13340,10 +13459,10 @@ function animateTransportLogistics(vehicleType, totalRevenue, itemCount, laborer
   truckLayer.appendChild(laborerEl);
 
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
-  pushReport('🚛 ' + vehicleName + ' arrived through Farm Main Gate and navigating along Manhattan road grid to Storage loading apron.');
+  pushReport('🚛 ' + vehicleName + ' arrived through East Main Gate and navigating along Manhattan road grid to Storage loading apron.');
 
-  // Manhattan Grid: Main Gate -> Main Road -> Avenue 2 Subway -> 50px cross-lane to Storage Apron
-  var inRoute = [{ x: -12.0, y: 47.0 }].concat(getRoadNetworkWaypoints('main_gate', 'storage'));
+  // Manhattan Grid: East Main Gate -> Main Road -> Avenue 2 Subway -> 50px cross-lane to Storage Apron
+  var inRoute = [{ x: 108.0, y: 47.0 }].concat(getRoadNetworkWaypoints('main_gate', 'storage'));
   var sellDistIn = 0;
   for (var si = 1; si < inRoute.length; si++){ sellDistIn += Math.hypot(inRoute[si].x - inRoute[si-1].x, inRoute[si].y - inRoute[si-1].y); }
   var sellDurationIn = Math.max(3800, Math.round(sellDistIn * 70));
@@ -13368,16 +13487,16 @@ function animateTransportLogistics(vehicleType, totalRevenue, itemCount, laborer
     }, 550);
   });
 
-  // Step 3: Departure along Storage cross-lane -> Avenue 2 -> Main Road -> Main Gate
+  // Step 3: Departure along Storage cross-lane -> Avenue 2 -> Main Road -> East Main Gate
   function finishLoading(){
     laborerEl.style.left = '49.5%';
     laborerEl.innerHTML = '<div style="font-size:22px;">👋</div>';
     setTimeout(function(){ laborerEl.style.opacity = '0'; }, 1000);
 
-    pushReport('🚚 ' + vehicleName + ' fully loaded with ' + itemCount + ' items. Departing from Storage via Avenue 2 Subway and through Farm Main Gate!');
+    pushReport('🚚 ' + vehicleName + ' fully loaded with ' + itemCount + ' items. Departing from Storage via Avenue 2 Subway and through East Main Gate!');
     if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
 
-    var outRoute = getRoadNetworkWaypoints('storage', 'main_gate').concat([{ x: -16.0, y: 47.0 }]);
+    var outRoute = getRoadNetworkWaypoints('storage', 'main_gate').concat([{ x: 112.0, y: 47.0 }]);
 
     var sellDistOut = 0;
     for (var so = 1; so < outRoute.length; so++){ sellDistOut += Math.hypot(outRoute[so].x - outRoute[so-1].x, outRoute[so].y - outRoute[so-1].y); }
@@ -14186,13 +14305,16 @@ function getRoadNetworkWaypoints(origin, destination){
       return [{ x: loc.x, y: loc.y }, { x: loc.x, y: mainRoadY }];
     }
     if (loc === 'main_gate'){
+      return [{ x: 97.0, y: mainRoadY }];
+    }
+    if (loc === 'countryside_east' || loc === 'countryside'){
+      return [{ x: 108.0, y: mainRoadY }];
+    }
+    if (loc === 'countryside_west' || loc === 'west_rural_lane'){
       return [{ x: 1.0, y: mainRoadY }];
     }
-    if (loc === 'countryside_west'){
-      return [{ x: -8.0, y: mainRoadY }];
-    }
     if (loc === 'east_overlook' || loc === 'main_road_east'){
-      return [{ x: 96.0, y: mainRoadY }];
+      return [{ x: 97.0, y: mainRoadY }];
     }
     if (loc === 'crew_shed'){
       // Crew Shed Porch (x:12.7, y:66) up Crew Trail to Main Road (x:12.7, y:47)
@@ -14215,8 +14337,8 @@ function getRoadNetworkWaypoints(origin, destination){
       // Crop Field Apron (x:52.5, y:73.5) -> cross-lane East to Avenue 2 (x:60.2, y:73.5) -> Avenue 2 North to Main Road (x:60.2, y:47)
       return [{ x: 52.5, y: 73.5 }, { x: 60.2, y: 73.5 }, { x: 60.2, y: mainRoadY }];
     }
-    if (loc === 'cattle_farm' || loc === 'cattle_fence'){
-      // Cattle Farm East Gate (x:16.5, y:31.4) -> Plot 0 spur (x:24.0, y:31.4) -> Avenue 1 (x:31.0, y:31.4) -> Main Road (x:31.0, y:47)
+    if (loc === 'cattle_farm' || loc === 'cattle_fence' || loc === 'lawn'){
+      // Cattle Farm & Grazing Meadow East Gate (x:16.5, y:31.4) -> Plot 0 spur (x:24.0, y:31.4) -> Avenue 1 (x:31.0, y:31.4) -> Main Road (x:31.0, y:47)
       return [{ x: 16.5, y: 31.4 }, { x: 24.0, y: 31.4 }, { x: 31.0, y: 31.4 }, { x: 31.0, y: mainRoadY }];
     }
     if (loc === 'garage'){
@@ -14236,9 +14358,6 @@ function getRoadNetworkWaypoints(origin, destination){
     }
     if (loc === 'rocks'){
       return [{ x: 47.0, y: 28.0 }, { x: 47.0, y: mainRoadY }];
-    }
-    if (loc === 'lawn'){
-      return [{ x: 50.0, y: 56.0 }, { x: 50.0, y: mainRoadY }];
     }
     return [{ x: 24.0, y: mainRoadY }];
   }
@@ -14439,15 +14558,15 @@ function spawnVehicleAnimation(fromLayoutOrId){
 
   var truckEl = document.createElement('div');
   truckEl.className = 'logistics-truck-sprite';
-  truckEl.style.cssText = 'position:absolute;width:84px;height:42px;margin-left:-42px;margin-top:-21px;z-index:26;left:-12%;top:47%;transform-origin:50% 50%;pointer-events:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,0.36));';
+  truckEl.style.cssText = 'position:absolute;width:84px;height:42px;margin-left:-42px;margin-top:-21px;z-index:26;left:108%;top:47%;transform-origin:50% 50%;pointer-events:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,0.36));';
   truckEl.innerHTML = drawTimberTruckSvg();
   truckLayer.appendChild(truckEl);
 
-  pushReport('🚛 Logging flatbed truck entered through Farm Main Gate and navigated along Manhattan road grid to Plot ' + (plotId + 1) + '.');
+  pushReport('🚛 Logging flatbed truck entered through East Main Gate and navigated along Manhattan road grid to Plot ' + (plotId + 1) + '.');
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
 
-  // Manhattan Grid: Enter Countryside (x:-12, y:47) -> Main Gate -> Main Road -> Avenue Feeder Subway -> Plot
-  var inRoute = [{ x: -12.0, y: 47.0 }].concat(getRoadNetworkWaypoints('main_gate', plotId));
+  // Manhattan Grid: Enter Countryside East (x:108, y:47) -> East Main Gate -> Main Road -> Avenue Feeder Subway -> Plot
+  var inRoute = [{ x: 108.0, y: 47.0 }].concat(getRoadNetworkWaypoints('main_gate', plotId));
   var distIn = 0;
   for (var di = 1; di < inRoute.length; di++){ distIn += Math.hypot(inRoute[di].x - inRoute[di-1].x, inRoute[di].y - inRoute[di-1].y); }
   var durationIn = Math.max(3800, Math.round(distIn * 70));
@@ -14457,8 +14576,8 @@ function spawnVehicleAnimation(fromLayoutOrId){
     pushReport('🪵 Timber logs loaded securely onto truck bolsters at Plot ' + (plotId + 1) + '.');
 
     setTimeout(function(){
-      // Departure via reverse Manhattan road network back through Farm Main Gate to Countryside
-      var outRoute = getRoadNetworkWaypoints(plotId, 'main_gate').concat([{ x: -16.0, y: 47.0 }]);
+      // Departure via reverse Manhattan road network back through East Main Gate to Countryside East
+      var outRoute = getRoadNetworkWaypoints(plotId, 'main_gate').concat([{ x: 112.0, y: 47.0 }]);
       var distOut = 0;
       for (var do_ = 1; do_ < outRoute.length; do_++){ distOut += Math.hypot(outRoute[do_].x - outRoute[do_-1].x, outRoute[do_].y - outRoute[do_-1].y); }
       var durationOut = Math.max(4000, Math.round(distOut * 70));
@@ -14466,7 +14585,7 @@ function spawnVehicleAnimation(fromLayoutOrId){
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
       animateAlongWaypoints(truckEl, outRoute, durationOut, function(){
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
-        pushReport('✓ Logging truck departed through Farm Main Gate.');
+        pushReport('✓ Logging truck departed through East Main Gate.');
         if (truckEl.parentNode) truckEl.parentNode.removeChild(truckEl);
       });
     }, 1400);
@@ -14485,7 +14604,7 @@ function getFarmLocationCoords(loc){
   if (loc === 'juice_bar') return { x: 67, y: 77 };
   if (loc === 'garage') return { x: 93.5, y: 23 };
   if (loc === 'rocks') return { x: 47, y: 28 };
-  if (loc === 'lawn') return { x: 50, y: 56 };
+  if (loc === 'lawn') return { x: 16.5, y: 31.4 };
   if (loc === 'crew_shed') return { x: 12.7, y: 76 };
   return { x: 24.5, y: 47 };
 }
@@ -14854,17 +14973,7 @@ function fieldBackgroundSVG(){
       }
       if (state && state.lawnMowing){
         var mowPct = Math.round(Math.min(100, (state.lawnMowHours/1.5)*100));
-        s += personSvg('laborer', true, 490, 505, false, 'mower');
-        s += '<g style="animation: lawnSpray 0.5s infinite linear; transform-origin: 480px 525px;">' +
-               '<line x1="480" y1="525" x2="472" y2="520" stroke="#7CB342" stroke-width="2.2"/>' +
-               '<line x1="482" y1="527" x2="474" y2="523" stroke="#8BC34A" stroke-width="2"/>' +
-             '</g>';
-        s += '<g transform="translate(500, 482)">' +
-               '<rect x="-54" y="-13" width="108" height="25" rx="6" fill="rgba(46,125,50,0.94)" stroke="#81C784" stroke-width="1.4"/>' +
-               '<rect x="-48" y="4" width="96" height="4" rx="2" fill="#1B5E20"/>' +
-               '<rect x="-48" y="4" width="' + (96 * mowPct / 100) + '" height="4" rx="2" fill="#A5D6A7"/>' +
-               '<text x="0" y="-1" font-size="8.5" text-anchor="middle" font-weight="800" fill="#FFFFFF">🌿 Mowing Grounds ' + mowPct + '%</text>' +
-             '</g>';
+        s += drawSystematicLawnMowingSvg(mowPct);
       }
       var bushes=[[70,360],[930,340],[500,270],[210,470],[770,480],[350,410],[640,420]];
       bushes.forEach(function(b){
@@ -17267,46 +17376,52 @@ function drawMainGateScene(road){
         '<line x1="0" y1="60" x2="160" y2="60" stroke="#FFE082" stroke-width="1.8" stroke-dasharray="10,7"/>'
       : '<rect x="0" y="40" width="160" height="40" fill="#5D4037" stroke="#3E2723" stroke-width="1.2" stroke-dasharray="6,4"/>' +
         '<line x1="0" y1="60" x2="160" y2="60" stroke="#A1887F" stroke-width="1.4" stroke-dasharray="6,5"/>') +
-    '<g transform="translate(68, 12)">' +
+    // North Stone Gatepost with Pyramidal Cap & West-Facing Glowing Lantern
+    '<g transform="translate(70, 12)">' +
       '<rect x="0" y="0" width="24" height="26" rx="3" fill="#78909C" stroke="#37474F" stroke-width="1.4"/>' +
       '<rect x="2" y="2" width="20" height="22" rx="2" fill="#B0BEC5"/>' +
       '<polygon points="-2,2 12,-7 26,2" fill="#546E7A" stroke="#263238" stroke-width="1.2"/>' +
       '<circle cx="12" cy="-7" r="2.5" fill="#FFB300"/>' +
-      '<rect x="23" y="10" width="5" height="8" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
-      '<circle cx="25.5" cy="14" r="4" fill="#FFF59D" opacity="0.5"/>' +
+      '<rect x="-4" y="10" width="5" height="8" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
+      '<circle cx="-1.5" cy="14" r="4" fill="#FFF59D" opacity="0.5"/>' +
     '</g>' +
-    '<g transform="translate(68, 82)">' +
+    // South Stone Gatepost with Pyramidal Cap & West-Facing Glowing Lantern
+    '<g transform="translate(70, 82)">' +
       '<rect x="0" y="0" width="24" height="26" rx="3" fill="#78909C" stroke="#37474F" stroke-width="1.4"/>' +
       '<rect x="2" y="4" width="20" height="20" rx="2" fill="#B0BEC5"/>' +
       '<polygon points="-2,24 12,33 26,24" fill="#546E7A" stroke="#263238" stroke-width="1.2"/>' +
       '<circle cx="12" cy="33" r="2.5" fill="#FFB300"/>' +
-      '<rect x="23" y="8" width="5" height="8" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
-      '<circle cx="25.5" cy="12" r="4" fill="#FFF59D" opacity="0.5"/>' +
+      '<rect x="-4" y="8" width="5" height="8" rx="1.5" fill="#FFE082" stroke="#37474F" stroke-width="0.8"/>' +
+      '<circle cx="-1.5" cy="12" r="4" fill="#FFF59D" opacity="0.5"/>' +
     '</g>' +
-    '<path d="M80,26 Q100,60 80,94" stroke="#4E342E" stroke-width="7" fill="none" stroke-linecap="round"/>' +
-    '<path d="M78,28 Q96,60 78,92" stroke="#795548" stroke-width="4.5" fill="none" stroke-linecap="round"/>' +
-    '<g transform="translate(84, 48)">' +
+    // Grand Curved Timber Arch bowing Westward into the Farm
+    '<path d="M80,26 Q60,60 80,94" stroke="#4E342E" stroke-width="7" fill="none" stroke-linecap="round"/>' +
+    '<path d="M82,28 Q64,60 82,92" stroke="#795548" stroke-width="4.5" fill="none" stroke-linecap="round"/>' +
+    // Suspended Estate Signboard facing incoming Countryside traffic
+    '<g transform="translate(76, 48)">' +
       '<rect x="-6" y="-12" width="16" height="48" rx="3" fill="#FBF6EC" stroke="#8D6E63" stroke-width="1.2"/>' +
       '<text x="2" y="0" font-size="6.5" font-weight="900" fill="#1B5E20" transform="rotate(90, 2, 0)" text-anchor="middle">🌿 searchO2 🌿</text>' +
       '<text x="2" y="7" font-size="4.8" font-weight="800" fill="#4E342E" transform="rotate(90, 2, 7)" text-anchor="middle">ECO-FARM</text>' +
     '</g>' +
     (isBuilt
       ? '<g stroke="#3E2723" stroke-width="1.5">' +
-          '<line x1="82" y1="38" x2="114" y2="35"/>' +
-          '<line x1="90" y1="37" x2="90" y2="32"/><line x1="102" y1="36" x2="102" y2="32"/>' +
-          '<circle cx="114" cy="35" r="2" fill="#FFB300"/>' +
-          '<line x1="82" y1="82" x2="114" y2="85"/>' +
-          '<line x1="90" y1="83" x2="90" y2="88"/><line x1="102" y1="84" x2="102" y2="88"/>' +
-          '<circle cx="114" cy="85" r="2" fill="#FFB300"/>' +
+          // Dynamic Swing Gate Leaves angled Westward into the farm when open
+          '<line x1="78" y1="38" x2="46" y2="35"/>' +
+          '<line x1="70" y1="37" x2="70" y2="32"/><line x1="58" y1="36" x2="58" y2="32"/>' +
+          '<circle cx="46" cy="35" r="2" fill="#FFB300"/>' +
+          '<line x1="78" y1="82" x2="46" y2="85"/>' +
+          '<line x1="70" y1="83" x2="70" y2="88"/><line x1="58" y1="84" x2="58" y2="88"/>' +
+          '<circle cx="46" cy="85" r="2" fill="#FFB300"/>' +
         '</g>'
       : '<g stroke="#D32F2F" stroke-width="2" stroke-dasharray="4,3">' +
           '<line x1="80" y1="38" x2="80" y2="82"/>' +
           '<circle cx="80" cy="60" r="5" fill="#EF5350"/><text x="80" y="63" font-size="7" fill="white" font-weight="900" text-anchor="middle">✕</text>' +
         '</g>') +
-    '<rect x="52" y="16" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
-    '<circle cx="57" cy="18" r="4" fill="#43A047"/><circle cx="57" cy="14" r="3" fill="#E91E63"/>' +
-    '<rect x="52" y="90" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
-    '<circle cx="57" cy="98" r="4" fill="#43A047"/><circle cx="57" cy="102" r="3" fill="#FF9800"/>' +
+    // Flower Planters on the Countryside Approach
+    '<rect x="98" y="16" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
+    '<circle cx="103" cy="18" r="4" fill="#43A047"/><circle cx="103" cy="14" r="3" fill="#E91E63"/>' +
+    '<rect x="98" y="90" width="10" height="14" rx="2" fill="#795548" stroke="#4E342E" stroke-width="0.8"/>' +
+    '<circle cx="103" cy="98" r="4" fill="#43A047"/><circle cx="103" cy="102" r="3" fill="#FF9800"/>' +
     statusBadge +
   '</svg>';
 }
@@ -17324,48 +17439,79 @@ function drawCrewShedScene(b){
   if (isBuilding){
     var pct = Math.round(Math.min(100, (b.buildHours / 3) * 100));
     return '<svg viewBox="0 0 160 160" preserveAspectRatio="none" style="width:100%;height:100%;">' +
-      '<rect x="15" y="30" width="130" height="105" rx="8" fill="#D7CCC8" stroke="#8D6E63" stroke-width="2"/>' +
+      '<polygon points="80,15 148,45 148,115 80,145 12,115 12,45" fill="#D7CCC8" stroke="#8D6E63" stroke-width="2"/>' +
       '<line x1="25" y1="130" x2="135" y2="35" stroke="#FF6D00" stroke-width="3" stroke-dasharray="10,6"/>' +
       '<text x="80" y="75" text-anchor="middle" font-size="24">🔨</text>' +
-      '<text x="80" y="105" text-anchor="middle" font-size="12" font-weight="800" fill="#3E2723">Framing Shed...</text>' +
+      '<text x="80" y="105" text-anchor="middle" font-size="12" font-weight="800" fill="#3E2723">Framing 3D Shed...</text>' +
       '<text x="80" y="122" text-anchor="middle" font-size="10" font-weight="700" fill="#D84315">' + pct + '%</text>' +
     '</svg>';
   }
   var idleCount = (typeof state !== 'undefined' && state && state.workers) ? state.workers.filter(function(w){ return w.assignedPlot === null && !w.assignedBuilding; }).length : 0;
-  return '<svg viewBox="0 0 160 160" preserveAspectRatio="none" style="width:100%;height:100%;">' +
+  // 3D Isometric Craftsman Timber Lodge (ENTRANCE FACING NORTH TOWARDS THE MAIN ROAD & CREW TRAIL)
+  return '<svg viewBox="0 0 160 160" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
     '<defs>' +
-      '<linearGradient id="shedRoofGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4E342E"/><stop offset="100%" stop-color="#271914"/></linearGradient>' +
-      '<linearGradient id="shedWallGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8D6E63"/><stop offset="100%" stop-color="#5D4037"/></linearGradient>' +
+      '<linearGradient id="shed3dRoofSouth" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5D4037"/><stop offset="100%" stop-color="#3E2723"/></linearGradient>' +
+      '<linearGradient id="shed3dRoofNorth" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#8D6E63"/><stop offset="100%" stop-color="#6D4C41"/></linearGradient>' +
+      '<linearGradient id="shed3dWallFront" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#A1887F"/><stop offset="100%" stop-color="#6D4C41"/></linearGradient>' +
+      '<linearGradient id="shed3dWallSide" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4E342E"/><stop offset="100%" stop-color="#2D1B15"/></linearGradient>' +
+      '<linearGradient id="shed3dStoneBase" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#B0BEC5"/><stop offset="100%" stop-color="#607D8B"/></linearGradient>' +
     '</defs>' +
-    '<rect x="18" y="125" width="124" height="14" rx="3" fill="#78909C" stroke="#455A64" stroke-width="1.5"/>' +
-    '<rect x="22" y="55" width="116" height="72" fill="url(#shedWallGrad)" stroke="#3E2723" stroke-width="1.5"/>' +
-    '<line x1="22" y1="70" x2="138" y2="70" stroke="#4E342E" stroke-width="1"/>' +
-    '<line x1="22" y1="85" x2="138" y2="85" stroke="#4E342E" stroke-width="1"/>' +
-    '<line x1="22" y1="100" x2="138" y2="100" stroke="#4E342E" stroke-width="1"/>' +
-    '<line x1="22" y1="115" x2="138" y2="115" stroke="#4E342E" stroke-width="1"/>' +
-    '<rect x="110" y="24" width="16" height="32" rx="2" fill="#607D8B" stroke="#37474F" stroke-width="1"/>' +
-    '<circle cx="118" cy="18" r="4" fill="#B0BEC5" opacity="0.6"/>' +
-    '<circle cx="124" cy="10" r="5" fill="#CFD8DC" opacity="0.4"/>' +
-    '<polygon points="12,56 80,18 148,56" fill="url(#shedRoofGrad)" stroke="#271914" stroke-width="2"/>' +
-    '<line x1="80" y1="18" x2="80" y2="55" stroke="#3E2723" stroke-width="1.5"/>' +
-    '<rect x="34" y="72" width="22" height="26" rx="2" fill="#FFE082" stroke="#3E2723" stroke-width="1.5"/>' +
-    '<line x1="45" y1="72" x2="45" y2="98" stroke="#3E2723" stroke-width="1"/>' +
-    '<line x1="34" y1="85" x2="56" y2="85" stroke="#3E2723" stroke-width="1"/>' +
-    '<rect x="68" y="75" width="24" height="50" rx="2" fill="#3E2723"/>' +
-    '<circle cx="86" cy="102" r="2" fill="#FFD54F"/>' +
-    '<polygon points="60,70 100,70 106,75 54,75" fill="#4E342E"/>' +
-    '<rect x="62" y="75" width="4" height="50" fill="#3E2723"/>' +
-    '<rect x="94" y="75" width="4" height="50" fill="#3E2723"/>' +
-    '<circle cx="80" cy="72" r="3" fill="#FFD54F"/>' +
-    '<rect x="104" y="96" width="28" height="29" rx="2" fill="#4E342E"/>' +
-    '<line x1="110" y1="74" x2="110" y2="96" stroke="#BCAAA4" stroke-width="2"/>' +
-    '<polygon points="107,74 113,74 110,68" fill="#78909C"/>' +
-    '<text x="120" y="90" font-size="11">💧</text>' +
+    // 1. Ground Contact Shadow
+    '<ellipse cx="80" cy="118" rx="66" ry="24" fill="rgba(24,18,12,0.3)"/>' +
+    // 2. Stone Foundation Plinth
+    '<polygon points="20,105 80,132 140,105 140,114 80,141 20,114" fill="#37474F"/>' +
+    '<polygon points="20,105 80,132 80,141 20,114" fill="#546E7A"/>' +
+    '<polygon points="80,132 140,105 140,114 80,141" fill="#455A64"/>' +
+    // 3. East Side Wall (in shadow)
+    '<polygon points="80,132 140,105 140,68 80,95" fill="url(#shed3dWallSide)"/>' +
+    '<line x1="80" y1="104" x2="140" y2="77" stroke="#271914" stroke-width="1.2"/>' +
+    '<line x1="80" y1="113" x2="140" y2="86" stroke="#271914" stroke-width="1.2"/>' +
+    '<line x1="80" y1="122" x2="140" y2="95" stroke="#271914" stroke-width="1.2"/>' +
+    // 4. North-Facing Front Facade (sunlit, facing the Main Road)
+    '<polygon points="20,105 80,132 80,95 20,68" fill="url(#shed3dWallFront)"/>' +
+    '<line x1="20" y1="77" x2="80" y2="104" stroke="#4E342E" stroke-width="1.2"/>' +
+    '<line x1="20" y1="86" x2="80" y2="113" stroke="#4E342E" stroke-width="1.2"/>' +
+    '<line x1="20" y1="95" x2="80" y2="122" stroke="#4E342E" stroke-width="1.2"/>' +
+    // 5. North-Facing Road Entrance & Porch (steps lead up towards North road trail)
+    '<polygon points="34,80 66,94 66,122 34,108" fill="#2E1C14"/>' + // Doorway recess
+    '<polygon points="36,83 64,96 64,120 36,107" fill="#4E342E" stroke="#261713" stroke-width="0.8"/>' + // Timber door
+    '<circle cx="60" cy="108" r="1.8" fill="#FFD54F"/>' + // Brass doorknob
+    // Porch Gable Roof Canopy facing North Road
+    '<polygon points="28,74 72,94 50,60" fill="#6D4C41" stroke="#3E2723" stroke-width="1"/>' +
+    '<polygon points="26,75 50,60 50,63 26,78" fill="#8D6E63"/>' +
+    '<polygon points="72,75 50,60 50,63 72,78" fill="#5D4037"/>' +
+    // Porch Support Timber Columns
+    '<rect x="29" y="76" width="3" height="34" rx="0.5" fill="#3E2723"/>' +
+    '<rect x="68" y="94" width="3" height="28" rx="0.5" fill="#3E2723"/>' +
+    // Stone threshold entrance step pointing North toward Crew Trail
+    '<polygon points="28,110 72,130 68,134 24,114" fill="#CFD8DC" stroke="#78909C" stroke-width="0.8"/>' +
+    // Overhead glowing lantern welcoming crew from the road
+    '<circle cx="50" cy="74" r="5" fill="#FFE082" opacity="0.45"/>' +
+    '<circle cx="50" cy="74" r="2.2" fill="#FFF59D"/>' +
+    '<rect x="49" y="69" width="2" height="4" fill="#37474F"/>' +
+    // 6. 3D Main Pitched Cedar Shingle Roof
+    '<polygon points="12,65 78,35 148,65 82,95" fill="url(#shed3dRoofNorth)" stroke="#271914" stroke-width="1.2"/>' +
+    '<polygon points="78,35 148,65 144,70 78,40" fill="#3E2723"/>' + // Roof rake fascia
+    '<line x1="28" y1="60" x2="94" y2="88" stroke="#A1887F" stroke-width="1" opacity="0.6"/>' +
+    '<line x1="44" y1="53" x2="110" y2="81" stroke="#A1887F" stroke-width="1" opacity="0.6"/>' +
+    '<line x1="60" y1="45" x2="126" y2="73" stroke="#A1887F" stroke-width="1" opacity="0.6"/>' +
+    // 7. Stone Chimney with Rising Smoke Puffs
+    '<rect x="114" y="24" width="14" height="28" rx="2" fill="#78909C" stroke="#37474F" stroke-width="1"/>' +
+    '<polygon points="112,24 121,18 130,24" fill="#90A4AE" stroke="#37474F" stroke-width="0.8"/>' +
+    '<circle cx="121" cy="14" r="3.5" fill="#B0BEC5" opacity="0.7"/>' +
+    '<circle cx="127" cy="7" r="4.5" fill="#CFD8DC" opacity="0.5"/>' +
+    '<circle cx="132" cy="-1" r="5.5" fill="#ECEFF1" opacity="0.35"/>' +
+    // 8. Tool Rack on North Porch Wall
+    '<line x1="22" y1="88" x2="22" y2="104" stroke="#D7CCC8" stroke-width="1.4"/>' +
+    '<polygon points="20,86 24,86 22,81" fill="#78909C"/>' + // Shovel
+    '<line x1="16" y1="92" x2="16" y2="106" stroke="#D7CCC8" stroke-width="1.4"/>' +
+    '<polygon points="14,92 18,92 16,88" fill="#B0BEC5"/>' + // Pickaxe
+    // 9. Idle Workers Waiting on North Porch
     (idleCount > 0 ?
-      '<g class="bob" transform="translate(45, 114)">' +
-        '<circle cx="0" cy="0" r="8" fill="#FFF" stroke="#2E7D32" stroke-width="1.5"/>' +
-        '<text x="0" y="3.5" text-anchor="middle" font-size="10" font-weight="800" fill="#2E7D32">' + idleCount + '</text>' +
-        '<text x="14" y="4" font-size="11">👷</text>' +
+      '<g class="bob" transform="translate(48, 126)">' +
+        '<circle cx="0" cy="0" r="9" fill="#FFF" stroke="#2E7D32" stroke-width="1.6"/>' +
+        '<text x="0" y="3.5" text-anchor="middle" font-size="10" font-weight="900" fill="#2E7D32">' + idleCount + '</text>' +
+        '<text x="14" y="4" font-size="12">👷</text>' +
       '</g>' : '') +
   '</svg>';
 }
@@ -17379,42 +17525,63 @@ function drawGarageScene(b){
   if (isBuilding){
     var pct = Math.round(Math.min(100, (b.buildHours / 4) * 100));
     return '<svg viewBox="0 0 160 135" preserveAspectRatio="none" style="width:100%;height:100%;">' +
-      '<rect x="15" y="20" width="130" height="98" rx="8" fill="#CFD8DC" stroke="#607D8B" stroke-width="2"/>' +
+      '<polygon points="80,12 148,36 148,105 80,128 12,105 12,36" fill="#CFD8DC" stroke="#607D8B" stroke-width="2"/>' +
       '<line x1="25" y1="110" x2="135" y2="30" stroke="#FF9800" stroke-width="3" stroke-dasharray="10,6"/>' +
       '<text x="80" y="65" text-anchor="middle" font-size="24">⚙️</text>' +
-      '<text x="80" y="90" text-anchor="middle" font-size="12" font-weight="800" fill="#263238">Erecting Depot...</text>' +
+      '<text x="80" y="90" text-anchor="middle" font-size="12" font-weight="800" fill="#263238">Erecting 3D Depot...</text>' +
       '<text x="80" y="106" text-anchor="middle" font-size="10" font-weight="700" fill="#E65100">' + pct + '%</text>' +
     '</svg>';
   }
-  return '<svg viewBox="0 0 160 135" preserveAspectRatio="none" style="width:100%;height:100%;">' +
+  // 3D Industrial Mechanization Depot (ENTRANCE FACING SOUTH TOWARDS THE MAIN ROAD & GARAGE SPUR)
+  return '<svg viewBox="0 0 160 135" preserveAspectRatio="none" style="width:100%;height:100%;overflow:visible;">' +
     '<defs>' +
-      '<linearGradient id="garageWallGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#546E7A"/><stop offset="100%" stop-color="#37474F"/></linearGradient>' +
-      '<linearGradient id="doorRollGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ECEFF1"/><stop offset="100%" stop-color="#B0BEC5"/></linearGradient>' +
+      '<linearGradient id="depot3dRoof" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#455A64"/><stop offset="100%" stop-color="#263238"/></linearGradient>' +
+      '<linearGradient id="depot3dWallSouth" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#78909C"/><stop offset="100%" stop-color="#455A64"/></linearGradient>' +
+      '<linearGradient id="depot3dWallWest" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#37474F"/><stop offset="100%" stop-color="#263238"/></linearGradient>' +
+      '<linearGradient id="depotRollDoor" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ECEFF1"/><stop offset="50%" stop-color="#CFD8DC"/><stop offset="100%" stop-color="#90A4AE"/></linearGradient>' +
     '</defs>' +
-    '<rect x="12" y="110" width="136" height="15" rx="3" fill="#78909C" stroke="#455A64" stroke-width="1.5"/>' +
-    '<rect x="16" y="38" width="128" height="74" rx="2" fill="url(#garageWallGrad)" stroke="#263238" stroke-width="2"/>' +
-    '<polygon points="8,40 80,14 152,40" fill="#263238"/>' +
-    '<polygon points="12,38 80,18 148,38" fill="#455A64"/>' +
-    '<rect x="45" y="24" width="70" height="9" rx="2" fill="#81D4FA" opacity="0.8"/>' +
-    '<line x1="70" y1="24" x2="70" y2="33" stroke="#263238" stroke-width="1"/>' +
-    '<line x1="90" y1="24" x2="90" y2="33" stroke="#263238" stroke-width="1"/>' +
-    '<rect x="25" y="48" width="48" height="63" rx="2" fill="url(#doorRollGrad)" stroke="#263238" stroke-width="1.5"/>' +
-    '<line x1="25" y1="60" x2="73" y2="60" stroke="#78909C" stroke-width="1.2"/>' +
-    '<line x1="25" y1="72" x2="73" y2="72" stroke="#78909C" stroke-width="1.2"/>' +
-    '<line x1="25" y1="84" x2="73" y2="84" stroke="#78909C" stroke-width="1.2"/>' +
-    '<line x1="25" y1="96" x2="73" y2="96" stroke="#78909C" stroke-width="1.2"/>' +
-    '<circle cx="49" cy="104" r="2.5" fill="#37474F"/>' +
-    '<rect x="85" y="48" width="50" height="63" rx="2" fill="#263238"/>' +
-    '<g transform="translate(94, 66)">' +
-      '<rect x="0" y="10" width="28" height="16" rx="2" fill="#8D6E63" stroke="#4E342E" stroke-width="1"/>' +
-      '<line x1="28" y1="12" x2="38" y2="8" stroke="#3E2723" stroke-width="2"/>' +
-      '<line x1="28" y1="22" x2="38" y2="18" stroke="#3E2723" stroke-width="2"/>' +
-      '<circle cx="14" cy="28" r="8" fill="#4E342E" stroke="#212121" stroke-width="1.5"/>' +
-      '<circle cx="14" cy="28" r="2.5" fill="#FFD54F"/>' +
-      '<text x="6" y="22" font-size="10">🍎</text>' +
+    // 1. Ground Contact Shadow
+    '<ellipse cx="80" cy="115" rx="68" ry="18" fill="rgba(24,18,12,0.3)"/>' +
+    // 2. Concrete Apron Loading Ramp extending South towards Main Road Garage Spur
+    '<polygon points="26,108 80,126 134,108 144,115 80,133 16,115" fill="#B0BEC5" stroke="#78909C" stroke-width="1"/>' +
+    '<line x1="38" y1="112" x2="122" y2="112" stroke="#90A4AE" stroke-width="1.4" stroke-dasharray="6,4"/>' +
+    // 3. West Wall (recessed in 3D depth)
+    '<polygon points="18,50 18,102 54,116 54,64" fill="url(#depot3dWallWest)"/>' +
+    // 4. South-Facing Main Facade (Facing South towards Main Road)
+    '<polygon points="54,64 54,116 142,88 142,36" fill="url(#depot3dWallSouth)"/>' +
+    // 5. Heavy-Duty Corrugated Roll-Up Bay Door (Facing South to Road)
+    '<polygon points="62,72 62,112 118,94 118,54" fill="#1C2833"/>' + // Bay Opening
+    '<polygon points="64,74 64,110 116,93 116,57" fill="url(#depotRollDoor)" stroke="#37474F" stroke-width="1"/>' +
+    // Corrugated roll door horizontal slat lines
+    '<line x1="64" y1="80" x2="116" y2="63" stroke="#78909C" stroke-width="1.2"/>' +
+    '<line x1="64" y1="87" x2="116" y2="70" stroke="#78909C" stroke-width="1.2"/>' +
+    '<line x1="64" y1="94" x2="116" y2="77" stroke="#78909C" stroke-width="1.2"/>' +
+    '<line x1="64" y1="101" x2="116" y2="84" stroke="#78909C" stroke-width="1.2"/>' +
+    '<line x1="64" y1="108" x2="116" y2="91" stroke="#78909C" stroke-width="1.2"/>' +
+    // Overhead heavy industrial lintel & stencil
+    '<polygon points="60,69 120,50 120,56 60,75" fill="#D32F2F" stroke="#B71C1C" stroke-width="0.8"/>' +
+    '<text x="90" y="65" text-anchor="middle" font-size="6.5" font-weight="900" fill="#FFFFFF" transform="rotate(-17 90 65)" letter-spacing="1">DEPOT</text>' +
+    // 6. 3D Industrial Pitched Steel Roof with Skylight
+    '<polygon points="14,48 76,20 148,34 86,62" fill="url(#depot3dRoof)" stroke="#263238" stroke-width="1.4"/>' +
+    // Roof ridge trim & skylight
+    '<line x1="76" y1="20" x2="148" y2="34" stroke="#90A4AE" stroke-width="2"/>' +
+    '<polygon points="48,40 68,31 92,42 72,51" fill="#81D4FA" opacity="0.8" stroke="#37474F" stroke-width="0.8"/>' +
+    '<line x1="58" y1="36" x2="82" y2="47" stroke="#263238" stroke-width="0.8"/>' +
+    // Flashing Rooftop Amber Industrial Warning Beacon
+    '<rect x="74" y="14" width="4" height="6" fill="#37474F"/>' +
+    '<circle cx="76" cy="13" r="3.5" fill="#FFB300" stroke="#E65100" stroke-width="0.6"/>' +
+    '<circle cx="76" cy="13" r="6" fill="#FFE082" opacity="0.35"/>' +
+    // 7. Mechanical Workshop Side Bay: 2-Wheel Harvest Cart parked facing Road
+    '<g transform="translate(120, 84)">' +
+      '<polygon points="0,0 18,-6 18,10 0,16" fill="#8D6E63" stroke="#4E342E" stroke-width="0.8"/>' +
+      '<circle cx="9" cy="13" r="6" fill="#212121" stroke="#424242" stroke-width="1"/>' +
+      '<circle cx="9" cy="13" r="2" fill="#FFD54F"/>' +
+      '<line x1="0" y1="8" x2="-8" y2="12" stroke="#3E2723" stroke-width="1.5"/>' + // Cart hitch
+      '<text x="5" y="6" font-size="8">🍎</text>' +
     '</g>' +
-    '<rect x="18" y="48" width="6" height="63" fill="#D32F2F"/>' +
-    '<text x="50" y="45" text-anchor="middle" font-size="7.5" font-weight="800" fill="#CFD8DC" letter-spacing="1">DEPOT</text>' +
+    // Oil Drum & Toolbox on Apron
+    '<rect x="136" y="90" width="8" height="12" rx="1.5" fill="#1565C0" stroke="#0D47A1" stroke-width="0.7"/>' +
+    '<ellipse cx="140" cy="90" rx="4" ry="1.5" fill="#42A5F5"/>' +
   '</svg>';
 }
 
@@ -20507,6 +20674,7 @@ window.roadPromenadeHtml = roadPromenadeHtml;
 window.advanceGame = advanceGame;
 window.farmReputation = farmReputation;
 window.fieldBackgroundSVG = fieldBackgroundSVG;
+window.drawSystematicLawnMowingSvg = drawSystematicLawnMowingSvg;
 window.updateToolStrip = updateToolStrip;
 window.switchScreen = switchScreen;
 window.freshState = freshState;
@@ -20666,6 +20834,7 @@ globalThis.initGameTooltips = initGameTooltips;
   globalThis.devActiveCategoryOrder = devActiveCategoryOrder;
   globalThis.devActiveSpeciesKeys = devActiveSpeciesKeys;
   globalThis.devActiveBackgroundSvg = devActiveBackgroundSvg;
+  globalThis.drawSystematicLawnMowingSvg = drawSystematicLawnMowingSvg;
   globalThis.TREE_LIBRARY = TREE_LIBRARY;
   globalThis.selectQuizAnswer = selectQuizAnswer;
   globalThis.quizNext = quizNext;
