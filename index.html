@@ -703,6 +703,13 @@
     justify-content: space-between;
     gap: 10px;
   }
+  .production-expansion-chip {
+    background: #FFFDF7;
+    border: 1.5px solid rgba(230, 81, 0, 0.22);
+  }
+  .production-expansion-chip:hover {
+    border-color: #E65100;
+  }
 
   .icon-dock {
     display: grid;
@@ -13201,6 +13208,14 @@ function dispatchWorkerWithInfo(workerId, taskType, targetId, turbineId){
     destName = 'Cattle Paddock (Erect Fencing)';
     notifType = 'building'; notifId = 'cattle_farm';
     dur = '2.5h';
+  } else if (taskType === 'crop_field_plant' || taskType === 'crop_field_harvest'){
+    destName = 'Polyculture Field (' + (taskType === 'crop_field_harvest' ? 'Harvest Produce' : 'Sow Companion Beds') + ')';
+    notifType = 'building'; notifId = 'crop_field';
+    dur = '1-2h';
+  } else if (taskType === 'cattle_adopt'){
+    destName = 'Cattle Paddock (Livestock Adoption)';
+    notifType = 'building'; notifId = 'cattle_farm';
+    dur = 'Immediate';
   } else if (taskType === 'commission_turbine'){
     var tKey = turbineId || 'wt_nw';
     var tName = (WIND_TURBINE_SPOTS && WIND_TURBINE_SPOTS[tKey] ? WIND_TURBINE_SPOTS[tKey].label : 'Wind Turbine');
@@ -13362,6 +13377,15 @@ function assignWorkerToTask(workerId, taskType, targetId){
     if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'cattle_farm');
   } else if (taskType === 'cattle_fence'){
     startBuildCattleFence(workerId);
+  } else if (taskType === 'crop_field_plant'){
+    if (typeof plantAllCropFieldBeds === 'function') plantAllCropFieldBeds('wheat');
+    if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'crop_field');
+  } else if (taskType === 'crop_field_harvest'){
+    if (typeof harvestAllCropFieldBeds === 'function') harvestAllCropFieldBeds();
+    if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'crop_field');
+  } else if (taskType === 'cattle_adopt'){
+    openModal('building', 'cattle_farm');
+    if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'cattle_farm');
   } else if (taskType === 'commission_turbine'){
     performEngineerCommissioning(workerId);
   } else if (taskType === 'recruit_engineer'){
@@ -14950,6 +14974,31 @@ var FARM_PROGRESSION_STEPS = [
   }
 ];
 
+var AGRICULTURAL_PRODUCTION_FACILITIES = {
+  crop_field: {
+    key: 'crop_field',
+    icon: '🌾',
+    title: 'Polyculture Companion Crop Garden',
+    cost: 350,
+    benefit: '+8 Farm Reputation · 4 companion beds for grain, corn & vegetables',
+    category: 'agriculture',
+    prereqStep: 2,
+    afterWhich: 'Unlocks after Step 2 (Main Arterial Road) connects the south field to estate transport.',
+    howTo: '1. Pave the Main Road (Step 2).\n2. Click the octagonal crop field site in the south block.\n3. Construct the 4-bed companion planting field (€350) to cultivate staple grains, corn, squash & legumes (+8 Rep).'
+  },
+  cattle_farm: {
+    key: 'cattle_farm',
+    icon: '🐄',
+    title: 'Cattle Farm & Grazing Pasture',
+    cost: 400,
+    benefit: '+10 Farm Reputation · Grazing paddock, cows & sheep for milk and wool',
+    category: 'livestock',
+    prereqStep: 2,
+    afterWhich: 'Unlocks after Step 2 (Main Arterial Road) is completed, enabling livestock deliveries.',
+    howTo: '1. Pave the Main Road (Step 2).\n2. Click the north-west pasture site.\n3. Construct the cattle barn (€400), erect the perimeter fence (€200), and adopt dairy cows & sheep (+10 Rep).'
+  }
+};
+
 var OPTIONAL_CREDIBILITY_BUILDINGS = {
   pond: {
     key: 'pond',
@@ -15068,7 +15117,20 @@ function showLockedStepPopup(stepNum, optKey){
   if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
 
   var stepData = null;
-  if (optKey && OPTIONAL_CREDIBILITY_BUILDINGS[optKey]){
+  if (optKey && typeof AGRICULTURAL_PRODUCTION_FACILITIES !== 'undefined' && AGRICULTURAL_PRODUCTION_FACILITIES[optKey]){
+    var ag = AGRICULTURAL_PRODUCTION_FACILITIES[optKey];
+    stepData = {
+      icon: ag.icon,
+      title: ag.title,
+      stepBadge: '🌾 Agricultural & Livestock Production',
+      cost: '€' + ag.cost,
+      benefit: ag.benefit,
+      afterWhich: ag.afterWhich,
+      howTo: ag.howTo,
+      prereqStep: ag.prereqStep || 2,
+      targetId: ag.key
+    };
+  } else if (optKey && OPTIONAL_CREDIBILITY_BUILDINGS[optKey]){
     var opt = OPTIONAL_CREDIBILITY_BUILDINGS[optKey];
     stepData = {
       icon: opt.icon,
@@ -15289,6 +15351,34 @@ function openTaskMasterplanModal(){
     '</div>';
   }).join('');
 
+  // Dedicated Agricultural & Livestock Production Facilities
+  var agriHtml = Object.keys(AGRICULTURAL_PRODUCTION_FACILITIES).map(function(k){
+    var ag = AGRICULTURAL_PRODUCTION_FACILITIES[k];
+    var b = state.buildings && state.buildings[k];
+    var isBuilt = b && b.built;
+    var isBuilding = b && b.building;
+    var isRdBuilt = state.buildings && state.buildings.road && state.buildings.road.built;
+
+    var agBadge = isBuilt
+      ? '<span style="color:#2E7D32;font-weight:800;font-size:0.75rem;background:#E8F5E9;padding:3px 8px;border-radius:8px;">✓ Operational</span>'
+      : (isBuilding
+        ? '<span style="color:#F57F17;font-weight:800;font-size:0.75rem;background:#FFF3E0;padding:3px 8px;border-radius:8px;">🏗️ Building</span>'
+        : (isRdBuilt
+          ? '<button class="primary mini-btn" onclick="closeModal();openModal(\'building\',\'' + k + '\')" style="padding:4px 10px;font-size:0.75rem;font-weight:800;border-radius:8px;">👉 Build (€' + ag.cost + ')</button>'
+          : '<button class="secondary mini-btn" onclick="showLockedStepPopup(null,\'' + k + '\')" style="padding:4px 9px;font-size:0.74rem;font-weight:800;border-radius:8px;">🔒 Info</button>'));
+
+    return '<div class="optional-expansion-chip production-expansion-chip" ' + (!isBuilt && !isRdBuilt ? 'onclick="showLockedStepPopup(null,\'' + k + '\')" style="cursor:pointer;"' : '') + '>' +
+      '<div style="display:flex;align-items:center;gap:8px;min-width:0;">' +
+        '<div style="font-size:1.4rem;">' + ag.icon + '</div>' +
+        '<div style="min-width:0;">' +
+          '<div style="font-weight:800;font-size:0.84rem;color:#1B3B24;">' + ag.title + '</div>' +
+          '<div style="font-size:0.72rem;color:#546E7A;">' + ag.benefit + ' · €' + ag.cost + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-left:auto;flex-shrink:0;">' + agBadge + '</div>' +
+    '</div>';
+  }).join('');
+
   // Optional Farm Credibility & Expansion Steps
   var optHtml = Object.keys(OPTIONAL_CREDIBILITY_BUILDINGS).map(function(k){
     var opt = OPTIONAL_CREDIBILITY_BUILDINGS[k];
@@ -15328,6 +15418,10 @@ function openTaskMasterplanModal(){
         '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">' +
           stepsHtml +
         '</div>' +
+        '<div style="font-size:0.78rem;font-weight:800;color:#E65100;text-transform:uppercase;letter-spacing:0.5px;margin:12px 0 6px;">🌾 Agricultural &amp; Livestock Production:</div>' +
+        '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">' +
+          agriHtml +
+        '</div>' +
         '<div style="font-size:0.78rem;font-weight:800;color:#2E7D32;text-transform:uppercase;letter-spacing:0.5px;margin:12px 0 6px;">⭐ Optional Farm Credibility &amp; Prestige Expansions:</div>' +
         '<div style="display:flex;flex-direction:column;gap:6px;">' +
           optHtml +
@@ -15359,8 +15453,9 @@ function drawUnbuiltSpotMarker(key, def, locked){
   var isRecommended = guide && guide.key === key;
 
   // Milestone step number
-  var stepMap = { storage: 1, road: 2, crew_shed: 3, crop_field: 5, wind_turbine: 7, energy_storage: 8 };
+  var stepMap = { storage: 1, road: 2, crew_shed: 3, wind_turbine: 7, energy_storage: 8 };
   var stepNum = stepMap[key];
+  var tagText = stepNum ? ('Step ' + stepNum) : (key === 'crop_field' ? '🌾 Crops' : (key === 'cattle_farm' ? '🐄 Cattle' : ''));
 
   return '<svg viewBox="0 0 140 100" style="width:100%;height:100%;overflow:visible;pointer-events:none;">' +
     // 4 Corner Boundary Wooden Pegs
@@ -15379,11 +15474,11 @@ function drawUnbuiltSpotMarker(key, def, locked){
         '<rect x="22" y="-4" width="96" height="19" rx="9.5" fill="#E65100" stroke="#FFF" stroke-width="1.4" filter="drop-shadow(0 2px 6px rgba(0,0,0,0.35))"/>' +
         '<text x="70" y="9.5" text-anchor="middle" font-size="8.5" font-weight="900" fill="#FFF" letter-spacing="0.3">🎯 ' + guide.badgeText + '</text>' +
       '</g>'
-      : (stepNum ?
+      : (tagText ?
         '<!-- Inactive Milestone Step Tag -->' +
         '<g transform="translate(70, 8)">' +
-          '<rect x="-24" y="-7" width="48" height="14" rx="7" fill="rgba(255,255,255,0.92)" stroke="#B0BEC5" stroke-width="1"/>' +
-          '<text x="0" y="3.5" text-anchor="middle" font-size="7.5" font-weight="800" fill="#607D8B">Step ' + stepNum + '</text>' +
+          '<rect x="-26" y="-7" width="52" height="14" rx="7" fill="rgba(255,255,255,0.92)" stroke="#B0BEC5" stroke-width="1"/>' +
+          '<text x="0" y="3.5" text-anchor="middle" font-size="7.5" font-weight="800" fill="#607D8B">' + tagText + '</text>' +
         '</g>'
         : '')) +
     // Compact Center Plaque
@@ -20942,6 +21037,114 @@ function getPendingTasksList(){
     }
   }
 
+  // 🌾 Dedicated Agricultural & Livestock Production Facilities
+  if (typeof AGRICULTURAL_PRODUCTION_FACILITIES !== 'undefined'){
+    var agriKeys = ['crop_field', 'cattle_farm'];
+    agriKeys.forEach(function(ak){
+      var bDef = BUILDING_TYPES[ak];
+      var agInfo = AGRICULTURAL_PRODUCTION_FACILITIES[ak];
+      var b = state.buildings && state.buildings[ak];
+      if (b && !b.built && !b.building && bDef && agInfo){
+        var isAgUnlocked = (typeof isStepUnlocked === 'function') ? isStepUnlocked(agInfo.prereqStep || 2) : false;
+        tasks.push({
+          step: 'production',
+          optKey: ak,
+          category: 'production',
+          stepName: '🌾 Production Expansion',
+          type: 'building',
+          targetId: ak,
+          label: agInfo.icon + ' ' + agInfo.title + ' (€' + agInfo.cost + ')',
+          cost: agInfo.cost,
+          reputationBonus: bDef.reputationBonus,
+          isUnlocked: isAgUnlocked,
+          isComplete: false
+        });
+      }
+    });
+
+    // Active operations for built Polyculture Crop Field & Cattle Farm
+    if (state.buildings && state.buildings.crop_field && state.buildings.crop_field.built){
+      var cf = state.buildings.crop_field;
+      var hasEmptyBed = cf.beds && cf.beds.some(function(bed){ return !bed.cropKey; });
+      var hasReadyBed = cf.beds && cf.beds.some(function(bed){ return bed.ready; });
+      if (hasEmptyBed){
+        tasks.push({
+          step: 'production',
+          optKey: 'crop_field',
+          category: 'production',
+          stepName: '🌾 Crop Sowing',
+          type: 'crop_field_plant',
+          targetId: 'crop_field',
+          label: '🌾 Sow Polyculture Companion Beds',
+          cost: 0,
+          isUnlocked: true,
+          isComplete: false
+        });
+      }
+      if (hasReadyBed){
+        tasks.push({
+          step: 'production',
+          optKey: 'crop_field',
+          category: 'production',
+          stepName: '🌾 Crop Harvest',
+          type: 'crop_field_harvest',
+          targetId: 'crop_field',
+          label: '🧺 Harvest Ripe Companion Field Produce',
+          cost: 0,
+          isUnlocked: true,
+          isComplete: false
+        });
+      }
+    }
+
+    if (state.buildings && state.buildings.cattle_farm && state.buildings.cattle_farm.built){
+      var cFarm = state.buildings.cattle_farm;
+      if (!cFarm.fenceBuilt){
+        tasks.push({
+          step: 'production',
+          optKey: 'cattle_farm',
+          category: 'production',
+          stepName: '🐄 Pasture Fence',
+          type: 'cattle_fence',
+          targetId: 'cattle_farm',
+          label: '🪵 Erect Paddock Perimeter Fence (€200)',
+          cost: 200,
+          isUnlocked: true,
+          isComplete: false
+        });
+      }
+      var totalAnimals = (cFarm.chambers || []).reduce(function(acc, ch){ return acc + (ch.animals ? ch.animals.length : 0); }, 0);
+      if (cFarm.fenceBuilt && totalAnimals === 0){
+        tasks.push({
+          step: 'production',
+          optKey: 'cattle_farm',
+          category: 'production',
+          stepName: '🐄 Adopt Livestock',
+          type: 'cattle_adopt',
+          targetId: 'cattle_farm',
+          label: '🐄 Adopt Dairy Cows & Sheep (€250)',
+          cost: 250,
+          isUnlocked: true,
+          isComplete: false
+        });
+      }
+      if (totalAnimals > 0 && ((cFarm.feedLevel || 0) < 40 || (cFarm.waterLevel || 0) < 40)){
+        tasks.push({
+          step: 'production',
+          optKey: 'cattle_farm',
+          category: 'production',
+          stepName: '🐄 Tend Cattle',
+          type: 'cattle_feed',
+          targetId: 'cattle_farm',
+          label: '🌾 Feed & Water Pasture Livestock (€10)',
+          cost: 10,
+          isUnlocked: true,
+          isComplete: false
+        });
+      }
+    }
+  }
+
   // ⭐ Optional Farm Credibility & Expansion Buildings
   var optKeys = ['pond', 'garden', 'coffee_shop', 'juice_bar', 'garage'];
   optKeys.forEach(function(ok){
@@ -22385,7 +22588,35 @@ function panelHtml(){
       '</div>';
     }).join('');
 
-    // 2. Optional Farm Credibility & Expansion Steps
+    // 2. Agricultural & Livestock Production Facilities
+    var agriRows = Object.keys(AGRICULTURAL_PRODUCTION_FACILITIES).map(function(ak){
+      var ag = AGRICULTURAL_PRODUCTION_FACILITIES[ak];
+      var b = state.buildings && state.buildings[ak];
+      var isBuilt = b && b.built;
+      var isBuilding = b && b.building;
+      var isAgUnlocked = (typeof isStepUnlocked === 'function') ? isStepUnlocked(ag.prereqStep || 2) : false;
+
+      var actionBtn = '';
+      if (isBuilt){
+        actionBtn = '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active</span>';
+      } else if (isBuilding){
+        actionBtn = '<button class="claim-btn" disabled style="opacity:0.8;">🏗️ Building</button>';
+      } else if (isAgUnlocked){
+        actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ak + '\')" ' + (state.money < ag.cost ? 'disabled' : '') + '>Build (€' + ag.cost + ')</button>';
+      } else {
+        actionBtn = '<button class="secondary mini-btn" onclick="showLockedStepPopup(null,\'' + ak + '\')" style="padding:4px 8px;font-size:0.72rem;background:#ECEFF1;border-color:#CFD8DC;color:#455A64;">🔒 Info</button>';
+      }
+
+      return '<div class="task-row" style="border-left:4px solid ' + (isBuilt ? '#2E7D32' : (isAgUnlocked ? '#E65100' : '#B0BEC5')) + ';">' +
+        '<div class="task-info">' +
+          '<div class="name">' + ag.icon + ' ' + ag.title + '</div>' +
+          '<div class="meta">' + ag.benefit + ' · €' + ag.cost + '</div>' +
+        '</div>' +
+        '<div>' + actionBtn + '</div>' +
+      '</div>';
+    }).join('');
+
+    // 3. Optional Farm Credibility & Expansion Steps
     var optRows = Object.keys(OPTIONAL_CREDIBILITY_BUILDINGS).map(function(ok){
       var opt = OPTIONAL_CREDIBILITY_BUILDINGS[ok];
       var b = state.buildings && state.buildings[ok];
@@ -22413,7 +22644,7 @@ function panelHtml(){
       '</div>';
     }).join('');
 
-    // 3. Maintenance Tasks
+    // 4. Maintenance Tasks
     var maintRows = '';
     var anyMaint = false;
     if (!state.rocksCleared){
@@ -22441,6 +22672,8 @@ function panelHtml(){
     var htmlTasks = '<div class="float-panel"><h2><span>📋 Farm Tasks &amp; Objectives</span><span class="close-x" data-closepanel="1" onclick="closePanel(event)" ontouchend="closePanel(event)" title="Close Panel">✕</span></h2>' +
       '<div style="font-size:0.75rem;font-weight:800;color:var(--pine);margin:6px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">🏆 Core Progression Steps (1 → 8):</div>' +
       coreRows +
+      '<div style="font-size:0.75rem;font-weight:800;color:#E65100;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">🌾 Agricultural &amp; Livestock Production:</div>' +
+      agriRows +
       '<div style="font-size:0.75rem;font-weight:800;color:#2E7D32;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">⭐ Optional Farm Credibility &amp; Prestige Expansions:</div>' +
       optRows +
       '<div style="font-size:0.75rem;font-weight:800;color:#546E7A;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">🛠️ Fieldwork &amp; Ground Maintenance:</div>' +
@@ -23143,6 +23376,7 @@ window.STORAGE_SPOT = STORAGE_SPOT;
 window.WIND_TURBINE_SPOT = WIND_TURBINE_SPOT;
 window.WIND_TURBINE_SPOTS = WIND_TURBINE_SPOTS;
 window.OPTIONAL_CREDIBILITY_BUILDINGS = OPTIONAL_CREDIBILITY_BUILDINGS;
+window.AGRICULTURAL_PRODUCTION_FACILITIES = AGRICULTURAL_PRODUCTION_FACILITIES;
 window.FARM_PROGRESSION_STEPS = FARM_PROGRESSION_STEPS;
 window.startBuildWindTurbine = startBuildWindTurbine;
 window.openWindTurbineModal = openWindTurbineModal;
@@ -23308,6 +23542,7 @@ if (typeof globalThis !== 'undefined'){
   globalThis.WIND_TURBINE_SPOT = WIND_TURBINE_SPOT;
   globalThis.WIND_TURBINE_SPOTS = WIND_TURBINE_SPOTS;
   globalThis.OPTIONAL_CREDIBILITY_BUILDINGS = OPTIONAL_CREDIBILITY_BUILDINGS;
+  globalThis.AGRICULTURAL_PRODUCTION_FACILITIES = AGRICULTURAL_PRODUCTION_FACILITIES;
   globalThis.FARM_PROGRESSION_STEPS = FARM_PROGRESSION_STEPS;
   globalThis.startBuildWindTurbine = startBuildWindTurbine;
   globalThis.openWindTurbineModal = openWindTurbineModal;
