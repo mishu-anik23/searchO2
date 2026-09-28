@@ -1,33 +1,41 @@
-# 🌿 searchO2 — Regenerative Agroforestry & Oxygen Economy Simulation
+# 🌿 searchO2 — Regenerative Agroforestry, Clean Energy & Oxygen Economy Simulation
 
 [![Live Production](https://img.shields.io/badge/Live-searcho2.online-2E7D32?style=for-the-badge&logo=cloudflare&logoColor=white)](https://searcho2.online)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F9A825?style=for-the-badge)](LICENSE)
-[![Frontend: Vanilla SPA](https://img.shields.io/badge/Frontend-HTML5%20%2F%20CSS3%20%2F%20SVG%20%2F%20Canvas-E65100?style=for-the-badge&logo=html5&logoColor=white)](index.html)
+[![Frontend: Vanilla SPA](https://img.shields.io/badge/Frontend-HTML5%20%2F%20CSS3%20%2F%20SVG%20%2F%20Canvas%202D-E65100?style=for-the-badge&logo=html5&logoColor=white)](index.html)
+[![Clean Energy: 4 Turbines + BESS](https://img.shields.io/badge/Clean%20Tech-4%20Turbines%20%2B%20500kWh%20BESS-00897B?style=for-the-badge&logo=wind&logoColor=white)](index.html)
 [![Backend: Node.js & TypeScript](https://img.shields.io/badge/Backend-Node.js%20%2F%20Express%20%2F%20TypeScript-1565C0?style=for-the-badge&logo=typescript&logoColor=white)](backend/)
 [![Database: PostgreSQL 18 & Redis](https://img.shields.io/badge/Database-PostgreSQL%2018%20%2B%20Redis-336791?style=for-the-badge&logo=postgresql&logoColor=white)](backend/)
 [![Audio: Procedural Web Audio](https://img.shields.io/badge/Audio-Procedural%20Web%20Audio%20API-6A1B9A?style=for-the-badge)](index.html)
 
-> **searchO2** is an educational, single-page browser farming and ecosystem simulation game. Players transform barren, depleted land into a thriving, self-sustaining green community. The game blends ecological principles—carbon sequestration, multi-strata agroforestry, soil biology, and regional biodiversity—with a balanced virtual Euro economy driven by oxygen production, crop logistics, and eco-tourism.
+> **searchO2** is an educational, single-page browser farming, agroecology, and clean-tech microgrid simulation. Players transform depleted, barren soil into a flourishing, self-sustaining green community. The game seamlessly blends real-world environmental principles—carbon sequestration, multi-strata agroforestry, 3-sector polyculture flower guilds, rotational silvopasture grazing, and battery-buffered wind microgrids—with a balanced virtual Euro economy driven by oxygen production, wholesale logistics, visitor hospitality, and feed-in clean energy tariffs.
 
 ---
 
 ## 📑 Table of Contents
-1. [Core Concepts & Philosophy](#-core-concepts--philosophy)
+1. [Core Concepts & Ecological Philosophy](#-core-concepts--ecological-philosophy)
 2. [Gameplay Quickstart & Instructions](#-gameplay-quickstart--instructions)
-3. [Interactive Architecture & System Flows](#-interactive-architecture--system-flows)
-   - [Core Gameplay Simulation Loop](#1-core-gameplay-simulation-loop)
-   - [Plot Lifecycle State Machine](#2-plot-lifecycle-state-machine)
-   - [Harvest & Freight Logistics Pipeline](#3-harvest--freight-logistics-pipeline)
-   - [Macro-Economic Balance & Cash Flow](#4-macro-economic-balance--cash-flow)
-   - [Manhattan Road & Waypoint Navigation](#5-manhattan-road--waypoint-navigation)
+3. [Interactive Architecture & System Flows (Mermaid Diagrams)](#-interactive-architecture--system-flows)
+   - [Core Simulation & Multi-System Game Loop](#1-core-simulation--multi-system-game-loop)
+   - [Agroforestry & Clean Energy System Topology](#2-agroforestry--clean-energy-system-topology)
+   - [Polyculture Companion Planting & Guild Matrix](#3-polyculture-companion-planting--guild-matrix)
+   - [Multi-Modal Logistics & Freight Dispatch Pipeline](#4-multi-modal-logistics--freight-dispatch-pipeline)
+   - [Macro-Economic Balance & Cash Flow](#5-macro-economic-balance--cash-flow)
+   - [Plot Lifecycle State Machine](#6-plot-lifecycle-state-machine)
+   - [Manhattan Road & Waypoint Navigation Network](#7-manhattan-road--waypoint-navigation-network)
 4. [Deep Dive: Game Mechanics & Subsystems](#-deep-dive-game-mechanics--subsystems)
+   - [3D Decagonal 3-Sector Polyculture Flower Garden](#3d-decagonal-3-sector-polyculture-flower-garden)
+   - [Clean Energy Microgrid & 500 kWh BESS Substation](#clean-energy-microgrid--500-kwh-bess-substation)
+   - [Octagonal Polyculture Crop Field & Mechanized Tractor](#octagonal-polyculture-crop-field--mechanized-tractor)
+   - [Livestock Cattle & Sheep Pasture Farm](#livestock-cattle--sheep-pasture-farm)
+   - [Living Botanical & Ecological Theory Encyclopedia](#living-botanical--ecological-theory-encyclopedia)
    - [Plot Management & Biological Health Decay](#plot-management--biological-health-decay)
-   - [Tree Taxonomy & Agricultural Catalog](#tree-taxonomy--agricultural-catalog)
+   - [Tree Taxonomy & Multi-Strata Agroforestry](#tree-taxonomy--multi-strata-agroforestry)
    - [Labor & Crew Management](#labor--crew-management)
    - [Infrastructure, Roads & Village Commons](#infrastructure-roads--village-commons)
-   - [Oxygen Economy, Logistics & Finance](#oxygen-economy-logistics--finance)
-   - [Ecosystem Synergies & Visitor Foot-Traffic](#ecosystem-synergies--visitor-foot-traffic)
-   - [Wildlife Encounters & Seasonal Cycles](#wildlife-encounters--seasonal-cycles)
+   - [Oxygen Economy, Logistics & Banking](#oxygen-economy-logistics--banking)
+   - [Ecosystem Synergies & 3D Visitor Foot-Traffic](#ecosystem-synergies--3d-visitor-foot-traffic)
+   - [Wildlife Encounters, Dynamic Weather & Seasons](#wildlife-encounters-dynamic-weather--seasons)
    - [Planetary Biomes & Interactive 3D World Globe](#planetary-biomes--interactive-3d-world-globe)
    - [Procedural Regional Soundtrack & SFX Engine](#procedural-regional-soundtrack--sfx-engine)
 5. [User Interface & Zen HUD Design](#-user-interface--zen-hud-design)
@@ -39,285 +47,533 @@
 
 ---
 
-## 🌍 Core Concepts & Philosophy
+## 🌍 Core Concepts & Ecological Philosophy
 
 ```
   ┌────────────────────────────────────────────────────────────────────────┐
   │                           searchO2 ECOSYSTEM                           │
   │                                                                        │
-  │     [Barren Land] ──► [Soil Prep] ──► [Agroforestry Planting]          │
-  │            ▲                                  │                        │
-  │            │                                  ▼                        │
-  │     [Eco Recovery]                    [Oxygen Production]              │
-  │            ▲                                  │                        │
-  │            │                                  ▼                        │
-  │     [Village Amenities] ◄── [Logistics] ◄── [Virtual Euro Income]      │
+  │   [Barren Land] ──► [Soil Prep] ──► [Agroforestry & Polyculture Beds]  │
+  │          ▲                                  │                          │
+  │          │                                  ▼                          │
+  │   [Eco Restoration]                 [Clean Energy & Oxygen Generation] │
+  │          ▲                                  │                          │
+  │          │                                  ▼                          │
+  │   [Village Hospitality] ◄── [Logistics] ◄── [Virtual Euro Economy]     │
   └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 1. Regenerative Agroforestry
-Unlike conventional farming games that model soil as an infinite nutrient faucet, **searchO2** treats land as a living, delicate organism:
-- **Oxygen as Currency:** Every healthy tree continuously captures carbon and generates Oxygen ($O_2$). This output is converted into municipal green subsidies ($\text{€0.03}$ per unit of $O_2$), modeling real-world carbon credits.
-- **Multi-Strata Biodiversity:** Monocultures suffer penalties. Planting diverse species (fruit trees, timber, evergreens, and flowering pollinators) activates compounding biodiversity multipliers.
-- **Living Biological Vigor:** Left neglected, crops dehydrate, lose chlorophyll, wither, and die. Untended dead trees rot on the plots, racking up daily environmental demerit fines.
+### 1. Regenerative Agroforestry & Companion Guilds
+Unlike conventional farming games that treat land as a frictionless commodity, **searchO2** models the farmstead as a delicate, living organism:
+- **Oxygen as Currency:** Every mature canopy tree continuously photosynthesizes, capturing atmospheric carbon and liberating life-sustaining oxygen ($O_2$). This output is converted into municipal green credits (\(\text{€0.03}\) per unit of \(O_2\)), simulating real-world carbon offset markets.
+- **Tripartite Flower Polyculture:** A 3-sector decagonal garden enables companion guild planting. Combining distinct botanical species activates compounding cross-pollination bonuses, accelerates honeybee visitations, and shields adjacent orchards from agricultural pests.
+- **Silvopasture & Rotational Grazing:** Fenced paddocks combine dairy cattle and merino sheep with shade trees, illustrating closed-loop manure nutrient cycling, high-value organic dairy and wool yields, and carbon sequestration in perennial pasture soils.
+- **Living Biological Vigor:** Neglected trees suffer dehydration, chlorophyll loss, and fungal blight. Trees dying of dehydration rot on the plots, racking up daily municipal demerit fines until salvaged or re-excavated.
 
-### 2. Educational Responsibility (COPPA & Classroom-Ready)
-- **Real Biological Data:** Each of the 18 tree species contains curated botanical profiles detailing actual photosynthesis rates, canopy spread, water footprints, and wildlife benefits.
-- **Child-Safe & Inclusive:** Designed for children ages 8+, families, and schools. No pay-to-win microtransactions, no gambling mechanics, and zero open inter-player text chat.
-- **Guest-First Accessibility:** Frictionless 1-click guest onboarding with offline catch-up simulation ensures immediate classroom usability without forced personal data collection.
+### 2. Clean Energy & Decentralized Microgrids
+- **4-Corner Perimeter Wind Turbines:** Aerodynamic airfoil turbines generate up to 12 kWh/h of clean electricity, equipped with bird-safe ultrasonic wildlife acoustic deterrents that keep passing avifauna safe.
+- **500 kWh BESS Substation:** An industrial lithium-iron-phosphate (LFP) Battery Energy Storage System buffers renewable generation surges, stabilizes farm operations, and automatically feeds surplus green energy into the regional grid at \(\text{€0.15/kWh}\).
+- **Certified Engineer Stewardship:** Critical energy equipment requires preventative maintenance checklists and certified engineering supervision to maximize round-trip efficiency and prevent inverter trips.
+
+### 3. Educational Integrity & Classroom Accessibility (COPPA-Ready)
+- **Authentic Botanical Data:** Features 72 global trees with authentic binomial Latin nomenclature, 12 companion botanical flower species, 4 staple field grains, and 6 peer-reviewed ecological theory guides.
+- **Child-Safe & Inclusive:** Designed for students ages 8+, families, and schools. No pay-to-win microtransactions, no predatory loot boxes, and zero open inter-player chat.
+- **Frictionless Onboarding:** 1-click guest onboarding with offline catch-up simulation ensures immediate classroom usability on Chromebooks, tablets, laptops, and desktop browsers without requiring personal data collection.
 
 ---
 
 ## 🎮 Gameplay Quickstart & Instructions
 
-### Step 1: Examine Your Farmstead
-You start in the Central European Grassland (Germany) with **€50.00** in starting capital and **6 barren agricultural plots**.
+### Step 1: Survey Your Farmstead
+You begin in the Central European Grassland (Germany) with **€50.00** in starting capital, **6 cultivable agricultural plots**, and an undeveloped rural valley surrounded by 4 wind turbine hilltops.
 
-### Step 2: Excavate & Prepare the Soil
+### Step 2: Excavate & Prepare Fertile Soil
 1. Click on any uncultivated plot marked **Barren**.
 2. Select **Dig Land (€15 · 3h)**.
-3. The plot transitions to `preparing`. Once excavation finishes, it becomes fertile `ready` soil.
+3. The plot transitions to `preparing`. Once excavation completes, it becomes fertile `ready` soil with rich humus.
 
-### Step 3: Plant Your First Canopy
-1. Click the `ready` plot to open the **Tree Nursery**.
-2. Select an initial tree suited to your strategy:
-   - **Fruit Tree (e.g., Apple €90):** Provides steady oxygen and edible fruit harvest.
-   - **Vegetable (e.g., Tomato €35):** Fast-growing canopy with rapid cash turnaround.
-   - **Oxygen Tree (e.g., Oak €120):** Highest long-term $O_2$ yield and municipal credits.
-3. Your seedling enters the `growing` stage as a delicate **Sapling**.
+### Step 3: Plant Your First Agroforestry Canopy
+1. Click the `ready` plot to open the **Tree Nursery & Botanical Catalog**.
+2. Choose a species tailored to your long-term strategy:
+   - **Fruit Tree (e.g., Apple €120 · 48h):** Delivers continuous oxygen and valuable edible fruit harvests.
+   - **Vegetable (e.g., Tomato €18 · 2.6h):** Rapid maturation with fast cash turnover for early liquidity.
+   - **Oxygen Tree (e.g., Oak €160 · 72h):** Massive long-term \(O_2\) output (up to 6.0/h) and municipal carbon subsidies.
+   - **Timber Hardwood (e.g., Cedar €200 · 90h):** Premium wood salvage value upon planned commercial felling.
+3. The seedling begins as a tender **Sapling** and advances through **Young Plant** to a stately **Mature Tree**.
 
-### Step 4: Biological Care & Irrigation
+### Step 4: Biological Care & Drip Irrigation
 - Trees naturally lose hydration and vigor over time.
-- Click a growing plot to inspect its real-time **Health Bar** ($0\% - 100\%$).
-- Keep health above **80%** by performing:
-  - 💧 **Water Plot (€8 · 2h):** Restores $+30\%$ hydration.
-  - ✂️ **Prune Tree (€12 · 3h):** Eliminates dead branches and restores $+20\%$ vigor.
-  - ⚡ **Install Automated Drip Irrigation (€80):** Permanently boosts growth rate by $+15\%$.
+- Click a growing plot to inspect its real-time **Health Bar** (\(0\% - 100\%\)).
+- Keep health above **80%** to maximize photosynthetic output:
+  - 💧 **Water Plot (€8 · 2h):** Restores \(+30\%\) hydration.
+  - ✂️ **Prune Tree (€12 · 3h):** Removes dead branches and restores \(+20\%\) vigor.
+  - ⚡ **Install Automated Drip Irrigation (€80):** Permanently increases growth rate by \(+15\%\).
 
-### Step 5: Construct the Cold Cellar Barn & Loading Bay
-- Mature crops accumulate `pendingHarvest`.
-- **Crucial Rule:** Harvesting without storage causes **$50\%$ spoilage penalty**.
-- Click the Upper Yard behind Plot 1 to construct the **Storage Barn (€550 · 10h)**.
-- Stored crops are preserved in a climate-controlled cold cellar ($4.2^\circ\text{C}$, $85\%$ RH).
+### Step 5: Establish the 3D Decagonal 3-Sector Polyculture Garden
+1. Construct the **Botanical Flower Garden (€300 · 4h)** on the south road curb.
+2. Click the garden to inspect the 3D decagonal raised bed with its central carved stone water fountain.
+3. Select any of the 3 radial sectors (Sector A, B, or C) to plant specialized botanical flowers (e.g., *Lavandula angustifolia*, *Helianthus annuus*, *Echinacea purpurea*).
+4. **Activate Polyculture Guilds:**
+   - **2 Distinct Sectors:** Unlocks Dual-Guild bonus (\(+8\) Rep, \(+12\%\) pollinator boost, \(+15\%\) tips).
+   - **3 Distinct Sectors:** Unlocks the Full Tripartite Guild (\(+18\) Rep, \(+28\%\) pollinator boost, \(+30\%\) tips, \(+35\%\) biodiversity).
+5. Watch 4 worker honeybees (*Apis mellifera*) perform waggle dances and 4 colorful butterflies (including the rare European Peacock Butterfly *Aglais io*) pollinate your flowers!
 
-### Step 6: Dispatch Freight & Sell Stored Goods
-1. Click the **Storage Barn** to open the **Cold Cellar Inventory**.
-2. Select itemized batches of produce or timber.
-3. Ensure a **Laborer** is hired to operate the loading bay.
-4. Click **Dispatch Freight**: An animated transport truck enters through the Farm Main Gate, loads crates at the loading dock, and exits to market, crediting Euro revenue with coin sound effects!
+### Step 6: Construct the Cold Cellar Barn & Mechanized Farm Garage
+- Mature trees, field crops, and livestock accumulate pending harvests.
+- **Crucial Rule:** Harvesting without a storage depot incurs a **50% crop spoilage penalty**!
+- Click the Upper Yard behind Plot 1 to construct the **Storage Barn (€550 · 10h)** (climate-controlled at \(4.2^\circ\text{C}\), \(85\%\) RH).
+- Construct the **Farm Garage (€350 · 4h)** in the NE mechanization block to unlock automated 2-wheel harvest carts and dedicated tractor haulage.
 
-### Step 7: Pave the Road & Expand into Village Commerce
-1. Click the road corridor to construct the **Main Arterial Road (€250 · 4h)**.
-2. Paving the road unlocks curbside village amenities across the opposing promenade:
-   - 🌷 **Botanical Flower Garden (€300):** Boosts farm reputation ($+8$).
-   - 🦆 **Duck & Fish Pond (€400):** Streams physical fish and duck products into storage.
-   - ☕ **The Coffee House (€800):** Serves strolling village visitors.
-   - 🧃 **The Juice & Ice Bar (€700):** Serves fresh smoothies to tourists.
+### Step 7: Cultivate the Octagonal Crop Field & Pasture Silvopasture
+1. **Octagonal Polyculture Crop Field (€350 · 5h):** Plant 4 quadrants with staple grains (Wheat, Rice, Maize, Sugarcane) or heirloom vegetables. The dedicated utility tractor automatically hauls harvested crates to the cold cellar.
+2. **Livestock Cattle & Sheep Farm (€400 · 5h):** Build a 4-chamber timber cattle shed with fenced pasture. Raise Dairy Cows (*Bos taurus*) for organic milk and Merino Sheep (*Ovis aries*) for lanolin-rich wool fleeces. Construct the perimeter timber fence to protect grazing herds.
 
-### Step 8: Manage Debt & Avoid Bankruptcy
-- Inactive, neglected farms lose money! If plots stay dead or overgrown, municipal fines (€14/plot/day) and estate taxes (€12/day) will push your balance below **€0.00**.
-- Dropping below **-€50.00** triggers an emergency **Bankruptcy Protocol** from the Community Bank, requiring loan restructuring or emergency debt relief.
+### Step 8: Commission Clean Wind Turbines & the 500 kWh BESS Substation
+1. Hire a certified **Engineer (€180/day)** from the Crew Shed.
+2. Construct the **4-Corner Wind Turbine Grid (€275 · 4h)** and the **Industrial BESS Substation (€800 · 5h)**.
+3. Complete the Engineer commissioning checklist (inverter diagnostics, thermal cooling checks, ground-fault isolation).
+4. Monitor live power telemetry: wind generation (kW), battery State of Charge (SoC %), and automated grid feed-in export earnings at **€0.15/kWh**.
+
+### Step 9: Pave the Highway & Welcome Village Tourists
+1. Pave the **Main Arterial Road & Gate (€250 · 4h)** to connect the farm to the outer world.
+2. Build village promenade amenities:
+   - ☕ **The Coffee House (€800 · 8h):** Serves artisan espresso to strolling visitors.
+   - 🧃 **The Juice & Ice Bar (€700 · 7h):** Sells cold smoothies made from fresh orchard fruits.
+   - 🏞️ **Aquaculture Duck & Fish Pond (€400 · 5h):** Harvest fresh trout or duck feathers.
+3. Strolling 3D pedestrian visitors walk along the promenade, stopping to admire your blooming flowers, clean wind turbines, and grazing cattle while offering cash tips and contextual remarks!
+
+### Step 10: Financial Prudence & Bankruptcy Avoidance
+- Inactive, neglected farms bleed capital! Dead plots trigger municipal environmental demerit fines (**€14.00/plot/day**), land taxes (**€2.00/plot/day**), and building maintenance.
+- If balance drops below **-€50.00**, the Community Bank triggers an emergency **Bankruptcy Bailout Protocol**, offering debt restructuring or debt jubilee rescue packages.
 
 ---
 
 ## 🔄 Interactive Architecture & System Flows
 
-### 1. Core Gameplay Simulation Loop
+### 1. Core Simulation & Multi-System Game Loop
 
 ```mermaid
 flowchart TD
-    A["⏱️ 1-Second Real-Time Clock Tick"] --> B["Time Compression Engine<br/>(1h Real = 4h Game | dh Calculation)"]
-    B --> C["Advance Plot Biology"]
+    A["⏱️ 1-Second Real-Time Clock Tick"] --> B["Time Compression Engine<br/>(1h Real = 4h Game | dh Delta Calculation)"]
+    
+    B --> C["Advance Plot Biology & Agroforestry"]
     C --> C1["Health Decay: -0.4% to -1.2%/h"]
-    C --> C2["Calculate Stage Index: Sapling ➔ Young ➔ Mature"]
-    C --> C3["Compute O2 Generation & Carbon Credits (€0.03/unit)"]
-    C --> C4["Accumulate Pending Fruit/Vegetable Harvest"]
+    C --> C2["Calculate Vegetative Stage: Sapling ➔ Young ➔ Mature"]
+    C --> C3["Compute O2 Generation & Carbon Subsidies (€0.03/unit)"]
+    C --> C4["Accumulate Pending Fruit & Vegetable Harvests"]
     
-    B --> D["Worker & Task Progression"]
-    D --> D1["Advance Digging, Clearing, Paving, Building"]
-    D --> D2["Manhattan Waypoint Worker Sprite Movement"]
+    B --> E["Clean Energy Grid & BESS Substation"]
+    E --> E1["4-Corner Turbines Generate Clean Power (kW)"]
+    E --> E2["Charge/Discharge 500 kWh LFP Battery Bank"]
+    E --> E3{"Battery SoC = 100%?"}
+    E3 -- Yes --> E4["Export Surplus to Regional Grid (€0.15/kWh)"]
+    E3 -- No --> E5["Buffer Energy for Zero-Emission Farm Loads"]
     
-    B --> E["Commercial Village Foot Traffic"]
-    E --> E1{"Living Trees (Health > 20%)<br/>& Road Paved?"}
-    E1 -- Yes --> E2["Generate Visitor Revenue: Coffee House & Juice Bar"]
-    E1 -- No --> E3["Foot Traffic Halts (€0 Revenue)"]
+    B --> F["Polyculture & Companion Ecosystems"]
+    F --> F1["3-Sector Decagonal Flower Garden Freshness Decay"]
+    F --> F2["Calculate Sector Diversity: Mono, Dual, or Tripartite Guild"]
+    F --> F3["Spawn Waggle-Dance Bees & Peacock Butterflies"]
+    F --> F4["Radiate +28% Pollinator Boost to Adjacent Plots & Crops"]
     
-    B --> F["Daily Expense Settlement (Every 24 Game-Hours)"]
-    F --> F1["Deduct Municipal Land Tax (€2/plot/day)"]
-    F --> F2["Deduct Building Maintenance Upkeep"]
-    F --> F3["Deduct Worker Payroll (Laborers, Farmers, Botanists)"]
-    F --> F4["Fine Dead/Overgrown Plots (€14/plot/day + Demerits)"]
-    F --> F5["Process Bank Loan Installments"]
+    B --> G["Livestock Silvopasture & Field Crops"]
+    G --> G1["Advance Crop Field 4-Quadrant Growth (Wheat, Rice, Maize, Cane)"]
+    G --> G2["Simulate Cattle & Sheep Grazing / Resting Cycles"]
+    G --> G3["Produce Organic Milk (Cow) & Wool Fleeces (Sheep)"]
     
-    F --> G{"Balance < -€50.00?"}
-    G -- Yes --> H["🚨 Trigger Bankruptcy Bailout Protocol"]
-    G -- No --> I["Render Active Canvas & Telemetry Capsules"]
+    B --> H["Worker AI & Autonomous Operations"]
+    H --> H1["Advance Digging, Paving, Watering, Pruning, Fence Building"]
+    H --> H2["Mechanized Tractor Auto-Haulage from Field to Cold Cellar"]
+    H --> H3["Manhattan Waypoint Sprite Pathfinding"]
+    
+    B --> I["Village Foot Traffic & Commercial Hospitality"]
+    I --> I1{"Living Trees > 20% Health<br/>& Main Road Paved?"}
+    I1 -- Yes --> I2["Spawn 3D Pedestrian Visitors with Dynamic Speech Remarks"]
+    I1 -- Yes --> I3["Generate Hospitality Revenue: Coffee House & Juice Bar"]
+    I1 -- No --> I4["Foot Traffic Suspended (€0 Visitor Revenue)"]
+    
+    B --> J["Daily Midnight Settlement (Every 24 Game-Hours)"]
+    J --> J1["Deduct Municipal Land Taxes (€2.00 / plot / day)"]
+    J --> J2["Deduct Worker Payroll (Laborers, Farmers, Botanists, Engineers)"]
+    J --> J3["Deduct Building Maintenance & Upkeep"]
+    J --> J4["Apply Environmental Demerit Fines (€14.00 / dead plot / day)"]
+    J --> J5["Amortize Bank Loan Daily Installments"]
+    
+    J --> K{"Treasury Balance < -€50.00?"}
+    K -- Yes --> L["🚨 Trigger Community Bank Bailout Protocol"]
+    K -- No --> M["Update Zen HUD Telemetry & Render 3D Canvas"]
 ```
 
 ---
 
-### 2. Plot Lifecycle State Machine
+### 2. Agroforestry & Clean Energy System Topology
+
+```mermaid
+flowchart TB
+    subgraph NorthTerrace ["⛰️ North Hilltop & Upper Yard"]
+        WT_NW["💨 NW Wind Turbine<br/>(Bird-Safe Ultrasonic Nacelle)"]
+        CF["🐄 Livestock Cattle Farm<br/>& Sheep Pasture Paddock"]
+        P0["🌱 Plot 0 (Northwest)"]
+        SB["🏚️ Cold Cellar Storage Barn<br/>(4.2°C, 85% RH Loading Dock)"]
+        P1["🌱 Plot 1 (North-Central)"]
+        P2["🌱 Plot 2 (Northeast)"]
+        GAR["🚜 Farm Garage & Machinery Depot<br/>(Utility Tractor & Harvest Carts)"]
+        WT_NE["💨 NE Wind Turbine<br/>(Aerodynamic Airfoil Stator)"]
+    end
+
+    subgraph CentralCorridor ["🛣️ Central Arterial Corridor & Promenade"]
+        WT_SW["💨 SW Wind Turbine"]
+        BESS["🔋 500 kWh BESS Substation<br/>(Digital LED Gauge & Grid Inverter)"]
+        CS["🏠 Crew Shed & Tool Workshop<br/>(Living Quarters & Roster)"]
+        POND["🏞️ Duck & Fish Pond<br/>(Aquaculture Specialization)"]
+        HIGHWAY["══════ Interlocking Cobblestone Highway ══════"]
+        COFFEE["☕ The Coffee House<br/>(Artisan Espresso & Pastries)"]
+        GATE["⛩️ Grand Farm Main Entry Gate<br/>(Commercial Freight Access)"]
+        WT_SE["💨 SE Wind Turbine"]
+    end
+
+    subgraph SouthTerrace ["🌾 South Terrace & Agroecology Commons"]
+        GARDEN["🌷 3D Decagonal Polyculture Garden<br/>(3 Sectors · Tiered Water Fountain)"]
+        P3["🌱 Plot 3 (Southwest)"]
+        P4["🌱 Plot 4 (South-Central)"]
+        CROP["🌾 Octagonal Crop Field<br/>(4 Quadrants: Wheat, Rice, Maize, Cane)"]
+        P5["🌱 Plot 5 (Southeast)"]
+        JUICE["🧃 The Juice & Ice Bar<br/>(Organic Orchard Smoothies)"]
+    end
+
+    NorthTerrace <===> CentralCorridor
+    CentralCorridor <===> SouthTerrace
+    
+    WT_NW & WT_NE & WT_SW & WT_SE -. Clean Electricity (kW) .-> BESS
+    BESS -. 24/7 Zero-Emission Power .-> SB & GAR & CF & CROP & HIGHWAY
+    BESS == Surplus Clean Export (€0.15/kWh) ==> GATE
+    GARDEN -. Pollinator Swarm (+28% Yield Boost) .-> P3 & P4 & CROP & P5
+    GAR -. Mechanized Tractor Haulage .-> CROP & SB
+```
+
+---
+
+### 3. Polyculture Companion Planting & Guild Matrix
+
+```mermaid
+flowchart LR
+    subgraph FlowerGuild ["🌷 3-Sector Decagonal Garden"]
+        direction TB
+        SEC_A["Sector A: Aromatic Herbs<br/>(Lavandula angustifolia / Chamomilla)"]
+        SEC_B["Sector B: High-Nectar Composites<br/>(Helianthus annuus / Echinacea purpurea)"]
+        SEC_C["Sector C: Pest-Deterrent Alliums/Roots<br/>(Tagetes patula / Papaver rhoeas)"]
+        FOUNT["⛲ Central Tiered Stone Fountain<br/>(Animated Water Ripples & Spray)"]
+    end
+
+    subgraph InsectaryFauna ["🐝 Adapted Native Pollinators"]
+        direction TB
+        BEES["4 Honeybees (Apis mellifera)<br/>Figure-8 Waggle Dancing"]
+        BFLY["4 Butterflies (incl. Peacock Aglais io)<br/>Compound Eye-Spot Wing Flares"]
+    end
+
+    subgraph CropCanopy ["🌾 Agricultural Plots & Fields"]
+        direction TB
+        CANOPY["Agroforestry Tree Canopy<br/>(Oak, Pine, Apple, Orange, Maple)"]
+        QUAD["4-Quadrant Crop Field<br/>(Wheat, Rice, Maize, Sugarcane)"]
+        SOIL["Living Topsoil Mycorrhizae<br/>(Subterranean Fungal Nutrient Web)"]
+    end
+
+    SEC_A & SEC_B & SEC_C --> FOUNT
+    FlowerGuild ==>|Attracts & Sustains| InsectaryFauna
+    
+    InsectaryFauna == +28% Cross-Pollination ==> CANOPY
+    InsectaryFauna == Accelerated Fruiting ==> QUAD
+    SEC_C == Root Exudates (Nematode Defense) ==> SOIL
+    CANOPY == Microclimate Cooling & Shade ==> QUAD
+    SOIL == Mineral & Moisture Sharing ==> CANOPY
+```
+
+---
+
+### 4. Multi-Modal Logistics & Freight Dispatch Pipeline
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Player
+    participant Field as Plots / Crop Field / Livestock
+    participant Garage as Farm Garage (Tractor Depot)
+    participant Storage as Cold Cellar Barn (4.2°C)
+    participant Gate as Grand Main Entry Gate
+    participant Carrier as Specialized Freight Fleet
+    participant Bank as Virtual Euro Treasury
+
+    Note over Field: Fruit Matures / Grain Ripens / Cows Milked
+    
+    alt Mechanized Field Crop Haulage
+        Field->>Garage: Crop Field Quadrants Harvest Ready
+        Garage->>Field: Utility Tractor Traverses Feeder Subway
+        Field->>Storage: Tractor Delivers Bulk Grain Crates (0% Spoilage)
+    else Manual Plot Tree Harvest
+        Player->>Field: Clicks Plot & Issues "Harvest" Action
+        alt Storage Barn Is Built
+            Field->>Storage: Transfers Fresh Fruit/Timber to Cold Cellar (100% Retained)
+            Storage->>Storage: Logs Itemized Batch with Quality & Expiry
+        else No Storage Barn
+            Field->>Storage: 50% Spoilage Loss Penalty Imposed
+            Field->>Bank: Remainder Liquidated at Emergency Salvage Rates
+        end
+    end
+
+    Player->>Storage: Opens Cold Cellar & Selects Produce / Dairy / Timber Batches
+    Player->>Storage: Clicks "Dispatch Freight"
+    Storage->>Gate: Verifies Assigned Laborer & Paved Road
+    
+    alt Refrigerated Goods (Fruits, Vegetables, Milk, Fish)
+        Gate->>Carrier: Spawns Reefer Transport Van (Thermo-Insulated)
+    else Heavy Lumber (Oak, Cedar, Teak Logs)
+        Gate->>Carrier: Spawns Heavy Timber Winch Truck
+    else Grain & Dry Bulk
+        Gate->>Carrier: Spawns Heavy Canvas Curtainsider
+    end
+
+    Carrier->>Carrier: Drives through Main Gate along Interlocking Highway
+    Carrier->>Storage: Navigates Central Access Road to Loading Dock
+    Note over Storage,Carrier: Laborer Sprite Animates Loading Crates
+    Carrier->>Gate: Descends Access Road & Exits through Main Gate
+    Carrier->>Bank: Deposits Wholesale Net Proceeds (+€XX.XX)
+    Bank-->>Player: Plays Synthesized Coin SFX & Emits Floating Cash Badge (+€)
+```
+
+---
+
+### 5. Macro-Economic Balance & Cash Flow
+
+```mermaid
+flowchart LR
+    subgraph Inflows ["💰 Capital Inflows"]
+        I1["Oxygen Carbon Subsidies<br/>(O2 × €0.03 × Biodiversity Mult)"]
+        I2["Wholesale Crop & Fruit Sales<br/>(Cold Cellar Freight Dispatch)"]
+        I3["Livestock Dairy & Wool<br/>(Cow Milk €350 / Sheep Wool €220)"]
+        I4["Clean Energy Grid Export<br/>(BESS Surplus at €0.15/kWh)"]
+        I5["Village Hospitality Tips & Sales<br/>(Coffee House €1.8x / Juice Bar €1.6x)"]
+        I6["Timber Felling Salvage<br/>(Up to 50% Hardwood Cost)"]
+        I7["Community Bank Loans<br/>(€2k, €5k, €12k Tiers)"]
+    end
+
+    subgraph Treasury ["🏦 Farm Treasury (€ Balance)"]
+        direction TB
+        BAL["Current Working Balance"]
+    end
+
+    subgraph Outflows ["💸 Mandatory Outflows"]
+        O1["Municipal Land Taxes<br/>(€2.00 / plot / day)"]
+        O2["Worker Payroll<br/>(Laborer €30, Farmer €70, Botanist €130, Engineer €180)"]
+        O3["Building & Equipment Maintenance<br/>(Shops, BESS, Turbines, Shed, Barn)"]
+        O4["Environmental Demerit Fines<br/>(€14.00 / dead plot / day)"]
+        O5["Bank Loan Daily Amortization<br/>(Principal + Interest + 5% Late Surcharge)"]
+        O6["Agricultural Inputs & Tools<br/>(Seeds, Saplings, Water, Prune, Drip Lines)"]
+        O7["Pond & Garden Care<br/>(Garden Tending €20 / Pond Feed €8-€10)"]
+    end
+
+    I1 & I2 & I3 & I4 & I5 & I6 & I7 --> Treasury
+    Treasury --> O1 & O2 & O3 & O4 & O5 & O6 & O7
+```
+
+---
+
+### 6. Plot Lifecycle State Machine
 
 ```mermaid
 stateDiagram-v2
     [*] --> Barren: Farm Initialization
 
     Barren --> Preparing: Dig Land Action (€15, 3h)
-    Barren --> Overgrown: Neglected > 48h (Weed Hours)
+    Barren --> Overgrown: Neglected > 48h (Weed Hours Accumulate)
     
-    Preparing --> Ready: Excavation Completed
+    Preparing --> Ready: Soil Excavation Complete (Loamy Humus Formed)
     
-    Ready --> Growing: Plant Seed/Sapling
-    Ready --> Overgrown: Neglected > 48h (Weed Hours)
+    Ready --> Growing: Plant Tree Nursery Seed / Sapling
+    Ready --> Overgrown: Neglected > 48h (Weeds Reclaim Ready Plot)
     
     Overgrown --> Clearing: Clear Weeds Action (€25, 2h)
-    Clearing --> Barren: Clearing Completed
+    Clearing --> Barren: Land Cleared Back to Mineral Subsoil
     
     state Growing {
-        [*] --> Sapling: Early Growth
-        Sapling --> Young: Vegetative Growth
-        Young --> Mature: Full Canopy Reached
-        Mature --> Mature: Active Care (Watering / Pruning)
+        [*] --> Sapling: Early Seedling Stage
+        Sapling --> Young: Vegetative Growth (Roots Expand)
+        Young --> Mature: Full Crown Canopy Reached
+        Mature --> Mature: Regular Watering & Pruning Care
     }
     
-    Growing --> Dead: Health = 0% for 20 Consecutive Hours
+    Growing --> Dead: Health Drops to 0% for 20 Consecutive Hours
     
-    Dead --> Removing: Felling Action (Chainsaw / Hand Saw)
-    Removing --> Barren: Felling Done (Wood Salvaged + Timber Truck Dispatched)
+    Dead --> Removing: Felling Action (Chainsaw / Hand Winch)
+    Removing --> Barren: Wood Salvaged + Timber Truck Dispatched
 ```
 
 ---
 
-### 3. Harvest & Freight Logistics Pipeline
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Player
-    participant Plot as Field Plot
-    participant Storage as Cold Cellar Barn
-    participant Gate as Farm Main Entry Gate
-    participant Truck as Freight Transport Truck
-    participant Bank as Euro Cash Balance
-
-    Note over Plot: Tree Reaches Maturity (Stage 3)
-    Plot->>Plot: Accumulates Pending Harvest Yield
-    Player->>Plot: Clicks Plot & Issues "Harvest" Action
-    
-    alt Storage Barn Is Built
-        Plot->>Storage: Transfers Harvested Crates (100% Retained)
-        Storage->>Storage: Creates Itemized Crop Batch (Quality: Fresh)
-    else No Storage Barn
-        Plot->>Storage: 50% Crop Spoilage Loss Penalty
-        Plot->>Bank: Remainder Auto-Sold at Discount
-    end
-
-    Player->>Storage: Opens Cold Cellar & Selects Crop Batches
-    Player->>Storage: Clicks "Dispatch Freight"
-    
-    Storage->>Gate: Verifies Assigned Laborer & Road Paved
-    Gate->>Truck: Spawns Specialized Transport (Reefer Van / Timber Truck)
-    Truck->>Truck: Drives through Main Gate along Main Road
-    Truck->>Storage: Turns up Central Access Road to Loading Dock
-    Note over Storage,Truck: Laborer Sprite Animates Loading Crates
-    Truck->>Gate: Drives down Access Road & Exits through Main Gate
-    Truck->>Bank: Credits Net Wholesale Revenue (+€XX.XX)
-    Bank-->>Player: Plays Coin Audio SFX & Spawns Cash Burst (+€)
-```
-
----
-
-### 4. Macro-Economic Balance & Cash Flow
-
-```mermaid
-flowchart LR
-    subgraph Inflows ["💰 Capital Inflows"]
-        I1["Oxygen Carbon Subsidies<br/>(O2 × €0.03 × Multipliers)"]
-        I2["Wholesale Crop Sales<br/>(Cold Cellar Freight Dispatch)"]
-        I3["Timber Felling Salvage<br/>(Up to 50% Tree Cost)"]
-        I4["Village Visitor Revenue<br/>(Coffee House & Juice Bar)"]
-        I5["Community Bank Loans<br/>(€2k, €5k, €12k Tiers)"]
-    end
-
-    subgraph Treasury ["🏦 Farm Treasury (€ Balance)"]
-        direction TB
-        BAL["Current Balance"]
-    end
-
-    subgraph Outflows ["💸 Mandatory Outflows"]
-        O1["Municipal Plot Land Tax<br/>(€2.00 / plot / day)"]
-        O2["Worker Payroll<br/>(Laborer €30, Farmer €70, Botanist €130)"]
-        O3["Building Upkeep<br/>(Shops, Shed, Barn, Pond, Garden)"]
-        O4["Demerit Penalties<br/>(€14.00 / dead plot / day)"]
-        O5["Loan Amortization<br/>(Daily Installment + 5% Late Fines)"]
-        O6["Agricultural Inputs<br/>(Seeds, Saplings, Water, Prune, Tools)"]
-    end
-
-    I1 & I2 & I3 & I4 & I5 --> Treasury
-    Treasury --> O1 & O2 & O3 & O4 & O5 & O6
-```
-
----
-
-### 5. Manhattan Road & Waypoint Navigation
+### 7. Manhattan Road & Waypoint Navigation Network
 
 ```mermaid
 flowchart TD
-    MG["🚪 Farm Main Entry Gate (x=0.5%, y=47%)"] <--> MR["🛣️ Main Arterial Highway (y=47%, Horizontal Corridor)"]
+    GATE["⛩️ Grand Farm Main Entry Gate (x=91.5%, y=47%)"] <--> HIGHWAY["🛣️ Main Arterial Highway (y=47%, Horizontal Corridor)"]
     
-    MR <--> F0["Feeder North 0 (x=11%)"] <--> P0["Plot 0 (Northwest)"]
-    MR <--> CA["Central Access Road (x=39%)"] <--> P1["Plot 1 (North-Central)"]
-    CA <--> SB["🏚️ Storage Barn & Loading Dock (Behind Plot 1)"]
-    MR <--> F2["Feeder North 2 (x=86%)"] <--> P2["Plot 2 (Northeast)"]
+    HIGHWAY <--> FS_NW["West Wing Access (x=8.5%)"] <--> CS["🏠 Crew Shed & 🔋 BESS Substation"]
+    HIGHWAY <--> FS_P0["Feeder North 0 (x=16%)"] <--> P0["Plot 0 & 🐄 Cattle Paddock"]
+    HIGHWAY <--> FS_P1["Central Access Road (x=41%)"] <--> P1["Plot 1 & 🏚️ Cold Cellar Storage Barn"]
+    HIGHWAY <--> FS_P2["Feeder North 2 (x=73%)"] <--> P2["Plot 2 & 🚜 Farm Garage Depot"]
     
-    MR <--> F3["Feeder South 3 (x=11%)"] <--> P3["Plot 3 (Southwest)"]
-    MR <--> F4["Feeder South 4 (x=39%)"] <--> P4["Plot 4 (South-Central)"]
-    MR <--> F5["Feeder South 5 (x=86%)"] <--> P5["Plot 5 (Southeast)"]
+    HIGHWAY <--> FS_P3["Feeder South 3 (x=16%)"] <--> P3["Plot 3"]
+    HIGHWAY <--> FS_P4["Feeder South 4 (x=41%)"] <--> P4["Plot 4 & 🌾 Octagonal Crop Field"]
+    HIGHWAY <--> FS_P5["Feeder South 5 (x=73%)"] <--> P5["Plot 5"]
     
-    MR <--> AP1["Curbside Apron (x=28.5%)"] <--> V1["🦆 Duck Pond (North) & 🌷 Garden (South)"]
-    MR <--> AP2["Curbside Apron (x=68%)"] <--> V2["☕ Coffee House (North) & 🧃 Juice Bar (South)"]
+    HIGHWAY <--> AP_POND["North Curbside Apron (x=38%)"] <--> POND["🏞️ Duck & Fish Pond"]
+    HIGHWAY <--> AP_GARDEN["South Curbside Apron (x=38%)"] <--> GARDEN["🌷 3D Decagonal Polyculture Garden"]
+    HIGHWAY <--> AP_CAFE["North Curbside Apron (x=67%)"] <--> CAFE["☕ The Coffee House"]
+    HIGHWAY <--> AP_JUICE["South Curbside Apron (x=67%)"] <--> JUICE["🧃 The Juice & Ice Bar"]
 ```
 
 ---
 
 ## 🔬 Deep Dive: Game Mechanics & Subsystems
 
-### Plot Management & Biological Health Decay
-Each plot tracks distinct biological telemetry:
-- **Health Decay Rate:** Trees continuously burn metabolic energy. Health drops every game-hour based on tree category:
-  $$\text{Fruit Trees: } -0.8\%/\text{h} \quad|\quad \text{Evergreen: } -0.4\%/\text{h} \quad|\quad \text{Deciduous: } -0.5\%/\text{h}$$
-- **Chlorophyll Cut-Off (Health $\le 20\%$):** When health drops to or below 20%, photosynthesis and fruiting cease completely ($\text{healthMult} = 0$).
-- **Zero-Health Streak & Tree Death:** If health sits at $0\%$ for **20 consecutive game-hours** (`TREE_DRY_THRESHOLD_HOURS`), the tree dies (`status: 'dead'`).
-- **Demerit Fines on Rot:** Dead trees left unchopped incur an environmental violation fine of **€14.00 per plot per day** plus 1 Demerit per day. 6 dead plots incur **€84.00/day**, rapidly pulling neglected farms into negative balance.
+### 3D Decagonal 3-Sector Polyculture Flower Garden
+
+The **Botanical Flower Garden (€300 · 4h)** is an architectural centerpiece engineered as a regular 10-sided polygon (decagon) with authentic depth, tiered elevation, and companion planting biology:
+
+```
+                       Sector A (North-West)
+                            ┌────────┐
+                       ────/          \────
+                     /      \        /      \
+                    /        \  ⛲  /        \
+           Sector C │          (  )          │ Sector B
+         (South-West) \       /  ||  \       / (East)
+                       ────\ /   ||   \ /────
+                            └────────┘
+```
+
+- **Decagonal Raised Bed Geometry:** Formed by 10 precision vertex angles with stepped perimeter stone curb coping, rich dark loamy soil fill, and 3 radial flagstone paver dividers separating the bed into 3 equal 120-degree planting sectors.
+- **Central Carved Water Fountain:** A hand-chiseled tiered stone fountain with an ornate finial basin, continuously cycling animated water ripples and crystalline droplet spray that quenches pollinators and hydrates flower roots.
+- **12 Authentic Botanical Species with Binomial Nomenclature:**
+
+| Botanical Name | Common Name | Icon | Grow (h) | Yield | Nectar | Pollinator Guild | Companion Synergy Perk |
+|---|---|:---:|:---:|:---:|:---:|---|---|
+| *Tulipa gesneriana* | Tulips | 🌷 | 2.2h | €48 | 3/5 | Early Spring Bumblebees | +10% Farm Happiness & Spring Rep |
+| *Rosa gallica* | Heritage Roses | 🌹 | 3.5h | €75 | 4/5 | Wild Solitary & Honeybees | +15% Visitor Tip Frequency |
+| *Helianthus annuus* | Giant Sunflowers | 🌻 | 3.8h | €68 | 5/5 | Honeybees & Goldfinches | +20% Honey & Wild Bird Attraction |
+| *Bellis perennis* | English Daisies | 🌼 | 1.8h | €38 | 3/5 | Hoverflies & Ladybugs | Natural aphid predation for vegetables |
+| *Lavandula angustifolia* | True Lavender | 🪻 | 2.8h | €62 | 5/5 | *Apis mellifera* (Honeybees) | +25% Honey Yield & Calming Terpene Aroma |
+| *Tagetes patula* | French Marigolds | 🏵️ | 2.0h | €42 | 3/5 | Beneficial Parasitoid Wasps | Root exudates eliminate soil nematodes |
+| *Echinacea purpurea* | Purple Coneflower | 🪷 | 2.6h | €55 | 5/5 | Monarch & Swallowtails | +20% Butterfly Diversity & Herbal Essence |
+| *Matricaria chamomilla* | German Chamomile | 🌾 | 2.1h | €45 | 4/5 | Syrphid Flies & Honeybees | "Plant Doctor" vitality boost to neighbors |
+| *Papaver rhoeas* | Scarlet Corn Poppy | 🌺 | 2.4h | €50 | 4/5 | Bumblebees & Beetles | High-pollen reservoir for emerging queens |
+| *Iris germanica* | German Iris | 🪻 | 3.2h | €70 | 4/5 | Long-tongued Bumblebees | +12 Farm Reputation & Stately Aesthetic |
+| *Centaurea cyanus* | Field Cornflower | 🔷 | 2.3h | €48 | 4/5 | Solitary Leafcutter Bees | Natural field edge stabilization |
+| *Dahlia pinnata* | Dinnerplate Dahlia | 🌸 | 3.6h | €80 | 4/5 | Migrating Late Butterflies | +18% Cut-Flower Market Bouquet Premium |
+
+- **Polyculture Companion Guild Multipliers:**
+  - **Mono Cultivation (1 Sector):** Standard bloom and yield metrics.
+  - **Dual-Guild (2 Distinct Species):** \(+8\) Farm Reputation, \(+12\%\) Pollinator Density, \(+15\%\) Visitor Tip Frequency, \(+15\%\) Biodiversity Index.
+  - **Full Tripartite Guild (3 Distinct Species):** \(+18\) Farm Reputation, \(+28\%\) Pollinator Density, \(+30\%\) Visitor Tip Frequency, \(+35\%\) Biodiversity Index.
+- **Dynamic Pollinator Swarm:** Features 4 worker honeybees (*Apis mellifera*) performing figure-8 waggle dances and 4 colorful butterflies—including the rare European Peacock Butterfly (*Aglais io*) with brilliant violet, bronze, and cobalt eye-spot wings—that gather around sectors when in bloom.
 
 ---
 
-### Tree Taxonomy & Agricultural Catalog
+### Clean Energy Microgrid & 500 kWh BESS Substation
 
-The nursery features **18 authentic species** spanning 5 botanical categories:
+```
+   [NW Turbine]                                                   [NE Turbine]
+        \                                                               /
+         └───► [500 kWh LFP BESS Substation] ◄─── Zero-Emission Farm ──┘
+                    │            │
+                    ▼            ▼
+             [Farm Microgrid]  [Grid Export: €0.15/kWh]
+        ┌───────────────────────────────────────────────────────────────┐
+        │ LED Display: 482 / 500 kWh [████████████████░░] 96.4% SoC     │
+        └───────────────────────────────────────────────────────────────┘
+         ┌───► [SW Turbine]                               [SE Turbine] ◄───┘
+```
 
-| Category | Species | Cost | Growth (h) | Max O₂/h | Late Bonus | Care Profile |
+- **4-Corner Perimeter Wind Turbines (€275 · 4h each):** Located on elevated terrain corners (NW, NE, SW, SE). Engineered with 3-blade aerodynamic airfoils, procedural RPM spin rates proportional to real-time wind gusts, projected dynamic ground shadows, and high-frequency bird-safe ultrasonic acoustic deterrents.
+- **Industrial BESS Substation (€800 · 5h):**
+  - **500 kWh LiFePO₄ (LFP) Battery Chemistry:** High thermal stability, zero risk of thermal runaway, and 6,000+ deep charge/discharge cycles.
+  - **High-Tech Digital LED Energy Gauge:** Live on-canvas telemetry displaying current kilowatt-hours, battery percentage bar, and net generation flow.
+  - **Automated Grid Feed-in Export Tariff:** Once the battery reaches 100% capacity (500 kWh), excess generation is automatically exported to the municipal clean power grid at **€0.15 per kWh**, generating passive revenue for your farmstead.
+  - **Engineer Commissioning Checklist:** Certified Engineers perform routine inverter calibration, cell balancing, ground-fault insulation checks, and liquid cooling circuit inspections.
+
+---
+
+### Octagonal Polyculture Crop Field & Mechanized Tractor
+
+- **Octagonal 4-Quadrant Polyculture Bed (€350 · 5h):** Located on the south-central terrace, this 8-sided agricultural field allows rotation and simultaneous cultivation of staple food crops:
+  - 🌾 **Wheat (*Triticum aestivum* · €20):** Foundation staple grain yielding €55 in 3.0h.
+  - 🍚 **Paddy Rice (*Oryza sativa* · €25):** High-moisture grain yielding €70 in 3.8h.
+  - 🌽 **Maize (*Zea mays* · €24):** High-yield indigenous crop yielding €65 in 3.5h.
+  - 🎋 **Sugarcane (*Saccharum officinarum* · €35):** Dense perennial grass yielding €95 in 4.8h.
+  - 🥕 **Carrots**, 🍅 **Tomatoes**, 🥔 **Potatoes**, and 🍆 **Eggplants** for flexible vegetable rotations.
+- **Mechanized Farm Garage (€350 · 4h) & Tractor Haulage:** Unlocks a dedicated green utility tractor that traverses feeder subways, collecting harvests from crop quadrants and delivering crates directly to the Cold Cellar Barn.
+
+---
+
+### Livestock Cattle & Sheep Pasture Farm
+
+- **Silvopasture Pasture Paddock (€400 · 5h):** A 4-chamber timber cattle barn and enclosed grass pasture situated on the northwest terrace:
+  - 🐄 **Dairy Cattle (*Bos taurus* · €150):** Graze on sweet clover and meadow fescue; produce rich organic **Farm Milk (Produce Value: €350 / 30h)** with adult salvage value of €1,200.
+  - 🐑 **Wool Sheep (*Ovis aries* · €75):** Gentle grazers that manicure grass without topsoil compaction; yield lanolin-rich **Wool Fleeces (Produce Value: €220 / 25h)** with adult salvage value of €600.
+- **Timber Perimeter Fence Construction (€180 · 2.5h):** Laborers construct a wooden post-and-rail boundary fence to shield grazing herds from predators and keep livestock safely away from agricultural plots.
+- **Behavioral State Machine:** Cattle and sheep cycle smoothly between animated grazing, meadow walking, and resting states, accompanied by procedural lowing and bleating soundscapes.
+
+---
+
+### Living Botanical & Ecological Theory Encyclopedia
+
+Accessible directly via the 2-Column Menu Dock or by inspecting botanical specimens, the **Living Encyclopedia** provides a 3-tab educational repository:
+
+1. **Tab 1: 72 Botanical Trees across 6 Global Biomes:**
+   - Spans Central Europe, Nordic Boreal, Mediterranean, East African Savannah, Amazon Rainforest, and Japanese Highlands.
+   - Comprehensive profiles: Latin binomial names, photosynthesis rates, carbon capture ratings (kg CO₂/year), wood density, canopy spread, and ethnobotanical lore.
+2. **Tab 2: 12 Botanical Flowers:**
+   - Profiles all 12 flower species with scientific names, botanical families, nectar ratings, pollinator attractors, companion perks, and medicinal/folklore trivia.
+3. **Tab 3: 6 Peer-Reviewed Clean Tech Theory Guides:**
+   - **Agroecology Polyculture:** Root stratification, olfactory pest confusion, mycorrhizal fungal networks, microclimate buffering.
+   - **Rotational Grazing & Silvopasture:** The silvopastoral shade loop, intensive grazing pulses, liquid carbon exudate pathways, closed-loop manure cycling.
+   - **Renewable Energy & Microgrids:** Agricultural electrification, microgrid independence, agrivoltaic co-location, circular power economics.
+   - **Wind Turbines & Aerodynamics:** Airfoil lift principles, the Betz limit (59.3% kinetic ceiling), electromagnetic generator induction, bird-safe ultrasonic acoustic deterrents.
+   - **BESS Substation Engineering:** Renewable intermittency smoothing, diurnal peak shaving, LiFePO₄ chemical safety, BMS microcontroller telemetry.
+   - **Photosynthesis & Carbon Sequestration:** Thylakoid water photolysis ($2	ext{H}_2	ext{O} 	o 4	ext{H}^+ + 4e^- + 	ext{O}_2$), Calvin-Benson Rubisco cycle, permanent cellulose/lignin wood sinks.
+
+---
+
+### Plot Management & Biological Health Decay
+
+Each agricultural plot tracks real-time biological telemetry:
+- **Metabolic Health Decay:** Trees naturally burn metabolic reserves:
+  $$\text{Fruit Trees: } -0.8\%/\text{h} \quad|\quad \text{Evergreen: } -0.4\%/\text{h} \quad|\quad \text{Deciduous: } -0.5\%/\text{h}$$
+- **Chlorophyll Cut-Off (Health $\le 20\%$):** Photosynthesis and fruit accumulation immediately halt when health falls to or below 20%.
+- **Zero-Health Streak & Tree Death:** If a plot sits at $0\%$ health for **20 consecutive game-hours**, the tree permanently dies (`status: 'dead'`).
+- **Demerit Fines on Rot:** Unsalvaged dead trees rack up an environmental violation fine of **€14.00 per plot per day** plus 1 Demerit per day. A neglected farm with 6 dead plots bleeds **€84.00/day**, triggering rapid insolvency.
+
+---
+
+### Tree Taxonomy & Multi-Strata Agroforestry
+
+| Category | Species Examples | Cost | Maturation (h) | Max O₂/h | Late Revenue | Ecological Niche |
 |---|---|:---:|:---:|:---:|:---:|---|
-| **Oxygen Trees** | Oak, Pine, Maple, Poplar | €120–€180 | 48h–72h | **6.0–8.5** | — | Deep rooting, slow decay, high carbon sequestration |
-| **Fruit Trees** | Apple, Orange, Lemon, Mango | €90–€140 | 36h–48h | 3.5–4.5 | **€0.90–€1.40/h** | Requires frequent watering; high commercial value |
-| **Vegetables** | Tomato, Potato, Carrot, Onion | €35–€50 | 18h–24h | 1.0–1.8 | **€0.60–€0.85/h** | Fast cash turnaround; high vulnerability to drought |
-| **Timber Trees** | Teak, Cedar, Eucalyptus | €160–€220 | 80h–120h | 4.0–5.5 | **€35–€65 Wood** | Heavy wood salvage payoff upon planned harvest |
-| **Biodiversity** | Cherry Blossom, Birch, Acacia | €85–€115 | 30h–42h | 3.0–4.0 | **+Pollinators** | Grants $+3$ to $+5$ Farm Reputation and bee visits |
+| **Oxygen Trees** | Oak, Pine, Maple, Poplar | €135–€190 | 48h–72h | **5.0–6.0** | — | Deep-rooting subterranean miners, massive carbon sinks |
+| **Fruit Trees** | Apple, Orange, Mango | €120–€140 | 36h–48h | 3.3–3.5 | **€0.90–€1.00/h** | High commercial yield, nectar forage for honeybees |
+| **Vegetables** | Tomato, Potato, Carrot, Onion | €15–€18 | 18h–24h | 1.0–1.8 | **€0.60–€0.85/h** | Rapid cash crop turnaround, companion weed suppressors |
+| **Timber Trees** | Teak, Cedar, Eucalyptus | €160–€220 | 80h–120h | 4.0–5.5 | **€35–€65 Wood** | Heavy structural wood salvage payoff upon commercial felling |
+| **Biodiversity Trees** | Cherry Blossom, Birch, Acacia | €85–€115 | 30h–42h | 3.0–4.0 | **+Pollinators** | Grants \(+3\) to \(+5\) Farm Reputation and attracts pollinators |
 
 ---
 
 ### Labor & Crew Management
 
-Building the **Crew Shed (€200)** unlocks the worker recruitment roster:
+The **Crew Shed (€200 · 3h)** allows hiring specialized workers who physically walk along Manhattan feeder paths to carry out tasks:
 
-| Class | Wage/Day | Speed Multiplier | Autonomous Capabilities |
+| Worker Role | Wage/Day | Speed Multiplier | Autonomous Responsibilities |
 |---|:---:|:---:|---|
-| **Laborer** 👷 | €30.00 | $+50\%$ Task Speed | Excavates soil, clears overgrowth, chops dead trees, and operates storage loading docks. |
-| **Farmer** 🧑‍🌾 | €70.00 | $+40\%$ Vegetative Growth | Plants saplings, performs scheduled watering/pruning, and harvests crops into storage. |
-| **Specialist Botanist** 👩‍🔬 | €130.00 | $+60\%$ Vegetative Growth | Formulates bio-fertilizer, prevents diseases, and logs periodic diagnostic reports. |
-| **Engineer** 🛠️ | €180.00 | $+10\%$ Global Efficiency | Maintains automated drip irrigation and grants a $+10\%$ passive revenue boost. |
-
-*Visual Pathfinding:* Workers assigned to tasks physically walk along the paved road network and feeder paths using real-time Manhattan waypoint vectors (`animateWorkerPathWalk`).
+| **Laborer** 👷 | €30.00 | $+50%$ Task Speed | Digs barren land, clears overgrowth, fells dead trees, builds fences, operates cold cellar loading dock. |
+| **Farmer** 🧑‍🌾 | €70.00 | $+40%$ Vegetative Growth | Plants saplings, performs scheduled watering and pruning, harvests mature crops into storage. |
+| **Specialist Botanist** 👩‍🔬 | €130.00 | $+60%$ Vegetative Growth | Formulates bio-fertilizer, diagnoses canopy blights, boosts species biodiversity index. |
+| **Certified Engineer** 🛠️ | €180.00 | $+10%$ Microgrid Yield | Commissions wind turbines, services BESS battery bank, maintains automated drip irrigation. |
 
 ---
 
@@ -332,98 +588,102 @@ Building the **Crew Shed (€200)** unlocks the worker recruitment roster:
   ────────────────────────────────────────────────────────────────────────
   South Amenities:                 [ Garden ]          [ Juice Bar ]
   South Field:             [ Plot 3 ]      [ Plot 4 ]      [ Plot 5 ]
-  West Entrance:       [ Main Entry Gate ]
+  West Wing:           [ Crew Shed & BESS ]        East Entrance: [ Main Gate ]
 ```
 
-1. **Storage Barn Depot:** Climate-controlled cold storage. Protects goods from $50\%$ spoilage, maintains discrete crop batches, and supports capacity expansions ($+150$ capacity for €500).
-2. **Main Arterial Road & Feeder Network:** Interlocking cobblestone highway connecting the Main Gate to all plots and amenities.
-3. **Botanical Flower Garden:** Features Tulips, Roses, Sunflowers, and Daisies. Decays at $0.8\%/\text{h}$; tending (€20) restores full freshness and grants $+8$ Farm Reputation.
-4. **Aquaculture Duck & Fish Pond:** Specializes into Fish Farming or Duck Farming. Yields physical seafood/poultry into storage. Feeding (€8–€10) maintains vitality.
-5. **The Coffee House & Juice Bar:** Authentic European timber café and tropical juice pavilion. Process foot traffic from visitors strolling along the promenade when living trees exist.
+1. **Storage Barn Depot:** Climate-controlled cold storage. Prevents 50% crop spoilage, maintains discrete crop batches, and supports modular warehouse expansions (+150 capacity for €500).
+2. **Main Arterial Road & Gate:** Interlocking cobblestone thoroughfare connecting the Grand East Gate to plots, village shops, and storage depot.
+3. **Aquaculture Duck & Fish Pond:** Specializes into Fish Farming (trout) or Duck Farming. Feeds into cold cellar storage or direct sales.
+4. **The Coffee House & Juice Bar:** Artisan timber cafe and tropical juice pavilion serving passing pedestrians when living trees thrive.
 
 ---
 
-### Oxygen Economy, Logistics & Finance
+### Oxygen Economy, Logistics & Banking
 
-#### Oxygen Monetization
+#### Oxygen Monetization Formula
 $$\text{HourlyRevenue} = \text{O2Rate (€0.03)} \times \sum (\text{Plot O2 Output}) \times (1 + \sum \text{Bonuses})$$
 
-#### Logistics Dispatch Sequence
-Selling goods requires active supply chain execution:
-1. Player selects crop batches in the Cold Cellar.
-2. An assigned Laborer prepares crates at the loading dock.
-3. A specialized freight vehicle is dispatched:
-   - **Refrigerated Van:** For fruits, vegetables, and fish.
-   - **Timber Hauler Truck:** For felling salvage and logging timber.
-   - **Canvas Curtainsider:** For mixed dry goods.
-4. Truck animates through the Main Gate, loads at the upper yard dock, exits, and deposits net wholesale revenue.
+#### Logistics Freight Fleet
+Selling harvested goods requires active supply chain execution:
+1. Select produce, dairy, or lumber batches in the Cold Cellar inventory.
+2. An assigned Laborer packages crates at the loading dock.
+3. Specialized transport dispatches:
+   - **Refrigerated Van:** For fruits, vegetables, milk, and fish.
+   - **Timber Hauler Truck:** For felling salvage and heavy logs.
+   - **Canvas Curtainsider:** For dry bulk and grains.
+4. Carrier drives through the Main Gate, loads at the dock, exits to market, and credits net wholesale revenue with metallic coin sound effects!
 
-#### Banking & Debt Amortization
+#### Community Banking & Debt Amortization
 - **Loan Tiers:**
-  - Small Operational Loan: €2,000 ($5\%$ interest, 10 days, €210/day).
-  - Commercial Expansion Loan: €5,000 ($8\%$ interest, 20 days, €270/day).
-  - Farm Mortgage: €12,000 ($12\%$ interest, 40 days, €336/day).
-- **Bankruptcy Bailout Threshold (-€50.00):** If cash drops below $-€50.00$, the Community Bank intervenes with emergency restructuring options.
+  - Small Operational Loan: €2,000 (5% interest, 10 days, €210/day).
+  - Commercial Expansion Loan: €5,000 (8% interest, 20 days, €270/day).
+  - Farm Mortgage: €12,000 (12% interest, 40 days, €336/day).
+- **Bankruptcy Bailout Threshold (-€50.00):** If cash falls below -€50.00, the Community Bank intervenes with debt restructuring or debt relief options.
 
 ---
 
-### Ecosystem Synergies & Visitor Foot-Traffic
+### Ecosystem Synergies & 3D Visitor Foot-Traffic
 
 #### Farm Reputation Formula
 $$\text{Reputation} = \text{BuildingBonuses} + \text{RoadBonuses} + \text{AvgCropHealth} \times 0.15 + (\text{LivingSpecies} \times 3) - (\text{DeadPlots} \times 4) - (\text{Demerits} \times 2)$$
 
 #### Active Farm Synergies
-- **Forest Bonus (+10%):** Awarded when all 6 starting plots are actively cultivated with healthy trees.
-- **Diverse Species Bonus (+15%):** Awarded when 2 or more distinct living species thrive simultaneously.
-- **Worker Efficiency Bonus (+10%):** Granted while an Engineer is on active payroll.
+- **Forest Canopy Bonus (+10%):** Awarded when all 6 starting plots are actively cultivated with healthy trees.
+- **Diverse Species Guild (+15%):** Awarded when 2 or more distinct species flourish concurrently.
+- **Clean Energy Microgrid Bonus (+15%):** Awarded when wind turbines and BESS substation operate at full capacity.
 - **Visitor Magnet Combo (+20%):** Achieved by operating the Garden, Pond, and at least one village shop concurrently.
+
+#### 3D Pedestrian Visitors with Dynamic Speech Remarks
+Strolling visitors feature responsive path-following AI, clothing variations, and contextual speech bubbles:
+- *"The fragrance of this lavender is heavenly!"* (near blooming garden)
+- *"Those clean wind turbines are so whisper quiet."* (near turbine corridor)
+- *"Such healthy, happy dairy cows!"* (near pasture paddock)
+- *"Fresh organic coffee and orchard shade!"* (near village café)
 
 ---
 
-### Wildlife Encounters & Seasonal Cycles
+### Wildlife Encounters, Dynamic Weather & Seasons
 
-#### Animal Encounters
-Uncultivated or boundary-free plots attract roaming native wildlife:
-- 🐇 **Rabbit:** Grazes on shoots; scaring away (€10) prevents seedling damage.
-- 🦔 **Hedgehog:** Forages for insects; grants minor soil aeration.
-- 🦊 **Fox:** Wanders along the road corridor.
+#### Native Wildlife Encounters
+- 🐇 **Rabbit:** Grazes on tender shoots; gentle scaring prevents seedling damage.
+- 🦔 **Hedgehog:** Forages for insects; provides natural soil aeration.
+- 🦊 **Fox:** Wanders along the road corridor; deters burrowing rodents.
 - 🦌 **Deer:** Browses on shrubs; installing a boundary fence prevents crop damage.
-- 🐝 **Honeybees:** Visit flowering gardens, accelerating pollination by $+15\%$.
-- 🦉 **Barn Owl:** Roosts in mature trees, providing natural rodent control.
+- 🐝 **Honeybees:** Waggle-dance across flower beds, boosting orchard pollination by $+28%$.
+- 🦉 **Barn Owl:** Roosts in mature hardwood crowns, providing natural rodent control.
 
-#### Seasonal Weather Engine
-Game seasons rotate every **96 game-hours** (24 real minutes at 1x speed):
-- **🌱 Spring:** Growth rate $+20\%$, moderate rainfall.
-- **☀️ Summer:** Fruit production $+25\%$, rapid dehydration (requires extra watering).
-- **🍂 Autumn:** Harvest yield $+20\%$, increased wood value.
-- **❄️ Winter:** Growth rate $-15\%$, frost dormancy (evergreens thrive).
+#### 4-Season Climate Cycle
+Game seasons cycle every **96 game-hours** (24 real minutes at 1x speed):
+- **🌱 Spring:** Growth rate $+20%$, moderate rainfall, peak flower nectar.
+- **☀️ Summer:** Fruit production $+25%$, elevated dehydration (requires frequent irrigation).
+- **🍂 Autumn:** Harvest yield $+20%$, increased wood density.
+- **❄️ Winter:** Growth rate $-15%$, frost dormancy (hardy conifers thrive).
 
 ---
 
 ### Planetary Biomes & Interactive 3D World Globe
 
-Clicking the `🗺️ World Map` icon opens the planetary biome interchange:
+Clicking the `🗺️ World Map` icon launches a zero-dependency 3D canvas globe:
 - **Zero-Dependency 3D Canvas Spherical Projection:** Real-time spherical rotation with momentum physics and auto-spin.
-- **Pulsing Regional Beacons:** Interactive beacons located over global agricultural hotspots:
-  - 🇩🇪 **Central European Grassland (Germany)** — Starting biome.
-  - 🇫🇷 **French Countryside (France)** — Temperate vineyards and orchards.
-  - 🇳🇱 **Polder Lowlands (Netherlands)** — High-efficiency water management.
-  - 🇧🇷 **Amazon Rainforest Edge (Brazil)** — Tropical high-O2 biodiversity.
-  - 🇰🇪 **East African Savannah (Kenya)** — Drought-hardy acacia ecosystems.
-  - 🇯🇵 **Temperate Highlands (Japan)** — Terrace agroforestry.
-  - 🇸🇪 **Boreal Taiga (Sweden)** — Cold-hardy pine and spruce timber.
-  - 🇲🇬 **Tropical Dry Deciduous (Madagascar)** — Endemic baobabs and pollinators.
-- **Biome Cards & Flora Tooltips:** Hovering over beacons displays native flora, regional climate data, and unlock requirements.
+- **Pulsing Regional Beacons:**
+  - 🇩🇪 **Central European Grassland (Germany)** — Starting temperate agroforestry biome.
+  - 🇫🇷 **French Countryside (France)** — Temperate vineyards, orchards, and heritage roses.
+  - 🇳🇱 **Polder Lowlands (Netherlands)** — High-efficiency water management and dikes.
+  - 🇧🇷 **Amazon Rainforest Edge (Brazil)** — Tropical high-O2 biodiversity and canopy strata.
+  - 🇰🇪 **East African Savannah (Kenya)** — Drought-hardy acacia silvopasture.
+  - 🇯🇵 **Temperate Highlands (Japan)** — Terrace agroforestry and flowering cherry groves.
+  - 🇸🇪 **Boreal Taiga (Sweden)** — Cold-hardy pine, spruce, and birch timberlands.
+  - 🇲🇬 **Tropical Dry Deciduous (Madagascar)** — Endemic baobabs and rare pollinators.
 
 ---
 
 ### Procedural Regional Soundtrack & SFX Engine
 
-The game incorporates a **zero-asset, 100% procedural Web Audio API engine** (`SoundTrackEngine`). No audio files (`.mp3` or `.wav`) are downloaded; every note, instrument, and sound effect is synthesized on-the-fly:
+The game incorporates a **zero-asset, 100% procedural Web Audio API engine** (`SoundTrackEngine`). Zero external audio files (`.mp3` or `.wav`) are downloaded; every instrument, melodic arpeggio, and sound effect is synthesized on-the-fly:
 
 #### Regional Melodic Compositions
-- 🇩🇪 **Germany:** *"Schwarzwald Lullaby"* (Pastoral folk waltz in C Major, $3/4$ meter, acoustic guitar and flute).
-- 🌍 **Global Earth:** *"Blue Marble Serenade"* (70s acoustic earth ballad in C Major, $4/4$ meter, Rhodes piano).
+- 🇩🇪 **Germany:** *"Schwarzwald Lullaby"* (Pastoral folk waltz in C Major, 3/4 meter, acoustic guitar and flute).
+- 🌍 **Global Earth:** *"Blue Marble Serenade"* (70s acoustic earth ballad in C Major, 4/4 meter, Rhodes piano).
 - 🇧🇷 **Brazil:** *"Bossa das Árvores"* (60s syncopated Bossa Nova, nylon guitar and marimba).
 - 🇪🇸 **Spain:** *"Brisa del Sol"* (Spanish romance in A Minor, Andalusian cadence).
 - 🇯🇵 **Japan:** *"Sakura Nostalgia"* (Showa folk lullaby in Yo-Pentatonic scale, koto bells).
@@ -432,20 +692,21 @@ The game incorporates a **zero-asset, 100% procedural Web Audio API engine** (`S
 - 🇸🇪 **Sweden:** *"Nordic Solstice"* (Scandinavian folk melody in D Minor).
 - 🇲🇬 **Madagascar:** *"Baobab Joy"* (Island children's melody, valiha zither).
 
-#### Synthesized Activity SFX
+#### Procedurally Synthesized Activity SFX
 - 🌱 `plant`: Rising 3-note acoustic arpeggio ($C4 \to E4 \to G4$).
-- 🧺 `harvest`: Bright Rhodes & metallic coin chime ($E5 \to G5 \to C6$).
+- 🧺 `harvest`: Bright Rhodes and metallic coin chime ($E5 \to G5 \to C6$).
 - 💧 `water`: Ascending liquid water drops with randomized resonance.
-- ✂️ `prune`: Snappy wooden shears click.
+- ✂️ `prune`: Crisp wooden shears snap.
 - 🪓 `fell`: Heavy timber strike with descending creak and ground thud.
-- ☕ `brew` / `pour`: Frothy espresso extraction and blender smoothie whirl.
-- 🏆 `achieve`: Victorious 4-note brassy Rhodes & bell jingle.
+- 💨 `turbine`: Soft harmonic wind whoosh with low-frequency rotor hum.
+- 🔋 `bess`: High-frequency electronic inverter capacitor hum.
+- 🏆 `achieve`: Victorious 4-note brassy Rhodes and bell fanfare.
 
 ---
 
 ## 🖥️ User Interface & Zen HUD Design
 
-To ensure an unobstructed, relaxing panoramic view of the agricultural landscape, the UI utilizes a **3-Corner Collapsible Zen Architecture**:
+To ensure an unobstructed, relaxing view of the agricultural landscape, the UI utilizes a **3-Corner Collapsible Zen Architecture**:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -464,17 +725,17 @@ To ensure an unobstructed, relaxing panoramic view of the agricultural landscape
    - Expands on-click into an organized **2-column grid** (4 rows × 2 cols):
      - `[ 🗺️ World Map ]` `[ 📋 Tasks ]`
      - `[ 👷 Crew ]` `[ 🏆 Badges ]`
-     - `[ 📰 Reports ]` `[ 📻 Music ]`
+     - `[ 📖 Encyclopedia ]` `[ 📻 Music ]`
      - `[ 🏦 Bank ]` `[ 🔄 Reset Beta ]`
-   - Keeps the main game HUD 100% clean and displays notification badge chips.
+   - Keeps the main game HUD 100% clean and displays real-time notification badge chips.
 2. **Top-Right Corner (`#cornerTopRight`) — Live Telemetry Capsule:**
    - Compact status capsule displaying live Treasury Balance, O2 Produced, Day, and Season.
-   - Expands to reveal speed controls (`1x`, `2x`, `5x`), payroll summaries, and Cloud Save state.
+   - Expands to reveal simulation speed controls (`1x`, `2x`, `5x`), clean energy output, and cloud save state.
 3. **Bottom-Right Corner (`#cornerBottomTools`) — Crew & Equipment Drawer:**
-   - Replaced clumsy persistent toolbars with an upward-sliding drawer. Houses worker hiring chips, care tools (water, prune), and accessories (irrigation, fertilizer, fence).
+   - Upward-sliding drawer housing worker hiring chips, agricultural care tools, and infrastructure upgrades.
 4. **Mobile Landscape Optimization:**
    - Full landscape orientation lock.
-   - All modals feature responsive sticky headers and touch-scrollable padded bodies (`-webkit-overflow-scrolling: touch`) with zero jump glitches.
+   - Modals feature responsive sticky headers and touch-scrollable padded bodies (`-webkit-overflow-scrolling: touch`) with zero jump glitches.
 
 ---
 
@@ -549,7 +810,6 @@ Navigate to `http://localhost:8080` to play immediately!
    ```
 
 3. **Configure Environment Variables:**
-   Copy the example environment file and adjust if necessary:
    ```bash
    cp .env.example .env
    ```
@@ -574,8 +834,6 @@ Navigate to `http://localhost:8080` to play immediately!
 ---
 
 ## 🧪 Automated Testing & Verification
-
-The project includes unit, integration, and simulation test suites:
 
 ### 1. Backend Automated Jest Tests (14/14 Specs)
 Verifies authentication, server-authoritative simulation, ledger auditing, rate-limiting, and guest upgrades:
@@ -614,14 +872,15 @@ Snapshots:   0 total
 Time:        18.74 s
 ```
 
-### 2. Frontend Headless Economy & Syntax Verification
-Verifies CSS brace balance, script AST syntax, and multi-day unattended farm neglect simulation:
+### 2. Frontend Headless Puppeteer & Simulation Test Suites
+Verifies 3D decagonal flower garden rendering, polyculture companion guild bonuses, SVG graphics, and 10-day unattended economy health:
 
 ```bash
-# Verify HTML integrity and CSS balance:
-node scratch/verify_menu_economy.js
+# Run 3D Decagonal Garden & Polyculture Puppeteer Suite:
+node scratch/test_flower_garden_3d.js
 
-# Run live 10-day unattended economy simulation:
+# Verify HTML syntax, CSS braces, and economy stability:
+node scratch/verify_menu_economy.js
 node scratch/run_actual_economy_test.js
 ```
 
@@ -641,11 +900,14 @@ node scratch/run_actual_economy_test.js
   │   • Node.js/TypeScript REST API, PostgreSQL 18, Ledger Audit          │
   │   • Bcrypt/JWT Auth, WebSocket Sync, 14/14 Jest Test Specs            │
   │                                                                       │
-  │ [Phase 3: Global Production Deployment] ─────────────────► COMPLETED  │
-  │   • Cloudflare Pages Deployment (https://searcho2.online)             │
-  │   • 2-Column Menu Dock, Economy Debt Rebalance, Anti-Cheat Bridge     │
+  │ [Phase 3: Clean Energy Grid & Polyculture Systems] ──────► COMPLETED  │
+  │   • 4-Corner Perimeter Wind Turbines & 500 kWh BESS Substation        │
+  │   • 3D Decagonal 3-Sector Polyculture Flower Garden & Pollinators     │
+  │   • Octagonal 4-Quadrant Crop Field & Livestock Silvopasture Farm     │
+  │   • Living Botanical Encyclopedia (72 Trees, 12 Flowers, 6 Guides)    │
+  │   • 3D Isometric Tree Canopies & Dynamic Pedestrian Visitor Remarks   │
   │                                                                       │
-  │ [Phase 4: Advanced Planetary Expansion] ────────────────► IN PROGRESS │
+  │ [Phase 4: Planetary Expansion & Classroom Eco-Rankings] ─► IN PROGRESS │
   │   • Interactive Sustainability Quiz Engine with Coin/Seed Rewards     │
   │   • Multi-Biome Unlock Pipeline (Amazon, Kenya, Japan, Nordic Taiga)  │
   │   • Global School & Classroom Eco-Leaderboards                        │
@@ -656,7 +918,7 @@ node scratch/run_actual_economy_test.js
 
 ## 🤝 Contributing & License
 
-Contributions are welcome from educators, environmental scientists, game designers, and developers!
+Contributions are warmly welcomed from educators, environmental scientists, game designers, and software engineers!
 
 1. Fork the Project repository.
 2. Create your Feature Branch (`git checkout -b feature/AmazingEcoFeature`).
@@ -670,5 +932,5 @@ Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for complete ter
 ---
 
 <p align="center">
-  <b>searchO2</b> — Empowering the next generation with regenerative agroforestry and environmental stewardship. 🌲🌍
+  <b>searchO2</b> — Empowering the next generation with regenerative agroforestry, clean energy, and environmental stewardship. 🌲💨🔋🌸🌍
 </p>
