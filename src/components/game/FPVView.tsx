@@ -30,6 +30,7 @@ import {
 import { useGame } from "@/game/store";
 import { formatEta, formatKm, formatUsd } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { CockpitScene } from "./three/CockpitScene";
 
 const held = new Set<string>();
 let injected: string[] | null = null;
@@ -118,9 +119,7 @@ export function FPVView({ destination }: { destination: DestinationId }) {
   return (
     <FpvErrorBoundary onClose={closeFpv}>
       <div className="fixed inset-0 z-40 bg-bg" style={{ touchAction: "none" }}>
-        <SpaceCanvas destination={destination} />
-        <CockpitOverlay />
-        <Hud destination={destination} />
+        <CockpitScene destination={destination} />
         <TouchPad />
       </div>
     </FpvErrorBoundary>
@@ -415,7 +414,7 @@ function SpaceCanvas({ destination }: { destination: DestinationId }) {
   );
 }
 
-type TargetInfo = {
+export type TargetInfo = {
   id: string;
   name: string;
   kind: string;
