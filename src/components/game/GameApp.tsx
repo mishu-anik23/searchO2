@@ -11,6 +11,7 @@ import { Landing } from "./Landing";
 import { Surface, Habitat } from "./Surface";
 import { Debrief } from "./Debrief";
 import { FPVView } from "./FPVView";
+import { MoonExplorer } from "./MoonExplorer";
 import { warmupPhotos } from "@/game/cosmos";
 
 export function GameApp() {
@@ -71,6 +72,7 @@ export function GameApp() {
         {screen === "cruise" && <Cruise />}
         {screen === "landing" && <Landing />}
         {screen === "surface" && <Surface />}
+        {screen === "explore" && <MoonExplorer />}
         {screen === "habitat" && <Habitat />}
         {screen === "debrief" && <Debrief />}
       </div>

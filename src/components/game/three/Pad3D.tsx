@@ -179,9 +179,7 @@ function SceneContent({
         <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
-            count={starPositions.length / 3}
-            array={starPositions}
-            itemSize={3}
+            args={[starPositions, 3]}
           />
         </bufferGeometry>
         <pointsMaterial size={0.35} color="#e8edf4" transparent opacity={0} depthWrite={false} sizeAttenuation />
