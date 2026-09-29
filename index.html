@@ -8377,6 +8377,36 @@ var QUIZ_INTERVAL_JITTER = 14;
 var QUIZ_QUESTION_COUNT = 10;
 var QUIZ_CATEGORIES_ALL = ['Oxygen Tree','Fruit Tree','Vegetable','Timber Tree','Biodiversity Tree'];
 
+function normalizeQuizOptionText(str){
+  if (!str || typeof str !== 'string') return '';
+  return str.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function validateAndShuffleQuizOptions(rawOpts){
+  if (!rawOpts || !Array.isArray(rawOpts)) return null;
+  var seen = {};
+  var cleanOpts = [];
+  var correctCount = 0;
+  for (var i = 0; i < rawOpts.length; i++){
+    var o = rawOpts[i];
+    if (!o || typeof o.text !== 'string') continue;
+    var rawText = o.text.trim();
+    var norm = normalizeQuizOptionText(rawText);
+    if (!norm) continue;
+    if (seen[norm]) continue; // Discard duplicate option
+    seen[norm] = true;
+    if (o.correct) correctCount++;
+    cleanOpts.push({ text: rawText, correct: !!o.correct });
+  }
+  // The correct answer must appear exactly once
+  if (correctCount !== 1) return null;
+  // Must have at least 2 unique choices (standard target: 3 or 4)
+  if (cleanOpts.length < 2) return null;
+  // Strict assertion: uniqueOptions.length === displayedOptions.length
+  if (cleanOpts.length !== Object.keys(seen).length) return null;
+  return shuffleArray(cleanOpts);
+}
+
 function pickRandomDistinct(arr, n){
   var copy = arr.slice(); var out = [];
   while (out.length < n && copy.length){ out.push(copy.splice(Math.floor(Math.random()*copy.length),1)[0]); }
@@ -8384,59 +8414,121 @@ function pickRandomDistinct(arr, n){
 }
 function shuffleArray(arr){
   var a = arr.slice();
-  for (var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[j]=t; a[j]=t; }
   for (var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; }
   return a;
 }
 function buildQuizQuestion(type, keys){
   if (type==='maxAge'){
     var picks = pickRandomDistinct(keys, 4); if (picks.length<4) return null;
-    var best = picks[0]; picks.forEach(function(k){ if (TREE_LIBRARY[k].maxAgeYears > TREE_LIBRARY[best].maxAgeYears) best=k; });
+    var best = picks[0];
+    picks.forEach(function(k){ if ((TREE_LIBRARY[k] && TREE_LIBRARY[k].maxAgeYears || 0) > (TREE_LIBRARY[best] && TREE_LIBRARY[best].maxAgeYears || 0)) best=k; });
+    var bestAge = TREE_LIBRARY[best].maxAgeYears;
+    var sameAgeCount = picks.filter(function(k){ return TREE_LIBRARY[k].maxAgeYears === bestAge; }).length;
+    if (sameAgeCount !== 1) return null; // Reject tie so there is an unambiguous winner
+    var raw = picks.map(function(k){ return {text:TREE_TYPES[k].icon+' '+TREE_TYPES[k].label, correct:k===best}; });
+    var valid = validateAndShuffleQuizOptions(raw);
+    if (!valid) return null;
     return { prompt:'Which of these botanical species can live the longest in nature?',
-      options: shuffleArray(picks.map(function(k){ return {text:TREE_TYPES[k].icon+' '+TREE_TYPES[k].label, correct:k===best}; })),
+      options: valid,
       explain: TREE_TYPES[best].label+' can live up to roughly '+TREE_LIBRARY[best].maxAgeYears+' years ('+TREE_LIBRARY[best].firstFound+').' };
   }
   if (type==='o2Rate'){
     var picks = pickRandomDistinct(keys, 4); if (picks.length<4) return null;
-    function o2Final(k){ var arr=TREE_TYPES[k].o2AtStage; return arr[arr.length-1]; }
+    function o2Final(k){ var arr=TREE_TYPES[k].o2AtStage; return arr ? arr[arr.length-1] : 0; }
     var best = picks[0]; picks.forEach(function(k){ if (o2Final(k) > o2Final(best)) best=k; });
+    var bestO2 = o2Final(best);
+    var sameO2Count = picks.filter(function(k){ return o2Final(k) === bestO2; }).length;
+    if (sameO2Count !== 1) return null; // Unambiguous highest output
+    var raw = picks.map(function(k){ return {text:TREE_TYPES[k].icon+' '+TREE_TYPES[k].label, correct:k===best}; });
+    var valid = validateAndShuffleQuizOptions(raw);
+    if (!valid) return null;
     return { prompt:'Which of these produces the highest hourly oxygen output once fully mature?',
-      options: shuffleArray(picks.map(function(k){ return {text:TREE_TYPES[k].icon+' '+TREE_TYPES[k].label, correct:k===best}; })),
-      explain: TREE_TYPES[best].label+' synthesizes up to '+o2Final(best)+' O₂/hr! ('+TREE_LIBRARY[best].photosynthesis+').' };
+      options: valid,
+      explain: TREE_TYPES[best].label+' synthesizes up to '+bestO2+' O₂/hr! ('+TREE_LIBRARY[best].photosynthesis+').' };
   }
   if (type==='disease'){
     var target = keys[Math.floor(Math.random()*keys.length)];
-    var others = pickRandomDistinct(keys.filter(function(k){return k!==target;}), 3); if (others.length<3) return null;
-    var opts = others.map(function(k){ return {text:TREE_LIBRARY[k].disease, correct:false}; });
-    opts.push({text:TREE_LIBRARY[target].disease, correct:true});
+    var targetDis = TREE_LIBRARY[target].disease;
+    var targetNorm = normalizeQuizOptionText(targetDis);
+    var candidateOthers = keys.filter(function(k){
+      return k !== target && normalizeQuizOptionText(TREE_LIBRARY[k].disease) !== targetNorm;
+    });
+    // Collect unique wrong diseases
+    var uniqueWrong = [];
+    var seenDis = {};
+    seenDis[targetNorm] = true;
+    for (var i = 0; i < candidateOthers.length; i++){
+      var dis = TREE_LIBRARY[candidateOthers[i]].disease;
+      var n = normalizeQuizOptionText(dis);
+      if (!seenDis[n]){
+        seenDis[n] = true;
+        uniqueWrong.push(dis);
+      }
+    }
+    if (uniqueWrong.length < 3) return null;
+    var pickedWrong = pickRandomDistinct(uniqueWrong, 3);
+    var raw = pickedWrong.map(function(d){ return {text:d, correct:false}; });
+    raw.push({text:targetDis, correct:true});
+    var valid = validateAndShuffleQuizOptions(raw);
+    if (!valid) return null;
     return { prompt:'What probable disease or pest vulnerability affects '+TREE_TYPES[target].icon+' '+TREE_TYPES[target].label+'?',
-      options: shuffleArray(opts), explain: 'Remedy: '+TREE_LIBRARY[target].cure };
+      options: valid, explain: 'Remedy: '+TREE_LIBRARY[target].cure };
   }
   if (type==='cure'){
     var target = keys[Math.floor(Math.random()*keys.length)];
-    var others = pickRandomDistinct(keys.filter(function(k){return k!==target;}), 3); if (others.length<3) return null;
-    var opts = others.map(function(k){ return {text:TREE_LIBRARY[k].cure, correct:false}; });
-    opts.push({text:TREE_LIBRARY[target].cure, correct:true});
+    var targetCure = TREE_LIBRARY[target].cure;
+    var targetNorm = normalizeQuizOptionText(targetCure);
+    var candidateOthers = keys.filter(function(k){
+      return k !== target && normalizeQuizOptionText(TREE_LIBRARY[k].cure) !== targetNorm;
+    });
+    var uniqueWrong = [];
+    var seenCure = {};
+    seenCure[targetNorm] = true;
+    for (var i = 0; i < candidateOthers.length; i++){
+      var cr = TREE_LIBRARY[candidateOthers[i]].cure;
+      var n = normalizeQuizOptionText(cr);
+      if (!seenCure[n]){
+        seenCure[n] = true;
+        uniqueWrong.push(cr);
+      }
+    }
+    if (uniqueWrong.length < 3) return null;
+    var pickedWrong = pickRandomDistinct(uniqueWrong, 3);
+    var raw = pickedWrong.map(function(c){ return {text:c, correct:false}; });
+    raw.push({text:targetCure, correct:true});
+    var valid = validateAndShuffleQuizOptions(raw);
+    if (!valid) return null;
     return { prompt:'How is '+TREE_LIBRARY[target].disease+' on '+TREE_TYPES[target].icon+' '+TREE_TYPES[target].label+' best treated ecologically?',
-      options: shuffleArray(opts), explain: TREE_TYPES[target].label+' context: '+TREE_TYPES[target].fact };
+      options: valid, explain: TREE_TYPES[target].label+' context: '+TREE_TYPES[target].fact };
   }
   if (type==='category'){
     var target = keys[Math.floor(Math.random()*keys.length)];
     var correctCat = TREE_TYPES[target].category;
-    var wrongCats = pickRandomDistinct(QUIZ_CATEGORIES_ALL.filter(function(c){return c!==correctCat;}), 3);
-    var opts = wrongCats.map(function(c){ return {text:c, correct:false}; });
-    opts.push({text:correctCat, correct:true});
+    var wrongCats = QUIZ_CATEGORIES_ALL.filter(function(c){ return c !== correctCat; });
+    var pickedWrong = pickRandomDistinct(wrongCats, 3);
+    var raw = pickedWrong.map(function(c){ return {text:c, correct:false}; });
+    raw.push({text:correctCat, correct:true});
+    var valid = validateAndShuffleQuizOptions(raw);
+    if (!valid) return null;
     return { prompt:'Which ecological category does the '+TREE_TYPES[target].icon+' '+TREE_TYPES[target].label+' belong to?',
-      options: shuffleArray(opts), explain: TREE_TYPES[target].fact };
+      options: valid, explain: TREE_TYPES[target].fact };
   }
   if (type==='origin'){
     var target = keys[Math.floor(Math.random()*keys.length)];
-    var others = pickRandomDistinct(keys.filter(function(k){return k!==target;}), 3); if (others.length<3) return null;
-    var opts = others.map(function(k){ return {text:TREE_TYPES[k].icon+' '+TREE_TYPES[k].label, correct:false}; });
-    opts.push({text:TREE_TYPES[target].icon+' '+TREE_TYPES[target].label, correct:true});
+    var targetLabel = TREE_TYPES[target].icon+' '+TREE_TYPES[target].label;
+    var targetNorm = normalizeQuizOptionText(targetLabel);
+    var candidateOthers = keys.filter(function(k){
+      return k !== target && normalizeQuizOptionText(TREE_TYPES[k].icon+' '+TREE_TYPES[k].label) !== targetNorm;
+    });
+    var pickedOthers = pickRandomDistinct(candidateOthers, 3);
+    if (pickedOthers.length < 3) return null;
+    var raw = pickedOthers.map(function(k){ return {text:TREE_TYPES[k].icon+' '+TREE_TYPES[k].label, correct:false}; });
+    raw.push({text:targetLabel, correct:true});
+    var valid = validateAndShuffleQuizOptions(raw);
+    if (!valid) return null;
     var originSnippet = TREE_LIBRARY[target].firstFound.length > 95 ? (TREE_LIBRARY[target].firstFound.substring(0, 95) + '...') : TREE_LIBRARY[target].firstFound;
     return { prompt:'Which species matches this evolutionary origin: "' + originSnippet + '"?',
-      options: shuffleArray(opts), explain: TREE_TYPES[target].label+': '+TREE_LIBRARY[target].firstFound };
+      options: valid, explain: TREE_TYPES[target].label+': '+TREE_LIBRARY[target].firstFound };
   }
   return null;
 }
@@ -8973,6 +9065,13 @@ var WORKER_TYPES = {
   engineer:  { label:'Engineer', wage:180, color:'#3E6B8B', tool:'gear',    role:'global',mult:0,   desc:'+10% income from irrigation & automation (global)' }
 };
 
+function getWorkerDisplayName(w){
+  if (!w) return 'Worker';
+  var typeDef = (typeof WORKER_TYPES !== 'undefined' && WORKER_TYPES[w.type]) ? WORKER_TYPES[w.type] : { label: 'Worker' };
+  var seq = w.roleSeq || w.id;
+  return typeDef.label + ' #' + seq;
+}
+
 var ACCESSORIES = {
   irrigation: { label:'Irrigation', emoji:'💧', cost:110, desc:'+15% growth speed on this plot' },
   fertilizer: { label:'Fertilizer', emoji:'🌾', cost:85, desc:'+20% oxygen output (Healthy Soil Bonus)' },
@@ -9069,11 +9168,14 @@ function freshState(){
   return {
     money: 10000, totalO2: 0, totalO2AllTime: 0, treesPlanted: 0, treesRemoved: 0, gameHour: 0,
     plots: plots, achUnlocked: {}, speedFactor: 180, lastSaveReal: Date.now(),
-    workers: [], lastPaidDay: 0, nextTreeId: 1, reports: [], pestHandled: 0, demerits: 0,
+    workers: [], roleCounters: { laborer: 0, farmer: 0, botanist: 0, engineer: 0 }, lastPaidDay: 0, nextTreeId: 1, reports: [], pestHandled: 0, demerits: 0,
     harvestCount: 0, storage: { built:false, building:false, buildHours:0, capacity:0, stored:0, level:0, expanding:false, expandHours:0, warnedFull:false, items:[], assignedLaborerId:null },
     visitorStats: { totalVisitors:0, totalIncome:0, ratingSum:0, ratingCount:0 },
     quiz: { pending:null, history:[], totalCorrect:0, totalCompleted:0, skipped:0, nextDueHour:18 },
     loan: null,
+    settings: { knowledgeNotifications: true, soundEnabled: true },
+    equipment: { owned: {}, leased: {} },
+    farmStandItems: [],
     roads: {
       main: {built:false,building:false,buildHours:0},
       subway: {built:false,building:false,buildHours:0},
@@ -14050,6 +14152,31 @@ function loadState(){
         if (pondB.collectStartReal===undefined) pondB.collectStartReal = 0;
         if (pondB.collectAmount===undefined) pondB.collectAmount = 0;
         state.workers.forEach(function(w){ if (w.assignedBuilding===undefined) w.assignedBuilding = null; });
+        state.roleCounters = state.roleCounters || { laborer: 0, farmer: 0, botanist: 0, engineer: 0 };
+        var maxRoleSeq = { laborer: 0, farmer: 0, botanist: 0, engineer: 0 };
+        state.workers.forEach(function(w){
+          if (!w.roleSeq){
+            maxRoleSeq[w.type] = (maxRoleSeq[w.type] || 0) + 1;
+            w.roleSeq = maxRoleSeq[w.type];
+          } else {
+            if (w.roleSeq > (maxRoleSeq[w.type] || 0)) maxRoleSeq[w.type] = w.roleSeq;
+          }
+          if (!w.name){
+            var wt = (typeof WORKER_TYPES !== 'undefined' && WORKER_TYPES[w.type]) ? WORKER_TYPES[w.type] : { label: 'Worker' };
+            w.name = wt.label + ' #' + w.roleSeq;
+          }
+        });
+        Object.keys(maxRoleSeq).forEach(function(t){
+          if ((state.roleCounters[t] || 0) < maxRoleSeq[t]) state.roleCounters[t] = maxRoleSeq[t];
+        });
+        if (state.buildings && state.buildings.cattle_farm && state.buildings.cattle_farm.assignedWorker){
+          var cfWorkerExists = state.workers.some(function(w){ return w.id === state.buildings.cattle_farm.assignedWorker; });
+          if (!cfWorkerExists) state.buildings.cattle_farm.assignedWorker = null;
+        }
+        state.settings = state.settings || { knowledgeNotifications: true, soundEnabled: true };
+        if (state.settings.knowledgeNotifications === undefined) state.settings.knowledgeNotifications = true;
+        state.equipment = state.equipment || { owned: {}, leased: {} };
+        if (!state.farmStandItems) state.farmStandItems = [];
         nextWorkerId = 1 + state.workers.reduce(function(m,w){return Math.max(m,w.id);},0);
         if (elapsedReal > 5000){
           var before = { money: state.money, totalO2AllTime: state.totalO2AllTime };
@@ -14299,22 +14426,30 @@ function advanceGame(dh){
           cf.warnedLow = false;
         }
 
-        // Dedicated laborer auto-husbandry
-        if (cf.assignedWorker){
-          if (cf.feedLevel < 35 && state.money >= 10){
+        // Dedicated worker auto-husbandry & welfare care
+        var assignedWorkerObj = cf.assignedWorker ? state.workers.find(function(w){ return w.id === cf.assignedWorker; }) : null;
+        if (assignedWorkerObj){
+          if (cf.feedLevel < 40 && state.money >= 10){
             state.money -= 10;
             cf.feedLevel = 100;
             cf.freshness = Math.min(100, (cf.freshness || 100) + 20);
           }
-          if (cf.waterLevel < 35){
+          if (cf.waterLevel < 40){
             cf.waterLevel = 100;
             cf.freshness = Math.min(100, (cf.freshness || 100) + 20);
+          }
+          if (assignedWorkerObj.type === 'farmer'){
+            cf.freshness = Math.min(100, (cf.freshness || 100) + dh * 3.5);
           }
         }
       }
 
       var isWellCared = (cf.feedLevel || 0) > 0 && (cf.waterLevel || 0) > 0;
       var prodMult = isWellCared ? ((cf.freshness || 100) >= 60 ? 1.0 : 0.75) : 0.25;
+      if (assignedWorkerObj){
+        if (assignedWorkerObj.type === 'farmer') prodMult *= 1.40;
+        else if (assignedWorkerObj.type === 'laborer') prodMult *= 1.15;
+      }
 
       cf.chambers.forEach(function(ch){
         if (!ch.animals) ch.animals = [];
@@ -14906,10 +15041,15 @@ function hireWorker(type){
     showNotification('🏠', 'Construct the Crew Shed before hiring farm workers!', 'building', 'crew_shed');
     return;
   }
-  // Crew Shed is the sole prerequisite for worker recruitment
-  var newWorker = { id: nextWorkerId++, type: type, assignedPlot: null, assignedBuilding: null };
+  // Crew Shed is the prerequisite for worker recruitment
+  state.roleCounters = state.roleCounters || { laborer: 0, farmer: 0, botanist: 0, engineer: 0 };
+  state.roleCounters[type] = (state.roleCounters[type] || 0) + 1;
+  var roleSeq = state.roleCounters[type];
+  var label = (WORKER_TYPES[type] ? WORKER_TYPES[type].label : 'Worker');
+  var displayName = label + ' #' + roleSeq;
+  var newWorker = { id: nextWorkerId++, type: type, roleSeq: roleSeq, name: displayName, assignedPlot: null, assignedBuilding: null };
   state.workers.push(newWorker);
-  pushReport('👷 Hired ' + WORKER_TYPES[type].label + ' #' + newWorker.id + ' stationed at the Crew Shed.');
+  pushReport('👷 Hired ' + displayName + ' stationed at the Crew Shed.');
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
   checkAchievements(); render(); requestSave();
 }
@@ -14924,32 +15064,32 @@ function fireWorker(workerId){
 function confirmDismissWorker(workerId){
   var w = state.workers.find(function(x){ return x.id === workerId; });
   if (!w) return;
-  var roleLabel = (WORKER_TYPES[w.type] ? WORKER_TYPES[w.type].label : 'Worker');
-  if (confirm('Dismiss ' + roleLabel + ' #' + w.id + ' from the farm payroll? They will leave the bunkhouse immediately.')){
+  var wName = getWorkerDisplayName(w);
+  if (confirm('Dismiss ' + wName + ' from the farm payroll? They will leave the bunkhouse immediately.')){
     fireWorker(workerId);
-    pushReport('🚫 Dismissed ' + roleLabel + ' #' + w.id + ' from farm roster.');
+    pushReport('🚫 Dismissed ' + wName + ' from farm roster.');
     if (typeof showNotification === 'function'){
-      showNotification('🚫', roleLabel + ' #' + w.id + ' dismissed from crew roster.', 'building', 'crew_shed');
+      showNotification('🚫', wName + ' dismissed from crew roster.', 'building', 'crew_shed');
     }
     render();
   }
 }
 
 function isTaskAllowedForWorker(workerType, taskType, targetId, turbineId){
-  // Laborer: manual physical soil prep, clearing brush, clearing boulders, mowing lawn, felling dead trees, storage loading bay, and non-technical civil buildings (road, shed, storage, pond, fence)
+  // Laborer: manual physical soil prep, clearing brush, clearing boulders, mowing lawn, felling dead trees, storage loading bay, cattle auto-care, and non-technical civil buildings (road, shed, storage, pond, fence)
   // STRICTLY PROHIBITED: Wind turbines erection or commissioning, Battery Substation BESS, energy export, agronomy/crop planting, livestock adoption
   if (workerType === 'laborer'){
     if (taskType === 'commission_turbine' || taskType === 'building_turbine' || taskType === 'export_energy' || taskType === 'recruit_engineer' || taskType === 'recruit_laborer') return false;
     if (targetId === 'energy_storage' || targetId === 'garden' || (turbineId && String(turbineId).indexOf('wt_') === 0)) return false;
     if (taskType === 'crop_field_plant' || taskType === 'crop_field_harvest' || taskType === 'cattle_adopt') return false;
-    return ['dig', 'clear', 'removeTree', 'rocks', 'lawn', 'storage', 'storage_build', 'cattle_fence', 'building'].indexOf(taskType) !== -1;
+    return ['dig', 'clear', 'removeTree', 'rocks', 'lawn', 'storage', 'storage_build', 'cattle_fence', 'cattle_feed', 'cattle_water', 'cattle_tending', 'building'].indexOf(taskType) !== -1;
   }
   // Farmer: agronomy, crop seeding, watering, harvesting, livestock tending & adoption
   // STRICTLY PROHIBITED: Wind turbines, BESS, power export, rock demolition
   if (workerType === 'farmer'){
     if (taskType === 'commission_turbine' || taskType === 'building_turbine' || taskType === 'export_energy' || taskType === 'recruit_engineer' || taskType === 'recruit_laborer' || taskType === 'rocks') return false;
     if (targetId === 'energy_storage' || (turbineId && String(turbineId).indexOf('wt_') === 0)) return false;
-    return ['harvest', 'water', 'prune', 'dig', 'clear', 'crop_field_plant', 'crop_field_harvest', 'cattle_feed', 'cattle_water', 'cattle_adopt', 'cattle_fence'].indexOf(taskType) !== -1;
+    return ['harvest', 'water', 'prune', 'dig', 'clear', 'crop_field_plant', 'crop_field_harvest', 'cattle_feed', 'cattle_water', 'cattle_adopt', 'cattle_fence', 'cattle_tending'].indexOf(taskType) !== -1;
   }
   // Botanist: botanical garden tending, floral hybridization, companion planting science
   // STRICTLY PROHIBITED: Wind turbines, BESS, heavy civil construction, rock demolition, mowing lawn
@@ -15108,9 +15248,18 @@ function unassignWorkerById(workerId){
     origin = 'storage';
     state.storage.assignedLaborerId = null;
   }
-  pushReport('↩️ Recalled ' + WORKER_TYPES[w.type].label + ' #' + w.id + ' back to Crew Shed.');
+  var wName = getWorkerDisplayName(w);
+  pushReport('↩️ Recalled ' + wName + ' back to Crew Shed.');
   if (typeof activeModal !== 'undefined' && activeModal){
-    closeModal();
+    if (activeModal.type === 'building' && activeModal.plotId === origin){
+      // Keep open and re-render
+    } else if (activeModal.type === 'plot' && activeModal.plotId === origin){
+      // Keep open and re-render
+    } else if (activeModal.type === 'storage' && origin === 'storage'){
+      // Keep open and re-render
+    } else {
+      closeModal();
+    }
   }
   if (origin !== null && typeof animateWorkerPathWalk === 'function'){
     animateWorkerPathWalk(w, 'crew_shed', origin);
@@ -15130,12 +15279,23 @@ function unassignWorker(plotId){
 function assignWorkerToBuilding(workerId, key){
   var w = state.workers.find(function(x){return x.id===workerId;}); var b = state.buildings[key];
   if (!w || !b) return;
+  if (key === 'cattle_farm' && w.type !== 'farmer' && w.type !== 'laborer'){
+    showNotification('⚠️', 'Only Farmers and Laborers can tend livestock in the Cattle Farm.', 'building', 'cattle_farm');
+    return;
+  }
   if (w.assignedPlot!==null){ state.plots[w.assignedPlot].assignedWorker=null; w.assignedPlot=null; }
   if (w.assignedBuilding){ state.buildings[w.assignedBuilding].assignedWorker=null; }
   if (b.assignedWorker){ var prev = state.workers.find(function(x){return x.id===b.assignedWorker;}); if (prev) prev.assignedBuilding=null; }
   w.assignedBuilding = key; b.assignedWorker = w.id;
+  var wName = getWorkerDisplayName(w);
+  pushReport('🧑‍🌾 Assigned ' + wName + ' to ' + (BUILDING_TYPES[key] ? BUILDING_TYPES[key].label : key) + '.');
+  showNotification('🧑‍🌾', wName + ' assigned to ' + (BUILDING_TYPES[key] ? BUILDING_TYPES[key].label : key), 'building', key);
   if (typeof activeModal !== 'undefined' && activeModal){
-    closeModal();
+    if (activeModal.type === 'building' && activeModal.plotId === key){
+      // Keep open and re-render so player immediately sees assignment!
+    } else {
+      closeModal();
+    }
   }
   if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, key);
   render(); requestSave();
@@ -18579,6 +18739,11 @@ function triggerHarvestCartSequence(plotId, onComplete){
 // to the relevant modal. Managed as direct DOM nodes (not part of render()'s innerHTML
 // replacement) so they survive the 1s game tick without flickering or losing timers.
 function showNotification(icon, text, actionType, actionArg){
+  if (state && state.settings && state.settings.knowledgeNotifications === false){
+    if (actionType === 'knowledge' || actionType === 'KNOWLEDGE' || actionType === 'educational' || actionType === 'discovery' || icon === '📖' || icon === '🎓' || icon === '🍃' || icon === '✨'){
+      return;
+    }
+  }
   var stack = document.getElementById('notifStack'); if (!stack) return;
   var el = document.createElement('div');
   el.className = 'notif-toast';
@@ -18719,6 +18884,7 @@ function dismissEducationalDiscoveryBubble(e){
 }
 
 function showEducationalDiscoveryBubble(targetType, targetKey, customData){
+  if (state && state.settings && state.settings.knowledgeNotifications === false) return;
   var layer = document.getElementById('educationalDiscoveryLayer');
   if (!layer) return;
 
@@ -18936,6 +19102,7 @@ function showEducationalDiscoveryBubble(targetType, targetKey, customData){
 }
 
 function triggerRandomEducationalDiscovery(){
+  if (state && state.settings && state.settings.knowledgeNotifications === false) return;
   if (typeof activeModal !== 'undefined' && activeModal) return;
   if (typeof currentScreen !== 'undefined' && currentScreen !== 'farm') return;
   if (!state) return;
@@ -23392,16 +23559,23 @@ function cattleFarmModalHtml(){
   // Husbandry Worker Section
   html += '<div class="section" style="margin-top:6px;"><h4>👷 Assigned Livestock Tender</h4>' +
     (assignedW
-      ? ('<div class="worker-opt assigned"><span>🧑‍🌾 <b>' + WORKER_TYPES[assignedW.type].label + ' #' + assignedW.id + '</b> is caring for the livestock (auto-feeds &amp; waters)</span><button class="worker-opt-btn" onclick="unassignWorkerFromBuilding(\'cattle_farm\')">Unassign</button></div>')
+      ? ('<div class="worker-opt assigned"><span>' + (assignedW.type === 'farmer' ? '🧑‍🌾' : '👷') + ' <b>' + getWorkerDisplayName(assignedW) + '</b> is caring for the livestock: ' +
+         (assignedW.type === 'farmer' ? '<b style="color:#2E7D32;">+40% Harvest Yield boost</b> &amp; active health restoration.' : 'auto-feeds hay &amp; refills water troughs.') +
+         '</span><button class="worker-opt-btn" onclick="unassignWorkerFromBuilding(\'cattle_farm\')">Unassign</button></div>')
       : (function(){
           var idleWorkers = state.workers.filter(function(x){ return x.assignedPlot === null && !x.assignedBuilding; });
-          if (!idleWorkers.length){
+          var eligibleWorkers = idleWorkers.filter(function(x){ return x.type === 'farmer' || x.type === 'laborer'; });
+          if (!eligibleWorkers.length){
+            if (idleWorkers.length > 0){
+              return '<div class="empty-note">No idle Farmers or Labourers available. (Botanists and Engineers cannot tend livestock). Recruit crew at the Crew Shed.</div>';
+            }
             return '<div class="empty-note">No idle crew members available to tend the livestock. Recruit workers at the Crew Shed.</div>';
           }
-          return '<div style="font-size:0.75rem;color:#546E7A;margin-bottom:6px;">Assign a worker to automatically manage hay and water:</div>' +
+          return '<div style="font-size:0.75rem;color:#546E7A;margin-bottom:6px;">Assign a <b>Farmer</b> (+40% livestock harvest yield) or <b>Labourer</b> (auto-feed &amp; water) to manage livestock:</div>' +
             '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
-            idleWorkers.slice(0, 4).map(function(iw){
-              return '<button class="secondary mini-btn" onclick="assignWorkerToBuilding(' + iw.id + ',\'cattle_farm\')">Assign ' + WORKER_TYPES[iw.type].label + ' #' + iw.id + '</button>';
+            eligibleWorkers.slice(0, 4).map(function(iw){
+              var perkBadge = iw.type === 'farmer' ? ' ⭐ (+40% Yield)' : ' 🌾 (Auto-Care)';
+              return '<button class="secondary mini-btn" onclick="assignWorkerToBuilding(' + iw.id + ',\'cattle_farm\')">Assign ' + getWorkerDisplayName(iw) + perkBadge + '</button>';
             }).join('') +
             '</div>';
         })()) +
@@ -26576,6 +26750,14 @@ window.hasAvailableFieldWorker = hasAvailableFieldWorker;
 window.hasAvailableLaborer = hasAvailableLaborer;
 window.unassignWorkerById = unassignWorkerById;
 window.assignWorkerToTask = assignWorkerToTask;
+window.assignWorkerToBuilding = assignWorkerToBuilding;
+window.unassignWorkerFromBuilding = unassignWorkerFromBuilding;
+window.getWorkerDisplayName = getWorkerDisplayName;
+window.generateQuizQuestions = generateQuizQuestions;
+window.tickGame = advanceGame;
+window.openBuildingModal = function(key){ return openModal('building', key); };
+window.TREE_TYPES = TREE_TYPES;
+window.confirmDismissWorker = confirmDismissWorker;
 window.drawHumanWorkerSvg = drawHumanWorkerSvg;
 window.getRoadNetworkWaypoints = getRoadNetworkWaypoints;
 if (typeof drawMainGateScene !== "undefined") window.drawMainGateScene = drawMainGateScene;
