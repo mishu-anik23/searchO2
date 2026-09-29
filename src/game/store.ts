@@ -59,6 +59,7 @@ export interface GameState {
   orbitalSpeed: number;
   cameraDepth: "surface" | "orbital" | "deep";
   cameraZoom: number;
+  cockpitToggles: Record<string, boolean>;
 
   setHydrated: () => void;
   setCommander: (name: string) => void;
@@ -88,6 +89,7 @@ export interface GameState {
   resetProgress: () => void;
   setOrbitalSpeed: (v: number) => void;
   setCameraZoom: (v: number) => void;
+  toggleCockpit: (id: string) => void;
 }
 
 const persistedKeys = [
@@ -145,6 +147,16 @@ export const useGame = create<GameState>()(
       orbitalSpeed: 1,
       cameraDepth: "surface",
       cameraZoom: 0,
+      cockpitToggles: {
+        orbitMap: true,
+        countdown: true,
+        distance: true,
+        phase: true,
+        attitude: true,
+        mfd: true,
+        target: true,
+        lesson: true,
+      },
 
       setHydrated: () => {
         const s = get();
@@ -319,6 +331,10 @@ export const useGame = create<GameState>()(
         const depth: "surface" | "orbital" | "deep" =
           zoom < 0.35 ? "surface" : zoom < 0.7 ? "orbital" : "deep";
         set({ cameraZoom: zoom, cameraDepth: depth });
+      },
+      toggleCockpit: (id) => {
+        const cur = get().cockpitToggles;
+        set({ cockpitToggles: { ...cur, [id]: !cur[id] } });
       },
       resetProgress: () =>
         set({
