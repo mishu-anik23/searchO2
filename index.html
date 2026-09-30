@@ -8218,13 +8218,17 @@ function showThoughtBubble(targetKey, text, icon, sceneEl){
   return bubble;
 }
 
-function spawnVisitor(dest){
+function spawnVisitor(dest, arch){
   var scene = document.querySelector('.field-scene'); if (!scene) return;
   var maxConcurrent = Math.min(6, 3 + Math.floor(farmReputation() / 20));
   if (activeVisitorCount >= maxConcurrent) return;
 
   var allDests = visitorEligibleDestinations();
   if (!allDests || allDests.length === 0) return;
+  if (typeof dest === 'string'){
+    var foundDest = allDests.find(function(d){ return d.key === dest; });
+    dest = foundDest || { key: dest, label: dest, shop: (dest === 'coffee_shop' || dest === 'juice_bar') };
+  }
   if (!dest) dest = allDests[Math.floor(Math.random() * allDests.length)];
   if (!dest) return;
   activeVisitorCount++;
@@ -8238,7 +8242,11 @@ function spawnVisitor(dest){
     scene.appendChild(walkerLayer);
   }
 
-  var arch = VISITOR_ARCHETYPES[Math.floor(Math.random() * VISITOR_ARCHETYPES.length)];
+  if (typeof arch === 'string'){
+    var foundArch = VISITOR_ARCHETYPES.find(function(a){ return a.id === arch; });
+    arch = foundArch || VISITOR_ARCHETYPES[0];
+  }
+  if (!arch) arch = VISITOR_ARCHETYPES[Math.floor(Math.random() * VISITOR_ARCHETYPES.length)];
   var el = document.createElement('div');
   el.className = 'human-walker-sprite';
   
@@ -8280,7 +8288,7 @@ function spawnVisitor(dest){
     inDist += Math.hypot(inRoute[i].x - inRoute[i-1].x, inRoute[i].y - inRoute[i-1].y);
   }
   // Realistic leisurely walking pace: ~6% farm distance per second
-  var travelTime1 = Math.max(3800, Math.round(inDist * 165));
+  var travelTime1 = (typeof window !== 'undefined' && window.__instantVisitorMode) ? 10 : Math.max(3800, Math.round(inDist * 165));
 
   // Begin walking along Leg 1
   animateAlongWaypoints(el, inRoute, travelTime1, function(){
@@ -8289,14 +8297,28 @@ function spawnVisitor(dest){
     showThoughtBubble(dest.key, reaction.text, reaction.icon);
     pushReport(arch.emoji + ' ' + arch.label + ' visited ' + (dest.label || dest.key) + ': "' + reaction.text + '"');
     
-    // Spend if Stop 1 is a shop, or donate if admiring clean energy / eco infrastructure
+    // Spend if Stop 1 is a shop with recipe consumption, or check curbside stand
     if (dest.shop){
-      var range = VISITOR_SPEND[dest.key] || [8, 18];
-      var magnetMult = typeof visitorMagnetActive === 'function' && visitorMagnetActive() ? 1.2 : 1.0;
-      var spend = Math.round((range[0] + Math.random() * (range[1] - range[0])) * magnetMult * 100) / 100;
-      state.money += spend;
-      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
-      pushReport('🪙 ' + arch.label + ' purchased organic refreshments (€' + spend.toFixed(2) + ').');
+      var craftableKeys = Object.keys(CENTRAL_RECIPES).filter(function(rk){
+        return CENTRAL_RECIPES[rk].facility === dest.key && canCraftRecipe(rk);
+      });
+      if (craftableKeys.length > 0){
+        var chosenRecipe = craftableKeys[Math.floor(Math.random() * craftableKeys.length)];
+        craftRecipe(chosenRecipe);
+        showThoughtBubble(dest.key, 'Loved the ' + CENTRAL_RECIPES[chosenRecipe].name + '!', CENTRAL_RECIPES[chosenRecipe].icon);
+      } else {
+        if (state.storage && state.storage.stored > 0){
+          var range = VISITOR_SPEND[dest.key] || [8, 18];
+          var magnetMult = typeof visitorMagnetActive === 'function' && visitorMagnetActive() ? 1.2 : 1.0;
+          var spend = Math.round((range[0] + Math.random() * (range[1] - range[0])) * magnetMult * 100) / 100;
+          state.money += spend;
+          if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
+          pushReport('🪙 ' + arch.label + ' purchased organic refreshments (€' + spend.toFixed(2) + ').');
+        } else {
+          showThoughtBubble(dest.key, (dest.label || 'Shop') + ' is out of ingredients!', '⚠️');
+          pushReport('⚠️ ' + arch.label + ' wanted refreshments at ' + (dest.label || dest.key) + ', but ingredients are out of stock!');
+        }
+      }
     } else {
       var isGarden1 = (dest.key === 'garden');
       var poly1 = (isGarden1 && typeof getGardenPolycultureInfo === 'function') ? getGardenPolycultureInfo() : null;
@@ -8307,6 +8329,15 @@ function spawnVisitor(dest){
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
         pushReport('🪙 ' + arch.label + ' left a €' + tip + (isGarden1 ? ' floral eco-donation admiring the blooming decagonal garden!' : ' eco-donation admiring ' + (dest.label || dest.key) + '!'));
       }
+    }
+
+    // Curbside Farm Stand purchasing
+    if (state.farmStandItems && state.farmStandItems.length > 0 && Math.random() < 0.65){
+      var standItem = state.farmStandItems.shift();
+      state.money += standItem.value;
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
+      pushReport('🧺 ' + arch.label + ' purchased ' + standItem.name + ' from Curbside Farm Stand for €' + standItem.value.toFixed(2) + '!');
+      showThoughtBubble(dest.key, 'Bought ' + standItem.name + '!', '🧺');
     }
 
     var dwellTime1 = 3800 + Math.floor(Math.random() * 1800);
@@ -8325,11 +8356,20 @@ function spawnVisitor(dest){
           var reaction2 = generateDwellReaction(stop2);
           showThoughtBubble(stop2.key, reaction2.text, reaction2.icon);
           if (stop2.shop){
-            var range2 = VISITOR_SPEND[stop2.key] || [8, 18];
-            var spend2 = Math.round((range2[0] + Math.random() * (range2[1] - range2[0])) * 100) / 100;
-            state.money += spend2;
-            if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
-            pushReport('🪙 ' + arch.label + ' bought artisan goods (€' + spend2.toFixed(2) + ') at ' + stop2.label + '.');
+            var craftableKeys2 = Object.keys(CENTRAL_RECIPES).filter(function(rk){
+              return CENTRAL_RECIPES[rk].facility === stop2.key && canCraftRecipe(rk);
+            });
+            if (craftableKeys2.length > 0){
+              var chosenRecipe2 = craftableKeys2[Math.floor(Math.random() * craftableKeys2.length)];
+              craftRecipe(chosenRecipe2);
+              showThoughtBubble(stop2.key, 'Loved the ' + CENTRAL_RECIPES[chosenRecipe2].name + '!', CENTRAL_RECIPES[chosenRecipe2].icon);
+            } else if (state.storage && state.storage.stored > 0){
+              var range2 = VISITOR_SPEND[stop2.key] || [8, 18];
+              var spend2 = Math.round((range2[0] + Math.random() * (range2[1] - range2[0])) * 100) / 100;
+              state.money += spend2;
+              if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
+              pushReport('🪙 ' + arch.label + ' bought artisan goods (€' + spend2.toFixed(2) + ') at ' + stop2.label + '.');
+            }
           } else {
             var isGarden2 = (stop2.key === 'garden');
             var poly2 = (isGarden2 && typeof getGardenPolycultureInfo === 'function') ? getGardenPolycultureInfo() : null;
@@ -9067,6 +9107,7 @@ var WORKER_TYPES = {
 
 function getWorkerDisplayName(w){
   if (!w) return 'Worker';
+  if (w.name) return w.name;
   var typeDef = (typeof WORKER_TYPES !== 'undefined' && WORKER_TYPES[w.type]) ? WORKER_TYPES[w.type] : { label: 'Worker' };
   var seq = w.roleSeq || w.id;
   return typeDef.label + ' #' + seq;
@@ -14165,6 +14206,9 @@ function loadState(){
             var wt = (typeof WORKER_TYPES !== 'undefined' && WORKER_TYPES[w.type]) ? WORKER_TYPES[w.type] : { label: 'Worker' };
             w.name = wt.label + ' #' + w.roleSeq;
           }
+          if (w.energy === undefined) w.energy = 100;
+          if (w.stamina === undefined) w.stamina = 100;
+          if (w.morale === undefined) w.morale = 100;
         });
         Object.keys(maxRoleSeq).forEach(function(t){
           if ((state.roleCounters[t] || 0) < maxRoleSeq[t]) state.roleCounters[t] = maxRoleSeq[t];
@@ -14773,18 +14817,40 @@ function advanceGame(dh){
         p.zeroHealthStreakHours = 0;
         var healthMult = p.health <= 20 ? 0 : (p.health - 20) / 80;
         var growMult = (w && (w.type==='farmer'||w.type==='botanist')) ? WORKER_TYPES[w.type].mult : 1;
-        var irrMult = p.accessories.irrigation ? 1.15 : 1;
-        var fertMult = p.accessories.fertilizer ? 1.20 : 1;
-        var growDh = dh * season.growth * growMult * irrMult * healthMult;
+
+        var irrMult = 1.0;
+        if (p.accessories && p.accessories.irrigation){
+          var ik = (typeof p.accessories.irrigation === 'string') ? p.accessories.irrigation : 'sprinkler';
+          var it = (typeof IRRIGATION_TIERS !== 'undefined') ? IRRIGATION_TIERS[ik] : null;
+          irrMult = it ? it.growthMult : 1.15;
+        }
+
+        var fertGrowMult = 1.0;
+        var fertO2Mult = 1.0;
+        var fertYieldMult = 1.0;
+        if (p.accessories && p.accessories.fertilizer){
+          var fk = (typeof p.accessories.fertilizer === 'string') ? p.accessories.fertilizer : 'compost';
+          var ft = (typeof FERTILIZER_TIERS !== 'undefined') ? FERTILIZER_TIERS[fk] : null;
+          if (ft){
+            fertO2Mult = 1.0 + ft.o2Bonus;
+            fertYieldMult = 1.0 + ft.yieldBonus;
+            fertGrowMult = (fk === 'npk') ? 1.35 : ((fk === 'organic') ? 1.15 : ((fk === 'bio') ? 1.25 : 1.10));
+          } else {
+            fertO2Mult = 1.20;
+            fertYieldMult = 1.10;
+          }
+        }
+
+        var growDh = dh * season.growth * growMult * irrMult * fertGrowMult * healthMult;
         p.growHours += growDh;
         var stageIdx = stageIndexFor(def, p.growHours);
         var o2Rate = def.o2AtStage[stageIdx];
-        var o2Gain = o2Rate * dh * fertMult * healthMult;
+        var o2Gain = o2Rate * dh * fertO2Mult * healthMult;
         state.totalO2 += o2Gain; state.totalO2AllTime += o2Gain; p.o2Produced += o2Gain;
         state.money += o2Gain * O2_RATE * totalMult;
         var isFinalStage = stageIdx === def.stages.length-1;
         if (isFinalStage && def.lateBonus){
-          var harvestAmt = def.lateBonus*dh*season.income*totalMult*healthMult;
+          var harvestAmt = def.lateBonus*dh*season.income*totalMult*healthMult*fertYieldMult;
           if (state.storage.built){ p.pendingHarvest = Math.min(150, p.pendingHarvest + harvestAmt); }
           else { p.pendingHarvest = Math.min(25, (p.pendingHarvest || 0) + harvestAmt * 0.2); } // unharvested crops rot without storage
         }
@@ -14829,6 +14895,20 @@ function advanceGame(dh){
     if (buildingUpkeep) state.money -= buildingUpkeep * days;
     // Municipal plot upkeep & estate land tax (€2.00 per plot per day)
     state.money -= PLOT_COUNT * 2 * days;
+
+    // Deduct equipment lease fees
+    if (state.equipment && state.equipment.leased){
+      var leasedTotal = 0;
+      Object.keys(state.equipment.leased).forEach(function(k){
+        if (state.equipment.leased[k] && FARM_EQUIPMENT_CATALOG[k]){
+          leasedTotal += FARM_EQUIPMENT_CATALOG[k].leaseDaily;
+        }
+      });
+      if (leasedTotal > 0){
+        state.money -= leasedTotal * days;
+        pushReport('🚜 Deducted daily equipment leasing fees: €' + (leasedTotal * days).toFixed(2));
+      }
+    }
     if (state.loan){
       for (var di=0; di<days && state.loan; di++){
         if (state.loan.remainingBalance <= 0.01){
@@ -14874,6 +14954,26 @@ function advanceGame(dh){
     });
   }
   state.lastPaidDay = newDay;
+
+  // Dynamic Microgrid Power Telemetry
+  if (typeof computePowerGridState === 'function'){
+    computePowerGridState(dh);
+  }
+
+  // Automated harvesting if electric tractor or utility tractor is available and grid not throttled
+  if (state.equipment && ((state.equipment.owned && (state.equipment.owned.electric_tractor || state.equipment.owned.utility_tractor || state.equipment.owned.tractor)) ||
+                          (state.equipment.leased && (state.equipment.leased.electric_tractor || state.equipment.leased.utility_tractor || state.equipment.leased.tractor)))){
+    var pGrid = (typeof computePowerGridState === 'function') ? computePowerGridState(0) : { isThrottled: false };
+    if (!pGrid.isThrottled && state.plots){
+      state.plots.forEach(function(p){
+        if (p.status === 'growing' && p.pendingHarvest >= 5 && !p.harvesting){
+          p.harvesting = true;
+          p.harvestStartReal = Date.now() - 4000;
+          p.harvestAmount = p.pendingHarvest;
+        }
+      });
+    }
+  }
 }
 
 function stageIndexFor(def, growHours){
@@ -15047,7 +15147,7 @@ function hireWorker(type){
   var roleSeq = state.roleCounters[type];
   var label = (WORKER_TYPES[type] ? WORKER_TYPES[type].label : 'Worker');
   var displayName = label + ' #' + roleSeq;
-  var newWorker = { id: nextWorkerId++, type: type, roleSeq: roleSeq, name: displayName, assignedPlot: null, assignedBuilding: null };
+  var newWorker = { id: nextWorkerId++, type: type, roleSeq: roleSeq, name: displayName, assignedPlot: null, assignedBuilding: null, energy: 100, stamina: 100, morale: 100 };
   state.workers.push(newWorker);
   pushReport('👷 Hired ' + displayName + ' stationed at the Crew Shed.');
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
@@ -15444,12 +15544,13 @@ function prunePlot(plotId){
   p.careAnimUntil = Date.now()+2200; p.careAnimType='prune';
   render(); requestSave();
 }
-function startHarvest(plotId){
+function startHarvest(plotId, destination){
   var p = state.plots[plotId]; var def = p.treeType ? TREE_TYPES[p.treeType] : null;
   if (!def || p.status!=='growing' || !def.lateBonus) return;
   if (p.pendingHarvest < 0.5 || p.harvesting) return;
   var w = workerOnPlot(p.id);
   if (!w || w.type!=='farmer') return;
+  if (destination) p.harvestDestination = destination;
   p.harvesting = true; p.harvestStartReal = Date.now(); p.harvestAmount = p.pendingHarvest;
   if (state.buildings.garage && state.buildings.garage.built){
     triggerHarvestCartSequence(plotId);
@@ -16733,31 +16834,58 @@ function processHarvests(){
     var hDur = hasTractor() ? 3500 : 10000;
     if (p.harvesting && Date.now() - p.harvestStartReal >= hDur){
       var amt = p.harvestAmount||0;
-      var room = Math.max(0, state.storage.capacity - state.storage.stored);
-      var accepted = Math.min(amt, room);
-      var lost = amt - accepted;
-      state.storage.stored += accepted;
-      state.harvestCount = (state.harvestCount||0)+1;
-      if (!state.storage.items) state.storage.items = [];
       var treeDef = TREE_TYPES[p.treeType];
       var isTimber = treeDef && treeDef.category === 'Timber Tree';
-      state.storage.items.push({
-        id: 'crop_' + Date.now() + '_' + Math.floor(Math.random()*10000),
-        cropKey: p.treeType,
-        name: treeDef ? (treeDef.label + (isTimber ? ' Timber Logs' : ' Harvest')) : 'Crop Harvest',
-        category: isTimber ? 'timber' : 'produce',
-        icon: isTimber ? '🪵' : (treeDef ? treeDef.icon : '🍎'),
-        source: 'Plot ' + (p.id+1) + ' (' + (treeDef ? treeDef.label : 'Tree') + ')',
-        value: accepted,
-        qty: Math.max(1, Math.round(accepted / (isTimber ? 12 : 8))),
-        freshness: 100,
-        harvestedHour: state.gameHour || 0,
-        harvestedAt: Date.now()
-      });
-      if (lost > 0.01){
-        pushReport('⚠️ Storage was full — €'+lost.toFixed(2)+' worth of '+TREE_TYPES[p.treeType].label+' from Plot '+(p.id+1)+' spoiled. Sell stock or expand storage.');
+      var dest = p.harvestDestination || 'storage';
+
+      if (dest === 'wholesale'){
+        var wholesaleNet = amt * 0.85;
+        state.money += wholesaleNet;
+        state.harvestCount = (state.harvestCount||0)+1;
+        pushReport('🪙 Wholesale Freight dispatched €' + amt.toFixed(2) + ' of ' + (treeDef ? treeDef.label : 'produce') + ' to regional market for €' + wholesaleNet.toFixed(2) + ' net cash.');
+        showNotification('🪙', 'Wholesale Freight sold for €' + wholesaleNet.toFixed(2) + '!', 'plot', p.id);
+        if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
+      } else if (dest === 'stand'){
+        state.farmStandItems = state.farmStandItems || [];
+        var retailVal = amt * 1.25;
+        state.farmStandItems.push({
+          id: 'stand_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+          cropKey: p.treeType,
+          name: treeDef ? (treeDef.label + ' Fresh Basket') : 'Curbside Farm Produce',
+          icon: isTimber ? '🪵' : (treeDef ? treeDef.icon : '🍎'),
+          value: retailVal,
+          baseValue: amt,
+          qty: Math.max(1, Math.round(amt / 6))
+        });
+        state.harvestCount = (state.harvestCount||0)+1;
+        pushReport('🧺 Stocked Curbside Farm Stand with ' + (treeDef ? treeDef.label : 'produce') + ' (Retail value: €' + retailVal.toFixed(2) + ' at +25% markup).');
+        showNotification('🧺', 'Stocked Curbside Farm Stand!', 'plot', p.id);
+        if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
       } else {
-        pushReport('🧺 Harvested €'+amt.toFixed(2)+' worth of '+TREE_TYPES[p.treeType].label+' from Plot '+(p.id+1)+' and moved it into storage.');
+        var room = Math.max(0, state.storage.capacity - state.storage.stored);
+        var accepted = Math.min(amt, room);
+        var lost = amt - accepted;
+        state.storage.stored += accepted;
+        state.harvestCount = (state.harvestCount||0)+1;
+        if (!state.storage.items) state.storage.items = [];
+        state.storage.items.push({
+          id: 'crop_' + Date.now() + '_' + Math.floor(Math.random()*10000),
+          cropKey: p.treeType,
+          name: treeDef ? (treeDef.label + (isTimber ? ' Timber Logs' : ' Harvest')) : 'Crop Harvest',
+          category: isTimber ? 'timber' : 'produce',
+          icon: isTimber ? '🪵' : (treeDef ? treeDef.icon : '🍎'),
+          source: 'Plot ' + (p.id+1) + ' (' + (treeDef ? treeDef.label : 'Tree') + ')',
+          value: accepted,
+          qty: Math.max(1, Math.round(accepted / (isTimber ? 12 : 8))),
+          freshness: 100,
+          harvestedHour: state.gameHour || 0,
+          harvestedAt: Date.now()
+        });
+        if (lost > 0.01){
+          pushReport('⚠️ Storage was full — €'+lost.toFixed(2)+' worth of '+TREE_TYPES[p.treeType].label+' from Plot '+(p.id+1)+' spoiled. Sell stock or expand storage.');
+        } else {
+          pushReport('🧺 Harvested €'+amt.toFixed(2)+' worth of '+TREE_TYPES[p.treeType].label+' from Plot '+(p.id+1)+' and moved it into storage.');
+        }
       }
       p.pendingHarvest = Math.max(0, p.pendingHarvest-amt);
       p.harvesting=false; p.harvestAmount=0;
@@ -17137,6 +17265,700 @@ function spawnCarryAnimation(fromLayout, toLayout){
   document.body.appendChild(el);
   requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.style.left=tx+'px'; el.style.top=ty+'px'; }); });
   setTimeout(function(){ if (el.parentNode) el.parentNode.removeChild(el); }, 1800);
+}
+
+// ================= CANONICAL 6-TIER LEVEL PROGRESSION =================
+var LEVEL_PROGRESSION = {
+  1: {
+    level: 1,
+    title: 'Pioneer Estate Foundation',
+    icon: '🌱',
+    desc: 'Establish basic infrastructure, secure storage, and manual hand cultivation.',
+    unlocks: ['Plots 1–4', 'Storage Barn', 'Main Macadam Road', 'Crew Shed & Depot', 'Laborer Recruitment', 'Hand Tools & Shovels', 'Tier 1 Sprinkler', 'Tier 1 Compost'],
+    requirements: 'Default Starting Level',
+    checkUnlocked: function(s){ return true; }
+  },
+  2: {
+    level: 2,
+    title: 'Agronomic Mechanization & Crops',
+    icon: '🚜',
+    desc: 'Mechanized field preparation, multi-plot watering, and polyculture crop field beds.',
+    unlocks: ['Tractor Acquisition', 'Tier 2 Organic Kelp Meal', 'Storage Barn Expansion (Level 2)', 'Polyculture Crop Field', 'Farmer Recruitment'],
+    requirements: 'Storage Barn built, Main Road paved, and 1+ Harvest completed',
+    checkUnlocked: function(s){
+      s = s || state;
+      return !!(s.storage && s.storage.built && s.buildings && s.buildings.road && s.buildings.road.built && (s.harvestCount || 0) >= 1);
+    }
+  },
+  3: {
+    level: 3,
+    title: 'Renewable Power & Polyculture Ecology',
+    icon: '💨',
+    desc: 'Generate zero-carbon grid power, promote pollinator sanctuaries, and micro-drip water efficiency.',
+    unlocks: ['Certified Engineer', '4-Corner Wind Turbine Grid', 'Decagonal Flower Garden', 'Tier 2 Micro-Drip Irrigation', 'Bypass Orchard Secateurs'],
+    requirements: 'Level 2 complete, Crop Field constructed, and 2+ Crew members hired',
+    checkUnlocked: function(s){
+      s = s || state;
+      return LEVEL_PROGRESSION[2].checkUnlocked(s) && !!(s.buildings && s.buildings.crop_field && s.buildings.crop_field.built && (s.workers && s.workers.length >= 2));
+    }
+  },
+  4: {
+    level: 4,
+    title: 'Pasture Husbandry & Energy Storage',
+    icon: '🐄',
+    desc: 'Ethical livestock husbandry, dairy milk & wool production, and 500 kWh battery storage.',
+    unlocks: ['Cattle Farm & 4 Chambers', 'Paddock Perimeter Fence', 'BESS Battery Substation', 'Tier 3 Mineral NPK Fertilizer', 'Wholesale Freight Contract', 'Milking Kit & Shears'],
+    requirements: 'Level 3 complete, at least 1 Wind Turbine commissioned',
+    checkUnlocked: function(s){
+      s = s || state;
+      var wts = s.buildings && s.buildings.wind_turbines;
+      var hasCommissioned = wts && Object.keys(wts).some(function(k){ return wts[k].commissioned; });
+      return LEVEL_PROGRESSION[3].checkUnlocked(s) && !!hasCommissioned;
+    }
+  },
+  5: {
+    level: 5,
+    title: 'Agro-Tourism & Artisan Commerce',
+    icon: '☕',
+    desc: 'Welcome tourists and students to artisan farm cafés, retail tastings, and nature tours.',
+    unlocks: ['Artisan Coffee Shop', 'Fresh Botanical Juice Bar', 'Curbside Direct Farm Stand', 'Tier 4 Mycorrhizal Bio-Inoculant', 'Visitor Archetype Preferences', 'Eco Farm-Stay Lodging Base'],
+    requirements: 'Level 4 complete, Cattle Farm operational with livestock, and Storage Barn Level 2+',
+    checkUnlocked: function(s){
+      s = s || state;
+      var cf = s.buildings && s.buildings.cattle_farm;
+      var hasAnimals = cf && cf.built && cf.chambers && cf.chambers.some(function(c){ return c.animals && c.animals.length > 0; });
+      return LEVEL_PROGRESSION[4].checkUnlocked(s) && !!hasAnimals;
+    }
+  },
+  6: {
+    level: 6,
+    title: 'Automated Ecological Smart Farm',
+    icon: '⚡',
+    desc: 'Cutting-edge clean tech: Smart solar pulse irrigation, automated electric tractor harvesters, and dynamic microgrid.',
+    unlocks: ['Tier 3 Smart Solar Pulse Irrigation', 'Automated Electric Tractor Harvester', 'High-Yield Regional Energy Export', 'Autonomous Crop Harvesting'],
+    requirements: 'Level 5 complete, BESS Battery Substation online, Coffee Shop & Juice Bar built',
+    checkUnlocked: function(s){
+      s = s || state;
+      var b = s.buildings || {};
+      return LEVEL_PROGRESSION[5].checkUnlocked(s) && !!(b.energy_storage && b.energy_storage.built && b.coffee_shop && b.coffee_shop.built && b.juice_bar && b.juice_bar.built);
+    }
+  }
+};
+
+function getCurrentFarmLevel(s){
+  s = s || state;
+  for (var lvl = 6; lvl >= 1; lvl--){
+    if (LEVEL_PROGRESSION[lvl] && LEVEL_PROGRESSION[lvl].checkUnlocked(s)) return lvl;
+  }
+  return 1;
+}
+
+// ================= CREW TASK RECOMMENDATIONS & UNIFIED TASK MODEL =================
+var CREW_TASK_RECOMMENDATIONS = {
+  dig: {
+    title: 'Soil Preparation & Tilling',
+    icon: '⛏️',
+    recommended: ['laborer', 'farmer'],
+    bestRole: 'laborer',
+    minCrew: 1,
+    perk: 'Laborer provides +50% digging speed. Engineer with Tractor executes instant tillage.',
+    eligible: function(type){ return type === 'laborer' || type === 'farmer'; }
+  },
+  clear: {
+    title: 'Brush & Overgrowth Clearing',
+    icon: '🌿',
+    recommended: ['laborer'],
+    bestRole: 'laborer',
+    minCrew: 1,
+    perk: 'Laborer clears stubborn wild thorn brush and weeds 50% faster.',
+    eligible: function(type){ return type === 'laborer'; }
+  },
+  removeTree: {
+    title: 'Dead Tree Felling & Salvage',
+    icon: '🪓',
+    recommended: ['laborer'],
+    bestRole: 'laborer',
+    minCrew: 1,
+    perk: 'Laborer operates chainsaw and hauls dry timber to salvage 30%–50% materials.',
+    eligible: function(type){ return type === 'laborer'; }
+  },
+  plant: {
+    title: 'Tree Seeding & Agronomy',
+    icon: '🌱',
+    recommended: ['farmer', 'botanist'],
+    bestRole: 'farmer',
+    minCrew: 1,
+    perk: 'Farmer optimizes root positioning (+20% seedling vigor). Botanist enhances O₂ output.',
+    eligible: function(type){ return type === 'farmer' || type === 'botanist'; }
+  },
+  crop_field_plant: {
+    title: 'Crop Sowing & Polyculture',
+    icon: '🌾',
+    recommended: ['farmer'],
+    bestRole: 'farmer',
+    minCrew: 1,
+    perk: 'Farmer executes companion row planting (+15% grain & vegetable yields).',
+    eligible: function(type){ return type === 'farmer'; }
+  },
+  harvest: {
+    title: 'Crop & Produce Harvesting',
+    icon: '📦',
+    recommended: ['farmer', 'laborer'],
+    bestRole: 'farmer',
+    minCrew: 1,
+    perk: 'Farmer prevents produce bruising (+25% harvest value). Laborer accelerates transport.',
+    eligible: function(type){ return type === 'farmer' || type === 'laborer'; }
+  },
+  cattle_tending: {
+    title: 'Livestock Husbandry & Welfare',
+    icon: '🐄',
+    recommended: ['farmer', 'laborer'],
+    bestRole: 'farmer',
+    minCrew: 1,
+    perk: 'Farmer grants +40% harvest yields & health care. Laborer auto-refills hay & water troughs.',
+    eligible: function(type){ return type === 'farmer' || type === 'laborer'; }
+  },
+  commission_turbine: {
+    title: 'Wind Turbine Technical Commissioning',
+    icon: '👨‍🔧',
+    recommended: ['engineer'],
+    bestRole: 'engineer',
+    minCrew: 1,
+    perk: 'Only certified Engineers can complete inverter calibration & blade pitch inspections.',
+    eligible: function(type){ return type === 'engineer'; }
+  },
+  storage: {
+    title: 'Granary Logistics & Cold Cellar',
+    icon: '🏚️',
+    recommended: ['laborer'],
+    bestRole: 'laborer',
+    minCrew: 1,
+    perk: 'Laborer organizes sorting crates and inventory preservation.',
+    eligible: function(type){ return type === 'laborer'; }
+  }
+};
+
+function createFarmTask(type, targetId, config){
+  config = config || {};
+  var rec = CREW_TASK_RECOMMENDATIONS[type] || {
+    title: type,
+    icon: '📋',
+    recommended: ['laborer', 'farmer'],
+    bestRole: 'laborer',
+    minCrew: 1,
+    perk: 'Standard farm duty.',
+    eligible: function(){ return true; }
+  };
+
+  return {
+    taskId: 'task_' + type + '_' + targetId + '_' + Date.now(),
+    type: type,
+    targetId: targetId,
+    title: rec.title,
+    icon: rec.icon,
+    recommendedRoles: rec.recommended,
+    bestRole: rec.bestRole,
+    minCrew: rec.minCrew,
+    perk: rec.perk,
+    durationHours: config.durationHours || 2.0,
+    cost: config.cost || 0,
+    equipmentNeeded: config.equipmentNeeded || [],
+    powerRequiredKWh: config.powerRequiredKWh || 0,
+    assignedWorkerId: null,
+    status: 'pending',
+    progressHours: 0
+  };
+}
+
+// ================= FARM EQUIPMENT CATALOG: BUY VS LEASE =================
+var FARM_EQUIPMENT_CATALOG = {
+  spade: {
+    key: 'spade',
+    label: 'Heavy Trenching Spade',
+    icon: '⛏️',
+    buyCost: 45,
+    leaseDaily: 6,
+    requiredFor: ['dig', 'clear'],
+    perk: 'Standard hand digging tool. Enables manual plot preparation.',
+    role: 'laborer'
+  },
+  pruner: {
+    key: 'pruner',
+    label: 'Bypass Orchard Secateurs',
+    icon: '✂️',
+    buyCost: 35,
+    leaseDaily: 5,
+    requiredFor: ['prune'],
+    perk: 'Clean cuts boost tree health recovery and avoid fungal rot.',
+    role: 'farmer'
+  },
+  tractor: {
+    key: 'tractor',
+    label: 'Diesel Field Tractor',
+    icon: '🚜',
+    buyCost: 600,
+    leaseDaily: 45,
+    requiredFor: ['tractor_till', 'fast_harvest'],
+    perk: 'Accelerates plot harvesting to 3.5s and instant soil tillage.',
+    role: 'engineer'
+  },
+  electric_tractor: {
+    key: 'electric_tractor',
+    label: 'Automated Electric Tractor',
+    icon: '⚡🚜',
+    buyCost: 1200,
+    leaseDaily: 85,
+    requiredFor: ['auto_harvest'],
+    perk: 'Zero-emission automatic harvesting powered by farm battery grid.',
+    role: 'engineer'
+  },
+  milking_kit: {
+    key: 'milking_kit',
+    label: 'Sanitary Milking Pail & Teat Dip',
+    icon: '🥛',
+    buyCost: 80,
+    leaseDaily: 10,
+    requiredFor: ['cow_milking'],
+    perk: 'Required for dairy cow milk harvesting in Cattle Farm.',
+    role: 'farmer'
+  },
+  shears: {
+    key: 'shears',
+    label: 'Wool Hand Shears',
+    icon: '🧶',
+    buyCost: 50,
+    leaseDaily: 8,
+    requiredFor: ['sheep_shearing'],
+    perk: 'Required for gentle sheep fleece harvest in Cattle Farm.',
+    role: 'farmer'
+  },
+  digital_meter: {
+    key: 'digital_meter',
+    label: 'Digital Grid Multimeter',
+    icon: '📟',
+    buyCost: 150,
+    leaseDaily: 20,
+    requiredFor: ['turbine_commission', 'bess_inspection'],
+    perk: 'Calibrates inverter harmonics and battery safety shutoffs.',
+    role: 'engineer'
+  },
+  water_pump: {
+    key: 'water_pump',
+    label: 'High-Pressure Water Pump',
+    icon: '🚰',
+    buyCost: 350,
+    leaseDaily: 45,
+    requiredFor: ['irrigation', 'sprinkler', 'drip'],
+    perk: 'Pressurized water pump for advanced irrigation networks.',
+    role: 'laborer'
+  },
+  irrigation_pipes: {
+    key: 'irrigation_pipes',
+    label: 'Micro-Drip Polyethylene Pipes',
+    icon: '🪢',
+    buyCost: 250,
+    leaseDaily: 30,
+    requiredFor: ['drip', 'solar'],
+    perk: 'Flexible tubing delivering water directly to root zones.',
+    role: 'laborer'
+  },
+  smart_controller: {
+    key: 'smart_controller',
+    label: 'Smart Solar Pulse Controller',
+    icon: '📟⚡',
+    buyCost: 650,
+    leaseDaily: 85,
+    requiredFor: ['solar'],
+    perk: 'Automated microcontroller monitoring soil moisture metrics.',
+    role: 'engineer'
+  },
+  hand_harvester: {
+    key: 'hand_harvester',
+    label: 'Ergonomic Fruit Harvester',
+    icon: '🧺',
+    buyCost: 150,
+    leaseDaily: 20,
+    requiredFor: ['fast_harvest'],
+    perk: '+25% manual crop harvest speed.',
+    role: 'farmer'
+  },
+  utility_tractor: {
+    key: 'utility_tractor',
+    label: 'Farm Utility Tractor',
+    icon: '🚜',
+    buyCost: 1200,
+    leaseDaily: 160,
+    requiredFor: ['auto_harvest', 'bulk_haul'],
+    perk: 'Bulk haulage and fast mechanized harvesting directly to storage.',
+    role: 'engineer'
+  },
+  electric_pruner: {
+    key: 'electric_pruner',
+    label: 'Electric Rotary Pruner',
+    icon: '✂️⚡',
+    buyCost: 280,
+    leaseDaily: 35,
+    requiredFor: ['prune'],
+    perk: 'Instant tree pruning with maximum stamina conservation.',
+    role: 'farmer'
+  },
+  milking_machine: {
+    key: 'milking_machine',
+    label: 'Automated Vacuum Milking Machine',
+    icon: '🥛⚡',
+    buyCost: 450,
+    leaseDaily: 60,
+    requiredFor: ['cow_milking'],
+    perk: '+50% dairy cow milking yield and automated extraction.',
+    role: 'farmer'
+  },
+  fertilizer_spreader: {
+    key: 'fertilizer_spreader',
+    label: 'Centrifugal Fertilizer Spreader',
+    icon: '🌾🚜',
+    buyCost: 300,
+    leaseDaily: 40,
+    requiredFor: ['fertilizer'],
+    perk: 'Uniform distribution of compost, manure, and mineral fertilizers.',
+    role: 'laborer'
+  }
+};
+
+function hasEquipment(eqKey){
+  if (!state || !state.equipment) return false;
+  return !!(state.equipment.owned && state.equipment.owned[eqKey]) ||
+         !!(state.equipment.leased && state.equipment.leased[eqKey]);
+}
+
+function buyEquipment(eqKey){
+  var def = FARM_EQUIPMENT_CATALOG[eqKey];
+  if (!def) return;
+  if (state.money < def.buyCost){
+    showNotification('⚠️', 'Insufficient funds to purchase ' + def.label + ' (€' + def.buyCost + ' needed).', 'equipment', eqKey);
+    return;
+  }
+  state.money -= def.buyCost;
+  state.equipment = state.equipment || { owned: {}, leased: {} };
+  state.equipment.owned = state.equipment.owned || {};
+  state.equipment.owned[eqKey] = true;
+  if (state.equipment.leased && state.equipment.leased[eqKey]){
+    delete state.equipment.leased[eqKey];
+  }
+  pushReport('🛠️ Purchased ' + def.label + ' outright for €' + def.buyCost + '.');
+  showNotification('🛠️', 'Acquired ' + def.label + '!', 'equipment', eqKey);
+  render();
+  requestSave();
+}
+
+function leaseEquipment(eqKey){
+  var def = FARM_EQUIPMENT_CATALOG[eqKey];
+  if (!def) return;
+  if (state.money < def.leaseDaily){
+    showNotification('⚠️', 'Insufficient funds for daily lease of ' + def.label + ' (€' + def.leaseDaily + ' needed).', 'equipment', eqKey);
+    return;
+  }
+  state.equipment = state.equipment || { owned: {}, leased: {} };
+  state.equipment.leased = state.equipment.leased || {};
+  state.equipment.leased[eqKey] = true;
+  pushReport('📝 Leased ' + def.label + ' at €' + def.leaseDaily + '/day.');
+  showNotification('📝', 'Leased ' + def.label + ' (€' + def.leaseDaily + '/d)', 'equipment', eqKey);
+  render();
+  requestSave();
+}
+
+// ================= MULTI-TIER IRRIGATION & FERTILIZER CHOICES =================
+var IRRIGATION_TIERS = {
+  sprinkler: {
+    key: 'sprinkler',
+    tier: 1,
+    label: 'Surface Sprinkler System',
+    icon: '💧',
+    cost: 110,
+    growthMult: 1.15,
+    reqLevel: 1,
+    desc: '+15% growth speed. Automatic watering for basic seedlings.'
+  },
+  drip: {
+    key: 'drip',
+    tier: 2,
+    label: 'Micro Drip Irrigation',
+    icon: '🚰',
+    cost: 190,
+    growthMult: 1.25,
+    reqLevel: 3,
+    desc: '+25% growth speed & 20% water conservation directly at plant roots.'
+  },
+  solar: {
+    key: 'solar',
+    tier: 3,
+    label: 'Smart Solar Pulse Irrigation',
+    icon: '☀️💧',
+    cost: 320,
+    growthMult: 1.40,
+    reqLevel: 6,
+    powerDrawKW: 0.5,
+    desc: '+40% growth speed. Microcontroller pulse moisture sensor (draws 0.5 kW clean power).'
+  }
+};
+
+var FERTILIZER_TIERS = {
+  compost: {
+    key: 'compost',
+    tier: 1,
+    label: 'Farmyard Compost',
+    icon: '🍂',
+    cost: 45,
+    o2Bonus: 0.15,
+    yieldBonus: 0.05,
+    reqLevel: 1,
+    desc: '+15% O₂ output. Recycled organic mulch enriching microbial topsoil.'
+  },
+  organic: {
+    key: 'organic',
+    tier: 2,
+    label: 'Organic Kelp & Bone Meal',
+    icon: '🌾',
+    cost: 85,
+    o2Bonus: 0.25,
+    yieldBonus: 0.10,
+    reqLevel: 2,
+    desc: '+25% O₂ output & +10% harvest produce value with slow-release phosphorus.'
+  },
+  npk: {
+    key: 'npk',
+    tier: 3,
+    label: 'Mineral NPK Balanced Fertilizer',
+    icon: '🧪',
+    cost: 140,
+    o2Bonus: 0.35,
+    yieldBonus: 0.20,
+    reqLevel: 4,
+    desc: '+35% O₂ output & +20% harvest produce value with precision macro-nutrients.'
+  },
+  bio: {
+    key: 'bio',
+    tier: 4,
+    label: 'Mycorrhizal Bio-Inoculant',
+    icon: '🦠✨',
+    cost: 220,
+    o2Bonus: 0.50,
+    yieldBonus: 0.30,
+    reqLevel: 5,
+    desc: '+50% O₂ output & +30% harvest produce value via fungal symbiote network.'
+  }
+};
+
+// ================= CENTRAL RECIPE CATALOG & INVENTORY VALUE CHAIN =================
+var CENTRAL_RECIPES = {
+  apple_juice: {
+    id: 'apple_juice',
+    facility: 'juice_bar',
+    name: 'Fresh Pressed Apple Juice',
+    icon: '🧃',
+    price: 45.0,
+    ingredients: [{ key: 'apple', label: 'Apple', qty: 1 }],
+    desc: 'Pure, crisp cold-pressed apple juice directly from our orchard harvests.'
+  },
+  cider: {
+    id: 'cider',
+    facility: 'juice_bar',
+    name: 'Fresh Apple Cider Cooler',
+    icon: '🧃',
+    price: 45.0,
+    ingredients: [{ key: 'apple', label: 'Apple', qty: 1 }],
+    desc: 'Cold-pressed cider from crisp estate apples.'
+  },
+  smoothie: {
+    id: 'smoothie',
+    facility: 'juice_bar',
+    name: 'Berry Citrus Antioxidant Smoothie',
+    icon: '🥤',
+    price: 65.0,
+    ingredients: [
+      { key: 'strawberry', label: 'Strawberry', qty: 1 },
+      { key: 'lemon', label: 'Lemon / Citrus', qty: 1 }
+    ],
+    desc: 'Vibrant fruit blend packed with vitamin C.'
+  },
+  honey_fizz: {
+    id: 'honey_fizz',
+    facility: 'juice_bar',
+    name: 'Wildflower Nectar Honey Fizz',
+    icon: '🍹',
+    price: 75.0,
+    ingredients: [
+      { key: 'flower', label: 'Decagonal Floral Honey Bouquet', qty: 1 }
+    ],
+    desc: 'Sparkling botanical infusion with raw apiary honey.'
+  },
+  flat_white: {
+    id: 'flat_white',
+    facility: 'coffee_shop',
+    name: 'Artisan Meadow Flat White',
+    icon: '☕',
+    price: 55.0,
+    ingredients: [{ key: 'milk', label: 'Farm Milk', qty: 1 }],
+    desc: 'Rich espresso with micro-steamed pasture milk from our dairy cows.'
+  },
+  caramel_latte: {
+    id: 'caramel_latte',
+    facility: 'coffee_shop',
+    name: 'Caramel Sugarcane Macchiato',
+    icon: '☕✨',
+    price: 85.0,
+    ingredients: [
+      { key: 'milk', label: 'Farm Milk', qty: 1 },
+      { key: 'sugarcane', label: 'Sugarcane', qty: 1 }
+    ],
+    desc: 'Decadent latte sweetened with raw estate-grown cane caramel.'
+  },
+  lavender_honey_latte: {
+    id: 'lavender_honey_latte',
+    facility: 'coffee_shop',
+    name: 'Honey Lavender Artisan Latte',
+    icon: '🍵',
+    price: 95.0,
+    ingredients: [
+      { key: 'milk', label: 'Farm Milk', qty: 1 },
+      { key: 'flower', label: 'Decagonal Floral Honey Bouquet', qty: 1 }
+    ],
+    desc: 'Floral infused honey latte garnished with lavender blossoms.'
+  }
+};
+
+function hasRecipeIngredientInStorage(ingKey){
+  if (!state.storage || !state.storage.items || !state.storage.items.length) return false;
+  return state.storage.items.some(function(item){
+    var n = (item.name || '').toLowerCase();
+    var ck = (item.cropKey || item.flowerKey || '').toLowerCase();
+    if (ingKey === 'milk') return n.indexOf('milk') !== -1 || ck.indexOf('milk') !== -1;
+    if (ingKey === 'flower') return n.indexOf('bouquet') !== -1 || n.indexOf('honey') !== -1 || item.category === 'flower';
+    if (ingKey === 'apple') return n.indexOf('apple') !== -1 || ck.indexOf('apple') !== -1;
+    if (ingKey === 'strawberry') return n.indexOf('strawberry') !== -1 || ck.indexOf('strawberry') !== -1;
+    if (ingKey === 'lemon') return n.indexOf('lemon') !== -1 || n.indexOf('citrus') !== -1 || ck.indexOf('citrus') !== -1;
+    if (ingKey === 'sugarcane') return n.indexOf('sugar') !== -1 || ck.indexOf('sugar') !== -1;
+    return n.indexOf(ingKey) !== -1 || ck.indexOf(ingKey) !== -1;
+  });
+}
+
+function consumeRecipeIngredientFromStorage(ingKey){
+  if (!state.storage || !state.storage.items) return false;
+  var idx = state.storage.items.findIndex(function(item){
+    var n = (item.name || '').toLowerCase();
+    var ck = (item.cropKey || item.flowerKey || '').toLowerCase();
+    if (ingKey === 'milk') return n.indexOf('milk') !== -1 || ck.indexOf('milk') !== -1;
+    if (ingKey === 'flower') return n.indexOf('bouquet') !== -1 || n.indexOf('honey') !== -1 || item.category === 'flower';
+    if (ingKey === 'apple') return n.indexOf('apple') !== -1 || ck.indexOf('apple') !== -1;
+    if (ingKey === 'strawberry') return n.indexOf('strawberry') !== -1 || ck.indexOf('strawberry') !== -1;
+    if (ingKey === 'lemon') return n.indexOf('lemon') !== -1 || n.indexOf('citrus') !== -1 || ck.indexOf('citrus') !== -1;
+    if (ingKey === 'sugarcane') return n.indexOf('sugar') !== -1 || ck.indexOf('sugar') !== -1;
+    return n.indexOf(ingKey) !== -1 || ck.indexOf(ingKey) !== -1;
+  });
+  if (idx !== -1){
+    var removed = state.storage.items.splice(idx, 1)[0];
+    state.storage.stored = Math.max(0, (state.storage.stored || 0) - (removed.value || 0));
+    return true;
+  }
+  return false;
+}
+
+function canCraftRecipe(recipeId){
+  var r = CENTRAL_RECIPES[recipeId];
+  if (!r) return false;
+  return r.ingredients.every(function(ing){
+    return hasRecipeIngredientInStorage(ing.key);
+  });
+}
+
+function craftRecipe(recipeId){
+  var r = CENTRAL_RECIPES[recipeId];
+  if (!r) return false;
+  if (!canCraftRecipe(recipeId)){
+    showNotification('⚠️', 'Missing ingredients in Cold Cellar for ' + r.name + '!', 'building', r.facility);
+    return false;
+  }
+  var powerState = (typeof computePowerGridState === 'function') ? computePowerGridState(0) : { isThrottled: false };
+  var rev = powerState.isThrottled ? (r.price * 0.5) : r.price;
+
+  r.ingredients.forEach(function(ing){
+    consumeRecipeIngredientFromStorage(ing.key);
+  });
+
+  state.money += rev;
+  pushReport(r.icon + ' Prepared & served ' + r.name + ' for €' + rev.toFixed(2) + (powerState.isThrottled ? ' (Throttled by power deficit)' : '') + '.');
+  showNotification(r.icon, 'Sold ' + r.name + ' for €' + rev.toFixed(2) + '!', 'building', r.facility);
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('brew');
+  render();
+  requestSave();
+  return true;
+}
+
+// ================= DYNAMIC POWER GRID CALCULATION =================
+function computePowerGridState(dh){
+  dh = (dh !== undefined) ? dh : 1.0;
+  var b = state.buildings || {};
+  var wts = b.wind_turbines || {};
+  var activeTurbines = 0;
+  if (wts.wt_nw && wts.wt_nw.built && wts.wt_nw.commissioned) activeTurbines++;
+  if (wts.wt_ne && wts.wt_ne.built && wts.wt_ne.commissioned) activeTurbines++;
+  if (wts.wt_sw && wts.wt_sw.built && wts.wt_sw.commissioned) activeTurbines++;
+  if (wts.wt_se && wts.wt_se.built && wts.wt_se.commissioned) activeTurbines++;
+  if (activeTurbines === 0 && b.wind_turbine && b.wind_turbine.built && b.wind_turbine.commissioned){
+    activeTurbines = 2;
+  }
+
+  var genRateKW = activeTurbines * 3.0;
+  var supplyKWh = genRateKW * dh;
+
+  var demandRateKW = 0;
+  if (b.coffee_shop && b.coffee_shop.built) demandRateKW += 2.5;
+  if (b.juice_bar && b.juice_bar.built) demandRateKW += 1.5;
+  if (state.storage && state.storage.built) demandRateKW += 1.0;
+  if (state.equipment && ((state.equipment.owned && state.equipment.owned.electric_tractor) || (state.equipment.leased && state.equipment.leased.electric_tractor))){
+    demandRateKW += 4.0;
+  }
+  if (state.plots){
+    state.plots.forEach(function(p){
+      if (p.accessories && (p.accessories.irrigation === 'solar' || p.accessories.irrigation === 3)){
+        demandRateKW += 0.5;
+      }
+    });
+  }
+
+  var demandKWh = demandRateKW * dh;
+  var netKWh = supplyKWh - demandKWh;
+  var es = b.energy_storage;
+  var stored = (es && es.built) ? (es.storedKWh || 0) : 0;
+  var maxStored = (es && es.built) ? (es.maxKWh || 500) : 0;
+  var isThrottled = false;
+
+  if (netKWh >= 0){
+    if (es && es.built && dh > 0){
+      es.storedKWh = Math.min(maxStored, stored + netKWh);
+    }
+  } else {
+    var deficit = -netKWh;
+    if (es && es.built && stored >= deficit){
+      if (dh > 0) es.storedKWh = stored - deficit;
+    } else {
+      if (es && es.built && dh > 0){
+        es.storedKWh = 0;
+      }
+      isThrottled = true;
+    }
+  }
+
+  state.powerGrid = {
+    activeTurbines: activeTurbines,
+    genRateKW: genRateKW,
+    demandRateKW: demandRateKW,
+    netRateKW: genRateKW - demandRateKW,
+    storedKWh: (es && es.built) ? Math.round(es.storedKWh || 0) : 0,
+    maxStoredKWh: maxStored,
+    isThrottled: isThrottled
+  };
+
+  return state.powerGrid;
 }
 
 // ================= CANONICAL FARM PROGRESSION STEPS & OPTIONAL EXPANSIONS =================
@@ -18347,7 +19169,7 @@ function animateAlongWaypoints(el, rawWaypoints, totalDurationMs, onComplete){
     var prev = waypoints[currentIdx - 1];
     var curr = waypoints[currentIdx];
     var legDist = legDists[currentIdx - 1] || 1;
-    var stepDuration = Math.max(140, Math.round(totalDurationMs * (legDist / totalDist)));
+    var stepDuration = (typeof window !== 'undefined' && window.__instantVisitorMode) ? 5 : Math.max(140, Math.round(totalDurationMs * (legDist / totalDist)));
 
     var dx = curr.x - prev.x;
     var dy = curr.y - prev.y;
@@ -24908,7 +25730,7 @@ function buildingModalHtml(key){
                 '<div class="worker-avatar-box">' + rIcon + '</div>' +
                 '<div>' +
                   '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
-                    '<b style="font-size:0.90rem;color:var(--pine);">' + wt.label + ' #' + w.id + '</b>' +
+                    '<b style="font-size:0.90rem;color:var(--pine);">' + getWorkerDisplayName(w) + '</b>' +
                     '<span style="font-size:0.72rem;font-weight:700;color:' + locColor + ';background:' + (isAssigned ? '#E3F2FD' : '#E8F5E9') + ';padding:2px 6px;border-radius:6px;">' + locLabel + '</span>' +
                   '</div>' +
                   '<div style="font-size:0.75rem;color:#546E7A;margin-top:2px;">' +
@@ -25079,6 +25901,46 @@ function buildingModalHtml(key){
       }
     } else if (def.category==='decorative'){
       html += '<div class="row"><span>Reputation bonus</span><span class="v">+'+def.reputationBonus+'</span></div>';
+    } else if (key === 'coffee_shop' || key === 'juice_bar'){
+      var pGrid = (typeof computePowerGridState === 'function') ? computePowerGridState(0) : { isThrottled: false };
+      var drawKW = (key === 'coffee_shop') ? 2.5 : 1.5;
+      html += '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Operational</span></div>' +
+        '<div class="row"><span>Microgrid Power Draw</span><span class="v" style="color:' + (pGrid.isThrottled ? '#E65100' : '#2E7D32') + ';">' + drawKW + ' kW ' + (pGrid.isThrottled ? '⚠️ (Brownout Throttled -50% Yield)' : '✓ Full Power') + '</span></div>' +
+        '<div class="section" style="margin-top:10px;">' +
+          '<h4>📋 Artisan Recipe Menu (Inventory Powered)</h4>' +
+          '<div class="sub">Craft culinary delights using real farm produce stocked in your Cold Cellar Barn.</div>' +
+          '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">';
+
+      Object.keys(CENTRAL_RECIPES).forEach(function(rk){
+        var rc = CENTRAL_RECIPES[rk];
+        if (rc.facility !== key) return;
+        var canCraft = (typeof canCraftRecipe === 'function') ? canCraftRecipe(rk) : false;
+        var ingList = rc.ingredients.map(function(ing){
+          var has = (typeof hasRecipeIngredientInStorage === 'function') ? hasRecipeIngredientInStorage(ing.key) : false;
+          return '<span style="font-size:0.72rem;color:' + (has ? '#2E7D32' : '#C62828') + ';font-weight:600;">' + (has ? '✓ ' : '✗ ') + ing.label + '</span>';
+        }).join(' · ');
+
+        html += '<div style="background:#FFF;padding:10px;border-radius:10px;border:1px solid ' + (canCraft ? '#A5D6A7' : '#ECEFF1') + ';display:flex;justify-content:space-between;align-items:center;">' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<div style="font-size:1.6rem;background:#F9FBE7;padding:6px;border-radius:8px;">' + rc.icon + '</div>' +
+            '<div>' +
+              '<div style="display:flex;align-items:center;gap:6px;">' +
+                '<b style="font-size:0.88rem;color:#1B5E20;">' + rc.name + '</b>' +
+                '<span style="font-size:0.80rem;font-weight:800;color:#D97706;">€' + rc.price.toFixed(2) + '</span>' +
+              '</div>' +
+              '<div style="font-size:0.74rem;color:#546E7A;margin-top:2px;">' + rc.desc + '</div>' +
+              '<div style="margin-top:4px;">' + ingList + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div>' +
+            '<button class="primary mini-btn" onclick="craftRecipe(\'' + rk + '\')" ' + (!canCraft ? 'disabled' : '') + ' style="padding:6px 12px;font-size:0.78rem;">' +
+              (canCraft ? 'Craft &amp; Serve' : 'Missing Stock') +
+            '</button>' +
+          '</div>' +
+        '</div>';
+      });
+
+      html += '</div></div>';
     } else {
       html += '<div class="row"><span>Upkeep</span><span class="v">€'+def.upkeep+'/day</span></div>'+
         '<div class="row"><span>Processing rate</span><span class="v">up to €'+def.processRate+'/hr from storage</span></div>'+
@@ -25476,7 +26338,7 @@ function renderWorkerSelectionCard(worker, plotId){
       '<div class="worker-avatar-box">' + icon + '</div>' +
       '<div>' +
         '<div style="display:flex;align-items:center;gap:6px;">' +
-          '<b style="font-size:0.88rem;color:var(--pine);">' + wt.label + ' #' + worker.id + '</b>' +
+          '<b style="font-size:0.88rem;color:var(--pine);">' + getWorkerDisplayName(worker) + '</b>' +
           '<span style="font-size:0.72rem;font-weight:700;color:' + (isAssigned ? '#1565C0' : '#2E7D32') + ';background:' + (isAssigned ? '#E3F2FD' : '#E8F5E9') + ';padding:2px 6px;border-radius:6px;">' + locText + '</span>' +
         '</div>' +
         '<div style="font-size:0.75rem;color:#546E7A;margin-top:2px;">' +
@@ -25502,7 +26364,7 @@ function renderAssignedWorkerCard(worker, plotId){
       '<div class="worker-avatar-box" style="background:#E8F5E9;border-color:#A5D6A7;">' + icon + '</div>' +
       '<div>' +
         '<div style="display:flex;align-items:center;gap:6px;">' +
-          '<b style="font-size:0.88rem;color:#1B5E20;">' + wt.label + ' #' + worker.id + ' (Assigned)</b>' +
+          '<b style="font-size:0.88rem;color:#1B5E20;">' + getWorkerDisplayName(worker) + ' (Assigned)</b>' +
           '<span style="font-size:0.72rem;font-weight:700;color:#2E7D32;background:#C8E6C9;padding:2px 6px;border-radius:6px;">Active on Plot ' + (plotId + 1) + '</span>' +
         '</div>' +
         '<div style="font-size:0.75rem;color:#37474F;margin-top:2px;">' +
@@ -25518,6 +26380,438 @@ function renderAssignedWorkerCard(worker, plotId){
   '</div>';
 }
 
+// ================= MODAL RENDERING HANDLERS: SETTINGS, LEVELS, DEPOT, PREP, IRRIGATION, FERTILIZER =================
+function settingsModalHtml(){
+  var kn = (state.settings && state.settings.knowledgeNotifications !== false);
+  var snd = (state.settings && state.settings.soundEnabled !== false);
+  return '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:520px;">' +
+      '<h2><span>⚙️ Farm Simulation Settings</span><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>' +
+      '<div class="modal-body-scroll">' +
+        '<div class="section" style="margin-top:6px;">' +
+          '<h4>🔔 Notification Preferences</h4>' +
+          '<div class="sub">Filter gameplay events, educational notifications, and audio alerts.</div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:#F1F8E9;border-radius:10px;margin-top:10px;border:1px solid #C5E1A5;">' +
+            '<div>' +
+              '<b style="color:#2E7D32;display:block;font-size:0.92rem;">📖 Botanical &amp; Knowledge Alerts</b>' +
+              '<span style="font-size:0.75rem;color:#558B2F;">Educational discovery bubbles, ecological theory popups &amp; tree facts.</span>' +
+            '</div>' +
+            '<button class="' + (kn ? 'primary' : 'secondary') + '" onclick="toggleKnowledgeNotifications()" style="min-width:75px;font-weight:800;padding:6px 14px;">' +
+              (kn ? '✓ ON' : 'OFF') +
+            '</button>' +
+          '</div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:#F9FAFB;border-radius:10px;margin-top:8px;border:1px solid #E0E0E0;">' +
+            '<div>' +
+              '<b style="color:#37474F;display:block;font-size:0.92rem;">🔊 Audio Effects &amp; Chimes</b>' +
+              '<span style="font-size:0.75rem;color:#78909C;">Synthesizer sound cues, ambient farm breeze, and harvest chimes.</span>' +
+            '</div>' +
+            '<button class="' + (snd ? 'primary' : 'secondary') + '" onclick="toggleSoundEnabled()" style="min-width:75px;font-weight:800;padding:6px 14px;">' +
+              (snd ? '✓ ON' : 'OFF') +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="section" style="margin-top:10px;">' +
+          '<h4>📋 Priority Categories Breakdown</h4>' +
+          '<div style="font-size:0.78rem;color:#455A64;display:flex;flex-direction:column;gap:6px;margin-top:6px;">' +
+            '<div><span style="font-weight:700;color:#E65100;">⚠️ Warnings &amp; Dehydration:</span> Always active for farm protection.</div>' +
+            '<div><span style="font-weight:700;color:#1565C0;">🚜 Operations &amp; Dispatch:</span> Always active for crop &amp; construction tracking.</div>' +
+            '<div><span style="font-weight:700;color:#2E7D32;">🏆 Achievements &amp; Badges:</span> Always active for milestone celebrations.</div>' +
+            '<div><span style="font-weight:700;color:#6A1B9A;">🪙 Wholesale &amp; Commerce:</span> Always active for financial ledger updates.</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<button class="modal-bottom-close" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)">✕ Close Settings</button>' +
+    '</div></div>';
+}
+
+function toggleKnowledgeNotifications(){
+  state.settings = state.settings || {};
+  state.settings.knowledgeNotifications = !(state.settings.knowledgeNotifications !== false);
+  pushReport('⚙️ Botanical Knowledge Notifications turned ' + (state.settings.knowledgeNotifications ? 'ON' : 'OFF') + '.');
+  showNotification('⚙️', 'Knowledge Notifications: ' + (state.settings.knowledgeNotifications ? 'ON' : 'OFF'), 'system');
+  render();
+  requestSave();
+}
+
+function toggleSoundEnabled(){
+  state.settings = state.settings || {};
+  state.settings.soundEnabled = !(state.settings.soundEnabled !== false);
+  pushReport('⚙️ Audio synthesis sound effects turned ' + (state.settings.soundEnabled ? 'ON' : 'OFF') + '.');
+  render();
+  requestSave();
+}
+
+function levelsModalHtml(){
+  var curLevel = getCurrentFarmLevel();
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:580px;">' +
+      '<h2><span>⭐ Farm Progression Tiers (Level ' + curLevel + '/6)</span><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>' +
+      '<div class="modal-body-scroll">' +
+        '<div class="sub" style="margin-bottom:12px;">Advance your estate from a pioneer plot to an automated ecological smart grid micro-economy.</div>';
+
+  for (var lvl = 1; lvl <= 6; lvl++){
+    var pDef = LEVEL_PROGRESSION[lvl];
+    var isUnlocked = (lvl <= curLevel) || (pDef.checkUnlocked && pDef.checkUnlocked(state));
+    var isCurrent = (lvl === curLevel);
+
+    html += '<div style="margin-bottom:10px;padding:12px;border-radius:12px;border:1px solid ' + (isUnlocked ? '#A5D6A7' : '#CFD8DC') + ';background:' + (isUnlocked ? (isCurrent ? '#F1F8E9' : '#FAFAFA') : '#ECEFF1') + ';opacity:' + (isUnlocked ? '1.0' : '0.82') + ';">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:1.4rem;">' + pDef.icon + '</span>' +
+          '<div>' +
+            '<b style="font-size:0.95rem;color:' + (isUnlocked ? '#1B5E20' : '#455A64') + ';">Tier ' + lvl + ': ' + pDef.title + '</b>' +
+            (isCurrent ? '<span style="margin-left:6px;font-size:0.70rem;background:#2E7D32;color:#FFF;padding:2px 6px;border-radius:6px;font-weight:700;">CURRENT</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<span style="font-size:0.75rem;font-weight:800;color:' + (isUnlocked ? '#2E7D32' : '#90A4AE') + ';background:' + (isUnlocked ? '#C8E6C9' : '#CFD8DC') + ';padding:3px 8px;border-radius:8px;">' +
+          (isUnlocked ? '✓ Unlocked' : '🔒 Locked') +
+        '</span>' +
+      '</div>' +
+      '<div style="font-size:0.78rem;color:#546E7A;margin-top:6px;">' + pDef.desc + '</div>' +
+      '<div style="font-size:0.74rem;color:#37474F;margin-top:6px;background:#FFF;padding:6px 10px;border-radius:6px;border:1px dashed #B0BEC5;">' +
+        '<b>Requirements:</b> ' + pDef.requirements +
+      '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;">' +
+        pDef.unlocks.map(function(u){
+          return '<span style="font-size:0.70rem;background:#E8F5E9;color:#2E7D32;border:1px solid #C8E6C9;padding:2px 6px;border-radius:4px;font-weight:600;">' + u + '</span>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  }
+
+  html += '</div>' +
+    '<button class="modal-bottom-close" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)">✕ Close Progression Window</button>' +
+  '</div></div>';
+  return html;
+}
+
+function openProgressionLevelsModal(){
+  openModal('levels');
+}
+
+function openSettingsModal(){
+  openModal('settings');
+}
+
+function equipmentStoreModalHtml(){
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:620px;">' +
+      '<h2><span>🚜 Farm Machinery &amp; Equipment Depot</span><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>' +
+      '<div class="modal-body-scroll">' +
+        '<div class="sub" style="margin-bottom:10px;">Acquire heavy machinery, tools, and technical instruments via outright purchase or flexible daily leasing.</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;">';
+
+  Object.keys(FARM_EQUIPMENT_CATALOG).forEach(function(k){
+    var eq = FARM_EQUIPMENT_CATALOG[k];
+    var isOwned = !!(state.equipment && state.equipment.owned && state.equipment.owned[k]);
+    var isLeased = !!(state.equipment && state.equipment.leased && state.equipment.leased[k]);
+    var statusBadge = isOwned ? '<span style="font-size:0.72rem;background:#C8E6C9;color:#1B5E20;padding:2px 6px;border-radius:6px;font-weight:700;">✓ Owned</span>' :
+                      (isLeased ? '<span style="font-size:0.72rem;background:#FFF9C4;color:#F57F17;padding:2px 6px;border-radius:6px;font-weight:700;">⏱️ Leased</span>' :
+                                  '<span style="font-size:0.72rem;background:#ECEFF1;color:#607D8B;padding:2px 6px;border-radius:6px;font-weight:700;">Available</span>');
+
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;background:#FFF;padding:10px 12px;border-radius:10px;border:1px solid rgba(44,74,50,0.14);">' +
+      '<div style="display:flex;align-items:center;gap:10px;flex:1;">' +
+        '<div style="font-size:1.6rem;background:#F1F8E9;padding:6px;border-radius:8px;">' + eq.icon + '</div>' +
+        '<div>' +
+          '<div style="display:flex;align-items:center;gap:6px;">' +
+            '<b style="font-size:0.88rem;color:#1B5E20;">' + eq.label + '</b>' +
+            statusBadge +
+          '</div>' +
+          '<div style="font-size:0.74rem;color:#546E7A;margin-top:2px;">' + eq.perk + '</div>' +
+          '<div style="font-size:0.72rem;color:#78909C;margin-top:2px;">Role: <b>' + (eq.role ? WORKER_TYPES[eq.role].label : 'Any') + '</b></div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:4px;min-width:140px;text-align:right;">' +
+        (isOwned ? '<span style="font-size:0.75rem;color:#2E7D32;font-weight:700;">Permanent Asset</span>' :
+          ('<button class="primary mini-btn" onclick="buyEquipment(\'' + k + '\')" ' + (state.money < eq.buyCost ? 'disabled' : '') + ' style="font-size:0.76rem;padding:5px 8px;">' +
+            '🛒 Buy €' + eq.buyCost +
+          '</button>' +
+          (!isLeased ?
+            ('<button class="secondary mini-btn" onclick="leaseEquipment(\'' + k + '\')" ' + (state.money < eq.leaseDaily ? 'disabled' : '') + ' style="font-size:0.76rem;padding:5px 8px;">' +
+              '⏱️ Lease €' + eq.leaseDaily + '/d' +
+            '</button>') :
+            '<span style="font-size:0.70rem;color:#F57F17;font-weight:700;">Lease active (€' + eq.leaseDaily + '/d)</span>'
+          )
+        )) +
+      '</div>' +
+    '</div>';
+  });
+
+  html += '</div></div>' +
+    '<button class="modal-bottom-close" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)">✕ Close Equipment Store</button>' +
+  '</div></div>';
+  return html;
+}
+
+function openEquipmentStoreModal(){
+  openModal('equipment_store');
+}
+
+function openTaskPrepDialog(taskConfig){
+  var task = (typeof taskConfig === 'object') ? taskConfig : createFarmTask(taskConfig.type, taskConfig.targetId, taskConfig);
+  activeModal = {
+    type: 'task_prep',
+    task: task
+  };
+  render();
+}
+
+function taskPrepModalHtml(task){
+  if (!task) return '';
+  var hasFunds = (state.money >= (task.cost || 0));
+  var reqCrewOk = true;
+  var reqCrewMsg = [];
+  if (task.recommendedRoles && task.recommendedRoles.length){
+    task.recommendedRoles.forEach(function(roleKey){
+      var count = state.workers.filter(function(w){ return w.type === roleKey; }).length;
+      if (count > 0){
+        reqCrewMsg.push('<span style="color:#2E7D32;">✓ ' + WORKER_TYPES[roleKey].label + ' available (' + count + ' hired)</span>');
+      } else {
+        reqCrewOk = false;
+        reqCrewMsg.push('<span style="color:#C62828;">✗ Missing: ' + WORKER_TYPES[roleKey].label + ' (Recruit at Crew Shed)</span>');
+      }
+    });
+  }
+
+  var reqEquipOk = true;
+  var equipRows = [];
+  if (task.equipmentNeeded && task.equipmentNeeded.length){
+    task.equipmentNeeded.forEach(function(eqKey){
+      var eqDef = FARM_EQUIPMENT_CATALOG[eqKey] || { label: eqKey, icon: '🛠️', buyCost: 100, leaseDaily: 15 };
+      var owned = hasEquipment(eqKey);
+      if (owned){
+        equipRows.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">' +
+          '<span>' + eqDef.icon + ' ' + eqDef.label + '</span>' +
+          '<span style="color:#2E7D32;font-weight:700;">✓ Ready</span>' +
+        '</div>');
+      } else {
+        reqEquipOk = false;
+        equipRows.push('<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px dashed #ECEFF1;">' +
+          '<span>' + eqDef.icon + ' ' + eqDef.label + '</span>' +
+          '<div style="display:flex;gap:4px;">' +
+            '<button class="primary mini-btn" onclick="buyEquipment(\'' + eqKey + '\')" ' + (state.money < eqDef.buyCost ? 'disabled' : '') + ' style="font-size:0.72rem;padding:3px 6px;">Buy €' + eqDef.buyCost + '</button>' +
+            '<button class="secondary mini-btn" onclick="leaseEquipment(\'' + eqKey + '\')" ' + (state.money < eqDef.leaseDaily ? 'disabled' : '') + ' style="font-size:0.72rem;padding:3px 6px;">Lease €' + eqDef.leaseDaily + '/d</button>' +
+          '</div>' +
+        '</div>');
+      }
+    });
+  }
+
+  var pGrid = (typeof computePowerGridState === 'function') ? computePowerGridState(0) : { isThrottled: false, netRateKW: 0 };
+  var powerOk = !(task.powerRequiredKWh > 0 && pGrid.isThrottled);
+
+  var canDispatch = hasFunds && reqCrewOk && reqEquipOk && powerOk;
+
+  return '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:540px;">' +
+      '<h2><span>' + (task.icon || '📋') + ' Task Preparation: ' + (task.title || 'Farm Operation') + '</span><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>' +
+      '<div class="modal-body-scroll">' +
+        '<div class="sub">' + (task.perk || 'Review crew, machinery, and power requirements before dispatching.') + '</div>' +
+        '<div class="section" style="margin-top:8px;">' +
+          '<h4>📋 Operational Requirements Checklist</h4>' +
+          '<div class="row"><span>Estimated Duration</span><span class="v">' + (task.durationHours || 1) + ' game hours</span></div>' +
+          '<div class="row"><span>Operations Capital</span><span class="v" style="color:' + (hasFunds ? '#2E7D32' : '#C62828') + ';font-weight:700;">€' + (task.cost || 0).toFixed(2) + ' ' + (hasFunds ? '✓' : '(Insufficient Funds)') + '</span></div>' +
+          ((task.powerRequiredKWh > 0) ? ('<div class="row"><span>Microgrid Power Draw</span><span class="v" style="color:' + (powerOk ? '#2E7D32' : '#E65100') + ';">' + task.powerRequiredKWh + ' kW ' + (powerOk ? '✓ Available' : '⚠️ Brownout Deficit') + '</span></div>') : '') +
+        '</div>' +
+        '<div class="section" style="margin-top:8px;">' +
+          '<h4>🧑‍🌾 Personnel &amp; Crew</h4>' +
+          '<div style="font-size:0.78rem;display:flex;flex-direction:column;gap:4px;margin-top:4px;">' +
+            (reqCrewMsg.length ? reqCrewMsg.join('') : '<span style="color:#2E7D32;">✓ Standard labor available</span>') +
+          '</div>' +
+        '</div>' +
+        (task.equipmentNeeded && task.equipmentNeeded.length ?
+          ('<div class="section" style="margin-top:8px;">' +
+            '<h4>🛠️ Equipment &amp; Machinery</h4>' +
+            '<div style="font-size:0.78rem;margin-top:4px;">' +
+              equipRows.join('') +
+            '</div>' +
+          '</div>') : '') +
+        '<div style="margin-top:14px;">' +
+          '<button class="primary" onclick="confirmDispatchTask()" ' + (!canDispatch ? 'disabled' : '') + ' style="width:100%;min-height:46px;font-size:0.95rem;font-weight:800;">' +
+            '🚀 Confirm &amp; Dispatch Operation' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+      '<button class="modal-bottom-close" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)">✕ Cancel Task</button>' +
+    '</div></div>';
+}
+
+function confirmDispatchTask(){
+  if (!activeModal || !activeModal.task) return;
+  var task = activeModal.task;
+  if (state.money < (task.cost || 0)){
+    showNotification('⚠️', 'Insufficient funds to execute task.', 'system');
+    return;
+  }
+  state.money -= (task.cost || 0);
+  pushReport('🚀 Dispatched ' + (task.title || 'task') + ' (Operations cost: €' + (task.cost || 0) + ').');
+  showNotification(task.icon || '🚀', 'Dispatched: ' + (task.title || 'task'), 'task');
+
+  if (task.onConfirm && typeof task.onConfirm === 'function'){
+    task.onConfirm();
+  } else if (task.type === 'irrigation' && task.targetId !== undefined){
+    installIrrigationTier(task.targetId, task.tierKey || 'sprinkler');
+  } else if (task.type === 'pave_road' && task.segmentKey){
+    startBuildRoadSegment(task.segmentKey);
+  }
+  closeModal();
+  render();
+  requestSave();
+}
+
+function openIrrigationSelectModal(plotId){
+  activeModal = {
+    type: 'irrigation_select',
+    plotId: plotId
+  };
+  render();
+}
+
+function irrigationSelectModalHtml(plotId){
+  var p = state.plots[plotId];
+  if (!p) return '';
+  var currentTier = p.accessories ? p.accessories.irrigation : null;
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:560px;">' +
+      '<h2><span>💧 Irrigation System Architecture — Plot ' + (plotId + 1) + '</span><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>' +
+      '<div class="modal-body-scroll">' +
+        '<div class="sub" style="margin-bottom:10px;">Select an automated hydration technology to preserve soil moisture and accelerate tree growth.</div>' +
+        '<div style="display:flex;flex-direction:column;gap:10px;">';
+
+  Object.keys(IRRIGATION_TIERS).forEach(function(tk){
+    var tier = IRRIGATION_TIERS[tk];
+    var isCurrent = (currentTier === tk || (tk === 'sprinkler' && currentTier === true));
+    var canAfford = (state.money >= tier.cost);
+
+    html += '<div style="background:#FFF;padding:12px;border-radius:10px;border:1px solid ' + (isCurrent ? '#2E7D32' : 'rgba(44,74,50,0.18)') + ';background:' + (isCurrent ? '#F1F8E9' : '#FFF') + ';">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:1.5rem;">' + tier.icon + '</span>' +
+          '<div>' +
+            '<b style="font-size:0.92rem;color:#1B5E20;">Tier ' + tier.tier + ': ' + tier.label + '</b>' +
+            (isCurrent ? '<span style="margin-left:6px;font-size:0.70rem;background:#2E7D32;color:#FFF;padding:2px 6px;border-radius:6px;font-weight:700;">INSTALLED</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<b style="font-size:0.90rem;color:#D97706;">€' + tier.cost + '</b>' +
+      '</div>' +
+      '<div style="font-size:0.76rem;color:#546E7A;margin-top:4px;">' + tier.desc + '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">' +
+        '<span style="font-size:0.72rem;color:#78909C;">Growth Speed: <b>+' + Math.round((tier.growthMult - 1) * 100) + '%</b>' + (tier.powerDrawKW ? ' · Power: <b>' + tier.powerDrawKW + ' kW</b>' : '') + '</span>' +
+        (isCurrent ?
+          '<span style="font-size:0.76rem;color:#2E7D32;font-weight:700;">✓ Active on Plot</span>' :
+          '<button class="primary mini-btn" onclick="installIrrigationTier(' + plotId + ',\'' + tk + '\')" ' + (!canAfford ? 'disabled' : '') + ' style="padding:5px 12px;font-size:0.78rem;">' +
+            'Install (€' + tier.cost + ')' +
+          '</button>'
+        ) +
+      '</div>' +
+    '</div>';
+  });
+
+  html += '</div></div>' +
+    '<button class="modal-bottom-close" data-closemodal="1" onclick="openModal(\'plot\',' + plotId + ')">↩️ Return to Plot</button>' +
+  '</div></div>';
+  return html;
+}
+
+function installIrrigationTier(plotId, tierKey){
+  var p = state.plots[plotId];
+  var tier = IRRIGATION_TIERS[tierKey];
+  if (!p || !tier) return;
+  if (state.money < tier.cost){
+    showNotification('⚠️', 'Insufficient funds for ' + tier.label, 'plot', plotId);
+    return;
+  }
+  state.money -= tier.cost;
+  p.accessories = p.accessories || {};
+  p.accessories.irrigation = tierKey;
+  pushReport('💧 Installed ' + tier.label + ' on Plot ' + (plotId + 1) + ' (Growth +' + Math.round((tier.growthMult - 1) * 100) + '%).');
+  showNotification('💧', 'Installed ' + tier.label + '!', 'plot', plotId);
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('brew');
+  openModal('plot', plotId);
+  render();
+  requestSave();
+}
+
+function openFertilizerSelectModal(plotId){
+  activeModal = {
+    type: 'fertilizer_select',
+    plotId: plotId
+  };
+  render();
+}
+
+function fertilizerSelectModalHtml(plotId){
+  var p = state.plots[plotId];
+  if (!p) return '';
+  var currentFert = p.accessories ? p.accessories.fertilizer : null;
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:560px;">' +
+      '<h2><span>🌾 Soil Nourishment &amp; Fertilizers — Plot ' + (plotId + 1) + '</span><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>' +
+      '<div class="modal-body-scroll">' +
+        '<div class="sub" style="margin-bottom:10px;">Apply organic nutrients, mineral blends, or mycorrhizal bio-inoculants to boost O₂ rates and crop yield.</div>' +
+        '<div style="display:flex;flex-direction:column;gap:10px;">';
+
+  Object.keys(FERTILIZER_TIERS).forEach(function(fk){
+    var tier = FERTILIZER_TIERS[fk];
+    var isCurrent = (currentFert === fk || (fk === 'compost' && currentFert === true));
+    var canAfford = (state.money >= tier.cost);
+
+    html += '<div style="background:#FFF;padding:12px;border-radius:10px;border:1px solid ' + (isCurrent ? '#2E7D32' : 'rgba(44,74,50,0.18)') + ';background:' + (isCurrent ? '#F1F8E9' : '#FFF') + ';">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:1.5rem;">' + tier.icon + '</span>' +
+          '<div>' +
+            '<b style="font-size:0.92rem;color:#1B5E20;">Tier ' + tier.tier + ': ' + tier.label + '</b>' +
+            (isCurrent ? '<span style="margin-left:6px;font-size:0.70rem;background:#2E7D32;color:#FFF;padding:2px 6px;border-radius:6px;font-weight:700;">APPLIED</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<b style="font-size:0.90rem;color:#D97706;">€' + tier.cost + '</b>' +
+      '</div>' +
+      '<div style="font-size:0.76rem;color:#546E7A;margin-top:4px;">' + tier.desc + '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">' +
+        '<span style="font-size:0.72rem;color:#78909C;">O₂ Boost: <b>+' + Math.round(tier.o2Bonus * 100) + '%</b> · Yield: <b>+' + Math.round(tier.yieldBonus * 100) + '%</b></span>' +
+        (isCurrent ?
+          '<span style="font-size:0.76rem;color:#2E7D32;font-weight:700;">✓ Active on Plot</span>' :
+          '<button class="primary mini-btn" onclick="applyFertilizerTier(' + plotId + ',\'' + fk + '\')" ' + (!canAfford ? 'disabled' : '') + ' style="padding:5px 12px;font-size:0.78rem;">' +
+            'Apply (€' + tier.cost + ')' +
+          '</button>'
+        ) +
+      '</div>' +
+    '</div>';
+  });
+
+  html += '</div></div>' +
+    '<button class="modal-bottom-close" data-closemodal="1" onclick="openModal(\'plot\',' + plotId + ')">↩️ Return to Plot</button>' +
+  '</div></div>';
+  return html;
+}
+
+function applyFertilizerTier(plotId, fertKey){
+  var p = state.plots[plotId];
+  var tier = FERTILIZER_TIERS[fertKey];
+  if (!p || !tier) return;
+  if (state.money < tier.cost){
+    showNotification('⚠️', 'Insufficient funds for ' + tier.label, 'plot', plotId);
+    return;
+  }
+  state.money -= tier.cost;
+  p.accessories = p.accessories || {};
+  p.accessories.fertilizer = fertKey;
+  pushReport('🌾 Applied ' + tier.label + ' to Plot ' + (plotId + 1) + ' (O₂ +' + Math.round(tier.o2Bonus * 100) + '%, Yield +' + Math.round(tier.yieldBonus * 100) + '%).');
+  showNotification('🌾', 'Applied ' + tier.label + '!', 'plot', plotId);
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
+  openModal('plot', plotId);
+  render();
+  requestSave();
+}
+
+function setHarvestDestination(plotId, dest){
+  if (state.plots && state.plots[plotId]){
+    state.plots[plotId].harvestDestination = dest;
+    render();
+  }
+}
+
 function modalHtml(){
   if (activeModal){
     if (activeModal.type==='wind_turbine') return windTurbineModalHtml(activeModal.cornerKey);
@@ -25531,6 +26825,12 @@ function modalHtml(){
     if (activeModal.type==='library_detail') return libraryDetailModalHtml(activeModal.plotId);
     if (activeModal.type==='theory_detail') return theoryDetailModalHtml(activeModal.plotId);
     if (activeModal.type==='region_preview' || activeModal.type==='region-preview') return regionPreviewModalHtml(activeModal.plotId);
+    if (activeModal.type==='settings') return settingsModalHtml();
+    if (activeModal.type==='levels') return levelsModalHtml();
+    if (activeModal.type==='equipment_store' || activeModal.type==='equipment') return equipmentStoreModalHtml();
+    if (activeModal.type==='task_prep') return taskPrepModalHtml(activeModal.task);
+    if (activeModal.type==='irrigation_select') return irrigationSelectModalHtml(activeModal.plotId);
+    if (activeModal.type==='fertilizer_select') return fertilizerSelectModalHtml(activeModal.plotId);
   }
   if (offlineSummary && currentScreen === 'farm'){
     return offlineModalHtml();
@@ -25667,23 +26967,47 @@ function modalHtml(){
       '</div>';
     }
 
-    // 2. IMMEDIATE ACTIONS: HARVEST (TOP PRIORITY - NO SCROLLING NEEDED)
+    // 2. IMMEDIATE ACTIONS: HARVEST & STRATEGIC SALES DESTINATIONS
     if (def.lateBonus){
       var isRipe = p.pendingHarvest >= 0.5;
+      var dest = p.harvestDestination || 'storage';
       html += '<div class="tree-harvest-card ' + (isRipe ? 'ripe' : '') + '">' +
         '<div class="harvest-card-row">' +
           '<span>🧺 <b>Harvest Yield</b></span>' +
           '<span class="harvest-amount" style="color:' + (isRipe ? '#2E7D32' : 'var(--pine-soft)') + ';">€' + p.pendingHarvest.toFixed(2) + '</span>' +
+        '</div>' +
+        '<div style="display:flex;gap:4px;margin:8px 0;">' +
+          '<button type="button" class="mini-btn ' + (dest==='storage'?'primary':'secondary') + '" onclick="setHarvestDestination(' + p.id + ',\'storage\')" style="flex:1;font-size:0.72rem;padding:5px 2px;" title="Store in Cold Cellar Barn for recipes & processing">' +
+            '📦 Barn' +
+          '</button>' +
+          '<button type="button" class="mini-btn ' + (dest==='wholesale'?'primary':'secondary') + '" onclick="setHarvestDestination(' + p.id + ',\'wholesale\')" style="flex:1;font-size:0.72rem;padding:5px 2px;" title="Sell to external wholesale freight market at -15% logistics discount">' +
+            '🪙 Wholesale (-15%)' +
+          '</button>' +
+          '<button type="button" class="mini-btn ' + (dest==='stand'?'primary':'secondary') + '" onclick="setHarvestDestination(' + p.id + ',\'stand\')" style="flex:1;font-size:0.72rem;padding:5px 2px;" title="Stock curbside farm stand for tourists at +25% retail markup">' +
+            '🧺 Stand (+25%)' +
+          '</button>' +
         '</div>' +
         (p.harvesting
           ? '<div class="harvest-picking-bar"><div class="fill" style="width:' + Math.min(100, Math.round((Date.now()-p.harvestStartReal)/4000*100)) + '%;"></div><span class="picking-lbl">🚜 Farmer is picking harvest…</span></div>'
           : (isRipe
             ? ('<button class="primary harvest-action-btn" data-harvest="' + p.id + '" ' + ((!w||w.type!=='farmer')?'disabled':'') + '>🧺 Collect Harvest (€' + p.pendingHarvest.toFixed(2) + ')</button>' +
                ((!w||w.type!=='farmer') ? '<div class="small-warn-note">Requires Farmer (assign below)</div>' : '') +
-               (!state.storage.built ? '<div class="small-warn-note">⚠️ No Storage Room: 50% spoilage. Build Storage in Tasks.</div>' : ''))
+               (dest === 'storage' && !state.storage.built ? '<div class="small-warn-note">⚠️ No Storage Room: 50% spoilage. Build Storage in Tasks.</div>' : ''))
             : '<div class="small-info-note">Crops ripening in progress. Harvest will be collectable once ripe.</div>')) +
       '</div>';
     }
+
+    // Value Chain Visualizer for Crop/Tree
+    html += '<div class="value-chain-card" style="margin-top:10px;background:#F1F8E9;border:1px solid #C5E1A5;border-radius:10px;padding:10px;">' +
+      '<div style="font-weight:800;font-size:0.84rem;color:#1B5E20;margin-bottom:6px;">📈 Ecosystem Value Chain: ' + def.label + '</div>' +
+      '<div style="font-size:0.75rem;color:#33691E;display:flex;flex-direction:column;gap:4px;">' +
+        '<div>📦 <b>Cold Cellar Barn:</b> Preserves 100% of produce for artisan recipes &amp; processing.</div>' +
+        '<div>🪙 <b>Wholesale Freight:</b> Direct bulk sale at €' + (p.pendingHarvest * 0.85).toFixed(2) + ' net cash (-15% logistics).</div>' +
+        '<div>🧺 <b>Curbside Stand:</b> Direct tourist retail at €' + (p.pendingHarvest * 1.25).toFixed(2) + ' (+25% markup).</div>' +
+        (def.category === 'Fruit' ? '<div>🧃 <b>Juice Bar:</b> 1 Fruit ➔ Fresh Pressed Juice / Smoothie (€45–€65 served).</div>' : '') +
+        (def.category === 'Timber Tree' ? '<div>🪵 <b>Wood Workshop:</b> High-grade logs for fencing, construction &amp; export.</div>' : '') +
+      '</div>' +
+    '</div>';
 
     // 3. IMMEDIATE ACTIONS: CARE & WATERING BUTTONS (SIDE-BY-SIDE / 2-COL)
     html += '<div class="tree-care-actions-card">' +
@@ -25700,22 +27024,46 @@ function modalHtml(){
     '</div>';
 
     // 4. ACCESSORIES & IRRIGATION GRID (3-COLUMN RESPONSIVE TILES)
+    var irrInstalled = !!(p.accessories && p.accessories.irrigation);
+    var fertInstalled = !!(p.accessories && p.accessories.fertilizer);
+    var fenceInstalled = !!(p.accessories && p.accessories.boundary);
+    var irrLabel = (irrInstalled && IRRIGATION_TIERS[p.accessories.irrigation]) ? IRRIGATION_TIERS[p.accessories.irrigation].label : 'Irrigation System';
+    var irrBenefit = (irrInstalled && IRRIGATION_TIERS[p.accessories.irrigation]) ? ('Tier ' + IRRIGATION_TIERS[p.accessories.irrigation].tier + ' (+' + Math.round((IRRIGATION_TIERS[p.accessories.irrigation].growthMult - 1)*100) + '% speed)') : '3 Hydration Tiers';
+    var fertLabel = (fertInstalled && FERTILIZER_TIERS[p.accessories.fertilizer]) ? FERTILIZER_TIERS[p.accessories.fertilizer].label : 'Soil Nourishment';
+    var fertBenefit = (fertInstalled && FERTILIZER_TIERS[p.accessories.fertilizer]) ? ('Tier ' + FERTILIZER_TIERS[p.accessories.fertilizer].tier + ' (+' + Math.round(FERTILIZER_TIERS[p.accessories.fertilizer].o2Bonus*100) + '% O₂)') : '4 Fertilizer Inputs';
+
     html += '<div class="section-title">🧰 Tree Upgrades &amp; Irrigation</div>' +
       '<div class="plot-acc-grid">' +
-        Object.keys(ACCESSORIES).map(function(k){
-          var acc = ACCESSORIES[k]; var owned = p.accessories && p.accessories[k];
-          var benefit = k==='irrigation' ? 'Auto-water & -50% cost' : (k==='fertilizer' ? '+25% Oxygen boost' : 'Timber estate fence');
-          return '<div class="plot-acc-tile ' + (owned ? 'installed' : '') + '">' +
-            '<div class="acc-tile-icon">' + acc.emoji + '</div>' +
-            '<div class="acc-tile-name">' + acc.label + '</div>' +
-            '<div class="acc-tile-benefit">' + benefit + '</div>' +
-            '<div class="acc-tile-action">' +
-              (owned
-                ? '<span class="acc-tile-installed">✓ Installed</span>'
-                : '<button class="claim-btn acc-tile-btn" data-buyacc="'+k+'" data-buyplot="'+p.id+'" '+(state.money<acc.cost?'disabled':'')+'>€'+acc.cost+'</button>') +
-            '</div>' +
-          '</div>';
-        }).join('') +
+        '<div class="plot-acc-tile ' + (irrInstalled ? 'installed' : '') + '">' +
+          '<div class="acc-tile-icon">💧</div>' +
+          '<div class="acc-tile-name">' + irrLabel + '</div>' +
+          '<div class="acc-tile-benefit">' + irrBenefit + '</div>' +
+          '<div class="acc-tile-action">' +
+            '<button class="claim-btn acc-tile-btn" onclick="openIrrigationSelectModal(' + p.id + ')">' +
+              (irrInstalled ? '⚙️ Upgrade' : '💧 Choose Tier') +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="plot-acc-tile ' + (fertInstalled ? 'installed' : '') + '">' +
+          '<div class="acc-tile-icon">🌾</div>' +
+          '<div class="acc-tile-name">' + fertLabel + '</div>' +
+          '<div class="acc-tile-benefit">' + fertBenefit + '</div>' +
+          '<div class="acc-tile-action">' +
+            '<button class="claim-btn acc-tile-btn" onclick="openFertilizerSelectModal(' + p.id + ')">' +
+              (fertInstalled ? '⚙️ Change' : '🌾 Choose Tier') +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="plot-acc-tile ' + (fenceInstalled ? 'installed' : '') + '">' +
+          '<div class="acc-tile-icon">🪵</div>' +
+          '<div class="acc-tile-name">Estate Timber Fence</div>' +
+          '<div class="acc-tile-benefit">Shields wild animals</div>' +
+          '<div class="acc-tile-action">' +
+            (fenceInstalled
+              ? '<span class="acc-tile-installed">✓ Installed</span>'
+              : '<button class="claim-btn acc-tile-btn" data-buyacc="boundary" data-buyplot="' + p.id + '" ' + (state.money < 80 ? 'disabled' : '') + '>€80</button>') +
+          '</div>' +
+        '</div>' +
       '</div>';
 
     // 5. WORKER ASSIGNMENT
@@ -25893,7 +27241,7 @@ function panelHtml(){
           '<div class="worker-avatar-box">' + icon + '</div>' +
           '<div>' +
             '<div style="display:flex;align-items:center;gap:6px;">' +
-              '<b style="font-size:0.88rem;color:var(--pine);">' + wt.label + ' #' + w.id + '</b>' +
+              '<b style="font-size:0.88rem;color:var(--pine);">' + getWorkerDisplayName(w) + '</b>' +
               '<span style="font-size:0.72rem;font-weight:700;color:' + (isAssigned ? '#1565C0' : '#2E7D32') + ';background:' + (isAssigned ? '#E3F2FD' : '#E8F5E9') + ';padding:2px 6px;border-radius:6px;">' + loc + '</span>' +
             '</div>' +
             '<div style="font-size:0.74rem;color:#546E7A;margin-top:2px;">' +
@@ -26189,6 +27537,15 @@ function dockHtml(){
     '</button>' +
     '<button type="button" class="dock-btn" data-openbank="1" title="Community Bank & Loans">' +
       '<span class="dock-icon">🏦</span><span class="dock-label">Bank</span>' + bankBadge +
+    '</button>' +
+    '<button type="button" class="dock-btn" onclick="openProgressionLevelsModal()" title="Farm Progression Tiers &amp; Unlocks">' +
+      '<span class="dock-icon">⭐</span><span class="dock-label">Lv.' + (typeof getCurrentFarmLevel === 'function' ? getCurrentFarmLevel() : 1) + '</span>' +
+    '</button>' +
+    '<button type="button" class="dock-btn" onclick="openEquipmentStoreModal()" title="Farm Machinery &amp; Equipment Depot">' +
+      '<span class="dock-icon">🚜</span><span class="dock-label">Depot</span>' +
+    '</button>' +
+    '<button type="button" class="dock-btn" onclick="openModal(\'settings\')" title="Farm Settings &amp; Preferences">' +
+      '<span class="dock-icon">⚙️</span><span class="dock-label">Settings</span>' +
     '</button>' +
     '<button type="button" class="dock-btn dock-btn-reset" onclick="openResetFarmModal()" title="Reset Farm Simulation [Beta]">' +
       '<span class="dock-icon">🔄</span><span class="dock-label">Reset <span class="dock-badge-beta">Beta</span></span>' +
@@ -26814,6 +28171,44 @@ if (typeof sellStorage !== 'undefined') window.sellStorage = sellStorage;
 window.visitorEligibleDestinations = visitorEligibleDestinations;
 window.computeVisitorRating = computeVisitorRating;
 window.render = render;
+window.IRRIGATION_TIERS = IRRIGATION_TIERS;
+window.FERTILIZER_TIERS = FERTILIZER_TIERS;
+window.FARM_EQUIPMENT_CATALOG = FARM_EQUIPMENT_CATALOG;
+window.LEVEL_PROGRESSION = LEVEL_PROGRESSION;
+window.CENTRAL_RECIPES = CENTRAL_RECIPES;
+window.CREW_TASK_RECOMMENDATIONS = CREW_TASK_RECOMMENDATIONS;
+window.FARM_PROGRESSION_STEPS = FARM_PROGRESSION_STEPS;
+window.computePowerGridState = computePowerGridState;
+window.getCurrentFarmLevel = getCurrentFarmLevel;
+window.getWorkerDisplayName = getWorkerDisplayName;
+window.hasEquipment = hasEquipment;
+window.buyEquipment = buyEquipment;
+window.leaseEquipment = leaseEquipment;
+window.hasRecipeIngredientInStorage = hasRecipeIngredientInStorage;
+window.consumeRecipeIngredientFromStorage = consumeRecipeIngredientFromStorage;
+window.canCraftRecipe = canCraftRecipe;
+window.craftRecipe = craftRecipe;
+window.createFarmTask = createFarmTask;
+window.openTaskPrepDialog = openTaskPrepDialog;
+window.confirmDispatchTask = confirmDispatchTask;
+window.openIrrigationSelectModal = openIrrigationSelectModal;
+window.installIrrigationTier = installIrrigationTier;
+window.openFertilizerSelectModal = openFertilizerSelectModal;
+window.applyFertilizerTier = applyFertilizerTier;
+window.setHarvestDestination = setHarvestDestination;
+window.openProgressionLevelsModal = openProgressionLevelsModal;
+window.openEquipmentStoreModal = openEquipmentStoreModal;
+window.openSettingsModal = openSettingsModal;
+window.toggleKnowledgeNotifications = toggleKnowledgeNotifications;
+window.toggleSoundEnabled = toggleSoundEnabled;
+window.settingsModalHtml = settingsModalHtml;
+window.levelsModalHtml = levelsModalHtml;
+window.equipmentStoreModalHtml = equipmentStoreModalHtml;
+window.taskPrepModalHtml = taskPrepModalHtml;
+window.irrigationSelectModalHtml = irrigationSelectModalHtml;
+window.fertilizerSelectModalHtml = fertilizerSelectModalHtml;
+window.showNotification = showNotification;
+window.processHarvests = processHarvests;
 try {
   Object.defineProperty(window, 'devRegionPreview', { get: function(){ return devRegionPreview; }, set: function(v){ devRegionPreview = v; }, configurable: true });
   Object.defineProperty(window, 'activeVisitorCount', { get: function(){ return activeVisitorCount; }, set: function(v){ activeVisitorCount = v; }, configurable: true });
@@ -26996,6 +28391,43 @@ globalThis.initGameTooltips = initGameTooltips;
   globalThis.visitorEligibleDestinations = visitorEligibleDestinations;
   globalThis.computeVisitorRating = computeVisitorRating;
   globalThis.render = render;
+  globalThis.IRRIGATION_TIERS = IRRIGATION_TIERS;
+  globalThis.FERTILIZER_TIERS = FERTILIZER_TIERS;
+  globalThis.FARM_EQUIPMENT_CATALOG = FARM_EQUIPMENT_CATALOG;
+  globalThis.LEVEL_PROGRESSION = LEVEL_PROGRESSION;
+  globalThis.CENTRAL_RECIPES = CENTRAL_RECIPES;
+  globalThis.CREW_TASK_RECOMMENDATIONS = CREW_TASK_RECOMMENDATIONS;
+  globalThis.computePowerGridState = computePowerGridState;
+  globalThis.getCurrentFarmLevel = getCurrentFarmLevel;
+  globalThis.getWorkerDisplayName = getWorkerDisplayName;
+  globalThis.hasEquipment = hasEquipment;
+  globalThis.buyEquipment = buyEquipment;
+  globalThis.leaseEquipment = leaseEquipment;
+  globalThis.hasRecipeIngredientInStorage = hasRecipeIngredientInStorage;
+  globalThis.consumeRecipeIngredientFromStorage = consumeRecipeIngredientFromStorage;
+  globalThis.canCraftRecipe = canCraftRecipe;
+  globalThis.craftRecipe = craftRecipe;
+  globalThis.createFarmTask = createFarmTask;
+  globalThis.openTaskPrepDialog = openTaskPrepDialog;
+  globalThis.confirmDispatchTask = confirmDispatchTask;
+  globalThis.openIrrigationSelectModal = openIrrigationSelectModal;
+  globalThis.installIrrigationTier = installIrrigationTier;
+  globalThis.openFertilizerSelectModal = openFertilizerSelectModal;
+  globalThis.applyFertilizerTier = applyFertilizerTier;
+  globalThis.setHarvestDestination = setHarvestDestination;
+  globalThis.openProgressionLevelsModal = openProgressionLevelsModal;
+  globalThis.openEquipmentStoreModal = openEquipmentStoreModal;
+  globalThis.openSettingsModal = openSettingsModal;
+  globalThis.toggleKnowledgeNotifications = toggleKnowledgeNotifications;
+  globalThis.toggleSoundEnabled = toggleSoundEnabled;
+  globalThis.settingsModalHtml = settingsModalHtml;
+  globalThis.levelsModalHtml = levelsModalHtml;
+  globalThis.equipmentStoreModalHtml = equipmentStoreModalHtml;
+  globalThis.taskPrepModalHtml = taskPrepModalHtml;
+  globalThis.irrigationSelectModalHtml = irrigationSelectModalHtml;
+  globalThis.fertilizerSelectModalHtml = fertilizerSelectModalHtml;
+  globalThis.showNotification = showNotification;
+  globalThis.processHarvests = processHarvests;
   try {
     Object.defineProperty(globalThis, 'devRegionPreview', { get: function(){ return devRegionPreview; }, set: function(v){ devRegionPreview = v; }, configurable: true });
     Object.defineProperty(globalThis, 'activeVisitorCount', { get: function(){ return activeVisitorCount; }, set: function(v){ activeVisitorCount = v; }, configurable: true });
