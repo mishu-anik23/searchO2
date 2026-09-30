@@ -15088,25 +15088,27 @@ function acquireTractor(){
   showNotification('🚜', 'Farm Utility Tractor acquired! Mechanized harvesting unlocked.', 'building', 'garage');
   render(); requestSave();
 }
-function prepareClearRocksTask(){
+function prepareClearRocksTask(workerId){
   if (state.rocksCleared) return;
   if (state.rocksClearing){
     showNotification('⛏️', 'Field Laborer is currently clearing bedrock boulders (' + Math.round(Math.min(100, (state.rocksClearHours/2)*100)) + '%)...', 'building', 'road');
     return;
   }
+  if (typeof closeLockedStepPopup === 'function') closeLockedStepPopup();
   var task = createFarmTask('clear_rocks', 'road_rocks', {
     cost: 50,
     durationHours: 2.0,
     recommendedRoles: ['laborer'],
     equipmentNeeded: ['spade'],
+    assignedWorkerId: workerId || null,
     onConfirm: function(){
-      startClearRocks(true);
+      startClearRocks(true, workerId);
     }
   });
   openTaskPrepDialog(task);
 }
 
-function startClearRocks(dispatchedFromPrep){
+function startClearRocks(dispatchedFromPrep, specificWorkerId){
   if (state.rocksCleared || state.rocksClearing) return;
   var hasLaborer = state.workers && state.workers.some(function(w){ return w.type === 'laborer'; });
   if (!hasLaborer){
@@ -15114,7 +15116,7 @@ function startClearRocks(dispatchedFromPrep){
     return;
   }
   if (!hasEquipment('spade') && !dispatchedFromPrep){
-    prepareClearRocksTask();
+    prepareClearRocksTask(specificWorkerId);
     return;
   }
   var cost = 50;
@@ -15127,14 +15129,35 @@ function startClearRocks(dispatchedFromPrep){
   }
   state.rocksClearing = true;
   state.rocksClearHours = 0;
-  var worker = state.workers.find(function(w){
-    return w.type === 'laborer' && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
-  }) || state.workers.find(function(w){ return w.type === 'laborer'; });
+  var worker = null;
+  if (specificWorkerId !== undefined && specificWorkerId !== null){
+    worker = state.workers.find(function(w){ return w.id === specificWorkerId && w.type === 'laborer'; });
+  }
+  if (!worker){
+    worker = state.workers.find(function(w){
+      return w.type === 'laborer' && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
+    }) || state.workers.find(function(w){ return w.type === 'laborer'; });
+  }
   if (worker){
     state.rocksWorkerId = worker.id;
-    if (typeof activeModal !== 'undefined' && activeModal && activeModal.type !== 'task_prep') closeModal();
-    if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'rocks');
   }
+
+  // Automatically close all instruction popups, dialogs, and panels so 3D isometric simulation is visible
+  if (typeof closeLockedStepPopup === 'function') closeLockedStepPopup();
+  if (typeof closeModal === 'function') closeModal();
+  if (typeof closePanel === 'function') closePanel();
+  activeModal = null;
+  openPanel = null;
+
+  // Invalidate background canvas cache key so the 3D isometric bedrock boulder clearing
+  // visualization, laborer with pickaxe, spark particles, and progress bar render IMMEDIATELY
+  var bgEl = document.getElementById('fieldBg');
+  if (bgEl) bgEl.dataset.bgKey = '';
+
+  if (worker && typeof animateWorkerPathWalk === 'function'){
+    animateWorkerPathWalk(worker, 'rocks');
+  }
+
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
   pushReport('🪨 Dispatched Field Laborer ' + (worker ? (worker.name || ('#' + worker.id)) : '') + ' with Heavy Trenching Spade & Pickaxe to clear boulders from the road corridor (€' + cost + ' · 2h).');
   render(); requestSave();
@@ -15377,11 +15400,23 @@ function unassignWorkerById(workerId){
   } else if (state.storage && state.storage.assignedLaborerId === w.id){
     origin = 'storage';
     state.storage.assignedLaborerId = null;
+  } else if (state.rocksClearing && state.rocksWorkerId === w.id){
+    origin = 'rocks';
+    state.rocksClearing = false;
+    delete state.rocksWorkerId;
+    var bgEl = document.getElementById('fieldBg');
+    if (bgEl) bgEl.dataset.bgKey = '';
+  } else if (state.lawnMowing && state.lawnWorkerId === w.id){
+    origin = 'lawn';
+    state.lawnMowing = false;
+    delete state.lawnWorkerId;
+    var bgEl2 = document.getElementById('fieldBg');
+    if (bgEl2) bgEl2.dataset.bgKey = '';
   }
   var wName = getWorkerDisplayName(w);
   pushReport('↩️ Recalled ' + wName + ' back to Crew Shed.');
   if (typeof activeModal !== 'undefined' && activeModal){
-    if (activeModal.type === 'building' && activeModal.plotId === origin){
+    if (activeModal.type === 'building' && (activeModal.plotId === origin || activeModal.plotId === 'crew_shed')){
       // Keep open and re-render
     } else if (activeModal.type === 'plot' && activeModal.plotId === origin){
       // Keep open and re-render
@@ -15486,8 +15521,8 @@ function assignWorkerToTask(workerId, taskType, targetId){
     prunePlot(targetId);
   } else if (taskType === 'plot'){
     assignWorker(workerId, targetId);
-  } else if (taskType === 'rocks'){
-    startClearRocks();
+  } else if (taskType === 'rocks' || taskType === 'clear_rocks'){
+    startClearRocks(false, workerId);
   } else if (taskType === 'lawn'){
     startMowLawn();
   } else if (taskType === 'storage'){
@@ -16890,11 +16925,10 @@ function closeModal(e){
   // 1. Instant 0ms visual DOM removal (Zero perceived latency)
   var ml = document.getElementById('modalLayer');
   if (ml) ml.innerHTML = '';
-  var mo = document.getElementById('modalOverlay');
-  if (mo) {
-    mo.style.display = 'none';
-    if (mo.parentNode) mo.parentNode.removeChild(mo);
-  }
+  document.querySelectorAll('#modalOverlay, .overlay').forEach(function(el){
+    el.style.display = 'none';
+    if (el.parentNode) el.parentNode.removeChild(el);
+  });
   var offm = document.getElementById('offlineModal');
   if (offm) {
     offm.style.display = 'none';
@@ -17605,24 +17639,29 @@ function createFarmTask(type, targetId, config){
     eligible: function(){ return true; }
   };
 
-  return {
+  var taskObj = {
     taskId: 'task_' + type + '_' + targetId + '_' + Date.now(),
     type: type,
     targetId: targetId,
-    title: rec.title,
-    icon: rec.icon,
-    recommendedRoles: rec.recommended,
+    title: config.title || rec.title,
+    icon: config.icon || rec.icon,
+    recommendedRoles: config.recommendedRoles || rec.recommended,
     bestRole: rec.bestRole,
     minCrew: rec.minCrew,
-    perk: rec.perk,
+    perk: config.perk || rec.perk,
     durationHours: config.durationHours || 2.0,
     cost: config.cost || 0,
     equipmentNeeded: config.equipmentNeeded || [],
     powerRequiredKWh: config.powerRequiredKWh || 0,
-    assignedWorkerId: null,
+    assignedWorkerId: config.assignedWorkerId || null,
     status: 'pending',
-    progressHours: 0
+    progressHours: 0,
+    onConfirm: config.onConfirm || null
   };
+  Object.keys(config).forEach(function(k){
+    if (!(k in taskObj)) taskObj[k] = config[k];
+  });
+  return taskObj;
 }
 
 // ================= FARM EQUIPMENT CATALOG: BUY VS LEASE =================
@@ -18406,10 +18445,9 @@ function closeLockedStepPopup(){
   }
   var el = document.getElementById('stepInstructionPopupWrapper');
   if (el){
-    el.classList.add('fade-out');
-    setTimeout(function(){
-      if (el && el.parentNode) el.parentNode.removeChild(el);
-    }, 220);
+    el.style.pointerEvents = 'none';
+    el.style.display = 'none';
+    if (el.parentNode) el.parentNode.removeChild(el);
   }
 }
 
@@ -25946,8 +25984,16 @@ function buildingModalHtml(key){
       '<div class="sub">Provides living quarters and equipment racks for farm personnel. Required before hiring Laborers, Farmers, or Botanists.</div>';
     if (b.built){
       html += '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Operational</span></div>';
-      var idleWorkers = state.workers.filter(function(w){ return w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id); });
-      var activeWorkers = state.workers.filter(function(w){ return w.assignedPlot !== null || w.assignedBuilding || (state.storage && state.storage.assignedLaborerId === w.id); });
+      var idleWorkers = state.workers.filter(function(w){
+        return w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id) &&
+               (!state.rocksClearing || state.rocksWorkerId !== w.id) &&
+               (!state.lawnMowing || state.lawnWorkerId !== w.id);
+      });
+      var activeWorkers = state.workers.filter(function(w){
+        return w.assignedPlot !== null || w.assignedBuilding || (state.storage && state.storage.assignedLaborerId === w.id) ||
+               (state.rocksClearing && state.rocksWorkerId === w.id) ||
+               (state.lawnMowing && state.lawnWorkerId === w.id);
+      });
       var pendingTasks = getPendingTasksList();
 
       html += '<div class="crew-stats-strip" style="display:flex;gap:6px;margin:8px 0;">' +
@@ -25973,10 +26019,20 @@ function buildingModalHtml(key){
       } else {
         html += '<div style="margin-top:8px;display:flex;flex-direction:column;gap:8px;">';
         state.workers.forEach(function(w){
-          var isAssigned = (w.assignedPlot !== null || w.assignedBuilding || (state.storage && state.storage.assignedLaborerId === w.id));
+          var isClearingRocks = (state.rocksClearing && state.rocksWorkerId === w.id);
+          var isMowingLawn = (state.lawnMowing && state.lawnWorkerId === w.id);
+          var isAssigned = (w.assignedPlot !== null || w.assignedBuilding || (state.storage && state.storage.assignedLaborerId === w.id) || isClearingRocks || isMowingLawn);
           var locLabel = '● Idle in Bunkhouse';
           var locColor = '#2E7D32';
-          if (w.assignedPlot !== null){
+          if (isClearingRocks){
+            var rkPct = Math.round(Math.min(100, ((state.rocksClearHours || 0) / 2.0) * 100));
+            locLabel = 'Road Corridor (Clearing Boulders ' + rkPct + '%)';
+            locColor = '#E65100';
+          } else if (isMowingLawn){
+            var lawnPct = Math.round(Math.min(100, ((state.lawnMowHours || 0) / 1.5) * 100));
+            locLabel = 'Pasture (Mowing Lawn ' + lawnPct + '%)';
+            locColor = '#2E7D32';
+          } else if (w.assignedPlot !== null){
             var p = state.plots[w.assignedPlot];
             var taskDesc = p.status === 'preparing' ? 'Digging Soil' : (p.status === 'clearing' ? 'Clearing Brush' : (p.status === 'removing' ? 'Felling Dead Tree' : (p.harvesting ? 'Harvesting' : 'Tending Crop')));
             locLabel = 'Plot ' + (w.assignedPlot + 1) + ' (' + taskDesc + ')';
@@ -26000,7 +26056,7 @@ function buildingModalHtml(key){
                 '<div>' +
                   '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
                     '<b style="font-size:0.90rem;color:var(--pine);">' + getWorkerDisplayName(w) + '</b>' +
-                    '<span style="font-size:0.72rem;font-weight:700;color:' + locColor + ';background:' + (isAssigned ? '#E3F2FD' : '#E8F5E9') + ';padding:2px 6px;border-radius:6px;">' + locLabel + '</span>' +
+                    '<span style="font-size:0.72rem;font-weight:700;color:' + locColor + ';background:' + (isClearingRocks ? '#FFF3E0' : (isAssigned ? '#E3F2FD' : '#E8F5E9')) + ';padding:2px 6px;border-radius:6px;">' + locLabel + '</span>' +
                   '</div>' +
                   '<div style="font-size:0.75rem;color:#546E7A;margin-top:2px;">' +
                     '<b>€' + wt.wage + '/d</b> · ' + wt.desc +
@@ -26916,14 +26972,20 @@ function confirmDispatchTask(){
   pushReport('🚀 Dispatched ' + (task.title || 'task') + ' (Operations cost: €' + (task.cost || 0) + ').');
   showNotification(task.icon || '🚀', 'Dispatched: ' + (task.title || 'task'), 'task');
 
+  // Automatically close any instruction holding modals, popups, and panels
+  if (typeof closeLockedStepPopup === 'function') closeLockedStepPopup();
+  if (typeof closePanel === 'function') closePanel();
+  closeModal();
+
   if (task.onConfirm && typeof task.onConfirm === 'function'){
     task.onConfirm();
+  } else if (task.type === 'clear_rocks' || task.type === 'rocks'){
+    startClearRocks(true, task.assignedWorkerId);
   } else if (task.type === 'irrigation' && task.targetId !== undefined){
     installIrrigationTier(task.targetId, task.tierKey || 'sprinkler');
   } else if (task.type === 'pave_road' && task.segmentKey){
     startBuildRoadSegment(task.segmentKey);
   }
-  closeModal();
   render();
   requestSave();
 }
@@ -28939,7 +29001,10 @@ function render(){
 
     var bgEl = document.getElementById('fieldBg');
     if (bgEl){
-      var bgKey = devRegionPreview + '_' + (state.rocksCleared ? '1' : '0') + '_' + (state.rocksClearing ? Math.floor((state.rocksClearHours||0)*10) : '0') + '_' + Math.floor((state.lawnOvergrowth||0)/10) + '_' + (state.lawnMowing ? Math.floor((state.lawnMowHours||0)*10) : '0') + '_' + (state.cattleFenceBuilt ? '1' : '0') + '_' + (state.cattleFenceBuilding ? Math.floor((state.cattleFenceHours||0)*10) : '0');
+      var rkPart = state.rocksCleared ? 'cleared' : (state.rocksClearing ? ('clearing_' + Math.floor((state.rocksClearHours||0)*50)) : 'uncleared');
+      var lawnPart = state.lawnMowing ? ('mowing_' + Math.floor((state.lawnMowHours||0)*50)) : ('weeds_' + Math.floor((state.lawnOvergrowth||0)/10));
+      var fencePart = state.cattleFenceBuilt ? 'built' : (state.cattleFenceBuilding ? ('building_' + Math.floor((state.cattleFenceHours||0)*50)) : 'none');
+      var bgKey = devRegionPreview + '_' + rkPart + '_' + lawnPart + '_' + fencePart;
       if (bgEl.dataset.bgKey !== bgKey){
         bgEl.innerHTML = devActiveBackgroundSvg();
         bgEl.dataset.bgKey = bgKey;
