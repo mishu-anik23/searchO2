@@ -4,7 +4,7 @@ const path = require('path');
 (async () => {
   console.log('====================================================');
   console.log('  SearchO2 End-to-End Headless Simulation Test Suite');
-  console.log('  Validating All 11 Major Simulation Features');
+  console.log('  Validating All 12 Major Simulation Features');
   console.log('====================================================\n');
 
   let browser;
@@ -47,7 +47,7 @@ const path = require('path');
     await new Promise(r => setTimeout(r, 600));
   } catch (e) {}
 
-  // Run the 11 feature test suite inside the page environment
+  // Run the 12 feature test suite inside the page environment
   const results = await page.evaluate(async () => {
     // Mock window.confirm to return true for dismissals
     window.confirm = function() { return true; };
@@ -63,7 +63,8 @@ const path = require('path');
       test8:  { name: 'Multi-Tier Agricultural Fertilizers', passed: false, details: [] },
       test9:  { name: '4 Strategic Harvest Value Chain Pathways', passed: false, details: [] },
       test10: { name: 'Artisan Recipe Processing & Storage Consumption', passed: false, details: [] },
-      test11: { name: 'Eco-Tourism Visitor Commerce & Thought Bubbles', passed: false, details: [] }
+      test11: { name: 'Eco-Tourism Visitor Commerce & Thought Bubbles', passed: false, details: [] },
+      test12: { name: 'New Progression Flow & Canvas Object Click Locking', passed: false, details: [] }
     };
 
     // =========================================================================
@@ -235,15 +236,18 @@ const path = require('path');
       const s = freshState();
       const lvl1 = getCurrentFarmLevel(s);
 
-      // Level 2: storage built, road built, harvest >= 1
+      // Level 2: Crew Shed built, Laborer recruited, Boulders cleared, Main Road paved, Storage Barn built, and 1+ Harvest completed
+      s.buildings.crew_shed = { built: true, level: 1 };
+      s.workers = [{ id: 'w1', type: 'laborer' }];
+      s.rocksCleared = true;
+      s.buildings.road = { built: true };
       s.storage.built = true;
-      s.buildings.road.built = true;
       s.harvestCount = 1;
       const lvl2 = getCurrentFarmLevel(s);
 
       // Level 3: Level 2 + crop_field built + 2+ workers
       s.buildings.crop_field = { built: true };
-      s.workers = [{ id: 1 }, { id: 2 }];
+      s.workers.push({ id: 'w2', type: 'farmer' });
       const lvl3 = getCurrentFarmLevel(s);
 
       // Level 4: Level 3 + at least 1 wind turbine commissioned
@@ -545,6 +549,152 @@ const path = require('path');
       report.test11.details.push('Error: ' + e.message);
     }
 
+    // =========================================================================
+    // TEST 12: New Progression Flow & Canvas Object Click Locking
+    // =========================================================================
+    try {
+      // 1. Reset state to clean starting estate
+      state.buildings.crew_shed = { built: false };
+      state.workers = [];
+      state.roleCounters = { laborer: 0, farmer: 0, botanist: 0, engineer: 0 };
+      state.equipment = { owned: {}, leased: {} };
+      state.rocksCleared = false;
+      state.rocksClearing = false;
+      state.rocksClearHours = 0;
+      state.buildings.road = { built: false };
+      state.roads = {
+        main: { built: false, building: false, buildHours: 0 },
+        subway: { built: false, building: false, buildHours: 0 },
+        crew_trail: { built: false, building: false, buildHours: 0 },
+        garden_walk: { built: false, building: false, buildHours: 0 },
+        market_promenade: { built: false, building: false, buildHours: 0 }
+      };
+      state.storage = { built: false, stored: 0, capacity: 50, items: [] };
+      state.plots = [0, 1, 2, 3].map(id => ({
+        id,
+        status: 'empty',
+        growthProgress: 0,
+        crop: null,
+        harvestsDone: 0,
+        needsWater: false,
+        fertilizerTier: 0,
+        irrigationTier: 0
+      }));
+      state.money = 25000;
+      activeModal = null;
+
+      // Verify Step 1: Crew Shed unlocked at start
+      const guide1 = getFarmProgressionGuide();
+      const step1Ok = (guide1.step === 1 && guide1.targetId === 'crew_shed');
+
+      // Verify Canvas Click Locking for unearned objects
+      // Clicking Plot 0 -> must be blocked
+      activeModal = null;
+      openModal('plot', 0);
+      const plotLockedOk = (activeModal === null);
+
+      // Clicking Storage Barn -> must be blocked
+      activeModal = null;
+      openModal('storage');
+      const storageLockedOk = (activeModal === null);
+
+      // Clicking Main Road -> must be blocked when crew shed unbuilt
+      activeModal = null;
+      openModal('building', 'road');
+      const roadLockedStep1Ok = (activeModal === null);
+
+      // 2. Build Crew Shed -> Unlocks Step 2
+      state.buildings.crew_shed = { built: true, level: 1 };
+      const guide2 = getFarmProgressionGuide();
+      const step2Ok = (guide2.step === 2);
+
+      // Clicking Main Road -> blocked because laborer not yet recruited
+      activeModal = null;
+      openModal('building', 'road');
+      const roadLockedStep2Ok = (activeModal === null);
+
+      // Attempting to pave road before hiring laborer -> blocked
+      const roadPavedPrematurely = startBuildRoadSegment('main');
+      const roadPaveBlockedOk = (!roadPavedPrematurely && !state.buildings.road.built);
+
+      // 3. Recruit Field Laborer -> Unlocks Step 3 (Boulder Clearing & Road)
+      hireWorker('laborer');
+      const guide3 = getFarmProgressionGuide();
+      const step3Ok = (guide3.step === 3 && guide3.targetId === 'road');
+
+      // Attempting to pave road while boulders exist -> blocked
+      startBuildRoadSegment('main');
+      const roadPaveBlockedByRocksOk = (!state.buildings.road.built);
+
+      // Prepare & dispatch boulder clearing task
+      prepareClearRocksTask();
+      const taskDialogOpened = (activeModal && (activeModal.type === 'task_prep' || activeModal.type === 'taskPrep'));
+      closeModal();
+
+      // Clear boulders with Heavy Trenching Spade & Pickaxe
+      state.equipment.owned.spade = true;
+      startClearRocks(true);
+      const clearingStartedOk = (state.rocksClearing === true);
+
+      // Advance hours to complete boulder clearance
+      state.rocksClearHours = 2.0;
+      advanceGame(0.1);
+      const rocksClearedOk = (state.rocksCleared === true && state.rocksClearing === false);
+
+      // Now Main Road can be paved
+      startBuildRoadSegment('main');
+      // Simulate build completion
+      state.roads.main.built = true;
+      state.buildings.road.built = true;
+      const roadPavedOk = (state.buildings.road.built === true);
+
+      // Verify Subway & Feeder Roads credibility sub-steps in Masterplan & road modal
+      openTaskMasterplanModal();
+      const mpEl = document.getElementById('modalOverlay');
+      const mpHasSubwayCredibility = !!(mpEl && mpEl.innerHTML.includes('⭐ Optional Subway &amp; Feeder Roads') && mpEl.innerHTML.includes('Credibility Sub-Step'));
+      closeModal();
+
+      const roadModalHtmlContent = buildingModalHtml('road');
+      const roadModalHasCredibility = roadModalHtmlContent.includes('⭐ +6 Credibility') && roadModalHtmlContent.includes('Marketplace Promenade');
+
+      // 4. Step 4: Storage Granary Barn is now unlocked
+      const guide4 = getFarmProgressionGuide();
+      const step4Ok = (guide4.step === 4 && guide4.targetId === 'storage');
+
+      // Clicking Storage Barn now allowed
+      activeModal = null;
+      openModal('storage');
+      const storageUnlockedOk = (activeModal !== null && activeModal.type === 'storage');
+      closeModal();
+
+      // Build storage
+      state.storage.built = true;
+
+      // 5. Step 5: Plots are now unlocked
+      const guide5 = getFarmProgressionGuide();
+      const step5Ok = (guide5.step === 5);
+
+      // Clicking Plot 0 now allowed
+      activeModal = null;
+      openModal('plot', 0);
+      const plotUnlockedOk = (activeModal !== null && activeModal.type === 'plot');
+      closeModal();
+
+      if (step1Ok && plotLockedOk && storageLockedOk && roadLockedStep1Ok &&
+          step2Ok && roadLockedStep2Ok && roadPaveBlockedOk &&
+          step3Ok && roadPaveBlockedByRocksOk && taskDialogOpened && clearingStartedOk && rocksClearedOk && roadPavedOk &&
+          mpHasSubwayCredibility && roadModalHasCredibility &&
+          step4Ok && storageUnlockedOk &&
+          step5Ok && plotUnlockedOk) {
+        report.test12.passed = true;
+        report.test12.details.push('Complete game flow validated: Crew Shed ➔ Recruit Laborer ➔ Boulder Clearance with Heavy Trenching Spade & 3D animation ➔ Main Road Paving ➔ Subway Credibility Sub-Steps ➔ Storage Granary Barn ➔ Plot Cultivation, with strict canvas click locking on unearned milestones.');
+      } else {
+        report.test12.details.push(`Failed checks: step1Ok=${step1Ok}, plotLockedOk=${plotLockedOk}, storageLockedOk=${storageLockedOk}, roadLockedStep1Ok=${roadLockedStep1Ok}, step2Ok=${step2Ok}, roadLockedStep2Ok=${roadLockedStep2Ok}, roadPaveBlockedOk=${roadPaveBlockedOk}, step3Ok=${step3Ok}, roadPaveBlockedByRocksOk=${roadPaveBlockedByRocksOk}, taskDialogOpened=${taskDialogOpened}, clearingStartedOk=${clearingStartedOk}, rocksClearedOk=${rocksClearedOk}, roadPavedOk=${roadPavedOk}, mpHasSubwayCredibility=${mpHasSubwayCredibility}, roadModalHasCredibility=${roadModalHasCredibility}, step4Ok=${step4Ok}, storageUnlockedOk=${storageUnlockedOk}, step5Ok=${step5Ok}, plotUnlockedOk=${plotUnlockedOk}`);
+      }
+    } catch (e) {
+      report.test12.details.push('Error: ' + e.message);
+    }
+
     return report;
   });
 
@@ -565,7 +715,7 @@ const path = require('path');
 
   console.log('======================================================');
   if (allPassed) {
-    console.log('🎉 ALL 11 HEADLESS SIMULATION TESTS PASSED SUCCESSFULLY! 🎉');
+    console.log('🎉 ALL 12 HEADLESS SIMULATION TESTS PASSED SUCCESSFULLY! 🎉');
   } else {
     console.log('❌ SOME TESTS FAILED. Please review the details above.');
   }

@@ -15006,6 +15006,11 @@ function hasAvailableLaborer(){
 
 function startPrep(plotId){
   var p = state.plots[plotId]; if (p.status!=='barren') return;
+  if (!state.storage || !state.storage.built){
+    showLockedStepPopup(5);
+    showNotification('🔒', 'Construct Storage Granary Barn (Step 4) first before cultivating plots!', 'storage', 'storage');
+    return;
+  }
   if (!hasAvailableFieldWorker()){
     showNotification('👷', 'Recruit a Farmer or Laborer from the Crew Shed to dig and till barren land!', 'building', 'crew_shed');
     return;
@@ -15083,30 +15088,55 @@ function acquireTractor(){
   showNotification('🚜', 'Farm Utility Tractor acquired! Mechanized harvesting unlocked.', 'building', 'garage');
   render(); requestSave();
 }
-function startClearRocks(){
+function prepareClearRocksTask(){
+  if (state.rocksCleared) return;
+  if (state.rocksClearing){
+    showNotification('⛏️', 'Field Laborer is currently clearing bedrock boulders (' + Math.round(Math.min(100, (state.rocksClearHours/2)*100)) + '%)...', 'building', 'road');
+    return;
+  }
+  var task = createFarmTask('clear_rocks', 'road_rocks', {
+    cost: 50,
+    durationHours: 2.0,
+    recommendedRoles: ['laborer'],
+    equipmentNeeded: ['spade'],
+    onConfirm: function(){
+      startClearRocks(true);
+    }
+  });
+  openTaskPrepDialog(task);
+}
+
+function startClearRocks(dispatchedFromPrep){
   if (state.rocksCleared || state.rocksClearing) return;
-  if (!hasAvailableFieldWorker()){
-    showNotification('👷', 'Recruit a Laborer or Farmer from the Crew Shed to clear road boulders!', 'building', 'crew_shed');
+  var hasLaborer = state.workers && state.workers.some(function(w){ return w.type === 'laborer'; });
+  if (!hasLaborer){
+    showNotification('👷', 'Recruit a Field Laborer from the Crew Shed first to clear road boulders!', 'building', 'crew_shed');
+    return;
+  }
+  if (!hasEquipment('spade') && !dispatchedFromPrep){
+    prepareClearRocksTask();
     return;
   }
   var cost = 50;
-  if (state.money < cost){
-    showNotification('🪙', 'Insufficient funds (€' + cost + ' needed) to clear boulders.', 'tasks', null);
-    return;
+  if (!dispatchedFromPrep){
+    if (state.money < cost){
+      showNotification('🪙', 'Insufficient funds (€' + cost + ' needed) to clear boulders.', 'tasks', null);
+      return;
+    }
+    state.money -= cost;
   }
-  state.money -= cost;
   state.rocksClearing = true;
   state.rocksClearHours = 0;
   var worker = state.workers.find(function(w){
-    return (w.type === 'laborer' || w.type === 'farmer') && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
-  });
+    return w.type === 'laborer' && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
+  }) || state.workers.find(function(w){ return w.type === 'laborer'; });
   if (worker){
     state.rocksWorkerId = worker.id;
-    if (typeof activeModal !== 'undefined' && activeModal) closeModal();
+    if (typeof activeModal !== 'undefined' && activeModal && activeModal.type !== 'task_prep') closeModal();
     if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'rocks');
   }
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
-  pushReport('🪨 Dispatched ' + (worker ? WORKER_TYPES[worker.type].label : 'Worker') + ' to clear boulder obstacles from the road corridor (€' + cost + ' · 2h).');
+  pushReport('🪨 Dispatched Field Laborer ' + (worker ? (worker.name || ('#' + worker.id)) : '') + ' with Heavy Trenching Spade & Pickaxe to clear boulders from the road corridor (€' + cost + ' · 2h).');
   render(); requestSave();
 }
 function startMowLawn(){
@@ -16071,6 +16101,12 @@ function syncPastureLivestock(){
 }
 function startBuildStorage(){
   if (state.storage.built || state.storage.building) return;
+  if (!state.buildings.road || !state.buildings.road.built){
+    showLockedStepPopup(4);
+    showNotification('⛩️', 'Pave the Main Arterial Road first before constructing the Storage Granary Barn!', 'building', 'road');
+    pushReport('⚠️ Construction halted: Transport wagons cannot reach the estate without the Main Arterial Road.');
+    return;
+  }
   if (state.money < STORAGE_COST) return;
   state.money -= STORAGE_COST; state.storage.building = true; state.storage.buildHours = 0;
   pushReport('🏚️ Commenced construction of Storage Barn & Cold Cellar (€' + STORAGE_COST + ').');
@@ -16121,6 +16157,21 @@ function unassignLaborerFromStorage(){
 
 function startBuildRoadSegment(segmentKey){
   if (segmentKey === 'main'){
+    var hasLaborer = state.workers && state.workers.some(function(w){ return w.type === 'laborer'; });
+    if (!hasLaborer){
+      showLockedStepPopup(2);
+      showNotification('👷', 'Recruit a Field Laborer from the Crew Shed first before paving the Main Road!', 'building', 'crew_shed');
+      pushReport('⚠️ Road construction halted: A recruited Field Laborer is required to clear boulders and assist roadworks.');
+      return;
+    }
+    if (!state.rocksCleared){
+      if (state.rocksClearing){
+        showNotification('⛏️', 'Laborer is currently clearing bedrock boulders from the road corridor (' + Math.round(Math.min(100, (state.rocksClearHours/2)*100)) + '%)...', 'building', 'road');
+      } else {
+        prepareClearRocksTask();
+      }
+      return;
+    }
     startBuildBuilding('road');
     return;
   }
@@ -16409,18 +16460,37 @@ function startBuildBuilding(key){
   if (def.requiresEngineer){
     var hasEng = state.workers && state.workers.some(function(w){ return w.type === 'engineer'; });
     if (!hasEng){
+      showLockedStepPopup(6);
       showNotification('👷', 'Engineer Required: Hire an Engineer at the Crew Shed before installing the Wind Turbine!', 'building', 'crew_shed');
       pushReport('⚠️ Installation halted: A certified Engineer is required to engineer and supervise the Wind Turbine project.');
       return;
     }
   }
-  if (def.requiresRoad && !state.buildings.road.built) return;
+  if (def.requiresRoad && !state.buildings.road.built){
+    showLockedStepPopup(null, key);
+    showNotification('⛩️', 'Pave the Main Arterial Road first before building ' + def.label + '!', 'building', 'road');
+    pushReport('⚠️ Construction halted: Transport wagons cannot reach the estate without the Main Arterial Road.');
+    return;
+  }
+  if (key === 'road'){
+    var hasLaborer = state.workers && state.workers.some(function(w){ return w.type === 'laborer'; });
+    if (!hasLaborer){
+      showLockedStepPopup(2);
+      showNotification('👷', 'Recruit a Field Laborer from the Crew Shed first before paving the Main Road!', 'building', 'crew_shed');
+      pushReport('⚠️ Road construction halted: A recruited Field Laborer is required to clear boulders and assist roadworks.');
+      return;
+    }
+    if (!state.rocksCleared){
+      if (state.rocksClearing){
+        showNotification('⛏️', 'Laborer is currently clearing bedrock boulders from the road corridor (' + Math.round(Math.min(100, (state.rocksClearHours/2)*100)) + '%)...', 'building', 'road');
+      } else {
+        prepareClearRocksTask();
+      }
+      return;
+    }
+  }
   if (state.money < def.cost) return;
   state.money -= def.cost; b.building = true; b.buildHours = 0;
-  if (key === 'road'){
-    state.rocksCleared = true;
-    state.rocksClearing = false;
-  }
   render(); requestSave();
 }
 function getGardenPolycultureInfo(){
@@ -16725,6 +16795,77 @@ function startCollectPond(){
 function openModal(type, plotId){
   if (typeof hideGameTooltip === 'function') hideGameTooltip();
   if (typeof dismissEducationalDiscoveryBubble === 'function') dismissEducationalDiscoveryBubble();
+
+  // Enforce progression locks on game object clicks
+  if (type === 'plot'){
+    if (!state.storage || !state.storage.built){
+      showLockedStepPopup(5);
+      showNotification('🔒', 'Plot Cultivation Locked: Construct Storage Granary Barn (Step 4) first!', 'storage', 'storage');
+      pushReport('🔒 Plots Locked: Field plots require a constructed Storage Barn to store harvests.');
+      return;
+    }
+  }
+
+  if (type === 'storage'){
+    if (!state.storage.built && (!state.buildings.road || !state.buildings.road.built)){
+      showLockedStepPopup(4);
+      showNotification('🔒', 'Storage Granary Barn Locked: Pave the Main Arterial Road (Step 3) first!', 'building', 'road');
+      pushReport('🔒 Storage Locked: Transport wagons cannot reach the estate without the Main Arterial Road.');
+      return;
+    }
+  }
+
+  if (type === 'building'){
+    if (plotId === 'road'){
+      if (!state.buildings.crew_shed || !state.buildings.crew_shed.built){
+        showLockedStepPopup(1);
+        showNotification('🔒', 'Roadworks Locked: Construct Crew Shed & Depot (Step 1) first!', 'building', 'crew_shed');
+        pushReport('🔒 Roadworks Locked: Living quarters and crew depot required before starting roadworks.');
+        return;
+      }
+      var hasLaborer = state.workers && state.workers.some(function(w){ return w.type === 'laborer'; });
+      if (!hasLaborer){
+        showLockedStepPopup(2);
+        showNotification('🔒', 'Roadworks Locked: Recruit a Field Laborer at Crew Shed (Step 2) to clear boulders and pave road!', 'building', 'crew_shed');
+        pushReport('🔒 Roadworks Locked: A recruited Field Laborer is required to clear boulders and pave the road.');
+        return;
+      }
+      if (!state.rocksCleared){
+        if (state.rocksClearing){
+          showNotification('⛏️', 'Field Laborer is currently clearing bedrock boulders from the road corridor (' + Math.round(Math.min(100, (state.rocksClearHours/2)*100)) + '%)...', 'building', 'road');
+        } else {
+          prepareClearRocksTask();
+        }
+        return;
+      }
+    } else if (plotId === 'wind_turbine' || (plotId && plotId.indexOf('wt_') === 0)){
+      var hasEng = state.workers && state.workers.some(function(w){ return w.type === 'engineer'; });
+      if (!hasEng){
+        showLockedStepPopup(6);
+        showNotification('🔒', 'Wind Turbine Grid Locked: Recruit a certified Engineer at Crew Shed (Step 6) first!', 'building', 'crew_shed');
+        pushReport('🔒 Wind Grid Locked: A certified Engineer is required to engineer and supervise the wind turbine installation.');
+        return;
+      }
+    } else if (plotId === 'energy_storage'){
+      ensureWindTurbinesState();
+      var wts = state.buildings && state.buildings.wind_turbines;
+      var wtCommissioned = wts && wts.wt_nw.commissioned && wts.wt_ne.commissioned;
+      if (!wtCommissioned){
+        showLockedStepPopup(8);
+        showNotification('🔒', 'BESS Battery Substation Locked: Commission the Wind Turbine Grid (Step 7) first!', 'building', 'wind_turbine');
+        pushReport('🔒 BESS Substation Locked: Renewable wind generation required before commissioning energy storage.');
+        return;
+      }
+    } else if (plotId && BUILDING_TYPES[plotId] && BUILDING_TYPES[plotId].requiresRoad){
+      if (!state.buildings.road || !state.buildings.road.built){
+        showLockedStepPopup(null, plotId);
+        showNotification('🔒', (BUILDING_TYPES[plotId] ? BUILDING_TYPES[plotId].label : 'Facility') + ' Locked: Pave Main Arterial Road (Step 3) first!', 'building', 'road');
+        pushReport('🔒 Construction Locked: ' + (BUILDING_TYPES[plotId] ? BUILDING_TYPES[plotId].label : 'Facility') + ' requires the Main Arterial Road.');
+        return;
+      }
+    }
+  }
+
   activeModal = {type:type, plotId:plotId};
   openPanel = null;
   render();
@@ -17273,21 +17414,26 @@ var LEVEL_PROGRESSION = {
     level: 1,
     title: 'Pioneer Estate Foundation',
     icon: '🌱',
-    desc: 'Establish basic infrastructure, secure storage, and manual hand cultivation.',
-    unlocks: ['Plots 1–4', 'Storage Barn', 'Main Macadam Road', 'Crew Shed & Depot', 'Laborer Recruitment', 'Hand Tools & Shovels', 'Tier 1 Sprinkler', 'Tier 1 Compost'],
+    desc: 'Construct Crew Shed, recruit Laborer, clear boulders, and pave Main Road.',
+    unlocks: ['Crew Shed & Depot', 'Laborer Recruitment', 'Heavy Trenching Spade & Pickaxe', 'Road Boulder Clearance', 'Main Macadam Road', 'Hand Tools & Shovels'],
     requirements: 'Default Starting Level',
     checkUnlocked: function(s){ return true; }
   },
   2: {
     level: 2,
-    title: 'Agronomic Mechanization & Crops',
-    icon: '🚜',
-    desc: 'Mechanized field preparation, multi-plot watering, and polyculture crop field beds.',
-    unlocks: ['Tractor Acquisition', 'Tier 2 Organic Kelp Meal', 'Storage Barn Expansion (Level 2)', 'Polyculture Crop Field', 'Farmer Recruitment'],
-    requirements: 'Storage Barn built, Main Road paved, and 1+ Harvest completed',
+    title: 'Storage Granary & Crop Cultivation',
+    icon: '🌾',
+    desc: 'Construct Storage Granary Barn, cultivate Plots 1–4, and recruit Farmers.',
+    unlocks: ['Storage Barn', 'Plots 1–4', 'Subway Road Credibility Network', 'Farmer Recruitment', 'Tier 1 Sprinkler', 'Tier 1 Compost'],
+    requirements: 'Crew Shed built, Laborer recruited, Boulders cleared, Main Road paved, Storage Barn built, and 1+ Harvest completed',
     checkUnlocked: function(s){
       s = s || state;
-      return !!(s.storage && s.storage.built && s.buildings && s.buildings.road && s.buildings.road.built && (s.harvestCount || 0) >= 1);
+      return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built &&
+                s.workers && s.workers.some(function(w){ return w.type === 'laborer'; }) &&
+                s.rocksCleared &&
+                s.buildings && s.buildings.road && s.buildings.road.built &&
+                s.storage && s.storage.built &&
+                (s.harvestCount || 0) >= 1);
     }
   },
   3: {
@@ -17355,6 +17501,15 @@ function getCurrentFarmLevel(s){
 
 // ================= CREW TASK RECOMMENDATIONS & UNIFIED TASK MODEL =================
 var CREW_TASK_RECOMMENDATIONS = {
+  clear_rocks: {
+    title: 'Clear Boulder Obstacles from Road Corridor',
+    icon: '🪨',
+    recommended: ['laborer'],
+    bestRole: 'laborer',
+    minCrew: 1,
+    perk: 'Field Laborer uses Heavy Trenching Spade & Pickaxe to clear bedrock boulders obstructing the arterial road corridor.',
+    eligible: function(type){ return type === 'laborer'; }
+  },
   dig: {
     title: 'Soil Preparation & Tilling',
     icon: '⛏️',
@@ -17474,12 +17629,12 @@ function createFarmTask(type, targetId, config){
 var FARM_EQUIPMENT_CATALOG = {
   spade: {
     key: 'spade',
-    label: 'Heavy Trenching Spade',
+    label: 'Heavy Trenching Spade & Pickaxe',
     icon: '⛏️',
     buyCost: 45,
     leaseDaily: 6,
-    requiredFor: ['dig', 'clear'],
-    perk: 'Standard hand digging tool. Enables manual plot preparation.',
+    requiredFor: ['dig', 'clear', 'clear_rocks'],
+    perk: 'Standard hand digging tool. Enables manual plot preparation and clearing road boulder obstacles.',
     role: 'laborer'
   },
   pruner: {
@@ -17965,86 +18120,86 @@ function computePowerGridState(dh){
 var FARM_PROGRESSION_STEPS = [
   {
     step: 1,
-    key: 'storage',
-    icon: '🏚️',
-    title: 'Build Storage Granary Barn',
-    subtitle: 'Prevents harvest spoilage & holds farm crops for market sale',
-    badgeText: 'Step 1: Storage',
-    cost: (typeof STORAGE_COST !== 'undefined' ? STORAGE_COST : 100),
-    costLabel: '€' + (typeof STORAGE_COST !== 'undefined' ? STORAGE_COST : 100),
-    targetType: 'storage',
-    targetId: 'storage',
-    actionType: 'build_storage',
-    prereqStep: 1,
-    prereqTitle: 'Initial Farm Setup',
-    unlockedWhen: function(s){ return true; },
-    isComplete: function(s){ return !!(s.storage && s.storage.built); },
-    instructions: {
-      afterWhich: 'Available immediately at game start to secure your estate harvests.',
-      howTo: '1. Click the Granary Barn plot peg or HUD Storage button.\n2. Construct the Granary Barn (€100) to safeguard harvested crops from rotting.'
-    }
-  },
-  {
-    step: 2,
-    key: 'road',
-    icon: '⛩️',
-    title: 'Pave Main Arterial Road',
-    subtitle: 'Connects Grand Gate to farm & unlocks village commerce',
-    badgeText: 'Step 2: Pave Road',
-    cost: 120,
-    costLabel: '€120',
-    targetType: 'building',
-    targetId: 'road',
-    actionType: 'open_modal',
-    prereqStep: 1,
-    prereqTitle: 'Build Storage Granary Barn',
-    unlockedWhen: function(s){ return !!(s.storage && s.storage.built); },
-    isComplete: function(s){ return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
-    instructions: {
-      afterWhich: 'Unlocks after Step 1 (Build Storage Granary Barn) is constructed.',
-      howTo: '1. Complete construction of your Storage Barn (Step 1).\n2. Click the Main Road corridor entering from the Grand Gate.\n3. Pave the compacted macadam road (€120) to enable supply carts, worker footpaths, and visitor access.'
-    }
-  },
-  {
-    step: 3,
     key: 'crew_shed',
     icon: '🏠',
     title: 'Construct Crew Shed & Depot',
     subtitle: 'Tool depot & living quarters to hire farm workers & engineers',
-    badgeText: 'Step 3: Crew Shed',
+    badgeText: 'Step 1: Crew Shed',
     cost: 140,
     costLabel: '€140',
     targetType: 'building',
     targetId: 'crew_shed',
     actionType: 'open_modal',
-    prereqStep: 2,
-    prereqTitle: 'Pave Main Arterial Road',
-    unlockedWhen: function(s){ return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
+    prereqStep: 1,
+    prereqTitle: 'Initial Farm Setup',
+    unlockedWhen: function(s){ return true; },
     isComplete: function(s){ return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
     instructions: {
-      afterWhich: 'Unlocks after Step 2 (Pave Main Arterial Road) is completed.',
-      howTo: '1. Pave the Main Road (Step 2) so workers can access the estate.\n2. Click the Crew Shed site adjacent to the main road.\n3. Construct the Crew Shed & Depot (€140) to furnish bunkhouse quarters and tool equipment racks.'
+      afterWhich: 'Available immediately at game start to establish your farm bunkhouse quarters and tool equipment racks.',
+      howTo: '1. Click the Crew Shed site in the south-west sector.\n2. Construct the Crew Shed & Depot (€140) to furnish bunkhouse quarters and tool equipment racks.'
     }
   },
   {
-    step: 4,
+    step: 2,
     key: 'crew_shed',
     icon: '👷',
-    title: 'Recruit Field Crew Personnel',
-    subtitle: 'Hire Laborers or Farmers at the Crew Shed to tend plots',
-    badgeText: 'Step 4: Hire Crew',
+    title: 'Recruit Field Laborer',
+    subtitle: 'Hire a Laborer at the Crew Shed to tend grounds & clear road boulders',
+    badgeText: 'Step 2: Hire Laborer',
     cost: 15,
     costLabel: '€15/d wage',
     targetType: 'building',
     targetId: 'crew_shed',
     actionType: 'open_modal',
-    prereqStep: 3,
+    prereqStep: 1,
     prereqTitle: 'Construct Crew Shed & Depot',
     unlockedWhen: function(s){ return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
-    isComplete: function(s){ return !!(s.workers && s.workers.length > 0); },
+    isComplete: function(s){ return !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })); },
     instructions: {
-      afterWhich: 'Unlocks after Step 3 (Construct Crew Shed) is built and operational.',
-      howTo: '1. Build the Crew Shed & Depot (Step 3).\n2. Open the Crew Shed and click "Recruit Laborer" (€15/d) or "Recruit Farmer" (€25/d).\n3. Field crew will report for duty at the bunkhouse, ready for task dispatch.'
+      afterWhich: 'Unlocks after Step 1 (Construct Crew Shed & Depot) is built and operational.',
+      howTo: '1. Build the Crew Shed & Depot (Step 1).\n2. Open the Crew Shed and click "Recruit Laborer" (€15/d wage).\n3. Field Laborer reports to bunkhouse, required to clear boulders from the road.'
+    }
+  },
+  {
+    step: 3,
+    key: 'road',
+    icon: '⛩️',
+    title: 'Clear Boulders & Pave Main Road',
+    subtitle: 'Clear bedrock boulders with spade/pickaxe, then pave the arterial road',
+    badgeText: 'Step 3: Pave Road',
+    cost: 170,
+    costLabel: '€50 clear + €120 pave',
+    targetType: 'building',
+    targetId: 'road',
+    actionType: 'open_modal',
+    prereqStep: 2,
+    prereqTitle: 'Recruit Field Laborer',
+    unlockedWhen: function(s){ return !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })); },
+    isComplete: function(s){ return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
+    instructions: {
+      afterWhich: 'Unlocks after Step 2 (Recruit Field Laborer) is hired.',
+      howTo: '1. Recruit a Field Laborer at the Crew Shed (Step 2).\n2. Acquire a Heavy Trenching Spade & Pickaxe (€45 buy or €6/d lease).\n3. Clear boulder obstacles from the road corridor (€50 · 2h).\n4. Pave the Main Arterial Road (€120) to enable supply wagons and visitor access.\n5. (Optional): Pave feeder subways to boost Farm Credibility (+Reputation) and worker speed.'
+    }
+  },
+  {
+    step: 4,
+    key: 'storage',
+    icon: '🏚️',
+    title: 'Build Storage Granary Barn',
+    subtitle: 'Prevents harvest spoilage & holds farm crops for market sale',
+    badgeText: 'Step 4: Storage',
+    cost: (typeof STORAGE_COST !== 'undefined' ? STORAGE_COST : 100),
+    costLabel: '€' + (typeof STORAGE_COST !== 'undefined' ? STORAGE_COST : 100),
+    targetType: 'storage',
+    targetId: 'storage',
+    actionType: 'build_storage',
+    prereqStep: 3,
+    prereqTitle: 'Clear Boulders & Pave Main Road',
+    unlockedWhen: function(s){ return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
+    isComplete: function(s){ return !!(s.storage && s.storage.built); },
+    instructions: {
+      afterWhich: 'Unlocks after Step 3 (Main Arterial Road paved), allowing supply wagons to reach the barn site.',
+      howTo: '1. Pave the Main Arterial Road (Step 3).\n2. Click the Granary Barn plot peg or HUD Storage button.\n3. Construct the Granary Barn (€100) to safeguard harvested crops from rotting.'
     }
   },
   {
@@ -18060,12 +18215,12 @@ var FARM_PROGRESSION_STEPS = [
     targetId: 0,
     actionType: 'open_plot',
     prereqStep: 4,
-    prereqTitle: 'Recruit Field Crew Personnel',
-    unlockedWhen: function(s){ return !!(s.workers && s.workers.length > 0); },
+    prereqTitle: 'Build Storage Granary Barn',
+    unlockedWhen: function(s){ return !!(s.storage && s.storage.built); },
     isComplete: function(s){ return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; })); },
     instructions: {
-      afterWhich: 'Unlocks after Step 4 (Recruit Field Crew Personnel).',
-      howTo: '1. Recruit a Laborer at the Crew Shed.\n2. Click Plot 1 on the farm to begin digging the soil (€25).\n3. Once tilled, select a botanical seed (Fruit Tree, Oak, Vegetables) to plant and generate revenue & oxygen.'
+      afterWhich: 'Unlocks after Step 4 (Storage Granary Barn constructed).',
+      howTo: '1. Construct the Storage Granary Barn (Step 4).\n2. Click Plot 1 on the farm to begin digging the soil (€25).\n3. Select a botanical seed or tree to plant and generate revenue & oxygen.'
     }
   },
   {
@@ -18519,6 +18674,37 @@ function openTaskMasterplanModal(){
     '</div>';
   }).join('');
 
+  // Subway Feeder Roads Optional Credibility Sub-Steps
+  var mainRoadBuilt = !!(state.buildings && state.buildings.road && state.buildings.road.built);
+  var subwayRoadsHtml = Object.keys(ROAD_SEGMENTS).filter(function(rk){ return rk !== 'main'; }).map(function(rk){
+    var rDef = ROAD_SEGMENTS[rk];
+    var rSeg = state.roads ? state.roads[rk] : null;
+    var isBuilt = rSeg && rSeg.built;
+    var isBuilding = rSeg && rSeg.building;
+
+    var actionBadge = '';
+    if (isBuilt){
+      actionBadge = '<span style="color:#2E7D32;font-weight:800;font-size:0.75rem;background:#E8F5E9;padding:3px 8px;border-radius:8px;">✓ Built (+Rep)</span>';
+    } else if (isBuilding){
+      actionBadge = '<span style="color:#F57F17;font-weight:800;font-size:0.75rem;background:#FFF3E0;padding:3px 8px;border-radius:8px;">🏗️ ' + Math.round(Math.min(100,(rSeg.buildHours/rDef.buildHours)*100)) + '%</span>';
+    } else if (mainRoadBuilt){
+      actionBadge = '<button class="primary mini-btn" onclick="closeModal();startBuildRoadSegment(\'' + rk + '\')" style="padding:4px 10px;font-size:0.75rem;font-weight:800;border-radius:8px;">👉 Pave (€' + rDef.cost + ')</button>';
+    } else {
+      actionBadge = '<button class="secondary mini-btn" onclick="showLockedStepPopup(3)" style="padding:4px 9px;font-size:0.74rem;font-weight:800;border-radius:8px;">🔒 Needs Main Road</button>';
+    }
+
+    return '<div class="optional-expansion-chip" style="border-left:4px solid ' + (isBuilt ? '#2E7D32' : (mainRoadBuilt ? '#1B5E20' : '#B0BEC5')) + ';" ' + (!isBuilt && !mainRoadBuilt ? 'onclick="showLockedStepPopup(3)" style="cursor:pointer;"' : '') + '>' +
+      '<div style="display:flex;align-items:center;gap:8px;min-width:0;">' +
+        '<div style="font-size:1.4rem;">' + rDef.icon + '</div>' +
+        '<div style="min-width:0;">' +
+          '<div style="font-weight:800;font-size:0.84rem;color:#1B3B24;">' + rDef.label + ' <span style="font-size:0.68rem;background:#E8F5E9;color:#2E7D32;padding:1px 5px;border-radius:4px;font-weight:700;">⭐ Credibility Sub-Step</span></div>' +
+          '<div style="font-size:0.72rem;color:#546E7A;">' + rDef.desc + ' · €' + rDef.cost + ' (' + rDef.buildHours + 'h)</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-left:auto;flex-shrink:0;">' + actionBadge + '</div>' +
+    '</div>';
+  }).join('');
+
   // Dedicated Agricultural & Livestock Production Facilities
   var agriHtml = Object.keys(AGRICULTURAL_PRODUCTION_FACILITIES).map(function(k){
     var ag = AGRICULTURAL_PRODUCTION_FACILITIES[k];
@@ -18585,6 +18771,11 @@ function openTaskMasterplanModal(){
         '<div style="font-size:0.78rem;font-weight:800;color:#37474F;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">🏆 Core Progression Milestones (1 → 8):</div>' +
         '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">' +
           stepsHtml +
+        '</div>' +
+        '<div style="font-size:0.78rem;font-weight:800;color:#2E7D32;text-transform:uppercase;letter-spacing:0.5px;margin:12px 0 4px;">⭐ Optional Subway &amp; Feeder Roads (Enhances Farm Credibility &amp; Worker Speed):</div>' +
+        '<div style="font-size:0.72rem;color:#546E7A;margin-bottom:6px;">Building feeder subways, walkways, and promenades enhances Farm Credibility (+Reputation) and worker movement speed.</div>' +
+        '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">' +
+          subwayRoadsHtml +
         '</div>' +
         '<div style="font-size:0.78rem;font-weight:800;color:#E65100;text-transform:uppercase;letter-spacing:0.5px;margin:12px 0 6px;">🌾 Agricultural &amp; Livestock Production:</div>' +
         '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">' +
@@ -21546,7 +21737,8 @@ function plotSpotHtml(p, layout){
   var stageInfo = plotStageInfo(p);
   var def = p.treeType ? TREE_TYPES[p.treeType] : null;
   var isBarren = p.status === 'barren';
-  var labelText = isBarren ? 'Plot '+(p.id+1) :
+  var isPlotUnlocked = !!(state && state.storage && state.storage.built);
+  var labelText = isBarren ? (isPlotUnlocked ? 'Plot '+(p.id+1) : 'Plot '+(p.id+1)+' 🔒') :
     p.status==='overgrown' ? '⚠️ Overgrown' :
     p.status==='preparing' ? 'Preparing…' :
     p.status==='clearing' ? 'Clearing…' :
@@ -21556,7 +21748,7 @@ function plotSpotHtml(p, layout){
     (p.health<=0 ? '💤 Stalled #'+p.treeId : stageInfo.name+' #'+p.treeId);
 
   var icon = def ? def.icon :
-    (isBarren ? (p.id+1) :
+    (isBarren ? (isPlotUnlocked ? (p.id+1) : '🔒') :
     (p.status==='overgrown' ? '🌿' :
     (p.status==='preparing' ? '⛏️' :
     (p.status==='clearing' ? '🌾' :
@@ -21586,12 +21778,15 @@ function storageSpotHtml(){
 
   // STRICT UNBUILT STATE: If unbuilt and not building, render pointer plaque like garden or coffee shop
   if (!isBuilt && !isBuilding){
+    var isRoadBuilt = !!(state && state.buildings && state.buildings.road && state.buildings.road.built);
+    var storageIcon = isRoadBuilt ? '🏚️' : '🔒';
+    var storageLabel = isRoadBuilt ? 'Storage Barn' : 'Storage 🔒 (Road Needed)';
     return '<div class="plot-spot village-building-card tag-pos-north" style="top:'+STORAGE_SPOT.top+'%;left:'+STORAGE_SPOT.left+'%;width:'+STORAGE_SPOT.w+'%;height:'+STORAGE_SPOT.h+'%;" data-storage="1">'+
-      '<div class="plot-label" data-tag-kind="storage" title="Storage Barn">'+
-        '<span class="plot-label-icon">🏚️</span>'+
-        '<span class="plot-label-text">Storage Barn</span>'+
+      '<div class="plot-label" data-tag-kind="storage" title="' + (isRoadBuilt ? 'Storage Barn' : 'Storage Barn (Requires Main Road)') + '">'+
+        '<span class="plot-label-icon">' + storageIcon + '</span>'+
+        '<span class="plot-label-text">' + storageLabel + '</span>'+
       '</div>'+
-      drawUnbuiltSpotMarker('storage', { icon:'🏚️', cost:STORAGE_COST, label:'Storage' }, false) +
+      drawUnbuiltSpotMarker('storage', { icon: storageIcon, cost: STORAGE_COST, label: (isRoadBuilt ? 'Storage' : 'Storage 🔒') }, false) +
     '</div>';
   }
 
@@ -24815,15 +25010,51 @@ function roadPromenadeHtml(){
   var isBuilt = r && r.built;
   var isBuilding = r && r.building;
   var pct = isBuilding ? Math.round(Math.min(100, (r.buildHours / 4) * 100)) : 0;
-  var tip = isBuilt ? '⛩️ Main Arterial Road (Paved)' : (isBuilding ? ('⛩️ Paving Main Road (' + pct + '%)') : '⛩️ Main Arterial Road (Click to Pave — €250)');
+
+  var hasCrewShed = !!(state && state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built);
+  var hasLaborer = !!(state && state.workers && state.workers.some(function(w){ return w.type === 'laborer'; }));
+  var rocksCleared = !!(state && state.rocksCleared);
+  var rocksClearing = !!(state && state.rocksClearing);
+  var rkPct = rocksClearing ? Math.round(Math.min(100, (state.rocksClearHours/2)*100)) : 0;
+
+  var tip = isBuilt ? '⛩️ Main Arterial Road (Paved)' :
+    (isBuilding ? ('⛩️ Paving Main Road (' + pct + '%)') :
+    (!hasCrewShed ? '🔒 Main Road (Requires Crew Shed Step 1)' :
+    (!hasLaborer ? '🔒 Main Road (Requires Field Laborer Step 2)' :
+    (!rocksCleared ? (rocksClearing ? ('⛏️ Clearing Boulders (' + rkPct + '%)') : '🪨 Road Corridor Blocked by Boulders (Click to Clear)') :
+    '⛩️ Main Arterial Road (Click to Pave — €120)'))));
 
   var innerBadge = '';
   if (!isBuilt && !isBuilding){
     var isRoadRec = (typeof getFarmProgressionGuide === 'function') && getFarmProgressionGuide() && getFarmProgressionGuide().key === 'road';
-    innerBadge = '<div class="main-road-canvas-badge unbuilt ' + (isRoadRec ? 'guide-active-spot' : '') + '" onclick="openModal(\'building\',\'road\')">' +
-      (isRoadRec ? '<span class="road-badge-guide-tag">🎯 Step 2: Next Task</span>' : '') +
-      '<span class="badge-icon">⛩️</span>' +
-      '<span class="badge-text">Pave Main Road — €' + (BUILDING_TYPES.road ? BUILDING_TYPES.road.cost : 250) + '</span>' +
+    var badgeIcon = '⛩️';
+    var badgeText = 'Pave Main Road — €120';
+    var badgeClass = 'unbuilt ' + (isRoadRec ? 'guide-active-spot' : '');
+
+    if (!hasCrewShed){
+      badgeIcon = '🔒';
+      badgeText = 'Step 1: Crew Shed Needed';
+      badgeClass = 'unbuilt';
+    } else if (!hasLaborer){
+      badgeIcon = '🔒';
+      badgeText = 'Step 2: Recruit Laborer Needed';
+      badgeClass = 'unbuilt';
+    } else if (!rocksCleared){
+      if (rocksClearing){
+        badgeIcon = '⛏️';
+        badgeText = 'Clearing Boulders (' + rkPct + '%)';
+        badgeClass = 'building';
+      } else {
+        badgeIcon = '🪨';
+        badgeText = 'Clear Boulders (€50 · 2h)';
+        badgeClass = 'unbuilt guide-active-spot';
+      }
+    }
+
+    innerBadge = '<div class="main-road-canvas-badge ' + badgeClass + '" onclick="openModal(\'building\',\'road\')">' +
+      (isRoadRec ? '<span class="road-badge-guide-tag">🎯 Step 3: Roadworks</span>' : '') +
+      '<span class="badge-icon">' + badgeIcon + '</span>' +
+      '<span class="badge-text">' + badgeText + '</span>' +
     '</div>';
   } else if (isBuilding){
     innerBadge = '<div class="main-road-canvas-badge building" onclick="openModal(\'building\',\'road\')">' +
@@ -25593,27 +25824,65 @@ function buildingModalHtml(key){
           (b.built ? '✓ Built &amp; Paved' : (b.building ? Math.round(Math.min(100,(b.buildHours/def.buildHours)*100)) + '%' : '€' + def.cost)) +
         '</span>' +
       '</div>' +
-      '<div class="sub">Connects the Farm Main Entry Gate to Storage and the village. Required for heavy freight trucks and shop visitor access.</div>' +
-      (b.built
-        ? '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built &amp; Paved</span></div>'
-        : (b.building
-          ? '<div class="row"><span>Paving Main Road</span><span class="v">' + Math.round(Math.min(100,(b.buildHours/def.buildHours)*100)) + '%</span></div>'
-          : '<button class="primary road-pave-btn" data-build-road-segment="main" onclick="startBuildRoadSegment(\'main\')" ' + (state.money < def.cost ? 'disabled' : '') + ' style="width:100%;min-height:44px;font-size:0.92rem;font-weight:800;margin-top:10px;">⛩️ Pave Main Road — €' + def.cost + ' (' + def.buildHours + 'h)</button>')) +
+      '<div class="sub">Connects the Farm Main Entry Gate to Storage and the village. Required for heavy freight trucks and shop visitor access.</div>';
+
+    if (!state.rocksCleared){
+      var rkPct = Math.round(Math.min(100, (state.rocksClearHours/2)*100));
+      html += '<div style="background:#FFF3E0;border:1px solid #FFE082;border-radius:10px;padding:12px;margin:10px 0;">' +
+        '<div style="display:flex;align-items:center;gap:8px;font-weight:800;color:#E65100;font-size:0.92rem;">' +
+          '<span>🪨</span><span>Road Corridor Blocked by Bedrock Boulders!</span>' +
+        '</div>' +
+        '<div style="font-size:0.78rem;color:#5D4037;margin:6px 0 10px;">' +
+          'A recruited Field Laborer equipped with a Heavy Trenching Spade &amp; Pickaxe must clear the 7 bedrock boulders before the Main Arterial Road can be paved.' +
+        '</div>' +
+        (state.rocksClearing
+          ? ('<div class="row"><span>Clearing Boulders</span><span class="v">' + rkPct + '% (In Progress)</span></div>' +
+             '<div class="healthbar" style="margin-top:6px;"><div class="fill" style="width:' + rkPct + '%;background:#F57F17;"></div></div>')
+          : ('<button class="primary" onclick="prepareClearRocksTask()" style="width:100%;min-height:44px;font-size:0.90rem;font-weight:800;background:#5D4037;border-color:#3E2723;">' +
+             '⛏️ Prepare &amp; Clear Boulders (€50 · 2h) — Requires Laborer &amp; Spade' +
+             '</button>')) +
+      '</div>';
+    }
+
+    if (b.built){
+      html += '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built &amp; Paved</span></div>';
+    } else if (b.building){
+      html += '<div class="row"><span>Paving Main Road</span><span class="v">' + Math.round(Math.min(100,(b.buildHours/def.buildHours)*100)) + '%</span></div>';
+    } else if (state.rocksCleared){
+      html += '<div style="background:#E8F5E9;border:1px solid #C8E6C9;border-radius:8px;padding:8px 12px;font-size:0.78rem;color:#2E7D32;font-weight:700;margin:6px 0;">' +
+        '✓ Boulders cleared! Road corridor is prepped and ready for paving.' +
+      '</div>' +
+      '<button class="primary road-pave-btn" data-build-road-segment="main" onclick="startBuildRoadSegment(\'main\')" ' + (state.money < def.cost ? 'disabled' : '') + ' style="width:100%;min-height:44px;font-size:0.92rem;font-weight:800;margin-top:10px;">⛩️ Pave Main Road — €' + def.cost + ' (' + def.buildHours + 'h)</button>';
+    } else {
+      html += '<button class="secondary" disabled style="width:100%;min-height:44px;font-size:0.90rem;font-weight:700;margin-top:10px;opacity:0.7;">' +
+        '🔒 Pave Main Road — Clear Boulders First' +
+      '</button>';
+    }
+    html += '</div>';
+
+    // Section for Subway Roads
+    html += '<div style="margin:14px 0 6px;padding:8px 10px;background:#F1F8E9;border:1px solid #DCEDC8;border-radius:10px;">' +
+      '<div style="font-weight:800;font-size:0.82rem;color:#1B5E20;display:flex;align-items:center;gap:6px;">' +
+        '<span>⭐</span><span>Optional Sub-Steps: Enhances Farm Credibility (+Reputation) &amp; Worker Speed</span>' +
+      '</div>' +
+      '<div style="font-size:0.73rem;color:#33691E;margin-top:2px;">' +
+        'Constructing feeder subways, trails, and promenades increases estate credibility with inspectors and speeds worker transit by up to +50%.' +
+      '</div>' +
     '</div>';
 
     // Feeder Subways
     var sw = state.roads ? state.roads.subway : null;
     var swDef = ROAD_SEGMENTS.subway;
-    html += '<div class="road-build-card">' +
+    html += '<div class="road-build-card" style="border-left:4px solid #2E7D32;">' +
       '<div class="road-build-header">' +
-        '<span class="road-build-title">🛤️ Plot Feeder Subways</span>' +
+        '<span class="road-build-title">🛤️ Plot Feeder Subways <span style="font-size:0.70rem;background:#E8F5E9;color:#2E7D32;padding:2px 6px;border-radius:4px;font-weight:700;">⭐ +5 Credibility</span></span>' +
         '<span class="road-build-badge ' + ((sw && sw.built) ? 'built' : ((sw && sw.building) ? 'progress' : 'unbuilt')) + '">' +
-          ((sw && sw.built) ? '✓ Built' : ((sw && sw.building) ? Math.round(Math.min(100,(sw.buildHours/swDef.buildHours)*100)) + '%' : '€' + swDef.cost)) +
+          ((sw && sw.built) ? '✓ Built (+5 Rep)' : ((sw && sw.building) ? Math.round(Math.min(100,(sw.buildHours/swDef.buildHours)*100)) + '%' : '€' + swDef.cost)) +
         '</span>' +
       '</div>' +
-      '<div class="sub">' + swDef.desc + '</div>' +
+      '<div class="sub">' + swDef.desc + ' · <b>+50% worker transit speed</b></div>' +
       (sw && sw.built
-        ? '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built &amp; Connected</span></div>'
+        ? '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built &amp; Connected (+5 Rep, +50% Speed)</span></div>'
         : (sw && sw.building
           ? '<div class="row"><span>Laying Cobblestone</span><span class="v">' + Math.round(Math.min(100,(sw.buildHours/swDef.buildHours)*100)) + '%</span></div>'
           : '<button class="secondary" data-build-road-segment="subway" ' + (!b.built || state.money<swDef.cost?'disabled':'') + '>Pave Feeder Subways — €' + swDef.cost + ' (' + swDef.buildHours + 'h)</button>')) +
@@ -25622,16 +25891,16 @@ function buildingModalHtml(key){
     // Crew & Garage Trail
     var ct = state.roads ? state.roads.crew_trail : null;
     var ctDef = ROAD_SEGMENTS.crew_trail;
-    html += '<div class="road-build-card">' +
+    html += '<div class="road-build-card" style="border-left:4px solid #2E7D32;">' +
       '<div class="road-build-header">' +
-        '<span class="road-build-title">🥾 Crew &amp; Garage Footpath Trail</span>' +
+        '<span class="road-build-title">🥾 Crew &amp; Garage Footpath Trail <span style="font-size:0.70rem;background:#E8F5E9;color:#2E7D32;padding:2px 6px;border-radius:4px;font-weight:700;">⭐ +4 Credibility</span></span>' +
         '<span class="road-build-badge ' + ((ct && ct.built) ? 'built' : ((ct && ct.building) ? 'progress' : 'unbuilt')) + '">' +
-          ((ct && ct.built) ? '✓ Built' : ((ct && ct.building) ? Math.round(Math.min(100,(ct.buildHours/ctDef.buildHours)*100)) + '%' : '€' + ctDef.cost)) +
+          ((ct && ct.built) ? '✓ Built (+4 Rep)' : ((ct && ct.building) ? Math.round(Math.min(100,(ct.buildHours/ctDef.buildHours)*100)) + '%' : '€' + ctDef.cost)) +
         '</span>' +
       '</div>' +
       '<div class="sub">' + ctDef.desc + '</div>' +
       (ct && ct.built
-        ? '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built &amp; Connected</span></div>'
+        ? '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built &amp; Connected (+4 Rep)</span></div>'
         : (ct && ct.building
           ? '<div class="row"><span>Paving Trail</span><span class="v">' + Math.round(Math.min(100,(ct.buildHours/ctDef.buildHours)*100)) + '%</span></div>'
           : '<button class="secondary" data-build-road-segment="crew_trail" ' + (!b.built || state.money<ctDef.cost?'disabled':'') + '>Pave Crew Trail — €' + ctDef.cost + ' (' + ctDef.buildHours + 'h)</button>')) +
@@ -25642,9 +25911,9 @@ function buildingModalHtml(key){
     var gwDef = ROAD_SEGMENTS.garden_walk;
     var mpDef = ROAD_SEGMENTS.market_promenade;
 
-    html += '<div class="road-build-card">' +
+    html += '<div class="road-build-card" style="border-left:4px solid #2E7D32;">' +
       '<div class="road-build-header">' +
-        '<span class="road-build-title">🌸 Garden Nature Walkway</span>' +
+        '<span class="road-build-title">🌸 Garden Nature Walkway <span style="font-size:0.70rem;background:#E8F5E9;color:#2E7D32;padding:2px 6px;border-radius:4px;font-weight:700;">⭐ +4 Credibility</span></span>' +
         '<span class="road-build-badge ' + ((gw && gw.built) ? 'built' : ((gw && gw.building) ? 'progress' : 'unbuilt')) + '">' +
           ((gw && gw.built) ? '✓ Built (+4 Rep)' : ((gw && gw.building) ? Math.round(Math.min(100,(gw.buildHours/gwDef.buildHours)*100)) + '%' : '€' + gwDef.cost)) +
         '</span>' +
@@ -25657,9 +25926,9 @@ function buildingModalHtml(key){
           : '<button class="secondary" data-build-road-segment="garden_walk" ' + (!b.built || state.money<gwDef.cost?'disabled':'') + '>Construct Garden Walkway — €' + gwDef.cost + ' (' + gwDef.buildHours + 'h)</button>')) +
     '</div>';
 
-    html += '<div class="road-build-card">' +
+    html += '<div class="road-build-card" style="border-left:4px solid #2E7D32;">' +
       '<div class="road-build-header">' +
-        '<span class="road-build-title">🏛️ Marketplace Promenade</span>' +
+        '<span class="road-build-title">🏛️ Marketplace Promenade <span style="font-size:0.70rem;background:#E8F5E9;color:#2E7D32;padding:2px 6px;border-radius:4px;font-weight:700;">⭐ +6 Credibility</span></span>' +
         '<span class="road-build-badge ' + ((mp && mp.built) ? 'built' : ((mp && mp.building) ? 'progress' : 'unbuilt')) + '">' +
           ((mp && mp.built) ? '✓ Built (+6 Rep)' : ((mp && mp.building) ? Math.round(Math.min(100,(mp.buildHours/mpDef.buildHours)*100)) + '%' : '€' + mpDef.cost)) +
         '</span>' +
@@ -27105,13 +27374,17 @@ function panelHtml(){
         actionBtn = '<span style="color:#2E7D32;font-weight:900;font-size:0.75rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Complete</span>';
       } else if (isUnlocked){
         if (s.step === 1){
-          actionBtn = '<button class="claim-btn active" data-buildstorage="1" ' + (state.money < s.cost ? 'disabled' : '') + '>Build (€' + s.cost + ')</button>';
-        } else if (s.step === 2){
-          actionBtn = '<button class="claim-btn active" onclick="startBuildRoadSegment(\'main\')" ' + (state.money < s.cost ? 'disabled' : '') + '>Pave (€' + s.cost + ')</button>';
-        } else if (s.step === 3){
           actionBtn = '<button class="claim-btn active" onclick="startBuildBuilding(\'crew_shed\')" ' + (state.money < s.cost ? 'disabled' : '') + '>Build (€' + s.cost + ')</button>';
-        } else if (s.step === 4){
+        } else if (s.step === 2){
           actionBtn = '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'crew_shed\');">Recruit</button>';
+        } else if (s.step === 3){
+          if (!state.rocksCleared){
+            actionBtn = '<button class="claim-btn active" onclick="prepareClearRocksTask()" style="background:#5D4037;">🪨 Clear Rocks</button>';
+          } else {
+            actionBtn = '<button class="claim-btn active" onclick="startBuildRoadSegment(\'main\')" ' + (state.money < 120 ? 'disabled' : '') + '>Pave (€120)</button>';
+          }
+        } else if (s.step === 4){
+          actionBtn = '<button class="claim-btn active" data-buildstorage="1" ' + (state.money < s.cost ? 'disabled' : '') + '>Build (€' + s.cost + ')</button>';
         } else if (s.step === 5){
           actionBtn = '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',0);">Cultivate</button>';
         } else if (s.step === 6){
@@ -27129,6 +27402,34 @@ function panelHtml(){
         '<div class="task-info">' +
           '<div class="name">' + s.icon + ' Step ' + s.step + ': ' + s.title + '</div>' +
           '<div class="meta">' + s.subtitle + ' · ' + s.costLabel + '</div>' +
+        '</div>' +
+        '<div>' + actionBtn + '</div>' +
+      '</div>';
+    }).join('');
+
+    // Subway Feeder Roads Optional Credibility Sub-Steps
+    var mainRoadBuilt = !!(state.buildings && state.buildings.road && state.buildings.road.built);
+    var subwayRoadRows = Object.keys(ROAD_SEGMENTS).filter(function(rk){ return rk !== 'main'; }).map(function(rk){
+      var rDef = ROAD_SEGMENTS[rk];
+      var rSeg = state.roads ? state.roads[rk] : null;
+      var isBuilt = rSeg && rSeg.built;
+      var isBuilding = rSeg && rSeg.building;
+
+      var actionBtn = '';
+      if (isBuilt){
+        actionBtn = '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Built (+Rep)</span>';
+      } else if (isBuilding){
+        actionBtn = '<button class="claim-btn" disabled style="opacity:0.8;">🏗️ ' + Math.round(Math.min(100,(rSeg.buildHours/rDef.buildHours)*100)) + '%</button>';
+      } else if (mainRoadBuilt){
+        actionBtn = '<button class="claim-btn" onclick="startBuildRoadSegment(\'' + rk + '\')" ' + (state.money < rDef.cost ? 'disabled' : '') + '>Pave (€' + rDef.cost + ')</button>';
+      } else {
+        actionBtn = '<button class="secondary mini-btn" onclick="showLockedStepPopup(3)" style="padding:4px 8px;font-size:0.72rem;background:#ECEFF1;border-color:#CFD8DC;color:#455A64;">🔒 Needs Main Road</button>';
+      }
+
+      return '<div class="task-row" style="border-left:4px solid ' + (isBuilt ? '#2E7D32' : (mainRoadBuilt ? '#1B5E20' : '#B0BEC5')) + ';">' +
+        '<div class="task-info">' +
+          '<div class="name">' + rDef.icon + ' ' + rDef.label + ' <span style="font-size:0.68rem;background:#E8F5E9;color:#2E7D32;padding:1px 5px;border-radius:4px;font-weight:700;">⭐ Credibility Sub-Step</span></div>' +
+          '<div class="meta">' + rDef.desc + ' · €' + rDef.cost + ' (' + rDef.buildHours + 'h)</div>' +
         '</div>' +
         '<div>' + actionBtn + '</div>' +
       '</div>';
@@ -27195,7 +27496,7 @@ function panelHtml(){
     var anyMaint = false;
     if (!state.rocksCleared){
       anyMaint = true;
-      maintRows += '<div class="task-row" style="border-left:4px solid #78909C;"><div class="task-info"><div class="name">🪨 Clear Boulder Obstacles from Road</div><div class="meta">€50 · 2h · clears rocks for Main Road</div></div><button class="claim-btn" onclick="startClearRocks()" ' + (state.money < 50 ? 'disabled' : '') + '>Clear (€50)</button></div>';
+      maintRows += '<div class="task-row" style="border-left:4px solid #78909C;"><div class="task-info"><div class="name">🪨 Clear Boulder Obstacles from Road</div><div class="meta">€50 · 2h · clears rocks for Main Road</div></div><button class="claim-btn" onclick="prepareClearRocksTask()" ' + (state.money < 50 ? 'disabled' : '') + '>Clear (€50)</button></div>';
     }
     if ((state.lawnOvergrowth || 0) >= 30){
       anyMaint = true;
@@ -27218,6 +27519,9 @@ function panelHtml(){
     var htmlTasks = '<div class="float-panel"><h2><span>📋 Farm Tasks &amp; Objectives</span><span class="close-x" data-closepanel="1" onclick="closePanel(event)" ontouchend="closePanel(event)" title="Close Panel">✕</span></h2>' +
       '<div style="font-size:0.75rem;font-weight:800;color:var(--pine);margin:6px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">🏆 Core Progression Steps (1 → 8):</div>' +
       coreRows +
+      '<div style="font-size:0.75rem;font-weight:800;color:#2E7D32;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">⭐ Optional Subway &amp; Feeder Roads (Enhances Farm Credibility &amp; Worker Speed):</div>' +
+      '<div style="font-size:0.72rem;color:#546E7A;margin-bottom:6px;">Building feeder subways, walkways, and promenades enhances Farm Credibility (+Reputation) and worker movement speed.</div>' +
+      subwayRoadRows +
       '<div style="font-size:0.75rem;font-weight:800;color:#E65100;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">🌾 Agricultural &amp; Livestock Production:</div>' +
       agriRows +
       '<div style="font-size:0.75rem;font-weight:800;color:#2E7D32;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">⭐ Optional Farm Credibility &amp; Prestige Expansions:</div>' +
@@ -28081,6 +28385,7 @@ window.panelHtml = panelHtml;
 window.togglePanel = togglePanel;
 window.hasTractor = hasTractor;
 window.acquireTractor = acquireTractor;
+window.prepareClearRocksTask = prepareClearRocksTask;
 window.startClearRocks = startClearRocks;
 window.startMowLawn = startMowLawn;
 window.startPrep = startPrep;
@@ -28327,6 +28632,7 @@ if (typeof globalThis !== 'undefined'){
   globalThis.togglePanel = togglePanel;
   globalThis.hasTractor = hasTractor;
   globalThis.acquireTractor = acquireTractor;
+  globalThis.prepareClearRocksTask = prepareClearRocksTask;
   globalThis.startClearRocks = startClearRocks;
   globalThis.startMowLawn = startMowLawn;
   globalThis.startPrep = startPrep;
