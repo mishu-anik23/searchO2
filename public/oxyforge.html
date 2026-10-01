@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OxyForge — Aerospace Mission Command & Planetary ISRU</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <style>
+    :root {
+      --bg: #090C12;
+      --surface: #121824;
+      --surface-elevated: #1B2436;
+      --border: #26334A;
+      --accent: #00E5FF;
+      --accent-muted: rgba(0, 229, 255, 0.15);
+      --ice: #7EB8C9;
+      --fg: #E8EDF4;
+      --fg-muted: #8F9CAE;
+      --gold: #FFB300;
+      --green: #4CAF50;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background-color: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(1px 1px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(1.5px 1.5px at 150px 80px, #7EB8C9, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 320px 240px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 450px 120px, #00E5FF, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 600px 350px, #ffffff, rgba(0,0,0,0)),
+        radial-gradient(1.5px 1.5px at 800px 200px, #7EB8C9, rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 950px 420px, #ffffff, rgba(0,0,0,0));
+      background-repeat: repeat;
+      background-size: 1000px 500px;
+    }
+
+    /* TOPBAR */
+    header.command-bar {
+      background: rgba(18, 24, 36, 0.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      font-size: 1.6rem;
+      background: linear-gradient(135deg, #00E5FF, #7EB8C9);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-tag {
+      font-size: 0.68rem;
+      background: var(--accent-muted);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .telemetry-docks {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .stat-chip {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+    }
+
+    .stat-chip .label {
+      color: var(--fg-muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      font-family: var(--font);
+    }
+
+    .stat-chip .val {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .btn-return-farm {
+      background: linear-gradient(135deg, #1B3B24, #2E7D32);
+      border: 1px solid #81C784;
+      color: #E8F5E9;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .btn-return-farm:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(76, 175, 80, 0.4);
+    }
+
+    /* CONTAINER */
+    main.content-wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+      flex: 1;
+      width: 100%;
+    }
+
+    /* HERO */
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.08), rgba(126, 184, 201, 0.03));
+      border: 1px solid var(--accent);
+      border-radius: 16px;
+      padding: 36px 32px;
+      margin-bottom: 32px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 35px rgba(0, 229, 255, 0.15);
+    }
+
+    .hero-subtitle {
+      color: var(--accent);
+      text-transform: uppercase;
+      font-size: 0.76rem;
+      letter-spacing: 2px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .hero-title {
+      font-size: 2.3rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+      color: #FFFFFF;
+    }
+
+    .hero-desc {
+      color: var(--fg-muted);
+      font-size: 1.05rem;
+      max-width: 780px;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary-launch {
+      background: linear-gradient(135deg, #00E5FF, #0091EA);
+      color: #090C12;
+      border: none;
+      border-radius: 10px;
+      padding: 13px 26px;
+      font-size: 0.95rem;
+      font-weight: 800;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(0, 229, 255, 0.4);
+      transition: all 0.2s ease;
+    }
+    .btn-primary-launch:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(0, 229, 255, 0.6);
+    }
+
+    .btn-secondary-tool {
+      background: var(--surface-elevated);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 22px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-secondary-tool:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* GRID HUBS */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .section-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hubs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .hub-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .hub-card:hover {
+      border-color: rgba(0, 229, 255, 0.5);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .hub-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      align-self: flex-start;
+    }
+    .badge-featured { background: rgba(0, 229, 255, 0.2); color: #00E5FF; border: 1px solid #00E5FF; }
+    .badge-planner { background: rgba(255, 179, 0, 0.2); color: #FFB300; border: 1px solid #FFB300; }
+    .badge-science { background: rgba(76, 175, 80, 0.2); color: #81C784; border: 1px solid #81C784; }
+    .badge-crypto { background: rgba(144, 202, 249, 0.2); color: #90CAF9; border: 1px solid #90CAF9; }
+
+    .hub-name {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 8px;
+    }
+
+    .hub-text {
+      color: var(--fg-muted);
+      font-size: 0.88rem;
+      margin-bottom: 20px;
+      line-height: 1.5;
+      flex-grow: 1;
+    }
+
+    .hub-meta {
+      display: flex;
+      gap: 12px;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--ice);
+      margin-bottom: 16px;
+      background: var(--surface-elevated);
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+
+    .hub-btn {
+      width: 100%;
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.88rem;
+      text-decoration: none;
+      display: inline-block;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .hub-btn-primary {
+      background: #00E5FF;
+      color: #090C12;
+      border: none;
+    }
+    .hub-btn-primary:hover {
+      background: #80F4FF;
+    }
+    .hub-btn-secondary {
+      background: var(--surface-elevated);
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+    .hub-btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* INTERACTIVE SIMULATOR TABS */
+    .simulator-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 40px;
+    }
+
+    .tabs-strip {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--fg-muted);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .tab-btn:hover {
+      color: var(--fg);
+      background: var(--surface-elevated);
+    }
+    .tab-btn.active {
+      color: var(--accent);
+      background: var(--accent-muted);
+      border-color: var(--accent);
+    }
+
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* FOOTER */
+    footer.mission-footer {
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 24px;
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--fg-muted);
+    }
+
+    @media (max-width: 768px) {
+      .hero-title { font-size: 1.8rem; }
+      .telemetry-docks { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <header class="command-bar">
+    <div class="brand-wrap">
+      <div class="brand-logo">
+        <span>🚀</span>
+        <span>OxyForge</span>
+      </div>
+      <span class="brand-tag">FLIGHT DIRECTOR HQ</span>
+    </div>
+
+    <div class="telemetry-docks">
+      <div class="stat-chip">
+        <span class="label">Program Funds</span>
+        <span class="val" id="telemetryCredits">€10,000.00 GC</span>
+      </div>
+      <div class="stat-chip">
+        <span class="label">Oxygen Stored</span>
+        <span class="val" id="telemetryOxygen">0.0 kg O₂</span>
+      </div>
+      <div class="stat-chip">
+        <span class="label">Crypto Bridge</span>
+        <span class="val" style="color:#FFB300;">1€ = 200 AFC = 2k GC</span>
+      </div>
+      <a href="../index.html" class="btn-return-farm">
+        <span>🌾</span>
+        <span>SearchO2 Farm</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- CONTENT -->
+  <main class="content-wrap">
+    <!-- HERO BRIEFING -->
+    <section class="hero-banner">
+      <div class="hero-subtitle">Mission School &amp; Planetary ISRU Program</div>
+      <h1 class="hero-title">Welcome to OxyForge Command</h1>
+      <p class="hero-desc">
+        Learn how a rocket leaves Earth, navigate high-precision transfer trajectories, and build lunar and martian In-Situ Resource Utilization (ISRU) plants to harvest life-sustaining oxygen. Program funds are connected to your SearchO2 terrestrial estate and Base L2 smart wallet.
+      </p>
+      <div class="hero-actions">
+        <a href="moon-landing-preview.html" class="btn-primary-launch">
+          <span>🌙</span>
+          <span>Launch 3D Moon Landing &amp; ISRU</span>
+          <span style="font-size:0.7rem;background:rgba(0,0,0,0.25);padding:2px 6px;border-radius:4px;">3D Simulator</span>
+        </a>
+        <button class="btn-secondary-tool" onclick="scrollToSection('planner')">
+          <span>📋</span>
+          <span>Mission Planner</span>
+        </button>
+        <button class="btn-secondary-tool" onclick="scrollToSection('science')">
+          <span>🔬</span>
+          <span>Science Library</span>
+        </button>
+        <a href="../index.html" class="btn-secondary-tool">
+          <span>🌾</span>
+          <span>Return to Farm</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- MISSION HUBS -->
+    <div class="section-header">
+      <h2 class="section-title"><span>🛸</span> Flight Corridors &amp; Simulators</h2>
+    </div>
+
+    <div class="hubs-grid">
+      <!-- HUB 1: 3D MOON LANDING -->
+      <div class="hub-card">
+        <div>
+          <span class="hub-badge badge-featured">Interactive 3D Descent</span>
+          <h3 class="hub-name">Moon Landing Simulator</h3>
+          <p class="hub-text">
+            Execute the 6-phase Apollo descent profile: Lunar Orbit Insertion (LOI), Low Lunar Orbit (LLO), Descent Orbit Insertion (DOI), Powered Descent (PDI), Terminal Guidance, and Touchdown at Shackleton Crater.
+          </p>
+        </div>
+        <div>
+          <div class="hub-meta">
+            <span>Target: Moon South Pole</span>
+            <span>·</span>
+            <span>Speed: 2.3 → 0 m/s</span>
+          </div>
+          <a href="moon-landing-preview.html" class="hub-btn hub-btn-primary">
+            🌙 Launch 3D Simulation
+          </a>
+        </div>
+      </div>
+
+      <!-- HUB 2: MISSION PLANNER -->
+      <div class="hub-card" id="planner">
+        <div>
+          <span class="hub-badge badge-planner">Flight Director</span>
+          <h3 class="hub-name">Mission Planner</h3>
+          <p class="hub-text">
+            Configure launch payloads, calculate delta-V margins, and budget liftoff costs. Cargo flights prove the corridor at lower cost; crew missions carry astronauts and deploy permanent habitat dome facilities.
+          </p>
+        </div>
+        <div>
+          <div class="hub-meta">
+            <span>Budget: €10,000 Starting</span>
+            <span>·</span>
+            <span>Dest: Moon / Mars</span>
+          </div>
+          <button class="hub-btn hub-btn-secondary" onclick="openInteractivePlanner()">
+            📋 Configure Flight Plan
+          </button>
+        </div>
+      </div>
+
+      <!-- HUB 3: SCIENCE & ISRU -->
+      <div class="hub-card" id="science">
+        <div>
+          <span class="hub-badge badge-science">Aerospace Chemistry</span>
+          <h3 class="hub-name">ISRU Oxygen Plants</h3>
+          <p class="hub-text">
+            Explore the chemical reactions powering extraterrestrial bases: Lunar ice electrolysis at the South Pole permanently shadowed regions, and molten regolith ilmenite reduction to yield pure oxygen gas.
+          </p>
+        </div>
+        <div>
+          <div class="hub-meta">
+            <span>Reactions: H₂O &amp; FeTiO₃</span>
+            <span>·</span>
+            <span>Yield: 15 GC/s</span>
+          </div>
+          <button class="hub-btn hub-btn-secondary" onclick="openScienceModal()">
+            🔬 Open Science Library
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- INTERACTIVE MISSION CONTROL PANEL -->
+    <div class="section-header">
+      <h2 class="section-title"><span>📊</span> Aerospace Telemetry &amp; Flight Calculations</h2>
+    </div>
+
+    <div class="simulator-panel">
+      <div class="tabs-strip">
+        <button class="tab-btn active" onclick="switchSimTab('moon-cargo')">📦 Moon Cargo Flight</button>
+        <button class="tab-btn" onclick="switchSimTab('moon-crew')">👨‍🚀 Moon Crew Mission</button>
+        <button class="tab-btn" onclick="switchSimTab('mars-cargo')">🔴 Mars Cargo Transfer</button>
+        <button class="tab-btn" onclick="switchSimTab('isru-reactor')">⚗️ Regolith ISRU Reactor</button>
+        <button class="tab-btn" onclick="switchSimTab('afc-crypto')">🪙 Base L2 AFC Bridge</button>
+      </div>
+
+      <!-- TAB 1: MOON CARGO -->
+      <div id="tab-moon-cargo" class="tab-content active">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+          <div>
+            <h3 style="color:#00E5FF;font-size:1.1rem;margin-bottom:8px;">📦 Lunar Cargo Deployment Profile</h3>
+            <p style="font-size:0.86rem;color:var(--fg-muted);margin-bottom:14px;">
+              Carries uncrewed automated drilling rigs and molten regolith smelting modules to Shackleton Rim. Low operational risk with optimal propellant staging.
+            </p>
+            <ul style="font-size:0.84rem;color:var(--fg);display:flex;flex-direction:column;gap:6px;list-style:none;">
+              <li>🚀 <b>Launch Vehicle:</b> Heavy Falcon / Vulcan Centaur Stage</li>
+              <li>⏱️ <b>Trans-Lunar Coast:</b> 3.8 Earth Days (TLI Δv: 3,150 m/s)</li>
+              <li>💰 <b>Mission Cost:</b> €2,500 Game Credits</li>
+              <li>📦 <b>Payload:</b> 500 kg Automated Ilmenite Smelter</li>
+            </ul>
+          </div>
+          <div style="background:var(--surface-elevated);border:1px solid var(--border);border-radius:10px;padding:16px;font-family:var(--mono);font-size:0.82rem;">
+            <div style="color:var(--ice);margin-bottom:8px;font-weight:700;">FLIGHT TELEMETRY STATUS</div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Transfer Orbit:</span><span style="color:#6FBF9A;">NOMINAL</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Perilune Altitude:</span><span>100.4 km</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>LOI Burn Target:</span><span>-850 m/s</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:12px;"><span>Projected O₂ Yield:</span><span style="color:#00E5FF;">+120 kg/cycle</span></div>
+            <a href="moon-landing-preview.html" class="hub-btn hub-btn-primary" style="padding:8px;">Execute Flight Sequence →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: MOON CREW -->
+      <div id="tab-moon-crew" class="tab-content">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+          <div>
+            <h3 style="color:#FFB300;font-size:1.1rem;margin-bottom:8px;">👨‍🚀 Artemis Crew Expedition</h3>
+            <p style="font-size:0.86rem;color:var(--fg-muted);margin-bottom:14px;">
+              Carries 4 certified Flight Commanders with full ECLSS life-support scrubbers. Unlocks permanent pressurized lunar surface habitats.
+            </p>
+            <ul style="font-size:0.84rem;color:var(--fg);display:flex;flex-direction:column;gap:6px;list-style:none;">
+              <li>🚀 <b>Launch Vehicle:</b> Heavy Crew Rated Stack</li>
+              <li>⏱️ <b>Trans-Lunar Coast:</b> 3.8 Earth Days</li>
+              <li>💰 <b>Mission Cost:</b> €6,000 Game Credits</li>
+              <li>🏠 <b>Surface Milestone:</b> Inflatable Habitat Module Deployed</li>
+            </ul>
+          </div>
+          <div style="background:var(--surface-elevated);border:1px solid var(--border);border-radius:10px;padding:16px;font-family:var(--mono);font-size:0.82rem;">
+            <div style="color:#FFB300;margin-bottom:8px;font-weight:700;">CREW TELEMETRY &amp; LIFE SUPPORT</div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>Cabin Pressure:</span><span>101.3 kPa</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>O₂ Partial Pressure:</span><span>21.2 kPa</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span>CO₂ Scrubber:</span><span style="color:#6FBF9A;">99.8% Eff</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:12px;"><span>Commander:</span><span style="color:#00E5FF;">Flight Director Active</span></div>
+            <a href="moon-landing-preview.html" class="hub-btn hub-btn-primary" style="padding:8px;">Simulate Crew Descent →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: MARS CARGO -->
+      <div id="tab-mars-cargo" class="tab-content">
+        <div>
+          <h3 style="color:#FF7043;font-size:1.1rem;margin-bottom:8px;">🔴 Deep Space Martian Transfer Corridor</h3>
+          <p style="font-size:0.86rem;color:var(--fg-muted);margin-bottom:14px;">
+            Hohmann transfer trajectory across 225 million kilometers. Deploys automated MOXIE CO₂-to-O₂ plants on Jezero Crater before crew arrival.
+          </p>
+          <div style="background:var(--surface-elevated);padding:14px;border-radius:8px;font-family:var(--mono);font-size:0.82rem;color:var(--fg-muted);line-height:1.6;">
+            • Mission Cost: €15,000 Game Credits<br/>
+            • Transit Window: Every 26 Months (Synodic Period)<br/>
+            • Entry Descent &amp; Landing (EDL): Atmospheric Aerocapture + Supersonic Parachute + Skycrane<br/>
+            • Primary Goal: Extract 25 tonnes of liquid oxygen propellant for Earth Return Vehicle (ERV)
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: ISRU REACTOR -->
+      <div id="tab-isru-reactor" class="tab-content">
+        <div>
+          <h3 style="color:#81C784;font-size:1.1rem;margin-bottom:8px;">⚗️ In-Situ Resource Utilization Reactions</h3>
+          <p style="font-size:0.86rem;color:var(--fg-muted);margin-bottom:14px;">
+            Every kilogram of oxygen produced on the surface saves €4,000 in trans-lunar payload freight from Earth.
+          </p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+            <div style="background:var(--surface-elevated);padding:14px;border-radius:8px;border-left:3px solid #00E5FF;">
+              <b style="color:#00E5FF;font-size:0.88rem;">1. Lunar Regolith Hydrogen Reduction</b>
+              <div style="font-family:var(--mono);font-size:0.82rem;margin:6px 0;color:#FFF;">FeTiO₃ + H₂ → Fe + TiO₂ + H₂O (1,000°C)</div>
+              <p style="font-size:0.78rem;color:var(--fg-muted);">Water byproduct is subsequently split via electrolysis to generate pure breathing oxygen and hydrogen fuel.</p>
+            </div>
+            <div style="background:var(--surface-elevated);padding:14px;border-radius:8px;border-left:3px solid #FF7043;">
+              <b style="color:#FF7043;font-size:0.88rem;">2. MOXIE Solid Oxide Electrolysis (Mars)</b>
+              <div style="font-family:var(--mono);font-size:0.82rem;margin:6px 0;color:#FFF;">2CO₂ → 2CO + O₂ (800°C)</div>
+              <p style="font-size:0.78rem;color:var(--fg-muted);">Extracts oxygen atoms from ambient 95% CO₂ martian atmosphere via scandia-stabilized zirconia (YSZ) membranes.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: AFC CRYPTO -->
+      <div id="tab-afc-crypto" class="tab-content">
+        <div>
+          <h3 style="color:#FFB300;font-size:1.1rem;margin-bottom:8px;">🪙 Base L2 AFC Dual-Game Economy</h3>
+          <p style="font-size:0.86rem;color:var(--fg-muted);margin-bottom:14px;">
+            The unified cross-game ledger links your terrestrial agro-forestry revenues with aerospace mission funding.
+          </p>
+          <div style="background:var(--surface-elevated);padding:16px;border-radius:10px;font-family:var(--mono);font-size:0.85rem;line-height:1.7;">
+            <div style="color:#00E5FF;font-weight:700;">REGULATORY COMPLIANT EXCHANGE RATE:</div>
+            <div>• <b>1.00 € Real EUR</b> = 200 AFC Coin = 2,000 € Game Credits (GC)</div>
+            <div>• <b>1 AFC Coin</b> = 10.00 € Game Credits = 0.005 € Real EUR</div>
+            <div>• <b>Base L2 Network:</b> Gas sponsored via ERC-4337 Biconomy Paymaster (&lt; €0.002)</div>
+            <div>• <b>Compliance:</b> MiCA EU 2023/1114 compliant closed-loop utility token, GDPR Art 17 zero on-chain PII</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="mission-footer">
+    <div>🚀 OxyForge Aerospace &amp; SearchO2 Terrestrial Agroforestry Unified Platform</div>
+    <div style="margin-top:4px;color:#607D8B;font-size:0.75rem;">Compliant with EU MiCA, BaFin, and GDPR regulations · Base L2 Smart Accounts</div>
+  </footer>
+
+  <script>
+    function scrollToSection(id) {
+      var el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function switchSimTab(tabKey) {
+      document.querySelectorAll('.tab-btn').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      document.querySelectorAll('.tab-content').forEach(function(c) {
+        c.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      var target = document.getElementById('tab-' + tabKey);
+      if (target) target.classList.add('active');
+    }
+
+    function openInteractivePlanner() {
+      switchSimTab('moon-crew');
+      scrollToSection('planner');
+    }
+
+    function openScienceModal() {
+      switchSimTab('isru-reactor');
+      scrollToSection('science');
+    }
+
+    // Sync state if running from SearchO2 session
+    try {
+      if (window.opener && window.opener.state) {
+        var s = window.opener.state;
+        if (s.money !== undefined) {
+          var el = document.getElementById('telemetryCredits');
+          if (el) el.textContent = '€' + s.money.toFixed(2) + ' GC';
+        }
+        if (s.totalO2 !== undefined) {
+          var o2 = document.getElementById('telemetryOxygen');
+          if (o2) o2.textContent = s.totalO2.toFixed(1) + ' kg O₂';
+        }
+      }
+    } catch (e) {}
+  </script>
+</body>
+</html>
