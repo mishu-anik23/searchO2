@@ -1,6 +1,5 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Stars } from "@react-three/drei";
 import * as THREE from "three";
 import { useGame } from "@/game/store";
 import { MoonTerrain, SurfaceBoulders, SurfaceEquipment } from "./MoonTerrain";
@@ -50,11 +49,8 @@ export function CosmosScene({ step, crew }: { step: number; crew: boolean }) {
   }, [zoom]);
 
   // Deep space visibility
-  const deepOpacity = useMemo(() => {
-    if (zoom < 0.5) return 0;
-    if (zoom < 0.7) return (zoom - 0.5) / 0.2;
-    return 1;
-  }, [zoom]);
+  // Reveal deep sky during the pull-back, rather than making it pop in at 0.7.
+  const deepVisible = zoom >= 0.55;
 
   const handleZoneJump = (zone: CameraZone) => {
     const targets = { surface: 0, orbital: 0.5, deep: 0.9 };
@@ -126,11 +122,11 @@ export function CosmosScene({ step, crew }: { step: number; crew: boolean }) {
           <StarField3D radius={500} reduced={reduced} />
 
           {/* Named stars + constellations — deep space only */}
-          <NamedStars3D radius={450} visible={isDeep} />
-          <ConstellationLines3D radius={450} visible={isDeep} />
+          <NamedStars3D radius={450} visible={deepVisible} />
+          <ConstellationLines3D radius={450} visible={deepVisible} />
 
           {/* Galaxies — deep space only */}
-          <GalaxySprites distance={600} reduced={reduced} visible={isDeep} />
+          <GalaxySprites distance={600} reduced={reduced} visible={deepVisible} />
 
           {/* Distant Earth at surface/orbital level */}
           {zoom < 0.6 && (
@@ -141,17 +137,6 @@ export function CosmosScene({ step, crew }: { step: number; crew: boolean }) {
           <DepthCamera zoom={zoom} reduced={reduced} />
         </Suspense>
 
-        {/* Drei OrbitControls — only for surface/orbital, disabled at deep space */}
-        <OrbitControls
-          enablePan={false}
-          minDistance={3}
-          maxDistance={isDeep ? 300 : 50}
-          maxPolarAngle={Math.PI * 0.72}
-          target={[0, 0, 0]}
-          enableDamping
-          dampingFactor={0.08}
-          enabled={zoom < 0.85}
-        />
       </Canvas>
 
       {/* UI overlays */}
@@ -159,7 +144,7 @@ export function CosmosScene({ step, crew }: { step: number; crew: boolean }) {
       <TimeSpeedControl speed={orbitalSpeed} onChange={setOrbitalSpeed} reduced={reduced} />
 
       <div className="pointer-events-none absolute bottom-3 left-3 rounded-sm border border-border bg-bg/80 px-2 py-1 font-mono text-[10px] text-muted">
-        Scroll to zoom · {cameraDepth} view · drag to orbit
+        Scroll or use the view buttons · {cameraDepth} view
       </div>
     </div>
   );

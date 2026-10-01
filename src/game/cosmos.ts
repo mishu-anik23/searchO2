@@ -381,8 +381,8 @@ export function makeField(n: number, seed: number): Star[] {
     const d = onSphere(rnd);
     // Power-law-ish magnitude distribution (more faint stars)
     const u = rnd();
-    const appMag = 2.5 + Math.pow(u, 0.55) * 5.5; // ~2.5 to 8
-    const bright = Math.max(0.08, Math.min(1, Math.pow(2.512, 4.5 - appMag) * 0.35));
+    const appMag = 1.8 + Math.pow(u, 0.55) * 5.2; // brighter overall
+    const bright = Math.max(0.22, Math.min(1, Math.pow(2.512, 4.8 - appMag) * 0.55));
     let roll = rnd();
     let sp = "G";
     for (const s of spectralWeights) {
@@ -396,7 +396,7 @@ export function makeField(n: number, seed: number): Star[] {
     out.push({
       ...d,
       b: bright,
-      s: Math.max(0.35, Math.min(2.4, 0.35 + (6 - appMag) * 0.35)),
+      s: Math.max(0.55, Math.min(3.2, 0.55 + (6.2 - appMag) * 0.42)),
       cr: col.r,
       cg: col.g,
       cb: col.b,
@@ -418,17 +418,17 @@ export function makeMilkyWay(n: number): Star[] {
     const y = off + (rnd() - 0.5) * 0.07;
     const len = Math.hypot(x, y, z) || 1;
     const warm = rnd();
-    const appMag = 4 + rnd() * 4;
-    const bright = Math.max(0.06, Math.min(0.7, Math.pow(2.512, 5 - appMag) * 0.25));
+    const appMag = 3.2 + rnd() * 3.8;
+    const bright = Math.max(0.18, Math.min(0.95, Math.pow(2.512, 5.2 - appMag) * 0.4));
     out.push({
       x: x / len,
       y: y / len,
       z: z / len,
       b: bright,
-      s: 0.35 + rnd() * 1.1,
-      cr: 220 + warm * 30,
-      cg: 205 + (1 - warm) * 25,
-      cb: 185 + rnd() * 40,
+      s: 0.5 + rnd() * 1.4,
+      cr: 230 + warm * 25,
+      cg: 215 + (1 - warm) * 30,
+      cb: 195 + rnd() * 45,
       mag: appMag,
     });
   }
@@ -645,14 +645,20 @@ export function warmupPhotos() {
     im.crossOrigin = "anonymous";
     im.decoding = "async";
     im.src = `/cosmos/${id}.webp`;
+    im.onerror = () => { im.dataset.failed = "1"; };
     photos.set(id, im);
   }
 }
 
 export function photoOf(id: string): HTMLImageElement | null {
   const im = photos.get(id);
-  if (im && im.complete && im.naturalWidth > 1) return im;
+  if (im && im.dataset.failed !== "1" && im.complete && im.naturalWidth > 1 && im.naturalHeight > 1) return im;
   return null;
+}
+
+/** Return a warmed image while it is still loading so renderers can subscribe to load/error. */
+export function photoImage(id: string): HTMLImageElement | null {
+  return photos.get(id) ?? null;
 }
 
 function bake(id: string, paint: (g: CanvasRenderingContext2D, w: number, h: number) => void, size = 384) {

@@ -1,7 +1,8 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { BODIES, posOf, bodyTexture, photoOf, AU, type SkyBody, type V, CONSTELLATIONS, NAMED_STARS } from "@/game/cosmos";
+import { BODIES, posOf, bodyTexture, photoOf, photoImage, warmupPhotos, AU, type SkyBody, type V, CONSTELLATIONS, NAMED_STARS } from "@/game/cosmos";
+import { clearHoveredTarget, setHoveredTarget, toggleLockedTarget } from "./targetFocus";
 
 /** Convert a canvas-baked body texture to a THREE.CanvasTexture. */
 export function canvasToTexture(id: string): THREE.CanvasTexture {
@@ -15,14 +16,38 @@ export function canvasToTexture(id: string): THREE.CanvasTexture {
 
 /** Load a .webp photo as a THREE texture. */
 function usePhotoTexture(id: string): THREE.Texture | null {
-  return useMemo(() => {
-    const photo = photoOf(id);
+  const [photo, setPhoto] = useState<HTMLImageElement | null>(() => photoOf(id));
+
+  useEffect(() => {
+    warmupPhotos();
+    const image = photoImage(id);
+    if (!image) {
+      setPhoto(null);
+      return;
+    }
+    const loaded = () => setPhoto(photoOf(id));
+    const failed = () => setPhoto(null);
+    if (image.complete) loaded();
+    else {
+      image.addEventListener("load", loaded);
+      image.addEventListener("error", failed);
+    }
+    return () => {
+      image.removeEventListener("load", loaded);
+      image.removeEventListener("error", failed);
+    };
+  }, [id]);
+
+  const texture = useMemo(() => {
     if (!photo) return null;
     const tex = new THREE.Texture(photo);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.needsUpdate = true;
     return tex;
-  }, [id]);
+  }, [photo]);
+
+  useEffect(() => () => texture?.dispose(), [texture]);
+  return texture;
 }
 
 interface CelestialBodyProps {
@@ -47,12 +72,12 @@ export function CelestialBody({ body, simTime, reduced = false, showHover = fals
   const material = useMemo(() => {
     if (body.kind === "sun") {
       return new THREE.MeshBasicMaterial({
-        color: body.color,
+        color: "#ffffff",
         map: texture,
       });
     }
     return new THREE.MeshStandardMaterial({
-      color: body.color,
+      color: "#ffffff",
       map: texture,
       roughness: body.id === "jupiter" || body.id === "saturn" ? 0.6 : 0.85,
       metalness: 0.05,
@@ -104,9 +129,26 @@ export function CelestialBody({ body, simTime, reduced = false, showHover = fals
       )}
 
       {/* Main body */}
-      <mesh ref={meshRef} material={material}>
+      <mesh
+        ref={meshRef}
+        material={material}
+        onPointerOver={(event) => { event.stopPropagation(); setHoveredTarget(body.id); document.body.style.cursor = "crosshair"; }}
+        onPointerOut={() => { clearHoveredTarget(body.id); document.body.style.cursor = "auto"; }}
+        onClick={(event) => { event.stopPropagation(); toggleLockedTarget(body.id); }}
+      >
         <sphereGeometry args={[body.r, 48, 48]} />
       </mesh>
+      {/* Generous invisible hit volume makes small distant worlds selectable. */}
+      {body.kind !== "sun" && (
+        <mesh
+          onPointerOver={(event) => { event.stopPropagation(); setHoveredTarget(body.id); document.body.style.cursor = "crosshair"; }}
+          onPointerOut={() => { clearHoveredTarget(body.id); document.body.style.cursor = "auto"; }}
+          onClick={(event) => { event.stopPropagation(); toggleLockedTarget(body.id); }}
+        >
+          <sphereGeometry args={[Math.max(body.r * 1.8, body.kind === "moon" ? 2.8 : 4.2), 12, 12]} />
+          <meshBasicMaterial transparent opacity={0} colorWrite={false} depthWrite={false} />
+        </mesh>
+      )}
 
       {/* Earth atmosphere shell */}
       {body.id === "earth" && (

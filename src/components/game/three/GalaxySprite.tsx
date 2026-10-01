@@ -1,7 +1,9 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
-import { GALAXIES, photoOf, type DeepSkyObject } from "@/game/cosmos";
+import { GALAXIES, photoImage, photoOf, warmupPhotos, type DeepSkyObject } from "@/game/cosmos";
+import { clearHoveredTarget, setHoveredTarget, toggleLockedTarget } from "./targetFocus";
 
 interface GalaxySpriteProps {
   galaxy: DeepSkyObject;
@@ -11,7 +13,27 @@ interface GalaxySpriteProps {
 
 /** Single galaxy/nebula as a billboard sprite with radial gradient. */
 function GalaxySprite({ galaxy, distance = 400, reduced = false }: GalaxySpriteProps) {
-  const ref = useRef<THREE.Mesh>(null);
+  const ref = useRef<THREE.Sprite>(null);
+  const [hovered, setHovered] = useState(false);
+  const [photo, setPhoto] = useState<HTMLImageElement | null>(() => galaxy.id === "andromeda" ? photoOf("andromeda") : null);
+
+  useEffect(() => {
+    if (galaxy.id !== "andromeda") return;
+    warmupPhotos();
+    const image = photoImage("andromeda");
+    if (!image) return;
+    const loaded = () => setPhoto(photoOf("andromeda"));
+    const failed = () => setPhoto(null);
+    if (image.complete) loaded();
+    else {
+      image.addEventListener("load", loaded);
+      image.addEventListener("error", failed);
+    }
+    return () => {
+      image.removeEventListener("load", loaded);
+      image.removeEventListener("error", failed);
+    };
+  }, [galaxy.id]);
 
   // Position from direction vector
   const position = useMemo(() => {
@@ -25,9 +47,26 @@ function GalaxySprite({ galaxy, distance = 400, reduced = false }: GalaxySpriteP
 
   // Texture: use photo if available (Andromeda), else procedural canvas
   const texture = useMemo(() => {
-    const photo = galaxy.id === "andromeda" ? photoOf("andromeda") : null;
     if (photo) {
-      const tex = new THREE.Texture(photo);
+      // Photos are rectangular. Composite them into a soft alpha mask before
+      // mapping onto the billboard so image edges never read as moving cards.
+      const size = 256;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d")!;
+      const fit = Math.min(size / photo.width, size / photo.height);
+      const width = photo.width * fit;
+      const height = photo.height * fit;
+      ctx.drawImage(photo, (size - width) / 2, (size - height) / 2, width, height);
+      ctx.globalCompositeOperation = "destination-in";
+      const mask = ctx.createRadialGradient(size / 2, size / 2, size * 0.08, size / 2, size / 2, size * 0.5);
+      mask.addColorStop(0, "rgba(255,255,255,1)");
+      mask.addColorStop(0.6, "rgba(255,255,255,0.88)");
+      mask.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = mask;
+      ctx.fillRect(0, 0, size, size);
+      const tex = new THREE.CanvasTexture(canvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.needsUpdate = true;
       return tex;
@@ -69,23 +108,26 @@ function GalaxySprite({ galaxy, distance = 400, reduced = false }: GalaxySpriteP
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
-  }, [galaxy]);
+  }, [galaxy, photo]);
 
   const material = useMemo(
     () =>
       new THREE.SpriteMaterial({
         map: texture,
         transparent: true,
-        opacity: 0.7,
+        opacity: 0.95,
         depthWrite: false,
+        toneMapped: false,
+        blending: THREE.AdditiveBlending,
       }),
     [texture],
   );
 
   const scale = useMemo(() => {
-    const base = galaxy.type === "galaxy" ? 30 : 18;
-    return Math.max(8, base * galaxy.rx);
-  }, [galaxy]);
+    // Render catalog angular size against the deep-sky shell distance.
+    const angularRad = ((galaxy.angularSize ?? 0.5) * Math.PI) / 180;
+    return Math.min(180, Math.max(8, angularRad * distance));
+  }, [galaxy, distance]);
 
   useFrame(({ clock }) => {
     if (ref.current && !reduced) {
@@ -95,8 +137,25 @@ function GalaxySprite({ galaxy, distance = 400, reduced = false }: GalaxySpriteP
   });
 
   return (
-    <sprite ref={ref} position={position} scale={[scale, scale * (galaxy.ry / galaxy.rx), 1]}>
+    <sprite
+      ref={ref}
+      position={position}
+      scale={[scale, scale * (galaxy.ry / galaxy.rx), 1]}
+      onPointerOver={(event) => { event.stopPropagation(); setHovered(true); setHoveredTarget(galaxy.id); document.body.style.cursor = "help"; }}
+      onPointerOut={() => { setHovered(false); clearHoveredTarget(galaxy.id); document.body.style.cursor = "auto"; }}
+      onClick={(event) => { event.stopPropagation(); toggleLockedTarget(galaxy.id); }}
+    >
       <primitive object={material} attach="material" />
+      {hovered && (
+        <Html center position={[0, scale * 0.65, 0]} distanceFactor={24} style={{ pointerEvents: "none" }}>
+          <div className="w-60 rounded-lg border border-cyan-200/30 bg-slate-950/95 p-3 text-slate-100 shadow-xl backdrop-blur">
+            <div className="font-semibold">{galaxy.name}</div>
+            <div className="mt-1 font-mono text-[11px] text-cyan-200">{galaxy.type.replaceAll("-", " ")} · {galaxy.dist}</div>
+            <div className="mt-2 text-xs text-slate-300">{galaxy.blurb}</div>
+            <div className="mt-1 text-[11px] text-slate-400">{galaxy.fact}</div>
+          </div>
+        </Html>
+      )}
     </sprite>
   );
 }

@@ -19,7 +19,7 @@ import { LESSONS, type LessonId } from "@/game/cosmos";
 export type TargetInfo = {
   id: string; name: string; kind: string; blurb: string; fact: string;
   dist: string; range: string; catalog?: string; constellation?: string;
-  spectral?: string; appMag?: number; az?: number; el?: number;
+  spectral?: string; appMag?: number; az?: number; el?: number; locked?: boolean;
 };
 
 type HudSnap = {
@@ -137,7 +137,7 @@ export function RadialGauge({
         <meshStandardMaterial color="#1a222e" metalness={0.8} roughness={0.3} />
       </mesh>
       {/* Digital readout + label */}
-      <Html position={[0, -0.16, 0.01]} center distanceFactor={2} occlude>
+      <Html position={[0, -0.16, 0.01]} center distanceFactor={2}>
         <div style={{ textAlign: "center", fontFamily: "IBM Plex Mono, monospace" }}>
           <div style={{ color: "#e8edf4", fontSize: "13px", fontWeight: 600, lineHeight: 1 }}>
             {clamped.toFixed(1)}{unit}
@@ -200,7 +200,7 @@ export function BarGauge({
           <meshStandardMaterial color="#8b97a8" />
         </mesh>
       ))}
-      <Html position={[0, isV ? -0.13 : -0.04, 0.01]} center distanceFactor={2} occlude>
+      <Html position={[0, isV ? -0.13 : -0.04, 0.01]} center distanceFactor={2}>
         <div style={{ textAlign: "center", fontFamily: "IBM Plex Mono, monospace" }}>
           <div style={{ color: "#e8edf4", fontSize: "11px", fontWeight: 600 }}>
             {clamped.toFixed(1)}{unit}
@@ -296,7 +296,7 @@ export function AttitudeIndicator({
         <boxGeometry args={[0.003, 0.04, 0.001]} />
         <meshBasicMaterial color={ACCENT} />
       </mesh>
-      <Html position={[0, -0.17, 0.01]} center distanceFactor={2} occlude>
+      <Html position={[0, -0.17, 0.01]} center distanceFactor={2}>
         <div style={{ color: "#8b97a8", fontSize: "7px", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "IBM Plex Mono, monospace" }}>
           ATTITUDE
         </div>
@@ -335,7 +335,7 @@ export function NavMFD({
       </mesh>
       <pointLight ref={screenGlowRef} position={[0, 0, 0.1]} color="#7eb8c9" intensity={0.15} distance={0.5} />
       {/* Content */}
-      <Html position={[0, 0, 0.015]} center distanceFactor={1.5} occlude transform>
+      <Html position={[0, 0, 0.015]} center distanceFactor={1.5} transform>
         <div style={{
           width: "200px", padding: "8px 10px",
           background: "linear-gradient(180deg, rgba(10,21,32,0.95), rgba(10,15,25,0.95))",
@@ -411,7 +411,7 @@ export function TargetInfoPanel({
         </mesh>
       )}
       {/* Content */}
-      <Html position={[0, 0, 0.015]} center distanceFactor={1.5} occlude transform>
+      <Html position={[0, 0, 0.015]} center distanceFactor={1.5} transform>
         {target ? (
           <div style={{
             width: "130px", padding: "8px",
@@ -502,7 +502,7 @@ export function PhaseBar({
           <meshStandardMaterial color={pathPct >= p.e ? GO : "#3a4252"} emissive={pathPct >= p.s && pathPct < p.e ? ACCENT : "#000"} emissiveIntensity={0.3} />
         </mesh>
       ))}
-      <Html position={[0, -0.04, 0.01]} center distanceFactor={2} occlude>
+      <Html position={[0, -0.04, 0.01]} center distanceFactor={2}>
         <div style={{ textAlign: "center", fontFamily: "IBM Plex Mono, monospace", width: "180px" }}>
           <div style={{ color: "#7eb8c9", fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.1em" }}>{phase}</div>
           <div style={{ color: "#e8edf4", fontSize: "9px", fontWeight: 600, fontFamily: "Outfit, sans-serif", marginTop: "2px" }}>{lessonData.title}</div>
@@ -552,7 +552,7 @@ export function ThrottleIndicator({
           <meshStandardMaterial color={NOGO} emissive={NOGO} emissiveIntensity={0.6} />
         </mesh>
       )}
-      <Html position={[0, -0.14, 0.01]} center distanceFactor={2} occlude>
+      <Html position={[0, -0.14, 0.01]} center distanceFactor={2}>
         <div style={{ textAlign: "center", fontFamily: "IBM Plex Mono, monospace" }}>
           <div style={{ color: thrust !== 0 ? (boost ? NOGO : GO) : "#8b97a8", fontSize: "9px", fontWeight: 600 }}>
             {thrust > 0 ? (boost ? "BOOST" : "BURN") : thrust < 0 ? "REVERSE" : "COAST"}
@@ -578,12 +578,8 @@ export function CockpitFrame() {
 
   return (
     <group>
-      {/* Main curved dashboard (cylinder section) */}
-      <mesh rotation={[0, 0, 0]} position={[0, -0.35, -0.5]}>
-        <cylinderGeometry args={[2.5, 2.5, 0.8, 32, 1, true, 0, Math.PI]} />
-        <meshStandardMaterial color="#1a222e" roughness={0.4} metalness={0.7} side={THREE.BackSide} />
-      </mesh>
-      {/* Top edge accent strip */}
+      {/* Keep the view clear; the dashboard is framed by slim edge details. */}
+      {/* Top canopy accent strip */}
       <mesh ref={accentStripRef} position={[0, 0.05, -0.5]} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[2.5, 0.015, 6, 48, Math.PI]} />
         <meshStandardMaterial color={ACCENT} emissive={ACCENT} emissiveIntensity={0.2} />
@@ -759,7 +755,7 @@ export function OrbitMap3D({
         <sphereGeometry args={[0.17, 8, 8]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
-      <Html position={[0, -0.22, 0.01]} center distanceFactor={2} occlude>
+      <Html position={[0, -0.22, 0.01]} center distanceFactor={2}>
         <div style={{ textAlign: "center", fontFamily: "IBM Plex Mono, monospace" }}>
           <div style={{ color: "#7eb8c9", fontSize: "7px", textTransform: "uppercase", letterSpacing: "0.1em" }}>
             ORBIT MAP · {topDown ? "TOP" : "3D"}
@@ -805,7 +801,7 @@ export function CountdownDisplay({
         <planeGeometry args={[0.35, 0.12]} />
         <meshBasicMaterial color={color} transparent opacity={nearArrival ? 0.3 : 0.1} />
       </mesh>
-      <Html position={[0, 0, 0.01]} center distanceFactor={1.2} occlude transform>
+      <Html position={[0, 0, 0.01]} center distanceFactor={1.2} transform>
         <div style={{
           textAlign: "center",
           fontFamily: "IBM Plex Mono, monospace",
@@ -887,7 +883,7 @@ export function DistanceTracker({
         <sphereGeometry args={[0.007, 8, 8]} />
         <meshBasicMaterial color={destColor} />
       </mesh>
-      <Html position={[0, -0.02, 0.01]} center distanceFactor={1.8} occlude transform>
+      <Html position={[0, -0.02, 0.01]} center distanceFactor={1.8} transform>
         <div style={{
           width: "120px",
           textAlign: "center",
@@ -939,7 +935,7 @@ export function OrbitalPhaseIndicator({
           </mesh>
         );
       })}
-      <Html position={[0, -0.1, 0.01]} center distanceFactor={2} occlude>
+      <Html position={[0, -0.1, 0.01]} center distanceFactor={2}>
         <div style={{ textAlign: "center", fontFamily: "IBM Plex Mono, monospace" }}>
           <div style={{ color: ACCENT, fontSize: "7px", textTransform: "uppercase", letterSpacing: "0.1em" }}>{phase}</div>
           <div style={{ color: "#8b97a8", fontSize: "6px" }}>{Math.round(pathPct * 100)}%</div>
@@ -1000,7 +996,7 @@ export function CockpitTogglePanel({
                 emissiveIntensity={isOn ? 0.3 : 0}
               />
             </mesh>
-            <Html position={[0.035, 0, 0.005]} distanceFactor={2} occlude>
+            <Html position={[0.035, 0, 0.005]} distanceFactor={2}>
               <div style={{
                 color: isOn ? ACCENT : "#8b97a8",
                 fontSize: "6px",

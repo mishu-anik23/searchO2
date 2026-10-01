@@ -1,8 +1,14 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { GALAXIES } from "@/game/cosmos";
 
 export type CameraZone = "surface" | "orbital" | "deep";
+
+// Start deep-space viewing on the most recognizable deep-sky target. Keeping
+// this aligned to the catalog direction makes the first pull-back rewarding.
+const andromeda = GALAXIES.find((object) => object.id === "andromeda")?.dir ?? { x: 0, y: 0, z: -1 };
+const DEEP_SPACE_POSITION = new THREE.Vector3(andromeda.x * 850, andromeda.y * 850, andromeda.z * 850);
 
 interface DepthCameraProps {
   zoom: number; // 0 = surface, 1 = deep space
@@ -34,8 +40,9 @@ export function DepthCamera({ zoom, reduced = false, enabled = true }: DepthCame
     // Zone boundaries: 0–0.35 surface, 0.35–0.7 orbital, 0.7–1 deep
     // Camera position interpolated through keyframes
     const surfacePos = new THREE.Vector3(0, 1.8, 6.5);
-    const orbitalPos = new THREE.Vector3(0, 8, 25);
-    const deepPos = new THREE.Vector3(0, 60, 120);
+    // Keep the Sun (radius 20 scene units) comfortably framed in the orbital view.
+    const orbitalPos = new THREE.Vector3(0, 40, 160);
+    const deepPos = DEEP_SPACE_POSITION;
 
     let targetPos: THREE.Vector3;
     if (z < 0.35) {
@@ -49,7 +56,7 @@ export function DepthCamera({ zoom, reduced = false, enabled = true }: DepthCame
     } else {
       // Deep space — keep pulling back slightly
       const t = (z - 0.7) / 0.3;
-      targetPos = deepPos.clone().lerp(new THREE.Vector3(0, 100, 200), t * 0.5);
+      targetPos = deepPos.clone().multiplyScalar(1 + t * 0.15);
     }
 
     cam.position.lerp(targetPos, reduced ? 1 : 0.04);

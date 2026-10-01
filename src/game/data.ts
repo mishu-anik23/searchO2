@@ -9,6 +9,7 @@ export type Screen =
   | "cruise"
   | "landing"
   | "surface"
+  | "explore"
   | "habitat"
   | "debrief";
 

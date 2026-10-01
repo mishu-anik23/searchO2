@@ -65,12 +65,39 @@ OxyForge is a budget-driven mission simulator. The player acts as a flight direc
                     └───────────────────┘
 ```
 
+## Dual-Game Economy & Ecosystem Architecture
+
+OxyForge is part of the unified **SearchO2 + OxyForge** simulation ecosystem:
+- **SearchO2:** Terrestrial agro-forestry, carbon drawdown, and microgrid estate simulator.
+- **OxyForge:** 3D aerospace mission simulator, orbital transfer mechanics, and off-world In-Situ Resource Utilization (ISRU) oxygen production plant.
+- **Access Rule:** OxyForge missions require an authenticated Commander Account (logged-in users only). Guests may explore the terrestrial SearchO2 sandbox and upgrade/merge their farm progress upon registration.
+
+### Unified Economic Model & AFC Crypto Conversion
+
+$$\mathbf{1.00€ \text{ Real EUR}} = \mathbf{200 \text{ AFC}} = \mathbf{2,000€ \text{ Game Money}}$$
+
+| Unit | Game Value | Real EUR Nominal Equivalent | Legal & Functional Classification |
+| :--- | :--- | :--- | :--- |
+| **1.00€ Real EUR** | 2,000.00€ Game Money | 1.00€ Fiat | Fiat currency processed via licensed European Payment Rails (Stripe, SEPA, Cards, Klarna, PayPal). |
+| **1 AFC** | 10.00€ Game Money | €0.005 (0.5 Euro Cent) | Proof-of-cultivation ERC-20 utility token deployed on **Base L2** with sub-cent gas fees (< €0.002). |
+| **Game Money (GC)** | 1.00€ Game Unit | €0.0005 | Closed-loop virtual simulation currency for both farm plots and space mission contracts. |
+| **Initial Starting Budget**| **€10,000.00** Game Money | €5.00 nominal value | Granted exactly once upon new farm/commander registration. |
+
+### Technology & Regulatory Standards (Germany & EU Compliance)
+- **Blockchain:** **Base L2** (Coinbase / OP Stack) — Sub-cent transaction fees, instant ~2s finality, EVM standard.
+- **Wallet Infrastructure:** **ERC-4337 Account Abstraction** with Embedded Wallets (Privy / Biconomy) — Passkey, Google, and Email login with zero seed phrase friction and gasless sponsored transactions via Paymaster.
+- **Payments:** **Stripe European Billing** (Visa, Mastercard, Klarna, SEPA Instant Credit & Direct Debit) + **PayPal REST API v2**.
+- **KYC & AML:** **Sumsub WebSDK** — German *Personalausweis* verification, EU passports, 3D face liveness, PEP/sanctions screening, and EU Travel Rule (TFR 2023/1113).
+- **Data Protection:** 100% **GDPR / DSGVO** compliant — Zero PII stored on-chain; user data encrypted at rest in Frankfurt (`eu-central-1`).
+
+---
+
 ### Screen-by-Screen Breakdown
 
 #### 1. Briefing
 - First-time onboarding screen
-- Player enters their commander name
-- Sets starting budget: $2,500,000
+- Player enters their commander name (requires authenticated sign-in)
+- Initializes with starting program balance: €10,000 Game Money (or 250,000 OxyForge simulation grant)
 
 #### 2. HQ (Headquarters)
 - Program overview: credits, oxygen stored, habitats built, missions completed

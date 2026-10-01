@@ -24,7 +24,6 @@ import {
   transferPath,
   warmupPhotos,
   type LessonId,
-  type SkyBody,
   type V,
 } from "@/game/cosmos";
 import {
@@ -36,10 +35,11 @@ import {
 import { formatEta, formatKm, formatUsd } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
-import { CockpitDashboard, type HudSnap, type TargetInfo } from "./CockpitGauges";
-import { StarField3D } from "./StarField3D";
+import type { HudSnap, TargetInfo } from "./CockpitGauges";
+import { NamedStars3D, StarField3D } from "./StarField3D";
 import { CelestialBody, OrbitPaths } from "./CelestialBody";
 import { GalaxySprites } from "./GalaxySprite";
+import { getTargetFocus, resetTargetFocus } from "./targetFocus";
 
 /* ---------- Quaternion math (preserved from FPVView) ---------- */
 type Q = { x: number; y: number; z: number; w: number };
@@ -166,8 +166,11 @@ function SceneContent({
   };
 
   useFrame((state) => {
-    const now = state.clock.elapsedTime * 1000;
-    const dt = Math.min((now - lastTime.current) / 1000, 0.1);
+    // Keep one clock source. Mixing performance.now() for the initial value
+    // with Three's elapsed clock made the first delta hugely negative and
+    // flung the ship/camera out of the solar system before the first render.
+    const now = performance.now();
+    const dt = Math.min(Math.max((now - lastTime.current) / 1000, 0), 0.1);
     lastTime.current = now;
 
     if (document.hidden) return;
@@ -324,26 +327,49 @@ function SceneContent({
 
     const lesson = pickLesson({ dest: destination, thrusting: thrust !== 0, drifted, looking: null });
 
-    // Find nearest target
-    const inv = qConj(s.quat);
-    const fl = 1; // not used for 3D but kept for computation
-    const drawn: { body: SkyBody; dist: number }[] = [];
-    for (const body of BODIES) {
-      const p = posOf(body.id, simT, cache);
-      const dist = Math.hypot(p.x - s.pos.x, p.y - s.pos.y, p.z - s.pos.z);
-      drawn.push({ body, dist });
-    }
-    drawn.sort((a, b) => a.dist - b.dist);
-
-    // Simple target: nearest body
+    // Lock the mission destination by default; hover changes the info card, while
+    // clicking a body/star/galaxy locks it until the next click.
+    const focus = getTargetFocus(destination);
+    const body = BODIES.find((item) => item.id === focus.id);
     let target: TargetInfo | null = null;
-    if (drawn.length > 0) {
-      const nearest = drawn[0];
+    if (body) {
+      const p = posOf(body.id, simT, cache);
+      const range = Math.hypot(p.x - s.pos.x, p.y - s.pos.y, p.z - s.pos.z);
       target = {
-        id: nearest.body.id, name: nearest.body.name, kind: nearest.body.kind,
-        blurb: nearest.body.blurb, fact: nearest.body.fact, dist: nearest.body.dist,
-        range: formatRange(nearest.dist, destination),
+        id: body.id, name: body.name, kind: body.kind, blurb: body.blurb, fact: body.fact,
+        dist: body.dist, range: formatRange(range, destination), locked: focus.lockedId === body.id,
       };
+    } else {
+      const star = NAMED_STARS.find((item) => item.id === focus.id);
+      const galaxy = GALAXIES.find((item) => item.id === focus.id);
+      if (star) {
+        target = {
+          id: star.id, name: star.name, kind: "star", blurb: star.blurb, fact: star.fact,
+          dist: star.dist, range: star.dist, catalog: star.catalogNames?.join(" · "),
+          constellation: star.constellation, spectral: star.spectral, appMag: star.appMag,
+          locked: focus.lockedId === star.id,
+        };
+      } else if (galaxy) {
+        target = {
+          id: galaxy.id, name: galaxy.name, kind: galaxy.type, blurb: galaxy.blurb, fact: galaxy.fact,
+          dist: galaxy.dist, range: galaxy.dist, catalog: galaxy.catalogNames?.join(" · "),
+          constellation: galaxy.constellation, locked: focus.lockedId === galaxy.id,
+        };
+      } else {
+        const fieldMatch = /^(catalog-star|milky-star):(\d+)$/.exec(focus.id);
+        if (fieldMatch) {
+          const index = Number(fieldMatch[2]);
+          const catalogStar = fieldMatch[1] === "catalog-star" ? FIELD[index] : MILKY[index];
+          if (catalogStar) target = {
+            id: focus.id,
+            name: fieldMatch[1] === "catalog-star" ? `Catalog star ${index + 1}` : `Milky Way field star ${index + 1}`,
+            kind: "star", blurb: "Procedural sky object shown for orientation and sky-density exploration.",
+            fact: `Visual spectral class ${catalogStar.spectral ?? "G"}. This background field is a directional visualization and is not to scale.`,
+            dist: "Background field · not to scale", range: "Deep-sky background", spectral: catalogStar.spectral,
+            appMag: catalogStar.mag, locked: focus.lockedId === focus.id,
+          };
+        }
+      }
     }
 
     publishHud({
@@ -393,8 +419,17 @@ function SceneContent({
 
   return (
     <>
+      <color attach="background" args={["#03050a"]} />
+      {/* Space is dark, but standard-material planets still need a usable key
+          light at this compressed AU scale. The ambient fill keeps the far side
+          legible while the central light gives day/night shape. */}
+      <ambientLight intensity={0.55} color="#9aacc4" />
+      <pointLight position={[0, 0, 0]} color="#fff1cf" intensity={20000} distance={1800} decay={2} />
+
       {/* Star field — reuse existing StarField3D */}
-      <StarField3D />
+      <StarField3D radius={2500} />
+      {/* Named stars have larger pick targets and hover information in FPV. */}
+      <NamedStars3D radius={2350} />
 
       {/* Planets — reuse existing CelestialBody */}
       {BODIES.filter(b => b.orbit && !b.parent).map(body => (
@@ -408,7 +443,7 @@ function SceneContent({
       <OrbitPaths />
 
       {/* Galaxies */}
-      <GalaxySprites />
+      <GalaxySprites distance={2200} />
 
       {/* Transfer corridor */}
       <primitive object={new THREE.Line(corridorGeo, new THREE.LineDashedMaterial({ color: 0x7eb8c9, dashSize: 1.5, gapSize: 1, transparent: true, opacity: 0.7 }))} />
@@ -479,6 +514,7 @@ function CockpitHudOverlay({ destination }: { destination: DestinationId }) {
   const closeFpv = useGame((s) => s.closeFpv);
   const beginLanding = useGame((s) => s.beginLanding);
   const credits = useGame((s) => s.credits);
+  const lastMarked = useRef({ target: "", lesson: "" });
   const [hud, setHud] = useState<HudSnap>({
     speed: 8, yaw: 0, thrust: 0, boost: false, target: null,
     lesson: destination === "mars" ? "hohmann" : "visviva",
@@ -495,16 +531,21 @@ function CockpitHudOverlay({ destination }: { destination: DestinationId }) {
   }, []);
 
   useEffect(() => {
-    if (hud.target) {
+    if (hud.target && hud.target.id !== lastMarked.current.target) {
       const map: Record<string, string> = {
         mars: "distance", moon: "distance", earth: "why-oxygen",
         sun: "orbits", andromeda: "orbits", jupiter: "orbits", saturn: "orbits",
       };
       const id = map[hud.target.id];
       if (id) useGame.getState().markTopic(id);
+      lastMarked.current.target = hud.target.id;
     }
-    useGame.getState().markTopic(LESSONS[hud.lesson].libraryId);
-  }, [hud.target, hud.lesson]);
+    const lessonTopic = LESSONS[hud.lesson].libraryId;
+    if (lessonTopic !== lastMarked.current.lesson) {
+      useGame.getState().markTopic(lessonTopic);
+      lastMarked.current.lesson = lessonTopic;
+    }
+  }, [hud.target?.id, hud.lesson]);
 
   const near = hud.remainKm / TRANSFER[destination].km < 0.12;
 
@@ -512,7 +553,7 @@ function CockpitHudOverlay({ destination }: { destination: DestinationId }) {
     <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-2">
-          <div className="rounded-md border border-border bg-bg/80 px-3 py-2">
+          <div className="rounded-md border border-border/60 bg-bg/55 px-3 py-2 backdrop-blur-sm">
             <p className="font-mono text-xs tabular-nums text-accent">
               {formatUsd(credits)} · {formatUsd(FPV_RATE_PER_SEC)}/s
             </p>
@@ -547,42 +588,137 @@ function CockpitHudOverlay({ destination }: { destination: DestinationId }) {
           </Button>
         </div>
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <p className="hidden max-w-xs text-[11px] text-muted sm:block">
-          Reticle auto-locks worlds on the path. W/S thrust · A/D yaw (A left) · drag to look · Z damp · X brake
+      <TransferMap hud={hud} destination={destination} />
+      <MissionTargetCue hud={hud} destination={destination} />
+      <div className="absolute inset-0 grid place-items-center" aria-hidden="true">
+        <svg className="size-8 opacity-60" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="4" stroke="#7eb8c9" strokeWidth=".6" />
+          <path d="M16 1v8M16 23v8M1 16h8M23 16h8" stroke="#7eb8c9" strokeWidth=".6" />
+        </svg>
+      </div>
+      <div className="pointer-events-none absolute bottom-3 left-3 flex max-w-[min(24rem,calc(100vw-1.5rem))] flex-col gap-2 sm:bottom-5 sm:left-5">
+        <div className="rounded-md border border-border/50 bg-bg/40 px-3 py-2 backdrop-blur-sm">
+          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted">Velocity</p>
+          <p className="font-mono text-lg tabular-nums text-fg">{hud.speed.toFixed(1)} <span className="text-xs text-muted">u/s</span></p>
+          <div className="mt-1 h-0.5 w-32 overflow-hidden bg-white/10">
+            <div className="h-full bg-accent" style={{ width: `${Math.max(2, Math.min(100, hud.speed / 30 * 100))}%` }} />
+          </div>
+          <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-accent">
+            {hud.boost ? "Boost" : hud.thrust !== 0 ? "Burn" : "Coasting"}{hud.drifted ? " · Off course" : ""}
+          </p>
+        </div>
+        <p className="hidden font-mono text-[10px] text-white/55 sm:block">
+          W/S thrust · A/D yaw · drag to look · Z damp · X brake
         </p>
       </div>
+      {hud.target && (
+        <div className="pointer-events-none absolute bottom-3 right-3 max-w-[min(13rem,calc(100vw-1.5rem))] rounded-md border border-border/50 bg-slate-950/80 px-3 py-2 backdrop-blur-sm sm:bottom-5 sm:right-5 sm:max-w-56">
+          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-accent">
+            {hud.target.locked ? "Target locked · click to unlock" : "Target data · click object to lock"}
+          </p>
+          <p className="font-display text-sm text-fg">{hud.target.name}</p>
+          <p className="font-mono text-[10px] text-muted">{hud.target.kind} · {hud.target.range}</p>
+          {hud.target.spectral && <p className="font-mono text-[9px] text-muted">{hud.target.spectral}{hud.target.constellation ? ` · ${hud.target.constellation}` : ""}</p>}
+          {hud.target.blurb && <p className="mt-1 text-[10px] leading-snug text-white/75">{hud.target.blurb}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A small, readable flight-plan view answers where the ship is while the
+ *  first-person camera stays in the spacecraft. */
+function TransferMap({ hud, destination }: { hud: HudSnap; destination: DestinationId }) {
+  const progress = Math.max(0, Math.min(1, hud.pathPct));
+  const isMars = destination === "mars";
+  const easedProgress = 3 * progress * progress - 2 * progress * progress * progress;
+  const shipX = isMars ? 61 + 76 * easedProgress : 90 + 31 * progress;
+  const shipY = isMars ? 55 - 150 * progress * (1 - progress) : 55 - 66 * progress * (1 - progress);
+  const scienceNote = isMars
+    ? progress < 0.08 ? "Departure burn raises the far side of the orbit (apoapsis)."
+      : progress > 0.92 ? "Arrival burn removes relative speed for Mars capture."
+        : "Coast on the transfer ellipse: solar gravity bends the path; engines stay off."
+    : progress < 0.1 ? "Trans-lunar injection raises apogee toward the Moon."
+      : progress > 0.9 ? "Lunar orbit insertion slows the craft into lunar capture."
+        : "Earth–Moon coast: gravity curves the path while the craft falls around Earth.";
+
+  return (
+      <div className="pointer-events-none absolute left-3 top-[8rem] w-44 rounded-lg border border-white/15 bg-slate-950/75 p-2.5 shadow-lg backdrop-blur-sm sm:left-4 sm:top-24 sm:w-52">
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-cyan-200">{isMars ? "Hohmann map" : "Lunar transfer"}</p>
+        <p className="font-mono text-[9px] text-white/55">{Math.round(progress * 100)}%</p>
+      </div>
+      <svg viewBox="0 0 180 92" className="mt-1 h-[4.6rem] w-full" role="img" aria-label={`${isMars ? "Earth to Mars Hohmann transfer" : "Earth to Moon transfer"}; spacecraft ${Math.round(progress * 100)} percent along route`}>
+        {isMars ? (
+          <>
+            <circle cx="90" cy="55" r="29" fill="none" stroke="rgba(126,184,201,.22)" strokeDasharray="2 3" />
+            <circle cx="90" cy="55" r="47" fill="none" stroke="rgba(196,137,106,.2)" strokeDasharray="2 3" />
+            <path d="M61 55 C61 5 137 5 137 55" fill="none" stroke="#7eb8c9" strokeOpacity=".65" strokeWidth="2.2" strokeLinecap="round" />
+            <circle cx="90" cy="55" r="4" fill="#ffd98a" />
+            <circle cx="61" cy="55" r="4" fill="#4a90d9" />
+            <circle cx="137" cy="55" r="4" fill="#c4896a" />
+            <text x="45" y="76" fill="rgba(232,237,244,.68)" fontSize="7">EARTH</text>
+            <text x="126" y="76" fill="rgba(232,237,244,.68)" fontSize="7">MARS</text>
+          </>
+        ) : (
+          <>
+            <circle cx="90" cy="55" r="31" fill="none" stroke="rgba(197,212,227,.25)" strokeDasharray="2 3" />
+            <path d="M90 55 Q105 22 121 55" fill="none" stroke="rgba(126,184,201,.25)" strokeWidth="3" />
+            <path d={`M90 55 Q105 22 ${shipX} ${shipY}`} fill="none" stroke="#7eb8c9" strokeWidth="2.2" strokeLinecap="round" />
+            <circle cx="90" cy="55" r="7" fill="#4a90d9" />
+            <circle cx="121" cy="55" r="3.5" fill="#d9e0e8" />
+            <text x="78" y="76" fill="rgba(232,237,244,.68)" fontSize="7">EARTH</text>
+            <text x="116" y="76" fill="rgba(232,237,244,.68)" fontSize="7">MOON</text>
+          </>
+        )}
+        <path d={`M${shipX - 4} ${shipY + 3} L${shipX} ${shipY - 5} L${shipX + 4} ${shipY + 3} Z`} fill="#e8edf4" stroke="#071018" strokeWidth=".8" />
+      </svg>
+      <p className="truncate font-mono text-[9px] text-white/85">{hud.phase}</p>
+      <p className="mt-1 text-[9px] leading-snug text-cyan-100/80">{scienceNote}</p>
+      <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full bg-cyan-300 transition-[width]" style={{ width: `${progress * 100}%` }} />
+      </div>
+      <p className="mt-1 font-mono text-[8px] text-white/55">White marker = ship · cyan arc = route</p>
+    </div>
+  );
+}
+
+function MissionTargetCue({ hud, destination }: { hud: HudSnap; destination: DestinationId }) {
+  const signedAz = ((hud.targetAz + 180) % 360) - 180;
+  const azLabel = Math.abs(signedAz) < 3 ? "ahead" : `${Math.abs(Math.round(signedAz))}° ${signedAz > 0 ? "right" : "left"}`;
+  const elLabel = Math.abs(hud.targetEl) < 3 ? "level" : `${Math.abs(Math.round(hud.targetEl))}° ${hud.targetEl > 0 ? "up" : "down"}`;
+  const aligned = Math.abs(signedAz) < 14 && Math.abs(hud.targetEl) < 12;
+  const name = destination === "mars" ? "Mars" : "Moon";
+
+  return (
+    <div className="pointer-events-none absolute left-1/2 top-[4.6rem] -translate-x-1/2 rounded-md border border-cyan-200/30 bg-slate-950/65 px-3 py-1.5 text-center shadow-lg backdrop-blur-sm">
+      <p className="font-mono text-[9px] uppercase tracking-[0.15em] text-cyan-200">Mission target · {name} · locked</p>
+      <p className="font-mono text-[10px] text-white/80">{aligned ? "In forward view · center reticle to align" : `Turn ${azLabel} · ${elLabel} · drag or use A/D and R/F`}</p>
     </div>
   );
 }
 
 /* ---------- Main CockpitScene component ---------- */
 export function CockpitScene({ destination }: { destination: DestinationId }) {
+  useEffect(() => { resetTargetFocus(destination); }, [destination]);
+  const start = startPose(destination);
+  const target = posOf(destination, 0, new Map());
+  const dx = target.x - start.pos.x;
+  const dy = target.y - start.pos.y;
+  const dz = target.z - start.pos.z;
+  const startYaw = Math.atan2(-dx, -dz);
+  const startPitch = Math.atan2(dy, Math.hypot(dx, dz));
+  const startQuat = qEulerYXZ(startPitch, startYaw, 0);
   const shipRef = useRef<ShipState>({
-    pos: { ...startPose(destination).pos },
-    vel: { ...startPose(destination).vel },
-    quat: qEulerYXZ(startPose(destination).pitch, 0, 0),
-    yaw: 0,
+    pos: { ...start.pos },
+    vel: { ...start.vel },
+    quat: startQuat,
+    yaw: startYaw,
     travelled: 0,
-    prevPos: { ...startPose(destination).pos },
+    prevPos: { ...start.pos },
   });
   qNorm(shipRef.current.quat);
   const simTRef = useRef(0);
-  const [hud, setHud] = useState<HudSnap>({
-    speed: 8, yaw: 0, thrust: 0, boost: false, target: null,
-    lesson: destination === "mars" ? "hohmann" : "visviva",
-    drifted: false, pathPct: 0, au: 1, travelledKm: 0,
-    remainKm: TRANSFER[destination].km, etaHours: TRANSFER[destination].hours,
-    vKms: TRANSFER[destination].vKms, targetAz: 0, targetEl: 0,
-    distEarth: 0, distTarget: TRANSFER[destination].km, metHours: 0,
-    phase: destination === "mars" ? "Heliocentric transfer" : "Translunar coast",
-  });
-
-  useEffect(() => {
-    hudListeners.add(setHud);
-    return () => { hudListeners.delete(setHud); };
-  }, []);
-
   useEffect(() => {
     warmupPhotos();
     window.__controlsTest = {
@@ -601,12 +737,6 @@ export function CockpitScene({ destination }: { destination: DestinationId }) {
         camera={{ fov: 62, near: 0.01, far: 10000, position: [0, 0, 0] }}
       >
         <SceneContent ship={shipRef} simTRef={simTRef} destination={destination} />
-        <CockpitDashboard
-          hud={hud}
-          destination={destination}
-          simT={simTRef.current}
-          shipQuat={shipRef.current.quat}
-        />
       </Canvas>
       <CockpitHudOverlay destination={destination} />
     </div>
