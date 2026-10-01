@@ -85,7 +85,7 @@ Unlike conventional farming games that treat land as a frictionless commodity, *
 ## 🎮 Gameplay Quickstart & Instructions
 
 ### Step 1: Survey Your Farmstead
-You begin in the Central European Grassland (Germany) with **€50.00** in starting capital, **6 cultivable agricultural plots**, and an undeveloped rural valley surrounded by 4 wind turbine hilltops.
+You begin in the Central European Grassland (Germany) with **€10,000.00 GC** in starting capital, **6 cultivable agricultural plots**, and an undeveloped rural valley surrounded by 4 wind turbine hilltops. Your treasury is linked directly to the Base L2 smart wallet and OxyForge aerospace mission command.
 
 ### Step 2: Excavate & Prepare Fertile Soil
 1. Click on any uncultivated plot marked **Barren**.
@@ -698,6 +698,60 @@ The game incorporates a **zero-asset, 100% procedural Web Audio API engine** (`S
 - 💧 `water`: Ascending liquid water drops with randomized resonance.
 - ✂️ `prune`: Crisp wooden shears snap.
 - 🪓 `fell`: Heavy timber strike with descending creak and ground thud.
+
+---
+
+### 🚀 OxyForge Aerospace & Dual-Game Base L2 AFC Crypto Integration
+
+The **SearchO2** platform expands beyond terrestrial soil into off-planet exploration via **OxyForge Aerospace**, linking Earth agroforestry oxygen production with lunar and martian In-Situ Resource Utilization (ISRU):
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│               SEARCHO2 & OXYFORGE UNIFIED DUAL-GAME PLATFORM          │
+├──────────────────────────────────┬─────────────────────────────────────┤
+│   🌾 SearchO2 Terrestrial Farm    │     🚀 OxyForge Aerospace Program   │
+│   • Soil excavation & agroforest │     • 3D Pad 39A rocket ignition    │
+│   • Microgrid wind turbines      │     • Trans-lunar / Hohmann coast   │
+│   • Multi-modal village commerce │     • 3D Apollo lunar descent       │
+│   • €10,000 Starting Capital     │     • Polar regolith ISRU O₂ plants │
+├──────────────────────────────────┴─────────────────────────────────────┤
+│              🪙 Base L2 Account Abstraction (ERC-4337)                 │
+│      1.00 € Real EUR  ⟷  200 AFC Coin  ⟷  2,000 € Game Credits (GC)    │
+│            Gasless Transactions via Biconomy Paymaster Sponsorship     │
+│         Compliant with EU MiCA (2023/1114), BaFin, and GDPR Art 17     │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 1. 3D Rocket Launchpad & Ignition Simulator (`public/launchpad-preview.html`)
+- **Pad 39A Launch Complex:** Concrete launch mount, flame deflector trench, dual water deluge cannons, orbital service tower, and articulating crew gantry arm that retracts at T-7s.
+- **Interactive Pre-Flight Checklist:** Cryogenic Liquid Oxygen (LOX) and Liquid Methane (CH4) loading, inertial navigation alignment, Doppler wind radar poll, and Flight Director GO/NO-GO terminal poll.
+- **Realistic Audio & Ignition Sequence:** T-10s countdown sequence with audio synchronization, T-3s engine ignition with Web Audio low-frequency acoustic rumble, dynamic volumetric flame plume, and exhaust cloud expansion.
+- **Ascent Physics & Multi-Camera Switcher:** Gravity turn atmospheric ascent, aerodynamic dynamic pressure ($q = \frac{1}{2}\rho v^2$) with Max-Q callout, MECO, and stage separation. Dynamic sky shader transitions from daytime troposphere to starry vacuum. Real-time camera switching between Pad Orbit, Tower Tracking, Engine Flame Cam, and Long Range Tracking.
+
+#### 2. Complete HQ Mission Command & Flight Crew Roster (`public/oxyforge.html`)
+- **Flight Specialist Roster (`CREW_ROSTER`):**
+  - **You (Commander):** Flight Director (Leadership, Checklist, Budget) — Base commander seat.
+  - **Nova Reyes (Pilot):** Ascent / Descent Pilot (PDI, Abort, RCS).
+  - **Kade Okonkwo (Systems):** Vehicle Systems (Power, Thermal, Propellant).
+  - **Mira Chen (ISRU Science):** ISRU Chemical Specialist (Electrolysis, MOXIE, Sampling).
+  - **Dr. Sol Park (Medical):** Crew Health Officer (Life Support, Radiation, EVA prep).
+  - **Jax Moreau (Pilot):** Deep Space Transfer Pilot (Hohmann, Mid-Course, Navigation).
+- **Interactive Seat Assignment:** Procedural SVG flight-suit avatars with zero external image dependencies. Assign up to 3 crew members for Crewmark missions with persistent `localStorage` state (`crewHired`, `crewSeats`). Hover cards reveal aerospace operational and science facts.
+- **Direct Navigation:** One-click instant launch buttons for the 3D Pad Simulator, 3D Moon Landing, Mission Planner, and Science Library.
+
+#### 3. 3D Moon Landing & ISRU Descent (`public/moon-landing-preview.html`)
+- **Apollo 6-Phase Descent Profile:** Lunar Orbit Insertion (LOI), Low Lunar Orbit (LLO), Descent Orbit Insertion (DOI), Powered Descent Initiation (PDI), Terminal Guidance, and Touchdown at Shackleton Crater.
+- **Interactive Hotspots:** Real-time orbital mechanics callouts, altimeter, and speedometer.
+
+#### 4. Base L2 Crypto Economy & Regulatory Compliance (Germany & EU)
+- **Unified Tri-Asset Ledger:**
+  $$\text{1.00 € Real EUR} = \text{200 AFC Coin} = \text{2,000 € Game Credits (GC)}$$
+  $$\text{1 AFC Coin} = \text{10.00 € Game Credits} = \text{0.005 € Real EUR}$$
+  Initial player starting money is set to **€10,000.00 GC**.
+- **Base L2 + ERC-4337 Account Abstraction:** Low latency, sub-cent execution ($< \text{€0.002}$) sponsored through a Biconomy Paymaster so players never pay gas fees.
+- **EU MiCA & BaFin Compliance:** Classified as a closed-loop in-game utility token (Title II/III MiCA exemption). Sumsub WebSDK KYC with automated AML/PEP sanction screening for fiat-to-crypto on-ramps. Zero personal data stored on-chain (GDPR Article 17 "Right to be Forgotten" compliant).
+- **Payment Rails:** Stripe (SEPA Instant, Cards, Klarna) and PayPal REST v2.
+
 - 💨 `turbine`: Soft harmonic wind whoosh with low-frequency rotor hum.
 - 🔋 `bess`: High-frequency electronic inverter capacitor hum.
 - 🏆 `achieve`: Victorious 4-note brassy Rhodes and bell fanfare.
