@@ -17,6 +17,7 @@ import {
   type RocketId,
   type Screen,
 } from "./data";
+import { CREW_ROSTER, CREW_SEAT_LIMIT } from "./crew";
 
 export interface Mission {
   rocket: RocketId;
@@ -60,6 +61,10 @@ export interface GameState {
   cameraDepth: "surface" | "orbital" | "deep";
   cameraZoom: number;
   cockpitToggles: Record<string, boolean>;
+  /** Crew ids already hired (paid once). Commander always included. */
+  crewHired: string[];
+  /** Up to 3 seats for the next Crewmark flight (ordered). */
+  crewSeats: string[];
 
   setHydrated: () => void;
   setCommander: (name: string) => void;
@@ -68,6 +73,8 @@ export interface GameState {
   openLibrary: (id?: string) => void;
   closeLibrary: () => void;
   markTopic: (id: string) => void;
+  hireCrew: (id: string) => boolean;
+  toggleCrewSeat: (id: string) => void;
   selectMission: (rocket: RocketId, destination: DestinationId) => boolean;
   setCheck: (id: string, value: boolean) => void;
   setFuel: (lox: number, ch4: number) => void;
@@ -114,6 +121,8 @@ const persistedKeys = [
   "landingStep",
   "fpvSpent",
   "debrief",
+  "crewHired",
+  "crewSeats",
 ] as const;
 
 export const useGame = create<GameState>()(
@@ -157,6 +166,8 @@ export const useGame = create<GameState>()(
         target: true,
         lesson: true,
       },
+      crewHired: ["cmd-self"],
+      crewSeats: ["cmd-self"],
 
       setHydrated: () => {
         const s = get();
@@ -164,12 +175,38 @@ export const useGame = create<GameState>()(
           hydrated: true,
           fpvOpen: false,
           screen: s.commander ? (s.screen === "briefing" ? "hq" : s.screen) : "briefing",
+          crewHired: s.crewHired?.length ? s.crewHired : ["cmd-self"],
+          crewSeats: s.crewSeats?.length ? s.crewSeats : ["cmd-self"],
         });
       },
       setCommander: (name) =>
         set({ commander: name.trim() || "Cadet", screen: "hq" }),
       setReducedMotion: (v) => set({ reducedMotion: v }),
       go: (screen) => set({ screen, fpvOpen: false, libraryOpen: false }),
+      hireCrew: (id) => {
+        const member = CREW_ROSTER.find((c) => c.id === id);
+        if (!member) return false;
+        const s = get();
+        if (s.crewHired.includes(id)) return true;
+        if (s.missionsDone < member.unlockAfterMissions) return false;
+        if (member.hireCost > 0 && s.credits < member.hireCost) return false;
+        set({
+          credits: s.credits - member.hireCost,
+          crewHired: [...s.crewHired, id],
+        });
+        return true;
+      },
+      toggleCrewSeat: (id) => {
+        const s = get();
+        if (!s.crewHired.includes(id) && id !== "cmd-self") return;
+        if (s.crewSeats.includes(id)) {
+          const next = s.crewSeats.filter((x) => x !== id);
+          set({ crewSeats: next.length ? next : ["cmd-self"] });
+          return;
+        }
+        if (s.crewSeats.length >= CREW_SEAT_LIMIT) return;
+        set({ crewSeats: [...s.crewSeats, id] });
+      },
       openLibrary: (id) => {
         if (id) get().markTopic(id);
         set({ libraryOpen: true, libraryId: id ?? get().libraryId ?? "why-oxygen" });
@@ -354,6 +391,8 @@ export const useGame = create<GameState>()(
           fpvOpen: false,
           fpvSpent: 0,
           debrief: null,
+          crewHired: ["cmd-self"],
+          crewSeats: ["cmd-self"],
         }),
     }),
     {

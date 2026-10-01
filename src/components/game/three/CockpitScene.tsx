@@ -94,6 +94,10 @@ let injected: string[] | null = null;
 let steerOverride: number | null = null;
 const look = { dx: 0, dy: 0 };
 const pointer = { x: 0.5, y: 0.5, active: false };
+/** True while primary button is held for drag-look (no pointer-lock required). */
+let dragLooking = false;
+/** Observe mode: soft station-keeping near the Sun / transfer (Key V toggles). */
+let observeMode = true;
 
 function codesHas(code: string) {
   if (injected) return injected.includes(code);
@@ -130,40 +134,53 @@ function SceneContent({
   const billAcc = useRef(0);
   const lastTime = useRef(performance.now());
 
-  // Setup keyboard/mouse/pointer input
+  // Setup keyboard/mouse — drag-to-look works WITHOUT pointer lock so the
+  // OS cursor stays visible for planet hover + click-to-lock.
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       held.add(e.code);
       if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
+      // V = toggle observe / free-fly
+      if (e.code === "KeyV" && !e.repeat) observeMode = !observeMode;
     };
     const up = (e: KeyboardEvent) => held.delete(e.code);
-    const blur = () => held.clear();
+    const blur = () => {
+      held.clear();
+      dragLooking = false;
+    };
     const move = (e: MouseEvent) => {
+      // Pointer-lock FPS look (optional, from middle-click)
       if (document.pointerLockElement) {
         look.dx += e.movementX;
         look.dy += e.movementY;
+        return;
       }
+      // Drag look with left/right button held — cursor still visible
+      if (dragLooking) {
+        look.dx += e.movementX;
+        look.dy += e.movementY;
+      }
+    };
+    const upMouse = () => {
+      dragLooking = false;
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     window.addEventListener("blur", blur);
     document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", upMouse);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", blur);
       document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", upMouse);
       held.clear();
       injected = null;
+      dragLooking = false;
       try { if (document.pointerLockElement) document.exitPointerLock(); } catch { /* */ }
     };
   }, []);
-
-  // Pointer lock on canvas click
-  const onPointerDown = (e: React.PointerEvent) => {
-    pointer.active = true;
-    try { (e.target as HTMLElement).requestPointerLock?.(); } catch { /* */ }
-  };
 
   useFrame((state) => {
     // Keep one clock source. Mixing performance.now() for the initial value
@@ -253,15 +270,42 @@ function SceneContent({
       }
     }
 
-    // Damping (X = brake)
+    // Damping (X = brake) — hold to stop and observe the solar system
     if (codesHas("KeyX")) {
-      const k = 1 - Math.exp(-2.5 * dt);
+      const k = 1 - Math.exp(-2.8 * dt);
       s.vel.x *= 1 - k; s.vel.y *= 1 - k; s.vel.z *= 1 - k;
+    }
+
+    // Observe mode (default ON, toggle with V): soft station-keeping so you
+    // don't coast out into empty deep sky while studying planets.
+    if (observeMode && thrust === 0 && !codesHas("Space") && !codesHas("KeyC") && !codesHas("ControlLeft")) {
+      const k = 1 - Math.exp(-1.1 * dt);
+      s.vel.x *= 1 - k;
+      s.vel.y *= 1 - k;
+      s.vel.z *= 1 - k;
+      // Cancel most solar gravity so you can "park" on the transfer path
+      s.vel.x -= (sunDir.x / sunDist) * gSun * dt * 0.85;
+      s.vel.y -= (sunDir.y / sunDist) * gSun * dt * 0.85;
+      s.vel.z -= (sunDir.z / sunDist) * gSun * dt * 0.85;
     }
 
     // Integrate position
     s.prevPos = { ...s.pos };
     s.pos.x += s.vel.x * dt; s.pos.y += s.vel.y * dt; s.pos.z += s.vel.z * dt;
+
+    // Soft leash: if you drift too far from the Sun, pull gently back into the planetary zone
+    const rSun = Math.hypot(s.pos.x, s.pos.y, s.pos.z) || 1;
+    const maxR = AU * 6.5; // beyond ~Saturn zone in this compressed scale
+    if (rSun > maxR) {
+      const pull = (rSun - maxR) * 0.35 * dt;
+      s.pos.x -= (s.pos.x / rSun) * pull;
+      s.pos.y -= (s.pos.y / rSun) * pull;
+      s.pos.z -= (s.pos.z / rSun) * pull;
+      s.vel.x *= 0.92;
+      s.vel.y *= 0.92;
+      s.vel.z *= 0.92;
+    }
+
     s.travelled += Math.hypot(s.vel.x, s.vel.y, s.vel.z) * dt;
     s.yaw = yawFromQuat(s.quat);
 
@@ -607,19 +651,26 @@ function CockpitHudOverlay({ destination }: { destination: DestinationId }) {
             {hud.boost ? "Boost" : hud.thrust !== 0 ? "Burn" : "Coasting"}{hud.drifted ? " · Off course" : ""}
           </p>
         </div>
-        <p className="hidden font-mono text-[10px] text-white/55 sm:block">
-          W/S thrust · A/D yaw · drag to look · Z damp · X brake
+        <p className="font-mono text-[10px] leading-relaxed text-white/70">
+          <span className="text-accent">Drag</span> to look ·{" "}
+          <span className="text-accent">click planet</span> to lock ·{" "}
+          <span className="text-accent">X</span> brake ·{" "}
+          <span className="text-accent">V</span> observe on/off · W/S thrust · A/D yaw · Z level
+        </p>
+        <p className="font-mono text-[9px] text-white/45">
+          Blue crosshair = aim. Cursor stays free for hover. Middle-click = FPS mouse lock (optional).
         </p>
       </div>
       {hud.target && (
-        <div className="pointer-events-none absolute bottom-3 right-3 max-w-[min(13rem,calc(100vw-1.5rem))] rounded-md border border-border/50 bg-slate-950/80 px-3 py-2 backdrop-blur-sm sm:bottom-5 sm:right-5 sm:max-w-56">
+        <div className="pointer-events-none absolute bottom-3 right-3 max-w-[min(14rem,calc(100vw-1.5rem))] rounded-md border border-border/50 bg-slate-950/85 px-3 py-2 backdrop-blur-sm sm:bottom-5 sm:right-5 sm:max-w-60">
           <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-accent">
-            {hud.target.locked ? "Target locked · click to unlock" : "Target data · click object to lock"}
+            {hud.target.locked ? "Target locked · click again to unlock" : "Hover / click object to lock"}
           </p>
           <p className="font-display text-sm text-fg">{hud.target.name}</p>
           <p className="font-mono text-[10px] text-muted">{hud.target.kind} · {hud.target.range}</p>
           {hud.target.spectral && <p className="font-mono text-[9px] text-muted">{hud.target.spectral}{hud.target.constellation ? ` · ${hud.target.constellation}` : ""}</p>}
           {hud.target.blurb && <p className="mt-1 text-[10px] leading-snug text-white/75">{hud.target.blurb}</p>}
+          {hud.target.fact && <p className="mt-1 text-[10px] leading-snug text-white/50">{hud.target.fact}</p>}
         </div>
       )}
     </div>
@@ -709,15 +760,21 @@ export function CockpitScene({ destination }: { destination: DestinationId }) {
   const startYaw = Math.atan2(-dx, -dz);
   const startPitch = Math.atan2(dy, Math.hypot(dx, dz));
   const startQuat = qEulerYXZ(startPitch, startYaw, 0);
+  // Start almost stopped so Observe mode can hold you in the planetary zone
   const shipRef = useRef<ShipState>({
     pos: { ...start.pos },
-    vel: { ...start.vel },
+    vel: {
+      x: start.vel.x * 0.15,
+      y: start.vel.y * 0.15,
+      z: start.vel.z * 0.15,
+    },
     quat: startQuat,
     yaw: startYaw,
     travelled: 0,
     prevPos: { ...start.pos },
   });
   qNorm(shipRef.current.quat);
+  observeMode = true;
   const simTRef = useRef(0);
   useEffect(() => {
     warmupPhotos();
@@ -731,10 +788,38 @@ export function CockpitScene({ destination }: { destination: DestinationId }) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-40 bg-bg" style={{ touchAction: "none" }}>
+    <div
+      className="fixed inset-0 z-40 bg-bg"
+      style={{ touchAction: "none", cursor: "crosshair" }}
+      onPointerDown={(e) => {
+        pointer.active = true;
+        if (e.button === 1) {
+          try {
+            (e.currentTarget as HTMLElement).requestPointerLock?.();
+          } catch {
+            /* */
+          }
+          return;
+        }
+        // Left/right drag looks around; cursor stays visible for planet hover/lock
+        if (e.button === 0 || e.button === 2) {
+          dragLooking = true;
+        }
+      }}
+      onPointerUp={() => {
+        dragLooking = false;
+      }}
+      onPointerLeave={() => {
+        dragLooking = false;
+      }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <Canvas
         gl={{ antialias: true, powerPreference: "high-performance" }}
         camera={{ fov: 62, near: 0.01, far: 10000, position: [0, 0, 0] }}
+        onPointerMissed={() => {
+          /* click empty space — keep free cursor */
+        }}
       >
         <SceneContent ship={shipRef} simTRef={simTRef} destination={destination} />
       </Canvas>
