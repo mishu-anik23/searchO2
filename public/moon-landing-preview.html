@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OxyForge — Moon Landing Steps (3D Preview)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #090C12;
+      color: #E8EDF4;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 12px 20px;
+      border-bottom: 1px solid #2A3344;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 600; }
+    header .badge {
+      background: #7EB8C9;
+      color: #090C12;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.04em;
+    }
+    .layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 0;
+      min-height: 0;
+    }
+    @media (max-width: 800px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    #canvas-wrap {
+      position: relative;
+      background: #090C12;
+      min-height: 420px;
+    }
+    #c { width: 100%; height: 100%; display: block; }
+    .hud {
+      position: absolute;
+      top: 12px; left: 12px;
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      pointer-events: none;
+    }
+    .hud div {
+      background: rgba(9,12,18,0.8);
+      border: 1px solid #2A3344;
+      padding: 4px 8px;
+      margin-bottom: 4px;
+      border-radius: 3px;
+      color: #7EB8C9;
+    }
+    .hud .muted { color: #8B97A8; }
+    .hint {
+      position: absolute;
+      bottom: 12px; left: 12px;
+      font-size: 10px;
+      color: #8B97A8;
+      background: rgba(9,12,18,0.75);
+      border: 1px solid #2A3344;
+      padding: 4px 8px;
+      border-radius: 3px;
+      pointer-events: none;
+    }
+    .panel {
+      border-left: 1px solid #2A3344;
+      background: #131820;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .callsign {
+      display: inline-block;
+      background: #7EB8C9;
+      color: #090C12;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-right: 6px;
+    }
+    .dest {
+      display: inline-block;
+      border: 1px solid #2A3344;
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: #8B97A8;
+    }
+    h2 { font-size: 1.4rem; margin: 12px 0 8px; }
+    .body { color: #8B97A8; font-size: 0.9rem; line-height: 1.45; margin-bottom: 12px; }
+    .why {
+      background: #1A222E;
+      border: 1px solid #2A3344;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      margin-bottom: 14px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .stat {
+      background: #1A222E;
+      border: 1px solid #2A3344;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.8rem;
+    }
+    .stat dt { color: #8B97A8; font-size: 0.7rem; }
+    .stat dd { color: #7EB8C9; margin-top: 2px; }
+    .steps { list-style: none; margin: 12px 0; font-size: 0.8rem; }
+    .steps li { padding: 3px 0; color: #8B97A8; }
+    .steps li.done { color: #6FBF9A; }
+    .steps li.now { color: #E8EDF4; }
+    .steps .cs { font-family: ui-monospace, monospace; font-size: 0.65rem; color: #7EB8C9; text-transform: uppercase; }
+    .progress-bar {
+      height: 6px;
+      background: #1A222E;
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 8px 0 4px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #7EB8C9;
+      transition: width 0.35s ease;
+    }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: #8B97A8;
+    }
+    button.next {
+      width: 100%;
+      margin-top: 16px;
+      padding: 12px;
+      background: #7EB8C9;
+      color: #090C12;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    button.next:hover { opacity: 0.9; }
+    button.next:active { transform: scale(0.98); }
+    .fact-note {
+      margin-top: 14px;
+      font-size: 0.75rem;
+      color: #8B97A8;
+      line-height: 1.4;
+    }
+    #tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(19,24,32,0.95);
+      border: 1px solid #2A3344;
+      border-radius: 8px;
+      padding: 10px 12px;
+      max-width: 240px;
+      font-size: 12px;
+      line-height: 1.4;
+      display: none;
+      z-index: 20;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    #tooltip .t-label {
+      color: #7EB8C9;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #tooltip .t-label::before {
+      content: "ⓘ";
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="badge">MISSION SCHOOL</span>
+    <h1>OxyForge — Moon Landing (3D)</h1>
+  </header>
+  <div class="layout">
+    <div id="canvas-wrap">
+      <canvas id="c"></canvas>
+      <div class="hud">
+        <div id="hud-call">LOI · ALT 500 km</div>
+        <div class="muted" id="hud-speed">2.3 → 1.6 km/s</div>
+      </div>
+      <div class="hint">Drag to orbit · scroll zoom · hover glowing markers for science</div>
+      <div id="tooltip"></div>
+    </div>
+    <aside class="panel">
+      <div>
+        <span class="callsign" id="callsign">LOI</span>
+        <span class="dest">Moon landing</span>
+      </div>
+      <h2 id="title">Capture burn</h2>
+      <p class="body" id="body">Fire retrograde as you swing behind the Moon. The oval closes. Miss this burn and you fly past into solar orbit.</p>
+      <div class="why" id="why">The Moon’s gravity is weak. Speed that was fine for the coast is too fast to stay.</div>
+      <div class="stats">
+        <div class="stat"><dt>Altitude</dt><dd id="alt">500 km</dd></div>
+        <div class="stat"><dt>Speed</dt><dd id="speed">2.3 → 1.6 km/s</dd></div>
+      </div>
+      <div class="progress-label">
+        <span id="step-label">Step 1 / 6</span>
+        <span id="pct">17%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="bar" style="width:17%"></div></div>
+      <ol class="steps" id="steps-list"></ol>
+      <button class="next" id="btn">Run LLO →</button>
+      <p class="fact-note">Hover the cyan markers in the 3D view for extra science. No air on the Moon — every metre of leftover orbital speed is propellant.</p>
+    </aside>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+    const STEPS = [
+      {
+        callsign: "LOI",
+        title: "Capture burn",
+        body: "Fire retrograde as you swing behind the Moon. The oval closes. Miss this burn and you fly past into solar orbit.",
+        why: "The Moon’s gravity is weak. Speed that was fine for the coast is too fast to stay.",
+        alt: "500 km",
+        speed: "2.3 → 1.6 km/s",
+        hotspots: [
+          { pos: [0, 0.6, 0], label: "Capture burn", fact: "Firing retrograde (opposite to velocity) lowers orbital energy so the Moon can hold you. Miss it and you fly past into solar orbit." },
+          { pos: [1.8, 0.2, 0.5], label: "Weak gravity", fact: "Lunar surface gravity is only 1.62 m/s² — about 1/6 of Earth. Escape velocity is just 2.4 km/s." },
+        ],
+      },
+      {
+        callsign: "LLO",
+        title: "Low lunar orbit",
+        body: "A 100 km circle. Time to check the landing site, rest, and let Earth rise over the limb.",
+        why: "An orbit is a long fall that keeps missing the ground. No engine needed to stay — only to leave.",
+        alt: "100 km",
+        speed: "1.63 km/s",
+        hotspots: [
+          { pos: [0, 0.8, 0], label: "Low lunar orbit", fact: "A circular orbit is continuous free-fall that keeps missing the surface. No continuous thrust is needed to stay up." },
+          { pos: [-2.2, 1.2, -0.8], label: "Earthrise", fact: "From low lunar orbit Earth appears about 2° across — four times larger than the Moon looks from Earth — and hangs in a black sky." },
+        ],
+      },
+      {
+        callsign: "DOI",
+        title: "Descent orbit",
+        body: "A small burn drops periapsis — the low point — to about 15 km on the far side. The far side of the oval now skims the highlands.",
+        why: "Starting powered descent from a lower height saves fuel. Same idea as a Hohmann, just tiny.",
+        alt: "100 × 15 km",
+        speed: "1.63 km/s",
+        hotspots: [
+          { pos: [0, 0.5, 0], label: "Descent orbit insertion", fact: "A small burn drops periapsis (the low point) to ~15 km. Same idea as a Hohmann transfer, just tiny — it saves fuel for the big burn later." },
+        ],
+      },
+      {
+        callsign: "PDI",
+        title: "Powered descent",
+        body: "Engine on, pitch the belly forward. Most of the 1.6 km/s of sideways speed has to go. There is no air to help.",
+        why: "On Earth, air and wings steal speed. On the Moon, only the engine does.",
+        alt: "15 → 3 km",
+        speed: "1.6 km/s → 200 m/s",
+        hotspots: [
+          { pos: [0, -0.4, 0], label: "Powered descent", fact: "You must cancel ~1.6 km/s of horizontal speed with the engine alone. There is no air to make drag or lift. Most of the propellant is spent here." },
+          { pos: [0.8, 0.3, 0.4], label: "Pitch program", fact: "The lander pitches from nearly horizontal (killing orbital speed) to vertical (for soft touchdown). Timing is everything." },
+        ],
+      },
+      {
+        callsign: "P64",
+        title: "Approach and hover",
+        body: "Landing radar sees the craters. Pitch upright. 1/6 g means you fall slowly — enough time to pick a flat patch and put the legs down.",
+        why: "The last kilometres are about not landing on a boulder or a slope.",
+        alt: "3 km → 150 m",
+        speed: "200 → 8 m/s",
+        hotspots: [
+          { pos: [0, 0.3, 0.6], label: "Landing radar", fact: "Radar measures range and velocity to the surface. The computer picks a flat patch and steers the last few hundred metres." },
+          { pos: [0, -0.2, 0], label: "1/6 g hover", fact: "In low gravity the lander falls slowly. That gives the pilot (or autopilot) time to translate sideways and avoid boulders." },
+        ],
+      },
+      {
+        callsign: "CONTACT",
+        title: "Touchdown",
+        body: "Probes under the pads shout CONTACT. Engine cuts. Dust settles in a vacuum — no breeze to carry it. Earth hangs in a black sky.",
+        why: "You are down. Next job is the oxygen plant, not another burn.",
+        alt: "0 m",
+        speed: "0",
+        hotspots: [
+          { pos: [0, -0.5, 0], label: "CONTACT", fact: "Probes under the footpads sense the ground a few centimetres early and cut the engine so the legs compress gently. Dust settles in a perfect vacuum — no breeze." },
+          { pos: [1.2, -0.8, 0.6], label: "Lunar dust", fact: "Regolith is fine, sharp, and electrostatically sticky. There is no wind, so the plume creates a temporary sheet that falls straight back down." },
+        ],
+      },
+    ];
+
+    let step = 0;
+    const canvas = document.getElementById("c");
+    const tooltipEl = document.getElementById("tooltip");
+    const wrap = document.getElementById("canvas-wrap");
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+    renderer.setClearColor(0x090C12);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+    camera.position.set(0, 1.8, 6.5);
+
+    const controls = new OrbitControls(camera, canvas);
+    controls.enablePan = false;
+    controls.minDistance = 3.5;
+    controls.maxDistance = 12;
+    controls.maxPolarAngle = Math.PI * 0.72;
+    controls.target.set(0, 0, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+    const sun = new THREE.DirectionalLight(0xE8EDF4, 1.15);
+    sun.position.set(4, 6, 3);
+    scene.add(sun);
+    const fill = new THREE.DirectionalLight(0x7EB8C9, 0.25);
+    fill.position.set(-3, 2, -4);
+    scene.add(fill);
+
+    // Stars
+    {
+      const geo = new THREE.BufferGeometry();
+      const n = 900;
+      const pos = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const r = 40 + Math.random() * 40;
+        const th = Math.random() * Math.PI * 2;
+        const ph = Math.acos(2 * Math.random() - 1);
+        pos[i * 3] = r * Math.sin(ph) * Math.cos(th);
+        pos[i * 3 + 1] = r * Math.sin(ph) * Math.sin(th);
+        pos[i * 3 + 2] = r * Math.cos(ph);
+      }
+      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xE8EDF4, size: 0.12, sizeAttenuation: true, transparent: true, opacity: 0.7 })));
+    }
+
+    // Earth
+    const earth = new THREE.Mesh(
+      new THREE.SphereGeometry(0.42, 32, 32),
+      new THREE.MeshStandardMaterial({ color: 0x7EB8C9, emissive: 0x3a6a78, emissiveIntensity: 0.25, roughness: 0.55 })
+    );
+    earth.position.set(-4.8, 2.6, -3.2);
+    scene.add(earth);
+    const land = new THREE.Mesh(
+      new THREE.SphereGeometry(0.14, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0x6FBF9A, transparent: true, opacity: 0.85 })
+    );
+    land.position.set(-4.95, 2.68, -3.15);
+    scene.add(land);
+
+    // Moon
+    const moonMat = new THREE.MeshStandardMaterial({ color: 0xC5D4E3, roughness: 0.92, metalness: 0.05 });
+    const moon = new THREE.Mesh(new THREE.SphereGeometry(1.55, 48, 48), moonMat);
+    scene.add(moon);
+    const craterPositions = [[0.6, 0.7, 1.1], [-0.8, 0.4, 1.15], [0.2, -0.9, 1.05], [-0.4, -0.5, 1.25], [1.0, -0.2, 0.9]];
+    const craters = craterPositions.map((p, i) => {
+      const m = new THREE.Mesh(
+        new THREE.SphereGeometry(0.18 + (i % 3) * 0.06, 12, 12),
+        new THREE.MeshStandardMaterial({ color: 0x8B97A8, roughness: 1 })
+      );
+      m.position.set(...p);
+      moon.add(m);
+      return m;
+    });
+
+    // Orbit ring
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(2.4, 0.008, 8, 96),
+      new THREE.MeshBasicMaterial({ color: 0x7EB8C9, transparent: true, opacity: 0.35 })
+    );
+    ring.rotation.set(Math.PI / 2.4, 0.2, 0);
+    scene.add(ring);
+
+    // Surface
+    const surfaceGroup = new THREE.Group();
+    surfaceGroup.visible = false;
+    const ground = new THREE.Mesh(
+      new THREE.CircleGeometry(6, 64),
+      new THREE.MeshStandardMaterial({ color: 0x2A3344, roughness: 0.95 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.02;
+    surfaceGroup.add(ground);
+    [[-1.6, -1.2, 0.55], [1.9, 0.8, 0.7], [-0.4, 2.1, 0.4], [2.4, -1.6, 0.35]].forEach(([x, z, r]) => {
+      const c = new THREE.Mesh(
+        new THREE.RingGeometry(r * 0.55, r, 24),
+        new THREE.MeshStandardMaterial({ color: 0x1A222E, roughness: 1, side: THREE.DoubleSide })
+      );
+      c.rotation.x = -Math.PI / 2;
+      c.position.set(x, 0.01, z);
+      surfaceGroup.add(c);
+    });
+    scene.add(surfaceGroup);
+
+    // Lander
+    const lander = new THREE.Group();
+    const descent = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.55, 0.62, 0.45, 8),
+      new THREE.MeshStandardMaterial({ color: 0x8B97A8, metalness: 0.4, roughness: 0.45 })
+    );
+    descent.position.y = -0.15;
+    lander.add(descent);
+    const cabin = new THREE.Mesh(
+      new THREE.SphereGeometry(0.42, 16, 12),
+      new THREE.MeshStandardMaterial({ color: 0xE8EDF4, metalness: 0.25, roughness: 0.35 })
+    );
+    cabin.position.y = 0.35;
+    lander.add(cabin);
+    [[0.22, 0.4, 0.28], [-0.22, 0.4, 0.28]].forEach((p) => {
+      const w = new THREE.Mesh(
+        new THREE.BoxGeometry(0.18, 0.12, 0.04),
+        new THREE.MeshStandardMaterial({ color: 0x7EB8C9, emissive: 0x7EB8C9, emissiveIntensity: 0.35 })
+      );
+      w.position.set(...p);
+      lander.add(w);
+    });
+    [[-0.45, 0.45], [0.45, 0.45], [-0.45, -0.45], [0.45, -0.45]].forEach(([x, z]) => {
+      const leg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.04, 0.04, 0.55, 6),
+        new THREE.MeshStandardMaterial({ color: 0x8B97A8 })
+      );
+      leg.position.set(x, -0.55, z);
+      lander.add(leg);
+      const pad = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22, 0.06, 0.22),
+        new THREE.MeshStandardMaterial({ color: 0xC5D4E3 })
+      );
+      pad.position.set(x * 1.15, -0.83, z * 1.15);
+      lander.add(pad);
+    });
+    const bell = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12, 0.28, 0.28, 10),
+      new THREE.MeshStandardMaterial({ color: 0x2A3344, metalness: 0.6, roughness: 0.3 })
+    );
+    bell.position.y = -0.48;
+    bell.rotation.x = Math.PI;
+    lander.add(bell);
+
+    // Plume
+    const plume = new THREE.Group();
+    const plumeOuter = new THREE.Mesh(
+      new THREE.ConeGeometry(0.22, 0.85, 12, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x7EB8C9, transparent: true, opacity: 0.55, side: THREE.DoubleSide })
+    );
+    const plumeInner = new THREE.Mesh(
+      new THREE.ConeGeometry(0.1, 0.6, 10, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xE8EDF4, transparent: true, opacity: 0.75, side: THREE.DoubleSide })
+    );
+    plumeInner.position.y = -0.15;
+    plume.add(plumeOuter, plumeInner);
+    plume.position.y = -0.7;
+    lander.add(plume);
+    scene.add(lander);
+
+    // Hotspot markers
+    const hotspotMeshes = [];
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let hovered = null;
+
+    function clearHotspots() {
+      hotspotMeshes.forEach((h) => scene.remove(h.group));
+      hotspotMeshes.length = 0;
+      hovered = null;
+      tooltipEl.style.display = "none";
+    }
+
+    function addHotspots(list) {
+      clearHotspots();
+      list.forEach((h) => {
+        const group = new THREE.Group();
+        group.position.set(...h.pos);
+        const core = new THREE.Mesh(
+          new THREE.SphereGeometry(0.12, 16, 16),
+          new THREE.MeshBasicMaterial({ color: 0x7EB8C9, transparent: true, opacity: 0.9 })
+        );
+        const ringMesh = new THREE.Mesh(
+          new THREE.RingGeometry(0.16, 0.2, 24),
+          new THREE.MeshBasicMaterial({ color: 0x7EB8C9, transparent: true, opacity: 0.45, side: THREE.DoubleSide })
+        );
+        group.add(core, ringMesh);
+        scene.add(group);
+        hotspotMeshes.push({ group, core, ring: ringMesh, label: h.label, fact: h.fact });
+      });
+    }
+
+    const poses = [
+      { pos: [2.4, 0.9, 0.4], rot: [0.15, -0.6, 0.1], scale: 0.28 },
+      { pos: [2.1, 0.55, 0.9], rot: [0.05, -1.1, 0], scale: 0.26 },
+      { pos: [1.85, 0.15, 0.55], rot: [0.35, -0.9, 0.05], scale: 0.24 },
+      { pos: [0.35, 1.35, 0.2], rot: [0.85, 0.15, 0], scale: 0.32 },
+      { pos: [0.08, 0.55, 0.05], rot: [0.12, 0.05, 0], scale: 0.34 },
+      { pos: [0, 0.18, 0], rot: [0, 0.1, 0], scale: 0.36 },
+    ];
+
+    function applyStep(i) {
+      const s = STEPS[i];
+      const orbital = i <= 2;
+      const landed = i >= 5;
+      const burn = i === 0 || i === 2 || i === 3 || i === 4;
+
+      moon.visible = orbital;
+      ring.visible = orbital;
+      surfaceGroup.visible = !orbital;
+      plume.visible = burn && !landed;
+
+      const p = poses[i];
+      lander.position.set(...p.pos);
+      lander.rotation.set(...p.rot);
+      lander.scale.setScalar(p.scale);
+
+      addHotspots(s.hotspots);
+
+      // UI
+      document.getElementById("callsign").textContent = s.callsign;
+      document.getElementById("title").textContent = s.title;
+      document.getElementById("body").textContent = s.body;
+      document.getElementById("why").textContent = s.why;
+      document.getElementById("alt").textContent = s.alt;
+      document.getElementById("speed").textContent = s.speed;
+      document.getElementById("hud-call").textContent = `${s.callsign} · ALT ${s.alt}`;
+      document.getElementById("hud-speed").textContent = s.speed;
+      const pct = Math.round(((i + 1) / STEPS.length) * 100);
+      document.getElementById("pct").textContent = pct + "%";
+      document.getElementById("bar").style.width = pct + "%";
+      document.getElementById("step-label").textContent = `Step ${i + 1} / ${STEPS.length}`;
+      document.getElementById("btn").textContent =
+        i >= STEPS.length - 1 ? "Touchdown complete ✓" : `Run ${STEPS[i + 1].callsign} →`;
+
+      const list = document.getElementById("steps-list");
+      list.innerHTML = STEPS.map((st, idx) => {
+        const cls = idx < i ? "done" : idx === i ? "now" : "";
+        const prefix = idx < i ? "Done · " : idx === i ? "Now · " : "";
+        return `<li class="${cls}"><span class="cs">${st.callsign}</span> · ${prefix}${st.title}</li>`;
+      }).join("");
+    }
+
+    document.getElementById("btn").addEventListener("click", () => {
+      if (step < STEPS.length - 1) {
+        step++;
+        applyStep(step);
+      }
+    });
+
+    function resize() {
+      const w = wrap.clientWidth;
+      const h = wrap.clientHeight || 420;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    canvas.addEventListener("pointermove", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects(hotspotMeshes.map((h) => h.core));
+      if (hits.length) {
+        const obj = hits[0].object;
+        const hs = hotspotMeshes.find((h) => h.core === obj);
+        if (hs && hs !== hovered) {
+          if (hovered) hovered.core.material.color.setHex(0x7EB8C9);
+          hovered = hs;
+          hs.core.material.color.setHex(0xE8EDF4);
+          tooltipEl.style.display = "block";
+          tooltipEl.innerHTML = `<div class="t-label">${hs.label}</div>${hs.fact}`;
+          canvas.style.cursor = "help";
+        }
+        tooltipEl.style.left = e.clientX - rect.left + 14 + "px";
+        tooltipEl.style.top = e.clientY - rect.top + 14 + "px";
+      } else {
+        if (hovered) {
+          hovered.core.material.color.setHex(0x7EB8C9);
+          hovered = null;
+        }
+        tooltipEl.style.display = "none";
+        canvas.style.cursor = "grab";
+      }
+    });
+
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+      if (moon.visible) moon.rotation.y += 0.004;
+      if (plume.visible) {
+        plume.scale.y = 1 + Math.sin(t * 18) * 0.12;
+        plume.scale.x = 1 + Math.sin(t * 22) * 0.08;
+      }
+      hotspotMeshes.forEach((h) => {
+        const s = 1 + Math.sin(t * 3) * 0.12;
+        h.ring.scale.setScalar(s);
+      });
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    applyStep(0);
+    animate();
+  </script>
+</body>
+</html>

@@ -7,6 +7,8 @@ import { authLimiter } from '../../middleware/rateLimiter';
 import { authenticate, requireAuth } from '../../middleware/auth';
 import { env } from '../../config/env';
 
+import { guestMergeService } from '../users/guestMerge.service';
+
 const router = Router();
 
 const COOKIE_OPTIONS = {
@@ -21,21 +23,49 @@ function setAuthCookies(res: Response, accessToken: string, refreshToken: string
   res.cookie('refresh_token', refreshToken, COOKIE_OPTIONS);
 }
 
-// POST /api/auth/register
+// POST /api/auth/register (Supports optional guestId or recoveryCode merge)
 router.post(
   '/register',
   authLimiter,
   validate({ body: registerSchema }),
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { email, password, displayName } = req.body;
-      const result = await authService.register(email, password, displayName);
+      const { email, password, displayName, guestId, recoveryCode } = req.body;
+      const guestIdentifier = guestId || recoveryCode;
+      const result = await authService.register(email, password, displayName, guestIdentifier);
       setAuthCookies(res, result.accessToken, result.refreshToken);
       res.status(201).json({
-        message: 'Account registered successfully.',
+        message: result.mergedGuest
+          ? 'Account registered and guest farm profile successfully claimed!'
+          : 'Account registered successfully with €10,000 starter grant.',
         user: result.user,
         farmId: result.farmId,
         accessToken: result.accessToken,
+        mergedGuest: !!result.mergedGuest,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// POST /api/auth/guest/recovery-code (Issue cross-browser recovery token for current guest)
+router.post(
+  '/guest/recovery-code',
+  authenticate,
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = (req as any).user;
+      if (!user || user.role !== 'guest') {
+        res.status(400).json({ error: 'Recovery codes can only be generated for active guest accounts.' });
+        return;
+      }
+      const code = await guestMergeService.generateRecoveryCode(user.userId);
+      res.json({
+        message: 'Guest recovery code generated. Save this code to merge this farm on any browser.',
+        recoveryCode: code,
+        expiresInDays: 90,
       });
     } catch (err) {
       next(err);

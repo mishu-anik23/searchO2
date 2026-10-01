@@ -40,4 +40,26 @@ router.patch(
   }
 );
 
+// POST /api/users/merge-guest
+const mergeGuestSchema = z.object({
+  guestIdentifier: z.string().min(1, 'Guest ID or recovery code is required'),
+});
+
+router.post(
+  '/merge-guest',
+  validate({ body: mergeGuestSchema }),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { guestMergeService } = await import('./guestMerge.service');
+      const result = await guestMergeService.mergeGuestIntoUser(
+        req.user!.userId,
+        req.body.guestIdentifier
+      );
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 export const userRouter = router;

@@ -6,6 +6,7 @@ import { query, transaction } from '../../config/database';
 import { env } from '../../config/env';
 import { AuthUserPayload } from '../../types/auth.types';
 import { GoogleUserProfile } from './google.service';
+import { guestMergeService } from '../users/guestMerge.service';
 
 export interface AuthResult {
   user: {
@@ -19,6 +20,7 @@ export interface AuthResult {
   farmId: string;
   accessToken: string;
   refreshToken: string;
+  mergedGuest?: boolean;
 }
 
 export class AuthService {
@@ -74,7 +76,7 @@ export class AuthService {
     return farmId;
   }
 
-  async register(email: string, password: string, displayName: string): Promise<AuthResult> {
+  async register(email: string, password: string, displayName: string, guestIdToMerge?: string): Promise<AuthResult> {
     const existing = await query(`SELECT id FROM users WHERE email = $1`, [email.toLowerCase()]);
     if (existing.rowCount && existing.rowCount > 0) {
       throw { statusCode: 409, message: 'An account with this email already exists.' };
@@ -91,7 +93,21 @@ export class AuthService {
       );
       const user = userRes.rows[0];
 
-      const farmId = await this.createStarterFarm(client, user.id, `${displayName}'s Farm`);
+      let farmId: string;
+      let mergedGuest = false;
+
+      if (guestIdToMerge && guestIdToMerge.trim() !== '') {
+        try {
+          const mergeResult = await guestMergeService.mergeGuestIntoUser(user.id, guestIdToMerge.trim());
+          farmId = mergeResult.farmId;
+          mergedGuest = true;
+        } catch (err: any) {
+          console.warn('Guest merge failed during registration, creating starter farm instead:', err.message);
+          farmId = await this.createStarterFarm(client, user.id, `${displayName}'s Farm`);
+        }
+      } else {
+        farmId = await this.createStarterFarm(client, user.id, `${displayName}'s Farm`);
+      }
 
       const authPayload: AuthUserPayload = {
         userId: user.id,
@@ -116,6 +132,7 @@ export class AuthService {
         farmId,
         accessToken,
         refreshToken,
+        mergedGuest,
       };
     });
   }

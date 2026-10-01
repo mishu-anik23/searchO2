@@ -13,6 +13,10 @@ import { userRouter } from './modules/users/user.controller';
 import { farmRouter } from './modules/farm/farm.controller';
 import { economyRouter } from './modules/economy/economy.controller';
 import { leaderboardRouter } from './modules/leaderboard/leaderboard.controller';
+import { cryptoRouter } from './modules/crypto/crypto.controller';
+import { paymentsRouter } from './modules/payments/payments.controller';
+import { kycRouter } from './modules/kyc/kyc.controller';
+import { oxyforgeRouter } from './modules/oxyforge/oxyforge.controller';
 
 const app = express();
 const server = http.createServer(app);
@@ -42,6 +46,10 @@ app.use('/api/users', userRouter);
 app.use('/api/farm', farmRouter);
 app.use('/api/economy', economyRouter);
 app.use('/api/leaderboard', leaderboardRouter);
+app.use('/api/crypto', cryptoRouter);
+app.use('/api/payments', paymentsRouter);
+app.use('/api/kyc', kycRouter);
+app.use('/api/oxyforge', oxyforgeRouter);
 
 // 4. Fallback 404 Handler
 app.use('*', (req, res) => {

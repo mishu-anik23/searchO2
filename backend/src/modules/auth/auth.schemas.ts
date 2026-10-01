@@ -12,6 +12,8 @@ export const registerSchema = z.object({
     .min(2, 'Display name must be at least 2 characters')
     .max(50, 'Display name cannot exceed 50 characters')
     .regex(/^[a-zA-Z0-9 _-]+$/, 'Display name can only contain letters, numbers, spaces, underscores, or hyphens'),
+  guestId: z.string().optional(),
+  recoveryCode: z.string().optional(),
 });
 
 export const loginSchema = z.object({
