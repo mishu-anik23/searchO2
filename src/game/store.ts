@@ -13,6 +13,8 @@ import {
   plantOxygenTotal,
   plantSteps,
   landingSteps,
+  commanderById,
+  type CommanderId,
   type DestinationId,
   type RocketId,
   type Screen,
@@ -33,6 +35,7 @@ function emptyChecklist(): ChecklistState {
 export interface GameState {
   version: number;
   commander: string;
+  commanderId: CommanderId | "";
   credits: number;
   oxygenKg: number;
   habitats: number;
@@ -42,6 +45,7 @@ export interface GameState {
   hasLaunchedOnce: boolean;
   screen: Screen;
   mission: Mission | null;
+  planDest: DestinationId;
   checklist: ChecklistState;
   fuelLox: number;
   fuelCh4: number;
@@ -56,15 +60,12 @@ export interface GameState {
   libraryId: string | null;
   debrief: { pay: number; oxygen: number; spentFpv: number } | null;
   hydrated: boolean;
-  orbitalSpeed: number;
-  cameraDepth: "surface" | "orbital" | "deep";
-  cameraZoom: number;
-  cockpitToggles: Record<string, boolean>;
 
   setHydrated: () => void;
-  setCommander: (name: string) => void;
+  setCommander: (name: string, commanderId: CommanderId) => void;
   setReducedMotion: (v: boolean) => void;
   go: (screen: Screen) => void;
+  goPlan: (dest?: DestinationId) => void;
   openLibrary: (id?: string) => void;
   closeLibrary: () => void;
   markTopic: (id: string) => void;
@@ -87,14 +88,12 @@ export interface GameState {
   resetPad: () => void;
   abortFromPad: () => void;
   resetProgress: () => void;
-  setOrbitalSpeed: (v: number) => void;
-  setCameraZoom: (v: number) => void;
-  toggleCockpit: (id: string) => void;
 }
 
 const persistedKeys = [
   "version",
   "commander",
+  "commanderId",
   "credits",
   "oxygenKg",
   "habitats",
@@ -121,6 +120,7 @@ export const useGame = create<GameState>()(
     (set, get) => ({
       version: SAVE_VERSION,
       commander: "",
+      commanderId: "",
       credits: STARTING_CREDITS,
       oxygenKg: 0,
       habitats: 0,
@@ -130,6 +130,7 @@ export const useGame = create<GameState>()(
       hasLaunchedOnce: false,
       screen: "briefing",
       mission: null,
+      planDest: "moon",
       checklist: emptyChecklist(),
       fuelLox: 0,
       fuelCh4: 0,
@@ -144,32 +145,32 @@ export const useGame = create<GameState>()(
       libraryId: null,
       debrief: null,
       hydrated: false,
-      orbitalSpeed: 1,
-      cameraDepth: "surface",
-      cameraZoom: 0,
-      cockpitToggles: {
-        orbitMap: true,
-        countdown: true,
-        distance: true,
-        phase: true,
-        attitude: true,
-        mfd: true,
-        target: true,
-        lesson: true,
-      },
 
       setHydrated: () => {
         const s = get();
+        const commanderId = (s.commanderId || (s.commander ? "kai" : "")) as CommanderId | "";
         set({
           hydrated: true,
+          commanderId,
           fpvOpen: false,
           screen: s.commander ? (s.screen === "briefing" ? "hq" : s.screen) : "briefing",
         });
       },
-      setCommander: (name) =>
-        set({ commander: name.trim() || "Cadet", screen: "hq" }),
+      setCommander: (name, commanderId) => {
+        const commander = name.trim() || commanderById(commanderId).name;
+        const next = { commander, commanderId };
+        if (get().screen === "briefing") set({ ...next, screen: "hq" });
+        else set(next);
+      },
       setReducedMotion: (v) => set({ reducedMotion: v }),
       go: (screen) => set({ screen, fpvOpen: false, libraryOpen: false }),
+      goPlan: (dest) =>
+        set({
+          screen: "plan",
+          planDest: dest ?? get().planDest,
+          fpvOpen: false,
+          libraryOpen: false,
+        }),
       openLibrary: (id) => {
         if (id) get().markTopic(id);
         set({ libraryOpen: true, libraryId: id ?? get().libraryId ?? "why-oxygen" });
@@ -325,20 +326,10 @@ export const useGame = create<GameState>()(
           fpvOpen: false,
         });
       },
-      setOrbitalSpeed: (v) => set({ orbitalSpeed: Math.max(0, v) }),
-      setCameraZoom: (v) => {
-        const zoom = Math.max(0, Math.min(1, v));
-        const depth: "surface" | "orbital" | "deep" =
-          zoom < 0.35 ? "surface" : zoom < 0.7 ? "orbital" : "deep";
-        set({ cameraZoom: zoom, cameraDepth: depth });
-      },
-      toggleCockpit: (id) => {
-        const cur = get().cockpitToggles;
-        set({ cockpitToggles: { ...cur, [id]: !cur[id] } });
-      },
       resetProgress: () =>
         set({
           commander: get().commander,
+          commanderId: get().commanderId,
           credits: STARTING_CREDITS,
           oxygenKg: 0,
           habitats: 0,

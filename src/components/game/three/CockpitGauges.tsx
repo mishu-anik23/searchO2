@@ -19,7 +19,7 @@ import { LESSONS, type LessonId } from "@/game/cosmos";
 export type TargetInfo = {
   id: string; name: string; kind: string; blurb: string; fact: string;
   dist: string; range: string; catalog?: string; constellation?: string;
-  spectral?: string; appMag?: number; az?: number; el?: number;
+  spectral?: string; appMag?: number; az?: number; el?: number; locked?: boolean;
 };
 
 type HudSnap = {

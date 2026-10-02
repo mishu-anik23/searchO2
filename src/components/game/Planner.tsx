@@ -17,7 +17,8 @@ export function Planner() {
   const selectMission = useGame((s) => s.selectMission);
   const credits = useGame((s) => s.credits);
   const openLibrary = useGame((s) => s.openLibrary);
-  const [dest, setDest] = useState<DestinationId>("moon");
+  const planDest = useGame((s) => s.planDest);
+  const [dest, setDest] = useState<DestinationId>(planDest);
   const [rocket, setRocket] = useState<RocketId>("hauler");
   const [err, setErr] = useState("");
 

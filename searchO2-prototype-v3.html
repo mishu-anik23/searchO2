@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>searchO2 — Farm Prototype v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-top:#CDEDE8; --sky-bot:#EAF6E7;
+    --soil:#8B5A3C; --soil-dark:#6E4429;
+    --grass:#6FA85A; --grass-dark:#4F8A45; --grass-deep:#3E7239;
+    --gold:#F0AC3D; --pine:#2C4A32; --pine-soft:#3E6B49;
+    --cream:#FBF6EC; --coral:#E8785A; --danger:#B23B2E;
+    --shadow: 0 6px 18px rgba(44,74,50,0.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{ height:100%; margin:0; overflow:hidden; font-family:'Nunito', sans-serif; color:var(--pine); }
+  h1,h2,h3,h4,.title-font{ font-family:'Baloo 2', sans-serif; }
+
+  .game-root{ position:fixed; inset:0; overflow:hidden; }
+  .field-scene{ position:absolute; inset:0; }
+  .field-bg{ position:absolute; inset:0; }
+  .field-bg svg{ width:100%; height:100%; display:block; }
+  .field-plots{ position:absolute; inset:0; pointer-events:none; }
+
+  /* ---------- top bar ---------- */
+  .topbar-fixed{ position:absolute; top:12px; right:12px; z-index:30; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .stats{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+  .stat-pill{ background: rgba(251,246,236,0.95); border-radius: 999px; padding: 6px 12px; box-shadow: var(--shadow); font-weight:700; font-size:0.8rem; display:flex; align-items:center; gap:5px; white-space:nowrap; }
+  .stat-pill .lbl{ color: var(--pine-soft); font-weight:600; font-size:0.68rem; }
+  .stat-pill.warn .val{ color:var(--danger); }
+  .season-chip{ background: rgba(251,246,236,0.95); border-radius:12px; padding:6px 12px; box-shadow: var(--shadow); font-size:0.75rem; font-weight:700; display:flex; align-items:center; gap:8px; }
+  .season-chip select{ font-family:'Nunito'; font-weight:700; border-radius:8px; border:2px solid var(--grass); padding:2px 6px; background:white; color:var(--pine); cursor:pointer; font-size:0.7rem; }
+
+  /* ---------- icon dock ---------- */
+  .icon-dock{ position:absolute; top:12px; left:12px; z-index:30; display:flex; flex-direction:column; gap:8px; }
+  .dock-btn{ width:44px; height:44px; border-radius:14px; background: rgba(251,246,236,0.95); box-shadow: var(--shadow);
+    display:flex; align-items:center; justify-content:center; font-size:1.2rem; cursor:pointer; border:2px solid transparent; position:relative; }
+  .dock-btn.active{ border-color: var(--gold); background: #FFF3D6; }
+  .dock-btn .badge{ position:absolute; top:-5px; right:-5px; background:var(--coral); color:white; font-size:0.6rem; font-weight:800;
+    border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center; }
+
+  .float-panel{ position:absolute; top:12px; left:64px; z-index:29; width:300px; max-height:78vh; overflow-y:auto;
+    background: var(--cream); border-radius:18px; padding:14px 16px; box-shadow: 0 16px 40px rgba(0,0,0,0.28); }
+  .float-panel h2{ font-size:1rem; margin:0 0 8px; display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .float-panel .close-x{ cursor:pointer; font-weight:800; color:var(--pine-soft); font-size:0.9rem; }
+
+  .task-row{ display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom: 1px dashed rgba(44,74,50,0.15); font-size:0.82rem; }
+  .task-row:last-child{ border-bottom:none; }
+  .task-row .name{ font-weight:700; }
+  .task-row .meta{ color: var(--pine-soft); font-size:0.74rem; }
+  .claim-btn{ background: var(--gold); border:none; border-radius:9px; padding:5px 11px; font-weight:800; color: #543A0F; cursor:pointer; font-size:0.74rem; flex:none; }
+  .claim-btn:disabled{ opacity:0.4; cursor:default; }
+  .empty-note{ color: var(--pine-soft); font-size:0.8rem; font-style:italic; }
+
+  .worker-hire-row{ display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed rgba(44,74,50,0.15); font-size:0.8rem; }
+  .worker-hire-row:last-child{ border-bottom:none;}
+  .worker-hire-row .wname{ font-weight:700; }
+  .worker-hire-row .wmeta{ font-size:0.7rem; color:var(--pine-soft); }
+  .hire-btn{ background:var(--grass); border:none; color:white; border-radius:8px; padding:5px 9px; font-weight:800; font-size:0.7rem; cursor:pointer; flex:none; }
+  .roster{ margin-top:8px; }
+  .roster-chip{ display:flex; justify-content:space-between; align-items:center; background:#EFE7D3; border-radius:10px; padding:5px 9px; margin-bottom:5px; font-size:0.72rem; }
+  .roster-chip .fire{ color:var(--danger); font-weight:800; cursor:pointer; font-size:0.68rem; background:none; border:none; }
+
+  .ach-grid{ display:flex; flex-wrap:wrap; gap:6px; }
+  .ach{ display:flex; align-items:center; gap:5px; padding:5px 9px; border-radius:11px; background: #EFE7D3; font-size:0.7rem; font-weight:700; color: #A99668; }
+  .ach.unlocked{ background: linear-gradient(135deg, #FFE7A8, #F0AC3D); color:#543A0F; }
+
+  .report-item{ padding:7px 0; border-bottom:1px dashed rgba(44,74,50,0.15); font-size:0.76rem; line-height:1.4; }
+  .report-item:last-child{ border-bottom:none; }
+  .report-item .rtime{ font-weight:800; color:var(--pine-soft); font-size:0.65rem; display:block; margin-bottom:2px; }
+
+  /* ---------- tool strip ---------- */
+  .tool-strip-wrap{ position:absolute; bottom:12px; left:50%; transform:translateX(-50%); z-index:30; max-width:92vw; }
+  .tool-strip{ display:flex; gap:8px; overflow-x:auto; padding:8px 10px; background: rgba(251,246,236,0.95);
+    border-radius:16px; box-shadow: var(--shadow); scrollbar-width:thin; }
+  .tool-chip{ flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; width:66px; height:58px;
+    border-radius:12px; background:white; cursor:pointer; font-size:0.62rem; font-weight:800; color:var(--pine); position:relative; text-align:center; padding:4px; }
+  .tool-chip .em{ font-size:1.15rem; }
+  .tool-chip.info{ cursor:default; opacity:0.9; }
+  .tt{ position:relative; }
+  .tt:hover::after{ content:attr(data-tip); position:absolute; bottom:105%; left:50%; transform:translateX(-50%);
+    background:#2C4A32; color:white; padding:6px 9px; border-radius:8px; font-size:0.65rem; white-space:pre-line; width:160px;
+    box-shadow:0 6px 16px rgba(0,0,0,0.3); z-index:200; font-weight:600; line-height:1.35; }
+
+  /* ---------- plots ---------- */
+  .plot-spot{ position:absolute; pointer-events:auto; cursor:pointer; }
+  .plot-spot svg{ width:100%; height:100%; overflow:visible; }
+  .plot-label{ position:absolute; top:-8px; left:50%; transform:translateX(-50%); background: rgba(251,246,236,0.95); border-radius:8px;
+    padding:2px 8px; font-size:0.62rem; font-weight:800; color:var(--pine); white-space:nowrap; box-shadow:0 2px 4px rgba(0,0,0,0.15); }
+  .plot-sub{ position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); display:flex; gap:3px; font-size:0.9rem; }
+  .health-mini{ position:absolute; bottom:-6px; left:15%; width:70%; height:5px; background:rgba(255,255,255,0.6); border-radius:3px; overflow:hidden; }
+  .health-mini .fill{ height:100%; }
+
+  /* ---------- modal ---------- */
+  .overlay{ position:fixed; inset:0; background: rgba(30,45,32,0.6); display:flex; align-items:center; justify-content:center; z-index:80; padding: 18px; }
+  .modal{ background: var(--cream); border-radius:22px; padding:22px; max-width:460px; width:100%; max-height:88vh; overflow-y:auto;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.35); }
+  .modal h2{ margin:0 0 4px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .modal .sub{ color:var(--pine-soft); font-size:0.78rem; margin-bottom:12px; }
+  .modal .row{ display:flex; justify-content:space-between; padding:5px 0; font-size:0.86rem; }
+  .modal .row .v{ font-weight:800; }
+  .modal .section{ margin-top:14px; padding-top:12px; border-top:1px dashed rgba(44,74,50,0.2); }
+  .modal .section h4{ margin:0 0 8px; font-size:0.85rem; }
+  .modal button.primary{ width:100%; padding:11px; border:none; border-radius:12px; background: var(--grass); color:white; font-weight:800; font-size:0.9rem; cursor:pointer; font-family:'Baloo 2'; margin-top:6px; }
+  .modal button.secondary{ width:100%; padding:9px; border:2px solid var(--grass); border-radius:12px; background: transparent; color:var(--pine); font-weight:800; font-size:0.85rem; cursor:pointer; margin-top:6px; }
+  .modal button.danger{ background:var(--danger); }
+  .modal button.close-modal{ background:none; border:none; font-size:1.1rem; cursor:pointer; color:var(--pine-soft); font-weight:800; }
+  .modal .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px; }
+  .modal .plant-opt{ background:white; border-radius:12px; padding:9px; text-align:left; border:none; cursor:pointer; }
+  .modal .plant-opt .pn{ font-weight:800; font-size:0.82rem; display:block; }
+  .modal .plant-opt .pc{ font-size:0.7rem; color:var(--pine-soft); display:block; margin-top:2px; }
+  .modal .cat-head{ font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--pine-soft); font-weight:800; margin:10px 0 4px; }
+  .healthbar{ width:100%; height:12px; background:#E4DBC8; border-radius:6px; overflow:hidden; margin:6px 0; }
+  .healthbar .fill{ height:100%; border-radius:6px; transition:width 0.4s ease; }
+  .worker-opt{ display:flex; justify-content:space-between; align-items:center; background:white; border-radius:10px; padding:7px 10px; margin-bottom:6px; font-size:0.8rem; }
+  .worker-opt button{ border:none; border-radius:8px; padding:5px 10px; font-weight:800; font-size:0.7rem; cursor:pointer; background:var(--grass); color:white; }
+  .animal-alert{ background:#FDECEA; border-radius:12px; padding:10px; font-size:0.82rem; margin-top:8px; }
+  .animal-alert .em{ font-size:1.6rem; }
+
+  /* ---------- hint toast ---------- */
+  .hint-toast{ position:absolute; top:70px; left:50%; transform:translateX(-50%) translateY(-10px); z-index:35;
+    background: rgba(44,74,50,0.94); color:white; padding:11px 18px; border-radius:14px; font-size:0.82rem; max-width:420px;
+    text-align:center; box-shadow:0 10px 26px rgba(0,0,0,0.3); opacity:0; pointer-events:none; transition: opacity 0.5s ease, transform 0.5s ease; }
+  .hint-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .hint-toast b{ color:var(--gold); }
+
+  /* ---------- animations ---------- */
+  .sway{ animation: sway 3s ease-in-out infinite; transform-origin: bottom center; }
+  @keyframes sway{ 0%,100%{ transform:rotate(-1.5deg);} 50%{ transform:rotate(1.5deg);} }
+  .bob{ animation: bob 0.9s ease-in-out infinite; }
+  @keyframes bob{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-4px);} }
+  .tool-swing{ animation: swing 0.7s ease-in-out infinite; transform-origin: top left; }
+  @keyframes swing{ 0%,100%{ transform:rotate(-25deg);} 50%{ transform:rotate(15deg);} }
+  .rise{ animation: rise 3s ease-in infinite; } .rise2{ animation: rise 3.6s ease-in infinite 1s; }
+  @keyframes rise{ 0%{opacity:0.8; transform:translateY(0);} 100%{opacity:0; transform:translateY(-40px);} }
+  .dust{ animation: dust 1.1s ease-out infinite; }
+  @keyframes dust{ 0%{ opacity:0.7; transform:translateY(0) scale(0.6);} 100%{ opacity:0; transform:translateY(-14px) scale(1.3);} }
+  .cloud-drift{ animation: drift 50s linear infinite alternate; }
+  @keyframes drift{ 0%{ transform:translateX(0);} 100%{ transform:translateX(40px);} }
+  .critter-bounce{ animation: cbounce 0.6s ease-in-out infinite; }
+  @keyframes cbounce{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-6px);} }
+  .pulse{ animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1;} 50%{ opacity:0.4;} }
+
+  @media (max-width:640px){
+    .float-panel{ width: calc(100vw - 84px); }
+    .tool-chip{ width:58px; height:52px; font-size:0.58rem; }
+  }
+</style>
+</head>
+<body>
+<div id="gameRoot" class="game-root">
+  <div class="field-scene">
+    <div class="field-bg" id="fieldBg"></div>
+    <div class="field-plots" id="fieldPlots"></div>
+  </div>
+  <div class="topbar-fixed" id="topbarFixed"></div>
+  <div class="icon-dock" id="iconDock"></div>
+  <div id="floatPanel"></div>
+  <div class="tool-strip-wrap"><div class="tool-strip" id="toolStrip"></div></div>
+  <div id="modalLayer"></div>
+  <div class="hint-toast" id="hintToast"></div>
+</div>
+
+<script>
+(function(){
+
+// ================= CONSTANTS =================
+var REAL_MS_PER_GAME_HOUR_SPEC = 15 * 60 * 1000;
+var SPEED_OPTIONS = [
+  {label:'1x spec', factor:1}, {label:'60x', factor:60}, {label:'180x', factor:180}, {label:'600x', factor:600}
+];
+var SEASON_LEN_GAME_HOURS = 96;
+var SEASONS = [
+  {name:'Spring', emoji:'🌱', growth:1.20, income:1.00},
+  {name:'Summer', emoji:'☀️', growth:1.00, income:1.25},
+  {name:'Autumn', emoji:'🍂', growth:1.00, income:1.20},
+  {name:'Winter', emoji:'❄️', growth:0.85, income:1.00}
+];
+var O2_RATE = 0.05;
+var PREP_DURATION_HOURS = 3;
+var CLEAR_DURATION_HOURS = 2;
+var CLEAR_COST = 25;
+var OVERGROWN_THRESHOLD = 144; // game-hours of neglect before a barren plot needs clearing
+var LABOR_COST = 15;
+
+var CATEGORY_ORDER = ['Oxygen Tree','Fruit Tree','Vegetable','Timber Tree','Biodiversity Tree'];
+
+var TREE_TYPES = {
+  oak: { label:'Oak', category:'Oxygen Tree', cost:120, shape:'round', canopy:'#4E8F52', trunk:'#6E4429',
+    stages:[{n:'Seed',h:1},{n:'Sprout',h:2},{n:'Young Plant',h:4},{n:'Mature Tree',h:99999}], o2AtStage:[0,0,2,6],
+    fact:'A mature oak can produce oxygen for around 2 people per year and absorbs roughly 21kg of CO₂ annually.' },
+  pine: { label:'Pine', category:'Oxygen Tree', cost:140, shape:'conifer', canopy:'#2F5D3A', trunk:'#5A3A22',
+    stages:[{n:'Seed',h:1},{n:'Sprout',h:2},{n:'Young Plant',h:5},{n:'Mature Tree',h:99999}], o2AtStage:[0,0,1.8,5.5],
+    fact:'Pines are evergreen conifers that keep producing oxygen year-round, even through winter.' },
+  maple: { label:'Maple', category:'Oxygen Tree', cost:110, shape:'round', canopy:'#7FA84A', trunk:'#6E4429',
+    stages:[{n:'Seed',h:1},{n:'Sprout',h:2},{n:'Young Plant',h:4},{n:'Mature Tree',h:99999}], o2AtStage:[0,0,2,5.5],
+    fact:'Maple trees are fast-growing hardwoods known for vivid autumn colour and steady oxygen output.' },
+  poplar: { label:'Poplar', category:'Oxygen Tree', cost:100, shape:'tallRound', canopy:'#6FBF5E', trunk:'#7A5334',
+    stages:[{n:'Seed',h:0.8},{n:'Sprout',h:1.5},{n:'Young Plant',h:3},{n:'Mature Tree',h:99999}], o2AtStage:[0,0,1.6,5],
+    fact:'Poplars are among the fastest-growing trees, useful for quickly restoring barren land.' },
+  apple: { label:'Apple', category:'Fruit Tree', cost:90, shape:'round', canopy:'#5FA85B', trunk:'#7A5334', dotColor:'#D8483C',
+    stages:[{n:'Seed',h:1},{n:'Sprout',h:1.5},{n:'Young Plant',h:2.5},{n:'Flowering',h:2},{n:'Fruiting',h:99999}], o2AtStage:[0,0,1.5,2,3.5], lateBonus:0.9,
+    fact:'Apple trees produce both oxygen and fruit — flowering stages attract pollinators like bees.' },
+  orange: { label:'Orange', category:'Fruit Tree', cost:95, shape:'round', canopy:'#5CA860', trunk:'#7A5334', dotColor:'#F2932E',
+    stages:[{n:'Seed',h:1},{n:'Sprout',h:1.5},{n:'Young Plant',h:2.7},{n:'Flowering',h:2.2},{n:'Fruiting',h:99999}], o2AtStage:[0,0,1.4,2,3.3], lateBonus:0.95,
+    fact:'Orange trees are evergreen citrus trees that flower fragrantly and fruit almost year-round in warm climates.' },
+  mango: { label:'Mango', category:'Fruit Tree', cost:105, shape:'round', canopy:'#4E9A54', trunk:'#6E4429', dotColor:'#F2C230',
+    stages:[{n:'Seed',h:1.2},{n:'Sprout',h:1.8},{n:'Young Plant',h:3},{n:'Flowering',h:2.5},{n:'Fruiting',h:99999}], o2AtStage:[0,0,1.6,2.2,3.6], lateBonus:1.0,
+    fact:'Mango trees can live for over a hundred years and are among the most widely cultivated tropical fruit trees.' },
+  lemon: { label:'Lemon', category:'Fruit Tree', cost:85, shape:'round', canopy:'#6BB25E', trunk:'#7A5334', dotColor:'#F2E14D',
+    stages:[{n:'Seed',h:0.9},{n:'Sprout',h:1.4},{n:'Young Plant',h:2.3},{n:'Flowering',h:1.8},{n:'Fruiting',h:99999}], o2AtStage:[0,0,1.3,1.8,3.1], lateBonus:0.85,
+    fact:'Lemon trees can flower and fruit almost continuously, making them one of the most productive fruit trees to grow.' },
+  tomato: { label:'Tomato', category:'Vegetable', cost:35, shape:'bush', canopy:'#5FA85B', dotColor:'#E2412F',
+    stages:[{n:'Seed',h:0.5},{n:'Sprout',h:0.5},{n:'Young Plant',h:1},{n:'Harvest Ready',h:99999}], o2AtStage:[0,0,0.5,1], lateBonus:0.6,
+    fact:'Vegetable crops like tomato grow fast and give quick cash — useful for early-game income.' },
+  potato: { label:'Potato', category:'Vegetable', cost:30, shape:'bush', canopy:'#5C9A52', dotColor:'#B77BD9',
+    stages:[{n:'Seed',h:0.5},{n:'Sprout',h:0.6},{n:'Young Plant',h:1.1},{n:'Harvest Ready',h:99999}], o2AtStage:[0,0,0.4,0.9], lateBonus:0.55,
+    fact:'Potato plants grow their edible tubers underground, while their leaves add a small amount of oxygen above.' },
+  carrot: { label:'Carrot', category:'Vegetable', cost:28, shape:'bush', canopy:'#6DAE55', dotColor:'#F2932E',
+    stages:[{n:'Seed',h:0.4},{n:'Sprout',h:0.5},{n:'Young Plant',h:0.9},{n:'Harvest Ready',h:99999}], o2AtStage:[0,0,0.35,0.8], lateBonus:0.5,
+    fact:'Carrots are biennial root vegetables usually harvested in their first year, well before they would ever flower.' },
+  onion: { label:'Onion', category:'Vegetable', cost:25, shape:'bush', canopy:'#6DBF66', dotColor:'#EDEDED',
+    stages:[{n:'Seed',h:0.4},{n:'Sprout',h:0.5},{n:'Young Plant',h:0.8},{n:'Harvest Ready',h:99999}], o2AtStage:[0,0,0.3,0.7], lateBonus:0.45,
+    fact:'Onions grow in layers underground and are one of the fastest, cheapest crops to cycle for quick cash.' },
+  teak: { label:'Teak', category:'Timber Tree', cost:220, shape:'round', canopy:'#6B7A3A', trunk:'#5A3A22',
+    stages:[{n:'Seed',h:2},{n:'Sprout',h:3},{n:'Young Plant',h:6},{n:'Mature Tree',h:99999}], o2AtStage:[0,0,1.5,3.5], lateBonus:1.6,
+    fact:'Teak is a slow-growing hardwood prized for durable timber — patience pays off richly once it matures.' },
+  cedar: { label:'Cedar', category:'Timber Tree', cost:240, shape:'conifer', canopy:'#2E4A34', trunk:'#5A3A22',
+    stages:[{n:'Seed',h:2.2},{n:'Sprout',h:3.2},{n:'Young Plant',h:6.5},{n:'Mature Tree',h:99999}], o2AtStage:[0,0,1.6,3.8], lateBonus:1.75,
+    fact:'Cedar trees are long-lived conifers whose aromatic wood has been valued for construction for millennia.' },
+  eucalyptus: { label:'Eucalyptus', category:'Timber Tree', cost:200, shape:'tallRound', canopy:'#8FAF8A', trunk:'#8B7355',
+    stages:[{n:'Seed',h:1.8},{n:'Sprout',h:2.6},{n:'Young Plant',h:5},{n:'Mature Tree',h:99999}], o2AtStage:[0,0,1.7,3.6], lateBonus:1.5,
+    fact:'Eucalyptus trees grow remarkably fast for a timber species and are known for aromatic leaves.' },
+  cherryblossom: { label:'Cherry Blossom', category:'Biodiversity Tree', cost:75, shape:'round', canopy:'#F3B6C9', trunk:'#6E4429',
+    stages:[{n:'Seed',h:1},{n:'Sprout',h:1.6},{n:'Young Plant',h:2.8},{n:'Mature Tree',h:99999}], o2AtStage:[0,0,1.2,2.4],
+    fact:'Cherry blossom trees bloom spectacularly for just a couple of weeks each spring, feeding early pollinators.' },
+  acacia: { label:'Acacia', category:'Biodiversity Tree', cost:70, shape:'umbrella', canopy:'#8FA84A', trunk:'#6E4429',
+    stages:[{n:'Seed',h:1},{n:'Sprout',h:1.6},{n:'Young Plant',h:2.6},{n:'Mature Tree',h:99999}], o2AtStage:[0,0,1.1,2.3],
+    fact:'Acacia trees are iconic on savannas for their flat, umbrella-shaped canopy that shades the ground below.' },
+  birch: { label:'Birch', category:'Biodiversity Tree', cost:65, shape:'tallRound', canopy:'#9FCF8A', trunk:'#E8E4D8', barkMarks:true,
+    stages:[{n:'Seed',h:0.9},{n:'Sprout',h:1.4},{n:'Young Plant',h:2.4},{n:'Mature Tree',h:99999}], o2AtStage:[0,0,1.0,2.2],
+    fact:'Birch trees are recognisable by pale, papery bark and are often among the first to colonise cleared land.' }
+};
+
+var WORKER_TYPES = {
+  laborer:   { label:'Laborer',  wage:20,  color:'#8B5A3C', tool:'shovel',  role:'prep',  mult:1.5, desc:'Speeds up digging & overgrowth clearing +50%' },
+  farmer:    { label:'Farmer',   wage:50,  color:'#4F8A45', tool:'can',     role:'grow',  mult:1.4, desc:'Speeds up growth +40%' },
+  botanist:  { label:'Botanist', wage:100, color:'#7A5FA8', tool:'flask',   role:'grow',  mult:1.6, desc:'Growth +60% and files daily health reports' },
+  engineer:  { label:'Engineer', wage:150, color:'#3E6B8B', tool:'gear',    role:'global',mult:0,   desc:'+10% income from irrigation & automation (global)' }
+};
+
+var ACCESSORIES = {
+  irrigation: { label:'Irrigation', emoji:'💧', cost:80, desc:'+15% growth speed on this plot' },
+  fertilizer: { label:'Fertilizer', emoji:'🌾', cost:60, desc:'+20% oxygen output (Healthy Soil Bonus)' }
+};
+
+// realistic per-category maintenance costs (spec: "fertilizers, cutting, watering")
+var CARE_COST = {
+  water: {'Oxygen Tree':4, 'Fruit Tree':8, 'Vegetable':5, 'Timber Tree':4, 'Biodiversity Tree':5},
+  prune: {'Oxygen Tree':12, 'Fruit Tree':14, 'Timber Tree':18, 'Biodiversity Tree':10}
+};
+var HEALTH_DECAY = {'Oxygen Tree':0.5, 'Fruit Tree':0.8, 'Vegetable':1.2, 'Timber Tree':0.4, 'Biodiversity Tree':0.6};
+
+var ANIMALS = [
+  {key:'rabbit', emoji:'🐇', name:'Rabbit', fact:'Rabbits can nibble young shoots, but gentle deterrents protect sprouts without harming wildlife.'},
+  {key:'fox', emoji:'🦊', name:'Fox', fact:'Foxes rarely damage crops directly — they often help by controlling rodent pests nearby.'},
+  {key:'boar', emoji:'🐗', name:'Wild Boar', fact:'Wild boar may dig up prepared soil searching for roots, so clearing them quickly limits damage.'},
+  {key:'deer', emoji:'🦌', name:'Deer', fact:'Deer sometimes browse on young leaves — noise or a simple scarecrow is usually enough to move them along.'}
+];
+var ANIMAL_WINDOW_HOURS = 2;
+var ANIMAL_SPAWN_RATE = 0.03; // roughly per game-hour
+var SCARE_COST = 10;
+
+var GENERIC_TIPS = [
+  'Rotating vegetable crops between tree plantings can help keep soil healthy over time.',
+  'Mixed forests with diverse species tend to be more resilient to pests and disease.',
+  'Mature trees don\'t just produce oxygen — their roots also help prevent soil erosion.',
+  'Watering deeply but less often encourages trees to grow stronger root systems.',
+  'Leaving some wild patches near a farm can actually help pollinators and natural pest control.'
+];
+
+var ACHIEVEMENTS = [
+  {id:'first_tree', label:'🌱 First Tree', check:function(s){return s.treesPlanted>=1;}},
+  {id:'first_hire', label:'👷 First Hire', check:function(s){return s.workers.length>=1;}},
+  {id:'green_starter', label:'🍃 Green Starter (100 O2)', check:function(s){return s.totalO2AllTime>=100;}},
+  {id:'eco_farmer', label:'🌳 Eco Farmer (1,000 O2)', check:function(s){return s.totalO2AllTime>=1000;}},
+  {id:'forest_maker', label:'🌲 Forest Maker (all plots planted)', check:function(s){return s.plots.every(function(p){return p.status==='growing';});}},
+  {id:'oxygen_hero', label:'💚 Oxygen Hero (10,000 O2)', check:function(s){return s.totalO2AllTime>=10000;}},
+  {id:'pest_control', label:'🦔 Pest Control (handled wildlife)', check:function(s){return (s.pestHandled||0)>=1;}},
+  {id:'well_kept', label:'🩺 Well-Kept Farm (3 plots healthy 80%+)', check:function(s){return s.plots.filter(function(p){return p.status==='growing' && p.health>=80;}).length>=3;}}
+];
+
+var PLOT_COUNT = 6;
+var PLOT_LAYOUT = [
+  {top:16, left:4,  w:23, h:28},
+  {top:11, left:39, w:23, h:28},
+  {top:17, left:73, w:23, h:28},
+  {top:56, left:2,  w:23, h:30},
+  {top:61, left:38, w:23, h:30},
+  {top:55, left:73, w:23, h:30}
+];
+
+// ================= STATE =================
+var state = null;
+var tickHandle = null;
+var lastRealTs = Date.now();
+var activeModal = null;   // {type, plotId}
+var openPanel = null;     // 'tasks' | 'workers' | 'achievements' | 'reports'
+var offlineSummary = null;
+var nextWorkerId = 1;
+
+function freshState(){
+  var plots = [];
+  for (var i=0;i<PLOT_COUNT;i++){
+    plots.push({ id:i, status:'barren', treeType:null, treeId:null, growHours:0, taskHours:0, weedHours:0,
+      health:100, o2Produced:0, assignedWorker:null, accessories:{irrigation:false, fertilizer:false}, animal:null });
+  }
+  return {
+    money: 10000, totalO2: 0, totalO2AllTime: 0, treesPlanted: 0, gameHour: 0,
+    plots: plots, achUnlocked: {}, speedFactor: 180, lastSaveReal: Date.now(),
+    workers: [], lastPaidDay: 0, nextTreeId: 1, reports: [], pestHandled: 0
+  };
+}
+
+// ================= PERSISTENCE (Claude artifact storage API) =================
+function saveState(){
+  if (!window.storage) return;
+  state.lastSaveReal = Date.now();
+  window.storage.set('searchO2-save-v3', JSON.stringify(state)).catch(function(e){ console.error('Save failed', e); });
+}
+function loadState(){
+  if (!window.storage){ state = freshState(); lastRealTs=Date.now(); startLoop(); render(); startHintLoop(); return; }
+  window.storage.get('searchO2-save-v3').then(function(res){
+    if (res && res.value){
+      try{
+        var loaded = JSON.parse(res.value);
+        var elapsedReal = Date.now() - (loaded.lastSaveReal || Date.now());
+        state = loaded;
+        nextWorkerId = 1 + state.workers.reduce(function(m,w){return Math.max(m,w.id);},0);
+        if (elapsedReal > 5000){
+          var before = { money: state.money, totalO2AllTime: state.totalO2AllTime };
+          var gh = gameHoursFromReal(elapsedReal, state.speedFactor);
+          gh = Math.min(gh, 24*4*30);
+          advanceGame(gh);
+          offlineSummary = {
+            realMinutes: Math.round(elapsedReal/60000), gameHours: Math.round(gh*10)/10,
+            moneyGained: Math.round((state.money-before.money)*100)/100,
+            o2Gained: Math.round((state.totalO2AllTime-before.totalO2AllTime)*10)/10
+          };
+        }
+      }catch(e){ console.error('Parse failed, starting fresh', e); state = freshState(); }
+    } else { state = freshState(); }
+    lastRealTs = Date.now();
+    startLoop(); render(); startHintLoop();
+  }).catch(function(e){ console.error('Load failed, starting fresh', e); state = freshState(); lastRealTs=Date.now(); startLoop(); render(); startHintLoop(); });
+}
+
+// ================= CORE GAME LOGIC =================
+function gameHoursFromReal(realMs, speedFactor){ return (realMs / REAL_MS_PER_GAME_HOUR_SPEC) * speedFactor; }
+function currentSeason(){
+  var cyclePos = state.gameHour % (SEASON_LEN_GAME_HOURS*4);
+  var idx = Math.floor(cyclePos / SEASON_LEN_GAME_HOURS) % 4;
+  return SEASONS[idx];
+}
+function forestBonus(){ return state.plots.filter(function(p){return p.status==='growing';}).length===PLOT_COUNT ? 0.10 : 0; }
+function diversityBonus(){
+  var types={}; state.plots.forEach(function(p){ if(p.treeType) types[p.treeType]=true; });
+  return Object.keys(types).length>=2 ? 0.15 : 0;
+}
+function engineerBonus(){ return state.workers.some(function(w){return w.type==='engineer';}) ? 0.10 : 0; }
+function workerOnPlot(plotId){
+  var p = state.plots[plotId];
+  if (!p.assignedWorker) return null;
+  return state.workers.find(function(w){return w.id===p.assignedWorker;}) || null;
+}
+function pushReport(text){
+  state.reports.unshift({ id: Date.now()+Math.random(), gameHour: Math.round(state.gameHour*10)/10, text: text });
+  if (state.reports.length>25) state.reports.length = 25;
+}
+
+function advanceGame(dh){
+  if (dh<=0) return;
+  var season = currentSeason();
+  var totalMult = 1 + forestBonus() + diversityBonus() + engineerBonus();
+  state.gameHour += dh;
+
+  state.plots.forEach(function(p){
+    var w = workerOnPlot(p.id);
+
+    if (p.status==='barren'){
+      p.weedHours += dh;
+      if (p.weedHours >= OVERGROWN_THRESHOLD) p.status='overgrown';
+    } else if (p.status==='clearing'){
+      var clearMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : 1;
+      p.taskHours += dh * clearMult;
+      if (p.taskHours >= CLEAR_DURATION_HOURS){ p.status='barren'; p.weedHours=0; p.taskHours=0; }
+    } else if (p.status==='preparing'){
+      var prepMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : 1;
+      p.taskHours += dh * prepMult;
+      if (p.taskHours >= PREP_DURATION_HOURS){ p.status='ready'; }
+    } else if (p.status==='growing'){
+      var def = TREE_TYPES[p.treeType];
+      p.health = Math.max(0, p.health - dh*HEALTH_DECAY[def.category]);
+      var healthMult = 0.5 + 0.5*(p.health/100);
+      var growMult = (w && (w.type==='farmer'||w.type==='botanist')) ? WORKER_TYPES[w.type].mult : 1;
+      var irrMult = p.accessories.irrigation ? 1.15 : 1;
+      var fertMult = p.accessories.fertilizer ? 1.20 : 1;
+      var growDh = dh * season.growth * growMult * irrMult * healthMult;
+      p.growHours += growDh;
+      var stageIdx = stageIndexFor(def, p.growHours);
+      var o2Rate = def.o2AtStage[stageIdx];
+      var o2Gain = o2Rate * dh * fertMult * healthMult;
+      state.totalO2 += o2Gain; state.totalO2AllTime += o2Gain; p.o2Produced += o2Gain;
+      var income = o2Gain * O2_RATE * totalMult;
+      var isFinalStage = stageIdx === def.stages.length-1;
+      if (isFinalStage && def.lateBonus){ income += def.lateBonus * dh * season.income * totalMult * healthMult; }
+      state.money += income;
+    }
+
+    // wildlife event expiry
+    if (p.animal && state.gameHour >= p.animal.expiresAtHour){
+      var a = ANIMALS.find(function(x){return x.key===p.animal.key;});
+      state.money -= 15;
+      if (p.status==='preparing' || p.status==='clearing'){ p.taskHours = Math.max(0, p.taskHours-1); }
+      pushReport('🐾 A '+a.name+' passed through Plot '+(p.id+1)+' unnoticed — minor setback (-€15). '+a.fact);
+      p.animal = null;
+    }
+  });
+
+  // wildlife spawn (max one active at a time, only on empty/idle land)
+  var anyActive = state.plots.some(function(p){return p.animal;});
+  if (!anyActive){
+    var prob = 1 - Math.pow(1-ANIMAL_SPAWN_RATE, dh);
+    if (Math.random() < prob){
+      var eligible = state.plots.filter(function(p){ return ['barren','overgrown','preparing','clearing'].indexOf(p.status)>=0; });
+      if (eligible.length){
+        var target = eligible[Math.floor(Math.random()*eligible.length)];
+        var animal = ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
+        target.animal = { key:animal.key, expiresAtHour: state.gameHour + ANIMAL_WINDOW_HOURS };
+      }
+    }
+  }
+
+  // daily payroll + botanist reports
+  var newDay = Math.floor(state.gameHour/24);
+  if (newDay > state.lastPaidDay){
+    var days = newDay - state.lastPaidDay;
+    if (state.workers.length){
+      var dailyWage = state.workers.reduce(function(s,w){return s+WORKER_TYPES[w.type].wage;},0);
+      state.money -= dailyWage * days;
+    }
+    state.plots.forEach(function(p){
+      if (p.status==='growing'){
+        var w2 = workerOnPlot(p.id);
+        if (w2 && w2.type==='botanist'){
+          var def2 = TREE_TYPES[p.treeType];
+          var rec = p.health<40 ? 'Urgent: water and consider pruning soon.' : (p.health<70 ? 'Recommend watering this plot.' : 'Looking healthy — no action needed.');
+          pushReport('📋 Botanist report — Plot '+(p.id+1)+' ('+def2.label+', #'+p.treeId+'): health '+Math.round(p.health)+'%, stage "'+def2.stages[stageIndexFor(def2,p.growHours)].n+'". '+rec);
+        }
+      }
+    });
+  }
+  state.lastPaidDay = newDay;
+}
+
+function stageIndexFor(def, growHours){
+  var acc=0;
+  for (var i=0;i<def.stages.length;i++){ acc+=def.stages[i].h; if (growHours<acc) return i; }
+  return def.stages.length-1;
+}
+function plotStageInfo(p){
+  if (p.status!=='growing') return null;
+  var def = TREE_TYPES[p.treeType];
+  var idx = stageIndexFor(def, p.growHours);
+  var acc=0; for (var i=0;i<idx;i++) acc+=def.stages[i].h;
+  var into = p.growHours-acc, dur = def.stages[idx].h;
+  var pct = dur>9000 ? 100 : Math.min(100, Math.round((into/dur)*100));
+  return { def:def, idx:idx, name:def.stages[idx].n, pct:pct, isFinal: dur>9000 };
+}
+function checkAchievements(){
+  ACHIEVEMENTS.forEach(function(a){ if (!state.achUnlocked[a.id] && a.check(state)) state.achUnlocked[a.id]=true; });
+}
+
+// ================= ACTIONS =================
+function startPrep(plotId){
+  var p = state.plots[plotId]; if (p.status!=='barren') return;
+  if (state.money < LABOR_COST) return;
+  state.money -= LABOR_COST; p.status='preparing'; p.taskHours=0;
+  render(); saveState();
+}
+function startClear(plotId){
+  var p = state.plots[plotId]; if (p.status!=='overgrown') return;
+  if (state.money < CLEAR_COST) return;
+  state.money -= CLEAR_COST; p.status='clearing'; p.taskHours=0;
+  render(); saveState();
+}
+function plantTree(plotId, type){
+  var p = state.plots[plotId]; var def = TREE_TYPES[type];
+  if (p.status!=='ready' || state.money<def.cost) return;
+  state.money -= def.cost; p.status='growing'; p.treeType=type; p.treeId = state.nextTreeId++;
+  p.growHours=0; p.health=100; p.o2Produced=0;
+  state.treesPlanted += 1;
+  checkAchievements(); closeModal(); saveState();
+}
+function setSpeed(factor){ state.speedFactor = factor; saveState(); render(); }
+
+function hireWorker(type){
+  state.workers.push({ id: nextWorkerId++, type: type, assignedPlot: null });
+  checkAchievements(); render(); saveState();
+}
+function fireWorker(workerId){
+  var w = state.workers.find(function(x){return x.id===workerId;}); if (!w) return;
+  if (w.assignedPlot!==null) state.plots[w.assignedPlot].assignedWorker=null;
+  state.workers = state.workers.filter(function(x){return x.id!==workerId;});
+  render(); saveState();
+}
+function assignWorker(workerId, plotId){
+  var w = state.workers.find(function(x){return x.id===workerId;}); var p = state.plots[plotId];
+  if (!w || !p) return;
+  if (w.assignedPlot!==null) state.plots[w.assignedPlot].assignedWorker=null;
+  if (p.assignedWorker!==null){ var prev = state.workers.find(function(x){return x.id===p.assignedWorker;}); if (prev) prev.assignedPlot=null; }
+  w.assignedPlot = plotId; p.assignedWorker = w.id;
+  render(); saveState();
+}
+function unassignWorker(plotId){
+  var p = state.plots[plotId];
+  if (p.assignedWorker!==null){ var w = state.workers.find(function(x){return x.id===p.assignedWorker;}); if (w) w.assignedPlot=null; p.assignedWorker=null; }
+  render(); saveState();
+}
+function buyAccessory(plotId, kind){
+  var p = state.plots[plotId]; var acc = ACCESSORIES[kind];
+  if (p.accessories[kind] || state.money<acc.cost) return;
+  state.money -= acc.cost; p.accessories[kind]=true;
+  render(); saveState();
+}
+function waterPlot(plotId){
+  var p = state.plots[plotId]; if (p.status!=='growing') return;
+  var def = TREE_TYPES[p.treeType]; var cost = CARE_COST.water[def.category];
+  if (state.money<cost) return;
+  state.money -= cost; p.health = Math.min(100, p.health+30);
+  render(); saveState();
+}
+function prunePlot(plotId){
+  var p = state.plots[plotId]; if (p.status!=='growing') return;
+  var def = TREE_TYPES[p.treeType]; if (def.category==='Vegetable') return;
+  var cost = CARE_COST.prune[def.category];
+  if (state.money<cost) return;
+  state.money -= cost; p.health = Math.min(100, p.health+40);
+  render(); saveState();
+}
+function scareAnimal(plotId){
+  var p = state.plots[plotId]; if (!p.animal) return;
+  if (state.money<SCARE_COST) return;
+  var a = ANIMALS.find(function(x){return x.key===p.animal.key;});
+  state.money -= SCARE_COST;
+  state.pestHandled = (state.pestHandled||0)+1;
+  pushReport('✅ Scared off a '+a.name+' near Plot '+(p.id+1)+'. '+a.fact);
+  p.animal = null;
+  checkAchievements(); render(); saveState();
+}
+
+function openModal(type, plotId){ activeModal = {type:type, plotId:plotId}; openPanel=null; render(); }
+function closeModal(){ activeModal=null; render(); }
+function togglePanel(name){ openPanel = (openPanel===name) ? null : name; activeModal=null; render(); }
+
+// ================= LOOP =================
+function startLoop(){
+  if (tickHandle) clearInterval(tickHandle);
+  tickHandle = setInterval(function(){
+    var now=Date.now(); var realDelta = now-lastRealTs; lastRealTs=now;
+    var dh = gameHoursFromReal(realDelta, state.speedFactor);
+    advanceGame(dh); checkAchievements(); render();
+  }, 1000);
+  setInterval(saveState, 15000);
+}
+
+// educational hint toast — runs on its own real-time clock, independent of render()
+var hintQueue = [];
+function refillHintQueue(){
+  var facts = [];
+  var seen = {};
+  state.plots.forEach(function(p){ if (p.treeType && !seen[p.treeType]){ seen[p.treeType]=true; facts.push(TREE_TYPES[p.treeType].fact); } });
+  facts = facts.concat(GENERIC_TIPS);
+  for (var i=facts.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=facts[i]; facts[i]=facts[j]; facts[j]=t; }
+  hintQueue = facts;
+}
+function showNextHint(){
+  if (!state) return;
+  if (!hintQueue.length) refillHintQueue();
+  var text = hintQueue.shift();
+  if (!text) return;
+  var el = document.getElementById('hintToast');
+  if (!el) return;
+  el.innerHTML = '<b>Did you know?</b><br>'+text;
+  el.classList.add('show');
+  clearTimeout(el._hideT);
+  el._hideT = setTimeout(function(){ el.classList.remove('show'); }, 6500);
+}
+function startHintLoop(){
+  setTimeout(showNextHint, 2500);
+  setInterval(showNextHint, 9000);
+}
+
+// ================= STATIC FIELD BACKGROUND (built once) =================
+function fieldBackgroundSVG(){
+  return '<svg viewBox="0 0 1000 625" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">'+
+    '<defs>'+
+      '<linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#CDEDE8"/><stop offset="100%" stop-color="#E8F5E0"/></linearGradient>'+
+      '<linearGradient id="hillG1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8FBF6E"/><stop offset="100%" stop-color="#79AD5C"/></linearGradient>'+
+      '<linearGradient id="hillG2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#6FA85A"/><stop offset="100%" stop-color="#588A46"/></linearGradient>'+
+    '</defs>'+
+    '<rect x="0" y="0" width="1000" height="625" fill="url(#skyG)"/>'+
+    '<g class="cloud-drift" opacity="0.8">'+
+      '<ellipse cx="120" cy="55" rx="45" ry="16" fill="#FFFFFF"/><ellipse cx="160" cy="48" rx="30" ry="13" fill="#FFFFFF"/>'+
+      '<ellipse cx="780" cy="40" rx="50" ry="15" fill="#FFFFFF"/><ellipse cx="830" cy="48" rx="28" ry="11" fill="#FFFFFF"/>'+
+    '</g>'+
+    '<circle cx="930" cy="55" r="30" fill="#F7CB74" opacity="0.9"/>'+
+    '<path d="M0,140 C150,100 300,170 500,130 C700,90 850,150 1000,120 L1000,625 L0,625 Z" fill="url(#hillG1)"/>'+
+    '<path d="M0,220 C200,180 350,240 550,210 C750,180 880,230 1000,200 L1000,625 L0,625 Z" fill="url(#hillG2)"/>'+
+    '<path d="M0,300 Q250,340 500,305 T1000,300 L1000,625 L0,625 Z" fill="#4F8A45"/>'+
+    '<path d="M40,600 Q300,540 500,580 T980,590" stroke="#B08858" stroke-width="26" fill="none" stroke-linecap="round" opacity="0.55"/>'+
+    '<path d="M40,600 Q300,540 500,580 T980,590" stroke="#C9A374" stroke-width="6" fill="none" stroke-linecap="round" stroke-dasharray="14 16" opacity="0.7"/>'+
+    (function(){
+      var s='';
+      // scrap rocks
+      var rocks=[[110,330],[890,310],[470,255],[60,470],[930,460],[300,240],[700,410]];
+      rocks.forEach(function(r){
+        s+='<g transform="translate('+r[0]+','+r[1]+')" opacity="0.9">'+
+           '<ellipse cx="0" cy="10" rx="17" ry="6" fill="rgba(0,0,0,0.12)"/>'+
+           '<path d="M-14,6 Q-16,-8 -2,-11 Q14,-13 15,2 Q13,9 -14,6Z" fill="#9C9184"/>'+
+           '<path d="M-8,3 Q-6,-6 4,-7" stroke="#B7ACA0" stroke-width="2.5" fill="none" opacity="0.7"/>'+
+           '</g>';
+      });
+      // bushes
+      var bushes=[[70,360],[930,340],[500,270],[210,470],[770,480],[350,410],[640,420]];
+      bushes.forEach(function(b){
+        s+='<g transform="translate('+b[0]+','+b[1]+')" opacity="0.85">'+
+           '<ellipse cx="0" cy="8" rx="20" ry="9" fill="#3E7239"/>'+
+           '<circle cx="-9" cy="0" r="11" fill="#4F8A45"/><circle cx="9" cy="0" r="11" fill="#4F8A45"/><circle cx="0" cy="-6" r="12" fill="#588A46"/>'+
+           '</g>';
+      });
+      // dry/desert grass tufts
+      var grasses=[[180,340],[850,290],[420,300],[600,470],[130,500],[820,540],[380,470],[680,320]];
+      grasses.forEach(function(g){
+        s+='<g transform="translate('+g[0]+','+g[1]+')" opacity="0.8">'+
+          '<path d="M-6,10 Q-8,-6 -2,-14" stroke="#C9B37A" stroke-width="2" fill="none"/>'+
+          '<path d="M0,10 Q0,-8 0,-16" stroke="#D6C589" stroke-width="2" fill="none"/>'+
+          '<path d="M6,10 Q8,-6 3,-14" stroke="#C9B37A" stroke-width="2" fill="none"/>'+
+          '</g>';
+      });
+      var flowers=[[150,540],[860,560],[440,560],[610,540],[300,590]];
+      flowers.forEach(function(f){
+        s+='<g transform="translate('+f[0]+','+f[1]+')">'+
+           '<circle r="4" fill="#F0AC3D"/><circle cx="9" cy="2" r="3.5" fill="#E8785A"/><circle cx="-8" cy="3" r="3.5" fill="#F7CB74"/>'+
+           '</g>';
+      });
+      return s;
+    })()+
+    '<g opacity="0.9">'+
+      (function(){ var s=''; for (var x=10; x<995; x+=42){ s+='<rect x="'+x+'" y="586" width="7" height="30" rx="2" fill="#7A5334"/>'; } s+='<rect x="0" y="592" width="1000" height="6" fill="#8B5A3C"/>'; return s; })()+
+    '</g>'+
+  '</svg>';
+}
+
+// ================= WORKER / TOOL ART =================
+function toolSvg(tool, working){
+  var cls = working ? ' class="tool-swing"' : '';
+  if (tool==='shovel') return '<g'+cls+'><rect x="0" y="0" width="4" height="20" fill="#B0B0B0"/><rect x="-4" y="18" width="12" height="8" rx="2" fill="#8A8A8A"/></g>';
+  if (tool==='can') return '<g'+cls+'><rect x="-6" y="0" width="14" height="10" rx="3" fill="#5A8FBF"/><rect x="6" y="2" width="10" height="3" fill="#5A8FBF"/></g>';
+  if (tool==='flask') return '<g'+cls+'><path d="M-3,0 L3,0 L5,14 Q0,18 -5,14 Z" fill="#7A5FA8" opacity="0.85"/></g>';
+  return '<g'+cls+'><circle r="7" fill="none" stroke="#3E6B8B" stroke-width="3"/><circle r="2" fill="#3E6B8B"/></g>';
+}
+function personSvg(type, working, x, y){
+  var wt = WORKER_TYPES[type];
+  return '<g transform="translate('+x+','+y+')" class="'+(working?'bob':'')+'">'+
+    '<ellipse cx="0" cy="30" rx="12" ry="4" fill="rgba(0,0,0,0.15)"/>'+
+    '<rect x="-7" y="4" width="14" height="20" rx="5" fill="'+wt.color+'"/>'+
+    '<circle cx="0" cy="-4" r="8" fill="#F2C79B"/>'+
+    '<rect x="-9" y="-11" width="18" height="6" rx="3" fill="'+wt.color+'"/>'+
+    '<g transform="translate(9,6)">'+toolSvg(wt.tool, working)+'</g>'+
+  '</g>';
+}
+function drawCanopy(def, cx, cy, canopyR){
+  var shape = def.shape, color = def.canopy;
+  if (shape==='conifer'){
+    return '<g fill="'+color+'">'+
+      '<polygon points="'+cx+','+(cy-canopyR*1.5)+' '+(cx-canopyR*0.8)+','+(cy-canopyR*0.5)+' '+(cx+canopyR*0.8)+','+(cy-canopyR*0.5)+'"/>'+
+      '<polygon points="'+cx+','+(cy-canopyR*1.0)+' '+(cx-canopyR*0.95)+','+(cy+canopyR*0.15)+' '+(cx+canopyR*0.95)+','+(cy+canopyR*0.15)+'"/>'+
+      '<polygon points="'+cx+','+(cy-canopyR*0.5)+' '+(cx-canopyR*1.05)+','+cy+' '+(cx+canopyR*1.05)+','+cy+'"/>'+
+    '</g>';
+  }
+  if (shape==='umbrella'){
+    return '<g fill="'+color+'">'+
+      '<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(canopyR*1.35)+'" ry="'+(canopyR*0.42)+'"/>'+
+      '<ellipse cx="'+cx+'" cy="'+(cy-canopyR*0.28)+'" rx="'+(canopyR*1.1)+'" ry="'+(canopyR*0.32)+'"/>'+
+    '</g>';
+  }
+  if (shape==='tallRound'){
+    return '<ellipse cx="'+cx+'" cy="'+cy+'" rx="'+(canopyR*0.72)+'" ry="'+(canopyR*1.2)+'" fill="'+color+'"/>';
+  }
+  return '<circle cx="'+cx+'" cy="'+cy+'" r="'+canopyR+'" fill="'+color+'"/>';
+}
+
+// ================= PLOT RENDERING =================
+function plotSvg(p){
+  var stageInfo = plotStageInfo(p);
+  var w = workerOnPlot(p.id);
+  var bed = '<ellipse cx="100" cy="90" rx="88" ry="48" fill="#7A5334"/><ellipse cx="100" cy="86" rx="88" ry="46" fill="#8B5A3C"/>';
+  var tillLines=''; for (var i=-70;i<=70;i+=18){ tillLines += '<path d="M'+(100+i*0.9)+',48 Q'+(100+i)+',86 '+(100+i*0.9)+',124" stroke="#6E4429" stroke-width="2" fill="none" opacity="0.4"/>'; }
+
+  var content='';
+  if (p.status==='barren'){
+    content = tillLines;
+    var weedPct = Math.min(1, p.weedHours/OVERGROWN_THRESHOLD);
+    var tufts = Math.round(weedPct*6);
+    for (var t=0;t<tufts;t++){
+      var wx = 45 + (t*20) + (t%2)*6, wy = 100 + (t%3)*8;
+      content += '<g transform="translate('+wx+','+wy+')" opacity="'+(0.4+weedPct*0.5)+'"><path d="M-4,6 Q-5,-4 -1,-9" stroke="#8FA84A" stroke-width="2" fill="none"/><path d="M0,6 Q0,-5 0,-11" stroke="#9FBF5E" stroke-width="2" fill="none"/><path d="M4,6 Q5,-4 1,-9" stroke="#8FA84A" stroke-width="2" fill="none"/></g>';
+    }
+  } else if (p.status==='overgrown'){
+    content = tillLines + '<g opacity="0.9">'+
+      '<path d="M60,110 Q50,80 65,60 Q55,85 70,100" stroke="#5C7A3E" stroke-width="4" fill="none"/>'+
+      '<path d="M130,112 Q145,85 128,58 Q142,88 122,102" stroke="#4F6B33" stroke-width="4" fill="none"/>'+
+      '<path d="M100,116 Q95,90 105,65" stroke="#6B8A47" stroke-width="4" fill="none"/>'+
+      '<ellipse cx="65" cy="100" rx="16" ry="8" fill="#5C7A3E" opacity="0.6"/><ellipse cx="128" cy="100" rx="16" ry="8" fill="#4F6B33" opacity="0.6"/>'+
+      '</g>';
+  } else if (p.status==='preparing' || p.status==='clearing'){
+    content = '<g opacity="0.7"><rect x="30" y="80" width="140" height="7" rx="3" fill="#5A3A22"/><rect x="30" y="95" width="140" height="7" rx="3" fill="#5A3A22"/></g>';
+    if (w){ content += personSvg('laborer', true, 150, 55); content += '<g class="dust" style="transform-origin:150px 90px;"><circle cx="150" cy="90" r="5" fill="#C9A374"/></g>'; }
+  } else if (p.status==='ready'){
+    content = '<g><ellipse cx="100" cy="90" rx="18" ry="8" fill="#7A9B5F"/>'+
+      '<circle cx="100" cy="55" r="15" fill="'+(Math.floor(Date.now()/500)%2 ? '#F0AC3D':'#F7CB74')+'" opacity="0.9"/>'+
+      '<text x="100" y="61" font-size="16" text-anchor="middle" fill="#543A0F">+</text></g>';
+  } else if (p.status==='growing'){
+    var def = TREE_TYPES[p.treeType]; var idx = stageInfo.idx;
+    if (idx===0){ content = '<circle cx="100" cy="82" r="6" fill="#4A3320"/>'; }
+    else if (idx===1){ content = '<g class="sway"><rect x="97" y="60" width="6" height="26" fill="#588A46"/><circle cx="100" cy="58" r="9" fill="#79B25F"/></g>'; }
+    else if (def.shape==='bush'){
+      var dots='';
+      var dotsFromIdx = def.stages.length-1;
+      if (def.dotColor && idx>=dotsFromIdx){
+        dots = '<circle cx="86" cy="78" r="4" fill="'+def.dotColor+'"/><circle cx="112" cy="82" r="4" fill="'+def.dotColor+'"/><circle cx="100" cy="70" r="4" fill="'+def.dotColor+'"/>';
+      }
+      content = '<g class="sway" style="transform-origin:100px 86px;">'+
+        '<ellipse cx="86" cy="86" rx="16" ry="12" fill="'+def.canopy+'"/><ellipse cx="114" cy="86" rx="16" ry="12" fill="'+def.canopy+'"/><ellipse cx="100" cy="78" rx="18" ry="13" fill="'+def.canopy+'"/>'+
+        dots + '</g>';
+    } else {
+      var trunkH = 42; var canopyR = 26 + Math.min(idx,3)*3;
+      var dots2=''; var dotsFromIdx2 = def.stages.length-2;
+      if (def.dotColor && idx>=dotsFromIdx2){
+        dots2 = '<circle cx="86" cy="42" r="4" fill="'+def.dotColor+'"/><circle cx="114" cy="38" r="4" fill="'+def.dotColor+'"/><circle cx="100" cy="26" r="4" fill="'+def.dotColor+'"/>';
+      }
+      var barkMarks = def.barkMarks ? '<line x1="97" y1="55" x2="103" y2="52" stroke="#8A8578" stroke-width="1.5"/><line x1="96" y1="68" x2="102" y2="66" stroke="#8A8578" stroke-width="1.5"/>' : '';
+      content = '<g class="sway" style="transform-origin:100px 84px;">'+
+        '<rect x="94" y="'+(84-trunkH)+'" width="12" height="'+trunkH+'" rx="4" fill="'+(def.trunk||'#7A5334')+'"/>'+ barkMarks +
+        drawCanopy(def, 100, 84-trunkH-canopyR*0.5, canopyR) + dots2 + '</g>';
+      if (def.o2AtStage[idx]>0){
+        content += '<g class="rise"><circle cx="72" cy="40" r="3.5" fill="#F0AC3D" opacity="0.8"/></g>'+
+                   '<g class="rise2"><circle cx="128" cy="46" r="2.8" fill="#F0AC3D" opacity="0.7"/></g>';
+      }
+    }
+    if (w) content += personSvg(w.type, true, 158, 60);
+  }
+
+  if (p.accessories && p.accessories.irrigation) content += '<text x="22" y="145" font-size="15">💧</text>';
+  if (p.accessories && p.accessories.fertilizer) content += '<text x="44" y="145" font-size="15">🌾</text>';
+
+  if (p.animal){
+    var an = ANIMALS.find(function(x){return x.key===p.animal.key;});
+    content += '<g class="critter-bounce" transform="translate(40,50)"><text x="0" y="0" font-size="26">'+an.emoji+'</text></g>';
+    content += '<g class="pulse" transform="translate(40,24)"><circle r="9" fill="#E8785A"/><text x="0" y="4" font-size="11" text-anchor="middle" fill="white" font-weight="800">!</text></g>';
+  }
+
+  var progressPct=0;
+  if (p.status==='preparing' || p.status==='clearing'){ var dur = p.status==='preparing'?PREP_DURATION_HOURS:CLEAR_DURATION_HOURS; progressPct = Math.min(100, Math.round((p.taskHours/dur)*100)); }
+  else if (p.status==='growing' && !stageInfo.isFinal) progressPct = stageInfo.pct;
+  else if (p.status==='growing' && stageInfo.isFinal) progressPct = 100;
+
+  var ring='';
+  if (progressPct>0 && progressPct<100){
+    ring = '<g transform="translate(100,4)">'+
+      '<circle r="14" fill="none" stroke="#00000022" stroke-width="5"/>'+
+      '<circle r="14" fill="none" stroke="#F0AC3D" stroke-width="5" stroke-dasharray="'+(2*Math.PI*14)+'" stroke-dashoffset="'+((2*Math.PI*14)-(2*Math.PI*14*progressPct/100))+'" stroke-linecap="round" transform="rotate(-90)"/>'+
+      '<text x="0" y="4" font-size="9" text-anchor="middle" fill="#2C4A32" font-weight="700">'+progressPct+'%</text></g>';
+  }
+  return '<svg viewBox="0 0 200 150">'+bed+content+ring+'</svg>';
+}
+
+function plotSpotHtml(p, layout){
+  var stageInfo = plotStageInfo(p);
+  var labelText = p.status==='barren' ? 'Plot '+(p.id+1) :
+    p.status==='overgrown' ? '⚠️ Overgrown' :
+    p.status==='preparing' ? 'Preparing…' :
+    p.status==='clearing' ? 'Clearing…' :
+    p.status==='ready' ? 'Tap to plant' :
+    stageInfo.name+' #'+p.treeId;
+  var healthBar='';
+  if (p.status==='growing'){
+    var hColor = p.health>=70 ? '#6FA85A' : (p.health>=40 ? '#F0AC3D' : '#E8785A');
+    healthBar = '<div class="health-mini"><div class="fill" style="width:'+p.health+'%;background:'+hColor+';"></div></div>';
+  }
+  return '<div class="plot-spot" style="top:'+layout.top+'%;left:'+layout.left+'%;width:'+layout.w+'%;height:'+layout.h+'%;" data-plot="'+p.id+'">'+
+    '<div class="plot-label">'+labelText+'</div>'+ plotSvg(p) + healthBar +
+    '<div class="plot-sub">'+ (p.assignedWorker!==null?'👷':'') + ((p.accessories&&(p.accessories.irrigation||p.accessories.fertilizer))?'🧰':'') + '</div>'+
+  '</div>';
+}
+
+// ================= MODAL CONTENT =================
+function modalHtml(){
+  if (!activeModal) return '';
+  var p = state.plots[activeModal.plotId];
+  var def = p.treeType ? TREE_TYPES[p.treeType] : null;
+  var stageInfo = plotStageInfo(p);
+  var w = workerOnPlot(p.id);
+
+  var html = '<div class="overlay" id="modalOverlay"><div class="modal">'+
+    '<h2>Plot '+(p.id+1)+(def?' — '+def.label+' <span style="font-size:0.7rem;color:var(--pine-soft);">#'+p.treeId+'</span>':'')+
+    '<button class="close-modal" data-closemodal="1">✕</button></h2>';
+
+  if (p.animal){
+    var an = ANIMALS.find(function(x){return x.key===p.animal.key;});
+    html += '<div class="animal-alert"><span class="em">'+an.emoji+'</span> <b>'+an.name+' spotted!</b><br>'+an.fact+
+      '<button class="primary" data-scare="'+p.id+'">Scare Away (€'+SCARE_COST+')</button></div>';
+  }
+
+  if (p.status==='barren'){
+    html += '<div class="sub">Empty land. Weeds build up over time if left untouched.</div>'+
+      '<div class="row"><span>Weed level</span><span class="v">'+Math.round(Math.min(100,p.weedHours/OVERGROWN_THRESHOLD*100))+'%</span></div>'+
+      '<button class="primary" data-prep="'+p.id+'">Dig Land (€'+LABOR_COST+' · 3h)</button>';
+  } else if (p.status==='overgrown'){
+    html += '<div class="sub">This plot became overgrown from neglect and needs clearing before you can dig.</div>'+
+      '<button class="primary" data-clear="'+p.id+'">Clear Overgrowth (€'+CLEAR_COST+' · 2h)</button>';
+  } else if (p.status==='preparing' || p.status==='clearing'){
+    var dur = p.status==='preparing'?PREP_DURATION_HOURS:CLEAR_DURATION_HOURS;
+    html += '<div class="sub">'+(p.status==='preparing'?'Digging in progress.':'Clearing overgrowth.')+'</div>'+
+      '<div class="row"><span>Progress</span><span class="v">'+Math.round(Math.min(100,(p.taskHours/dur)*100))+'%</span></div>';
+  } else if (p.status==='ready'){
+    html += '<div class="sub">Soil is ready. Choose a tree to plant — every species from the blueprint\'s tree categories is available.</div>';
+    CATEGORY_ORDER.forEach(function(cat){
+      html += '<div class="cat-head">'+cat+'</div><div class="grid2">';
+      Object.keys(TREE_TYPES).forEach(function(k){
+        var d = TREE_TYPES[k];
+        if (d.category!==cat) return;
+        html += '<button class="plant-opt" data-plant="'+p.id+'" data-type="'+k+'"><span class="pn">'+d.label+'</span><span class="pc">€'+d.cost+'</span></button>';
+      });
+      html += '</div>';
+    });
+  } else if (p.status==='growing'){
+    var hColor = p.health>=70 ? '#6FA85A' : (p.health>=40 ? '#F0AC3D' : '#E8785A');
+    html += '<div class="sub">'+def.category+' · stage: '+stageInfo.name+'</div>'+
+      '<div class="row"><span>Oxygen produced (this tree)</span><span class="v">'+p.o2Produced.toFixed(1)+' O₂</span></div>'+
+      '<div class="row"><span>Health</span><span class="v">'+Math.round(p.health)+'%</span></div>'+
+      '<div class="healthbar"><div class="fill" style="width:'+p.health+'%;background:'+hColor+';"></div></div>'+
+      '<div class="section"><h4>🩺 Care (real maintenance costs)</h4>'+
+        '<button class="secondary" data-water="'+p.id+'">💧 Water now — €'+CARE_COST.water[def.category]+' (+30 health)</button>'+
+        (def.category!=='Vegetable' ? '<button class="secondary" data-prune="'+p.id+'">✂️ Prune now — €'+CARE_COST.prune[def.category]+' (+40 health)</button>' : '')+
+      '</div>'+
+      '<div class="section"><h4>🧰 Accessories</h4>'+
+        Object.keys(ACCESSORIES).map(function(k){
+          var acc = ACCESSORIES[k]; var owned = p.accessories[k];
+          return '<div class="row"><span>'+acc.emoji+' '+acc.label+' <span style="color:var(--pine-soft);font-size:0.72rem;">('+acc.desc+')</span></span>'+
+            (owned ? '<span class="v">✓ installed</span>' : '<button class="claim-btn" data-buyacc="'+k+'" data-buyplot="'+p.id+'">€'+acc.cost+'</button>')+'</div>';
+        }).join('')+
+      '</div>'+
+      '<div class="section"><h4>👷 Worker</h4>'+
+        (w ? ('<div class="worker-opt"><span>'+WORKER_TYPES[w.type].label+' is assigned here</span><button data-unassign="'+p.id+'">Unassign</button></div>')
+           : (function(){
+              var idle = state.workers.filter(function(x){return x.assignedPlot===null && WORKER_TYPES[x.type].role==='grow';});
+              if (!idle.length) return '<div class="empty-note">No idle Farmer/Botanist available — hire one from the dock.</div>';
+              return idle.map(function(iw){ return '<div class="worker-opt"><span>'+WORKER_TYPES[iw.type].label+' (idle)</span><button data-assign="'+iw.id+'" data-assignplot="'+p.id+'">Assign</button></div>'; }).join('');
+            })())+
+      '</div>'+
+      '<div class="section"><h4>💡 About this species</h4><div style="font-size:0.78rem;color:var(--pine-soft);">'+def.fact+'</div></div>';
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+// ================= FLOATING PANELS =================
+function panelHtml(){
+  if (!openPanel) return '';
+  if (openPanel==='tasks'){
+    var rows=''; var any=false;
+    state.plots.forEach(function(p){
+      if (p.status==='barren'){ any=true; rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Dig Land</div><div class="meta">€'+LABOR_COST+' · 3h</div></div><button class="claim-btn" data-prep="'+p.id+'">Start</button></div>'; }
+      else if (p.status==='overgrown'){ any=true; rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Clear Overgrowth</div><div class="meta">€'+CLEAR_COST+' · 2h</div></div><button class="claim-btn" data-clear="'+p.id+'">Clear</button></div>'; }
+      else if (p.status==='preparing' || p.status==='clearing'){ any=true; var dur=p.status==='preparing'?PREP_DURATION_HOURS:CLEAR_DURATION_HOURS; var pct=Math.round(Math.min(100,(p.taskHours/dur)*100)); rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — '+(p.status==='preparing'?'Preparing':'Clearing')+'</div><div class="meta">'+pct+'% done</div></div><button class="claim-btn" disabled>…</button></div>'; }
+      else if (p.status==='ready'){ any=true; rows+='<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Ready to Plant</div><div class="meta">Open plot to choose</div></div><button class="claim-btn" data-openplot="'+p.id+'">Plant</button></div>'; }
+    });
+    if (!any) rows = '<div class="empty-note">No pending tasks right now.</div>';
+    return '<div class="float-panel"><h2>📋 Tasks<span class="close-x" data-closepanel="1">✕</span></h2>'+rows+'</div>';
+  }
+  if (openPanel==='workers'){
+    var dailyWage = state.workers.reduce(function(s,w){return s+WORKER_TYPES[w.type].wage;},0);
+    var hire = Object.keys(WORKER_TYPES).map(function(k){
+      var wt=WORKER_TYPES[k];
+      return '<div class="worker-hire-row"><div><div class="wname">'+wt.label+'</div><div class="wmeta">€'+wt.wage+'/day · '+wt.desc+'</div></div><button class="hire-btn" data-hire="'+k+'">Hire</button></div>';
+    }).join('');
+    var roster = state.workers.length ? state.workers.map(function(w){
+      var loc = w.assignedPlot!==null ? 'Plot '+(w.assignedPlot+1) : 'Idle';
+      return '<div class="roster-chip"><span>'+WORKER_TYPES[w.type].label+' · '+loc+'</span><button class="fire" data-fire="'+w.id+'">Let go</button></div>';
+    }).join('') : '<div class="empty-note">No workers hired yet.</div>';
+    return '<div class="float-panel"><h2>👷 Workers<span class="close-x" data-closepanel="1">✕</span></h2>'+
+      (dailyWage?'<div class="empty-note">Payroll: €'+dailyWage+'/day</div>':'')+ hire + '<div class="roster">'+roster+'</div></div>';
+  }
+  if (openPanel==='achievements'){
+    var ach = ACHIEVEMENTS.map(function(a){ return '<div class="ach'+(state.achUnlocked[a.id]?' unlocked':'')+'">'+a.label+'</div>'; }).join('');
+    return '<div class="float-panel"><h2>🏆 Achievements<span class="close-x" data-closepanel="1">✕</span></h2><div class="ach-grid">'+ach+'</div></div>';
+  }
+  if (openPanel==='reports'){
+    var reps = state.reports.length ? state.reports.map(function(r){ return '<div class="report-item"><span class="rtime">Day '+(Math.floor(r.gameHour/24)+1)+'</span>'+r.text+'</div>'; }).join('') : '<div class="empty-note">No reports yet. Hire a Botanist to start generating plant health reports, or keep an eye out for wildlife.</div>';
+    return '<div class="float-panel"><h2>📰 Reports<span class="close-x" data-closepanel="1">✕</span></h2>'+reps+'</div>';
+  }
+  return '';
+}
+
+// ================= TOP BAR / DOCK / TOOL STRIP =================
+function topbarHtml(){
+  var gameDay = Math.floor(state.gameHour/24)+1;
+  var season = currentSeason();
+  var fBonus=forestBonus(), dBonus=diversityBonus(), eBonus=engineerBonus();
+  var bonusText=[]; if (fBonus) bonusText.push('Forest +10%'); if (dBonus) bonusText.push('Diversity +15%'); if (eBonus) bonusText.push('Worker Eff +10%');
+  var dailyWage = state.workers.reduce(function(s,w){return s+WORKER_TYPES[w.type].wage;},0);
+  var speedOpts = SPEED_OPTIONS.map(function(o){ return '<option value="'+o.factor+'" '+(o.factor===state.speedFactor?'selected':'')+'>'+o.label+'</option>'; }).join('');
+  return '<div class="stats">'+
+    '<div class="stat-pill'+(state.money<0?' warn':'')+'"><span class="val">€'+state.money.toFixed(2)+'</span><span class="lbl">balance</span></div>'+
+    '<div class="stat-pill"><span class="val">'+state.totalO2.toFixed(1)+'</span><span class="lbl">O₂</span></div>'+
+    '<div class="stat-pill"><span class="val">Day '+gameDay+'</span><span class="lbl">'+season.emoji+' '+season.name+'</span></div>'+
+    (dailyWage?'<div class="stat-pill"><span class="val">€'+dailyWage+'/day</span><span class="lbl">payroll</span></div>':'')+
+  '</div>'+
+  '<div class="season-chip">'+(bonusText.length?bonusText.join(' · '):'No active bonuses')+' &nbsp;|&nbsp; Speed <select id="speedSel">'+speedOpts+'</select></div>';
+}
+function dockHtml(){
+  var reportBadge = state.reports.length ? '<span class="badge">'+Math.min(9,state.reports.length)+'</span>' : '';
+  return ''+
+    '<div class="dock-btn'+(openPanel==='tasks'?' active':'')+'" data-panel="tasks" title="Tasks">📋</div>'+
+    '<div class="dock-btn'+(openPanel==='workers'?' active':'')+'" data-panel="workers" title="Workers">👷</div>'+
+    '<div class="dock-btn'+(openPanel==='achievements'?' active':'')+'" data-panel="achievements" title="Achievements">🏆</div>'+
+    '<div class="dock-btn'+(openPanel==='reports'?' active':'')+'" data-panel="reports" title="Reports">📰'+reportBadge+'</div>';
+}
+function toolStripHtml(){
+  var chips = '';
+  Object.keys(WORKER_TYPES).forEach(function(k){
+    var wt = WORKER_TYPES[k];
+    chips += '<div class="tool-chip tt" data-tip="'+wt.label+'\\n€'+wt.wage+'/day\\n'+wt.desc+'" data-hire="'+k+'"><span class="em">👷</span>'+wt.label+'</div>';
+  });
+  Object.keys(ACCESSORIES).forEach(function(k){
+    var acc = ACCESSORIES[k];
+    chips += '<div class="tool-chip info tt" data-tip="'+acc.label+'\\n€'+acc.cost+'\\n'+acc.desc+'\\n(buy from a plot)"><span class="em">'+acc.emoji+'</span>'+acc.label+'</div>';
+  });
+  chips += '<div class="tool-chip info tt" data-tip="Watering cost varies by tree\\ncategory (€4-8).\\nOpen a growing plot to water."><span class="em">💧</span>Water</div>';
+  chips += '<div class="tool-chip info tt" data-tip="Pruning cost varies by tree\\ncategory (€10-18).\\nOpen a growing plot to prune."><span class="em">✂️</span>Prune</div>';
+  return chips;
+}
+
+// ================= RENDER =================
+function render(){
+  if (!state) return;
+  document.getElementById('topbarFixed').innerHTML = topbarHtml();
+  document.getElementById('iconDock').innerHTML = dockHtml();
+  document.getElementById('toolStrip').innerHTML = toolStripHtml();
+  document.getElementById('floatPanel').innerHTML = panelHtml();
+  document.getElementById('fieldPlots').innerHTML = state.plots.map(function(p,i){ return plotSpotHtml(p, PLOT_LAYOUT[i]); }).join('');
+  document.getElementById('modalLayer').innerHTML = modalHtml();
+
+  var bgEl = document.getElementById('fieldBg');
+  if (bgEl && !bgEl.dataset.built){ bgEl.innerHTML = fieldBackgroundSVG(); bgEl.dataset.built='1'; }
+
+  if (offlineSummary){
+    var s = offlineSummary;
+    document.getElementById('modalLayer').innerHTML += '<div class="overlay" id="offlineModal"><div class="modal"><h2>🌤️ Welcome back!</h2>'+
+      '<div class="row"><span>Time away</span><span class="v">'+s.realMinutes+' min real time</span></div>'+
+      '<div class="row"><span>Game time passed</span><span class="v">'+s.gameHours+' hours</span></div>'+
+      '<div class="row"><span>Oxygen produced</span><span class="v">+'+s.o2Gained+' O₂</span></div>'+
+      '<div class="row"><span>Income earned</span><span class="v">+€'+s.moneyGained.toFixed(2)+'</span></div>'+
+      '<button class="primary" id="closeOffline">Back to the farm</button></div></div>';
+  }
+  wireEvents();
+}
+
+function wireEvents(){
+  document.querySelectorAll('[data-panel]').forEach(function(b){ b.onclick=function(){ togglePanel(b.getAttribute('data-panel')); }; });
+  document.querySelectorAll('[data-closepanel]').forEach(function(b){ b.onclick=function(){ openPanel=null; render(); }; });
+  document.querySelectorAll('[data-hire]').forEach(function(b){ b.onclick=function(){ hireWorker(b.getAttribute('data-hire')); }; });
+  document.querySelectorAll('[data-fire]').forEach(function(b){ b.onclick=function(){ fireWorker(parseInt(b.getAttribute('data-fire'))); }; });
+  document.querySelectorAll('[data-openplot]').forEach(function(b){ b.onclick=function(){ openModal('plot', parseInt(b.getAttribute('data-openplot'))); }; });
+  document.querySelectorAll('.plot-spot').forEach(function(el){
+    el.addEventListener('click', function(){ openModal('plot', parseInt(el.getAttribute('data-plot'))); });
+  });
+  document.querySelectorAll('[data-closemodal]').forEach(function(b){ b.onclick=function(){ closeModal(); }; });
+  var overlay = document.getElementById('modalOverlay');
+  if (overlay) overlay.addEventListener('click', function(e){ if (e.target===overlay) closeModal(); });
+  document.querySelectorAll('[data-prep]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); startPrep(parseInt(b.getAttribute('data-prep'))); }; });
+  document.querySelectorAll('[data-clear]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); startClear(parseInt(b.getAttribute('data-clear'))); }; });
+  document.querySelectorAll('[data-plant]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); plantTree(parseInt(b.getAttribute('data-plant')), b.getAttribute('data-type')); }; });
+  document.querySelectorAll('[data-water]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); waterPlot(parseInt(b.getAttribute('data-water'))); }; });
+  document.querySelectorAll('[data-prune]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); prunePlot(parseInt(b.getAttribute('data-prune'))); }; });
+  document.querySelectorAll('[data-scare]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); scareAnimal(parseInt(b.getAttribute('data-scare'))); }; });
+  document.querySelectorAll('[data-buyacc]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); buyAccessory(parseInt(b.getAttribute('data-buyplot')), b.getAttribute('data-buyacc')); }; });
+  document.querySelectorAll('[data-assign]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); assignWorker(parseInt(b.getAttribute('data-assign')), parseInt(b.getAttribute('data-assignplot'))); }; });
+  document.querySelectorAll('[data-unassign]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); unassignWorker(parseInt(b.getAttribute('data-unassign'))); }; });
+  var speedSel = document.getElementById('speedSel'); if (speedSel) speedSel.onchange=function(){ setSpeed(parseInt(speedSel.value)); };
+  var closeOffline = document.getElementById('closeOffline');
+  if (closeOffline) closeOffline.onclick = function(){ offlineSummary=null; render(); };
+}
+
+loadState();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OxyForge — 3D Rocket Launchpad & Ignition Simulator</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <style>
+    :root {
+      --bg: #090C12;
+      --surface: #121824;
+      --surface-elevated: #1B2436;
+      --border: #26334A;
+      --accent: #00E5FF;
+      --accent-muted: rgba(0, 229, 255, 0.15);
+      --ice: #7EB8C9;
+      --fg: #E8EDF4;
+      --fg-muted: #8F9CAE;
+      --gold: #FFB300;
+      --red: #FF5252;
+      --green: #4CAF50;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background-color: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header.launch-header {
+      background: rgba(18, 24, 36, 0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 50;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      color: #FFF;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-badge {
+      font-size: 0.65rem;
+      background: var(--accent-muted);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 800;
+    }
+
+    .header-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-btn {
+      background: var(--surface-elevated);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .nav-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .nav-btn-primary {
+      background: linear-gradient(135deg, #00E5FF, #0091EA);
+      color: #090C12;
+      border: none;
+    }
+    .nav-btn-primary:hover {
+      background: #80F4FF;
+      color: #090C12;
+    }
+
+    /* MAIN VIEWPORT LAYOUT */
+    .viewport-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      min-height: 0;
+      position: relative;
+    }
+
+    @media (max-width: 900px) {
+      .viewport-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr auto;
+      }
+    }
+
+    /* 3D CANVAS CONTAINER */
+    #canvas-container {
+      position: relative;
+      background: #090C12;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #launch-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* HUD OVERLAYS */
+    .hud-overlay {
+      position: absolute;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hud-clock {
+      top: 16px;
+      left: 16px;
+      background: rgba(18, 24, 36, 0.85);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-family: var(--mono);
+      backdrop-filter: blur(8px);
+    }
+
+    .hud-clock-title {
+      font-size: 0.68rem;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .hud-clock-digits {
+      font-size: 1.8rem;
+      font-weight: 900;
+      color: var(--accent);
+      letter-spacing: 1px;
+    }
+
+    .hud-phase-chip {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(18, 24, 36, 0.85);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      backdrop-filter: blur(8px);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 8px var(--gold);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .status-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .status-dot.burn { background: var(--red); box-shadow: 0 0 10px var(--red); }
+
+    .cam-controls {
+      bottom: 16px;
+      left: 16px;
+      pointer-events: auto;
+      display: flex;
+      gap: 6px;
+      background: rgba(18, 24, 36, 0.85);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px;
+      backdrop-filter: blur(8px);
+    }
+
+    .cam-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--fg-muted);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .cam-btn:hover { color: #FFF; background: var(--surface-elevated); }
+    .cam-btn.active { color: var(--accent); background: var(--accent-muted); border-color: var(--accent); }
+
+    /* SIDEBAR: MISSION CONTROL CONSOLE */
+    aside.control-console {
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow-y: auto;
+      z-index: 20;
+    }
+
+    .console-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(27, 36, 54, 0.5);
+    }
+
+    .console-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #FFF;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .console-desc {
+      font-size: 0.78rem;
+      color: var(--fg-muted);
+      margin-top: 4px;
+    }
+
+    .console-body {
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      flex: 1;
+    }
+
+    /* TELEMETRY METRICS */
+    .telemetry-block {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      margin-top: 10px;
+    }
+
+    .tel-item dt {
+      font-size: 0.68rem;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      font-family: var(--font);
+    }
+    .tel-item dd {
+      color: #FFF;
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    /* CHECKLIST */
+    .checklist-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .checklist-wrap::-webkit-scrollbar {
+      width: 4px;
+    }
+    .checklist-wrap::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    .check-item {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+    .check-item.done {
+      border-color: rgba(76, 175, 80, 0.5);
+      background: rgba(76, 175, 80, 0.08);
+    }
+
+    .check-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .check-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #E2E8F0;
+    }
+
+    .check-why {
+      font-size: 0.65rem;
+      color: var(--ice);
+      opacity: 0.85;
+      margin-top: 1px;
+      line-height: 1.25;
+    }
+
+    .check-status {
+      font-size: 0.68rem;
+      color: var(--fg-muted);
+      margin-top: 2px;
+      font-family: var(--mono);
+    }
+
+    .check-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 4px 9px;
+      border-radius: 5px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .check-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0, 229, 255, 0.08);
+    }
+    .check-badge {
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      white-space: nowrap;
+    }
+    .badge-go { background: rgba(76, 175, 80, 0.25); color: #81C784; border: 1px solid #4CAF50; }
+    .badge-nogo { background: rgba(255, 82, 82, 0.25); color: #FF8A80; border: 1px solid #FF5252; }
+
+    /* ACTION BUTTONS */
+    .action-panel {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-launch-fire {
+      background: linear-gradient(135deg, #FF6F00, #E65100);
+      color: #FFF;
+      border: none;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 16px rgba(230, 81, 0, 0.4);
+      transition: all 0.2s ease;
+    }
+    .btn-launch-fire:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(230, 81, 0, 0.6);
+    }
+    .btn-launch-fire:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      filter: grayscale(0.8);
+      box-shadow: none;
+    }
+
+    .btn-abort {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--fg-muted);
+      padding: 9px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-abort:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="launch-header">
+    <div class="brand-wrap">
+      <div class="brand-title">
+        <span>🚀</span>
+        <span>OxyForge · Launch Complex 39A</span>
+      </div>
+      <span class="brand-badge">3D IGNITION SIMULATOR</span>
+    </div>
+
+    <div class="header-nav">
+      <a href="oxyforge.html" class="nav-btn">
+        <span>📋</span>
+        <span>Mission HQ</span>
+      </a>
+      <a href="transfer-cruise-preview.html" class="nav-btn">
+        <span>🛸</span>
+        <span>Cruise FPV</span>
+      </a>
+      <a href="mars-explorer-preview.html" class="nav-btn">
+        <span>🔴</span>
+        <span>Mars 3D</span>
+      </a>
+      <a href="lunar-explorer-preview.html" class="nav-btn">
+        <span>🌕</span>
+        <span>Lunar 3D</span>
+      </a>
+      <a href="moon-landing-preview.html" class="nav-btn">
+        <span>🌙</span>
+        <span>Moon Landing 3D</span>
+      </a>
+      <a href="../index.html" class="nav-btn">
+        <span>🌾</span>
+        <span>SearchO2 Farm</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- VIEWPORT -->
+  <div class="viewport-grid">
+    <!-- 3D CANVAS -->
+    <div id="canvas-container">
+      <canvas id="launch-canvas"></canvas>
+
+      <!-- HUD OVERLAYS -->
+      <div class="hud-overlay hud-clock">
+        <div class="hud-clock-title">COUNTDOWN CLOCK</div>
+        <div class="hud-clock-digits" id="clockDisplay">T-10.0</div>
+      </div>
+
+      <div class="hud-overlay hud-phase-chip">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="phaseDisplay">PRE-LAUNCH PAD CHECK</span>
+      </div>
+
+      <!-- CAMERA CONTROLS -->
+      <div class="hud-overlay cam-controls">
+        <button class="cam-btn active" onclick="setCameraView('orbital')">🎥 Orbital Pad</button>
+        <button class="cam-btn" onclick="setCameraView('tower')">🗼 Tower Tracking</button>
+        <button class="cam-btn" onclick="setCameraView('engine')">🔥 Engine Flame Cam</button>
+        <button class="cam-btn" onclick="setCameraView('sky')">🔭 Long Range</button>
+      </div>
+    </div>
+
+    <!-- SIDEBAR MISSION CONSOLE -->
+    <aside class="control-console">
+      <div class="console-header">
+        <h2 class="console-title"><span>🛰️</span> Launch Control Center</h2>
+        <p class="console-desc">Falcon Heavy / Artemis Class · Lunar Trajectory</p>
+      </div>
+
+      <div class="console-body">
+        <!-- TELEMETRY -->
+        <div class="telemetry-block">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <b style="font-size:0.8rem;color:var(--accent);">REAL-TIME TELEMETRY</b>
+            <span style="font-size:0.7rem;color:var(--ice);" id="flightTimeVal">MET: 00:00:00</span>
+          </div>
+          <div class="telemetry-grid">
+            <div class="tel-item"><dt>Altitude</dt><dd id="telAlt">0.0 m</dd></div>
+            <div class="tel-item"><dt>Velocity</dt><dd id="telVel">0.0 m/s</dd></div>
+            <div class="tel-item"><dt>Dynamic Pressure (q)</dt><dd id="telQ">0.0 kPa</dd></div>
+            <div class="tel-item"><dt>Acceleration</dt><dd id="telG">1.00 G</dd></div>
+            <div class="tel-item"><dt>Throttle</dt><dd id="telThrottle">0%</dd></div>
+            <div class="tel-item"><dt>Pitch Angle</dt><dd id="telPitch">90.0° (Vertical)</dd></div>
+          </div>
+        </div>
+
+        <!-- PRE-FLIGHT CHECKLIST -->
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:0.8rem;font-weight:700;color:var(--fg-muted);">PRE-FLIGHT GO / NO-GO CHECKLIST (9/9):</div>
+          <button class="check-btn" style="background:rgba(0,229,255,0.08);border-color:var(--accent);color:var(--accent);font-size:0.65rem;" onclick="autoCheckAll()">⚡ Auto Check All</button>
+        </div>
+        <div class="checklist-wrap">
+          <!-- 1. WINDOW -->
+          <div class="check-item" id="chk-window">
+            <div class="check-info">
+              <div class="check-label">1. Orbital Launch Window</div>
+              <div class="check-why">Earth-Moon synodic orbital phasing · Hohmann ballistic transfer</div>
+              <div class="check-status" id="windowStatusText">Awaiting trajectory alignment</div>
+            </div>
+            <button class="check-btn" onclick="confirmWindow()">Verify Window</button>
+          </div>
+
+          <!-- 2. PROPELLANT -->
+          <div class="check-item" id="chk-fuel">
+            <div class="check-info">
+              <div class="check-label">2. Cryogenic Propellant (LOX / CH₄)</div>
+              <div class="check-why">Sub-cooled liquid oxygen @ 90K (-183°C) &amp; densified methane</div>
+              <div class="check-status" id="fuelStatusText">Tanks empty (0%)</div>
+            </div>
+            <button class="check-btn" onclick="loadFuel()">Pump Propellant</button>
+          </div>
+
+          <!-- 3. MASS & BALANCE -->
+          <div class="check-item" id="chk-mass">
+            <div class="check-info">
+              <div class="check-label">3. Tsiolkovsky Mass &amp; Balance</div>
+              <div class="check-why">Δv = Isp · g₀ · ln(m₀/m_f) · Gross lift-off mass 1,420,000 kg</div>
+              <div class="check-status" id="massStatusText">Payload unweighed</div>
+            </div>
+            <button class="check-btn" onclick="verifyMass()">Confirm Mass</button>
+          </div>
+
+          <!-- 4. GYROS & GUIDANCE -->
+          <div class="check-item" id="chk-gyro">
+            <div class="check-info">
+              <div class="check-label">4. Inertial Navigation &amp; Gyros</div>
+              <div class="check-why">Triple ring-laser IMUs &amp; star trackers · Drift calibration</div>
+              <div class="check-status" id="gyroStatusText">Drift uncalibrated</div>
+            </div>
+            <button class="check-btn" onclick="alignGyros()">Align Gyros</button>
+          </div>
+
+          <!-- 5. RANGE SAFETY -->
+          <div class="check-item" id="chk-range">
+            <div class="check-info">
+              <div class="check-label">5. Range Safety &amp; AFSS</div>
+              <div class="check-why">Autonomous Flight Safety System corridor &amp; telemetry fence</div>
+              <div class="check-status" id="rangeStatusText">AFSS Disarmed / Safe</div>
+            </div>
+            <button class="check-btn" onclick="armRange()">Arm AFSS</button>
+          </div>
+
+          <!-- 6. WEATHER -->
+          <div class="check-item" id="chk-weather">
+            <div class="check-info">
+              <div class="check-label">6. Doppler Weather &amp; Max-Q Shear</div>
+              <div class="check-why">Upper wind shear radar &lt; 20 kn · No anvil lightning hazard</div>
+              <div class="check-status" id="weatherStatusText">Wind: 7 kn (Need &lt; 20 kn)</div>
+            </div>
+            <button class="check-btn" onclick="pollWeather()">Check Radar</button>
+          </div>
+
+          <!-- 7. CREW / LAS -->
+          <div class="check-item" id="chk-secure">
+            <div class="check-info">
+              <div class="check-label">7. Crew Cabin &amp; Abort System</div>
+              <div class="check-why">Cabin 4.3 psi 100% O₂ sealed · Launch Abort System (LAS) armed</div>
+              <div class="check-status" id="secureStatusText">Hatch ajar · LAS safe</div>
+            </div>
+            <button class="check-btn" onclick="securePayload()">Seal &amp; Arm LAS</button>
+          </div>
+
+          <!-- 8. DELUGE -->
+          <div class="check-item" id="chk-deluge">
+            <div class="check-info">
+              <div class="check-label">8. Sound Suppression Deluge</div>
+              <div class="check-why">1.1M L/min water deluge cushion for 220 dB acoustic blast wave</div>
+              <div class="check-status" id="delugeStatusText">Deluge pumps standby</div>
+            </div>
+            <button class="check-btn" onclick="armDeluge()">Arm Deluge</button>
+          </div>
+
+          <!-- 9. COMM / DSN -->
+          <div class="check-item" id="chk-comm">
+            <div class="check-info">
+              <div class="check-label">9. Deep Space Network (DSN) Comm</div>
+              <div class="check-why">Tri-station S/Ka-band carrier lock (Goldstone, Madrid, Canberra)</div>
+              <div class="check-status" id="commStatusText">RF carrier open</div>
+            </div>
+            <button class="check-btn" onclick="checkComm()">Lock DSN Carrier</button>
+          </div>
+
+          <!-- 10. FLIGHT DIRECTOR -->
+          <div class="check-item" id="chk-director">
+            <div class="check-info">
+              <div class="check-label">10. Flight Director Final Poll</div>
+              <div class="check-why">All 9 engineering &amp; telemetry consoles polled for final GO</div>
+              <div class="check-status" id="pollStatusText">Awaiting 9/9 subsystem checks</div>
+            </div>
+            <span class="check-badge badge-nogo" id="badgePoll">NO-GO</span>
+          </div>
+        </div>
+
+        <!-- ACTION CONTROLS -->
+        <div class="action-panel">
+          <button class="btn-launch-fire" id="btnStartCountdown" disabled onclick="startLaunchCountdown()">
+            <span>🔥</span>
+            <span id="btnLaunchLabel">Complete Checks to Arm Countdown</span>
+          </button>
+          <button class="btn-abort" onclick="abortSequence()">⏹️ Abort &amp; Reset Pad</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- THREE.JS IMPORT MAP -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+    // AUDIO SYNTHESIZER
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playBeep(freq = 880, duration = 0.08) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    let rumbleNode = null;
+    let rumbleGain = null;
+    function startRumble() {
+      if (!audioCtx || rumbleNode) return;
+      try {
+        const bufferSize = audioCtx.sampleRate * 2;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99 * b0 + white * 0.05;
+          b1 = 0.98 * b1 + b0 * 0.05;
+          b2 = 0.97 * b2 + b1 * 0.05;
+          output[i] = b2 * 1.5;
+        }
+        rumbleNode = audioCtx.createBufferSource();
+        rumbleNode.buffer = noiseBuffer;
+        rumbleNode.loop = true;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(140, audioCtx.currentTime);
+
+        rumbleGain = audioCtx.createGain();
+        rumbleGain.gain.setValueAtTime(0.01, audioCtx.currentTime);
+        rumbleGain.gain.linearRampToValueAtTime(0.28, audioCtx.currentTime + 1.2);
+
+        rumbleNode.connect(filter);
+        filter.connect(rumbleGain);
+        rumbleGain.connect(audioCtx.destination);
+        rumbleNode.start();
+      } catch (e) {}
+    }
+
+    function stopRumble() {
+      if (rumbleGain && audioCtx) {
+        try {
+          rumbleGain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+          setTimeout(() => {
+            if (rumbleNode) { rumbleNode.stop(); rumbleNode.disconnect(); rumbleNode = null; }
+          }, 600);
+        } catch (e) {}
+      }
+    }
+
+    // SCENE & RENDERER SETUP
+    const container = document.getElementById("canvas-container");
+    const canvas = document.getElementById("launch-canvas");
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color("#5A8AB0");
+    scene.fog = new THREE.FogExp2("#5A8AB0", 0.003);
+
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 2000);
+    camera.position.set(18, 12, 28);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 + 0.05;
+    controls.minDistance = 5;
+    controls.maxDistance = 250;
+    controls.target.set(0, 10, 0);
+
+    // LIGHTS
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff7e6, 1.4);
+    sunLight.position.set(40, 60, 30);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 10;
+    sunLight.shadow.camera.far = 160;
+    sunLight.shadow.camera.left = -30;
+    sunLight.shadow.camera.right = 30;
+    sunLight.shadow.camera.top = 30;
+    sunLight.shadow.camera.bottom = -30;
+    scene.add(sunLight);
+
+    // PAD GEOMETRY (Launch Table, Trench, Gantry)
+    const padGroup = new THREE.Group();
+    scene.add(padGroup);
+
+    // Ground Terrain
+    const groundGeo = new THREE.PlaneGeometry(600, 600, 32, 32);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x3d4f40, roughness: 0.9, metalness: 0.1 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    padGroup.add(ground);
+
+    // Concrete Pad Slab
+    const padSlabGeo = new THREE.CylinderGeometry(24, 26, 1.5, 48);
+    const padMat = new THREE.MeshStandardMaterial({ color: 0x757D8A, roughness: 0.8 });
+    const padSlab = new THREE.Mesh(padSlabGeo, padMat);
+    padSlab.position.y = 0.75;
+    padSlab.receiveShadow = true;
+    padGroup.add(padSlab);
+
+    // Flame Trench Opening
+    const trenchMat = new THREE.MeshBasicMaterial({ color: 0x11161F });
+    const trench = new THREE.Mesh(new THREE.BoxGeometry(8, 2.5, 20), trenchMat);
+    trench.position.set(0, 0.5, 0);
+    padGroup.add(trench);
+
+    // Launch Mount Table
+    const tableMat = new THREE.MeshStandardMaterial({ color: 0x454F5E, metalness: 0.6, roughness: 0.4 });
+    const mountTable = new THREE.Mesh(new THREE.BoxGeometry(7, 3, 7), tableMat);
+    mountTable.position.set(0, 2.5, 0);
+    mountTable.castShadow = true;
+    padGroup.add(mountTable);
+
+    // Service Tower
+    const towerMat = new THREE.MeshStandardMaterial({ color: 0xC62828, metalness: 0.5, roughness: 0.5 });
+    const towerTruss = new THREE.Mesh(new THREE.BoxGeometry(3, 34, 3), towerMat);
+    towerTruss.position.set(-6.5, 17, 0);
+    towerTruss.castShadow = true;
+    padGroup.add(towerTruss);
+
+    // Gantry Arm (Articulating / Retracting)
+    const gantryArm = new THREE.Group();
+    gantryArm.position.set(-5, 24, 0);
+    const armMesh = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.2, 1.4), new THREE.MeshStandardMaterial({ color: 0xE0E0E0 }));
+    armMesh.position.x = 2.25;
+    gantryArm.add(armMesh);
+    padGroup.add(gantryArm);
+
+    // Deluge Water Pipes
+    const pipeMat = new THREE.MeshStandardMaterial({ color: 0x1565C0 });
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 8), pipeMat);
+    pipe.position.set(5.5, 4, 3);
+    padGroup.add(pipe);
+
+    // ROCKET MODEL
+    const rocketGroup = new THREE.Group();
+    rocketGroup.position.set(0, 4.0, 0);
+    scene.add(rocketGroup);
+
+    // First Stage Main Core
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xF5F7FA, roughness: 0.3, metalness: 0.2 });
+    const firstStage = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 16, 32), bodyMat);
+    firstStage.position.y = 8;
+    firstStage.castShadow = true;
+    rocketGroup.add(firstStage);
+
+    // Side Boosters (Falcon Heavy configuration)
+    const boosterL = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 14, 24), bodyMat);
+    boosterL.position.set(-2.0, 7, 0);
+    boosterL.castShadow = true;
+    rocketGroup.add(boosterL);
+
+    const boosterR = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 14, 24), bodyMat);
+    boosterR.position.set(2.0, 7, 0);
+    boosterR.castShadow = true;
+    rocketGroup.add(boosterR);
+
+    // Interstage & Second Stage
+    const interstageMat = new THREE.MeshStandardMaterial({ color: 0x212121, roughness: 0.6 });
+    const interstage = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 2.5, 32), interstageMat);
+    interstage.position.y = 17.25;
+    rocketGroup.add(interstage);
+
+    const secondStage = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 6, 32), bodyMat);
+    secondStage.position.y = 21.5;
+    secondStage.castShadow = true;
+    rocketGroup.add(secondStage);
+
+    // Payload Fairing Cone
+    const fairingMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.2 });
+    const fairing = new THREE.Mesh(new THREE.ConeGeometry(1.35, 4.5, 32), fairingMat);
+    fairing.position.y = 26.75;
+    fairing.castShadow = true;
+    rocketGroup.add(fairing);
+
+    // 3D ENGINE BELL CLUSTERS (Falcon Heavy 3-Core Booster Configuration)
+    const bellMat = new THREE.MeshStandardMaterial({ color: 0x263238, metalness: 0.85, roughness: 0.25 });
+    const bellRimMat = new THREE.MeshStandardMaterial({ color: 0x455A64, metalness: 0.9, roughness: 0.15 });
+
+    function createEngineBell(x) {
+      const grp = new THREE.Group();
+      grp.position.set(x, -0.6, 0);
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.52, 1.3, 24, 1, true), bellMat);
+      cone.rotation.x = Math.PI;
+      grp.add(cone);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.05, 8, 24), bellRimMat);
+      rim.rotation.x = Math.PI / 2;
+      rim.position.y = -0.65;
+      grp.add(rim);
+      return grp;
+    }
+
+    const bellCore = createEngineBell(0);
+    const bellL = createEngineBell(-2.0);
+    const bellR = createEngineBell(2.0);
+    rocketGroup.add(bellCore);
+    rocketGroup.add(bellL);
+    rocketGroup.add(bellR);
+
+    // DYNAMIC ENGINE LIGHT
+    const engineLight = new THREE.PointLight(0xFFAA33, 0, 80, 1.8);
+    engineLight.position.set(0, -1.0, 0);
+    rocketGroup.add(engineLight);
+
+    // PROPULSION PLUME & SUPERSONIC METHALOX JETS
+    const plumeGroup = new THREE.Group();
+    rocketGroup.add(plumeGroup);
+
+    // Inner bright supersonic methalox core
+    const innerCoreMat = new THREE.MeshBasicMaterial({
+      color: 0x80D8FF,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending
+    });
+    const flameMat = innerCoreMat; // alias for backwards compatibility
+    const innerFlame = new THREE.Mesh(new THREE.ConeGeometry(0.85, 7.5, 24, 1, true), innerCoreMat);
+    innerFlame.rotation.x = Math.PI;
+    innerFlame.position.y = -3.75;
+    plumeGroup.add(innerFlame);
+
+    const innerFlameL = new THREE.Mesh(new THREE.ConeGeometry(0.65, 6.0, 20, 1, true), innerCoreMat);
+    innerFlameL.rotation.x = Math.PI;
+    innerFlameL.position.set(-2.0, -3.0, 0);
+    plumeGroup.add(innerFlameL);
+
+    const innerFlameR = new THREE.Mesh(new THREE.ConeGeometry(0.65, 6.0, 20, 1, true), innerCoreMat);
+    innerFlameR.rotation.x = Math.PI;
+    innerFlameR.position.set(2.0, -3.0, 0);
+    plumeGroup.add(innerFlameR);
+
+    // Outer turbulent fire plume
+    const outerFlameMat = new THREE.MeshBasicMaterial({
+      color: 0xFF5722,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending
+    });
+    const outerFlame = new THREE.Mesh(new THREE.ConeGeometry(1.85, 12.5, 24, 1, true), outerFlameMat);
+    outerFlame.rotation.x = Math.PI;
+    outerFlame.position.y = -6.25;
+    plumeGroup.add(outerFlame);
+
+    const outerFlameL = new THREE.Mesh(new THREE.ConeGeometry(1.35, 9.5, 20, 1, true), outerFlameMat);
+    outerFlameL.rotation.x = Math.PI;
+    outerFlameL.position.set(-2.0, -4.75, 0);
+    plumeGroup.add(outerFlameL);
+
+    const outerFlameR = new THREE.Mesh(new THREE.ConeGeometry(1.35, 9.5, 20, 1, true), outerFlameMat);
+    outerFlameR.rotation.x = Math.PI;
+    outerFlameR.position.set(2.0, -4.75, 0);
+    plumeGroup.add(outerFlameR);
+
+    // 6 Pulsing Mach Shock Diamonds along supersonic core
+    const machDiamondGroup = new THREE.Group();
+    plumeGroup.add(machDiamondGroup);
+    const diamondGeo = new THREE.OctahedronGeometry(0.36, 0);
+    const diamondMat = new THREE.MeshBasicMaterial({
+      color: 0xE0F7FA,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending
+    });
+    const machDiamonds = [];
+    for (let i = 0; i < 6; i++) {
+      const d = new THREE.Mesh(diamondGeo, diamondMat);
+      d.position.y = -1.3 - (i * 0.95);
+      d.scale.set(0.9, 1.8, 0.9);
+      machDiamondGroup.add(d);
+      machDiamonds.push(d);
+    }
+
+    // High-altitude vacuum blossom plume (under-expanded flow above 25 km)
+    const vacuumPlumeGeo = new THREE.ConeGeometry(16, 28, 32, 1, true);
+    const vacuumPlumeMat = new THREE.MeshBasicMaterial({
+      color: 0x7C4DFF,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide
+    });
+    const vacuumPlume = new THREE.Mesh(vacuumPlumeGeo, vacuumPlumeMat);
+    vacuumPlume.rotation.x = Math.PI;
+    vacuumPlume.position.y = -14.0;
+    plumeGroup.add(vacuumPlume);
+
+    // TEA-TEB Pyrotechnic Spark Igniters (T-3s shower)
+    const sparkCount = 180;
+    const sparkGeo = new THREE.BufferGeometry();
+    const sparkPos = new Float32Array(sparkCount * 3);
+    const sparkVels = [];
+    for (let i = 0; i < sparkCount; i++) {
+      sparkPos[i * 3] = (Math.random() - 0.5) * 4.5;
+      sparkPos[i * 3 + 1] = 3.2;
+      sparkPos[i * 3 + 2] = (Math.random() - 0.5) * 4.5;
+      sparkVels.push({
+        vx: (Math.random() - 0.5) * 14,
+        vy: -6 - Math.random() * 12,
+        vz: (Math.random() - 0.5) * 14,
+        life: Math.random()
+      });
+    }
+    sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+    const sparkMat = new THREE.PointsMaterial({
+      color: 0xFFD54F,
+      size: 0.65,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending
+    });
+    const sparkField = new THREE.Points(sparkGeo, sparkMat);
+    scene.add(sparkField);
+
+    // Sound Suppression Deluge Steam Clouds (T-2s billow)
+    const steamCount = 160;
+    const steamGeo = new THREE.BufferGeometry();
+    const steamPos = new Float32Array(steamCount * 3);
+    const steamVels = [];
+    for (let i = 0; i < steamCount; i++) {
+      steamPos[i * 3] = (Math.random() - 0.5) * 6;
+      steamPos[i * 3 + 1] = 0.5 + Math.random() * 2;
+      steamPos[i * 3 + 2] = (Math.random() - 0.5) * 18;
+      steamVels.push({
+        vx: (Math.random() - 0.5) * 16,
+        vy: 2 + Math.random() * 6,
+        vz: (Math.random() - 0.5) * 16,
+        scale: 1.0 + Math.random() * 3.0,
+        initY: steamPos[i * 3 + 1]
+      });
+    }
+    steamGeo.setAttribute('position', new THREE.BufferAttribute(steamPos, 3));
+    const steamMat = new THREE.PointsMaterial({
+      color: 0xE0E6ED,
+      size: 4.8,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.NormalBlending
+    });
+    const steamField = new THREE.Points(steamGeo, steamMat);
+    scene.add(steamField);
+
+    // Dynamic Exhaust Fire & Smoke Particle Trail
+    const exhaustCount = 200;
+    const exhaustGeo = new THREE.BufferGeometry();
+    const exhaustPos = new Float32Array(exhaustCount * 3);
+    const exhaustData = [];
+    for (let i = 0; i < exhaustCount; i++) {
+      exhaustPos[i * 3] = 0;
+      exhaustPos[i * 3 + 1] = -100;
+      exhaustPos[i * 3 + 2] = 0;
+      exhaustData.push({ vx: 0, vy: 0, vz: 0, life: 0, maxLife: 0.8 });
+    }
+    exhaustGeo.setAttribute('position', new THREE.BufferAttribute(exhaustPos, 3));
+    const exhaustMat = new THREE.PointsMaterial({
+      color: 0xFFA726,
+      size: 3.5,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending
+    });
+    const exhaustParticles = new THREE.Points(exhaustGeo, exhaustMat);
+    scene.add(exhaustParticles);
+
+    // Starfield for high altitude / space
+    const starsGeo = new THREE.BufferGeometry();
+    const starCount = 800;
+    const starPos = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount * 3; i += 3) {
+      starPos[i] = (Math.random() - 0.5) * 800;
+      starPos[i+1] = Math.random() * 500 + 40;
+      starPos[i+2] = (Math.random() - 0.5) * 800;
+    }
+    starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    const starsMat = new THREE.PointsMaterial({ color: 0xFFFFFF, size: 1.5, transparent: true, opacity: 0 });
+    const starfield = new THREE.Points(starsGeo, starsMat);
+    scene.add(starfield);
+
+    // LAUNCH SIMULATION ENGINE STATE
+    let simPhase = 'idle'; // idle, countdown, ignition, liftoff, maxq, sep, space
+    let countdownSec = 10.0;
+    let missionTimeSec = 0.0;
+    let altitudeM = 0;
+    let velocityMps = 0;
+    let accelG = 1.0;
+    let dynamicQPa = 0;
+    let throttlePct = 0;
+    let pitchDeg = 90.0;
+    let activeCameraMode = 'orbital';
+
+    // CHECKLIST STATE (All 9 Subsystems)
+    window.chkState = {
+      window: false,
+      fuel: false,
+      mass: false,
+      gyro: false,
+      range: false,
+      weather: false,
+      secure: false,
+      deluge: false,
+      comm: false
+    };
+
+    window.confirmWindow = function() {
+      initAudio(); playBeep(600, 0.08);
+      window.chkState.window = true;
+      document.getElementById('chk-window').classList.add('done');
+      document.getElementById('windowStatusText').innerHTML = '<span style="color:#81C784;">Earth-Moon Synodic Window OPEN (Δv margin 1.48 km/s GO)</span>';
+      checkAllGo();
+    };
+
+    window.loadFuel = function() {
+      initAudio(); playBeep(640, 0.08);
+      window.chkState.fuel = true;
+      document.getElementById('chk-fuel').classList.add('done');
+      document.getElementById('fuelStatusText').innerHTML = '<span style="color:#81C784;">LOX: 100% · CH₄: 100% (Sub-cooled 90K Densified GO)</span>';
+      checkAllGo();
+    };
+
+    window.verifyMass = function() {
+      initAudio(); playBeep(680, 0.08);
+      window.chkState.mass = true;
+      document.getElementById('chk-mass').classList.add('done');
+      document.getElementById('massStatusText').innerHTML = '<span style="color:#81C784;">Gross Mass: 1,420,000 kg · CG Nominal (Tsiolkovsky GO)</span>';
+      checkAllGo();
+    };
+
+    window.alignGyros = function() {
+      initAudio(); playBeep(720, 0.08);
+      window.chkState.gyro = true;
+      document.getElementById('chk-gyro').classList.add('done');
+      document.getElementById('gyroStatusText').innerHTML = '<span style="color:#81C784;">IMU 1/2/3 Synced · Drift &lt; 0.001°/hr GO</span>';
+      checkAllGo();
+    };
+
+    window.armRange = function() {
+      initAudio(); playBeep(760, 0.08);
+      window.chkState.range = true;
+      document.getElementById('chk-range').classList.add('done');
+      document.getElementById('rangeStatusText').innerHTML = '<span style="color:#81C784;">AFSS Armed · Corridor Green GO</span>';
+      checkAllGo();
+    };
+
+    window.pollWeather = function() {
+      initAudio(); playBeep(800, 0.08);
+      window.chkState.weather = true;
+      document.getElementById('chk-weather').classList.add('done');
+      document.getElementById('weatherStatusText').innerHTML = '<span style="color:#81C784;">Surface: 6 kn · Max-Q Shear 14 kn GO</span>';
+      checkAllGo();
+    };
+
+    window.securePayload = function() {
+      initAudio(); playBeep(840, 0.08);
+      window.chkState.secure = true;
+      document.getElementById('chk-secure').classList.add('done');
+      document.getElementById('secureStatusText').innerHTML = '<span style="color:#81C784;">Cabin: 4.3 psi 100% O₂ · LAS SuperDraco Armed GO</span>';
+      checkAllGo();
+    };
+
+    window.armDeluge = function() {
+      initAudio(); playBeep(880, 0.08);
+      window.chkState.deluge = true;
+      document.getElementById('chk-deluge').classList.add('done');
+      document.getElementById('delugeStatusText').innerHTML = '<span style="color:#81C784;">Deluge Primed · 1,100,000 L/min Water Dampener GO</span>';
+      checkAllGo();
+    };
+
+    window.checkComm = function() {
+      initAudio(); playBeep(920, 0.08);
+      window.chkState.comm = true;
+      document.getElementById('chk-comm').classList.add('done');
+      document.getElementById('commStatusText').innerHTML = '<span style="color:#81C784;">DSN 3-Station Carrier Locked · Bitrate 12 Mbps GO</span>';
+      checkAllGo();
+    };
+
+    function checkAllGo() {
+      const s = window.chkState;
+      if (s.window && s.fuel && s.mass && s.gyro && s.range && s.weather && s.secure && s.deluge && s.comm) {
+        document.getElementById('chk-director').classList.add('done');
+        const badge = document.getElementById('badgePoll');
+        badge.className = 'check-badge badge-go';
+        badge.textContent = 'ALL GO';
+        document.getElementById('pollStatusText').innerHTML = '<span style="color:#81C784;">Flight Director Polled: ALL 9 STATIONS GO FOR LAUNCH</span>';
+        
+        const btn = document.getElementById('btnStartCountdown');
+        btn.disabled = false;
+        document.getElementById('btnLaunchLabel').textContent = '🚀 Start Launch Countdown (T-10s)';
+      }
+    }
+
+    window.autoCheckAll = function() {
+      window.confirmWindow();
+      window.loadFuel();
+      window.verifyMass();
+      window.alignGyros();
+      window.armRange();
+      window.pollWeather();
+      window.securePayload();
+      window.armDeluge();
+      window.checkComm();
+    };
+
+    window.startLaunchCountdown = function() {
+      initAudio();
+      if (simPhase !== 'idle') return;
+      simPhase = 'countdown';
+      countdownSec = 10.0;
+      document.getElementById('btnStartCountdown').disabled = true;
+      document.getElementById('statusDot').className = 'status-dot active';
+      document.getElementById('phaseDisplay').textContent = 'COUNTDOWN IN PROGRESS';
+    };
+
+    window.abortSequence = function() {
+      stopRumble();
+      simPhase = 'idle';
+      countdownSec = 10.0;
+      missionTimeSec = 0;
+      altitudeM = 0;
+      velocityMps = 0;
+      throttlePct = 0;
+      pitchDeg = 90;
+      rocketGroup.position.set(0, 4.0, 0);
+      rocketGroup.rotation.set(0, 0, 0);
+      gantryArm.rotation.y = 0;
+      flameMat.opacity = 0;
+      outerFlameMat.opacity = 0;
+      diamondMat.opacity = 0;
+      vacuumPlumeMat.opacity = 0;
+      sparkMat.opacity = 0;
+      steamMat.opacity = 0;
+      exhaustMat.opacity = 0;
+      engineLight.intensity = 0;
+      starsMat.opacity = 0;
+      scene.background.set('#5A8AB0');
+      scene.fog.color.set('#5A8AB0');
+      
+      document.getElementById('clockDisplay').textContent = 'T-10.0';
+      document.getElementById('statusDot').className = 'status-dot';
+      document.getElementById('phaseDisplay').textContent = 'PRE-LAUNCH PAD CHECK';
+      document.getElementById('btnStartCountdown').disabled = !document.getElementById('chk-director').classList.contains('done');
+    };
+
+    window.setCameraView = function(mode) {
+      activeCameraMode = mode;
+      document.querySelectorAll('.cam-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+    };
+
+    // ANIMATION & PHYSICS TICK LOOP
+    let lastClockWhole = 11;
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.05);
+
+      if (simPhase === 'countdown') {
+        countdownSec -= delta;
+        const whole = Math.ceil(countdownSec);
+        if (whole < lastClockWhole && whole > 0) {
+          lastClockWhole = whole;
+          playBeep(880, 0.08);
+        }
+        document.getElementById('clockDisplay').textContent = `T-${Math.max(0, countdownSec).toFixed(1)}`;
+
+        // Retract Gantry at T-7s
+        if (countdownSec <= 7.0 && gantryArm.rotation.y < Math.PI * 0.45) {
+          gantryArm.rotation.y += delta * 0.4;
+        }
+
+        // T-3s Pyrotechnic Spark Igniters
+        if (countdownSec <= 3.0 && countdownSec > 0) {
+          sparkMat.opacity = Math.min(1.0, (3.0 - countdownSec) * 1.5);
+          const pos = sparkGeo.attributes.position.array;
+          for (let i = 0; i < sparkCount; i++) {
+            pos[i * 3] += sparkVels[i].vx * delta;
+            pos[i * 3 + 1] += sparkVels[i].vy * delta;
+            pos[i * 3 + 2] += sparkVels[i].vz * delta;
+            if (pos[i * 3 + 1] < 1.0) { // bounce off pad slab
+              pos[i * 3 + 1] = 1.0 + Math.random() * 0.4;
+              sparkVels[i].vy *= -0.4;
+            }
+          }
+          sparkGeo.attributes.position.needsUpdate = true;
+        }
+
+        // T-2s Sound Suppression Water Deluge Steam Billows
+        if (countdownSec <= 2.0 && countdownSec > 0) {
+          steamMat.opacity = Math.min(0.75, (2.0 - countdownSec) * 0.6);
+          const pos = steamGeo.attributes.position.array;
+          for (let i = 0; i < steamCount; i++) {
+            pos[i * 3] += steamVels[i].vx * delta * 0.8;
+            pos[i * 3 + 1] += steamVels[i].vy * delta * 0.6;
+            pos[i * 3 + 2] += steamVels[i].vz * delta * 0.8;
+          }
+          steamGeo.attributes.position.needsUpdate = true;
+        }
+
+        // T-3s Main Engine Ignition Start
+        if (countdownSec <= 3.0 && simPhase !== 'ignition') {
+          simPhase = 'ignition';
+          startRumble();
+          document.getElementById('statusDot').className = 'status-dot burn';
+          document.getElementById('phaseDisplay').textContent = 'IGNITION SEQUENCE START';
+        }
+      }
+
+      if (simPhase === 'ignition') {
+        countdownSec -= delta;
+        document.getElementById('clockDisplay').textContent = `T-${Math.max(0, countdownSec).toFixed(1)}`;
+        throttlePct = Math.min(100, throttlePct + delta * 35);
+        
+        // Methalox supersonic core & outer flame ramp
+        const tRatio = throttlePct / 100;
+        innerCoreMat.opacity = tRatio * 0.95;
+        outerFlameMat.opacity = tRatio * 0.85;
+        diamondMat.opacity = tRatio * 0.92;
+        
+        // Mach shock diamonds flutter
+        machDiamonds.forEach((d, idx) => {
+          const pulse = 1 + Math.sin(Date.now() * 0.035 + idx) * 0.18;
+          d.scale.set(0.9 * pulse, 1.8 * pulse, 0.9 * pulse);
+        });
+
+        outerFlame.scale.set(1 + Math.sin(Date.now() * 0.02) * 0.12, 1 + Math.cos(Date.now() * 0.03) * 0.18, 1);
+        outerFlameL.scale.set(1 + Math.sin(Date.now() * 0.025) * 0.1, 1 + Math.cos(Date.now() * 0.035) * 0.15, 1);
+        outerFlameR.scale.set(1 + Math.sin(Date.now() * 0.025) * 0.1, 1 + Math.cos(Date.now() * 0.035) * 0.15, 1);
+
+        // Engine light flicker
+        engineLight.intensity = tRatio * (4.2 + Math.sin(Date.now() * 0.04) * 0.8 + Math.random() * 0.4);
+
+        if (countdownSec <= 0) {
+          simPhase = 'liftoff';
+          playBeep(1200, 0.3);
+          document.getElementById('phaseDisplay').textContent = 'LIFTOFF · TOWER CLEAR';
+        }
+      }
+
+      if (simPhase === 'liftoff' || simPhase === 'maxq' || simPhase === 'sep' || simPhase === 'space') {
+        missionTimeSec += delta;
+        document.getElementById('clockDisplay').textContent = `T+${missionTimeSec.toFixed(1)}`;
+        
+        // Rocket Acceleration & Ascent Physics
+        accelG = 1.2 + (missionTimeSec * 0.04);
+        velocityMps += (accelG * 9.81 - 9.81) * delta * 2.8;
+        altitudeM += velocityMps * delta;
+
+        // Pitch gravity turn after 500m
+        if (altitudeM > 500) {
+          pitchDeg = Math.max(25, 90 - Math.pow(altitudeM / 40000, 0.5) * 65);
+          const rad = (90 - pitchDeg) * Math.PI / 180;
+          rocketGroup.rotation.z = -rad;
+        }
+
+        // Dynamic Pressure q = 0.5 * rho * v^2
+        const density = Math.exp(-altitudeM / 8500) * 1.225;
+        dynamicQPa = 0.5 * density * Math.pow(velocityMps, 2);
+
+        if (dynamicQPa > 32000 && simPhase === 'liftoff') {
+          simPhase = 'maxq';
+          document.getElementById('phaseDisplay').textContent = 'MAX-Q · MAX DYNAMIC PRESSURE';
+        } else if (altitudeM > 45000 && simPhase === 'maxq') {
+          simPhase = 'sep';
+          document.getElementById('phaseDisplay').textContent = 'STAGE 1 SEPARATION (MECO)';
+        } else if (altitudeM > 80000 && simPhase === 'sep') {
+          simPhase = 'space';
+          document.getElementById('phaseDisplay').textContent = 'SPACE VACUUM · ORBITAL INSERTION';
+        }
+
+        // Move 3D Rocket in scene (scaled units)
+        const sceneY = 4.0 + (altitudeM * 0.012);
+        rocketGroup.position.y = sceneY;
+        rocketGroup.position.x = Math.sin((90 - pitchDeg) * Math.PI / 180) * (altitudeM * 0.003);
+
+        // Mach Shock Diamonds high-velocity oscillation
+        machDiamonds.forEach((d, idx) => {
+          const flutter = 1 + Math.sin(Date.now() * 0.04 + idx * 0.8) * 0.22;
+          d.scale.set(0.9 * flutter, 1.8 * flutter, 0.9 * flutter);
+        });
+
+        // Flame jitter
+        outerFlame.scale.set(1.2 + Math.sin(Date.now() * 0.03) * 0.15, 1.4 + Math.sin(Date.now() * 0.04) * 0.2, 1.2);
+        outerFlameL.scale.set(1.1 + Math.sin(Date.now() * 0.035) * 0.12, 1.3 + Math.sin(Date.now() * 0.045) * 0.18, 1.1);
+        outerFlameR.scale.set(1.1 + Math.sin(Date.now() * 0.035) * 0.12, 1.3 + Math.sin(Date.now() * 0.045) * 0.18, 1.1);
+
+        // Engine light flicker during flight
+        engineLight.intensity = 3.8 + Math.sin(Date.now() * 0.03) * 0.6 + Math.random() * 0.3;
+
+        // High-Altitude Vacuum Blossom (Under-expanded plume expanding above 25 km)
+        if (altitudeM > 20000) {
+          const blossomT = Math.min(1.0, (altitudeM - 20000) / 45000);
+          vacuumPlumeMat.opacity = blossomT * 0.42;
+          const blossomScale = 1.0 + blossomT * 2.4;
+          vacuumPlume.scale.set(blossomScale, 1.0 + blossomT * 0.5, blossomScale);
+        } else {
+          vacuumPlumeMat.opacity = 0;
+        }
+
+        // Sky transition to deep space
+        const spaceT = Math.min(1, altitudeM / 70000);
+        const skyCol = new THREE.Color("#5A8AB0").lerp(new THREE.Color("#090C12"), spaceT);
+        scene.background.set(skyCol);
+        scene.fog.color.set(skyCol);
+        starsMat.opacity = Math.min(1, spaceT * 1.2);
+      }
+
+      // UPDATE TELEMETRY READOUTS
+      if (simPhase !== 'idle') {
+        document.getElementById('telAlt').textContent = altitudeM < 1000 ? `${altitudeM.toFixed(0)} m` : `${(altitudeM / 1000).toFixed(2)} km`;
+        document.getElementById('telVel').textContent = `${velocityMps.toFixed(1)} m/s`;
+        document.getElementById('telQ').textContent = `${(dynamicQPa / 1000).toFixed(1)} kPa`;
+        document.getElementById('telG').textContent = `${accelG.toFixed(2)} G`;
+        document.getElementById('telThrottle').textContent = `${Math.round(throttlePct)}%`;
+        document.getElementById('telPitch').textContent = `${pitchDeg.toFixed(1)}°`;
+        
+        const m = Math.floor(missionTimeSec / 60);
+        const s = Math.floor(missionTimeSec % 60);
+        document.getElementById('flightTimeVal').textContent = `MET: 00:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      }
+
+      // CAMERA POSITIONING
+      if (activeCameraMode === 'orbital') {
+        if (simPhase === 'idle' || simPhase === 'countdown') {
+          controls.target.set(0, 10, 0);
+        } else {
+          controls.target.copy(rocketGroup.position);
+          camera.position.y = rocketGroup.position.y + 8;
+        }
+      } else if (activeCameraMode === 'tower') {
+        camera.position.set(-6.5, 26, 8);
+        controls.target.copy(rocketGroup.position);
+      } else if (activeCameraMode === 'engine') {
+        camera.position.set(rocketGroup.position.x + 3, rocketGroup.position.y - 4, rocketGroup.position.z + 5);
+        controls.target.set(rocketGroup.position.x, rocketGroup.position.y - 1, rocketGroup.position.z);
+      } else if (activeCameraMode === 'sky') {
+        camera.position.set(40, 15, 60);
+        controls.target.copy(rocketGroup.position);
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener("resize", () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+  </script>
+</body>
+</html>
