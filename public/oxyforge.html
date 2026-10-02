@@ -459,14 +459,117 @@
       flex-direction: column;
       justify-content: space-between;
       position: relative;
-      transition: all 0.2s ease;
+      transition: transform 0.15s cubic-bezier(0.2,0,0,1), border-color 0.2s ease, box-shadow 0.2s ease;
+      transform-style: preserve-3d;
+      will-change: transform;
     }
     .crew-card:hover {
-      border-color: rgba(0, 229, 255, 0.4);
+      border-color: rgba(0, 229, 255, 0.5);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
     }
     .crew-card.seated {
       border-color: var(--accent);
       background: rgba(0, 229, 255, 0.05);
+      box-shadow: 0 0 16px rgba(0, 229, 255, 0.2);
+    }
+
+    .crew-avatar-frame {
+      width: 62px;
+      height: 92px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--surface-raised);
+      flex-shrink: 0;
+      position: relative;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .crew-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top;
+      display: block;
+    }
+    .crew-avatar-frame svg {
+      display: none;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* 3D CELESTIAL CANVAS STYLES */
+    .celestial-journey-wrap {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      background: #05060A;
+      border: 1px solid var(--accent);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 28px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), inset 0 0 30px rgba(0, 229, 255, 0.08);
+    }
+    #celestialHeroCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+    #celestialHeroCanvas:active {
+      cursor: grabbing;
+    }
+    .celestial-overlay-controls {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+      z-index: 10;
+    }
+    .celestial-chips {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      pointer-events: auto;
+    }
+    .chip-btn {
+      background: rgba(18, 24, 36, 0.88);
+      backdrop-filter: blur(10px);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.2s ease;
+    }
+    .chip-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .chip-btn.active {
+      background: var(--accent);
+      color: #090C12;
+      border-color: var(--accent);
+      box-shadow: 0 0 16px rgba(0, 229, 255, 0.5);
+    }
+    .celestial-hud-tag {
+      align-self: flex-start;
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      background: rgba(9, 12, 18, 0.85);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(0, 229, 255, 0.3);
+      color: var(--ice);
+      padding: 5px 12px;
+      border-radius: 8px;
     }
 
     .crew-card-body {
@@ -698,6 +801,36 @@
 
   <!-- CONTENT -->
   <main class="content-wrap">
+    <!-- 3D INTERACTIVE CELESTIAL TRANSFER CORRIDOR (EARTH-MOON & EARTH-MARS) -->
+    <section class="celestial-journey-wrap">
+      <canvas id="celestialHeroCanvas"></canvas>
+      <div class="celestial-overlay-controls">
+        <div class="celestial-chips">
+          <button class="chip-btn active" id="chipMoon" onclick="setCelestialDest('moon')">
+            <span>🌍 ➔ 🌙</span> Earth → Moon (384,400 km)
+          </button>
+          <button class="chip-btn" id="chipMars" onclick="setCelestialDest('mars')">
+            <span>🌍 ➔ 🔴</span> Earth → Mars (78M–400M km)
+          </button>
+          <button class="chip-btn" id="chipCamMode" onclick="toggleCelestialCamMode()">
+            <span id="camModeIcon">🎥</span> <span id="camModeLabel">Cinematic Orbit</span>
+          </button>
+          <a href="transfer-cruise-preview.html" class="chip-btn" style="border-color:#00E5FF;color:#00E5FF;background:rgba(0,229,255,0.12);">
+            <span>🛸</span> Cockpit FPV Simulator (Zoom Lock &amp; Billing) ➔
+          </a>
+          <a href="mars-explorer-preview.html" class="chip-btn" style="border-color:#FF8A65;color:#FF8A65;background:rgba(255,107,74,0.12);">
+            <span>🔴</span> 3D Mars Explorer (Jezero Traverse) ➔
+          </a>
+          <a href="lunar-explorer-preview.html" class="chip-btn" style="border-color:#7EB8C9;color:#7EB8C9;background:rgba(126,184,201,0.12);">
+            <span>🌕</span> 3D Lunar Surface Explorer ➔
+          </a>
+        </div>
+        <div class="celestial-hud-tag" id="celestialTelemetryBadge">
+          Hohmann Transfer Oval · 384,400 km Corridor · Drag sky to rotate 3D orbit
+        </div>
+      </div>
+    </section>
+
     <!-- HERO BRIEFING -->
     <section class="hero-banner">
       <div class="hero-subtitle">Mission School &amp; Planetary ISRU Program</div>
@@ -711,6 +844,21 @@
           <span>Launch 3D Pad &amp; Rocket Ignition</span>
           <span style="font-size:0.7rem;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;">3D Simulator</span>
         </a>
+        <a href="transfer-cruise-preview.html" class="btn-fire-launch" style="background:linear-gradient(135deg,#7E57C2,#5E35B1);box-shadow:0 4px 18px rgba(126,87,194,0.4);">
+          <span>🛸</span>
+          <span>Transfer Cruise &amp; Deep Sky FPV</span>
+          <span style="font-size:0.7rem;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;">Zoom Lock</span>
+        </a>
+        <a href="mars-explorer-preview.html" class="btn-fire-launch" style="background:linear-gradient(135deg,#D84315,#BF360C);box-shadow:0 4px 18px rgba(216,67,21,0.4);">
+          <span>🔴</span>
+          <span>3D Mars Explorer</span>
+          <span style="font-size:0.7rem;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;">Jezero Traverse</span>
+        </a>
+        <a href="lunar-explorer-preview.html" class="btn-primary-launch" style="background:linear-gradient(135deg,#0288D1,#00838F);box-shadow:0 4px 18px rgba(0,131,143,0.4);">
+          <span>🌕</span>
+          <span>3D Lunar Surface</span>
+          <span style="font-size:0.7rem;background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;">South Pole</span>
+        </a>
         <a href="moon-landing-preview.html" class="btn-primary-launch">
           <span>🌙</span>
           <span>Launch 3D Moon Landing &amp; ISRU</span>
@@ -718,7 +866,7 @@
         </a>
         <button class="btn-secondary-tool" onclick="scrollToSection('crew-section')">
           <span>👨‍🚀</span>
-          <span>Flight Crew</span>
+          <span>Flight Crew (12)</span>
         </button>
         <button class="btn-secondary-tool" onclick="scrollToSection('planner')">
           <span>📋</span>
@@ -785,7 +933,76 @@
         </div>
       </div>
 
-      <!-- HUB 3: MISSION PLANNER -->
+      <!-- HUB 3: 3D TRANSFER CRUISE & DEEP SKY FPV -->
+      <div class="hub-card">
+        <div>
+          <span class="hub-badge" style="background:rgba(126,87,194,0.25);color:#B388FF;border:1px solid #B388FF;">Cockpit Flight Camera</span>
+          <h3 class="hub-name">Transfer Cruise &amp; Deep Sky FPV</h3>
+          <p class="hub-text">
+            Coast along the interplanetary Hohmann oval. 6-DOF manual attitude and thrust controls with metered €1.80/s (180 GC/s) telemetry billing. Includes 3D Deep Sky Catalog with optical zoom lock (1x → 10x telescope), constellation vectors, and interactive celestial dossiers.
+          </p>
+        </div>
+        <div>
+          <div class="hub-meta">
+            <span>Rate: €1.80/s (180 GC/s)</span>
+            <span>·</span>
+            <span>Zoom: 1x to 10x Lock</span>
+            <span>·</span>
+            <span>Nav: 6-DOF FPV</span>
+          </div>
+          <a href="transfer-cruise-preview.html" class="hub-btn" style="background:linear-gradient(135deg,#7E57C2,#5E35B1);color:#FFF;border:none;">
+            🛸 Launch 3D Cruise &amp; FPV Sky
+          </a>
+        </div>
+      </div>
+
+      <!-- HUB: 3D MARS EXPLORER -->
+      <div class="hub-card">
+        <div>
+          <span class="hub-badge" style="background:rgba(255,107,74,0.25);color:#FF8A65;border:1px solid #FF8A65;">3D Classroom Globe</span>
+          <h3 class="hub-name">3D Mars Explorer &amp; Jezero Traverse</h3>
+          <p class="hub-text">
+            Explore the Martian surface in high-resolution 3D: Jezero Crater paleolake, Octavia E. Butler touchdown site, the western delta mudstones, Séítah dunes, MOXIE ISRU oxygen production, Olympus Mons (21.9 km), and Valles Marineris canyon. Includes drag-to-zoom terrain inspection, hover tooltips, classroom study dossiers, and interactive field knowledge quizzes.
+          </p>
+        </div>
+        <div>
+          <div class="hub-meta">
+            <span>Globe: 3D WebGL</span>
+            <span>·</span>
+            <span>Pins: 12 Sites</span>
+            <span>·</span>
+            <span>Classroom: Modals + Quizzes</span>
+          </div>
+          <a href="mars-explorer-preview.html" class="hub-btn" style="background:linear-gradient(135deg,#D84315,#BF360C);color:#FFF;border:none;">
+            🔴 Launch 3D Mars Explorer
+          </a>
+        </div>
+      </div>
+
+      <!-- HUB: 3D LUNAR SURFACE EXPLORER -->
+      <div class="hub-card">
+        <div>
+          <span class="hub-badge" style="background:rgba(126,184,201,0.25);color:#7EB8C9;border:1px solid #7EB8C9;">3D Polar Terrain</span>
+          <h3 class="hub-name">3D Lunar Surface &amp; South Pole Explorer</h3>
+          <p class="hub-text">
+            Investigate the Moon's South Pole cold traps, Shackleton crater rim illumination, South Pole-Aitken basin, Mons Mouton VIPER site, Apollo 11 Tranquility Base, and Molten Regolith Electrolysis (MRE) oxygen extraction. Features close terrain zoom, guided classroom tours, and earnable lunar exploration badges.
+          </p>
+        </div>
+        <div>
+          <div class="hub-meta">
+            <span>Target: South Pole &amp; PSRs</span>
+            <span>·</span>
+            <span>Sites: 8 Locations</span>
+            <span>·</span>
+            <span>Mode: Guided Tour</span>
+          </div>
+          <a href="lunar-explorer-preview.html" class="hub-btn" style="background:linear-gradient(135deg,#0288D1,#00838F);color:#FFF;border:none;">
+            🌕 Launch 3D Lunar Explorer
+          </a>
+        </div>
+      </div>
+
+      <!-- HUB 4: MISSION PLANNER -->
       <div class="hub-card" id="planner">
         <div>
           <span class="hub-badge badge-planner">Flight Director</span>
@@ -990,6 +1207,7 @@
 
   <script>
     // ================= CREW ROSTER DATA =================
+    // ================= CREW ROSTER DATA (12 UNIFIED FLIGHT SPECIALISTS) =================
     var CREW_ROSTER = [
       {
         id: "cmd-self",
@@ -1001,7 +1219,8 @@
         skills: ["Leadership", "Checklist", "Budget"],
         skin: "#e8c4a8",
         suit: "#2a3344",
-        accent: "#7eb8c9",
+        accent: "#00E5FF",
+        src: "commanders/cmd-self.webp",
         hireCost: 0,
         unlockAfterMissions: 0
       },
@@ -1015,7 +1234,8 @@
         skills: ["PDI", "Abort", "RCS"],
         skin: "#c9956c",
         suit: "#1a222e",
-        accent: "#c9a86f",
+        accent: "#F59E0B",
+        src: "commanders/nova.webp",
         hireCost: 1500,
         unlockAfterMissions: 0
       },
@@ -1029,7 +1249,8 @@
         skills: ["Power", "Thermal", "Propellant"],
         skin: "#8d6e4c",
         suit: "#131820",
-        accent: "#6fbf9a",
+        accent: "#10B981",
+        src: "commanders/kade.webp",
         hireCost: 1200,
         unlockAfterMissions: 0
       },
@@ -1043,7 +1264,8 @@
         skills: ["Electrolysis", "MOXIE", "Sampling"],
         skin: "#dbb89a",
         suit: "#243044",
-        accent: "#9fd0d4",
+        accent: "#38BDF8",
+        src: "commanders/mira.webp",
         hireCost: 1400,
         unlockAfterMissions: 0
       },
@@ -1057,7 +1279,8 @@
         skills: ["Life support", "Radiation", "EVA prep"],
         skin: "#e0c2a0",
         suit: "#1e2836",
-        accent: "#e8a0b8",
+        accent: "#F43F5E",
+        src: "commanders/sol.webp",
         hireCost: 1300,
         unlockAfterMissions: 0
       },
@@ -1071,7 +1294,98 @@
         skills: ["Hohmann", "Mid-course", "Nav"],
         skin: "#b08968",
         suit: "#18202c",
-        accent: "#c4896a",
+        accent: "#FB923C",
+        src: "commanders/jax.webp",
+        hireCost: 1800,
+        unlockAfterMissions: 0
+      },
+      {
+        id: "kai",
+        name: "Kai Mori",
+        role: "pilot",
+        title: "Guidance Cadet",
+        blurb: "Fresh from flight school. Treats every burn as a vis-viva problem you can feel.",
+        fact: "Close to the Sun you orbit faster (Kepler’s 2nd law). Burning prograde pushes the opposite side of the orbit higher.",
+        skills: ["Vis-Viva", "Trajectory", "Guidance"],
+        skin: "#E0B38B",
+        suit: "#1E293B",
+        accent: "#38BDF8",
+        src: "commanders/kai.webp",
+        hireCost: 1200,
+        unlockAfterMissions: 0
+      },
+      {
+        id: "nia",
+        name: "Nia Okoye",
+        role: "science",
+        title: "Plant Engineer",
+        blurb: "Splits water in her sleep. Ice is not scenery to her — it is 89% oxygen by mass.",
+        fact: "2 H₂O → 2 H₂ + O₂. One ton of lunar water ice yields 888 kg of pure cryogenic oxygen for life support and rocket fuel.",
+        skills: ["Water Cracking", "Cryogenics", "Sabatier"],
+        skin: "#8D5B3A",
+        suit: "#1B2F23",
+        accent: "#4ADE80",
+        src: "commanders/nia.webp",
+        hireCost: 1400,
+        unlockAfterMissions: 0
+      },
+      {
+        id: "rafa",
+        name: "Rafael Soto",
+        role: "systems",
+        title: "Pad Chief",
+        blurb: "Counts mass like money. Crew costs more because people have seats, air, and an abort tower.",
+        fact: "Every kilogram carried to orbit requires 8 to 10 kg of propellant on the pad. Dry mass optimization is everything.",
+        skills: ["Pad Operations", "Mass Budget", "Abort Systems"],
+        skin: "#C68B59",
+        suit: "#332211",
+        accent: "#FB923C",
+        src: "commanders/rafa.webp",
+        hireCost: 1100,
+        unlockAfterMissions: 0
+      },
+      {
+        id: "amira",
+        name: "Amira Haddad",
+        role: "commander",
+        title: "Flight Director",
+        blurb: "Does not aim at where Mars is. Aims at where Mars will be after seven months of coast.",
+        fact: "Planetary alignment windows open only once every 26 months for Mars. Missing a window means waiting 780 days.",
+        skills: ["Orbital Windows", "Mission Control", "Hohmann Nav"],
+        skin: "#CBA07A",
+        suit: "#182030",
+        accent: "#22D3EE",
+        src: "commanders/amira.webp",
+        hireCost: 1600,
+        unlockAfterMissions: 0
+      },
+      {
+        id: "elena",
+        name: "Elena Voss",
+        role: "science",
+        title: "Habitat Lead",
+        blurb: "Two metres of dirt is a cheaper roof than any metal from Earth. She has buried more than one home.",
+        fact: "Regolith sintering uses solar concentrators to fuse lunar sand into radiation-shielded bricks, stopping cosmic rays.",
+        skills: ["Regolith Sintering", "Radiation Shield", "Habitats"],
+        skin: "#E2BA96",
+        suit: "#262626",
+        accent: "#FBBF24",
+        src: "commanders/elena.webp",
+        hireCost: 1500,
+        unlockAfterMissions: 0
+      },
+      {
+        id: "haru",
+        name: "Haru Tanabe",
+        role: "pilot",
+        title: "Veteran Skipper",
+        blurb: "Flew the long ovals before the plants existed. Still says the quiet part: most of the trip is engines off.",
+        fact: "In interplanetary space, coasting consumes 0 kg of propellant. Thrusting sideways in deep space is expensive delta-v.",
+        skills: ["Deep Space Coast", "Attitude RCS", "Aero-Capture"],
+        skin: "#D9A982",
+        suit: "#1E1E2E",
+        accent: "#C084FC",
+        src: "commanders/haru.webp",
         hireCost: 1800,
         unlockAfterMissions: 0
       }
@@ -1138,7 +1452,10 @@
             var member = CREW_ROSTER.find(function(c) { return c.id === seatId; });
             if (member) {
               stripHtml += '<div class="seat-slot">' +
-                createAvatarSvg(member, 34) +
+                '<div style="width:32px;height:44px;border-radius:6px;overflow:hidden;border:1px solid var(--accent);flex-shrink:0;background:var(--surface-raised);">' +
+                  '<img src="' + member.src + '" alt="' + member.name + '" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block;" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';" />' +
+                  createAvatarSvg(member, 32) +
+                '</div>' +
                 '<div>' +
                   '<div style="font-size:0.82rem;font-weight:700;color:#FFF;">' + member.name + '</div>' +
                   '<div style="font-family:var(--mono);font-size:0.68rem;color:var(--ice);text-transform:uppercase;">' + member.title + '</div>' +
@@ -1162,10 +1479,13 @@
           var isHired = crewHired.indexOf(m.id) !== -1;
           var isSeated = crewSeats.indexOf(m.id) !== -1;
 
-          cardsHtml += '<div class="crew-card ' + (isSeated ? 'seated' : '') + '">' +
+          cardsHtml += '<div class="crew-card ' + (isSeated ? 'seated' : '') + '" onpointermove="tiltCrewCard(event, this)" onpointerleave="resetCrewCardTilt(this)">' +
             '<div>' +
               '<div class="crew-card-body">' +
-                createAvatarSvg(m, 54) +
+                '<div class="crew-avatar-frame">' +
+                  '<img src="' + m.src + '" alt="' + m.name + '" class="crew-avatar-img" onerror="this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';" />' +
+                  createAvatarSvg(m, 62) +
+                '</div>' +
                 '<div class="crew-info">' +
                   '<div class="crew-name-row">' +
                     '<span class="crew-name">' + m.name + '</span>' +
@@ -1180,13 +1500,13 @@
           cardsHtml += '</div>' +
                 '</div>' +
               '</div>' +
-              '<div class="crew-fact">💡 <b>Ops Note:</b> ' + m.fact + '</div>' +
+              '<div class="crew-fact">💡 <b>Science / Ops Note:</b> ' + m.fact + '</div>' +
             '</div>' +
             '<div class="crew-action-row">';
 
           if (!isHired) {
             cardsHtml += '<button class="btn-hire" onclick="hireCrewMember(\'' + m.id + '\')">' +
-              'Hire · €' + m.hireCost.toLocaleString() + ' GC' +
+              'Hire Specialist · €' + m.hireCost.toLocaleString() + ' GC' +
             '</button>';
           } else {
             if (isSeated) {
@@ -1198,7 +1518,7 @@
             } else {
               var canSeat = crewSeats.length < CREW_SEAT_LIMIT;
               cardsHtml += '<button class="btn-seat" ' + (canSeat ? '' : 'disabled style="opacity:0.5;cursor:not-allowed;"') + ' onclick="toggleSeat(\'' + m.id + '\')">' +
-                'Assign Seat' +
+                'Assign Crewmark Seat' +
               '</button>';
             }
           }
@@ -1212,6 +1532,348 @@
       // Update credits readout
       var fundsEl = document.getElementById("telemetryCredits");
       if (fundsEl) fundsEl.textContent = '€' + programFunds.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' GC';
+    }
+
+    // 3D Card Tilt on Pointer Move
+    function tiltCrewCard(e, el) {
+      var r = el.getBoundingClientRect();
+      var px = (e.clientX - r.left) / r.width - 0.5;
+      var py = (e.clientY - r.top) / r.height - 0.5;
+      el.style.transform = 'perspective(900px) rotateX(' + (-py * 12).toFixed(2) + 'deg) rotateY(' + (px * 14).toFixed(2) + 'deg) translateY(-2px)';
+    }
+
+    function resetCrewCardTilt(el) {
+      el.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) translateY(0)';
+    }
+
+    // ================= 3D CELESTIAL CANVAS (EARTH-MOON & EARTH-MARS) =================
+    var celestialDest = 'moon';
+    var celestialCamMode = 'cinematic'; // 'cinematic' or 'cockpit'
+    var celestialRot = { x: 0.35, y: 0.65 };
+    var isDraggingCelestial = false;
+    var lastCelestialPointer = { x: 0, y: 0 };
+    var celestialSimT = 0;
+
+    function setCelestialDest(dest) {
+      celestialDest = dest;
+      document.getElementById('chipMoon').classList.toggle('active', dest === 'moon');
+      document.getElementById('chipMars').classList.toggle('active', dest === 'mars');
+      updateCelestialBadge();
+    }
+
+    function toggleCelestialCamMode() {
+      celestialCamMode = celestialCamMode === 'cinematic' ? 'cockpit' : 'cinematic';
+      document.getElementById('camModeIcon').textContent = celestialCamMode === 'cinematic' ? '🎥' : '🛸';
+      document.getElementById('camModeLabel').textContent = celestialCamMode === 'cinematic' ? 'Cinematic Orbit' : 'FPV Cockpit Look';
+      updateCelestialBadge();
+    }
+
+    function updateCelestialBadge() {
+      var badge = document.getElementById('celestialTelemetryBadge');
+      if (!badge) return;
+      if (celestialDest === 'moon') {
+        badge.innerHTML = '🌍 ➔ 🌙 <b>Earth → Moon Hohmann Corridor:</b> 384,400 km · 3-day flight · Light delay: 1.28s · Mode: ' + (celestialCamMode === 'cinematic' ? 'Cinematic 3D Orbit' : 'FPV Cockpit');
+      } else {
+        badge.innerHTML = '🌍 ➔ 🔴 <b>Earth → Mars Transfer Oval:</b> 78–400M km · ~210-day ballistic coast · Synodic window: 26 mos · Mode: ' + (celestialCamMode === 'cinematic' ? 'Cinematic 3D Orbit' : 'FPV Cockpit');
+      }
+    }
+
+    function initCelestialHeroCanvas() {
+      var canvas = document.getElementById('celestialHeroCanvas');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      function resize() {
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(canvas.clientWidth * dpr);
+        canvas.height = Math.floor(canvas.clientHeight * dpr);
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      canvas.addEventListener('pointerdown', function(e) {
+        isDraggingCelestial = true;
+        lastCelestialPointer.x = e.clientX;
+        lastCelestialPointer.y = e.clientY;
+        canvas.setPointerCapture(e.pointerId);
+      });
+      canvas.addEventListener('pointermove', function(e) {
+        if (!isDraggingCelestial) return;
+        var dx = e.clientX - lastCelestialPointer.x;
+        var dy = e.clientY - lastCelestialPointer.y;
+        lastCelestialPointer.x = e.clientX;
+        lastCelestialPointer.y = e.clientY;
+        celestialRot.y += dx * 0.006;
+        celestialRot.x = Math.max(-0.85, Math.min(0.85, celestialRot.x + dy * 0.006));
+      });
+      var stopDrag = function() { isDraggingCelestial = false; };
+      canvas.addEventListener('pointerup', stopDrag);
+      canvas.addEventListener('pointercancel', stopDrag);
+
+      // Starfield background
+      var stars = [];
+      for (var s = 0; s < 120; s++) {
+        stars.push({
+          x: (Math.random() - 0.5) * 2,
+          y: (Math.random() - 0.5) * 2,
+          z: (Math.random() - 0.5) * 2,
+          r: Math.random() * 1.5 + 0.5,
+          alpha: Math.random() * 0.7 + 0.3
+        });
+      }
+
+      function project3D(x, y, z, cx, cy, fl) {
+        // Rotate around Y then X
+        var cosY = Math.cos(celestialRot.y), sinY = Math.sin(celestialRot.y);
+        var cosX = Math.cos(celestialRot.x), sinX = Math.sin(celestialRot.x);
+
+        var x1 = x * cosY - z * sinY;
+        var z1 = x * sinY + z * cosY;
+
+        var y2 = y * cosX - z1 * sinX;
+        var z2 = y * sinX + z1 * cosX;
+
+        var dist = z2 + 320;
+        if (dist <= 10) return null;
+        var scale = fl / dist;
+        return {
+          x: cx + x1 * scale,
+          y: cy + y2 * scale,
+          scale: scale,
+          z: z2
+        };
+      }
+
+      function renderFrame() {
+        celestialSimT += 0.016;
+        var w = canvas.width;
+        var h = canvas.height;
+        if (w <= 0 || h <= 0) {
+          requestAnimationFrame(renderFrame);
+          return;
+        }
+
+        ctx.fillStyle = '#05060A';
+        ctx.fillRect(0, 0, w, h);
+
+        var cx = w / 2;
+        var cy = h / 2;
+        var fl = Math.min(w, h) * 0.95;
+
+        // Auto-rotation in cinematic mode
+        if (celestialCamMode === 'cinematic' && !isDraggingCelestial) {
+          celestialRot.y += 0.0018;
+        }
+
+        // Draw starfield
+        for (var i = 0; i < stars.length; i++) {
+          var st = stars[i];
+          var p = project3D(st.x * 500, st.y * 500, st.z * 500, cx, cy, fl);
+          if (p) {
+            ctx.fillStyle = 'rgba(232, 237, 244, ' + st.alpha + ')';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, Math.max(0.6, st.r * p.scale * 0.4), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Sun at Center (0, 0, 0)
+        var sunP = project3D(0, 0, 0, cx, cy, fl);
+        if (sunP) {
+          var sunGrad = ctx.createRadialGradient(sunP.x, sunP.y, 0, sunP.x, sunP.y, 28 * sunP.scale);
+          sunGrad.addColorStop(0, '#FFFFFF');
+          sunGrad.addColorStop(0.3, '#FFF176');
+          sunGrad.addColorStop(0.7, '#FFA000');
+          sunGrad.addColorStop(1, 'rgba(255, 160, 0, 0)');
+          ctx.fillStyle = sunGrad;
+          ctx.beginPath();
+          ctx.arc(sunP.x, sunP.y, 28 * sunP.scale, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Orbits parameters
+        var AU = 110;
+        var earthOrbitR = AU;
+        var marsOrbitR = AU * 1.52;
+        var moonOrbitR = 24;
+
+        // Draw Orbit Rings
+        function drawOrbitRing(radius, color, dashed) {
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1;
+          if (dashed) ctx.setLineDash([4, 6]);
+          else ctx.setLineDash([]);
+          ctx.beginPath();
+          var segs = 64;
+          for (var s = 0; s <= segs; s++) {
+            var ang = (s / segs) * Math.PI * 2;
+            var ox = Math.cos(ang) * radius;
+            var oz = Math.sin(ang) * radius;
+            var pt = project3D(ox, 0, oz, cx, cy, fl);
+            if (pt) {
+              if (s === 0) ctx.moveTo(pt.x, pt.y);
+              else ctx.lineTo(pt.x, pt.y);
+            }
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+
+        drawOrbitRing(earthOrbitR, 'rgba(0, 229, 255, 0.25)', true);
+        if (celestialDest === 'mars') {
+          drawOrbitRing(marsOrbitR, 'rgba(255, 112, 67, 0.25)', true);
+        }
+
+        // Earth Position
+        var earthAng = 0.25 + celestialSimT * 0.05;
+        var earthX = Math.cos(earthAng) * earthOrbitR;
+        var earthZ = Math.sin(earthAng) * earthOrbitR;
+        var earthP = project3D(earthX, 0, earthZ, cx, cy, fl);
+
+        // Moon Position (around Earth)
+        var moonAng = celestialSimT * 0.4;
+        var moonX = earthX + Math.cos(moonAng) * moonOrbitR;
+        var moonZ = earthZ + Math.sin(moonAng) * moonOrbitR;
+        var moonP = project3D(moonX, 0, moonZ, cx, cy, fl);
+
+        // Mars Position
+        var marsAng = 0.95 + celestialSimT * 0.026;
+        var marsX = Math.cos(marsAng) * marsOrbitR;
+        var marsZ = Math.sin(marsAng) * marsOrbitR;
+        var marsP = project3D(marsX, 0, marsZ, cx, cy, fl);
+
+        // Transfer Curve & Craft Position
+        var craftX = earthX, craftY = 0, craftZ = earthZ;
+        var transferProgress = (Math.sin(celestialSimT * 0.6) + 1) / 2; // oscillating 0 -> 1
+
+        if (celestialDest === 'moon') {
+          // Lunar Transfer Ellipse
+          ctx.strokeStyle = 'rgba(0, 229, 255, 0.7)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          var tSteps = 30;
+          for (var ts = 0; ts <= tSteps; ts++) {
+            var u = ts / tSteps;
+            var tx = earthX + (moonX - earthX) * u + Math.sin(u * Math.PI) * 12;
+            var tz = earthZ + (moonZ - earthZ) * u - Math.sin(u * Math.PI) * 8;
+            var tPt = project3D(tx, 0, tz, cx, cy, fl);
+            if (tPt) {
+              if (ts === 0) ctx.moveTo(tPt.x, tPt.y);
+              else ctx.lineTo(tPt.x, tPt.y);
+            }
+          }
+          ctx.stroke();
+
+          craftX = earthX + (moonX - earthX) * transferProgress + Math.sin(transferProgress * Math.PI) * 12;
+          craftZ = earthZ + (moonZ - earthZ) * transferProgress - Math.sin(transferProgress * Math.PI) * 8;
+        } else {
+          // Mars Hohmann Transfer Arc
+          ctx.strokeStyle = 'rgba(255, 179, 0, 0.75)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          var mSteps = 40;
+          for (var ms = 0; ms <= mSteps; ms++) {
+            var mu = ms / mSteps;
+            var mx = earthX + (marsX - earthX) * mu - Math.sin(mu * Math.PI) * 45;
+            var mz = earthZ + (marsZ - earthZ) * mu + Math.sin(mu * Math.PI) * 35;
+            var mPt = project3D(mx, 0, mz, cx, cy, fl);
+            if (mPt) {
+              if (ms === 0) ctx.moveTo(mPt.x, mPt.y);
+              else ctx.lineTo(mPt.x, mPt.y);
+            }
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          craftX = earthX + (marsX - earthX) * transferProgress - Math.sin(transferProgress * Math.PI) * 45;
+          craftZ = earthZ + (marsZ - earthZ) * transferProgress + Math.sin(transferProgress * Math.PI) * 35;
+        }
+
+        // Draw Celestial Bodies
+        if (earthP) {
+          // Earth
+          var earthRad = Math.max(5, 9 * earthP.scale);
+          var earthG = ctx.createRadialGradient(earthP.x - earthRad*0.3, earthP.y - earthRad*0.3, 1, earthP.x, earthP.y, earthRad);
+          earthG.addColorStop(0, '#64B5F6');
+          earthG.addColorStop(0.6, '#1976D2');
+          earthG.addColorStop(1, '#0D47A1');
+          ctx.fillStyle = earthG;
+          ctx.beginPath();
+          ctx.arc(earthP.x, earthP.y, earthRad, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#E8EDF4';
+          ctx.font = '700 11px system-ui, sans-serif';
+          ctx.fillText('Earth', earthP.x + earthRad + 6, earthP.y + 4);
+        }
+
+        if (moonP && celestialDest === 'moon') {
+          // Moon
+          var moonRad = Math.max(3, 4.5 * moonP.scale);
+          ctx.fillStyle = '#CFD8DC';
+          ctx.beginPath();
+          ctx.arc(moonP.x, moonP.y, moonRad, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#B0BEC5';
+          ctx.font = '600 10px system-ui, sans-serif';
+          ctx.fillText('Moon (384k km)', moonP.x + moonRad + 4, moonP.y + 3);
+        }
+
+        if (marsP && celestialDest === 'mars') {
+          // Mars
+          var marsRad = Math.max(4, 7 * marsP.scale);
+          var marsG = ctx.createRadialGradient(marsP.x - marsRad*0.3, marsP.y - marsRad*0.3, 1, marsP.x, marsP.y, marsRad);
+          marsG.addColorStop(0, '#FF8A65');
+          marsG.addColorStop(0.7, '#D84315');
+          marsG.addColorStop(1, '#BF360C');
+          ctx.fillStyle = marsG;
+          ctx.beginPath();
+          ctx.arc(marsP.x, marsP.y, marsRad, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#FFAB91';
+          ctx.font = '700 11px system-ui, sans-serif';
+          ctx.fillText('Mars (Destination)', marsP.x + marsRad + 6, marsP.y + 4);
+        }
+
+        // Draw Spacecraft Marker along the corridor
+        var craftP = project3D(craftX, 0, craftZ, cx, cy, fl);
+        if (craftP) {
+          // Engine plume glow
+          var glowGrad = ctx.createRadialGradient(craftP.x, craftP.y, 1, craftP.x, craftP.y, 14 * craftP.scale);
+          glowGrad.addColorStop(0, '#00E5FF');
+          glowGrad.addColorStop(0.5, 'rgba(0, 229, 255, 0.4)');
+          glowGrad.addColorStop(1, 'rgba(0, 229, 255, 0)');
+          ctx.fillStyle = glowGrad;
+          ctx.beginPath();
+          ctx.arc(craftP.x, craftP.y, 14 * craftP.scale, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Vehicle icon
+          ctx.fillStyle = '#FFFFFF';
+          ctx.beginPath();
+          ctx.arc(craftP.x, craftP.y, Math.max(3, 4 * craftP.scale), 0, Math.PI * 2);
+          ctx.fill();
+
+          // Reticle ring
+          ctx.strokeStyle = '#00E5FF';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(craftP.x, craftP.y, Math.max(7, 10 * craftP.scale), 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.fillStyle = '#00E5FF';
+          ctx.font = '700 10px monospace';
+          ctx.fillText('CREWMARK-3 · ' + Math.round(transferProgress * 100) + '% COAST', craftP.x + 14, craftP.y - 6);
+        }
+
+        requestAnimationFrame(renderFrame);
+      }
+
+      requestAnimationFrame(renderFrame);
     }
 
     function hireCrewMember(id) {
@@ -1269,11 +1931,15 @@
       scrollToSection('science');
     }
 
-    // Initialize UI on page load
+    // Initialize UI and 3D Canvas on page load
     window.addEventListener("DOMContentLoaded", function() {
       renderCrewUI();
+      initCelestialHeroCanvas();
+      updateCelestialBadge();
     });
     renderCrewUI();
+    initCelestialHeroCanvas();
+    updateCelestialBadge();
   </script>
 </body>
 </html>

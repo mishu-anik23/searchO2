@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OxyForge — 3D Transfer Cruise &amp; Deep Sky FPV Simulator</title>
+  <link rel="icon" href="../favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #05060A;
+      --surface: #0A0D14;
+      --surface-elevated: #111622;
+      --border: rgba(255, 255, 255, 0.12);
+      --border-bright: rgba(0, 229, 255, 0.45);
+      --fg: #E8EDF4;
+      --fg-muted: #8B97A8;
+      --accent: #00E5FF;
+      --accent-muted: rgba(0, 229, 255, 0.12);
+      --ice: #7EB8C9;
+      --gold: #FFB300;
+      --orange: #FF6D00;
+      --purple: #B388FF;
+      --green: #4CAF50;
+      --font: 'Outfit', sans-serif;
+      --body-font: 'Atkinson Hyperlegible', sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      user-select: none;
+    }
+
+    /* COCKPIT WRAPPER */
+    .cockpit-container {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* TOP HEADER & TELEMETRY BAR */
+    header.cockpit-header {
+      height: 56px;
+      background: rgba(9, 12, 18, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 30;
+    }
+
+    .brand-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #FFF;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: -0.5px;
+    }
+    .brand-logo span.tag {
+      font-size: 0.65rem;
+      background: var(--accent-muted);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-weight: 700;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-btn {
+      color: var(--fg-muted);
+      text-decoration: none;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface-elevated);
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .nav-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* METERED BILLING CHIP */
+    .billing-chip {
+      background: rgba(255, 179, 0, 0.1);
+      border: 1px solid rgba(255, 179, 0, 0.4);
+      border-radius: 8px;
+      padding: 4px 12px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+    }
+    .bill-stat {
+      display: flex;
+      flex-direction: column;
+    }
+    .bill-label {
+      font-size: 0.6rem;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+    }
+    .bill-val {
+      font-weight: 800;
+      color: var(--gold);
+    }
+
+    /* MAIN VIEWPORT CANVAS */
+    #spaceCanvasWrap {
+      position: absolute;
+      inset: 56px 0 0 0;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+    #spaceCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* GLASS COCKPIT CORNER BRACKETS & VIGNETTE */
+    .cockpit-glass-overlay {
+      pointer-events: none;
+      position: absolute;
+      inset: 56px 0 0 0;
+      z-index: 10;
+    }
+    .glass-top {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 38px;
+      background: linear-gradient(to bottom, rgba(9,12,18,0.7), transparent);
+      border-top: 1px solid rgba(0, 229, 255, 0.15);
+    }
+    .glass-bottom {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 48px;
+      background: linear-gradient(to top, rgba(9,12,18,0.85), transparent);
+      border-bottom: 1px solid rgba(0, 229, 255, 0.15);
+    }
+
+    /* HUD OVERLAY PANELS */
+    .hud-left {
+      position: absolute;
+      top: 72px;
+      left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .hud-box {
+      background: rgba(9, 12, 18, 0.85);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      color: var(--ice);
+      min-width: 190px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .hud-box b {
+      color: #FFF;
+      font-size: 0.78rem;
+    }
+
+    .corridor-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      margin-top: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+    .corridor-progress {
+      height: 100%;
+      background: linear-gradient(90deg, #00E5FF, #7EB8C9);
+      width: 32%;
+      transition: width 0.3s ease;
+    }
+
+    /* ZOOM CONTROLS (OPTICAL TELESCOPE 1X - 10X) */
+    .zoom-toolbar {
+      position: absolute;
+      top: 72px;
+      right: 18px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .zoom-group {
+      background: rgba(9, 12, 18, 0.85);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      border-radius: 8px;
+      padding: 4px;
+      display: flex;
+      gap: 4px;
+    }
+
+    .zoom-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--fg-muted);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .zoom-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #FFF;
+    }
+    .zoom-btn.active {
+      background: var(--accent-muted);
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+    }
+
+    .target-mode-pill {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      background: rgba(9, 12, 18, 0.8);
+      border: 1px solid var(--border);
+      color: var(--ice);
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .target-mode-pill.locked {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: rgba(255, 179, 0, 0.15);
+      box-shadow: 0 0 12px rgba(255, 179, 0, 0.35);
+    }
+
+    /* DEEP SKY DOSSIER CARD (DRAWER) */
+    .dossier-card {
+      position: absolute;
+      bottom: 24px;
+      right: 20px;
+      width: 340px;
+      background: rgba(9, 13, 20, 0.92);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      z-index: 25;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .dossier-card.hidden {
+      opacity: 0;
+      transform: translateY(20px);
+      pointer-events: none;
+    }
+
+    .dossier-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .dossier-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #FFF;
+    }
+    .dossier-kind {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .dossier-close {
+      background: transparent;
+      border: none;
+      color: var(--fg-muted);
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .dossier-close:hover { color: #FFF; }
+
+    .dossier-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 12px;
+      font-family: var(--mono);
+      font-size: 0.70rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin: 8px 0 10px 0;
+    }
+    .dossier-grid dt { color: var(--fg-muted); }
+    .dossier-grid dd { color: #FFF; font-weight: 700; }
+
+    .dossier-fact {
+      font-family: var(--body-font);
+      font-size: 0.78rem;
+      color: var(--ice);
+      line-height: 1.45;
+      margin-bottom: 12px;
+    }
+
+    .dossier-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .dossier-btn {
+      flex: 1;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+    .dossier-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .dossier-btn-lock {
+      background: rgba(255, 179, 0, 0.15);
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    /* BOTTOM CONTROLS & FLIGHT COMPUTER STATUS */
+    .cockpit-bottom-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 20;
+    }
+
+    .flight-pill {
+      background: rgba(9, 12, 18, 0.85);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--fg-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .flight-pill span.accent {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .flight-tip {
+      font-size: 0.72rem;
+      color: var(--fg-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .kbd {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--fg);
+    }
+
+    /* CROSSHAIR RETICLE (SVG OVERLAY) */
+    .crosshair-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 15;
+    }
+  </style>
+</head>
+<body>
+  <div class="cockpit-container">
+    <!-- TOP NAVIGATION & REAL-TIME BILLING -->
+    <header class="cockpit-header">
+      <div class="brand-left">
+        <a href="oxyforge.html" class="brand-logo" style="text-decoration:none;">
+          <span>🛸</span>
+          <span>OxyForge</span>
+          <span class="tag">TRANSFER CRUISE FPV</span>
+        </a>
+        <div class="nav-links">
+          <a href="oxyforge.html" class="nav-btn">← Mission HQ</a>
+          <a href="launchpad-preview.html" class="nav-btn">🔥 3D Launchpad</a>
+          <a href="mars-explorer-preview.html" class="nav-btn">🔴 Mars 3D</a>
+          <a href="lunar-explorer-preview.html" class="nav-btn">🌕 Lunar 3D</a>
+          <a href="moon-landing-preview.html" class="nav-btn">🌙 3D Moon Landing</a>
+        </div>
+      </div>
+
+      <!-- METERED NAVIGATION BILLING (€1.80/s) -->
+      <div class="billing-chip">
+        <div class="bill-stat">
+          <span class="bill-label">Rate (180 GC/s)</span>
+          <span class="bill-val">€1.80/s</span>
+        </div>
+        <div class="bill-stat">
+          <span class="bill-label">Session Billed</span>
+          <span class="bill-val" id="sessionCostVal">€0.00</span>
+        </div>
+        <div class="bill-stat">
+          <span class="bill-label">Mission Balance</span>
+          <span class="bill-val" id="fundsRemainingVal" style="color:#00E5FF;">€10,000.00</span>
+        </div>
+        <div class="bill-stat">
+          <span class="bill-label">Mission Elapsed</span>
+          <span class="bill-val" id="metTimerVal" style="color:#FFF;">00:00:00</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- 3D SPACE CANVAS -->
+    <div id="spaceCanvasWrap">
+      <canvas id="spaceCanvas"></canvas>
+    </div>
+
+    <!-- GLASS COCKPIT RETICLE & VIGNETTE -->
+    <div class="cockpit-glass-overlay">
+      <div class="glass-top"></div>
+      <div class="glass-bottom"></div>
+    </div>
+
+    <!-- HUD TELEMETRY BOXES -->
+    <div class="hud-left">
+      <div class="hud-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <b>TRANSLUNAR INJECTION (TLI)</b>
+          <span style="font-size:0.65rem;color:var(--accent);">NOMINAL</span>
+        </div>
+        <div style="margin-top:6px;display:flex;justify-content:space-between;">
+          <span>Velocity (v):</span>
+          <span id="hudVelocity" style="color:#FFF;font-weight:700;">11.24 km/s</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>Target Distance:</span>
+          <span id="hudTargetDist" style="color:#FFF;font-weight:700;">245,600 km</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>ETA Insertion:</span>
+          <span id="hudEta" style="color:#FFF;font-weight:700;">41.8 hrs</span>
+        </div>
+        <div class="corridor-bar">
+          <div class="corridor-progress" id="hudProgress"></div>
+        </div>
+      </div>
+
+      <div class="hud-box">
+        <div style="display:flex;justify-content:space-between;">
+          <span>Yaw / Pitch / Roll:</span>
+          <span id="hudAttitude" style="color:#FFF;">0.0° · 0.0° · 0.0°</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span>Thrust State:</span>
+          <span id="hudThrust" style="color:var(--gold);">COAST (0%)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTICAL TELESCOPE ZOOM CONTROLS -->
+    <div class="zoom-toolbar">
+      <div class="target-mode-pill" id="targetLockStatus">TARGET: ACQUIRING · CLICK OBJECT TO LOCK</div>
+      <div class="zoom-group">
+        <button class="zoom-btn active" id="btnZoom1" onclick="setZoomLevel(1.0)">1.0x (62°)</button>
+        <button class="zoom-btn" id="btnZoom2" onclick="setZoomLevel(2.5)">2.5x</button>
+        <button class="zoom-btn" id="btnZoom5" onclick="setZoomLevel(5.0)">5.0x</button>
+        <button class="zoom-btn" id="btnZoom10" onclick="setZoomLevel(10.0)">10.0x</button>
+      </div>
+    </div>
+
+    <!-- DEEP SKY DOSSIER CARD (INTERACTIVE POPUP) -->
+    <div class="dossier-card hidden" id="dossierCard">
+      <div class="dossier-header">
+        <div>
+          <div class="dossier-title" id="dosName">Betelgeuse</div>
+          <div class="dossier-kind" id="dosKind">Red Supergiant Star</div>
+        </div>
+        <button class="dossier-close" onclick="closeDossier()">✕</button>
+      </div>
+      <div class="dossier-grid">
+        <div><dt>Distance</dt><dd id="dosDist">640 ly</dd></div>
+        <div><dt>Magnitude</dt><dd id="dosMag">+0.50</dd></div>
+        <div><dt>Spectral</dt><dd id="dosSpec">M1-2 Ia</dd></div>
+        <div><dt>Coordinates</dt><dd id="dosCoords">05h 55m / +07° 24′</dd></div>
+      </div>
+      <p class="dossier-fact" id="dosFact">
+        Dying red supergiant marking the right shoulder of Orion. If placed at the center of the Solar System, its surface would extend beyond Mars. Light left during the Renaissance.
+      </p>
+      <div class="dossier-actions">
+        <button class="dossier-btn dossier-btn-lock" id="btnDossierLock" onclick="toggleTargetLockFromCard()">🔒 Lock Target</button>
+        <button class="dossier-btn" onclick="setZoomLevel(5.0)">🔭 Zoom 5x</button>
+        <button class="dossier-btn" onclick="centerOnTarget()">🎯 Center</button>
+      </div>
+    </div>
+
+    <!-- BOTTOM FLIGHT STATUS & CONTROLS HELPER -->
+    <div class="cockpit-bottom-bar">
+      <div class="flight-pill">
+        <span>6-DOF RCS:</span>
+        <span class="accent">ARMED</span>
+        <span>·</span>
+        <span>OPTICAL FOV:</span>
+        <span class="accent" id="fovDisplay">62.0°</span>
+      </div>
+      <div class="flight-tip">
+        <span>Steer: <span class="kbd">W/S</span> Thrust · <span class="kbd">A/D</span> Yaw · <span class="kbd">R/F</span> Pitch · <span class="kbd">Q/E</span> Roll · <span class="kbd">Z</span> Damp · <span class="kbd">X</span> Brake · <span class="kbd">1-4</span> Zoom · <span class="kbd">Click</span> Lock Target</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- AUDIO SYNTHESIZER ---
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playBeep(freq = 880, duration = 0.08) {
+      if (!audioCtx) return;
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playLockSound() {
+      initAudio();
+      playBeep(1050, 0.05);
+      setTimeout(() => playBeep(1400, 0.1), 60);
+    }
+
+    // --- ECONOMY & METERED BILLING (€1.80/s = 180 GC/s) ---
+    const FPV_RATE_PER_SEC = 1.80; // €1.80/s as calibrated
+    let totalMissionFunds = 10000.00;
+    try {
+      const stored = localStorage.getItem("oxyforge_funds");
+      if (stored) totalMissionFunds = parseFloat(stored) || 10000.00;
+    } catch (e) {}
+
+    let sessionBilled = 0.00;
+    let missionTimeSec = 0;
+
+    function tickBilling(dt) {
+      missionTimeSec += dt;
+      const cost = FPV_RATE_PER_SEC * dt;
+      sessionBilled += cost;
+      totalMissionFunds = Math.max(0, totalMissionFunds - cost);
+      try {
+        localStorage.setItem("oxyforge_funds", totalMissionFunds.toFixed(2));
+      } catch (e) {}
+
+      document.getElementById('sessionCostVal').textContent = `€${sessionBilled.toFixed(2)}`;
+      document.getElementById('fundsRemainingVal').textContent = `€${totalMissionFunds.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      
+      const hrs = Math.floor(missionTimeSec / 3600);
+      const mins = Math.floor((missionTimeSec % 3600) / 60);
+      const secs = Math.floor(missionTimeSec % 60);
+      document.getElementById('metTimerVal').textContent = 
+        `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // --- CELESTIAL COSMOS CATALOG ---
+    const BODIES = [
+      { id: "sun", name: "Sun", kind: "G2V Yellow Dwarf Star", r: 32, color: "#FFF4D0", x: 0, y: 0, z: -250, dist: "1.0 AU (149.6M km)", mag: "-26.7", spec: "G2V", coords: "00h 00m / +00° 00′", fact: "Central gravitational anchor of the Solar System. 99.86% of all system mass. Radiates 3.828×10²⁶ W." },
+      { id: "mercury", name: "Mercury", kind: "Terrestrial Planet", r: 4.5, color: "#A09890", x: -28, y: 4, z: -210, dist: "0.39 AU", mag: "-0.4", spec: "Rocky", coords: "02h 15m / +12° 20′", fact: "Heavily cratered surface swinging from -180°C at night to 430°C in sunlight. 88-day orbit." },
+      { id: "venus", name: "Venus", kind: "Terrestrial Planet", r: 9.2, color: "#E0CCA0", x: -62, y: -6, z: -175, dist: "0.72 AU", mag: "-4.4", spec: "CO₂ 92 bar", coords: "04h 32m / +21° 08′", fact: "Super-critical 92-bar greenhouse atmosphere hot enough to melt lead. Retrograde rotation." },
+      { id: "earth", name: "Earth", kind: "Terrestrial Planet", r: 10.0, color: "#4BA3E3", x: 0, y: 0, z: 0, dist: "Origin (0 km)", mag: "-3.8", spec: "N₂/O₂ 1 bar", coords: "00h 00m / 00° 00′", fact: "Home world. 21% O₂ atmosphere, liquid surface oceans, active geomagnetic dipole shield." },
+      { id: "moon", name: "Moon", kind: "Natural Satellite", r: 5.2, color: "#C0C6CE", x: 26, y: 8, z: -48, dist: "384,400 km", mag: "-12.7", spec: "Basalt/Anorthosite", coords: "01h 14m / +08° 12′", fact: "Target destination. South pole Shackleton crater holds ancient water ice deposits in permanent shadow for ISRU oxygen extraction." },
+      { id: "mars", name: "Mars", kind: "Terrestrial Planet", r: 6.8, color: "#D35400", x: 120, y: 22, z: -320, dist: "225,000,000 km", mag: "-2.0", spec: "CO₂ 6.5 mbar", coords: "07h 45m / +24° 15′", fact: "The Red Planet. Host to Olympus Mons (21 km high) and Valles Marineris. Atmosphere split by MOXIE into breathable O₂." },
+      { id: "jupiter", name: "Jupiter", kind: "Gas Giant", r: 24, color: "#D4A373", x: -280, y: 40, z: -680, dist: "5.2 AU", mag: "-2.7", spec: "H₂/He", coords: "12h 10m / -02° 30′", fact: "Largest planet. Great Red Spot anticyclonic storm active for >350 years. 95 moons." },
+      { id: "saturn", name: "Saturn", kind: "Ringed Gas Giant", r: 19, color: "#E6C280", x: 340, y: -50, z: -850, dist: "9.5 AU", mag: "+0.2", spec: "Ice Rings", coords: "15h 40m / -18° 10′", fact: "Spectacular ring system spanning 282,000 km but only 10 to 100 meters thick." }
+    ];
+
+    const NAMED_STARS = [
+      { id: "sirius", name: "Sirius (α CMa)", kind: "Main Sequence A-Star", color: "#D0E8FF", mag: "-1.46", spec: "A1V", dist: "8.6 ly", coords: "06h 45m / -16° 42′", x: 0.52, y: -0.25, z: -0.82, fact: "Brightest star in Earth's night sky. Has a white dwarf companion Sirius B ('The Pup')." },
+      { id: "vega", name: "Vega (α Lyr)", kind: "Main Sequence A-Star", color: "#E8F0FF", mag: "+0.03", spec: "A0V", dist: "25.0 ly", coords: "18h 36m / +38° 47′", x: -0.42, y: 0.72, z: -0.54, fact: "Anchor star for the astronomical UBV photometric magnitude scale. Rapid rotator." },
+      { id: "betelgeuse", name: "Betelgeuse (α Ori)", kind: "Red Supergiant", color: "#FF7043", mag: "+0.50", spec: "M1-2 Ia", dist: "640 ly", coords: "05h 55m / +07° 24′", x: 0.68, y: 0.18, z: 0.70, fact: "Massive pulsating red supergiant. Near the end of its life, expected to explode as a Type II supernova." },
+      { id: "rigel", name: "Rigel (β Ori)", kind: "Blue Supergiant", color: "#B0D4FF", mag: "+0.18", spec: "B8 Ia", dist: "860 ly", coords: "05h 14m / -08° 12′", x: 0.56, y: -0.24, z: 0.79, fact: "Blazing blue supergiant with 120,000 times the luminosity of our Sun." },
+      { id: "bellatrix", name: "Bellatrix (γ Ori)", kind: "Blue Giant", color: "#C5DCFF", mag: "+1.64", spec: "B2 III", dist: "250 ly", coords: "05h 25m / +06° 20′", x: 0.62, y: 0.26, z: 0.74, fact: "Left shoulder of Orion. Hot massive star entering its giant phase." },
+      { id: "polaris", name: "Polaris (α UMi)", kind: "Cepheid Supergiant", color: "#FFF8E7", mag: "+1.98", spec: "F7 Ib", dist: "433 ly", coords: "02h 31m / +89° 15′", x: 0.05, y: 0.98, z: -0.15, fact: "The North Star. Marks celestial true north for navigation within 0.7°." }
+    ];
+
+    const NEBULAE = [
+      { id: "m42", name: "Orion Nebula (M42)", kind: "Diffuse Emission Nebula", color: "120,180,240", dist: "1,344 ly", mag: "+4.0", coords: "05h 35m / -05° 23′", x: 0.60, y: -0.10, z: 0.79, rx: 32, ry: 24, fact: "Massive active stellar nursery visible to the naked eye. Home to the young Trapezium cluster." },
+      { id: "m45", name: "Pleiades (M45)", kind: "Open Cluster & Nebula", color: "140,200,255", dist: "444 ly", mag: "+1.6", coords: "03h 47m / +24° 07′", x: 0.32, y: 0.40, z: -0.85, rx: 28, ry: 28, fact: "The Seven Sisters cluster enveloped in a brilliant blue reflection nebula." },
+      { id: "andromeda", name: "Andromeda Galaxy (M31)", kind: "Barred Spiral Galaxy", color: "210,190,160", dist: "2.537M ly", mag: "+3.44", coords: "00h 42m / +41° 16′", x: -0.65, y: 0.45, z: 0.60, rx: 45, ry: 18, fact: "Nearest major spiral galaxy containing over 1 trillion stars. Approaching Milky Way at 110 km/s." }
+    ];
+
+    // CONSTELLATION STICK FIGURES
+    const CONSTELLATIONS = [
+      {
+        id: "orion",
+        name: "Orion",
+        meaning: "The Hunter",
+        segs: [["betelgeuse", "bellatrix"], ["bellatrix", "rigel"], ["betelgeuse", "rigel"]]
+      }
+    ];
+
+    // --- 6-DOF FLIGHT SIMULATION MATH ---
+    let cameraFov = 62.0; // degrees
+    let targetFov = 62.0;
+    let zoomLevel = 1.0;
+
+    const ship = {
+      pos: { x: 12, y: 4, z: -20 },
+      vel: { x: 0.05, y: 0.01, z: -0.85 },
+      pitch: 0,
+      yaw: 0,
+      roll: 0,
+      thrust: 0
+    };
+
+    let lockedTarget = null;
+    let hoveredTarget = null;
+
+    // KEYBOARD INPUT HANDLER
+    const keys = {};
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+      if (e.code === 'Digit1') setZoomLevel(1.0);
+      if (e.code === 'Digit2') setZoomLevel(2.5);
+      if (e.code === 'Digit3') setZoomLevel(5.0);
+      if (e.code === 'Digit4') setZoomLevel(10.0);
+      if (e.code === 'Escape') unlockTarget();
+    });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    // MOUSE DRAG LOOK & WHEEL ZOOM
+    let isDragging = false;
+    let lastMouseX = 0, lastMouseY = 0;
+    let aimX = 0, aimY = 0;
+
+    const wrap = document.getElementById('spaceCanvasWrap');
+    const canvas = document.getElementById('spaceCanvas');
+    const ctx = canvas.getContext('2d');
+
+    wrap.addEventListener('mousedown', (e) => {
+      initAudio();
+      isDragging = true;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      aimX = (e.clientX - rect.left) * (canvas.width / rect.width);
+      aimY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+      if (isDragging) {
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+
+        const sensitivity = (0.003 / zoomLevel);
+        ship.yaw += dx * sensitivity;
+        ship.pitch -= dy * sensitivity;
+        ship.pitch = Math.max(-Math.PI * 0.48, Math.min(Math.PI * 0.48, ship.pitch));
+      }
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    wrap.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (e.deltaY < 0) {
+        if (zoomLevel === 1.0) setZoomLevel(2.5);
+        else if (zoomLevel === 2.5) setZoomLevel(5.0);
+        else if (zoomLevel === 5.0) setZoomLevel(10.0);
+      } else {
+        if (zoomLevel === 10.0) setZoomLevel(5.0);
+        else if (zoomLevel === 5.0) setZoomLevel(2.5);
+        else if (zoomLevel === 2.5) setZoomLevel(1.0);
+      }
+    });
+
+    // CLICK TO LOCK TARGET
+    wrap.addEventListener('click', (e) => {
+      if (hoveredTarget) {
+        lockTarget(hoveredTarget);
+      } else if (!isDragging) {
+        // if clicked in space and locked, keep or unlock
+      }
+    });
+
+    // ZOOM LEVEL SWITCHER
+    window.setZoomLevel = function(level) {
+      zoomLevel = level;
+      targetFov = 62.0 / level;
+      document.querySelectorAll('.zoom-btn').forEach(b => b.classList.remove('active'));
+      if (level === 1.0) document.getElementById('btnZoom1').classList.add('active');
+      else if (level === 2.5) document.getElementById('btnZoom2').classList.add('active');
+      else if (level === 5.0) document.getElementById('btnZoom5').classList.add('active');
+      else if (level === 10.0) document.getElementById('btnZoom10').classList.add('active');
+
+      document.getElementById('fovDisplay').textContent = `${(62.0 / level).toFixed(1)}°`;
+      initAudio();
+      playBeep(900 + level * 80, 0.05);
+    };
+
+    // TARGET LOCKING LOGIC
+    function lockTarget(target) {
+      lockedTarget = target;
+      playLockSound();
+      const statusPill = document.getElementById('targetLockStatus');
+      statusPill.textContent = `TARGET LOCKED: ${target.name.toUpperCase()} · 100% TRK`;
+      statusPill.classList.add('locked');
+      openDossier(target);
+    }
+
+    function unlockTarget() {
+      lockedTarget = null;
+      const statusPill = document.getElementById('targetLockStatus');
+      statusPill.textContent = 'TARGET: ACQUIRING · CLICK OBJECT TO LOCK';
+      statusPill.classList.remove('locked');
+      closeDossier();
+    }
+
+    window.toggleTargetLockFromCard = function() {
+      if (lockedTarget) unlockTarget();
+      else if (hoveredTarget) lockTarget(hoveredTarget);
+    };
+
+    window.centerOnTarget = function() {
+      if (!lockedTarget) return;
+      initAudio();
+      playBeep(1200, 0.1);
+    };
+
+    function openDossier(target) {
+      document.getElementById('dosName').textContent = target.name;
+      document.getElementById('dosKind').textContent = target.kind;
+      document.getElementById('dosDist').textContent = target.dist;
+      document.getElementById('dosMag').textContent = target.mag || 'N/A';
+      document.getElementById('dosSpec').textContent = target.spec || 'N/A';
+      document.getElementById('dosCoords').textContent = target.coords || 'N/A';
+      document.getElementById('dosFact').textContent = target.fact;
+      document.getElementById('btnDossierLock').textContent = lockedTarget ? '🔓 Unlock Target' : '🔒 Lock Target';
+      document.getElementById('dossierCard').classList.remove('hidden');
+    }
+
+    window.closeDossier = function() {
+      document.getElementById('dossierCard').classList.add('hidden');
+    };
+
+    // --- RESIZE CANVAS ---
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = wrap.clientWidth * dpr;
+      canvas.height = wrap.clientHeight * dpr;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // 3D PROJECT HELPER
+    function projectPoint(x, y, z, w, h, fov) {
+      // Rotate by yaw & pitch
+      const cosY = Math.cos(-ship.yaw), sinY = Math.sin(-ship.yaw);
+      const cosP = Math.cos(-ship.pitch), sinP = Math.sin(-ship.pitch);
+
+      // Yaw
+      let x1 = x * cosY - z * sinY;
+      let z1 = x * sinY + z * cosY;
+      let y1 = y;
+
+      // Pitch
+      let y2 = y1 * cosP - z1 * sinP;
+      let z2 = y1 * sinP + z1 * cosP;
+      let x2 = x1;
+
+      if (z2 >= -1.0) return null; // Behind camera
+
+      const fl = (0.5 * h) / Math.tan((fov * Math.PI) / 180 / 2);
+      const s = fl / -z2;
+      return {
+        px: w / 2 + x2 * s,
+        py: h / 2 - y2 * s,
+        depth: -z2,
+        scale: s
+      };
+    }
+
+    // --- MAIN ANIMATION & SIMULATION LOOP ---
+    let lastTime = performance.now();
+    const starPoints = [];
+    for (let i = 0; i < 400; i++) {
+      const u = Math.random() * 2 - 1;
+      const th = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(1 - u * u);
+      starPoints.push({
+        x: r * Math.cos(th) * 800,
+        y: r * Math.sin(th) * 800,
+        z: u * 800,
+        brightness: 0.3 + Math.random() * 0.7,
+        size: Math.random() * 1.5 + 0.6
+      });
+    }
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+
+      // Metered Economy Billing Tick
+      tickBilling(dt);
+
+      // Smooth FOV zoom
+      cameraFov += (targetFov - cameraFov) * dt * 8.0;
+
+      // 6-DOF Flight Controls
+      let thrust = 0;
+      if (keys['KeyW']) thrust += 1;
+      if (keys['KeyS']) thrust -= 1;
+      const boost = (keys['ShiftLeft'] || keys['ShiftRight']) ? 2.4 : 1.0;
+
+      if (keys['KeyA']) ship.yaw -= 0.8 * dt;
+      if (keys['KeyD']) ship.yaw += 0.8 * dt;
+      if (keys['KeyR'] || keys['ArrowUp']) ship.pitch += 0.8 * dt;
+      if (keys['KeyF'] || keys['ArrowDown']) ship.pitch -= 0.8 * dt;
+      if (keys['KeyQ']) ship.roll -= 1.0 * dt;
+      if (keys['KeyE']) ship.roll += 1.0 * dt;
+      if (keys['KeyZ']) {
+        ship.yaw *= Math.exp(-2.5 * dt);
+        ship.pitch *= Math.exp(-2.5 * dt);
+      }
+      if (keys['KeyX']) {
+        ship.vel.x *= Math.exp(-2.0 * dt);
+        ship.vel.y *= Math.exp(-2.0 * dt);
+        ship.vel.z *= Math.exp(-2.0 * dt);
+      }
+
+      // Apply forward thrust vector
+      if (thrust !== 0) {
+        const ax = -Math.sin(ship.yaw) * thrust * 12.0 * boost * dt;
+        const az = -Math.cos(ship.yaw) * thrust * 12.0 * boost * dt;
+        ship.vel.x += ax;
+        ship.vel.z += az;
+      }
+
+      // Update position
+      ship.pos.x += ship.vel.x * dt;
+      ship.pos.y += ship.vel.y * dt;
+      ship.pos.z += ship.vel.z * dt;
+
+      // Update HUD readouts
+      const speed = Math.hypot(ship.vel.x, ship.vel.y, ship.vel.z) * 11.24;
+      document.getElementById('hudVelocity').textContent = `${speed.toFixed(2)} km/s`;
+      document.getElementById('hudAttitude').textContent = 
+        `${(ship.yaw * 180 / Math.PI % 360).toFixed(1)}° · ${(ship.pitch * 180 / Math.PI).toFixed(1)}° · ${(ship.roll * 180 / Math.PI).toFixed(1)}°`;
+      document.getElementById('hudThrust').textContent = thrust > 0 ? (boost > 1 ? 'BOOST (240%)' : 'FORWARD (100%)') : (thrust < 0 ? 'RETRO (-100%)' : 'COAST (0%)');
+      document.getElementById('hudThrust').style.color = thrust !== 0 ? 'var(--accent)' : 'var(--gold)';
+
+      // RENDER CELESTIAL SKY
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.fillStyle = "#05060A";
+      ctx.fillRect(0, 0, w, h);
+
+      // Milky Way Core Glow
+      const mwPr = projectPoint(120, -40, -400, w, h, cameraFov);
+      if (mwPr) {
+        const mwGrad = ctx.createRadialGradient(mwPr.px, mwPr.py, 0, mwPr.px, mwPr.py, h * 0.7);
+        mwGrad.addColorStop(0, "rgba(90, 75, 120, 0.22)");
+        mwGrad.addColorStop(0.5, "rgba(45, 35, 70, 0.08)");
+        mwGrad.addColorStop(1, "rgba(5, 6, 10, 0)");
+        ctx.fillStyle = mwGrad;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      // Starfield Points
+      for (const st of starPoints) {
+        const pr = projectPoint(st.x, st.y, st.z, w, h, cameraFov);
+        if (!pr) continue;
+        if (pr.px < 0 || pr.px > w || pr.py < 0 || pr.py > h) continue;
+        ctx.fillStyle = `rgba(232, 237, 244, ${st.brightness})`;
+        ctx.fillRect(pr.px, pr.py, st.size * (zoomLevel > 2 ? 1.2 : 1), st.size);
+      }
+
+      // Nebulae & Galaxies
+      for (const neb of NEBULAE) {
+        const pr = projectPoint(neb.x * 600, neb.y * 600, neb.z * 600, w, h, cameraFov);
+        if (!pr) continue;
+        const rx = neb.rx * pr.scale * 0.08 * (zoomLevel * 0.5);
+        const ry = neb.ry * pr.scale * 0.08 * (zoomLevel * 0.5);
+        ctx.save();
+        ctx.translate(pr.px, pr.py);
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+        g.addColorStop(0, `rgba(${neb.color}, 0.38)`);
+        g.addColorStop(0.5, `rgba(${neb.color}, 0.12)`);
+        g.addColorStop(1, "rgba(5, 6, 10, 0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Constellation Lines
+      const starProjMap = {};
+      for (const s of NAMED_STARS) {
+        const pr = projectPoint(s.x * 500, s.y * 500, s.z * 500, w, h, cameraFov);
+        if (pr) starProjMap[s.id] = pr;
+      }
+      for (const c of CONSTELLATIONS) {
+        ctx.strokeStyle = "rgba(126, 184, 201, 0.28)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        for (const [a, b] of c.segs) {
+          const pa = starProjMap[a];
+          const pb = starProjMap[b];
+          if (pa && pb) {
+            ctx.moveTo(pa.px, pa.py);
+            ctx.lineTo(pb.px, pb.py);
+          }
+        }
+        ctx.stroke();
+      }
+
+      // Named Stars
+      for (const star of NAMED_STARS) {
+        const pr = starProjMap[star.id];
+        if (!pr) continue;
+        const sz = 3.5 * Math.min(2.0, zoomLevel * 0.6);
+        ctx.fillStyle = star.color;
+        ctx.beginPath();
+        ctx.arc(pr.px, pr.py, sz, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(232, 237, 244, 0.85)";
+        ctx.font = "600 11px Outfit, sans-serif";
+        ctx.fillText(star.name, pr.px + 8, pr.py - 4);
+      }
+
+      // Solar System Bodies
+      const candidates = [];
+      for (const b of BODIES) {
+        const relX = b.x - ship.pos.x;
+        const relY = b.y - ship.pos.y;
+        const relZ = b.z - ship.pos.z;
+        const pr = projectPoint(relX, relY, relZ, w, h, cameraFov);
+        if (!pr) continue;
+
+        const rad = Math.max(4.0, b.r * pr.scale * 0.05);
+
+        // Body glow & sphere
+        const grad = ctx.createRadialGradient(pr.px, pr.py, 0, pr.px, pr.py, rad * 1.4);
+        grad.addColorStop(0, b.color);
+        grad.addColorStop(0.7, b.color);
+        grad.addColorStop(1, "rgba(5, 6, 10, 0)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(pr.px, pr.py, rad, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Label
+        ctx.fillStyle = "#FFF";
+        ctx.font = "700 12px Outfit, sans-serif";
+        ctx.fillText(b.name, pr.px + rad + 6, pr.py + 4);
+        ctx.fillStyle = "rgba(126, 184, 201, 0.75)";
+        ctx.font = "400 10px Atkinson Hyperlegible, sans-serif";
+        ctx.fillText(b.dist, pr.px + rad + 6, pr.py + 16);
+
+        candidates.push({ body: b, pr, rad });
+      }
+
+      // Add stars & nebulae to candidates
+      for (const s of NAMED_STARS) {
+        const pr = starProjMap[s.id];
+        if (pr) candidates.push({ body: s, pr, rad: 8 });
+      }
+      for (const n of NEBULAE) {
+        const pr = projectPoint(n.x * 600, n.y * 600, n.z * 600, w, h, cameraFov);
+        if (pr) candidates.push({ body: n, pr, rad: 20 });
+      }
+
+      // Find candidate under aim / cursor
+      let closest = null;
+      let minScore = 40;
+      for (const c of candidates) {
+        const d = Math.hypot(c.pr.px - aimX, c.pr.py - aimY);
+        if (d < minScore + c.rad) {
+          minScore = d;
+          closest = c.body;
+        }
+      }
+      hoveredTarget = closest;
+
+      // Draw Reticle Brackets (Locked or Hovered)
+      const activeObj = lockedTarget ? candidates.find(c => c.body.id === lockedTarget.id) : 
+                        (closest ? candidates.find(c => c.body.id === closest.id) : null);
+
+      if (activeObj) {
+        const { px, py } = activeObj.pr;
+        const rad = Math.max(16, activeObj.rad + 8);
+        ctx.strokeStyle = lockedTarget ? "#FFB300" : "#00E5FF";
+        ctx.lineWidth = 1.8;
+
+        // 4 corner brackets
+        ctx.beginPath();
+        ctx.moveTo(px - rad, py - rad + 8); ctx.lineTo(px - rad, py - rad); ctx.lineTo(px - rad + 8, py - rad);
+        ctx.moveTo(px + rad - 8, py - rad); ctx.lineTo(px + rad, py - rad); ctx.lineTo(px + rad, py - rad + 8);
+        ctx.moveTo(px + rad, py + rad - 8); ctx.lineTo(px + rad, py + rad); ctx.lineTo(px + rad - 8, py + rad);
+        ctx.moveTo(px - rad + 8, py + rad); ctx.lineTo(px - rad, py + rad); ctx.lineTo(px - rad, py + rad - 8);
+        ctx.stroke();
+
+        ctx.fillStyle = lockedTarget ? "#FFB300" : "#00E5FF";
+        ctx.font = "800 10px JetBrains Mono, monospace";
+        ctx.fillText(lockedTarget ? "TRK LOCK" : "ACQ TARGET", px - rad, py - rad - 5);
+      }
+
+      // Center Crosshairs
+      ctx.strokeStyle = "rgba(0, 229, 255, 0.45)";
+      ctx.lineWidth = 1.0;
+      const chSize = 14;
+      ctx.beginPath();
+      ctx.moveTo(w / 2 - chSize, h / 2); ctx.lineTo(w / 2 - 4, h / 2);
+      ctx.moveTo(w / 2 + 4, h / 2); ctx.lineTo(w / 2 + chSize, h / 2);
+      ctx.moveTo(w / 2, h / 2 - chSize); ctx.lineTo(w / 2, h / 2 - 4);
+      ctx.moveTo(w / 2, h / 2 + 4); ctx.lineTo(w / 2, h / 2 + chSize);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(w / 2, h / 2, 2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
