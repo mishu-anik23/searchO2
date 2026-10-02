@@ -131,6 +131,33 @@ const path = require('path');
   if (!canvasExists) throw new Error('❌ Missing 3D space canvas in transfer cruise simulator');
   console.log('✓ Found 3D celestial canvas!');
 
+  // Verify 5,400 stars, 19 galaxies, 25 named stars, 10 bodies, and 160 asteroids
+  const starCount = await page.evaluate(() => typeof STAR_CATALOG !== 'undefined' ? STAR_CATALOG.length : 0);
+  const galaxyCount = await page.evaluate(() => typeof GALAXIES !== 'undefined' ? GALAXIES.length : 0);
+  const namedStarCount = await page.evaluate(() => typeof NAMED_STARS !== 'undefined' ? NAMED_STARS.length : 0);
+  const bodiesCount = await page.evaluate(() => typeof BODIES !== 'undefined' ? BODIES.length : 0);
+  const asteroidCount = await page.evaluate(() => typeof ASTEROIDS !== 'undefined' ? ASTEROIDS.length : 0);
+
+  console.log(`✓ Cosmos verification: ${starCount} stars, ${galaxyCount} galaxies/nebulae, ${namedStarCount} named stars, ${bodiesCount} planetary bodies, ${asteroidCount} asteroids`);
+  if (starCount !== 5400) throw new Error(`Expected 5400 stars, found ${starCount}`);
+  if (galaxyCount !== 19) throw new Error(`Expected 19 galaxies, found ${galaxyCount}`);
+  if (namedStarCount !== 25) throw new Error(`Expected 25 named stars, found ${namedStarCount}`);
+  if (bodiesCount !== 10) throw new Error(`Expected 10 planetary bodies, found ${bodiesCount}`);
+  if (asteroidCount !== 160) throw new Error(`Expected 160 asteroids, found ${asteroidCount}`);
+
+  // Test locking Andromeda and opening Deep Sky Dossier
+  await page.evaluate(() => {
+    const andromeda = GALAXIES.find(g => g.id === 'andromeda');
+    if (andromeda && typeof lockTarget === 'function') {
+      lockTarget(andromeda);
+    }
+  });
+  await new Promise(r => setTimeout(r, 300));
+  const dossierName = await page.$eval('#dosName', el => el.textContent.trim());
+  const dossierDist = await page.$eval('#dosDist', el => el.textContent.trim());
+  console.log(`✓ Deep Sky Dossier target lock: ${dossierName} at ${dossierDist}`);
+  if (!dossierName.includes('Andromeda')) throw new Error('❌ Failed to lock Andromeda Galaxy in dossier');
+
   const zoomBtns = await page.$$('.zoom-btn');
   console.log(`✓ Found ${zoomBtns.length} optical zoom buttons (expected 4: 1x, 2.5x, 5x, 10x)`);
   if (zoomBtns.length !== 4) throw new Error(`Expected 4 zoom buttons, found ${zoomBtns.length}`);
@@ -157,6 +184,26 @@ const path = require('path');
   const marsCanvas = await page.$('#marsCanvas');
   if (!marsCanvas) throw new Error('❌ Missing 3D Mars canvas');
   console.log('✓ Found 3D Mars WebGL canvas!');
+
+  // Verify Mars 5400 cosmos stars and 44 celestial targets
+  const marsStarCount = await page.evaluate(() => typeof STAR_CATALOG !== 'undefined' ? STAR_CATALOG.length : 0);
+  const marsCelestialCount = await page.evaluate(() => typeof celestialTargets !== 'undefined' ? celestialTargets.length : 0);
+  console.log(`✓ Mars Cosmos verification: ${marsStarCount} stars, ${marsCelestialCount} celestial targets`);
+  if (marsStarCount !== 5400) throw new Error(`Expected 5400 stars in Mars Explorer, found ${marsStarCount}`);
+  if (marsCelestialCount !== 44) throw new Error(`Expected 44 celestial targets in Mars Explorer, found ${marsCelestialCount}`);
+
+  // Test celestial hover card
+  await page.evaluate(() => {
+    if (typeof showCelestialHoverCard === 'function' && typeof GALAXIES !== 'undefined') {
+      showCelestialHoverCard(GALAXIES[0], 250, 200);
+    }
+  });
+  await new Promise(r => setTimeout(r, 200));
+  const celTitleMars = await page.$eval('#celTitle', el => el.textContent.trim());
+  console.log(`✓ Celestial hover card active: ${celTitleMars}`);
+  if (!celTitleMars.includes('Andromeda')) throw new Error('❌ Celestial hover card failed to display Andromeda');
+
+  await page.evaluate(() => hideCelestialHoverCard());
 
   const marsFilters = await page.$$('#filterContainer button');
   console.log(`✓ Found ${marsFilters.length} filter buttons in Mars Explorer`);
@@ -203,6 +250,26 @@ const path = require('path');
   const lunarCanvas = await page.$('#lunarCanvas');
   if (!lunarCanvas) throw new Error('❌ Missing 3D Lunar canvas');
   console.log('✓ Found 3D Lunar WebGL canvas!');
+
+  // Verify Lunar 5400 cosmos stars and 44 celestial targets
+  const lunarStarCount = await page.evaluate(() => typeof STAR_CATALOG !== 'undefined' ? STAR_CATALOG.length : 0);
+  const lunarCelestialCount = await page.evaluate(() => typeof celestialTargets !== 'undefined' ? celestialTargets.length : 0);
+  console.log(`✓ Lunar Cosmos verification: ${lunarStarCount} stars, ${lunarCelestialCount} celestial targets`);
+  if (lunarStarCount !== 5400) throw new Error(`Expected 5400 stars in Lunar Explorer, found ${lunarStarCount}`);
+  if (lunarCelestialCount !== 44) throw new Error(`Expected 44 celestial targets in Lunar Explorer, found ${lunarCelestialCount}`);
+
+  // Test lunar celestial hover card
+  await page.evaluate(() => {
+    if (typeof showCelestialHoverCard === 'function' && typeof GALAXIES !== 'undefined') {
+      showCelestialHoverCard(GALAXIES[0], 250, 200);
+    }
+  });
+  await new Promise(r => setTimeout(r, 200));
+  const celTitleLunar = await page.$eval('#celTitle', el => el.textContent.trim());
+  console.log(`✓ Lunar celestial hover card active: ${celTitleLunar}`);
+  if (!celTitleLunar.includes('Andromeda')) throw new Error('❌ Lunar celestial hover card failed to display Andromeda');
+
+  await page.evaluate(() => hideCelestialHoverCard());
 
   const lunarFilters = await page.$$('#filterContainer button');
   console.log(`✓ Found ${lunarFilters.length} filter buttons in Lunar Explorer`);

@@ -349,6 +349,33 @@
       opacity: 1;
     }
 
+    /* CELESTIAL INFO POINTER HOVER CARD */
+    #celestialHoverCard {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(10, 14, 24, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--accent-cyan);
+      border-radius: 10px;
+      padding: 12px 14px;
+      width: 280px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 229, 255, 0.35);
+      z-index: 35;
+      opacity: 0;
+      transform: translate(-50%, -120%);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    #celestialHoverCard.visible {
+      opacity: 1;
+    }
+
+    .celestial-tag {
+      background: rgba(0, 229, 255, 0.18) !important;
+      border: 1px solid var(--accent-cyan) !important;
+      color: var(--accent-cyan) !important;
+    }
+
     .hc-header {
       display: flex;
       justify-content: space-between;
@@ -791,6 +818,17 @@
       <p class="hc-summary" id="hcSummary">Ancient lake basin with dried river delta sediments.</p>
       <div class="hc-hint">Click marker to open Classroom Study Dossier ➔</div>
     </div>
+
+    <!-- CELESTIAL INFO POINTER HOVER CARD -->
+    <div id="celestialHoverCard">
+      <div class="hc-header">
+        <span class="hc-title" id="celTitle">Andromeda Galaxy (M31)</span>
+        <span class="hc-type celestial-tag" id="celType">GALAXY · LOCAL GROUP</span>
+      </div>
+      <div class="hc-coords" id="celCoords">Dist: 2.54M ly · App Mag: +3.44</div>
+      <p class="hc-summary" id="celFact">Nearest major spiral galaxy containing over 1 trillion stars. On a long collision course with the Milky Way.</p>
+      <div class="hc-hint">Deep Space Catalog Object · Real Cosmos Data</div>
+    </div>
   </div>
 
   <!-- CLASSROOM POPUP MODAL -->
@@ -1215,19 +1253,271 @@
     rimLight.position.set(-20, -10, -15);
     scene.add(rimLight);
 
-    // STARFIELD
-    const starGeo = new THREE.BufferGeometry();
-    const starCount = 2000;
-    const starPos = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount * 3; i += 3) {
-      starPos[i] = (Math.random() - 0.5) * 600;
-      starPos[i + 1] = (Math.random() - 0.5) * 600;
-      starPos[i + 2] = (Math.random() - 0.5) * 600;
+    // --- REAL COSMOS ASTRONOMICAL CATALOG & STARFIELD ---
+    function raDecToDir(raHours, decDeg) {
+      const ra = (raHours / 24) * Math.PI * 2;
+      const dec = (decDeg * Math.PI) / 180;
+      const cosD = Math.cos(dec);
+      return new THREE.Vector3(cosD * Math.sin(ra), Math.sin(dec), cosD * Math.cos(ra));
     }
-    starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
-    const starMat = new THREE.PointsMaterial({ color: 0xCCDDF4, size: 1.2, transparent: true, opacity: 0.8 });
+
+    function spectralColor(sp) {
+      const c = (sp[0] || "G").toUpperCase();
+      const map = {
+        O: [155, 176, 255], B: [170, 191, 255], A: [202, 216, 255],
+        F: [248, 247, 255], G: [255, 244, 234], K: [255, 210, 161], M: [255, 160, 100]
+      };
+      return map[c] || map.G;
+    }
+
+    const NAMED_STARS = [
+      { id: "sirius", name: "Sirius (α CMa)", kind: "Main Sequence A-Star", dir: raDecToDir(6.75, -16.7), color: "#D0E8FF", mag: "-1.46", spec: "A1V", dist: "8.6 ly", coords: "06h 45m / -16° 42′", fact: "Brightest star in Earth's night sky. Has a white dwarf companion Sirius B ('The Pup'). 25× solar luminosity." },
+      { id: "canopus", name: "Canopus (α Car)", kind: "F-Type Bright Giant", dir: raDecToDir(6.40, -52.7), color: "#F8F7FF", mag: "-0.74", spec: "A9II", dist: "310 ly", coords: "06h 24m / -52° 42′", fact: "Second-brightest star; crucial navigational beacon for spacecraft star trackers." },
+      { id: "acen", name: "α Centauri", kind: "Triple Star System", dir: raDecToDir(14.66, -60.8), color: "#FFF4EA", mag: "-0.27", spec: "G2V + K1V", dist: "4.37 ly", coords: "14h 40m / -60° 50′", fact: "Nearest star system to our Sun; Proxima Centauri hosts a habitable-zone planet." },
+      { id: "arcturus", name: "Arcturus (α Boo)", kind: "Orange Giant", dir: raDecToDir(14.26, 19.2), color: "#FFD2A1", mag: "-0.05", spec: "K1.5III", dist: "36.7 ly", coords: "14h 16m / +19° 11′", fact: "Ancient high-velocity orange giant traveling rapidly through the galactic halo." },
+      { id: "vega", name: "Vega (α Lyr)", kind: "Main Sequence A-Star", dir: raDecToDir(18.62, 38.8), color: "#CAD8FF", mag: "+0.03", spec: "A0V", dist: "25.0 ly", coords: "18h 37m / +38° 47′", fact: "Summer Triangle anchor star; historically defined photometric zero magnitude." },
+      { id: "capella", name: "Capella (α Aur)", kind: "Quadruple Giant System", dir: raDecToDir(5.28, 46.0), color: "#FFF4EA", mag: "+0.08", spec: "G8III", dist: "42.9 ly", coords: "05h 17m / +45° 59′", fact: "Two giant yellow stars orbiting each other at 100 million km, plus two red dwarfs." },
+      { id: "rigel", name: "Rigel (β Ori)", kind: "Blue Supergiant", dir: raDecToDir(5.24, -8.2), color: "#AABFFF", mag: "+0.13", spec: "B8Ia", dist: "860 ly", coords: "05h 14m / -08° 12′", fact: "Orion's blue foot; radiates 120,000 times the energy of our Sun." },
+      { id: "procyon", name: "Procyon (α CMi)", kind: "F-Type Subgiant", dir: raDecToDir(7.66, 5.2), color: "#F8F7FF", mag: "+0.34", spec: "F5IV", dist: "11.5 ly", coords: "07h 39m / +05° 13′", fact: "Eastern vertex of the Winter Triangle with a white dwarf companion." },
+      { id: "achernar", name: "Achernar (α Eri)", kind: "Fast-Spinning B-Star", dir: raDecToDir(1.63, -57.3), color: "#AABFFF", mag: "+0.46", spec: "B6Vep", dist: "139 ly", coords: "01h 38m / -57° 14′", fact: "Least spherical star known: equatorial radius is 56% wider than polar radius." },
+      { id: "betelgeuse", name: "Betelgeuse (α Ori)", kind: "Red Supergiant", dir: raDecToDir(5.92, 7.4), color: "#FFA064", mag: "+0.50", spec: "M1-2Ia", dist: "640 ly", coords: "05h 55m / +07° 24′", fact: "Massive dying red supergiant; expected to explode as a Type II supernova." },
+      { id: "altair", name: "Altair (α Aql)", kind: "A-Type Rapid Rotator", dir: raDecToDir(19.85, 8.9), color: "#CAD8FF", mag: "+0.76", spec: "A7V", dist: "16.7 ly", coords: "19h 50m / +08° 52′", fact: "Spins once in under 9 hours, severely flattened at the poles." },
+      { id: "aldebaran", name: "Aldebaran (α Tau)", kind: "Red Giant", dir: raDecToDir(4.60, 16.5), color: "#FFD2A1", mag: "+0.86", spec: "K5III", dist: "65.3 ly", coords: "04h 35m / +16° 30′", fact: "The Eye of the Bull in Taurus; 44 times the diameter of our Sun." },
+      { id: "antares", name: "Antares (α Sco)", kind: "Red Supergiant", dir: raDecToDir(16.49, -26.4), color: "#FFA064", mag: "+0.96", spec: "M1.5Iab", dist: "550 ly", coords: "16h 29m / -26° 25′", fact: "Heart of Scorpius; fiery red color rivaling the planet Mars ('Anti-Ares')." },
+      { id: "spica", name: "Spica (α Vir)", kind: "B-Type Binary", dir: raDecToDir(13.42, -11.2), color: "#AABFFF", mag: "+0.97", spec: "B1III-IV", dist: "250 ly", coords: "13h 25m / -11° 09′", fact: "Two hot blue stars orbiting each other every 4 days, distorted by gravity." },
+      { id: "pollux", name: "Pollux (β Gem)", kind: "K-Type Giant", dir: raDecToDir(7.76, 28.0), color: "#FFD2A1", mag: "+1.14", spec: "K0III", dist: "33.8 ly", coords: "07h 45m / +28° 01′", fact: "Hosts a confirmed extrasolar gas giant planet twice the mass of Jupiter." },
+      { id: "fomalhaut", name: "Fomalhaut (α PsA)", kind: "A-Star with Debris Ring", dir: raDecToDir(22.96, -29.6), color: "#CAD8FF", mag: "+1.16", spec: "A4V", dist: "25.1 ly", coords: "22h 57m / -29° 37′", fact: "Surrounded by a prominent Kuiper-belt-like circumstellar dust disk." },
+      { id: "deneb", name: "Deneb (α Cyg)", kind: "Luminous Supergiant", dir: raDecToDir(20.69, 45.3), color: "#CAD8FF", mag: "+1.25", spec: "A2Ia", dist: "2,600 ly", coords: "20h 41m / +45° 16′", fact: "Hyper-luminous supergiant radiating 200,000× the Sun's light output." },
+      { id: "regulus", name: "Regulus (α Leo)", kind: "B-Type Quadruple", dir: raDecToDir(10.14, 11.97), color: "#AABFFF", mag: "+1.35", spec: "B7V", dist: "79.3 ly", coords: "10h 08m / +11° 58′", fact: "Heart of Leo; spins at 96% of its gravitational breakup velocity." },
+      { id: "bellatrix", name: "Bellatrix (γ Ori)", kind: "Blue Giant", dir: raDecToDir(5.42, 6.35), color: "#AABFFF", mag: "+1.64", spec: "B2III", dist: "250 ly", coords: "05h 25m / +06° 20′", fact: "Left shoulder of Orion the Hunter; blazing with 22,000 K surface heat." },
+      { id: "alnitak", name: "Alnitak (ζ Ori)", kind: "O-Supergiant Triple", dir: raDecToDir(5.68, -1.94), color: "#9BB0FF", mag: "+1.77", spec: "O9.5Ib", dist: "1,260 ly", coords: "05h 40m / -01° 56′", fact: "Eastern star of Orion's Belt; illuminates the nearby Flame Nebula." },
+      { id: "alnilam", name: "Alnilam (ε Ori)", kind: "Blue Supergiant", dir: raDecToDir(5.60, -1.20), color: "#AABFFF", mag: "+1.69", spec: "B0Ia", dist: "2,000 ly", coords: "05h 36m / -01° 12′", fact: "Center jewel of Orion's Belt; 500,000× solar luminosity." },
+      { id: "mintaka", name: "Mintaka (δ Ori)", kind: "Multiple O/B System", dir: raDecToDir(5.53, -0.30), color: "#9BB0FF", mag: "+2.23", spec: "O9.5II", dist: "1,200 ly", coords: "05h 32m / -00° 17′", fact: "Western star of Orion's Belt, resting precisely on the celestial equator." },
+      { id: "polaris", name: "Polaris (α UMi)", kind: "Cepheid Supergiant", dir: raDecToDir(2.53, 89.26), color: "#F8F7FF", mag: "+1.98", spec: "F7Ib", dist: "433 ly", coords: "02h 31m / +89° 15′", fact: "The North Star; marks celestial true north within 0.7°." },
+      { id: "castor", name: "Castor (α Gem)", kind: "Sextuple System", dir: raDecToDir(7.58, 31.90), color: "#CAD8FF", mag: "+1.58", spec: "A1V + A2V", dist: "51.0 ly", coords: "07h 34m / +31° 53′", fact: "Remarkable sextuple star system containing three gravitationally bound pairs." },
+      { id: "shaula", name: "Shaula (λ Sco)", kind: "Multiple B-Star", dir: raDecToDir(17.56, -37.10), color: "#AABFFF", mag: "+1.62", spec: "B2IV", dist: "570 ly", coords: "17h 33m / -37° 06′", fact: "Stinger of Scorpius; hot blue subgiant embedded in an ionization bubble." }
+    ];
+
+    const GALAXIES = [
+      { id: "andromeda", name: "Andromeda Galaxy (M31)", kind: "Barred Spiral Galaxy", dir: raDecToDir(0.71, 41.3), dist: "2.54M ly", mag: "+3.44", spec: "Local Group Spiral", angularSize: 3.2, color: "#D8C8F0", fact: "Nearest major spiral galaxy to the Milky Way containing 1 trillion stars; on a collision course to merge in 4.5 billion years." },
+      { id: "m33", name: "Triangulum Galaxy (M33)", kind: "Spiral Galaxy", dir: raDecToDir(1.56, 30.7), dist: "2.73M ly", mag: "+5.72", spec: "SA(s)cd Spiral", angularSize: 1.2, color: "#C8D0F0", fact: "Third-largest member of the Local Group; face-on pinwheel packed with luminous star-forming regions." },
+      { id: "lmc", name: "Large Magellanic Cloud", kind: "Magellanic Spiral Dwarf", dir: raDecToDir(5.39, -69.8), dist: "163,000 ly", mag: "+0.90", spec: "SB(s)m Dwarf", angularSize: 4.5, color: "#F0D8C8", fact: "Prominent satellite galaxy of the Milky Way; hosts the Tarantula Nebula (30 Doradus)." },
+      { id: "smc", name: "Small Magellanic Cloud", kind: "Dwarf Irregular Galaxy", dir: raDecToDir(0.88, -72.8), dist: "200,000 ly", mag: "+2.70", spec: "SB(s)m pec", angularSize: 2.5, color: "#E8D0C0", fact: "Companion dwarf galaxy tidally interacting with both the LMC and the Milky Way." },
+      { id: "m51", name: "Whirlpool Galaxy (M51)", kind: "Grand-Design Spiral", dir: raDecToDir(13.50, 47.2), dist: "23M ly", mag: "+8.40", spec: "SA(s)bc pec", angularSize: 1.0, color: "#D0C8E8", fact: "Classic textbook grand-design spiral gravitationally interacting with companion NGC 5195." },
+      { id: "m104", name: "Sombrero Galaxy (M104)", kind: "Unbarred Spiral Galaxy", dir: raDecToDir(12.67, -11.6), dist: "31M ly", mag: "+8.00", spec: "SA(s)a", angularSize: 0.9, color: "#E0D0B8", fact: "Famous edge-on spiral with a giant central bulge, 1-billion-solar-mass black hole, and dark dust lane." },
+      { id: "m81", name: "Bode's Galaxy (M81)", kind: "Grand Spiral Galaxy", dir: raDecToDir(9.93, 69.1), dist: "12M ly", mag: "+6.94", spec: "SA(s)ab", angularSize: 1.1, color: "#D8D0E8", fact: "One of the brightest galaxies in the northern sky, interacting gravitationally with M82." },
+      { id: "m82", name: "Cigar Galaxy (M82)", kind: "Starburst Galaxy", dir: raDecToDir(9.93, 69.7), dist: "12M ly", mag: "+8.41", spec: "I0 Starburst", angularSize: 0.8, color: "#E8C8A0", fact: "Violent starburst galaxy forming stars 10× faster than the entire Milky Way, expelling glowing hydrogen plumes." },
+      { id: "cena", name: "Centaurus A (NGC 5128)", kind: "Radio Galaxy", dir: raDecToDir(13.42, -43.0), dist: "13M ly", mag: "+6.84", spec: "S0 pec", angularSize: 1.2, color: "#E0C8A8", fact: "Remnant of a galactic merger with a warped dust lane powering supermassive relativistic plasma jets." },
+      { id: "m101", name: "Pinwheel Galaxy (M101)", kind: "Face-On Spiral Galaxy", dir: raDecToDir(14.05, 54.3), dist: "21M ly", mag: "+7.86", spec: "SAB(rs)cd", angularSize: 1.4, color: "#D0D8F0", fact: "Colossal spiral spanning 170,000 light-years across — twice the diameter of the Milky Way." },
+      { id: "m42", name: "Orion Nebula (M42)", kind: "Diffuse Emission Nebula", dir: raDecToDir(5.59, -5.4), dist: "1,344 ly", mag: "+4.00", spec: "H II Stellar Nursery", angularSize: 2.2, color: "#A0D0FF", fact: "Closest massive active star nursery to Earth, illuminated by the Trapezium cluster." },
+      { id: "m8", name: "Lagoon Nebula (M8)", kind: "Giant Emission Nebula", dir: raDecToDir(18.06, -24.4), dist: "4,100 ly", mag: "+6.00", spec: "H II Region", angularSize: 1.5, color: "#F0A0B0", fact: "Vast glowing interstellar hydrogen cloud bisected by a dark dust lagoon." },
+      { id: "m20", name: "Trifid Nebula (M20)", kind: "Trifid Nebula", dir: raDecToDir(18.04, -23.0), dist: "5,200 ly", mag: "+6.30", spec: "Emission/Reflection", angularSize: 1.1, color: "#E0A0D0", fact: "Three-lobed cosmic flower featuring pink emission gas, blue starlight reflection, and dark silhouettes." },
+      { id: "m16", name: "Eagle Nebula (M16)", kind: "Emission Nebula", dir: raDecToDir(18.31, -13.8), dist: "7,000 ly", mag: "+6.00", spec: "H II Region", angularSize: 1.1, color: "#D0B0A0", fact: "Site of the famed 'Pillars of Creation' where newborn stars carve through interstellar dust." },
+      { id: "carina", name: "Carina Nebula (NGC 3372)", kind: "Giant Southern Complex", dir: raDecToDir(10.75, -59.9), dist: "7,500 ly", mag: "+1.00", spec: "H II Complex", angularSize: 2.8, color: "#F0C0A0", fact: "Enormous stellar incubator surrounding unstable hypergiant Eta Carinae; 4× larger than Orion." },
+      { id: "rosette", name: "Rosette Nebula (NGC 2237)", kind: "Circular Emission Nebula", dir: raDecToDir(6.53, 4.9), dist: "5,200 ly", mag: "+9.00", spec: "Spherical H II Shell", angularSize: 1.4, color: "#F0A0B8", fact: "Rose-shaped molecular cloud sculpted by winds from newborn cluster NGC 2244." },
+      { id: "m1", name: "Crab Nebula (M1)", kind: "Supernova Remnant", dir: raDecToDir(5.58, 22.0), dist: "6,500 ly", mag: "+8.40", spec: "Plerion Remnant", angularSize: 0.7, color: "#C0D0F0", fact: "Debris from the 1054 CE supernova; powered by a central pulsar spinning 30 times a second." },
+      { id: "m45", name: "Pleiades (M45)", kind: "Open Star Cluster", dir: raDecToDir(3.79, 24.1), dist: "444 ly", mag: "+1.60", spec: "B-Type Cluster", angularSize: 2.4, color: "#C8E0FF", fact: "The Seven Sisters; young hot B-stars scattering light into an electric blue reflection veil." },
+      { id: "omega", name: "Omega Centauri", kind: "Globular Cluster", dir: raDecToDir(13.45, -47.5), dist: "15,800 ly", mag: "+3.90", spec: "Globular Cluster", angularSize: 1.2, color: "#F0E0C0", fact: "Largest globular cluster in the Milky Way with 10 million stars; ancient dwarf galaxy core." }
+    ];
+
+    const CONSTELLATIONS = [
+      { name: "Orion Belt", segs: [["alnitak", "alnilam"], ["alnilam", "mintaka"]] },
+      { name: "Orion Body", segs: [["betelgeuse", "bellatrix"], ["bellatrix", "mintaka"], ["alnitak", "rigel"], ["betelgeuse", "alnitak"]] },
+      { name: "Summer Triangle", segs: [["vega", "altair"], ["altair", "deneb"], ["deneb", "vega"]] },
+      { name: "Winter Triangle", segs: [["sirius", "procyon"], ["procyon", "betelgeuse"], ["betelgeuse", "sirius"]] }
+    ];
+
+    // GENERATE 5,400 DETERMINISTIC SPECTRAL STARS
+    function makeField(n, seed) {
+      let s = seed >>> 0;
+      function r() { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }
+      const stars = [];
+      const spWeights = [
+        { sp: "O", w: 0.01 }, { sp: "B", w: 0.05 }, { sp: "A", w: 0.10 },
+        { sp: "F", w: 0.15 }, { sp: "G", w: 0.20 }, { sp: "K", w: 0.25 }, { sp: "M", w: 0.24 }
+      ];
+      for (let i = 0; i < n; i++) {
+        const u = r() * 2 - 1;
+        const th = r() * Math.PI * 2;
+        const rad = Math.sqrt(Math.max(0, 1 - u * u));
+        const appMag = 1.8 + Math.pow(r(), 0.55) * 5.2;
+        const bright = Math.max(0.22, Math.min(1.0, Math.pow(2.512, 4.8 - appMag) * 0.55));
+        let roll = r(), sp = "G";
+        for (const sw of spWeights) {
+          roll -= sw.w;
+          if (roll <= 0) { sp = sw.sp; break; }
+        }
+        const col = spectralColor(sp);
+        stars.push({
+          x: rad * Math.cos(th), y: u, z: rad * Math.sin(th),
+          b: bright, s: Math.max(0.7, Math.min(2.8, 0.7 + (6.2 - appMag) * 0.38)),
+          cr: col[0], cg: col[1], cb: col[2]
+        });
+      }
+      return stars;
+    }
+
+    function makeMilkyWay(n) {
+      let s = 91 >>> 0;
+      function r() { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }
+      const stars = [];
+      for (let i = 0; i < n; i++) {
+        const along = (r() - 0.5) * Math.PI * 1.7;
+        const off = (r() - 0.5) * 0.2;
+        const x = Math.cos(along), z = Math.sin(along);
+        const y = off + (r() - 0.5) * 0.07;
+        const len = Math.hypot(x, y, z) || 1;
+        const warm = r();
+        const appMag = 3.2 + r() * 3.8;
+        const bright = Math.max(0.18, Math.min(0.95, Math.pow(2.512, 5.2 - appMag) * 0.4));
+        stars.push({
+          x: x / len, y: y / len, z: z / len,
+          b: bright, s: 0.6 + r() * 1.3,
+          cr: Math.round(230 + warm * 25), cg: Math.round(215 + (1 - warm) * 30), cb: Math.round(195 + r() * 45)
+        });
+      }
+      return stars;
+    }
+
+    const FIELD = makeField(3600, 17);
+    const MILKY = makeMilkyWay(1800);
+    const STAR_CATALOG = [...FIELD, ...MILKY]; // 5,400 stars
+
+    // THREE.JS GLOWING SHADER STARFIELD
+    const starTotal = STAR_CATALOG.length;
+    const starPosArr = new Float32Array(starTotal * 3);
+    const starColArr = new Float32Array(starTotal * 3);
+    const starSizeArr = new Float32Array(starTotal);
+
+    for (let i = 0; i < starTotal; i++) {
+      const st = STAR_CATALOG[i];
+      starPosArr[i * 3] = st.x * 550;
+      starPosArr[i * 3 + 1] = st.y * 550;
+      starPosArr[i * 3 + 2] = st.z * 550;
+      starColArr[i * 3] = (st.cr / 255) * st.b;
+      starColArr[i * 3 + 1] = (st.cg / 255) * st.b;
+      starColArr[i * 3 + 2] = (st.cb / 255) * st.b;
+      starSizeArr[i] = st.s * 3.6;
+    }
+
+    const starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute("position", new THREE.BufferAttribute(starPosArr, 3));
+    starGeo.setAttribute("color", new THREE.BufferAttribute(starColArr, 3));
+    starGeo.setAttribute("size", new THREE.BufferAttribute(starSizeArr, 1));
+
+    const starMat = new THREE.ShaderMaterial({
+      uniforms: { uOpacity: { value: 0.95 } },
+      vertexShader: `
+        attribute float size;
+        varying vec3 vColor;
+        void main() {
+          vColor = color;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * mvPosition;
+          gl_PointSize = clamp(size, 2.2, 14.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uOpacity;
+        varying vec3 vColor;
+        void main() {
+          float r = length(gl_PointCoord - vec2(0.5));
+          if (r > 0.5) discard;
+          float halo = exp(-r * 8.5) * 0.52;
+          float core = 1.0 - smoothstep(0.04, 0.2, r);
+          float alpha = max(halo, core);
+          vec3 col = mix(vColor * 0.78, min(vColor * 1.35 + vec3(0.15), vec3(1.0)), core);
+          gl_FragColor = vec4(col, alpha * uOpacity);
+        }
+      `,
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
     const starField = new THREE.Points(starGeo, starMat);
     scene.add(starField);
+
+    // CELESTIAL TARGETS GROUP FOR RAYCASTING
+    const celestialTargets = [];
+
+    // PROCEDURAL BILLBOARD SPRITES FOR 19 DEEP-SKY GALAXIES & NEBULAE
+    function makeGalaxyTexture(gxy) {
+      const size = 128;
+      const cvs = document.createElement("canvas");
+      cvs.width = size; cvs.height = size;
+      const g = cvs.getContext("2d");
+      const c = new THREE.Color(gxy.color);
+      const r = Math.round(c.r * 255), gr = Math.round(c.g * 255), b = Math.round(c.b * 255);
+
+      const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      if (gxy.id === "andromeda") {
+        grad.addColorStop(0, "rgba(255, 245, 230, 0.95)");
+        grad.addColorStop(0.2, "rgba(220, 200, 240, 0.75)");
+        grad.addColorStop(0.55, "rgba(160, 140, 210, 0.35)");
+        grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+      } else {
+        grad.addColorStop(0, "rgba(255, 255, 255, 0.90)");
+        grad.addColorStop(0.25, `rgba(${r}, ${gr}, ${b}, 0.65)`);
+        grad.addColorStop(0.60, `rgba(${r}, ${gr}, ${b}, 0.22)`);
+        grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+      }
+      g.fillStyle = grad;
+      g.fillRect(0, 0, size, size);
+
+      // Dark dust lane for Andromeda and Sombrero
+      if (gxy.id === "m104" || gxy.id === "andromeda") {
+        g.fillStyle = "rgba(10, 12, 18, 0.6)";
+        g.fillRect(size * 0.15, size / 2 - 1, size * 0.7, 3);
+      }
+      const tex = new THREE.CanvasTexture(cvs);
+      tex.needsUpdate = true;
+      return tex;
+    }
+
+    GALAXIES.forEach(gxy => {
+      const pos = gxy.dir.clone().multiplyScalar(490);
+      const tex = makeGalaxyTexture(gxy);
+      const mat = new THREE.SpriteMaterial({
+        map: tex, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending
+      });
+      const sprite = new THREE.Sprite(mat);
+      sprite.position.copy(pos);
+      const sc = Math.max(14, (gxy.angularSize || 1.0) * 16);
+      sprite.scale.set(sc * 1.3, sc * (gxy.id === "andromeda" || gxy.id === "m104" ? 0.65 : 1.0), 1);
+      sprite.userData = { deepSky: gxy, isCelestial: true };
+      scene.add(sprite);
+      celestialTargets.push(sprite);
+    });
+
+    // NAMED STARS INTERACTIVE ANCHORS & CONSTELLATION LINES
+    const namedStarMap = {};
+    NAMED_STARS.forEach(star => {
+      const pos = star.dir.clone().multiplyScalar(500);
+      namedStarMap[star.id] = pos;
+
+      // Small glowing interactive anchor
+      const geom = new THREE.SphereGeometry(2.5, 12, 12);
+      const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(star.color), transparent: true, opacity: 0.9 });
+      const starMesh = new THREE.Mesh(geom, mat);
+      starMesh.position.copy(pos);
+      starMesh.userData = { namedStar: star, isCelestial: true };
+      scene.add(starMesh);
+      celestialTargets.push(starMesh);
+    });
+
+    // DRAW CONSTELLATION LINES
+    CONSTELLATIONS.forEach(c => {
+      c.segs.forEach(([a, b]) => {
+        const p1 = namedStarMap[a], p2 = namedStarMap[b];
+        if (p1 && p2) {
+          const lineGeo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+          const lineMat = new THREE.LineBasicMaterial({ color: 0x7EB8C9, transparent: true, opacity: 0.35 });
+          const line = new THREE.Line(lineGeo, lineMat);
+          scene.add(line);
+        }
+      });
+    });
 
     // MARS GLOBE
     const MARS_RADIUS = 5.0;
@@ -1328,6 +1618,7 @@
         const found = pinMeshes.find(p => p.sphere === intersects[0].object);
         if (found && found.root.visible) {
           hoveredPin = found;
+          hideCelestialHoverCard();
           showHoverCard(found.feature, e.clientX, e.clientY);
           document.body.style.cursor = "pointer";
           return;
@@ -1336,6 +1627,22 @@
 
       hoveredPin = null;
       hideHoverCard();
+
+      // Check celestial deep-sky objects and named stars
+      if (typeof celestialTargets !== "undefined" && celestialTargets.length > 0) {
+        const celestialHits = raycaster.intersectObjects(celestialTargets);
+        if (celestialHits.length > 0) {
+          const hit = celestialHits[0].object;
+          const info = hit.userData;
+          if (info && (info.deepSky || info.namedStar)) {
+            showCelestialHoverCard(info.deepSky || info.namedStar, e.clientX, e.clientY);
+            document.body.style.cursor = "crosshair";
+            return;
+          }
+        }
+      }
+
+      hideCelestialHoverCard();
       document.body.style.cursor = "default";
     });
 
@@ -1358,6 +1665,24 @@
 
     function hideHoverCard() {
       hoverCard.classList.remove("visible");
+    }
+
+    function showCelestialHoverCard(obj, x, y) {
+      const celCard = document.getElementById("celestialHoverCard");
+      if (!celCard) return;
+      document.getElementById("celTitle").textContent = obj.name;
+      document.getElementById("celType").textContent = (obj.kind || "CELESTIAL OBJECT").toUpperCase();
+      document.getElementById("celCoords").textContent = `Dist: ${obj.dist || 'Deep Space'} · Mag: ${obj.mag || 'N/A'} · ${obj.spec || ''}`;
+      document.getElementById("celFact").textContent = obj.fact;
+
+      celCard.style.left = `${Math.min(window.innerWidth - 160, Math.max(150, x))}px`;
+      celCard.style.top = `${Math.max(60, y - 20)}px`;
+      celCard.classList.add("visible");
+    }
+
+    function hideCelestialHoverCard() {
+      const celCard = document.getElementById("celestialHoverCard");
+      if (celCard) celCard.classList.remove("visible");
     }
 
     // MODAL INTERACTION
@@ -1577,6 +1902,11 @@
         const s = 1 + 0.15 * Math.sin(time * 3 + p.feature.lat);
         p.ring.scale.set(s, s, s);
       });
+
+      // Animate subtle deep-sky star twinkle
+      if (typeof starMat !== "undefined" && starMat.uniforms && starMat.uniforms.uOpacity) {
+        starMat.uniforms.uOpacity.value = 0.88 + Math.sin(time * 0.8) * 0.08;
+      }
 
       controls.update();
       renderer.render(scene, camera);
