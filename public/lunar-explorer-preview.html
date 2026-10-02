@@ -1693,6 +1693,52 @@
         sources: [
           { title: "NASA Cassini-Huygens Mission", url: "https://science.nasa.gov/mission/cassini/" }
         ]
+      },
+      "sun": {
+        id: "sun",
+        name: "Sun (Sol) · Primary Star",
+        kind: "Yellow Dwarf Star (G2V)",
+        dist: "149.6 million km (1.0 AU)",
+        mag: "-26.74 (Blinding Luminosity)",
+        spec: "G2V Main Sequence",
+        coords: "Ecliptic Sky · Synodic Solar Track",
+        summary: "The radiant thermonuclear heart of the Solar System, containing 99.86% of its mass. Powered by proton-proton chain nuclear fusion at 15 million Kelvin in its core, converting 600 million tons of hydrogen into helium every second.",
+        why: "Powers all solar arrays, thermal Stirling engines, and life support systems at OxyForge lunar polar extraction facilities.",
+        kidFriendly: "The giant cosmic nuclear furnace that lights up our entire solar system! Never look directly at it without special solar protection filters.",
+        limitation: "Intense coronal mass ejections (CMEs) and solar proton events produce ionizing radiation hazards for astronauts outside Earth's magnetosphere.",
+        quiz: {
+          q: "What fundamental physical process powers the Sun's core?",
+          options: [
+            { text: "Nuclear fusion of hydrogen into helium nuclei", correct: true },
+            { text: "Combustion of pressurized petroleum fuel and oxygen", correct: false },
+            { text: "Uranium fission reactions like an atomic power plant", correct: false }
+          ],
+          explanation: "Correct! The Sun fuses 600 million tons of hydrogen into helium every second via the proton-proton nuclear fusion chain."
+        },
+        sources: [{ title: "NASA Solar Dynamics Observatory", url: "https://sdo.gsfc.nasa.gov/" }]
+      },
+      "oxyforge-1": {
+        id: "oxyforge-1",
+        name: "OxyForge-1 · Artemis Cislunar Transit",
+        kind: "Autonomous Cargo & ISRU Delivery Vehicle",
+        dist: "184,200 km (Mid-TLI Corridor)",
+        mag: "+7.5 (Reflective Solar Arrays)",
+        spec: "Solar-Electric / Methalox Hybrid",
+        coords: "Cislunar Transfer Arc · Velocity 1.84 km/s",
+        summary: "Active commercial transit spacecraft carrying OxyForge autonomous solid-oxide electrolysis plants, lunar polar regolith drills, and critical consumables to Shackleton Crater Base.",
+        why: "Pioneering the cislunar commercial supply chain for sustainable lunar oxygen harvesting and propellant refueling.",
+        kidFriendly: "A futuristic spaceship flying between Earth and the Moon right now! It carries robotic mining machines to make oxygen from moon rocks.",
+        limitation: "Requires deep-space radiation shielding against solar particle events during cislunar transfer.",
+        quiz: {
+          q: "What is the primary mission of the OxyForge-1 transit craft?",
+          options: [
+            { text: "Deliver autonomous ISRU plants to harvest lunar oxygen at the South Pole", correct: true },
+            { text: "Fly out of the solar system forever", correct: false },
+            { text: "Deploy orbital weather satellites around Jupiter", correct: false }
+          ],
+          explanation: "Correct! OxyForge-1 transports solid-oxide electrolysis and carbothermal reduction plants to establish continuous lunar propellant production."
+        },
+        sources: [{ title: "Artemis & OxyForge Mission Operations", url: "https://nasa.gov/artemis" }]
       }
     };
 
@@ -1985,16 +2031,77 @@
       }
     });
 
-    // NAMED STARS INTERACTIVE ANCHORS & CONSTELLATION LINES
+    // PHOTOREALISTIC DIFFRACTION STAR TEXTURE GENERATOR (REPLACES CRUDE SOLID SPHERES)
+    function createStarTexture(colorStr) {
+      const size = 128;
+      const cvs = document.createElement("canvas");
+      cvs.width = size; cvs.height = size;
+      const ctx = cvs.getContext("2d");
+      const cx = size / 2, cy = size / 2;
+
+      const c = new THREE.Color(colorStr);
+      const r = Math.round(c.r * 255), g = Math.round(c.g * 255), b = Math.round(c.b * 255);
+      
+      // Soft Gaussian stellar corona gradient
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 60);
+      glow.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+      glow.addColorStop(0.12, `rgba(${r}, ${g}, ${b}, 0.95)`);
+      glow.addColorStop(0.35, `rgba(${r}, ${g}, ${b}, 0.40)`);
+      glow.addColorStop(0.70, `rgba(${r}, ${g}, ${b}, 0.08)`);
+      glow.addColorStop(1.0, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, size, size);
+
+      // Slender diffraction spikes (authentic optical telescope diffraction pattern)
+      const gradH = ctx.createLinearGradient(0, cy, size, cy);
+      gradH.addColorStop(0, "rgba(255,255,255,0)");
+      gradH.addColorStop(0.42, `rgba(${r},${g},${b},0.32)`);
+      gradH.addColorStop(0.5, "rgba(255,255,255,0.95)");
+      gradH.addColorStop(0.58, `rgba(${r},${g},${b},0.32)`);
+      gradH.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = gradH;
+      ctx.fillRect(0, cy - 0.75, size, 1.5);
+
+      const gradV = ctx.createLinearGradient(cx, 0, cx, size);
+      gradV.addColorStop(0, "rgba(255,255,255,0)");
+      gradV.addColorStop(0.42, `rgba(${r},${g},${b},0.32)`);
+      gradV.addColorStop(0.5, "rgba(255,255,255,0.95)");
+      gradV.addColorStop(0.58, `rgba(${r},${g},${b},0.32)`);
+      gradV.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = gradV;
+      ctx.fillRect(cx - 0.75, 0, 1.5, size);
+
+      // Brilliant white nuclear point
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.arc(cx, cy, 2.0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const tex = new THREE.CanvasTexture(cvs);
+      tex.needsUpdate = true;
+      return tex;
+    }
+
+    // NAMED STARS AS PHOTOREALISTIC GLOWING POINT SPRITES (NO SOLID BLUE SPHERES)
     const namedStarMap = {};
     NAMED_STARS.forEach(star => {
-      const pos = star.dir.clone().multiplyScalar(500);
+      const pos = star.dir.clone().multiplyScalar(495);
       namedStarMap[star.id] = pos;
 
-      const geom = new THREE.SphereGeometry(2.5, 12, 12);
-      const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(star.color), transparent: true, opacity: 0.95 });
-      const starMesh = new THREE.Mesh(geom, mat);
-      starMesh.position.copy(pos);
+      const starTex = createStarTexture(star.color);
+      const starMat = new THREE.SpriteMaterial({
+        map: starTex,
+        transparent: true,
+        opacity: 0.96,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      const starSprite = new THREE.Sprite(starMat);
+      starSprite.position.copy(pos);
+
+      const numMag = parseFloat(star.mag) || 1.0;
+      const spScale = Math.max(9.0, 18.0 - numMag * 2.8);
+      starSprite.scale.set(spScale, spScale, 1);
 
       const celData = CELESTIAL_DOSSIERS[star.id] || {
         id: star.id,
@@ -2020,28 +2127,65 @@
         sources: [{ title: "SIMBAD Astronomical Database", url: "https://simbad.cds.unistra.fr/simbad/" }]
       };
 
-      starMesh.userData = { isCelestial: true, celestialObj: celData };
-      scene.add(starMesh);
-      celestialTargets.push(starMesh);
-      addCelestialHitSphere(pos, 20, celData);
+      starSprite.userData = { isCelestial: true, celestialObj: celData };
+      scene.add(starSprite);
+      celestialTargets.push(starSprite);
+      addCelestialHitSphere(pos, Math.max(16, spScale * 1.2), celData);
     });
 
-    // DRAW CONSTELLATION LINES
+    // ETHEREAL STARLIGHT FILAMENTS FOR CONSTELLATION LINES (NO CYAN ROADS)
     CONSTELLATIONS.forEach(c => {
       c.segs.forEach(([a, b]) => {
         const p1 = namedStarMap[a], p2 = namedStarMap[b];
         if (p1 && p2) {
           const lineGeo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
-          const lineMat = new THREE.LineBasicMaterial({ color: 0x7EB8C9, transparent: true, opacity: 0.35 });
+          const lineMat = new THREE.LineBasicMaterial({
+            color: 0x88ccff,
+            transparent: true,
+            opacity: 0.22,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          });
           const line = new THREE.Line(lineGeo, lineMat);
           scene.add(line);
         }
       });
     });
 
+    // VISIBLE 3D SUN WITH CORONA FLARE IN LUNAR SKY
+    const sunGroup = new THREE.Group();
+    const sunMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(14.0, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0xFFFFF2 })
+    );
+    sunGroup.add(sunMesh);
+
+    // Sun Corona Glow Flare Sprite
+    const sunCoronaCvs = document.createElement("canvas");
+    sunCoronaCvs.width = 256; sunCoronaCvs.height = 256;
+    const sctx = sunCoronaCvs.getContext("2d");
+    const sunGlow = sctx.createRadialGradient(128, 128, 8, 128, 128, 126);
+    sunGlow.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+    sunGlow.addColorStop(0.18, "rgba(255, 240, 180, 0.95)");
+    sunGlow.addColorStop(0.45, "rgba(255, 190, 70, 0.45)");
+    sunGlow.addColorStop(0.75, "rgba(255, 140, 30, 0.15)");
+    sunGlow.addColorStop(1.0, "rgba(0, 0, 0, 0)");
+    sctx.fillStyle = sunGlow;
+    sctx.fillRect(0, 0, 256, 256);
+    const sunCoronaTex = new THREE.CanvasTexture(sunCoronaCvs);
+    const sunCoronaSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: sunCoronaTex, transparent: true, opacity: 0.96, depthWrite: false, blending: THREE.AdditiveBlending
+    }));
+    sunCoronaSprite.scale.set(72, 72, 1);
+    sunGroup.add(sunCoronaSprite);
+
+    sunGroup.position.set(420, 180, 200);
+    scene.add(sunGroup);
+    const sunHitSphere = addCelestialHitSphere(sunGroup.position, 38, CELESTIAL_DOSSIERS["sun"]);
+
     // PROMINENT 3D EARTH IN LUNAR SKY (~2° ANGULAR SIZE, ~4× MOON'S SIZE FROM EARTH)
     const earthGroup = new THREE.Group();
-    const earthPos = new THREE.Vector3(-320, 190, -260); // Distance ~454 in lunar sky
+    const earthPos = new THREE.Vector3(-320, 190, -260); // Nominal distance ~454 in lunar sky
     earthGroup.position.copy(earthPos);
 
     const textureLoader = new THREE.TextureLoader();
@@ -2077,7 +2221,35 @@
     earthGroup.add(earthRing);
 
     scene.add(earthGroup);
-    addCelestialHitSphere(earthPos, 28, CELESTIAL_DOSSIERS["earth"]);
+    const earthHitSphere = addCelestialHitSphere(earthPos, 28, CELESTIAL_DOSSIERS["earth"]);
+
+    // SOLAR SYSTEM PLANETARY ORBIT TRACKS
+    function createOrbitTrack(radiusX, radiusZ, inclination, colorHex) {
+      const pts = [];
+      for (let i = 0; i <= 64; i++) {
+        const th = (i / 64) * Math.PI * 2;
+        const x = radiusX * Math.cos(th);
+        const z = radiusZ * Math.sin(th);
+        const y = Math.sin(th) * inclination;
+        pts.push(new THREE.Vector3(x, y, z));
+      }
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      const mat = new THREE.LineDashedMaterial({
+        color: colorHex,
+        dashSize: 12,
+        gapSize: 7,
+        transparent: true,
+        opacity: 0.2,
+        depthWrite: false
+      });
+      const line = new THREE.Line(geo, mat);
+      line.computeLineDistances();
+      return line;
+    }
+    scene.add(createOrbitTrack(400, 400, 60, 0xDDAA77)); // Jupiter track
+    scene.add(createOrbitTrack(420, 420, -40, 0xFF8866)); // Mars track
+    scene.add(createOrbitTrack(380, 380, 80, 0xFFEEAA)); // Venus track
+    scene.add(createOrbitTrack(440, 440, -90, 0xEECC88)); // Saturn track
 
     // SOLAR SYSTEM PLANETS IN LUNAR SKY
     const jupiterTexture = textureLoader.load("cosmos/jupiter.webp");
@@ -2093,7 +2265,7 @@
     );
     jupiterMesh.position.copy(jupiterPos);
     scene.add(jupiterMesh);
-    addCelestialHitSphere(jupiterPos, 22, CELESTIAL_DOSSIERS["jupiter"]);
+    const jupiterHitSphere = addCelestialHitSphere(jupiterPos, 22, CELESTIAL_DOSSIERS["jupiter"]);
 
     // Mars
     const marsPos = new THREE.Vector3(340, -120, -250);
@@ -2103,7 +2275,7 @@
     );
     marsMesh.position.copy(marsPos);
     scene.add(marsMesh);
-    addCelestialHitSphere(marsPos, 20, CELESTIAL_DOSSIERS["mars"]);
+    const marsHitSphere = addCelestialHitSphere(marsPos, 20, CELESTIAL_DOSSIERS["mars"]);
 
     // Venus
     const venusPos = new THREE.Vector3(-220, 320, 250);
@@ -2131,7 +2303,7 @@
       },
       sources: [{ title: "NASA Venus Exploration", url: "https://science.nasa.gov/venus/" }]
     };
-    addCelestialHitSphere(venusPos, 20, venusData);
+    const venusHitSphere = addCelestialHitSphere(venusPos, 20, venusData);
 
     // Saturn with Ring
     const saturnGroup = new THREE.Group();
@@ -2149,7 +2321,80 @@
     saturnRing.rotation.x = Math.PI / 2.6;
     saturnGroup.add(saturnRing);
     scene.add(saturnGroup);
-    addCelestialHitSphere(saturnPos, 24, CELESTIAL_DOSSIERS["saturn"]);
+    const saturnHitSphere = addCelestialHitSphere(saturnPos, 24, CELESTIAL_DOSSIERS["saturn"]);
+
+    // 3D SPACECRAFT: OXYFORGE-1 (ARTEMIS CISLUNAR TRANSIT VEHICLE)
+    const spacecraftGroup = new THREE.Group();
+
+    // Habitat / Service Module Core
+    const habGeo = new THREE.CylinderGeometry(0.8, 0.8, 2.6, 16);
+    const habMat = new THREE.MeshStandardMaterial({
+      color: 0xE8ECEF, roughness: 0.35, metalness: 0.75, emissive: 0x112233, emissiveIntensity: 0.2
+    });
+    const habMesh = new THREE.Mesh(habGeo, habMat);
+    habMesh.rotation.x = Math.PI / 2;
+    spacecraftGroup.add(habMesh);
+
+    // Forward Command Cone
+    const coneGeo = new THREE.ConeGeometry(0.8, 1.2, 16);
+    const coneMat = new THREE.MeshStandardMaterial({ color: 0xD0D5DD, roughness: 0.4, metalness: 0.8 });
+    const coneMesh = new THREE.Mesh(coneGeo, coneMat);
+    coneMesh.position.z = 1.9;
+    coneMesh.rotation.x = Math.PI / 2;
+    spacecraftGroup.add(coneMesh);
+
+    // Bifacial Solar Array Wings
+    const panelGeo = new THREE.BoxGeometry(4.8, 0.04, 1.2);
+    const panelMat = new THREE.MeshStandardMaterial({
+      color: 0x0B2545, roughness: 0.2, metalness: 0.9, emissive: 0x051A30, emissiveIntensity: 0.4
+    });
+    const solarWings = new THREE.Mesh(panelGeo, panelMat);
+    spacecraftGroup.add(solarWings);
+
+    // Communications High-Gain Dish
+    const dishGeo = new THREE.ConeGeometry(0.6, 0.25, 16, 1, true);
+    const dishMat = new THREE.MeshStandardMaterial({ color: 0xF0F2F5, metalness: 0.85, roughness: 0.25 });
+    const dishMesh = new THREE.Mesh(dishGeo, dishMat);
+    dishMesh.position.set(0, 0.95, -0.6);
+    dishMesh.rotation.x = -Math.PI / 3;
+    spacecraftGroup.add(dishMesh);
+
+    // Ion Thruster Plasma Plume
+    const craftPlumeGeo = new THREE.ConeGeometry(0.42, 2.2, 16);
+    const craftPlumeMat = new THREE.MeshBasicMaterial({
+      color: 0x00E5FF, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending
+    });
+    const craftPlumeMesh = new THREE.Mesh(craftPlumeGeo, craftPlumeMat);
+    craftPlumeMesh.position.z = -2.4;
+    craftPlumeMesh.rotation.x = -Math.PI / 2;
+    spacecraftGroup.add(craftPlumeMesh);
+
+    // Pulsing Navigation Beacon Ring
+    const craftBeaconRing = new THREE.Mesh(
+      new THREE.RingGeometry(3.0, 3.5, 32),
+      new THREE.MeshBasicMaterial({ color: 0x00FFAA, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+    );
+    spacecraftGroup.add(craftBeaconRing);
+
+    // Cislunar Transfer Orbit Curve (TLI Corridor: Earth to Lunar Orbit)
+    const tliCurve = new THREE.CubicBezierCurve3(
+      earthPos.clone().multiplyScalar(0.78),
+      new THREE.Vector3(-180, 110, -90),
+      new THREE.Vector3(-60, 40, -20),
+      new THREE.Vector3(0, 7.8, 0)
+    );
+
+    // Curved Trajectory Trail Line
+    const tliPoints = tliCurve.getPoints(80);
+    const tliGeo = new THREE.BufferGeometry().setFromPoints(tliPoints);
+    const tliMat = new THREE.LineBasicMaterial({
+      color: 0x00E5FF, transparent: true, opacity: 0.45, depthWrite: false, blending: THREE.AdditiveBlending
+    });
+    const tliLine = new THREE.Line(tliGeo, tliMat);
+    scene.add(tliLine);
+
+    scene.add(spacecraftGroup);
+    const spacecraftHitSphere = addCelestialHitSphere(earthPos, 24, CELESTIAL_DOSSIERS["oxyforge-1"]);
 
     // MOON GLOBE
     const MOON_RADIUS = 5.0;
@@ -2658,12 +2903,82 @@
         starMat.uniforms.uOpacity.value = 0.88 + Math.sin(time * 0.8) * 0.08;
       }
 
-      // Gentle axial rotation of Earth and Solar System planets
-      if (typeof earthGlobe !== "undefined" && earthGlobe) earthGlobe.rotation.y += 0.0006;
-      if (typeof jupiterMesh !== "undefined" && jupiterMesh) jupiterMesh.rotation.y += 0.0012;
-      if (typeof saturnGlobe !== "undefined" && saturnGlobe) saturnGlobe.rotation.y += 0.0008;
+      // Dynamic Sun synodic transit in lunar sky & matching directional light angle
+      if (typeof sunGroup !== "undefined" && sunGroup) {
+        const sunTheta = time * 0.012;
+        sunGroup.position.set(
+          460 * Math.cos(sunTheta),
+          160 * Math.sin(sunTheta * 0.8) + 40,
+          460 * Math.sin(sunTheta)
+        );
+        if (typeof sunHitSphere !== "undefined" && sunHitSphere) {
+          sunHitSphere.position.copy(sunGroup.position);
+        }
+        if (typeof sunLight !== "undefined" && sunLight) {
+          sunLight.position.copy(sunGroup.position.clone().normalize().multiplyScalar(25));
+        }
+      }
+
+      // Earth lunar libration wobble, 24h axial spin, and interactive pointer ring
+      if (typeof earthGroup !== "undefined" && earthGroup) {
+        const libX = Math.sin(time * 0.06) * 14.0;
+        const libY = Math.cos(time * 0.04) * 9.0;
+        earthGroup.position.set(earthPos.x + libX, earthPos.y + libY, earthPos.z);
+        if (typeof earthGlobe !== "undefined" && earthGlobe) earthGlobe.rotation.y += 0.0035;
+        if (typeof earthRing !== "undefined" && earthRing) earthRing.lookAt(camera.position);
+        if (typeof earthHitSphere !== "undefined" && earthHitSphere) {
+          earthHitSphere.position.copy(earthGroup.position);
+        }
+      }
+
+      // Solar System planetary orbital motions along the ecliptic
+      if (typeof jupiterMesh !== "undefined" && jupiterMesh) {
+        const jupAngle = 0.8 + time * 0.008;
+        jupiterMesh.position.set(400 * Math.cos(jupAngle), 180 * Math.sin(jupAngle * 0.7) + 60, 400 * Math.sin(jupAngle));
+        jupiterMesh.rotation.y += 0.002;
+        if (typeof jupiterHitSphere !== "undefined" && jupiterHitSphere) jupiterHitSphere.position.copy(jupiterMesh.position);
+      }
+      if (typeof marsMesh !== "undefined" && marsMesh) {
+        const marsAngle = 2.1 + time * 0.014;
+        marsMesh.position.set(420 * Math.cos(marsAngle), 150 * Math.sin(marsAngle * 0.8) - 40, 420 * Math.sin(marsAngle));
+        marsMesh.rotation.y += 0.003;
+        if (typeof marsHitSphere !== "undefined" && marsHitSphere) marsHitSphere.position.copy(marsMesh.position);
+      }
+      if (typeof venusMesh !== "undefined" && venusMesh) {
+        const venAngle = 3.6 + time * 0.024;
+        venusMesh.position.set(380 * Math.cos(venAngle), 190 * Math.sin(venAngle * 0.9) + 80, 380 * Math.sin(venAngle));
+        venusMesh.rotation.y += 0.002;
+        if (typeof venusHitSphere !== "undefined" && venusHitSphere) venusHitSphere.position.copy(venusMesh.position);
+      }
+      if (typeof saturnGroup !== "undefined" && saturnGroup) {
+        const satAngle = 5.0 + time * 0.004;
+        saturnGroup.position.set(440 * Math.cos(satAngle), 130 * Math.sin(satAngle * 0.6) - 90, 440 * Math.sin(satAngle));
+        if (typeof saturnGlobe !== "undefined" && saturnGlobe) saturnGlobe.rotation.y += 0.0015;
+        if (typeof saturnHitSphere !== "undefined" && saturnHitSphere) saturnHitSphere.position.copy(saturnGroup.position);
+      }
       if (typeof andromedaSprite !== "undefined" && andromedaSprite && andromedaSprite.material) {
         andromedaSprite.material.rotation = 0.65 + Math.sin(time * 0.05) * 0.02;
+      }
+
+      // Spacecraft OxyForge-1 Artemis Cislunar transit progression along TLI curve
+      if (typeof spacecraftGroup !== "undefined" && spacecraftGroup && typeof tliCurve !== "undefined") {
+        const craftProgress = (time * 0.022) % 1.0;
+        const craftPos = tliCurve.getPoint(craftProgress);
+        spacecraftGroup.position.copy(craftPos);
+        const craftTangent = tliCurve.getTangent(craftProgress);
+        spacecraftGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), craftTangent);
+
+        if (typeof craftPlumeMesh !== "undefined" && craftPlumeMesh) {
+          craftPlumeMesh.scale.set(1 + 0.2 * Math.sin(time * 18), 1 + 0.3 * Math.cos(time * 15), 1 + 0.2 * Math.sin(time * 18));
+        }
+        if (typeof craftBeaconRing !== "undefined" && craftBeaconRing) {
+          const bScale = 1 + 0.18 * Math.sin(time * 5);
+          craftBeaconRing.scale.set(bScale, bScale, bScale);
+          craftBeaconRing.lookAt(camera.position);
+        }
+        if (typeof spacecraftHitSphere !== "undefined" && spacecraftHitSphere) {
+          spacecraftHitSphere.position.copy(craftPos);
+        }
       }
 
       controls.update();

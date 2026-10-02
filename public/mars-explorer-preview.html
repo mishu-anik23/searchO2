@@ -1736,6 +1736,52 @@
           explanation: "Correct! Cassini discovered active cryovolcanic geysers erupting water vapor, salts, and simple organic molecules from a global ocean beneath Enceladus's ice crust."
         },
         sources: [{ title: "NASA Cassini Archive", url: "https://science.nasa.gov/mission/cassini/" }]
+      },
+      "sun": {
+        id: "sun",
+        name: "Sun (Sol) · Primary Star",
+        kind: "Yellow Dwarf Star (G2V)",
+        dist: "227.9 million km (1.52 AU)",
+        mag: "-25.6 (Blinding Luminosity)",
+        spec: "G2V Main Sequence",
+        coords: "Martian Ecliptic Sky · Synodic Track",
+        summary: "The radiant thermonuclear heart of the Solar System, appearing approximately 0.35° across in the Martian sky (about two-thirds its apparent diameter from Earth). Powers all surface solar collectors and atmospheric dust storm thermal cycles.",
+        why: "Primary energy source driving the Martian atmospheric circulation, seasonal polar CO₂ sublimation, and global dust storm dynamics.",
+        kidFriendly: "The Sun as seen from Mars! Because Mars is further away, the Sun looks a little smaller and slightly fainter, but still too bright to look at directly.",
+        limitation: "Solar irradiance on Mars is only ~590 W/m² (about 43% of Earth's 1361 W/m²), requiring larger photovoltaic surface areas.",
+        quiz: {
+          q: "How does the Sun appear from Mars compared to Earth?",
+          options: [
+            { text: "About 2/3 the size and roughly 43% as bright due to greater distance (1.52 AU)", correct: true },
+            { text: "Twice as large because Mars has a thinner atmosphere", correct: false },
+            { text: "Completely green due to carbon dioxide in the air", correct: false }
+          ],
+          explanation: "Correct! Because Mars is 1.52 AU from the Sun, inverse-square solar radiation drops to ~43% and angular size is ~21 arcminutes."
+        },
+        sources: [{ title: "NASA Mars Exploration Solar Science", url: "https://mars.nasa.gov/" }]
+      },
+      "oxyforge-2": {
+        id: "oxyforge-2",
+        name: "OxyForge-2 · Interplanetary Transit Vehicle",
+        kind: "Deep Space Cargo & Habitat Vessel",
+        dist: "142,000 km (Mars SOI Insertion Corridor)",
+        mag: "+6.8 (Reflective Radiator Panels)",
+        spec: "Nuclear-Thermal & Methalox Hybrid",
+        coords: "Mars Transfer Trajectory · Velocity 4.2 km/s",
+        summary: "Interplanetary transport vessel on final hyperbolic approach to Jezero Crater, delivering commercial MOXIE solid-oxide electrolysis modules, autonomous mining haulers, and cryogenic methane tanks.",
+        why: "Pioneering the interplanetary logistics highway to supply Martian colonies with vital industrial oxygen and rocket propellant.",
+        kidFriendly: "A massive spaceship flying from Earth to Mars right now! It has giant solar panels, fuel tanks, and robot mining machines on board.",
+        limitation: "Requires 7 to 9 months of interplanetary cruise through cosmic rays and solar flares.",
+        quiz: {
+          q: "What trajectory is standard for minimum-energy travel from Earth to Mars?",
+          options: [
+            { text: "A Hohmann Transfer Orbit (elliptical orbit touching both planetary paths)", correct: true },
+            { text: "A straight line flown at maximum rocket engine power", correct: false },
+            { text: "A polar sling-shot around Pluto", correct: false }
+          ],
+          explanation: "Correct! A Hohmann transfer orbit uses orbital mechanics to transfer between two planets with the minimum propellant expenditure."
+        },
+        sources: [{ title: "NASA Mars Mission Architecture", url: "https://mars.nasa.gov/" }]
       }
     };
 
@@ -2018,16 +2064,77 @@
       }
     });
 
-    // NAMED STARS INTERACTIVE ANCHORS & CONSTELLATION LINES
+    // PHOTOREALISTIC DIFFRACTION STAR TEXTURE GENERATOR (REPLACES CRUDE SOLID SPHERES)
+    function createStarTexture(colorStr) {
+      const size = 128;
+      const cvs = document.createElement("canvas");
+      cvs.width = size; cvs.height = size;
+      const ctx = cvs.getContext("2d");
+      const cx = size / 2, cy = size / 2;
+
+      const c = new THREE.Color(colorStr);
+      const r = Math.round(c.r * 255), g = Math.round(c.g * 255), b = Math.round(c.b * 255);
+      
+      // Soft Gaussian stellar corona gradient
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 60);
+      glow.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+      glow.addColorStop(0.12, `rgba(${r}, ${g}, ${b}, 0.95)`);
+      glow.addColorStop(0.35, `rgba(${r}, ${g}, ${b}, 0.40)`);
+      glow.addColorStop(0.70, `rgba(${r}, ${g}, ${b}, 0.08)`);
+      glow.addColorStop(1.0, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, size, size);
+
+      // Slender diffraction spikes (authentic optical telescope diffraction pattern)
+      const gradH = ctx.createLinearGradient(0, cy, size, cy);
+      gradH.addColorStop(0, "rgba(255,255,255,0)");
+      gradH.addColorStop(0.42, `rgba(${r},${g},${b},0.32)`);
+      gradH.addColorStop(0.5, "rgba(255,255,255,0.95)");
+      gradH.addColorStop(0.58, `rgba(${r},${g},${b},0.32)`);
+      gradH.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = gradH;
+      ctx.fillRect(0, cy - 0.75, size, 1.5);
+
+      const gradV = ctx.createLinearGradient(cx, 0, cx, size);
+      gradV.addColorStop(0, "rgba(255,255,255,0)");
+      gradV.addColorStop(0.42, `rgba(${r},${g},${b},0.32)`);
+      gradV.addColorStop(0.5, "rgba(255,255,255,0.95)");
+      gradV.addColorStop(0.58, `rgba(${r},${g},${b},0.32)`);
+      gradV.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = gradV;
+      ctx.fillRect(cx - 0.75, 0, 1.5, size);
+
+      // Brilliant white nuclear point
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath();
+      ctx.arc(cx, cy, 2.0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const tex = new THREE.CanvasTexture(cvs);
+      tex.needsUpdate = true;
+      return tex;
+    }
+
+    // NAMED STARS AS PHOTOREALISTIC GLOWING POINT SPRITES (NO SOLID BLUE SPHERES)
     const namedStarMap = {};
     NAMED_STARS.forEach(star => {
-      const pos = star.dir.clone().multiplyScalar(500);
+      const pos = star.dir.clone().multiplyScalar(495);
       namedStarMap[star.id] = pos;
 
-      const geom = new THREE.SphereGeometry(2.5, 12, 12);
-      const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(star.color), transparent: true, opacity: 0.95 });
-      const starMesh = new THREE.Mesh(geom, mat);
-      starMesh.position.copy(pos);
+      const starTex = createStarTexture(star.color);
+      const starMat = new THREE.SpriteMaterial({
+        map: starTex,
+        transparent: true,
+        opacity: 0.96,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      const starSprite = new THREE.Sprite(starMat);
+      starSprite.position.copy(pos);
+
+      const numMag = parseFloat(star.mag) || 1.0;
+      const spScale = Math.max(9.0, 18.0 - numMag * 2.8);
+      starSprite.scale.set(spScale, spScale, 1);
 
       const celData = CELESTIAL_DOSSIERS[star.id] || {
         id: star.id,
@@ -2053,24 +2160,61 @@
         sources: [{ title: "SIMBAD Astronomical Database", url: "https://simbad.cds.unistra.fr/simbad/" }]
       };
 
-      starMesh.userData = { isCelestial: true, celestialObj: celData };
-      scene.add(starMesh);
-      celestialTargets.push(starMesh);
-      addCelestialHitSphere(pos, 20, celData);
+      starSprite.userData = { isCelestial: true, celestialObj: celData };
+      scene.add(starSprite);
+      celestialTargets.push(starSprite);
+      addCelestialHitSphere(pos, Math.max(16, spScale * 1.2), celData);
     });
 
-    // DRAW CONSTELLATION LINES
+    // ETHEREAL STARLIGHT FILAMENTS FOR CONSTELLATION LINES (NO CYAN ROADS)
     CONSTELLATIONS.forEach(c => {
       c.segs.forEach(([a, b]) => {
         const p1 = namedStarMap[a], p2 = namedStarMap[b];
         if (p1 && p2) {
           const lineGeo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
-          const lineMat = new THREE.LineBasicMaterial({ color: 0x7EB8C9, transparent: true, opacity: 0.35 });
+          const lineMat = new THREE.LineBasicMaterial({
+            color: 0x88ccff,
+            transparent: true,
+            opacity: 0.22,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+          });
           const line = new THREE.Line(lineGeo, lineMat);
           scene.add(line);
         }
       });
     });
+
+    // VISIBLE 3D SUN WITH CORONA FLARE IN MARTIAN SKY (~0.35° ANGULAR DIAMETER)
+    const sunGroup = new THREE.Group();
+    const sunMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(11.5, 32, 32),
+      new THREE.MeshBasicMaterial({ color: 0xFFFFF4 })
+    );
+    sunGroup.add(sunMesh);
+
+    // Sun Corona Glow Flare Sprite (Martian Solar Scale)
+    const sunCoronaCvs = document.createElement("canvas");
+    sunCoronaCvs.width = 256; sunCoronaCvs.height = 256;
+    const sctx = sunCoronaCvs.getContext("2d");
+    const sunGlow = sctx.createRadialGradient(128, 128, 6, 128, 128, 124);
+    sunGlow.addColorStop(0, "rgba(255, 255, 255, 1.0)");
+    sunGlow.addColorStop(0.16, "rgba(255, 235, 170, 0.95)");
+    sunGlow.addColorStop(0.42, "rgba(255, 180, 60, 0.42)");
+    sunGlow.addColorStop(0.72, "rgba(255, 130, 20, 0.12)");
+    sunGlow.addColorStop(1.0, "rgba(0, 0, 0, 0)");
+    sctx.fillStyle = sunGlow;
+    sctx.fillRect(0, 0, 256, 256);
+    const sunCoronaTex = new THREE.CanvasTexture(sunCoronaCvs);
+    const sunCoronaSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: sunCoronaTex, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending
+    }));
+    sunCoronaSprite.scale.set(58, 58, 1);
+    sunGroup.add(sunCoronaSprite);
+
+    sunGroup.position.set(400, 190, 220);
+    scene.add(sunGroup);
+    const sunHitSphere = addCelestialHitSphere(sunGroup.position, 34, CELESTIAL_DOSSIERS["sun"]);
 
     // 3D EARTH & MOON SYSTEM IN MARTIAN SKY (225M KM AVG · MORNING/EVENING STAR)
     const earthGroup = new THREE.Group();
@@ -2123,7 +2267,35 @@
     earthGroup.add(earthRing);
 
     scene.add(earthGroup);
-    addCelestialHitSphere(earthPos, 26, CELESTIAL_DOSSIERS["earth"]);
+    const earthHitSphere = addCelestialHitSphere(earthPos, 26, CELESTIAL_DOSSIERS["earth"]);
+
+    // PLANETARY ORBIT TRACKS IN MARTIAN SKY
+    function createOrbitTrack(radiusX, radiusZ, inclination, colorHex) {
+      const pts = [];
+      for (let i = 0; i <= 64; i++) {
+        const th = (i / 64) * Math.PI * 2;
+        const x = radiusX * Math.cos(th);
+        const z = radiusZ * Math.sin(th);
+        const y = Math.sin(th) * inclination;
+        pts.push(new THREE.Vector3(x, y, z));
+      }
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      const mat = new THREE.LineDashedMaterial({
+        color: colorHex,
+        dashSize: 12,
+        gapSize: 7,
+        transparent: true,
+        opacity: 0.2,
+        depthWrite: false
+      });
+      const line = new THREE.Line(geo, mat);
+      line.computeLineDistances();
+      return line;
+    }
+    scene.add(createOrbitTrack(420, 420, 45, 0x88CCFF)); // Earth morning/evening elongation track
+    scene.add(createOrbitTrack(390, 390, 75, 0xDDAA77)); // Jupiter track
+    scene.add(createOrbitTrack(440, 440, -85, 0xEECC88)); // Saturn track
+    scene.add(createOrbitTrack(360, 360, 95, 0xFFEEAA)); // Venus track
 
     // SOLAR SYSTEM PLANETS IN MARTIAN SKY
     const jupiterTexture = textureLoader.load("cosmos/jupiter.webp");
@@ -2138,7 +2310,7 @@
     );
     jupiterMesh.position.copy(jupiterPos);
     scene.add(jupiterMesh);
-    addCelestialHitSphere(jupiterPos, 24, CELESTIAL_DOSSIERS["jupiter"]);
+    const jupiterHitSphere = addCelestialHitSphere(jupiterPos, 24, CELESTIAL_DOSSIERS["jupiter"]);
 
     // Saturn with Ring
     const saturnGroup = new THREE.Group();
@@ -2156,22 +2328,140 @@
     saturnRing.rotation.x = Math.PI / 2.6;
     saturnGroup.add(saturnRing);
     scene.add(saturnGroup);
-    addCelestialHitSphere(saturnPos, 22, CELESTIAL_DOSSIERS["saturn"]);
+    const saturnHitSphere = addCelestialHitSphere(saturnPos, 22, CELESTIAL_DOSSIERS["saturn"]);
 
-    // Phobos & Deimos orbiting Mars globe
-    const phobosMesh = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(0.12, 1),
-      new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.95 })
+    // Venus
+    const venusPos = new THREE.Vector3(-240, 280, 240);
+    const venusMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(4.0, 24, 24),
+      new THREE.MeshStandardMaterial({ map: venusTexture, roughness: 0.6, emissive: 0x332211, emissiveIntensity: 0.3 })
     );
-    phobosMesh.position.set(6.2, 0.8, 1.4);
+    venusMesh.position.copy(venusPos);
+    scene.add(venusMesh);
+    const venusData = {
+      id: "venus", name: "Venus · Morning Star", kind: "Terrestrial Planet", dist: "119–261 million km",
+      mag: "-4.2 (Brilliant Inner Planet)", spec: "Terrestrial Planet", coords: "Martian Morning Ecliptic",
+      summary: "Second planet from the Sun, enveloped in dense sulfuric acid clouds with catastrophic runaway greenhouse temperatures.",
+      why: "Key planetary analog for runaway atmospheric greenhouses.",
+      kidFriendly: "The dazzling yellow-white beacon in the morning sky!",
+      limitation: "Crushing surface pressure of 90 atmospheres.",
+      quiz: {
+        q: "What makes Venus so bright in the sky?",
+        options: [
+          { text: "Highly reflective clouds of sulfuric acid with high albedo", correct: true },
+          { text: "A shiny mirror-like metal crust", correct: false },
+          { text: "Nuclear explosions on its peaks", correct: false }
+        ],
+        explanation: "Correct! Venus's clouds reflect roughly 75% of incoming sunlight back into space."
+      },
+      sources: [{ title: "NASA Venus Exploration", url: "https://science.nasa.gov/venus/" }]
+    };
+    const venusHitSphere = addCelestialHitSphere(venusPos, 20, venusData);
+
+    // PHOBOS & DEIMOS ORBITAL TRACKS & MESHES
+    function createMoonOrbitRing(radius, inclX, inclZ, col) {
+      const pts = [];
+      for (let i = 0; i <= 64; i++) {
+        const th = (i / 64) * Math.PI * 2;
+        pts.push(new THREE.Vector3(radius * Math.cos(th), Math.sin(th) * inclX, radius * Math.sin(th) * inclZ));
+      }
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      const mat = new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.28 });
+      return new THREE.Line(geo, mat);
+    }
+    const phobosTrack = createMoonOrbitRing(6.4, 0.4, 1.0, 0xCCAA88);
+    const deimosTrack = createMoonOrbitRing(9.2, -0.6, 1.0, 0x998877);
+    scene.add(phobosTrack);
+    scene.add(deimosTrack);
+
+    // Phobos (Rapid orbit: 7h 39m, rises in West!)
+    const phobosMesh = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(0.14, 1),
+      new THREE.MeshStandardMaterial({ color: 0x998877, roughness: 0.95 })
+    );
+    phobosMesh.position.set(6.4, 0.8, 0);
     scene.add(phobosMesh);
 
+    // Deimos (Slow outer orbit: 30.3h)
     const deimosMesh = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(0.08, 1),
-      new THREE.MeshStandardMaterial({ color: 0x776655, roughness: 0.95 })
+      new THREE.DodecahedronGeometry(0.09, 1),
+      new THREE.MeshStandardMaterial({ color: 0x887766, roughness: 0.95 })
     );
-    deimosMesh.position.set(8.5, -1.2, -2.5);
+    deimosMesh.position.set(9.2, -1.2, 0);
     scene.add(deimosMesh);
+
+    // 3D SPACECRAFT: OXYFORGE-2 (INTERPLANETARY MARS TRANSIT VEHICLE)
+    const spacecraftGroup = new THREE.Group();
+
+    // Central Structural Spine / Hab Core
+    const craftSpineGeo = new THREE.CylinderGeometry(0.65, 0.65, 3.8, 16);
+    const craftSpineMat = new THREE.MeshStandardMaterial({
+      color: 0xEEF2F6, roughness: 0.35, metalness: 0.8, emissive: 0x112233, emissiveIntensity: 0.2
+    });
+    const craftSpine = new THREE.Mesh(craftSpineGeo, craftSpineMat);
+    craftSpine.rotation.x = Math.PI / 2;
+    spacecraftGroup.add(craftSpine);
+
+    // Rotating Artificial-Gravity Centrifuge Habitat Ring
+    const centrifugeGeo = new THREE.TorusGeometry(2.2, 0.2, 12, 32);
+    const centrifugeMat = new THREE.MeshStandardMaterial({
+      color: 0xD0D8E0, roughness: 0.3, metalness: 0.85
+    });
+    const craftCentrifuge = new THREE.Mesh(centrifugeGeo, centrifugeMat);
+    spacecraftGroup.add(craftCentrifuge);
+
+    // Large Thermal Radiators & Photovoltaic Wings
+    const craftWingsGeo = new THREE.BoxGeometry(6.4, 0.04, 1.4);
+    const craftWingsMat = new THREE.MeshStandardMaterial({
+      color: 0x0C2340, roughness: 0.2, metalness: 0.9, emissive: 0x051A30, emissiveIntensity: 0.4
+    });
+    const craftWings = new THREE.Mesh(craftWingsGeo, craftWingsMat);
+    spacecraftGroup.add(craftWings);
+
+    // High-Gain Parabolic Communications Dish
+    const craftDishGeo = new THREE.ConeGeometry(0.7, 0.3, 16, 1, true);
+    const craftDishMat = new THREE.MeshStandardMaterial({ color: 0xF8FAFC, metalness: 0.9, roughness: 0.2 });
+    const craftDish = new THREE.Mesh(craftDishGeo, craftDishMat);
+    craftDish.position.set(0, 1.1, -0.8);
+    craftDish.rotation.x = -Math.PI / 3;
+    spacecraftGroup.add(craftDish);
+
+    // Dual Plasma Thruster Plumes (Nuclear-Thermal & Electric Drive)
+    const craftPlumeGeo = new THREE.ConeGeometry(0.5, 2.6, 16);
+    const craftPlumeMat = new THREE.MeshBasicMaterial({
+      color: 0x7E57C2, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending
+    });
+    const craftPlumeMesh = new THREE.Mesh(craftPlumeGeo, craftPlumeMat);
+    craftPlumeMesh.position.z = -3.2;
+    craftPlumeMesh.rotation.x = -Math.PI / 2;
+    spacecraftGroup.add(craftPlumeMesh);
+
+    // Pulsing Navigation Beacon Ring
+    const craftBeaconRing = new THREE.Mesh(
+      new THREE.RingGeometry(3.2, 3.8, 32),
+      new THREE.MeshBasicMaterial({ color: 0xFFB300, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+    );
+    spacecraftGroup.add(craftBeaconRing);
+
+    // Interplanetary Mars Arrival Hyperbolic Curve
+    const marsArrivalCurve = new THREE.CubicBezierCurve3(
+      earthPos.clone().multiplyScalar(0.72),
+      new THREE.Vector3(-190, 130, -110),
+      new THREE.Vector3(-70, 50, -30),
+      new THREE.Vector3(0, 8.2, 0)
+    );
+
+    // Trajectory Trail Line
+    const arrivalPoints = marsArrivalCurve.getPoints(80);
+    const arrivalGeo = new THREE.BufferGeometry().setFromPoints(arrivalPoints);
+    const arrivalMat = new THREE.LineBasicMaterial({
+      color: 0xFFB300, transparent: true, opacity: 0.45, depthWrite: false, blending: THREE.AdditiveBlending
+    });
+    const arrivalLine = new THREE.Line(arrivalGeo, arrivalMat);
+    scene.add(arrivalLine);
+
+    scene.add(spacecraftGroup);
+    const spacecraftHitSphere = addCelestialHitSphere(earthPos, 24, CELESTIAL_DOSSIERS["oxyforge-2"]);
 
     // MARS GLOBE
     const MARS_RADIUS = 5.0;
@@ -2693,21 +2983,111 @@
         starMat.uniforms.uOpacity.value = 0.88 + Math.sin(time * 0.8) * 0.08;
       }
 
-      // Gentle axial rotation of Earth, Jupiter, Saturn, Andromeda, and Moons
-      if (typeof earthGlobe !== "undefined" && earthGlobe) earthGlobe.rotation.y += 0.0006;
-      if (typeof moonGlobe !== "undefined" && moonGlobe) moonGlobe.rotation.y += 0.0003;
-      if (typeof jupiterMesh !== "undefined" && jupiterMesh) jupiterMesh.rotation.y += 0.0012;
-      if (typeof saturnGlobe !== "undefined" && saturnGlobe) saturnGlobe.rotation.y += 0.0008;
+      // Dynamic Sun synodic transit in Martian sky & matching directional light angle
+      if (typeof sunGroup !== "undefined" && sunGroup) {
+        const sunTheta = time * 0.010;
+        sunGroup.position.set(
+          460 * Math.cos(sunTheta),
+          170 * Math.sin(sunTheta * 0.75) + 30,
+          460 * Math.sin(sunTheta)
+        );
+        if (typeof sunHitSphere !== "undefined" && sunHitSphere) {
+          sunHitSphere.position.copy(sunGroup.position);
+        }
+        if (typeof sunLight !== "undefined" && sunLight) {
+          sunLight.position.copy(sunGroup.position.clone().normalize().multiplyScalar(22));
+        }
+      }
+
+      // Earth & Moon System: Inferior Planet Orbit (Morning & Evening Star from Mars)
+      if (typeof earthGroup !== "undefined" && earthGroup && typeof sunGroup !== "undefined") {
+        // Earth orbits closer to the Sun than Mars, so it oscillates around the Sun's position with max elongation ~47°
+        const earthElongation = Math.sin(time * 0.022) * 125;
+        const eX = sunGroup.position.x * 0.72 + earthElongation;
+        const eY = sunGroup.position.y * 0.72 + Math.cos(time * 0.022) * 35;
+        const eZ = sunGroup.position.z * 0.72 - earthElongation * 0.45;
+        earthGroup.position.set(eX, eY, eZ);
+
+        // Axial spin of Earth
+        if (typeof earthGlobe !== "undefined" && earthGlobe) earthGlobe.rotation.y += 0.0035;
+
+        // Attendant Moon visibly orbiting Earth every ~27 days
+        if (typeof moonGlobe !== "undefined" && moonGlobe) {
+          const mAngle = time * 0.35;
+          moonGlobe.position.set(10.5 * Math.cos(mAngle), 3.2 * Math.sin(mAngle * 0.8), 10.5 * Math.sin(mAngle));
+          moonGlobe.rotation.y += 0.001;
+        }
+        if (typeof earthRing !== "undefined" && earthRing) earthRing.lookAt(camera.position);
+        if (typeof earthHitSphere !== "undefined" && earthHitSphere) {
+          earthHitSphere.position.copy(earthGroup.position);
+        }
+      }
+
+      // Solar System planetary orbital motions along the Martian ecliptic
+      if (typeof jupiterMesh !== "undefined" && jupiterMesh) {
+        const jupAngle = 1.2 + time * 0.007;
+        jupiterMesh.position.set(390 * Math.cos(jupAngle), 190 * Math.sin(jupAngle * 0.7) + 50, 390 * Math.sin(jupAngle));
+        jupiterMesh.rotation.y += 0.002;
+        if (typeof jupiterHitSphere !== "undefined" && jupiterHitSphere) jupiterHitSphere.position.copy(jupiterMesh.position);
+      }
+      if (typeof saturnGroup !== "undefined" && saturnGroup) {
+        const satAngle = 4.8 + time * 0.0035;
+        saturnGroup.position.set(440 * Math.cos(satAngle), 140 * Math.sin(satAngle * 0.6) - 80, 440 * Math.sin(satAngle));
+        if (typeof saturnGlobe !== "undefined" && saturnGlobe) saturnGlobe.rotation.y += 0.0015;
+        if (typeof saturnHitSphere !== "undefined" && saturnHitSphere) saturnHitSphere.position.copy(saturnGroup.position);
+      }
+      if (typeof venusMesh !== "undefined" && venusMesh) {
+        const venAngle = 2.8 + time * 0.028;
+        venusMesh.position.set(360 * Math.cos(venAngle), 180 * Math.sin(venAngle * 0.8) + 70, 360 * Math.sin(venAngle));
+        venusMesh.rotation.y += 0.002;
+        if (typeof venusHitSphere !== "undefined" && venusHitSphere) venusHitSphere.position.copy(venusMesh.position);
+      }
       if (typeof andromedaSprite !== "undefined" && andromedaSprite && andromedaSprite.material) {
         andromedaSprite.material.rotation = 0.65 + Math.sin(time * 0.05) * 0.02;
       }
+
+      // Phobos: Rapid eastward orbit (period 7h 39m, rising in West and setting in East)
       if (typeof phobosMesh !== "undefined" && phobosMesh) {
-        phobosMesh.position.x = 6.4 * Math.cos(time * 0.8);
-        phobosMesh.position.z = 6.4 * Math.sin(time * 0.8);
+        const pAngle = time * 0.85;
+        phobosMesh.position.set(6.4 * Math.cos(pAngle), 0.4 * Math.sin(pAngle), 6.4 * Math.sin(pAngle));
+        phobosMesh.rotation.y += 0.01;
       }
+
+      // Deimos: Slow outer orbit (period 30.3h)
       if (typeof deimosMesh !== "undefined" && deimosMesh) {
-        deimosMesh.position.x = 9.2 * Math.cos(time * 0.3 + 1.2);
-        deimosMesh.position.z = 9.2 * Math.sin(time * 0.3 + 1.2);
+        const dAngle = time * 0.22 + 1.2;
+        deimosMesh.position.set(9.2 * Math.cos(dAngle), -0.6 * Math.sin(dAngle), 9.2 * Math.sin(dAngle));
+        deimosMesh.rotation.y += 0.005;
+      }
+
+      // Spacecraft OxyForge-2 Interplanetary Mars Transit Vehicle progression
+      if (typeof spacecraftGroup !== "undefined" && spacecraftGroup && typeof marsArrivalCurve !== "undefined") {
+        const craftProgress = (time * 0.018) % 1.0;
+        const craftPos = marsArrivalCurve.getPoint(craftProgress);
+        spacecraftGroup.position.copy(craftPos);
+        const craftTangent = marsArrivalCurve.getTangent(craftProgress);
+        spacecraftGroup.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), craftTangent);
+
+        // Spin habitat centrifuge ring for artificial gravity
+        if (typeof craftCentrifuge !== "undefined" && craftCentrifuge) {
+          craftCentrifuge.rotation.z += 0.04;
+        }
+
+        // Pulse dual plasma thruster plumes
+        if (typeof craftPlumeMesh !== "undefined" && craftPlumeMesh) {
+          craftPlumeMesh.scale.set(1 + 0.25 * Math.sin(time * 20), 1 + 0.35 * Math.cos(time * 16), 1 + 0.25 * Math.sin(time * 20));
+        }
+
+        // Pulse beacon ring
+        if (typeof craftBeaconRing !== "undefined" && craftBeaconRing) {
+          const bScale = 1 + 0.18 * Math.sin(time * 4.5);
+          craftBeaconRing.scale.set(bScale, bScale, bScale);
+          craftBeaconRing.lookAt(camera.position);
+        }
+
+        if (typeof spacecraftHitSphere !== "undefined" && spacecraftHitSphere) {
+          spacecraftHitSphere.position.copy(craftPos);
+        }
       }
 
       controls.update();
