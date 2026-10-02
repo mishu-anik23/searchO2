@@ -11,7 +11,6 @@ import { Landing } from "./Landing";
 import { Surface, Habitat } from "./Surface";
 import { Debrief } from "./Debrief";
 import { FPVView } from "./FPVView";
-import { MoonExplorer } from "./MoonExplorer";
 import { warmupPhotos } from "@/game/cosmos";
 
 export function GameApp() {
@@ -21,6 +20,7 @@ export function GameApp() {
   const mission = useGame((s) => s.mission);
   const openLibrary = useGame((s) => s.openLibrary);
   const setReducedMotion = useGame((s) => s.setReducedMotion);
+  const hydrated = useGame((s) => s.hydrated);
 
   useEffect(() => {
     warmupPhotos();
@@ -60,7 +60,18 @@ export function GameApp() {
     };
   }, []);
 
-  if (screen === "briefing") return <Briefing />;
+  if (!hydrated) {
+    return <div className="min-h-dvh bg-bg" />;
+  }
+
+  if (screen === "briefing") {
+    return (
+      <>
+        <Briefing />
+        <LibraryPanel />
+      </>
+    );
+  }
 
   return (
     <div className="flex min-h-dvh flex-col bg-bg text-fg">
@@ -72,7 +83,6 @@ export function GameApp() {
         {screen === "cruise" && <Cruise />}
         {screen === "landing" && <Landing />}
         {screen === "surface" && <Surface />}
-        {screen === "explore" && <MoonExplorer />}
         {screen === "habitat" && <Habitat />}
         {screen === "debrief" && <Debrief />}
       </div>

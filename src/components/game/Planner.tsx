@@ -7,7 +7,6 @@ import {
   type DestinationId,
   type RocketId,
 } from "@/game/data";
-import { CREW_ROSTER } from "@/game/crew";
 import { useGame } from "@/game/store";
 import { cn, formatUsd } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,9 +17,8 @@ export function Planner() {
   const selectMission = useGame((s) => s.selectMission);
   const credits = useGame((s) => s.credits);
   const openLibrary = useGame((s) => s.openLibrary);
-  const commander = useGame((s) => s.commander);
-  const crewSeats = useGame((s) => s.crewSeats);
-  const [dest, setDest] = useState<DestinationId>("moon");
+  const planDest = useGame((s) => s.planDest);
+  const [dest, setDest] = useState<DestinationId>(planDest);
   const [rocket, setRocket] = useState<RocketId>("hauler");
   const [err, setErr] = useState("");
 
@@ -28,11 +26,6 @@ export function Planner() {
   const d = DESTINATIONS[dest];
   const r = ROCKETS[rocket];
   const canPay = credits >= price;
-  const seatNames = crewSeats.map((id) => {
-    const m = CREW_ROSTER.find((c) => c.id === id);
-    if (!m) return id;
-    return m.id === "cmd-self" ? commander || "You" : m.name;
-  });
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:py-10">
@@ -115,14 +108,6 @@ export function Planner() {
               {r.name} to the {d.name}. {d.travelLabel} on the clock. Crew hardware and extra months both add mass,
               and mass adds fuel.
             </p>
-            {rocket === "crewmark" && (
-              <p className="mt-2 text-xs text-accent">
-                Flight seats: {seatNames.length ? seatNames.join(" · ") : "none"} — change roster at HQ.
-              </p>
-            )}
-            {rocket === "hauler" && (
-              <p className="mt-2 text-xs text-muted">Cargo only — no flight-crew seats required.</p>
-            )}
             <button
               type="button"
               className="mt-2 text-sm text-accent underline-offset-2 hover:underline"

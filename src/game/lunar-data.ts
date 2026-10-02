@@ -23,6 +23,44 @@ export interface LunarFeature {
   why: string;
   limitation: string;
   sources: ScienceSource[];
+  /** Short classroom-friendly explanation for school children */
+  kidFriendly?: string;
+}
+
+/** Shared classroom facts about the Moon as a place (not Earth-like weather). */
+export const MOON_GEOGRAPHY_BASICS = {
+  title: "What is the Moon like?",
+  atmosphere:
+    "The Moon has almost no air. There is no weather like rain or wind as we know it on Earth. Footprints can last a very long time because nothing blows them away.",
+  gravity:
+    "Gravity on the Moon is about one-sixth of Earth’s. You would weigh much less — and jump higher — but you still need a spacesuit and oxygen.",
+  dayNight:
+    "A lunar “day” (sunrise to sunrise) lasts about 29.5 Earth days. Near the poles, some crater floors stay in permanent shadow while nearby peaks can catch sunlight.",
+  surface:
+    "The surface is covered in regolith — fine, dusty rock powder made by countless impacts. It can be dark grey and very clingy.",
+  sky: "The sky is black even in daytime because there is no thick atmosphere to scatter blue light.",
+};
+
+export function typeLabel(type: LunarFeature["type"]): string {
+  const map: Record<LunarFeature["type"], string> = {
+    pole: "Pole",
+    crater: "Crater",
+    basin: "Basin",
+    psr: "Permanently shadowed region",
+    mountain: "Mountain",
+    ridge: "Ridge",
+    centralPeak: "Central peak",
+    resource: "Resource interest",
+    science: "Science target",
+  };
+  return map[type];
+}
+
+export function formatLatLon(lat: number, lon: number): { lat: string; lon: string } {
+  return {
+    lat: `${Math.abs(lat).toFixed(1)}°${lat < 0 ? "S" : "N"}`,
+    lon: `${Math.abs(lon).toFixed(1)}°${lon < 0 ? "W" : "E"}`,
+  };
 }
 
 const water: ScienceSource = {
@@ -104,6 +142,8 @@ export const LUNAR_FEATURES: LunarFeature[] = [
     why: "Illumination changes sharply with local topography; permanently shadowed terrain is of interest for volatile research.",
     limitation: "This globe marker is a geographic locator, not a resource map.",
     sources: [southPole, psr],
+    kidFriendly:
+      "The North Pole of the Moon is a place where the Sun stays low. Some crater floors almost never see sunlight, so they can stay extremely cold.",
   },
   {
     id: "south-pole",
@@ -117,6 +157,8 @@ export const LUNAR_FEATURES: LunarFeature[] = [
     why: "Some exploration concepts seek to pair access to shadowed terrain with power and communications on illuminated high ground.",
     limitation: "Lighting and access vary locally and over time; this view is not a landing-site assessment.",
     sources: [southPole, psr],
+    kidFriendly:
+      "NASA and other agencies study the South Pole because high ridges can catch sunlight for power while nearby dark craters may hide frozen water ice.",
   },
   {
     id: "shackleton",
@@ -128,6 +170,8 @@ export const LUNAR_FEATURES: LunarFeature[] = [
     region: "South Pole",
     status: "OBSERVED",
     evidence: "Lunar orbit observations of illuminated rim and shadowed interior",
+    kidFriendly:
+      "Shackleton is a big bowl near the South Pole. Its rim can catch sunlight, but the inside stays dark and cold — a natural “freezer” on the Moon.",
     summary:
       "A ~21 km impact crater close to the South Pole, with a permanently shadowed interior and portions of its rim receiving sunlight.",
     why: "It is scientifically interesting for polar volatile studies and highlights the engineering trade-off between light and cold traps.",

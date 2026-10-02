@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OxyForge — 3D Mars Explorer & Jezero Traverse</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <style>
+    :root {
+      --bg: #07090E;
+      --surface: #101520;
+      --surface-elevated: #182030;
+      --surface-raised: #222C42;
+      --border: #2A364E;
+      --accent: #FF6B4A;
+      --accent-glow: rgba(255, 107, 74, 0.4);
+      --accent-cyan: #00E5FF;
+      --ice: #7EB8C9;
+      --fg: #EAF0F8;
+      --fg-muted: #8E9DB2;
+      --gold: #FFB300;
+      --green: #4CAF50;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background-color: var(--bg);
+      color: var(--fg);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* TOP HEADER NAV */
+    header.mission-nav {
+      background: rgba(16, 21, 32, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge-school {
+      background: rgba(255, 107, 74, 0.15);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      letter-spacing: 0.5px;
+    }
+
+    h1.header-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .header-nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .nav-btn {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 107, 74, 0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .nav-btn.nav-primary {
+      background: linear-gradient(135deg, #C84628, #E65100);
+      border-color: #FF8A65;
+      color: #FFF;
+      box-shadow: 0 2px 10px rgba(230, 81, 0, 0.35);
+    }
+
+    /* MAIN VIEWPORT */
+    .viewport-container {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      cursor: grab;
+    }
+
+    .viewport-container:active {
+      cursor: grabbing;
+    }
+
+    #marsCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* HUD OVERLAYS */
+    .hud-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px 20px;
+    }
+
+    .hud-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      pointer-events: auto;
+    }
+
+    /* LAYER FILTERS */
+    .filter-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      background: rgba(16, 21, 32, 0.85);
+      backdrop-filter: blur(10px);
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      max-width: 680px;
+    }
+
+    .filter-chip {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--fg-muted);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.18s ease;
+    }
+
+    .filter-chip:hover {
+      color: var(--fg);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .filter-chip.active {
+      background: var(--surface-raised);
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 10px rgba(255, 107, 74, 0.25);
+    }
+
+    /* GAMIFICATION STATUS CHIP */
+    .gamify-banner {
+      background: rgba(16, 21, 32, 0.9);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+
+    .gamify-stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .gamify-stat .label {
+      color: var(--fg-muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      font-family: var(--font);
+    }
+
+    .gamify-stat .val {
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    .gamify-stat .val.gold {
+      color: var(--gold);
+    }
+
+    /* BOTTOM CONTROLS & TOUR */
+    .hud-bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+      pointer-events: auto;
+    }
+
+    .view-controls {
+      display: flex;
+      gap: 8px;
+      background: rgba(16, 21, 32, 0.88);
+      backdrop-filter: blur(10px);
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .ctrl-btn {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 7px 13px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .ctrl-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(255, 107, 74, 0.1);
+    }
+
+    .ctrl-btn.active {
+      background: var(--accent);
+      color: #07090E;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    .tour-box {
+      background: rgba(16, 21, 32, 0.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .tour-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tour-tag {
+      font-size: 0.68rem;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .tour-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #FFF;
+    }
+
+    .tour-btn {
+      background: var(--surface-raised);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .tour-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* HOVER TOOLTIP CARD */
+    #hoverCard {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(16, 21, 32, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 12px 14px;
+      width: 260px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(255, 107, 74, 0.25);
+      z-index: 30;
+      opacity: 0;
+      transform: translate(-50%, -120%);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    #hoverCard.visible {
+      opacity: 1;
+    }
+
+    .hc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .hc-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #FFF;
+    }
+
+    .hc-type {
+      font-size: 0.64rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-weight: 700;
+      background: rgba(255, 107, 74, 0.2);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .hc-coords {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--accent-cyan);
+      margin-bottom: 6px;
+    }
+
+    .hc-summary {
+      font-size: 0.76rem;
+      color: var(--fg-muted);
+      line-height: 1.35;
+      margin-bottom: 6px;
+    }
+
+    .hc-hint {
+      font-size: 0.68rem;
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    /* CLASSROOM POPUP MODAL */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-window {
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 107, 74, 0.3);
+      display: flex;
+      flex-direction: column;
+      transform: scale(0.95);
+      transition: transform 0.25s ease;
+    }
+
+    .modal-backdrop.open .modal-window {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 10;
+    }
+
+    .modal-header-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .modal-pretitle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-type-tag {
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-weight: 700;
+      background: rgba(255, 107, 74, 0.2);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .modal-status-tag {
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-weight: 700;
+      background: rgba(0, 229, 255, 0.15);
+      border: 1px solid var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .modal-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #FFF;
+      letter-spacing: -0.4px;
+    }
+
+    .modal-coords {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--ice);
+    }
+
+    .btn-modal-close {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--fg-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-modal-close:hover {
+      border-color: var(--accent);
+      color: #FFF;
+      background: rgba(255, 107, 74, 0.2);
+    }
+
+    .modal-body {
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .section-card {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+    }
+
+    .section-card-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      font-family: var(--mono);
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .kid-box {
+      background: rgba(255, 179, 0, 0.08);
+      border: 1px solid rgba(255, 179, 0, 0.4);
+      border-radius: 12px;
+      padding: 14px 18px;
+    }
+
+    .kid-box .section-card-title {
+      color: var(--gold);
+    }
+
+    /* PLANETARY COMPARISON GRID */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .compare-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .compare-item .label {
+      font-size: 0.68rem;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      font-family: var(--mono);
+    }
+
+    .compare-item .val {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--fg);
+    }
+
+    /* INTERACTIVE FIELD QUIZ */
+    .quiz-box {
+      background: rgba(0, 229, 255, 0.06);
+      border: 1px solid var(--accent-cyan);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .quiz-question {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #FFF;
+      margin-bottom: 12px;
+    }
+
+    .quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .quiz-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 10px 14px;
+      border-radius: 8px;
+      text-align: left;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .quiz-btn:hover {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 229, 255, 0.1);
+    }
+
+    .quiz-btn.correct {
+      background: rgba(76, 175, 80, 0.2) !important;
+      border-color: var(--green) !important;
+      color: #A5D6A7 !important;
+    }
+
+    .quiz-btn.wrong {
+      background: rgba(244, 67, 54, 0.2) !important;
+      border-color: #EF5350 !important;
+      color: #FFCDD2 !important;
+    }
+
+    .quiz-feedback {
+      margin-top: 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      display: none;
+    }
+
+    /* SOURCES & FOOTER */
+    .sources-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .source-link {
+      font-size: 0.74rem;
+      color: var(--ice);
+      text-decoration: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .source-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+  <!-- HEADER NAVIGATION -->
+  <header class="mission-nav">
+    <div class="brand-wrap">
+      <span class="badge-school">MISSION SCHOOL</span>
+      <h1 class="header-title">
+        <span>🔴</span>
+        <span>OxyForge — Mars 3D Explorer &amp; Jezero Traverse</span>
+      </h1>
+    </div>
+    <div class="header-nav-links">
+      <a href="oxyforge.html" class="nav-btn">
+        <span>📋</span>
+        <span>Mission HQ</span>
+      </a>
+      <a href="launchpad-preview.html" class="nav-btn">
+        <span>🔥</span>
+        <span>3D Launchpad</span>
+      </a>
+      <a href="transfer-cruise-preview.html" class="nav-btn">
+        <span>🛸</span>
+        <span>Transfer Cruise FPV</span>
+      </a>
+      <a href="moon-landing-preview.html" class="nav-btn">
+        <span>🌙</span>
+        <span>Moon Landing</span>
+      </a>
+      <a href="lunar-explorer-preview.html" class="nav-btn nav-primary">
+        <span>🌕</span>
+        <span>Switch to Moon 3D</span>
+      </a>
+      <a href="../index.html" class="nav-btn">
+        <span>🌾</span>
+        <span>SearchO2 Farm</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- VIEWPORT & 3D CANVAS -->
+  <div class="viewport-container" id="canvasContainer">
+    <canvas id="marsCanvas"></canvas>
+
+    <!-- HUD LAYER -->
+    <div class="hud-layer">
+      <!-- TOP HUD: FILTERS & GAMIFICATION -->
+      <div class="hud-top-bar">
+        <div class="filter-chips" id="filterContainer">
+          <button class="filter-chip active" onclick="setLayerFilter('all')">All Features (12)</button>
+          <button class="filter-chip" onclick="setLayerFilter('landing')">Touchdowns</button>
+          <button class="filter-chip" onclick="setLayerFilter('crater')">Craters</button>
+          <button class="filter-chip" onclick="setLayerFilter('delta')">Deltas</button>
+          <button class="filter-chip" onclick="setLayerFilter('mountain')">Volcanoes</button>
+          <button class="filter-chip" onclick="setLayerFilter('canyon')">Canyons</button>
+          <button class="filter-chip" onclick="setLayerFilter('pole')">Polar Ice</button>
+          <button class="filter-chip" onclick="setLayerFilter('isru')">ISRU Oxygen</button>
+          <button class="filter-chip" onclick="setLayerFilter('rover')">Rovers</button>
+        </div>
+
+        <div class="gamify-banner">
+          <div class="gamify-stat">
+            <span class="label">Expedition Log</span>
+            <span class="val" id="expeditionCount">0 / 12 Discovered</span>
+          </div>
+          <div class="gamify-stat">
+            <span class="label">Research XP</span>
+            <span class="val gold" id="researchXp">0 XP</span>
+          </div>
+          <div class="gamify-stat">
+            <span class="label">Badges</span>
+            <span class="val" id="badgeCount">0 🏅</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM HUD: CAMERA CONTROLS & GUIDED TOUR -->
+      <div class="hud-bottom-bar">
+        <div class="view-controls">
+          <button class="ctrl-btn" id="btnZoomToggle" onclick="toggleCloseZoom()">
+            <span>🔍</span>
+            <span id="zoomLabel">Close Surface Zoom</span>
+          </button>
+          <button class="ctrl-btn" onclick="resetCameraView()">
+            <span>🔄</span>
+            <span>Reset View</span>
+          </button>
+          <button class="ctrl-btn" id="btnRoam" onclick="toggleRoamMode()">
+            <span>🧭</span>
+            <span id="roamLabel">Free Pan: Off</span>
+          </button>
+          <button class="ctrl-btn" onclick="flyToFeature('jezero')">
+            <span>🎯</span>
+            <span>Focus Jezero</span>
+          </button>
+        </div>
+
+        <div class="tour-box">
+          <div class="tour-info">
+            <span class="tour-tag" id="tourProgress">Classroom Guided Tour · Ready</span>
+            <span class="tour-title" id="tourTitle">Perseverance &amp; Jezero Traverse</span>
+          </div>
+          <button class="tour-btn" onclick="prevTourStop()">◀ Prev</button>
+          <button class="tour-btn" onclick="nextTourStop()" style="background:var(--accent);color:#07090E;border-color:var(--accent);font-weight:700;">
+            Next Stop ▶
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOVER TOOLTIP CARD -->
+    <div id="hoverCard">
+      <div class="hc-header">
+        <span class="hc-title" id="hcTitle">Jezero Crater</span>
+        <span class="hc-type" id="hcType">CRATER</span>
+      </div>
+      <div class="hc-coords" id="hcCoords">18.4°N, 77.5°E</div>
+      <p class="hc-summary" id="hcSummary">Ancient lake basin with dried river delta sediments.</p>
+      <div class="hc-hint">Click marker to open Classroom Study Dossier ➔</div>
+    </div>
+  </div>
+
+  <!-- CLASSROOM POPUP MODAL -->
+  <div class="modal-backdrop" id="studyModal" onclick="handleBackdropClick(event)">
+    <div class="modal-window" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <div class="modal-pretitle">
+            <span class="modal-type-tag" id="modalType">CRATER</span>
+            <span class="modal-status-tag" id="modalStatus">ACTIVE ROVER</span>
+          </div>
+          <h2 class="modal-title" id="modalTitle">Jezero Crater</h2>
+          <div class="modal-coords" id="modalCoords">18.4°N, 77.5°E · Region: Syrtis Major</div>
+        </div>
+        <button class="btn-modal-close" onclick="closeStudyModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- GEOLOGY OVERVIEW -->
+        <div class="section-card">
+          <div class="section-card-title">📖 Scientific Geography &amp; Exploration History</div>
+          <p id="modalSummary">A ~45 km crater that once held a lake fed by a river.</p>
+        </div>
+
+        <!-- WHY IT MATTERS -->
+        <div class="section-card">
+          <div class="section-card-title">💡 Why It Matters for Science &amp; Human Settlement</div>
+          <p id="modalWhy">Sediments in a former lake-delta system can preserve organic molecules.</p>
+        </div>
+
+        <!-- KID-FRIENDLY CLASSROOM SUMMARY -->
+        <div class="kid-box">
+          <div class="section-card-title">🎒 For Young Astronauts (Kid-Friendly Summary)</div>
+          <p id="modalKid">Think of a river dumping mud and sand into a lake...</p>
+        </div>
+
+        <!-- PLANETARY ENVIRONMENT -->
+        <div class="section-card">
+          <div class="section-card-title">🪐 Mars Environmental Facts</div>
+          <div class="compare-grid">
+            <div class="compare-item">
+              <span class="label">Atmosphere</span>
+              <span class="val">95% CO₂ (&lt;1% Earth)</span>
+            </div>
+            <div class="compare-item">
+              <span class="label">Gravity</span>
+              <span class="val">0.38g (38% Earth)</span>
+            </div>
+            <div class="compare-item">
+              <span class="label">Sol Duration</span>
+              <span class="val">24h 39m 35s</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- FIELD KNOWLEDGE CHECK (INTERACTIVE QUIZ) -->
+        <div class="quiz-box">
+          <div class="section-card-title">⚡ Field Knowledge Check (+50 Research XP)</div>
+          <div class="quiz-question" id="quizQuestion">Why was Jezero Crater chosen as the landing site for Perseverance?</div>
+          <div class="quiz-options" id="quizOptions">
+            <!-- Dynamically populated -->
+          </div>
+          <div class="quiz-feedback" id="quizFeedback"></div>
+        </div>
+
+        <!-- LIMITATIONS & SOURCES -->
+        <div class="section-card">
+          <div class="section-card-title">⚠️ Mission Limitations &amp; References</div>
+          <p id="modalLimitation" style="font-size:0.8rem;color:var(--fg-muted);margin-bottom:8px;">
+            Rover traverses cover narrow corridors; globe markers represent educational reference locators.
+          </p>
+          <div class="sources-list" id="modalSources">
+            <a href="https://science.nasa.gov/mars/" target="_blank" class="source-link">🔗 NASA Science: Mars Exploration</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // MARS FEATURES DATASET
+    const MARS_FEATURES = [
+      {
+        id: "jezero",
+        name: "Jezero Crater",
+        type: "crater",
+        lat: 18.4,
+        lon: 77.5,
+        diameterKm: 45,
+        region: "Syrtis Major / Isidis rim",
+        mission: "Mars 2020 Perseverance",
+        status: "ACTIVE ROVER",
+        summary: "A 45 km impact crater that held a paleolake ~3.5 billion years ago. The western inlet exposes a beautifully preserved fan delta with rich clay and carbonate mineral layers.",
+        why: "River deltas on Earth are exceptional at burying and preserving organic molecules. Jezero is prime ground for astrobiology and core sample caching.",
+        kidFriendly: "Long ago, Jezero was a deep crater lake with a rushing river pouring into it! Perseverance is exploring the dried-up river delta looking for signs of ancient microscopic life.",
+        limitation: "Perseverance can only drive a few hundred meters per sol; rover data covers narrow paths across the giant crater.",
+        quiz: {
+          q: "What geological feature inside Jezero Crater makes it so valuable for finding ancient life clues?",
+          options: [
+            { text: "A preserved ancient river delta with layered sediment beds", correct: true },
+            { text: "An active freshwater geyser erupting daily", correct: false },
+            { text: "The tallest molten volcano in the Solar System", correct: false }
+          ],
+          explanation: "Correct! River deltas slow down water and deposit fine clay and mud that can preserve organic signatures for billions of years."
+        },
+        sources: [{ title: "NASA Science Jezero", url: "https://science.nasa.gov/mars/" }]
+      },
+      {
+        id: "butler-landing",
+        name: "Octavia E. Butler Landing",
+        type: "landing",
+        lat: 18.44,
+        lon: 77.45,
+        region: "Jezero Crater floor",
+        mission: "Mars 2020 Perseverance",
+        status: "EXPLORED",
+        summary: "Perseverance's touchdown coordinate on February 18, 2021, using Terrain-Relative Navigation (TRN) and the sky-crane descent stage.",
+        why: "A flat, relatively rock-free landing ellipse allowing safe rollout toward Séítah and the western delta.",
+        kidFriendly: "This is where the Perseverance rover first touched down on Mars using rocket thrusters and cables from a flying sky-crane!",
+        limitation: "Touchdown coordinates represent point-of-origin before traverse.",
+        quiz: {
+          q: "What breakthrough autonomous technology allowed Perseverance to avoid boulders during touchdown?",
+          options: [
+            { text: "Terrain-Relative Navigation (TRN) computer vision", correct: true },
+            { text: "Giant inflatable bounce airbags", correct: false },
+            { text: "Manual remote control from Earth joystick", correct: false }
+          ],
+          explanation: "Correct! TRN took real-time photos during descent and compared them to orbital hazard maps in fractions of a second."
+        },
+        sources: [{ title: "NASA JPL Perseverance Landing", url: "https://science.nasa.gov/mission/mars-2020-perseverance/" }]
+      },
+      {
+        id: "western-delta",
+        name: "Jezero Western Delta",
+        type: "delta",
+        lat: 18.5,
+        lon: 77.35,
+        region: "Jezero Crater",
+        mission: "Mars 2020 Perseverance",
+        status: "ACTIVE ROVER",
+        summary: "Spectacular layered outcrop of siltstone and mudstone left behind by Neretva Vallis as it deposited sediments into the crater lake.",
+        why: "Mudstones in this delta have yielded some of the highest concentrations of organic carbon ever detected on Mars.",
+        kidFriendly: "Imagine a muddy river spilling into a calm lake and building a giant wedge of mud. That wedge turned into stone, creating a history book of water!",
+        limitation: "Samples sealed in tubes await a future Mars Sample Return mission to bring them to Earth labs.",
+        quiz: {
+          q: "Why are fine-grained mudstones in river deltas so important for sample caching?",
+          options: [
+            { text: "They trap and protect organic molecules from cosmic radiation", correct: true },
+            { text: "They contain pure liquid water that can be pumped out", correct: false },
+            { text: "They are magnetic and stick to the rover wheels", correct: false }
+          ],
+          explanation: "Correct! Fine sediments act like a protective seal, shielding ancient chemical compounds from space weathering."
+        },
+        sources: [{ title: "Perseverance Western Delta", url: "https://science.nasa.gov/mission/mars-2020-perseverance/" }]
+      },
+      {
+        id: "seitah",
+        name: "Séítah Geological Unit",
+        lat: 18.43,
+        lon: 77.42,
+        type: "rover",
+        region: "Jezero Crater floor",
+        mission: "Mars 2020 Perseverance",
+        status: "EXPLORED",
+        summary: "Navajo word meaning 'amidst the sand'. Features dunes and igneous cumulate olivine rocks formed from slowly cooling magma or lava flows.",
+        why: "Provides a precise volcanic timestamp helping scientists calibrate the geologic age of Jezero and Mars.",
+        kidFriendly: "A field of sand dunes and volcanic rock. Rover scientists named it after a Navajo word meaning 'amidst the sand'.",
+        limitation: "Rough ripples presented significant wheel slip hazards during navigation.",
+        quiz: {
+          q: "What type of rock in Séítah allowed scientists to determine its volcanic origin?",
+          options: [
+            { text: "Olivine-rich igneous rock from ancient magma", correct: true },
+            { text: "Fossilized tree wood", correct: false },
+            { text: "Artificial concrete", correct: false }
+          ],
+          explanation: "Correct! Coarse-grained olivine minerals indicate magma cooled slowly beneath or at the ancient Martian surface."
+        },
+        sources: [{ title: "JPL Séítah Traverse", url: "https://science.nasa.gov/mission/mars-2020-perseverance/" }]
+      },
+      {
+        id: "moxie-site",
+        name: "MOXIE ISRU Oxygen Plant",
+        lat: 18.44,
+        lon: 77.45,
+        type: "isru",
+        region: "Perseverance Payload Bay",
+        mission: "Mars 2020 MOXIE",
+        status: "EXPLORED",
+        summary: "The Mars Oxygen ISRU Experiment (MOXIE) demonstrated solid oxide electrolysis, converting carbon dioxide (CO₂) from the Martian atmosphere into pure breathable oxygen (O₂).",
+        why: "To launch a return rocket from Mars requires ~25 tons of liquid oxygen. Producing it on Mars saves hundreds of millions in launch mass.",
+        kidFriendly: "MOXIE is a toaster-sized box that breathed in Martian air (carbon dioxide) and puffed out fresh oxygen, like a mechanical tree!",
+        limitation: "MOXIE was a demonstration generating ~12 grams/hr; human missions will need full-scale plants producing 2 to 3 kg/hr continuously.",
+        quiz: {
+          q: "What does MOXIE make out of the Martian atmosphere?",
+          options: [
+            { text: "Oxygen (O₂) by splitting carbon dioxide (CO₂)", correct: true },
+            { text: "Rocket kerosene fuel", correct: false },
+            { text: "Fresh liquid drinking water", correct: false }
+          ],
+          explanation: "Correct! MOXIE uses solid oxide electrolysis at 800°C to split CO₂ into CO and pure oxygen ions."
+        },
+        sources: [{ title: "NASA MOXIE Instrument", url: "https://science.nasa.gov/mission/mars-2020-perseverance/moxie/" }]
+      },
+      {
+        id: "ingenuity-zone",
+        name: "Ingenuity Flight Corridors",
+        lat: 18.44,
+        lon: 77.45,
+        type: "rover",
+        region: "Jezero Crater",
+        mission: "Ingenuity Helicopter",
+        status: "EXPLORED",
+        summary: "The first powered, controlled flight on another planet. Planned for 5 flights, Ingenuity achieved 72 successful flights over 3 years, logging 128 flight minutes.",
+        why: "Demonstrated that low-density atmospheric flight (1% Earth density) is possible with carbon-fiber counter-rotating rotors spinning at 2,400 RPM.",
+        kidFriendly: "A tiny 4-pound helicopter that flew 72 times on Mars! Its twin blades spun 10 times faster than a regular Earth helicopter.",
+        limitation: "Flight ended in Jan 2024 after rotor damage on a sandy landing.",
+        quiz: {
+          q: "Why did Ingenuity's rotor blades need to spin so fast (2,400+ RPM)?",
+          options: [
+            { text: "Because the Martian atmosphere is less than 1% as thick as Earth's", correct: true },
+            { text: "Because gravity on Mars is 5 times stronger than Earth", correct: false },
+            { text: "To scare away local dust storms", correct: false }
+          ],
+          explanation: "Correct! In ultra-thin air, blades must spin exceptionally fast to bite enough air molecules to generate aerodynamic lift."
+        },
+        sources: [{ title: "NASA Ingenuity Mars Helicopter", url: "https://science.nasa.gov/mission/mars-2020-perseverance/ingenuity/" }]
+      },
+      {
+        id: "olympus-mons",
+        name: "Olympus Mons",
+        lat: 18.65,
+        lon: -133.8,
+        diameterKm: 600,
+        elevationKm: 21.9,
+        type: "mountain",
+        region: "Tharsis Montes",
+        status: "EXPLORED",
+        summary: "The colossal shield volcano towers 21.9 km (72,000 ft) above the surrounding plains — nearly three times the height of Mount Everest. Its footprint is as large as France.",
+        why: "Absence of plate tectonics allowed magma plumes to vent at the exact same location for hundreds of millions of years under 38% gravity.",
+        kidFriendly: "The biggest volcano in the entire Solar System! It's so gigantic that if you stood at the edge, the top would hide beyond the horizon curve.",
+        limitation: "Steep basal cliffs (up to 8 km high) make ground vehicle ascent nearly impossible without specialized climbing robotic systems.",
+        quiz: {
+          q: "Why was Olympus Mons able to grow so much larger than any volcano on Earth?",
+          options: [
+            { text: "Mars lacks drifting tectonic plates, so magma kept piling up in one spot", correct: true },
+            { text: "It was built by ancient comets impacting in a circle", correct: false },
+            { text: "Earth has higher air pressure pushing mountains down", correct: false }
+          ],
+          explanation: "Correct! On Earth, moving plates drag crust over hotspots; on stationary Martian crust, the volcano grew continuously for eons."
+        },
+        sources: [{ title: "NASA Science Olympus Mons", url: "https://science.nasa.gov/resource/olympus-mons/" }]
+      },
+      {
+        id: "valles-marineris",
+        name: "Valles Marineris",
+        lat: -14.0,
+        lon: -59.0,
+        diameterKm: 4000,
+        elevationKm: -7.0,
+        type: "canyon",
+        region: "Equatorial Mars",
+        status: "EXPLORED",
+        summary: "The grand canyon of Mars spans over 4,000 km in length, 200 km in width, and reaches depths of 7 km. It is a vast tectonic fracture caused by the rising Tharsis bulge.",
+        why: "Exposes kilometers of crustal stratification, ancient groundwater seepage channels, and sulfate minerals.",
+        kidFriendly: "A canyon so enormous it would stretch all the way across North America! It is four times deeper than Earth's Grand Canyon.",
+        limitation: "Massive landslides and recurring dust hazes create extreme atmospheric turbulence within the chasmata.",
+        quiz: {
+          q: "What caused the formation of Valles Marineris?",
+          options: [
+            { text: "A massive tectonic rift torn open by the swelling Tharsis volcanic bulge", correct: true },
+            { text: "A single colossal river flowing for one day", correct: false },
+            { text: "A meteor skimming along the equator", correct: false }
+          ],
+          explanation: "Correct! As Tharsis swelled with magma, the surrounding crust was stretched and ripped apart into massive grabens."
+        },
+        sources: [{ title: "NASA Science Valles Marineris", url: "https://science.nasa.gov/resource/valles-marineris/" }]
+      },
+      {
+        id: "gale-crater",
+        name: "Gale Crater (Curiosity)",
+        lat: -5.4,
+        lon: 137.8,
+        diameterKm: 154,
+        type: "crater",
+        region: "Aeolis quadrangle",
+        mission: "Curiosity Rover (MSL)",
+        status: "ACTIVE ROVER",
+        summary: "Site of NASA's Curiosity rover since August 2012. Mount Sharp (Aeolis Mons) rises 5.5 km from the center, preserving millions of years of changing climate in its sedimentary layers.",
+        why: "Curiosity verified Gale once had persistent neutral-pH freshwater lakes capable of supporting microbial life.",
+        kidFriendly: "The home of Curiosity rover! It has been climbing a giant mountain in the center of the crater for over 12 years.",
+        limitation: "Curiosity is powered by RTG nuclear battery; terrain traversal over sharp ventifact rocks wears down aluminum wheels.",
+        quiz: {
+          q: "What major discovery did Curiosity make in Gale Crater's mudstones?",
+          options: [
+            { text: "Ancient fresh water that had the right chemical building blocks for life", correct: true },
+            { text: "Underground cities built of brick", correct: false },
+            { text: "A lake of liquid gasoline", correct: false }
+          ],
+          explanation: "Correct! Curiosity found carbon, hydrogen, nitrogen, oxygen, phosphorus, and sulfur — life's essential ingredients in mild water."
+        },
+        sources: [{ title: "NASA Curiosity MSL", url: "https://science.nasa.gov/mission/msl-curiosity/" }]
+      },
+      {
+        id: "hellas-basin",
+        name: "Hellas Planitia",
+        lat: -42.4,
+        lon: 70.5,
+        diameterKm: 2300,
+        elevationKm: -7.1,
+        type: "basin",
+        region: "Southern Highlands",
+        status: "EXPLORED",
+        summary: "One of the largest known impact craters in the Solar System, created ~4 billion years ago during the Late Heavy Bombardment. Depth exceeds 7,000 meters below Mars datum.",
+        why: "Because it is so deep, atmospheric pressure at the basin floor is nearly double the Martian average (~1.1 kPa), making it the closest place on Mars to liquid water stability.",
+        kidFriendly: "A gigantic punch bowl made by a giant space rock 4 billion years ago. It is the deepest place on Mars!",
+        limitation: "Frequent origin point for planet-wide dust storms that engulf the entire globe.",
+        quiz: {
+          q: "Why is the atmospheric air pressure higher at the bottom of Hellas Basin?",
+          options: [
+            { text: "Because it is more than 7 km below average surface level, holding a thicker air column", correct: true },
+            { text: "Because volcanoes are pumping heavy air into it", correct: false },
+            { text: "Because it has a transparent glass dome over it", correct: false }
+          ],
+          explanation: "Correct! Just like on Earth at Death Valley or the Dead Sea, lower elevations compress a taller column of atmosphere."
+        },
+        sources: [{ title: "NASA Science Hellas Basin", url: "https://science.nasa.gov/mars/" }]
+      },
+      {
+        id: "planum-boreum",
+        name: "Planum Boreum (North Polar Cap)",
+        lat: 88.0,
+        lon: 0.0,
+        diameterKm: 1000,
+        type: "pole",
+        region: "Northern polar plains",
+        status: "EXPLORED",
+        summary: "The permanent Martian northern polar ice cap consists primarily of water ice (H₂O) mixed with dust, capped in winter by a seasonal blanket of dry ice (solid CO₂).",
+        why: "Contains enough pure water ice to cover the entire surface of Mars in 11 meters of water. A critical resource for human ISRU bases.",
+        kidFriendly: "The giant snowy north pole of Mars! It is made of frozen water and frozen carbon dioxide (dry ice).",
+        limitation: "Extreme sub-zero polar winter temperatures (-125°C) and total darkness for months.",
+        quiz: {
+          q: "What is the permanent ice at the Martian north pole mostly composed of?",
+          options: [
+            { text: "Frozen water ice (H₂O) with layers of dust", correct: true },
+            { text: "Liquid methane oceans", correct: false },
+            { text: "Frozen neon gas", correct: false }
+          ],
+          explanation: "Correct! While winter brings a veneer of dry ice (CO₂), the underlying vast multi-kilometer dome is almost entirely frozen water."
+        },
+        sources: [{ title: "NASA Science Mars Polar Caps", url: "https://science.nasa.gov/mars/" }]
+      },
+      {
+        id: "planum-australe",
+        name: "Planum Australe (South Polar Cap)",
+        lat: -87.0,
+        lon: 0.0,
+        diameterKm: 350,
+        type: "pole",
+        region: "Southern polar plateau",
+        status: "EXPLORED",
+        summary: "The southern polar cap retains a permanent 8-meter-thick slab of solid carbon dioxide (dry ice) overlying a massive deposit of water ice miles deep. Features CO₂ geysers in spring.",
+        why: "Radar sounders (MARSIS) have revealed layered ice structures recording millions of years of orbital tilt (obliquity) climate cycles.",
+        kidFriendly: "The South Pole has cool spring geysers where trapped sunlight heats dry ice into high-speed gas jets blowing black dust into the sky!",
+        limitation: "Higher elevation than north pole; temperatures drop low enough in winter to freeze 25% of the atmosphere into frost.",
+        quiz: {
+          q: "What causes the dramatic 'spider' formations and dust geysers in Martian polar spring?",
+          options: [
+            { text: "Sunlight shining through clear dry ice, heating ground underneath into gas jets", correct: true },
+            { text: "Underground burrowing alien creatures", correct: false },
+            { text: "High explosive testing by rovers", correct: false }
+          ],
+          explanation: "Correct! The solid-state greenhouse effect traps solar heat under translucent CO₂ ice sheets until the pressure erupts into geysers."
+        },
+        sources: [{ title: "NASA Science South Pole Mars", url: "https://science.nasa.gov/mars/" }]
+      }
+    ];
+
+    // TOUR ORDER
+    const TOUR_STOPS = [
+      "jezero", "butler-landing", "western-delta", "seitah", "moxie-site", "olympus-mons", "valles-marineris"
+    ];
+
+    // STATE
+    let currentFilter = "all";
+    let activeFeature = null;
+    let tourIndex = -1;
+    let isCloseZoom = false;
+    let isRoamMode = false;
+    let visitedFeatures = new Set();
+    let earnedBadges = new Set();
+    let totalXp = 0;
+
+    // THREE.JS SETUP
+    const container = document.getElementById("canvasContainer");
+    const canvas = document.getElementById("marsCanvas");
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 3, 14);
+
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 6.2;
+    controls.maxDistance = 25;
+    controls.rotateSpeed = 0.6;
+    controls.zoomSpeed = 0.8;
+
+    // LIGHTING
+    const ambientLight = new THREE.AmbientLight(0x404858, 1.2);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xFFEEDD, 2.2);
+    sunLight.position.set(20, 10, 15);
+    scene.add(sunLight);
+
+    const rimLight = new THREE.DirectionalLight(0x7EB8C9, 0.6);
+    rimLight.position.set(-20, -10, -15);
+    scene.add(rimLight);
+
+    // STARFIELD
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = 2000;
+    const starPos = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount * 3; i += 3) {
+      starPos[i] = (Math.random() - 0.5) * 600;
+      starPos[i + 1] = (Math.random() - 0.5) * 600;
+      starPos[i + 2] = (Math.random() - 0.5) * 600;
+    }
+    starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({ color: 0xCCDDF4, size: 1.2, transparent: true, opacity: 0.8 });
+    const starField = new THREE.Points(starGeo, starMat);
+    scene.add(starField);
+
+    // MARS GLOBE
+    const MARS_RADIUS = 5.0;
+    const marsGeo = new THREE.SphereGeometry(MARS_RADIUS, 64, 64);
+
+    const textureLoader = new THREE.TextureLoader();
+    const marsTexture = textureLoader.load("cosmos/mars.webp", () => {
+      renderer.render(scene, camera);
+    });
+
+    const marsMat = new THREE.MeshStandardMaterial({
+      map: marsTexture,
+      roughness: 0.85,
+      metalness: 0.1,
+      color: 0xFFFFFF
+    });
+    const marsMesh = new THREE.Mesh(marsGeo, marsMat);
+    scene.add(marsMesh);
+
+    // ATMOSPHERIC GLOW
+    const atmoGeo = new THREE.SphereGeometry(MARS_RADIUS * 1.025, 48, 48);
+    const atmoMat = new THREE.MeshBasicMaterial({
+      color: 0xEE7755,
+      transparent: true,
+      opacity: 0.12,
+      side: THREE.BackSide
+    });
+    const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
+    scene.add(atmoMesh);
+
+    // PINS & MARKERS
+    const pinGroup = new THREE.Group();
+    scene.add(pinGroup);
+
+    const pinMeshes = [];
+
+    function latLonToVector3(lat, lon, radius) {
+      const phi = (90 - lat) * (Math.PI / 180);
+      const theta = (lon + 180) * (Math.PI / 180);
+      return new THREE.Vector3(
+        -radius * Math.sin(phi) * Math.cos(theta),
+        radius * Math.cos(phi),
+        radius * Math.sin(phi) * Math.sin(theta)
+      );
+    }
+
+    function createPin(feat) {
+      const pos = latLonToVector3(feat.lat, feat.lon, MARS_RADIUS + 0.08);
+      const normal = pos.clone().normalize();
+
+      const pinRoot = new THREE.Group();
+      pinRoot.position.copy(pos);
+      pinRoot.userData = { feature: feat };
+
+      // Glowing marker sphere
+      const sphereGeo = new THREE.SphereGeometry(0.09, 16, 16);
+      const sphereMat = new THREE.MeshBasicMaterial({ color: 0xFF5722 });
+      const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+      pinRoot.add(sphereMesh);
+
+      // Pulsing ring
+      const ringGeo = new THREE.RingGeometry(0.12, 0.16, 24);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xFF8A65, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.lookAt(normal);
+      pinRoot.add(ringMesh);
+
+      // Needle pointer to surface
+      const lineGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        normal.clone().multiplyScalar(-0.1)
+      ]);
+      const lineMat = new THREE.LineBasicMaterial({ color: 0xFFCCBC });
+      const line = new THREE.Line(lineGeo, lineMat);
+      pinRoot.add(line);
+
+      pinGroup.add(pinRoot);
+      pinMeshes.push({ root: pinRoot, sphere: sphereMesh, ring: ringMesh, feature: feat });
+    }
+
+    MARS_FEATURES.forEach(f => createPin(f));
+
+    // RAYCASTING FOR HOVER & CLICK
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let hoveredPin = null;
+    const hoverCard = document.getElementById("hoverCard");
+
+    window.addEventListener("mousemove", (e) => {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const targets = pinMeshes.map(p => p.sphere);
+      const intersects = raycaster.intersectObjects(targets);
+
+      if (intersects.length > 0) {
+        const found = pinMeshes.find(p => p.sphere === intersects[0].object);
+        if (found && found.root.visible) {
+          hoveredPin = found;
+          showHoverCard(found.feature, e.clientX, e.clientY);
+          document.body.style.cursor = "pointer";
+          return;
+        }
+      }
+
+      hoveredPin = null;
+      hideHoverCard();
+      document.body.style.cursor = "default";
+    });
+
+    window.addEventListener("click", (e) => {
+      if (hoveredPin) {
+        openStudyModal(hoveredPin.feature);
+      }
+    });
+
+    function showHoverCard(feat, x, y) {
+      document.getElementById("hcTitle").textContent = feat.name;
+      document.getElementById("hcType").textContent = feat.type.toUpperCase();
+      document.getElementById("hcCoords").textContent = `${Math.abs(feat.lat).toFixed(1)}°${feat.lat>=0?'N':'S'}, ${Math.abs(feat.lon).toFixed(1)}°${feat.lon>=0?'E':'W'}`;
+      document.getElementById("hcSummary").textContent = feat.summary;
+      
+      hoverCard.style.left = `${Math.min(window.innerWidth - 150, Math.max(140, x))}px`;
+      hoverCard.style.top = `${Math.max(60, y - 20)}px`;
+      hoverCard.classList.add("visible");
+    }
+
+    function hideHoverCard() {
+      hoverCard.classList.remove("visible");
+    }
+
+    // MODAL INTERACTION
+    function openStudyModal(feat) {
+      activeFeature = feat;
+      visitedFeatures.add(feat.id);
+      updateGamification();
+
+      document.getElementById("modalTitle").textContent = feat.name;
+      document.getElementById("modalType").textContent = feat.type.toUpperCase();
+      document.getElementById("modalStatus").textContent = feat.status;
+      document.getElementById("modalCoords").textContent = `${Math.abs(feat.lat).toFixed(2)}°${feat.lat>=0?'N':'S'}, ${Math.abs(feat.lon).toFixed(2)}°${feat.lon>=0?'E':'W'} · Region: ${feat.region || 'Equatorial'}`;
+      document.getElementById("modalSummary").textContent = feat.summary;
+      document.getElementById("modalWhy").textContent = feat.why;
+      document.getElementById("modalKid").textContent = feat.kidFriendly;
+      document.getElementById("modalLimitation").textContent = feat.limitation;
+
+      // Populate Sources
+      const sourcesBox = document.getElementById("modalSources");
+      sourcesBox.innerHTML = feat.sources.map(s => `
+        <a href="${s.url}" target="_blank" class="source-link">🔗 ${s.title}</a>
+      `).join("");
+
+      // Populate Quiz
+      const quizQ = document.getElementById("quizQuestion");
+      const quizOpts = document.getElementById("quizOptions");
+      const quizFeedback = document.getElementById("quizFeedback");
+      quizFeedback.style.display = "none";
+      quizFeedback.textContent = "";
+
+      quizQ.textContent = feat.quiz.q;
+      quizOpts.innerHTML = feat.quiz.options.map((opt, idx) => `
+        <button class="quiz-btn" onclick="submitQuizAnswer(${idx})">
+          <span>${String.fromCharCode(65 + idx)}.</span>
+          <span>${opt.text}</span>
+        </button>
+      `).join("");
+
+      document.getElementById("studyModal").classList.add("open");
+    }
+
+    function closeStudyModal() {
+      document.getElementById("studyModal").classList.remove("open");
+    }
+
+    function handleBackdropClick(e) {
+      if (e.target.id === "studyModal") {
+        closeStudyModal();
+      }
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeStudyModal();
+    });
+
+    // QUIZ SCORING
+    function submitQuizAnswer(optIndex) {
+      if (!activeFeature) return;
+      const opts = activeFeature.quiz.options;
+      const selected = opts[optIndex];
+      const feedback = document.getElementById("quizFeedback");
+      const btns = document.querySelectorAll(".quiz-btn");
+
+      btns.forEach((b, idx) => {
+        if (opts[idx].correct) b.classList.add("correct");
+        else if (idx === optIndex) b.classList.add("wrong");
+        b.style.pointerEvents = "none";
+      });
+
+      if (selected.correct) {
+        totalXp += 50;
+        feedback.style.color = "#4CAF50";
+        feedback.textContent = "✓ Correct! +50 Research XP awarded. " + activeFeature.quiz.explanation;
+      } else {
+        feedback.style.color = "#FF5252";
+        feedback.textContent = "✕ Incorrect. " + activeFeature.quiz.explanation;
+      }
+      feedback.style.display = "block";
+      updateGamification();
+    }
+
+    // GAMIFICATION UPDATES
+    function updateGamification() {
+      document.getElementById("expeditionCount").textContent = `${visitedFeatures.size} / ${MARS_FEATURES.length} Discovered`;
+      document.getElementById("researchXp").textContent = `${totalXp} XP`;
+
+      // Check badges
+      if (visitedFeatures.has("jezero") && visitedFeatures.has("western-delta")) earnedBadges.add("Astrobiologist");
+      if (visitedFeatures.has("olympus-mons")) earnedBadges.add("Volcanologist");
+      if (visitedFeatures.has("valles-marineris")) earnedBadges.add("Canyon Pioneer");
+      if (visitedFeatures.has("moxie-site")) earnedBadges.add("ISRU Engineer");
+      if (visitedFeatures.has("planum-boreum") || visitedFeatures.has("planum-australe")) earnedBadges.add("Polar Prospector");
+
+      document.getElementById("badgeCount").textContent = `${earnedBadges.size} 🏅`;
+    }
+
+    // FILTER LAYERS
+    function setLayerFilter(filter) {
+      currentFilter = filter;
+      document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+      event.target.classList.add("active");
+
+      pinMeshes.forEach(p => {
+        if (filter === "all" || p.feature.type === filter) {
+          p.root.visible = true;
+        } else {
+          p.root.visible = false;
+        }
+      });
+    }
+
+    // CAMERA FLIGHT & CONTROLS
+    let targetCameraPos = null;
+    let targetLookAt = new THREE.Vector3(0, 0, 0);
+
+    function flyToCoordinate(lat, lon, distance = 8.5) {
+      const surfacePoint = latLonToVector3(lat, lon, MARS_RADIUS);
+      const camTarget = latLonToVector3(lat, lon, distance);
+      
+      targetCameraPos = camTarget;
+      targetLookAt.copy(surfacePoint);
+    }
+
+    function flyToFeature(featId) {
+      const feat = MARS_FEATURES.find(f => f.id === featId);
+      if (feat) {
+        flyToCoordinate(feat.lat, feat.lon, isCloseZoom ? 6.2 : 8.5);
+      }
+    }
+
+    function toggleCloseZoom() {
+      isCloseZoom = !isCloseZoom;
+      const btn = document.getElementById("btnZoomToggle");
+      const label = document.getElementById("zoomLabel");
+      
+      if (isCloseZoom) {
+        btn.classList.add("active");
+        label.textContent = "Orbit Wide View";
+        controls.minDistance = 5.25;
+        if (activeFeature) {
+          flyToCoordinate(activeFeature.lat, activeFeature.lon, 6.2);
+        } else {
+          controls.dollyTo(6.8, true);
+        }
+      } else {
+        btn.classList.remove("active");
+        label.textContent = "Close Surface Zoom";
+        controls.minDistance = 6.2;
+        controls.dollyTo(14, true);
+      }
+    }
+
+    function resetCameraView() {
+      targetCameraPos = new THREE.Vector3(0, 3, 14);
+      targetLookAt = new THREE.Vector3(0, 0, 0);
+      controls.target.set(0, 0, 0);
+    }
+
+    function toggleRoamMode() {
+      isRoamMode = !isRoamMode;
+      const btn = document.getElementById("btnRoam");
+      const label = document.getElementById("roamLabel");
+      controls.enablePan = isRoamMode;
+
+      if (isRoamMode) {
+        btn.classList.add("active");
+        label.textContent = "Free Pan: ON";
+      } else {
+        btn.classList.remove("active");
+        label.textContent = "Free Pan: Off";
+        controls.target.set(0, 0, 0);
+      }
+    }
+
+    // GUIDED TOUR
+    function updateTour() {
+      const featId = TOUR_STOPS[tourIndex];
+      const feat = MARS_FEATURES.find(f => f.id === featId);
+      if (!feat) return;
+
+      document.getElementById("tourProgress").textContent = `Classroom Tour · Stop ${tourIndex + 1} of ${TOUR_STOPS.length}`;
+      document.getElementById("tourTitle").textContent = feat.name;
+
+      flyToCoordinate(feat.lat, feat.lon, isCloseZoom ? 6.3 : 8.2);
+    }
+
+    function nextTourStop() {
+      tourIndex = (tourIndex + 1) % TOUR_STOPS.length;
+      updateTour();
+    }
+
+    function prevTourStop() {
+      tourIndex = (tourIndex - 1 + TOUR_STOPS.length) % TOUR_STOPS.length;
+      updateTour();
+    }
+
+    // ANIMATION LOOP
+    let clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime();
+
+      // Smooth camera interpolation
+      if (targetCameraPos) {
+        camera.position.lerp(targetCameraPos, 0.05);
+        controls.target.lerp(targetLookAt, 0.05);
+        if (camera.position.distanceTo(targetCameraPos) < 0.05) {
+          targetCameraPos = null;
+        }
+      }
+
+      // Animate pin rings
+      pinMeshes.forEach(p => {
+        const s = 1 + 0.15 * Math.sin(time * 3 + p.feature.lat);
+        p.ring.scale.set(s, s, s);
+      });
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // WINDOW RESIZE
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

@@ -13,11 +13,12 @@ import {
   plantOxygenTotal,
   plantSteps,
   landingSteps,
+  commanderById,
+  type CommanderId,
   type DestinationId,
   type RocketId,
   type Screen,
 } from "./data";
-import { CREW_ROSTER, CREW_SEAT_LIMIT } from "./crew";
 
 export interface Mission {
   rocket: RocketId;
@@ -34,6 +35,7 @@ function emptyChecklist(): ChecklistState {
 export interface GameState {
   version: number;
   commander: string;
+  commanderId: CommanderId | "";
   credits: number;
   oxygenKg: number;
   habitats: number;
@@ -43,6 +45,7 @@ export interface GameState {
   hasLaunchedOnce: boolean;
   screen: Screen;
   mission: Mission | null;
+  planDest: DestinationId;
   checklist: ChecklistState;
   fuelLox: number;
   fuelCh4: number;
@@ -57,24 +60,15 @@ export interface GameState {
   libraryId: string | null;
   debrief: { pay: number; oxygen: number; spentFpv: number } | null;
   hydrated: boolean;
-  orbitalSpeed: number;
-  cameraDepth: "surface" | "orbital" | "deep";
-  cameraZoom: number;
-  cockpitToggles: Record<string, boolean>;
-  /** Crew ids already hired (paid once). Commander always included. */
-  crewHired: string[];
-  /** Up to 3 seats for the next Crewmark flight (ordered). */
-  crewSeats: string[];
 
   setHydrated: () => void;
-  setCommander: (name: string) => void;
+  setCommander: (name: string, commanderId: CommanderId) => void;
   setReducedMotion: (v: boolean) => void;
   go: (screen: Screen) => void;
+  goPlan: (dest?: DestinationId) => void;
   openLibrary: (id?: string) => void;
   closeLibrary: () => void;
   markTopic: (id: string) => void;
-  hireCrew: (id: string) => boolean;
-  toggleCrewSeat: (id: string) => void;
   selectMission: (rocket: RocketId, destination: DestinationId) => boolean;
   setCheck: (id: string, value: boolean) => void;
   setFuel: (lox: number, ch4: number) => void;
@@ -94,14 +88,12 @@ export interface GameState {
   resetPad: () => void;
   abortFromPad: () => void;
   resetProgress: () => void;
-  setOrbitalSpeed: (v: number) => void;
-  setCameraZoom: (v: number) => void;
-  toggleCockpit: (id: string) => void;
 }
 
 const persistedKeys = [
   "version",
   "commander",
+  "commanderId",
   "credits",
   "oxygenKg",
   "habitats",
@@ -121,8 +113,6 @@ const persistedKeys = [
   "landingStep",
   "fpvSpent",
   "debrief",
-  "crewHired",
-  "crewSeats",
 ] as const;
 
 export const useGame = create<GameState>()(
@@ -130,6 +120,7 @@ export const useGame = create<GameState>()(
     (set, get) => ({
       version: SAVE_VERSION,
       commander: "",
+      commanderId: "",
       credits: STARTING_CREDITS,
       oxygenKg: 0,
       habitats: 0,
@@ -139,6 +130,7 @@ export const useGame = create<GameState>()(
       hasLaunchedOnce: false,
       screen: "briefing",
       mission: null,
+      planDest: "moon",
       checklist: emptyChecklist(),
       fuelLox: 0,
       fuelCh4: 0,
@@ -153,60 +145,32 @@ export const useGame = create<GameState>()(
       libraryId: null,
       debrief: null,
       hydrated: false,
-      orbitalSpeed: 1,
-      cameraDepth: "surface",
-      cameraZoom: 0,
-      cockpitToggles: {
-        orbitMap: true,
-        countdown: true,
-        distance: true,
-        phase: true,
-        attitude: true,
-        mfd: true,
-        target: true,
-        lesson: true,
-      },
-      crewHired: ["cmd-self"],
-      crewSeats: ["cmd-self"],
 
       setHydrated: () => {
         const s = get();
+        const commanderId = (s.commanderId || (s.commander ? "kai" : "")) as CommanderId | "";
         set({
           hydrated: true,
+          commanderId,
           fpvOpen: false,
           screen: s.commander ? (s.screen === "briefing" ? "hq" : s.screen) : "briefing",
-          crewHired: s.crewHired?.length ? s.crewHired : ["cmd-self"],
-          crewSeats: s.crewSeats?.length ? s.crewSeats : ["cmd-self"],
         });
       },
-      setCommander: (name) =>
-        set({ commander: name.trim() || "Cadet", screen: "hq" }),
+      setCommander: (name, commanderId) => {
+        const commander = name.trim() || commanderById(commanderId).name;
+        const next = { commander, commanderId };
+        if (get().screen === "briefing") set({ ...next, screen: "hq" });
+        else set(next);
+      },
       setReducedMotion: (v) => set({ reducedMotion: v }),
       go: (screen) => set({ screen, fpvOpen: false, libraryOpen: false }),
-      hireCrew: (id) => {
-        const member = CREW_ROSTER.find((c) => c.id === id);
-        if (!member) return false;
-        const s = get();
-        if (s.crewHired.includes(id)) return true;
-        if (s.missionsDone < member.unlockAfterMissions) return false;
-        if (member.hireCost > 0 && s.credits < member.hireCost) return false;
+      goPlan: (dest) =>
         set({
-          credits: s.credits - member.hireCost,
-          crewHired: [...s.crewHired, id],
-        });
-        return true;
-      },
-      toggleCrewSeat: (id) => {
-        const s = get();
-        if (!s.crewHired.includes(id) && id !== "cmd-self") return;
-        if (s.crewSeats.includes(id)) {
-          const next = s.crewSeats.filter((x) => x !== id);
-          set({ crewSeats: next.length ? next : ["cmd-self"] });
-          return;
-        }
-        if (s.crewSeats.length >= CREW_SEAT_LIMIT) return;
-        set({ crewSeats: [...s.crewSeats, id] });
-      },
+          screen: "plan",
+          planDest: dest ?? get().planDest,
+          fpvOpen: false,
+          libraryOpen: false,
+        }),
       openLibrary: (id) => {
         if (id) get().markTopic(id);
         set({ libraryOpen: true, libraryId: id ?? get().libraryId ?? "why-oxygen" });
@@ -362,20 +326,10 @@ export const useGame = create<GameState>()(
           fpvOpen: false,
         });
       },
-      setOrbitalSpeed: (v) => set({ orbitalSpeed: Math.max(0, v) }),
-      setCameraZoom: (v) => {
-        const zoom = Math.max(0, Math.min(1, v));
-        const depth: "surface" | "orbital" | "deep" =
-          zoom < 0.35 ? "surface" : zoom < 0.7 ? "orbital" : "deep";
-        set({ cameraZoom: zoom, cameraDepth: depth });
-      },
-      toggleCockpit: (id) => {
-        const cur = get().cockpitToggles;
-        set({ cockpitToggles: { ...cur, [id]: !cur[id] } });
-      },
       resetProgress: () =>
         set({
           commander: get().commander,
+          commanderId: get().commanderId,
           credits: STARTING_CREDITS,
           oxygenKg: 0,
           habitats: 0,
@@ -391,8 +345,6 @@ export const useGame = create<GameState>()(
           fpvOpen: false,
           fpvSpent: 0,
           debrief: null,
-          crewHired: ["cmd-self"],
-          crewSeats: ["cmd-self"],
         }),
     }),
     {

@@ -4,6 +4,7 @@ import { Html, OrbitControls, Stars, useTexture } from "@react-three/drei";
 import {
   ArrowLeft,
   BookOpen,
+  ChevronLeft,
   ChevronRight,
   Compass,
   Crosshair,
@@ -14,12 +15,24 @@ import {
   Search,
   Waves,
   X,
+  Glasses,
+  ZoomIn,
 } from "lucide-react";
 import * as THREE from "three";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useGame } from "@/game/store";
-import { LUNAR_FEATURES, OXYGEN_STEPS, WATER_STEPS, TECHNOLOGIES, type LunarFeature } from "@/game/lunar-data";
+import {
+  LUNAR_FEATURES,
+  MOON_GEOGRAPHY_BASICS,
+  OXYGEN_STEPS,
+  WATER_STEPS,
+  TECHNOLOGIES,
+  formatLatLon,
+  typeLabel,
+  type LunarFeature,
+} from "@/game/lunar-data";
 
 const kinds = ["crater", "basin", "pole", "psr", "mountain", "ridge", "centralPeak", "resource", "science"] as const;
 type LayerKey = (typeof kinds)[number];
@@ -68,10 +81,22 @@ export function MoonExplorer() {
   const [waterMode, setWaterMode] = useState(false);
   const [technology, setTechnology] = useState("mre");
   const [mobilePanel, setMobilePanel] = useState(false);
+  const [learnOpen, setLearnOpen] = useState(false);
+  const [tourIndex, setTourIndex] = useState(-1);
+  const [closeZoom, setCloseZoom] = useState(false);
   const selected = LUNAR_FEATURES.find((f) => f.id === selectedId) ?? null;
   const filtered = useMemo(
     () => LUNAR_FEATURES.filter((f) => `${f.name} ${f.type}`.toLowerCase().includes(query.toLowerCase())).slice(0, 6),
     [query],
+  );
+  const tourStops = useMemo(
+    () =>
+      LUNAR_FEATURES.filter((f) =>
+        ["south-pole", "shackleton", "spa", "tycho", "north-pole", "mons-mouton"].includes(f.id) ||
+        f.type === "psr" ||
+        f.type === "basin",
+      ).slice(0, 8),
+    [],
   );
 
   useEffect(() => {
@@ -84,11 +109,46 @@ export function MoonExplorer() {
     return () => window.clearTimeout(timer);
   }, [process, waterMode]);
 
-  const visit = (f: LunarFeature) => {
+  const visit = (f: LunarFeature, openLearn = true) => {
     setSelectedId(f.id);
     setFacility(false);
     setMobilePanel(true);
     setSearchOpen(false);
+    if (openLearn) setLearnOpen(true);
+  };
+
+  const startTour = () => {
+    setTourIndex(0);
+    setFacility(false);
+    setRoam(false);
+    if (tourStops[0]) visit(tourStops[0], true);
+  };
+
+  const tourNext = (dir: 1 | -1) => {
+    if (tourIndex < 0) return;
+    const next = Math.min(tourStops.length - 1, Math.max(0, tourIndex + dir));
+    setTourIndex(next);
+    if (tourStops[next]) visit(tourStops[next], true);
+  };
+
+  const enterVr = async () => {
+    try {
+      const xr = (navigator as Navigator & { xr?: { isSessionSupported: (m: string) => Promise<boolean>; requestSession: (m: string, o?: object) => Promise<unknown> } }).xr;
+      if (!xr) {
+        alert("WebXR is not available in this browser. Try a VR headset browser or Chrome with WebXR.");
+        return;
+      }
+      const ok = await xr.isSessionSupported("immersive-vr");
+      if (!ok) {
+        alert("Immersive VR is not supported on this device. You can still use the 3D globe with mouse or touch.");
+        return;
+      }
+      // Session is started by the canvas WebGLRenderer when present; flag roam for full-screen feel
+      setRoam(true);
+      alert("VR-ready mode: use a WebXR-capable browser with a headset. Drag/pinch still work on flat screens.");
+    } catch {
+      alert("Could not start VR session. The 3D tour still works with mouse, trackpad, or touch.");
+    }
   };
   const southPole = LUNAR_FEATURES.find((f) => f.id === "south-pole")!;
   const activeTechnology = TECHNOLOGIES.find((t) => t.id === technology)!;
@@ -196,27 +256,40 @@ export function MoonExplorer() {
             ))}
             {layers.psr && <PSROverlay />}
             {facility && <ConceptFacility />}
-            <CameraFlight feature={selected} facility={facility} />
+            <CameraFlight feature={selected} facility={facility} closeZoom={closeZoom || tourIndex >= 0} />
+            <ZoomWatcher onCloseZoom={setCloseZoom} />
             <OrbitControls
               makeDefault
               enableDamping
-              dampingFactor={0.08}
-              enablePan={!facility}
-              minDistance={facility ? 0.5 : 2.8}
-              maxDistance={10}
-              rotateSpeed={0.55}
-              zoomSpeed={0.75}
-              panSpeed={0.5}
+              dampingFactor={0.07}
+              enablePan
+              screenSpacePanning
+              minDistance={facility ? 0.45 : 2.18}
+              maxDistance={12}
+              rotateSpeed={closeZoom ? 0.35 : 0.55}
+              zoomSpeed={1.05}
+              panSpeed={closeZoom ? 0.85 : 0.45}
+              maxPolarAngle={Math.PI}
+              minPolarAngle={0}
             />
           </Canvas>
           {!roam && (
             <div className="absolute left-4 top-4 flex flex-col gap-2 sm:left-6 sm:top-6">
               <div className="rounded-full border border-white/10 bg-black/35 px-3 py-1.5 font-mono text-[10px] tracking-widest text-slate-300 backdrop-blur">
-                GLOBAL LUNAR VIEW <span className="text-cyan-200">·</span>{" "}
+                {closeZoom ? "CLOSE-UP REGION" : "GLOBAL LUNAR VIEW"}{" "}
+                <span className="text-cyan-200">·</span>{" "}
                 {selected ? `${selected.latitude.toFixed(1)}° / ${selected.longitude.toFixed(1)}°` : "GLOBE"}
               </div>
-              <div className="max-w-[235px] rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs leading-relaxed text-slate-400 backdrop-blur">
-                Drag to rotate · scroll or pinch to zoom · select a marker to investigate
+              <div className="max-w-[260px] rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs leading-relaxed text-slate-400 backdrop-blur">
+                <span className="text-cyan-100/90">Drag</span> rotate ·{" "}
+                <span className="text-cyan-100/90">scroll / pinch</span> zoom ·{" "}
+                <span className="text-cyan-100/90">hover</span> labels ·{" "}
+                <span className="text-cyan-100/90">click</span> open classroom card
+                {closeZoom && (
+                  <span className="mt-1 block text-accent">
+                    Zoomed in — drag to pan across the region
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -232,10 +305,17 @@ export function MoonExplorer() {
                 setSelectedId(southPole.id);
                 setSearchOpen(false);
                 setMobilePanel(false);
+                setCloseZoom(true);
               }}
             >
-              <Compass className="size-3.5" />
-              {facility ? "Exit surface mode" : "Surface site"}
+              <ZoomIn className="size-3.5" />
+              {facility ? "Exit surface mode" : "Surface zoom"}
+            </Button>
+            <Button size="sm" variant="secondary" onClick={startTour}>
+              <Play className="size-3.5" /> Guided tour
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => void enterVr()}>
+              <Glasses className="size-3.5" /> VR-ready
             </Button>
             {!roam && (
               <Button
@@ -257,6 +337,39 @@ export function MoonExplorer() {
               </Button>
             )}
           </div>
+          {tourIndex >= 0 && (
+            <div className="absolute bottom-20 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/15 bg-black/70 px-2 py-1.5 backdrop-blur">
+              <Button size="sm" variant="ghost" onClick={() => tourNext(-1)} disabled={tourIndex <= 0}>
+                <ChevronLeft className="size-3.5" />
+              </Button>
+              <span className="px-2 font-mono text-[10px] text-slate-200">
+                Tour {tourIndex + 1}/{tourStops.length}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => tourNext(1)}
+                disabled={tourIndex >= tourStops.length - 1}
+              >
+                <ChevronRight className="size-3.5" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setTourIndex(-1);
+                  setLearnOpen(false);
+                }}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
+          )}
+          <FeatureLearnModal
+            feature={selected}
+            open={learnOpen && !!selected}
+            onOpenChange={setLearnOpen}
+          />
           {roam && (
             <>
               <div className="absolute left-4 top-4 rounded-full border border-white/10 bg-black/40 px-3 py-2 font-mono text-[10px] tracking-widest text-cyan-100">
@@ -504,6 +617,19 @@ function MoonBody() {
   );
 }
 
+function ZoomWatcher({ onCloseZoom }: { onCloseZoom: (v: boolean) => void }) {
+  const { camera } = useThree();
+  const last = useRef(false);
+  useFrame(() => {
+    const near = camera.position.length() < 4.2;
+    if (near !== last.current) {
+      last.current = near;
+      onCloseZoom(near);
+    }
+  });
+  return null;
+}
+
 function FeatureMarker({
   feature,
   selected,
@@ -519,16 +645,18 @@ function FeatureMarker({
   const [hovered, setHovered] = useState(false);
   const position = useMemo(() => pointOnMoon(feature.latitude, feature.longitude, 2.025), [feature]);
   const { camera } = useThree();
+  const coords = formatLatLon(feature.latitude, feature.longitude);
   useFrame(() => {
     if (group.current)
-      group.current.visible = position.clone().normalize().dot(camera.position.clone().normalize()) > -0.02;
-    const near = camera.position.length() < 5.4;
+      group.current.visible = position.clone().normalize().dot(camera.position.clone().normalize()) > -0.05;
+    const near = camera.position.length() < 5.0;
     if (near !== lastZoomed.current) {
       lastZoomed.current = near;
       setZoomed(near);
     }
   });
   const kind = feature.type as LayerKey;
+  const pin = selected ? 0.055 : hovered ? 0.05 : zoomed ? 0.038 : 0.032;
   return (
     <group ref={group} position={position.toArray()}>
       <mesh
@@ -546,32 +674,50 @@ function FeatureMarker({
           document.body.style.cursor = "auto";
         }}
       >
-        <sphereGeometry args={[selected ? 0.07 : 0.045, 16, 16]} />
+        <sphereGeometry args={[pin, 20, 20]} />
         <meshBasicMaterial color={colors[kind]} />
       </mesh>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.07, 0.082, 28]} />
-        <meshBasicMaterial color={colors[kind]} transparent opacity={0.72} side={THREE.DoubleSide} />
+        <ringGeometry args={[pin * 1.35, pin * 1.55, 32]} />
+        <meshBasicMaterial
+          color={colors[kind]}
+          transparent
+          opacity={selected || hovered ? 0.9 : 0.55}
+          side={THREE.DoubleSide}
+        />
       </mesh>
-      {(feature.latitude > -80 || zoomed || selected || hovered) && (
-        <Html position={[0, 0.1, 0]} center distanceFactor={8} zIndexRange={[15, 0]} style={{ pointerEvents: "none" }}>
-          {hovered ? (
-            <div className="w-44 rounded-md border border-cyan-200/30 bg-slate-950/95 p-2 shadow-xl">
+      {(zoomed || selected || hovered) && (
+        <Html
+          position={[0, pin * 2.2, 0]}
+          center
+          distanceFactor={zoomed ? 5.5 : 8}
+          zIndexRange={[20, 0]}
+          style={{ pointerEvents: hovered ? "none" : "auto" }}
+        >
+          {hovered || selected ? (
+            <div className="w-52 rounded-lg border border-cyan-200/35 bg-slate-950/96 p-2.5 shadow-2xl">
               <p className="text-[9px] font-semibold tracking-wider text-cyan-100">
-                {feature.status} · {feature.type.toUpperCase()}
+                {feature.status} · {typeLabel(feature.type)}
               </p>
-              <p className="mt-1 text-[11px] font-semibold text-white">{feature.name}</p>
-              <p className="mt-1 line-clamp-3 text-[9px] leading-relaxed text-slate-300">{feature.summary}</p>
-              <p className="mt-1 text-[8px] text-slate-500">Click to learn more</p>
+              <p className="mt-1 text-sm font-semibold text-white">{feature.name}</p>
+              <p className="mt-0.5 font-mono text-[10px] text-slate-400">
+                {coords.lat} · {coords.lon}
+                {feature.diameterKm != null ? ` · Ø ${feature.diameterKm} km` : ""}
+              </p>
+              <p className="mt-1.5 line-clamp-3 text-[11px] leading-snug text-slate-300">
+                {feature.kidFriendly || feature.summary}
+              </p>
+              <p className="mt-1.5 text-[10px] font-medium text-cyan-200/90">Click for classroom popup</p>
             </div>
           ) : (
             <button
+              type="button"
               aria-label={`Learn about ${feature.name}`}
               onClick={(e) => {
                 e.stopPropagation();
                 onSelect();
               }}
-              className={`whitespace-nowrap rounded border px-2 py-1 text-[9px] shadow-lg backdrop-blur ${selected ? "border-cyan-100/70 bg-slate-950/90 text-white" : "border-white/15 bg-slate-950/75 text-slate-200 hover:border-cyan-200/60 hover:text-white"}`}
+              className="whitespace-nowrap rounded-md border border-white/20 bg-slate-950/85 px-2 py-1 text-[10px] font-medium text-slate-100 shadow-lg backdrop-blur hover:border-cyan-200/60"
             >
               {feature.name}
             </button>
@@ -579,6 +725,91 @@ function FeatureMarker({
         </Html>
       )}
     </group>
+  );
+}
+
+function FeatureLearnModal({
+  feature,
+  open,
+  onOpenChange,
+}: {
+  feature: LunarFeature | null;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
+  if (!feature) return null;
+  const coords = formatLatLon(feature.latitude, feature.longitude);
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[min(90dvh,40rem)] overflow-y-auto border-cyan-200/20 bg-slate-950 text-fg sm:max-w-lg">
+        <DialogTitle className="pr-8">{feature.name}</DialogTitle>
+        <p className="mt-1 font-mono text-xs text-accent">
+          {typeLabel(feature.type)} · {feature.status}
+          {feature.region ? ` · ${feature.region}` : ""}
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+          <div className="rounded-lg border border-border bg-raised px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-muted">Latitude</p>
+            <p className="font-mono tabular-nums">{coords.lat}</p>
+          </div>
+          <div className="rounded-lg border border-border bg-raised px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wide text-muted">Longitude</p>
+            <p className="font-mono tabular-nums">{coords.lon}</p>
+          </div>
+          {feature.diameterKm != null && (
+            <div className="rounded-lg border border-border bg-raised px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-muted">Diameter</p>
+              <p className="font-mono tabular-nums">{feature.diameterKm} km</p>
+            </div>
+          )}
+          {feature.depthKm != null && (
+            <div className="rounded-lg border border-border bg-raised px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wide text-muted">Depth</p>
+              <p className="font-mono tabular-nums">{feature.depthKm} km</p>
+            </div>
+          )}
+        </div>
+
+        <section className="mt-4 rounded-lg border border-accent/25 bg-accent/5 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">For students</p>
+          <p className="mt-1.5 text-sm leading-relaxed text-fg">
+            {feature.kidFriendly || feature.summary}
+          </p>
+        </section>
+
+        <section className="mt-3 space-y-2 rounded-lg border border-border bg-raised/50 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
+            {MOON_GEOGRAPHY_BASICS.title}
+          </p>
+          <p className="text-xs leading-relaxed text-slate-300">
+            <span className="font-medium text-fg">Atmosphere: </span>
+            {MOON_GEOGRAPHY_BASICS.atmosphere}
+          </p>
+          <p className="text-xs leading-relaxed text-slate-300">
+            <span className="font-medium text-fg">Surface: </span>
+            {MOON_GEOGRAPHY_BASICS.surface}
+          </p>
+          <p className="text-xs leading-relaxed text-slate-300">
+            <span className="font-medium text-fg">Day & night: </span>
+            {MOON_GEOGRAPHY_BASICS.dayNight}
+          </p>
+        </section>
+
+        <section className="mt-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">Why explorers care</p>
+          <p className="mt-1 text-sm leading-relaxed text-slate-200">{feature.why}</p>
+        </section>
+        <section className="mt-3 rounded-md border border-amber-200/15 bg-amber-200/[.04] p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-100/90">Evidence note</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-400">{feature.evidence}. {feature.limitation}</p>
+        </section>
+        {feature.sources[0] && (
+          <p className="mt-3 text-[11px] text-muted">
+            Source idea: {feature.sources[0].organization} — {feature.sources[0].title}
+          </p>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -597,7 +828,15 @@ function PSROverlay() {
   );
 }
 
-function CameraFlight({ feature, facility }: { feature: LunarFeature | null; facility: boolean }) {
+function CameraFlight({
+  feature,
+  facility,
+  closeZoom,
+}: {
+  feature: LunarFeature | null;
+  facility: boolean;
+  closeZoom?: boolean;
+}) {
   const { camera } = useThree();
   const target = useMemo(() => new THREE.Vector3(), []);
   const destination = useMemo(() => new THREE.Vector3(), []);
@@ -605,27 +844,32 @@ function CameraFlight({ feature, facility }: { feature: LunarFeature | null; fac
   useEffect(() => {
     if (facility) {
       target.copy(pointOnMoon(-89.6, 10, 2.02));
-      destination.copy(pointOnMoon(-89.6, 10, 2.45)).add(new THREE.Vector3(0.35, 0.18, 0.4));
+      destination.copy(pointOnMoon(-89.6, 10, 2.55)).add(new THREE.Vector3(0.28, 0.14, 0.32));
       remaining.value = 1;
     } else if (feature) {
-      target.copy(pointOnMoon(feature.latitude, feature.longitude, 2.01));
-      destination.copy(pointOnMoon(feature.latitude, feature.longitude, 4.2)).add(new THREE.Vector3(0.8, 0.4, 1.0));
+      const surface = pointOnMoon(feature.latitude, feature.longitude, 2.01);
+      target.copy(surface);
+      // Closer inspection altitude when touring or after a select
+      const altitude = closeZoom ? 2.85 : 3.55;
+      const eye = pointOnMoon(feature.latitude, feature.longitude, altitude);
+      const tangent = new THREE.Vector3(0, 1, 0).cross(eye.clone().normalize()).normalize();
+      destination.copy(eye).add(tangent.multiplyScalar(0.35));
       remaining.value = 1;
     } else {
       target.set(0, 0, 0);
       destination.set(0, 1.1, 7.1);
       remaining.value = 1;
     }
-  }, [feature, facility, target, destination, remaining]);
+  }, [feature, facility, closeZoom, target, destination, remaining]);
   useFrame(({ controls }) => {
     if (remaining.value <= 0) return;
-    const ease = Math.min(0.11, remaining.value * 0.12 + 0.006);
+    const ease = Math.min(0.1, remaining.value * 0.11 + 0.008);
     camera.position.lerp(destination, ease);
     camera.up.lerp(new THREE.Vector3(0, 1, 0), ease).normalize();
     const c = controls as { target?: THREE.Vector3; update?: () => void } | undefined;
     if (c?.target) c.target.lerp(target, ease);
     c?.update?.();
-    if (camera.position.distanceTo(destination) < 0.018 && (!c?.target || c.target.distanceTo(target) < 0.018))
+    if (camera.position.distanceTo(destination) < 0.02 && (!c?.target || c.target.distanceTo(target) < 0.02))
       remaining.value = 0;
   });
   return null;

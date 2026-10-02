@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OxyForge — 3D Lunar Surface & South Pole Explorer</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <style>
+    :root {
+      --bg: #07090E;
+      --surface: #101520;
+      --surface-elevated: #182030;
+      --surface-raised: #222C42;
+      --border: #2A364E;
+      --accent: #7EB8C9;
+      --accent-glow: rgba(126, 184, 201, 0.4);
+      --accent-cyan: #00E5FF;
+      --fg: #EAF0F8;
+      --fg-muted: #8E9DB2;
+      --gold: #FFB300;
+      --green: #4CAF50;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background-color: var(--bg);
+      color: var(--fg);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* TOP HEADER NAV */
+    header.mission-nav {
+      background: rgba(16, 21, 32, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 50;
+      flex-shrink: 0;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge-school {
+      background: rgba(126, 184, 201, 0.15);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      letter-spacing: 0.5px;
+    }
+
+    h1.header-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .header-nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .nav-btn {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .nav-btn:hover {
+      background: rgba(126, 184, 201, 0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .nav-btn.nav-primary {
+      background: linear-gradient(135deg, #0288D1, #0097A7);
+      border-color: #4DD0E1;
+      color: #FFF;
+      box-shadow: 0 2px 10px rgba(0, 151, 167, 0.35);
+    }
+
+    /* VIEWPORT */
+    .viewport-container {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      cursor: grab;
+    }
+
+    .viewport-container:active {
+      cursor: grabbing;
+    }
+
+    #lunarCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* HUD OVERLAYS */
+    .hud-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px 20px;
+    }
+
+    .hud-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      pointer-events: auto;
+    }
+
+    /* LAYER FILTERS */
+    .filter-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      background: rgba(16, 21, 32, 0.85);
+      backdrop-filter: blur(10px);
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      max-width: 680px;
+    }
+
+    .filter-chip {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--fg-muted);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.18s ease;
+    }
+
+    .filter-chip:hover {
+      color: var(--fg);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .filter-chip.active {
+      background: var(--surface-raised);
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 10px rgba(126, 184, 201, 0.25);
+    }
+
+    /* GAMIFICATION CHIP */
+    .gamify-banner {
+      background: rgba(16, 21, 32, 0.9);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+
+    .gamify-stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .gamify-stat .label {
+      color: var(--fg-muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      font-family: var(--font);
+    }
+
+    .gamify-stat .val {
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    .gamify-stat .val.gold {
+      color: var(--gold);
+    }
+
+    /* BOTTOM CONTROLS & TOUR */
+    .hud-bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+      pointer-events: auto;
+    }
+
+    .view-controls {
+      display: flex;
+      gap: 8px;
+      background: rgba(16, 21, 32, 0.88);
+      backdrop-filter: blur(10px);
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .ctrl-btn {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 7px 13px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .ctrl-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(126, 184, 201, 0.1);
+    }
+
+    .ctrl-btn.active {
+      background: var(--accent);
+      color: #07090E;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    .tour-box {
+      background: rgba(16, 21, 32, 0.92);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .tour-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tour-tag {
+      font-size: 0.68rem;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .tour-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #FFF;
+    }
+
+    .tour-btn {
+      background: var(--surface-raised);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .tour-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* HOVER TOOLTIP CARD */
+    #hoverCard {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(16, 21, 32, 0.95);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      padding: 12px 14px;
+      width: 260px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(126, 184, 201, 0.25);
+      z-index: 30;
+      opacity: 0;
+      transform: translate(-50%, -120%);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    #hoverCard.visible {
+      opacity: 1;
+    }
+
+    .hc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .hc-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #FFF;
+    }
+
+    .hc-type {
+      font-size: 0.64rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-weight: 700;
+      background: rgba(126, 184, 201, 0.2);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .hc-coords {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--accent-cyan);
+      margin-bottom: 6px;
+    }
+
+    .hc-summary {
+      font-size: 0.76rem;
+      color: var(--fg-muted);
+      line-height: 1.35;
+      margin-bottom: 6px;
+    }
+
+    .hc-hint {
+      font-size: 0.68rem;
+      color: var(--gold);
+      font-weight: 600;
+    }
+
+    /* CLASSROOM POPUP MODAL */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-window {
+      background: var(--surface);
+      border: 1px solid var(--accent);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(126, 184, 201, 0.3);
+      display: flex;
+      flex-direction: column;
+      transform: scale(0.95);
+      transition: transform 0.25s ease;
+    }
+
+    .modal-backdrop.open .modal-window {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 10;
+    }
+
+    .modal-header-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .modal-pretitle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-type-tag {
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-weight: 700;
+      background: rgba(126, 184, 201, 0.2);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .modal-status-tag {
+      font-size: 0.68rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-weight: 700;
+      background: rgba(0, 229, 255, 0.15);
+      border: 1px solid var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+
+    .modal-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #FFF;
+      letter-spacing: -0.4px;
+    }
+
+    .modal-coords {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--ice);
+    }
+
+    .btn-modal-close {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      color: var(--fg-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-modal-close:hover {
+      border-color: var(--accent);
+      color: #FFF;
+      background: rgba(126, 184, 201, 0.2);
+    }
+
+    .modal-body {
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .section-card {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+    }
+
+    .section-card-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      font-family: var(--mono);
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .kid-box {
+      background: rgba(255, 179, 0, 0.08);
+      border: 1px solid rgba(255, 179, 0, 0.4);
+      border-radius: 12px;
+      padding: 14px 18px;
+    }
+
+    .kid-box .section-card-title {
+      color: var(--gold);
+    }
+
+    /* PLANETARY COMPARISON */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .compare-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .compare-item .label {
+      font-size: 0.68rem;
+      color: var(--fg-muted);
+      text-transform: uppercase;
+      font-family: var(--mono);
+    }
+
+    .compare-item .val {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--fg);
+    }
+
+    /* FIELD QUIZ */
+    .quiz-box {
+      background: rgba(0, 229, 255, 0.06);
+      border: 1px solid var(--accent-cyan);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .quiz-question {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #FFF;
+      margin-bottom: 12px;
+    }
+
+    .quiz-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .quiz-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--fg);
+      padding: 10px 14px;
+      border-radius: 8px;
+      text-align: left;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .quiz-btn:hover {
+      border-color: var(--accent-cyan);
+      background: rgba(0, 229, 255, 0.1);
+    }
+
+    .quiz-btn.correct {
+      background: rgba(76, 175, 80, 0.2) !important;
+      border-color: var(--green) !important;
+      color: #A5D6A7 !important;
+    }
+
+    .quiz-btn.wrong {
+      background: rgba(244, 67, 54, 0.2) !important;
+      border-color: #EF5350 !important;
+      color: #FFCDD2 !important;
+    }
+
+    .quiz-feedback {
+      margin-top: 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      display: none;
+    }
+
+    /* SOURCES */
+    .sources-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .source-link {
+      font-size: 0.74rem;
+      color: var(--ice);
+      text-decoration: none;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .source-link:hover {
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+  <!-- HEADER NAVIGATION -->
+  <header class="mission-nav">
+    <div class="brand-wrap">
+      <span class="badge-school">MISSION SCHOOL</span>
+      <h1 class="header-title">
+        <span>🌕</span>
+        <span>OxyForge — 3D Lunar Surface &amp; South Pole Explorer</span>
+      </h1>
+    </div>
+    <div class="header-nav-links">
+      <a href="oxyforge.html" class="nav-btn">
+        <span>📋</span>
+        <span>Mission HQ</span>
+      </a>
+      <a href="launchpad-preview.html" class="nav-btn">
+        <span>🔥</span>
+        <span>3D Launchpad</span>
+      </a>
+      <a href="transfer-cruise-preview.html" class="nav-btn">
+        <span>🛸</span>
+        <span>Transfer Cruise FPV</span>
+      </a>
+      <a href="moon-landing-preview.html" class="nav-btn">
+        <span>🌙</span>
+        <span>Moon Landing (3D)</span>
+      </a>
+      <a href="mars-explorer-preview.html" class="nav-btn nav-primary">
+        <span>🔴</span>
+        <span>Switch to Mars 3D</span>
+      </a>
+      <a href="../index.html" class="nav-btn">
+        <span>🌾</span>
+        <span>SearchO2 Farm</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- VIEWPORT & 3D CANVAS -->
+  <div class="viewport-container" id="canvasContainer">
+    <canvas id="lunarCanvas"></canvas>
+
+    <!-- HUD LAYER -->
+    <div class="hud-layer">
+      <!-- TOP HUD: FILTERS & GAMIFICATION -->
+      <div class="hud-top-bar">
+        <div class="filter-chips" id="filterContainer">
+          <button class="filter-chip active" onclick="setLayerFilter('all')">All Features (8)</button>
+          <button class="filter-chip" onclick="setLayerFilter('pole')">South Pole</button>
+          <button class="filter-chip" onclick="setLayerFilter('crater')">Craters</button>
+          <button class="filter-chip" onclick="setLayerFilter('basin')">Basins</button>
+          <button class="filter-chip" onclick="setLayerFilter('psr')">PSR Ice Traps</button>
+          <button class="filter-chip" onclick="setLayerFilter('mountain')">Mountains</button>
+          <button class="filter-chip" onclick="setLayerFilter('landing')">Apollo &amp; Artemis</button>
+          <button class="filter-chip" onclick="setLayerFilter('isru')">ISRU Electrolysis</button>
+        </div>
+
+        <div class="gamify-banner">
+          <div class="gamify-stat">
+            <span class="label">Lunar Journal</span>
+            <span class="val" id="expeditionCount">0 / 8 Explored</span>
+          </div>
+          <div class="gamify-stat">
+            <span class="label">Research XP</span>
+            <span class="val gold" id="researchXp">0 XP</span>
+          </div>
+          <div class="gamify-stat">
+            <span class="label">Badges</span>
+            <span class="val" id="badgeCount">0 🏅</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM HUD: CAMERA CONTROLS & GUIDED TOUR -->
+      <div class="hud-bottom-bar">
+        <div class="view-controls">
+          <button class="ctrl-btn" id="btnZoomToggle" onclick="toggleCloseZoom()">
+            <span>🔍</span>
+            <span id="zoomLabel">Close Polar Zoom</span>
+          </button>
+          <button class="ctrl-btn" onclick="resetCameraView()">
+            <span>🔄</span>
+            <span>Reset View</span>
+          </button>
+          <button class="ctrl-btn" id="btnRoam" onclick="toggleRoamMode()">
+            <span>🧭</span>
+            <span id="roamLabel">Free Pan: Off</span>
+          </button>
+          <button class="ctrl-btn" onclick="flyToFeature('shackleton')">
+            <span>🎯</span>
+            <span>Focus Shackleton</span>
+          </button>
+        </div>
+
+        <div class="tour-box">
+          <div class="tour-info">
+            <span class="tour-tag" id="tourProgress">Classroom Guided Tour · Ready</span>
+            <span class="tour-title" id="tourTitle">Lunar South Pole Ice &amp; Artemis Sites</span>
+          </div>
+          <button class="tour-btn" onclick="prevTourStop()">◀ Prev</button>
+          <button class="tour-btn" onclick="nextTourStop()" style="background:var(--accent);color:#07090E;border-color:var(--accent);font-weight:700;">
+            Next Stop ▶
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOVER TOOLTIP CARD -->
+    <div id="hoverCard">
+      <div class="hc-header">
+        <span class="hc-title" id="hcTitle">Shackleton Crater</span>
+        <span class="hc-type" id="hcType">CRATER / PSR</span>
+      </div>
+      <div class="hc-coords" id="hcCoords">89.9°S, 0.0°E</div>
+      <p class="hc-summary" id="hcSummary">Permanently shadowed cold trap holding ancient water ice deposits.</p>
+      <div class="hc-hint">Click marker to open Classroom Study Dossier ➔</div>
+    </div>
+  </div>
+
+  <!-- CLASSROOM POPUP MODAL -->
+  <div class="modal-backdrop" id="studyModal" onclick="handleBackdropClick(event)">
+    <div class="modal-window" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <div class="modal-pretitle">
+            <span class="modal-type-tag" id="modalType">CRATER</span>
+            <span class="modal-status-tag" id="modalStatus">STUDIED (LRO)</span>
+          </div>
+          <h2 class="modal-title" id="modalTitle">Shackleton Crater</h2>
+          <div class="modal-coords" id="modalCoords">89.9°S, 0.0°E · South Pole Region</div>
+        </div>
+        <button class="btn-modal-close" onclick="closeStudyModal()">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- GEOLOGY OVERVIEW -->
+        <div class="section-card">
+          <div class="section-card-title">📖 Lunar Reconnaissance &amp; Scientific Geography</div>
+          <p id="modalSummary">A 21 km wide, 4.2 km deep impact crater sitting directly on the Lunar South Pole.</p>
+        </div>
+
+        <!-- WHY IT MATTERS -->
+        <div class="section-card">
+          <div class="section-card-title">💡 Why It Matters for Science &amp; Human Settlement</div>
+          <p id="modalWhy">Sunlight never reaches the crater floor, keeping temperatures at -246°C where water ice survives for billions of years.</p>
+        </div>
+
+        <!-- KID-FRIENDLY CLASSROOM SUMMARY -->
+        <div class="kid-box">
+          <div class="section-card-title">🎒 For Young Lunar Explorers (Kid-Friendly Summary)</div>
+          <p id="modalKid">A giant frozen refrigerator at the bottom of the Moon where sunlight never shines!</p>
+        </div>
+
+        <!-- PLANETARY ENVIRONMENT -->
+        <div class="section-card">
+          <div class="section-card-title">🌕 Lunar Environmental Facts</div>
+          <div class="compare-grid">
+            <div class="compare-item">
+              <span class="label">Atmosphere</span>
+              <span class="val">Hard Vacuum (0 psi)</span>
+            </div>
+            <div class="compare-item">
+              <span class="label">Gravity</span>
+              <span class="val">0.166g (1/6 Earth)</span>
+            </div>
+            <div class="compare-item">
+              <span class="label">Day/Night Cycle</span>
+              <span class="val">29.5 Earth Days</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- FIELD KNOWLEDGE CHECK (INTERACTIVE QUIZ) -->
+        <div class="quiz-box">
+          <div class="section-card-title">⚡ Field Knowledge Check (+50 Research XP)</div>
+          <div class="quiz-question" id="quizQuestion">Why does water ice survive inside Shackleton Crater?</div>
+          <div class="quiz-options" id="quizOptions">
+            <!-- Dynamically populated -->
+          </div>
+          <div class="quiz-feedback" id="quizFeedback"></div>
+        </div>
+
+        <!-- LIMITATIONS & SOURCES -->
+        <div class="section-card">
+          <div class="section-card-title">⚠️ Mission Limitations &amp; References</div>
+          <p id="modalLimitation" style="font-size:0.8rem;color:var(--fg-muted);margin-bottom:8px;">
+            Radar and neutron spectroscopy confirm hydrogen signatures; direct in-situ drilling is needed to measure ice concentration.
+          </p>
+          <div class="sources-list" id="modalSources">
+            <a href="https://science.nasa.gov/moon/" target="_blank" class="source-link">🔗 NASA Science: Moon Exploration</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // LUNAR FEATURES DATASET
+    const LUNAR_FEATURES = [
+      {
+        id: "shackleton",
+        name: "Shackleton Crater",
+        type: "crater",
+        lat: -89.9,
+        lon: 0.0,
+        diameterKm: 21,
+        depthKm: 4.2,
+        region: "Lunar South Pole",
+        status: "STUDIED (LRO)",
+        summary: "A 21 km wide, 4.2 km deep impact crater centered precisely on the lunar south pole. Its rim experiences up to 86-90% solar illumination across the lunar year, while its interior is permanently shadowed.",
+        why: "The extreme cold interior (< 40 Kelvin / -246°C) acts as a volatile cold trap, preserving water ice and noble gases. The illuminated rim peaks are prime locations for continuous solar power stations.",
+        kidFriendly: "The ultimate lunar refrigerator! The peaks of its rim are almost always bathed in sunlight, but the bottom has been pitch black and frozen for over 2 billion years.",
+        limitation: "Steep 30° interior slopes create severe rover descent and retrieval hazards.",
+        quiz: {
+          q: "What makes the rim of Shackleton Crater so attractive for astronaut bases?",
+          options: [
+            { text: "Nearly continuous sunlight for solar power while ice is just over the rim", correct: true },
+            { text: "Trees growing on the crater wall", correct: false },
+            { text: "A warm tropical climate sheltered from space", correct: false }
+          ],
+          explanation: "Correct! The rim's high elevation provides near-constant solar energy, while the dark floor provides water ice just kilometers away."
+        },
+        sources: [{ title: "NASA Shackleton Crater Rim & Interior", url: "https://science.nasa.gov/resource/shackleton-craters-illuminated-rim-shadowed-interior/" }]
+      },
+      {
+        id: "spa-basin",
+        name: "South Pole-Aitken (SPA) Basin",
+        type: "basin",
+        lat: -53.0,
+        lon: -169.0,
+        diameterKm: 2500,
+        depthKm: 13.0,
+        region: "Lunar Farside / South",
+        status: "STUDIED",
+        summary: "One of the largest, deepest, and oldest known impact structures in the Solar System, spanning 2,500 km across the farside and excavating 13 km into the lunar crust.",
+        why: "The impact was so gargantuan that it may have excavated material from the Moon's upper mantle, providing a direct window into early planetary differentiation.",
+        kidFriendly: "A monster crater created by a giant asteroid crash that almost cracked the Moon in half 4 billion years ago! It is big enough to cover half the United States.",
+        limitation: "Located largely on the lunar farside, requiring orbital communications relay satellites (like China's Queqiao or NASA DSN relays).",
+        quiz: {
+          q: "Why is sampling the floor of the South Pole-Aitken Basin a high priority for geologists?",
+          options: [
+            { text: "It excavated deep rocks from the lunar mantle, exposing the Moon's interior", correct: true },
+            { text: "It holds an underground ocean of liquid oil", correct: false },
+            { text: "It was built by artificial machinery", correct: false }
+          ],
+          explanation: "Correct! The colossal impact penetrated the lunar crust and brought deep mantle rocks up to the surface."
+        },
+        sources: [{ title: "NASA Science: What is the South Pole-Aitken Basin?", url: "https://science.nasa.gov/moon/lunar-craters/what-is-the-south-pole-aitken-basin/" }]
+      },
+      {
+        id: "tycho",
+        name: "Tycho Crater",
+        type: "crater",
+        lat: -43.3,
+        lon: -11.2,
+        diameterKm: 85,
+        depthKm: 4.8,
+        region: "Southern Highlands",
+        status: "OBSERVED",
+        summary: "A very young (~108 million years old) impact crater with a razor-sharp rim, central peak rising 1.6 km, and brilliant ejecta rays extending over 1,500 km across the nearside face.",
+        why: "Its youth makes it an archetypal fresh complex crater. Samples collected by Apollo 17 at Taurus-Littrow are believed to include Tycho ray ejecta, calibrating lunar crater chronology.",
+        kidFriendly: "The bright starburst on the Moon! When you look up with a telescope or binoculars, Tycho's white ray lines look like giant peeled orange slices.",
+        limitation: "Rugged floor filled with boulder fields and impact melt ponds poses tough terrain for rovers.",
+        quiz: {
+          q: "Why are Tycho Crater's rays so bright and visible from Earth?",
+          options: [
+            { text: "The impact happened relatively recently, so space weathering hasn't darkened the crushed rock yet", correct: true },
+            { text: "They are painted with reflective neon lights", correct: false },
+            { text: "They are made of pure polished gold mirrors", correct: false }
+          ],
+          explanation: "Correct! Freshly excavated pulverized anorthosite rock is bright white. Over hundreds of millions of years, micrometeorites and solar wind darken it."
+        },
+        sources: [{ title: "NASA Science Tycho Crater", url: "https://science.nasa.gov/moon/" }]
+      },
+      {
+        id: "mons-mouton",
+        name: "Mons Mouton (VIPER Target)",
+        type: "mountain",
+        lat: -84.5,
+        lon: 31.0,
+        diameterKm: 100,
+        depthKm: 6.0,
+        region: "South Pole Region",
+        status: "STUDIED",
+        summary: "A vast flat-topped lunar mountain rising 6,000 meters above surrounding cratered terrain. Named in honor of NASA mathematician Melba Roy Mouton.",
+        why: "Contains a diversity of illuminated plateaus and cold shadowed micro-craters, making it a prime candidate for rover ice-drilling expeditions.",
+        kidFriendly: "A flat tabletop mountain near the south pole named after Melba Mouton, an African American mathematician who helped track early NASA satellites.",
+        limitation: "Steep scarp margins require careful navigation corridors for robotic landers.",
+        quiz: {
+          q: "Who is Mons Mouton named after?",
+          options: [
+            { text: "Melba Roy Mouton, a pioneer NASA computer scientist and mathematician", correct: true },
+            { text: "A famous French sheep farmer", correct: false },
+            { text: "A fictional sci-fi movie character", correct: false }
+          ],
+          explanation: "Correct! Melba Roy Mouton was head of computer programming at NASA Goddard, calculating spacecraft orbits."
+        },
+        sources: [{ title: "NASA Names Lunar Mountain for Melba Mouton", url: "https://science.nasa.gov/moon/" }]
+      },
+      {
+        id: "tranquility-base",
+        name: "Apollo 11 Tranquility Base",
+        type: "landing",
+        lat: 0.67,
+        lon: 23.47,
+        region: "Mare Tranquillitatis",
+        status: "STUDIED",
+        summary: "The historic site where Neil Armstrong and Buzz Aldrin set the Lunar Module Eagle down on July 20, 1969. The descent stage, retro-reflector, and flag remain on the regolith.",
+        why: "First human extraterrestrial landing. Returned 21.5 kg of basalt and breccia that proved lunar maria are ancient volcanic flood basalts.",
+        kidFriendly: "'That's one small step for man, one giant leap for mankind.' The very first spot where human boots ever touched another world!",
+        limitation: "Protected historical archaeological heritage site; future missions must respect buffer zones.",
+        quiz: {
+          q: "What type of rock makes up the dark plains at Tranquility Base?",
+          options: [
+            { text: "Ancient volcanic basalt from ancient lava flows", correct: true },
+            { text: "Soft river clay and mud", correct: false },
+            { text: "Limestone formed by sea shells", correct: false }
+          ],
+          explanation: "Correct! The lunar 'seas' (maria) are ancient volcanic plains formed when basaltic lava filled giant impact basins 3.5 billion years ago."
+        },
+        sources: [{ title: "NASA Apollo 11 Lunar Surface Journal", url: "https://science.nasa.gov/moon/" }]
+      },
+      {
+        id: "artemis-site",
+        name: "Artemis III Candidate (Connecting Ridge)",
+        type: "landing",
+        lat: -89.4,
+        lon: -138.0,
+        region: "Shackleton-de Gerlache Ridge",
+        status: "PROPOSED",
+        summary: "A high-altitude ridge connecting Shackleton and de Gerlache craters. Features long periods of solar illumination and direct line-of-sight to Earth for high-bandwidth radio comms.",
+        why: "Provides access to shadowed crater floors within 1 km for astronaut EVAs searching for surface ice while maintaining continuous base power.",
+        kidFriendly: "A prime candidate for where the next astronauts — including the first woman and person of color — will land on the Moon!",
+        limitation: "Narrow ridge topography demands precision pinpoint landing within 100 meters.",
+        quiz: {
+          q: "Why is the Shackleton-de Gerlache Ridge an ideal landing candidate for Artemis III?",
+          options: [
+            { text: "It combines high solar illumination with quick access to shadowed ice traps", correct: true },
+            { text: "It has an active airport runway ready", correct: false },
+            { text: "It has breathable oxygen clouds hovering above it", correct: false }
+          ],
+          explanation: "Correct! Astronauts can operate solar power arrays on the sunlit ridge while taking rovers down into the shadows to harvest ice."
+        },
+        sources: [{ title: "NASA Artemis III Landing Sites", url: "https://science.nasa.gov/moon/" }]
+      },
+      {
+        id: "psr-cold-trap",
+        name: "Permanently Shadowed Region (PSR)",
+        type: "psr",
+        lat: -88.5,
+        lon: 45.0,
+        region: "Haworth / Shoemaker Craters",
+        status: "STUDIED (LRO)",
+        summary: "Because the Moon's spin axis is tilted only 1.5° relative to the ecliptic, the Sun stays near the horizon at the poles, casting permanent darkness inside deep crater floors for over 2 billion years.",
+        why: "With temperatures hovering between 25 K and 40 K (-248°C), water molecules deposited by comets and solar wind protons are trapped forever in cryo-stasis.",
+        kidFriendly: "Places on the Moon colder than the surface of Pluto! Without any atmosphere or sunlight, heat escapes completely into space.",
+        limitation: "Operating rovers at 40 K requires radioisotope heater units (RHUs) or specialized cryogenic electronics.",
+        quiz: {
+          q: "Why does sunlight never reach the floor of polar craters on the Moon?",
+          options: [
+            { text: "The Moon's axis is barely tilted (1.5°), so the Sun always skims low across the horizon", correct: true },
+            { text: "A thick layer of lunar clouds blocks the light", correct: false },
+            { text: "The Moon turns off the Sun at the south pole", correct: false }
+          ],
+          explanation: "Correct! With only a 1.5° tilt, the Sun never rises high in the polar sky, so deep crater rims cast perpetual shadows."
+        },
+        sources: [{ title: "LRO Shadowed Regions", url: "https://science.nasa.gov/moon/moon-water-and-ices/" }]
+      },
+      {
+        id: "mre-isru",
+        name: "Molten Regolith Electrolysis (MRE) Plant",
+        type: "isru",
+        lat: -89.7,
+        lon: 120.0,
+        region: "South Pole Industrial Base",
+        status: "FUTURE CONCEPT",
+        summary: "An In-Situ Resource Utilization (ISRU) processing concept that heats raw lunar regolith powder to ~1,600°C without chemicals, passing an electric current to split metal oxides into pure oxygen gas (O₂) and molten iron-silicon alloy.",
+        why: "40-45% of lunar soil by weight is oxygen bound in silicate minerals (SiO₂, FeO, TiO₂). MRE produces unlimited breathable air and rocket oxidizer anywhere on the Moon without needing ice.",
+        kidFriendly: "A super-hot space oven that melts Moon dirt at 1,600°C and uses electricity to bubble out pure oxygen to breathe!",
+        limitation: "Requires high electric power (100 kW to 1 MW nuclear or solar farm) and corrosion-resistant inert anodes.",
+        quiz: {
+          q: "What percentage of raw Moon dirt (regolith) is actually made of oxygen bound in rock minerals?",
+          options: [
+            { text: "About 40% to 45% by weight", correct: true },
+            { text: "Less than 0.01%", correct: false },
+            { text: "100% pure liquid oxygen", correct: false }
+          ],
+          explanation: "Correct! More than 40% of the Moon's crust is made of oxygen atoms chemically locked with silicon, iron, aluminum, and titanium."
+        },
+        sources: [{ title: "NASA Technical Reports: Regolith Electrolysis", url: "https://ntrs.nasa.gov/citations/20090017897" }]
+      }
+    ];
+
+    // TOUR ORDER
+    const TOUR_STOPS = [
+      "shackleton", "artemis-site", "psr-cold-trap", "mons-mouton", "spa-basin", "tycho", "tranquility-base", "mre-isru"
+    ];
+
+    // STATE
+    let currentFilter = "all";
+    let activeFeature = null;
+    let tourIndex = -1;
+    let isCloseZoom = false;
+    let isRoamMode = false;
+    let visitedFeatures = new Set();
+    let earnedBadges = new Set();
+    let totalXp = 0;
+
+    // THREE.JS SETUP
+    const container = document.getElementById("canvasContainer");
+    const canvas = document.getElementById("lunarCanvas");
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, -6, 13); // Angled toward south pole
+
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 6.2;
+    controls.maxDistance = 25;
+    controls.rotateSpeed = 0.6;
+    controls.zoomSpeed = 0.8;
+
+    // LIGHTING
+    const ambientLight = new THREE.AmbientLight(0x283040, 1.0);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xFFFFFF, 2.5);
+    sunLight.position.set(25, 5, 20);
+    scene.add(sunLight);
+
+    const earthShine = new THREE.DirectionalLight(0x4080B0, 0.4);
+    earthShine.position.set(-20, 10, -15);
+    scene.add(earthShine);
+
+    // STARFIELD
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = 2000;
+    const starPos = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount * 3; i += 3) {
+      starPos[i] = (Math.random() - 0.5) * 600;
+      starPos[i + 1] = (Math.random() - 0.5) * 600;
+      starPos[i + 2] = (Math.random() - 0.5) * 600;
+    }
+    starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({ color: 0xCCDDF4, size: 1.2, transparent: true, opacity: 0.8 });
+    const starField = new THREE.Points(starGeo, starMat);
+    scene.add(starField);
+
+    // MOON GLOBE
+    const MOON_RADIUS = 5.0;
+    const moonGeo = new THREE.SphereGeometry(MOON_RADIUS, 64, 64);
+
+    const textureLoader = new THREE.TextureLoader();
+    const moonTexture = textureLoader.load("cosmos/moon.webp", () => {
+      renderer.render(scene, camera);
+    });
+
+    const moonMat = new THREE.MeshStandardMaterial({
+      map: moonTexture,
+      roughness: 0.92,
+      metalness: 0.05,
+      color: 0xDDDDDD
+    });
+    const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+    scene.add(moonMesh);
+
+    // PINS & MARKERS
+    const pinGroup = new THREE.Group();
+    scene.add(pinGroup);
+
+    const pinMeshes = [];
+
+    function latLonToVector3(lat, lon, radius) {
+      const phi = (90 - lat) * (Math.PI / 180);
+      const theta = (lon + 180) * (Math.PI / 180);
+      return new THREE.Vector3(
+        -radius * Math.sin(phi) * Math.cos(theta),
+        radius * Math.cos(phi),
+        radius * Math.sin(phi) * Math.sin(theta)
+      );
+    }
+
+    function createPin(feat) {
+      const pos = latLonToVector3(feat.lat, feat.lon, MOON_RADIUS + 0.08);
+      const normal = pos.clone().normalize();
+
+      const pinRoot = new THREE.Group();
+      pinRoot.position.copy(pos);
+      pinRoot.userData = { feature: feat };
+
+      // Glowing marker sphere
+      const sphereGeo = new THREE.SphereGeometry(0.09, 16, 16);
+      const color = feat.type === "psr" ? 0x817EE2 : (feat.type === "isru" ? 0x00E5FF : 0x7EB8C9);
+      const sphereMat = new THREE.MeshBasicMaterial({ color: color });
+      const sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+      pinRoot.add(sphereMesh);
+
+      // Pulsing ring
+      const ringGeo = new THREE.RingGeometry(0.12, 0.16, 24);
+      const ringMat = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.75 });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.lookAt(normal);
+      pinRoot.add(ringMesh);
+
+      // Needle pointer to surface
+      const lineGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        normal.clone().multiplyScalar(-0.1)
+      ]);
+      const lineMat = new THREE.LineBasicMaterial({ color: 0xCCDDF4 });
+      const line = new THREE.Line(lineGeo, lineMat);
+      pinRoot.add(line);
+
+      pinGroup.add(pinRoot);
+      pinMeshes.push({ root: pinRoot, sphere: sphereMesh, ring: ringMesh, feature: feat });
+    }
+
+    LUNAR_FEATURES.forEach(f => createPin(f));
+
+    // RAYCASTING
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let hoveredPin = null;
+    const hoverCard = document.getElementById("hoverCard");
+
+    window.addEventListener("mousemove", (e) => {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const targets = pinMeshes.map(p => p.sphere);
+      const intersects = raycaster.intersectObjects(targets);
+
+      if (intersects.length > 0) {
+        const found = pinMeshes.find(p => p.sphere === intersects[0].object);
+        if (found && found.root.visible) {
+          hoveredPin = found;
+          showHoverCard(found.feature, e.clientX, e.clientY);
+          document.body.style.cursor = "pointer";
+          return;
+        }
+      }
+
+      hoveredPin = null;
+      hideHoverCard();
+      document.body.style.cursor = "default";
+    });
+
+    window.addEventListener("click", () => {
+      if (hoveredPin) {
+        openStudyModal(hoveredPin.feature);
+      }
+    });
+
+    function showHoverCard(feat, x, y) {
+      document.getElementById("hcTitle").textContent = feat.name;
+      document.getElementById("hcType").textContent = feat.type.toUpperCase();
+      document.getElementById("hcCoords").textContent = `${Math.abs(feat.lat).toFixed(1)}°${feat.lat>=0?'N':'S'}, ${Math.abs(feat.lon).toFixed(1)}°${feat.lon>=0?'E':'W'}`;
+      document.getElementById("hcSummary").textContent = feat.summary;
+      
+      hoverCard.style.left = `${Math.min(window.innerWidth - 150, Math.max(140, x))}px`;
+      hoverCard.style.top = `${Math.max(60, y - 20)}px`;
+      hoverCard.classList.add("visible");
+    }
+
+    function hideHoverCard() {
+      hoverCard.classList.remove("visible");
+    }
+
+    // MODAL INTERACTION
+    function openStudyModal(feat) {
+      activeFeature = feat;
+      visitedFeatures.add(feat.id);
+      updateGamification();
+
+      document.getElementById("modalTitle").textContent = feat.name;
+      document.getElementById("modalType").textContent = feat.type.toUpperCase();
+      document.getElementById("modalStatus").textContent = feat.status;
+      document.getElementById("modalCoords").textContent = `${Math.abs(feat.lat).toFixed(2)}°${feat.lat>=0?'N':'S'}, ${Math.abs(feat.lon).toFixed(2)}°${feat.lon>=0?'E':'W'} · Region: ${feat.region || 'Lunar South'}`;
+      document.getElementById("modalSummary").textContent = feat.summary;
+      document.getElementById("modalWhy").textContent = feat.why;
+      document.getElementById("modalKid").textContent = feat.kidFriendly;
+      document.getElementById("modalLimitation").textContent = feat.limitation;
+
+      // Sources
+      const sourcesBox = document.getElementById("modalSources");
+      sourcesBox.innerHTML = feat.sources.map(s => `
+        <a href="${s.url}" target="_blank" class="source-link">🔗 ${s.title}</a>
+      `).join("");
+
+      // Quiz
+      const quizQ = document.getElementById("quizQuestion");
+      const quizOpts = document.getElementById("quizOptions");
+      const quizFeedback = document.getElementById("quizFeedback");
+      quizFeedback.style.display = "none";
+      quizFeedback.textContent = "";
+
+      quizQ.textContent = feat.quiz.q;
+      quizOpts.innerHTML = feat.quiz.options.map((opt, idx) => `
+        <button class="quiz-btn" onclick="submitQuizAnswer(${idx})">
+          <span>${String.fromCharCode(65 + idx)}.</span>
+          <span>${opt.text}</span>
+        </button>
+      `).join("");
+
+      document.getElementById("studyModal").classList.add("open");
+    }
+
+    function closeStudyModal() {
+      document.getElementById("studyModal").classList.remove("open");
+    }
+
+    function handleBackdropClick(e) {
+      if (e.target.id === "studyModal") {
+        closeStudyModal();
+      }
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeStudyModal();
+    });
+
+    // QUIZ SCORING
+    function submitQuizAnswer(optIndex) {
+      if (!activeFeature) return;
+      const opts = activeFeature.quiz.options;
+      const selected = opts[optIndex];
+      const feedback = document.getElementById("quizFeedback");
+      const btns = document.querySelectorAll(".quiz-btn");
+
+      btns.forEach((b, idx) => {
+        if (opts[idx].correct) b.classList.add("correct");
+        else if (idx === optIndex) b.classList.add("wrong");
+        b.style.pointerEvents = "none";
+      });
+
+      if (selected.correct) {
+        totalXp += 50;
+        feedback.style.color = "#4CAF50";
+        feedback.textContent = "✓ Correct! +50 Research XP awarded. " + activeFeature.quiz.explanation;
+      } else {
+        feedback.style.color = "#FF5252";
+        feedback.textContent = "✕ Incorrect. " + activeFeature.quiz.explanation;
+      }
+      feedback.style.display = "block";
+      updateGamification();
+    }
+
+    // GAMIFICATION UPDATES
+    function updateGamification() {
+      document.getElementById("expeditionCount").textContent = `${visitedFeatures.size} / ${LUNAR_FEATURES.length} Explored`;
+      document.getElementById("researchXp").textContent = `${totalXp} XP`;
+
+      if (visitedFeatures.has("shackleton") && visitedFeatures.has("psr-cold-trap")) earnedBadges.add("Ice Prospector");
+      if (visitedFeatures.has("artemis-site")) earnedBadges.add("Artemis Pioneer");
+      if (visitedFeatures.has("tranquility-base")) earnedBadges.add("Apollo Historian");
+      if (visitedFeatures.has("mre-isru")) earnedBadges.add("Regolith Chemist");
+
+      document.getElementById("badgeCount").textContent = `${earnedBadges.size} 🏅`;
+    }
+
+    // FILTER LAYERS
+    function setLayerFilter(filter) {
+      currentFilter = filter;
+      document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+      event.target.classList.add("active");
+
+      pinMeshes.forEach(p => {
+        if (filter === "all" || p.feature.type === filter) {
+          p.root.visible = true;
+        } else {
+          p.root.visible = false;
+        }
+      });
+    }
+
+    // CAMERA FLIGHT & CONTROLS
+    let targetCameraPos = null;
+    let targetLookAt = new THREE.Vector3(0, 0, 0);
+
+    function flyToCoordinate(lat, lon, distance = 8.5) {
+      const surfacePoint = latLonToVector3(lat, lon, MOON_RADIUS);
+      const camTarget = latLonToVector3(lat, lon, distance);
+      
+      targetCameraPos = camTarget;
+      targetLookAt.copy(surfacePoint);
+    }
+
+    function flyToFeature(featId) {
+      const feat = LUNAR_FEATURES.find(f => f.id === featId);
+      if (feat) {
+        flyToCoordinate(feat.lat, feat.lon, isCloseZoom ? 6.2 : 8.5);
+      }
+    }
+
+    function toggleCloseZoom() {
+      isCloseZoom = !isCloseZoom;
+      const btn = document.getElementById("btnZoomToggle");
+      const label = document.getElementById("zoomLabel");
+      
+      if (isCloseZoom) {
+        btn.classList.add("active");
+        label.textContent = "Orbit Wide View";
+        controls.minDistance = 5.25;
+        if (activeFeature) {
+          flyToCoordinate(activeFeature.lat, activeFeature.lon, 6.2);
+        } else {
+          flyToCoordinate(-89.9, 0, 6.4); // fly to south pole
+        }
+      } else {
+        btn.classList.remove("active");
+        label.textContent = "Close Polar Zoom";
+        controls.minDistance = 6.2;
+        controls.dollyTo(14, true);
+      }
+    }
+
+    function resetCameraView() {
+      targetCameraPos = new THREE.Vector3(0, -6, 13);
+      targetLookAt = new THREE.Vector3(0, 0, 0);
+      controls.target.set(0, 0, 0);
+    }
+
+    function toggleRoamMode() {
+      isRoamMode = !isRoamMode;
+      const btn = document.getElementById("btnRoam");
+      const label = document.getElementById("roamLabel");
+      controls.enablePan = isRoamMode;
+
+      if (isRoamMode) {
+        btn.classList.add("active");
+        label.textContent = "Free Pan: ON";
+      } else {
+        btn.classList.remove("active");
+        label.textContent = "Free Pan: Off";
+        controls.target.set(0, 0, 0);
+      }
+    }
+
+    // GUIDED TOUR
+    function updateTour() {
+      const featId = TOUR_STOPS[tourIndex];
+      const feat = LUNAR_FEATURES.find(f => f.id === featId);
+      if (!feat) return;
+
+      document.getElementById("tourProgress").textContent = `Classroom Tour · Stop ${tourIndex + 1} of ${TOUR_STOPS.length}`;
+      document.getElementById("tourTitle").textContent = feat.name;
+
+      flyToCoordinate(feat.lat, feat.lon, isCloseZoom ? 6.3 : 8.2);
+    }
+
+    function nextTourStop() {
+      tourIndex = (tourIndex + 1) % TOUR_STOPS.length;
+      updateTour();
+    }
+
+    function prevTourStop() {
+      tourIndex = (tourIndex - 1 + TOUR_STOPS.length) % TOUR_STOPS.length;
+      updateTour();
+    }
+
+    // ANIMATION LOOP
+    let clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime();
+
+      // Camera lerp
+      if (targetCameraPos) {
+        camera.position.lerp(targetCameraPos, 0.05);
+        controls.target.lerp(targetLookAt, 0.05);
+        if (camera.position.distanceTo(targetCameraPos) < 0.05) {
+          targetCameraPos = null;
+        }
+      }
+
+      // Pin ring pulsation
+      pinMeshes.forEach(p => {
+        const s = 1 + 0.15 * Math.sin(time * 3 + p.feature.lat);
+        p.ring.scale.set(s, s, s);
+      });
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // WINDOW RESIZE
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>

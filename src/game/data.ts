@@ -9,12 +9,11 @@ export type Screen =
   | "cruise"
   | "landing"
   | "surface"
-  | "explore"
   | "habitat"
   | "debrief";
 
-export const STARTING_CREDITS = 2_500_000;
-export const FPV_RATE_PER_SEC = 180;
+export const STARTING_CREDITS = 10_000;
+export const FPV_RATE_PER_SEC = 1.80; // Calibrated to SearchO2/OxyForge economy (€1.80/s = 180 GC/s)
 export const OXYGEN_PRICE_PER_KG = 40;
 export const SAVE_VERSION = 1;
 export const SAVE_KEY = "oxyforge-save-v1";
@@ -105,6 +104,279 @@ export function navFromProgress(dest: DestinationId, pathPct: number) {
   const etaHours = spec.hours * (1 - p);
   return { travelledKm, remainKm, etaHours, vKms: spec.vKms, totalKm: spec.km, totalHours: spec.hours };
 }
+
+export type CommanderId =
+  | "kai"
+  | "nia"
+  | "rafa"
+  | "amira"
+  | "elena"
+  | "haru"
+  | "cmd-self"
+  | "pilot-nova"
+  | "sys-kade"
+  | "sci-mira"
+  | "med-sol"
+  | "pilot-jax";
+
+export interface CommanderProfile {
+  id: CommanderId;
+  name: string;
+  callsign: string;
+  age: number;
+  gender: "male" | "female";
+  role: string;
+  bio: string;
+  src: string;
+}
+
+export const COMMANDERS: CommanderProfile[] = [
+  {
+    id: "cmd-self",
+    name: "You",
+    callsign: "Director",
+    age: 32,
+    gender: "male",
+    role: "Flight Director",
+    bio: "You run the program from HQ. On Crewmark flights you still sit the commander seat.",
+    src: "/commanders/cmd-self.webp",
+  },
+  {
+    id: "kai",
+    name: "Kai Mori",
+    callsign: "Vector",
+    age: 24,
+    gender: "male",
+    role: "Guidance cadet",
+    bio: "Fresh from flight school. Treats every burn as a vis-viva problem you can feel.",
+    src: "/commanders/kai.webp",
+  },
+  {
+    id: "nia",
+    name: "Nia Okoye",
+    callsign: "Ember",
+    age: 27,
+    gender: "female",
+    role: "Plant engineer",
+    bio: "Splits water in her sleep. Ice is not scenery to her — it is 89% oxygen by mass.",
+    src: "/commanders/nia.webp",
+  },
+  {
+    id: "rafa",
+    name: "Rafael Soto",
+    callsign: "Ballast",
+    age: 36,
+    gender: "male",
+    role: "Pad chief",
+    bio: "Counts mass like money. Crew costs more because people have seats, air, and an abort tower.",
+    src: "/commanders/rafa.webp",
+  },
+  {
+    id: "amira",
+    name: "Amira Haddad",
+    callsign: "Window",
+    age: 44,
+    gender: "female",
+    role: "Flight director",
+    bio: "Does not aim at where Mars is. Aims at where Mars will be after seven months of coast.",
+    src: "/commanders/amira.webp",
+  },
+  {
+    id: "elena",
+    name: "Elena Voss",
+    callsign: "Ridge",
+    age: 56,
+    gender: "female",
+    role: "Habitat lead",
+    bio: "Two metres of dirt is a cheaper roof than any metal from Earth. She has buried more than one home.",
+    src: "/commanders/elena.webp",
+  },
+  {
+    id: "haru",
+    name: "Haru Tanabe",
+    callsign: "Apsis",
+    age: 63,
+    gender: "male",
+    role: "Veteran skipper",
+    bio: "Flew the long ovals before the plants existed. Still says the quiet part: most of the trip is engines off.",
+    src: "/commanders/haru.webp",
+  },
+  {
+    id: "pilot-nova",
+    name: "Nova Reyes",
+    callsign: "Vanguard",
+    age: 29,
+    gender: "female",
+    role: "Ascent / descent pilot",
+    bio: "Hands on the stick for Max-Q and the last kilometres of powered descent.",
+    src: "/commanders/nova.webp",
+  },
+  {
+    id: "sys-kade",
+    name: "Kade Okonkwo",
+    callsign: "Circuit",
+    age: 34,
+    gender: "male",
+    role: "Vehicle systems",
+    bio: "Watches power, thermal, and propellant margins from the capsule screens.",
+    src: "/commanders/kade.webp",
+  },
+  {
+    id: "sci-mira",
+    name: "Mira Chen",
+    callsign: "Catalyst",
+    age: 31,
+    gender: "female",
+    role: "ISRU science",
+    bio: "Owns the oxygen plant plan — ice, electrolysis, or MOXIE stacks.",
+    src: "/commanders/mira.webp",
+  },
+  {
+    id: "med-sol",
+    name: "Dr. Sol Park",
+    callsign: "Pulse",
+    age: 38,
+    gender: "female",
+    role: "Crew health",
+    bio: "Radiation, sleep, and the closed air loop when people are on board.",
+    src: "/commanders/sol.webp",
+  },
+  {
+    id: "pilot-jax",
+    name: "Jax Moreau",
+    callsign: "Drift",
+    age: 41,
+    gender: "male",
+    role: "Transfer pilot",
+    bio: "Specialist for long coasts and mid-course burns on Mars paths.",
+    src: "/commanders/jax.webp",
+  },
+];
+
+export function commanderById(id: string | undefined | null): CommanderProfile {
+  return COMMANDERS.find((c) => c.id === id) ?? COMMANDERS[0];
+}
+
+export interface MotivationBeat {
+  kicker: string;
+  title: string;
+  body: string;
+  libraryId: string;
+}
+
+export const MOTIVATION: MotivationBeat[] = [
+  {
+    kicker: "Before you fly",
+    title: "Oxygen is the payload",
+    body: "A person uses about 0.8 kg of O₂ a day. Mailing that from Earth is mailing air across a vacuum. The whole game is learning to make it there.",
+    libraryId: "why-oxygen",
+  },
+  {
+    kicker: "The cheap path",
+    title: "Two burns, then a fall",
+    body: "A Hohmann transfer is not a race. Burn to leave Earth’s circle, coast on a long oval that kisses the next world, burn again to stay. Waiting is fuel you do not spend.",
+    libraryId: "hohmann",
+  },
+  {
+    kicker: "Moon vs Mars",
+    title: "Three days, or seven months",
+    body: "The Moon is 384,400 km — a weekend if the window is good. Mars is 78–400 million km and a 26-month wait if you miss. Distance is not just kilometres. It is mass, food, and shielding.",
+    libraryId: "distance",
+  },
+  {
+    kicker: "Why it works",
+    title: "Ice and the wrong air",
+    body: "Lunar ice is mostly oxygen by mass once you split the water. Mars already breathes carbon dioxide — heat ceramic cells, keep the O₂, vent the rest. Same need, two chemistries.",
+    libraryId: "electrolysis",
+  },
+];
+
+export interface MissionShot {
+  id: DestinationId;
+  title: string;
+  src: string;
+  kicker: string;
+  facts: { label: string; value: string }[];
+  science: string;
+}
+
+export const MISSION_SHOTS: MissionShot[] = [
+  {
+    id: "moon",
+    title: "Lunar south pole",
+    src: "/missions/moon-landing.webp",
+    kicker: "First flight · cargo or crew",
+    facts: [
+      { label: "Range", value: "384,400 km" },
+      { label: "Coast", value: "≈ 3 days" },
+      { label: "Gravity", value: "1/6 g" },
+      { label: "Air", value: "None" },
+    ],
+    science: "Land on a ridge that sees the Sun. Mine ice in the permanent shadow. Electricity splits H₂O — about 89% of that mass is oxygen you can breathe or burn.",
+  },
+  {
+    id: "mars",
+    title: "MOXIE-class plant",
+    src: "/missions/mars-plant.webp",
+    kicker: "Long exam · windows every 26 months",
+    facts: [
+      { label: "Range", value: "78–400 million km" },
+      { label: "Coast", value: "≈ 7 months" },
+      { label: "Gravity", value: "≈ 3/8 g" },
+      { label: "Air", value: "Thin CO₂" },
+    ],
+    science: "Do not aim at Mars. Aim at where it will be. On arrival, heat ceramic cells to ~800 °C and split the air you cannot breathe into the air you can: 2 CO₂ → 2 CO + O₂.",
+  },
+];
+
+export interface SuccessSlide {
+  id: string;
+  title: string;
+  kicker: string;
+  body: string;
+  fact: string;
+  src: string;
+  libraryId: string;
+}
+
+export const SUCCESS_SLIDES: SuccessSlide[] = [
+  {
+    id: "earth-moon",
+    title: "Earth to Moon coast",
+    kicker: "Success path · 384,400 km",
+    body: "Leave low Earth orbit with a trans-lunar injection. Most of the three days the engines stay off. The Moon’s gravity does the last capture.",
+    fact: "Free-return trajectories loop home if the capture burn fails — a built-in abort.",
+    src: "/missions/earth-moon.webp",
+    libraryId: "hohmann",
+  },
+  {
+    id: "pole",
+    title: "South-pole touchdown",
+    kicker: "Landing · 1/6 g",
+    body: "Long shadows, no air, Earth hanging in a black sky. Solar arrays live on the rim. Ice waits in craters that have not seen the Sun in a billion years.",
+    fact: "Descent is a powered fall. There is no atmosphere to brake against.",
+    src: "/missions/moon-landing.webp",
+    libraryId: "landing",
+  },
+  {
+    id: "earth-mars",
+    title: "Hohmann to Mars",
+    kicker: "Success path · ~225 million km",
+    body: "The cheap oval kisses Mars’ orbit on the far side. You launch when Earth and Mars line up — about every 26 months — or you pay in propellant.",
+    fact: "vis-viva: closer to the Sun you go faster; climbing out, you slow. That is the coast.",
+    src: "/missions/earth-mars.webp",
+    libraryId: "windows",
+  },
+  {
+    id: "moxie",
+    title: "Oxygen from Martian air",
+    kicker: "Plant · NASA-proven 2021",
+    body: "A compressor inhales thin CO₂. Solid-oxide cells at 800 °C let oxide ions walk one way through ceramic. Oxygen tanks fill. Carbon monoxide is vented or saved as fuel stock.",
+    fact: "A crew of three needs ~2.4 kg of O₂ per day, plus leaks. Scale is the real exam.",
+    src: "/missions/mars-plant.webp",
+    libraryId: "moxie",
+  },
+];
 
 /** Launch price in USD: rocket × destination. */
 export const LAUNCH_PRICE: Record<RocketId, Record<DestinationId, number>> = {
@@ -200,6 +472,13 @@ export const CHECKLIST: ChecklistItem[] = [
     why: "Mission control must hear the rocket the whole way. A radio check proves the link is alive before we light the engines.",
     action: "Run radio check",
     kind: "radio",
+  },
+  {
+    id: "deluge",
+    title: "Sound suppression deluge",
+    why: "1.1 million liters of water flood the flame trench to cushion 220 dB acoustic pressure so reflected shockwaves cannot crack the heatshield.",
+    action: "Arm sound suppression deluge",
+    kind: "toggle",
   },
 ];
 

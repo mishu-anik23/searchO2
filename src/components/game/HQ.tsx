@@ -1,221 +1,200 @@
-import type { ReactNode } from "react";
-import { ArrowRight, BookOpen, Home, Rocket, Wind, Moon, Users, Check } from "lucide-react";
-import { STARTING_CREDITS } from "@/game/data";
-import { CREW_ROSTER, CREW_SEAT_LIMIT, roleLabel, type CrewMember } from "@/game/crew";
+import { useState, type ReactNode } from "react";
+import { ArrowRight, BookOpen, Camera, Home, Rocket, Wind } from "lucide-react";
+import {
+  COMMANDERS,
+  MISSION_SHOTS,
+  MOTIVATION,
+  STARTING_CREDITS,
+  commanderById,
+  type CommanderId,
+  type DestinationId,
+} from "@/game/data";
 import { useGame } from "@/game/store";
 import { formatKg, formatUsd } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { JourneyCanvas } from "./JourneyCanvas";
+import { SuccessCarousel } from "./SuccessCarousel";
+import { AvatarCard } from "./AvatarCard";
 
 export function HQ() {
-  const go = useGame((s) => s.go);
+  const goPlan = useGame((s) => s.goPlan);
   const openLibrary = useGame((s) => s.openLibrary);
   const credits = useGame((s) => s.credits);
   const oxygenKg = useGame((s) => s.oxygenKg);
   const habitats = useGame((s) => s.habitats);
   const missionsDone = useGame((s) => s.missionsDone);
   const commander = useGame((s) => s.commander);
+  const commanderId = useGame((s) => s.commanderId);
+  const setCommander = useGame((s) => s.setCommander);
   const resetProgress = useGame((s) => s.resetProgress);
-  const crewHired = useGame((s) => s.crewHired);
-  const crewSeats = useGame((s) => s.crewSeats);
-  const hireCrew = useGame((s) => s.hireCrew);
-  const toggleCrewSeat = useGame((s) => s.toggleCrewSeat);
-
-  const seated = crewSeats
-    .map((id) => CREW_ROSTER.find((c) => c.id === id))
-    .filter(Boolean) as CrewMember[];
+  const profile = commanderById(commanderId);
+  const [dest, setDest] = useState<DestinationId>("moon");
+  const [fpvMode, setFpvMode] = useState(false);
+  const [pick, setPick] = useState(false);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:py-10">
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">Flight director · HQ</p>
-      <h1 className="mt-2 font-display text-3xl font-semibold sm:text-4xl">Welcome back, {commander}.</h1>
-      <p className="mt-3 max-w-2xl text-muted">
-        Pick a world, pick a rocket, assign flight crew for Crewmark seats, run the pad checklist, then build an oxygen
-        plant. Crew flights also raise a home.
-      </p>
-
-      <div className="mt-8 grid gap-3 sm:grid-cols-3">
-        <Stat label="Program funds" value={formatUsd(credits)} icon={<Wind className="size-4" />} />
-        <Stat label="Oxygen stored" value={formatKg(oxygenKg)} icon={<Wind className="size-4" />} />
-        <Stat label="Habitats / flights" value={`${habitats} / ${missionsDone}`} icon={<Home className="size-4" />} />
+    <div className="pb-10">
+      <div className="relative h-72 sm:h-96">
+        <JourneyCanvas
+          dest={dest}
+          mode={fpvMode ? "cockpit" : "cinematic"}
+          className="absolute inset-0"
+        />
+        <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-1 sm:left-4 sm:top-4">
+          <Chip active={dest === "moon"} onClick={() => setDest("moon")}>
+            Earth → Moon
+          </Chip>
+          <Chip active={dest === "mars"} onClick={() => setDest("mars")}>
+            Earth → Mars
+          </Chip>
+          <Chip active={fpvMode} onClick={() => setFpvMode((v) => !v)}>
+            <Camera className="size-3" /> {fpvMode ? "Cinematic" : "FPV look"}
+          </Chip>
+        </div>
       </div>
 
-      {/* Flight crew avatars */}
-      <section className="mt-8 rounded-xl border border-border bg-surface p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <Badge tone="accent">Flight crew</Badge>
-            <h2 className="mt-3 font-display text-xl font-semibold">Mission roster</h2>
-            <p className="mt-2 max-w-2xl text-sm text-muted">
-              Hire specialists once, then seat up to {CREW_SEAT_LIMIT} for the next Crewmark flight. Cargo Hauler-9 does
-              not need seats. Hover a card for the science note.
-            </p>
-          </div>
-          <div className="rounded-lg border border-border bg-raised px-3 py-2 text-right">
-            <p className="text-[10px] uppercase tracking-wide text-muted">Seats filled</p>
-            <p className="font-mono text-lg tabular-nums text-accent">
-              {crewSeats.length} / {CREW_SEAT_LIMIT}
-            </p>
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:py-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex items-start gap-3">
+            <img
+              src={profile.src}
+              alt=""
+              width={96}
+              height={144}
+              className="hidden h-20 w-14 rounded-md object-cover object-top sm:block"
+            />
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">Flight director</p>
+              <h1 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">
+                Welcome back, {commander}.
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-muted">
+                {profile.callsign} · {profile.role}. {profile.bio} Drag the sky above — cinematic orbit, or FPV from the
+                craft. Same 3D solar system as the paid flight camera.
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-xs text-accent underline-offset-2 hover:underline"
+                onClick={() => setPick((v) => !v)}
+              >
+                {pick ? "Close portraits" : "Change commander"}
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Active seats strip */}
-        <div className="mt-5 flex flex-wrap gap-3">
-          {Array.from({ length: CREW_SEAT_LIMIT }).map((_, i) => {
-            const m = seated[i];
-            return (
-              <div
-                key={i}
-                className="flex min-w-[9.5rem] items-center gap-2 rounded-lg border border-border bg-raised px-2.5 py-2"
-              >
-                {m ? (
-                  <>
-                    <CrewAvatar member={m} size={36} displayName={m.id === "cmd-self" ? commander : m.name} />
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-medium text-fg">
-                        {m.id === "cmd-self" ? commander || "You" : m.name}
-                      </p>
-                      <p className="truncate font-mono text-[10px] text-muted">{roleLabel(m.role)}</p>
-                    </div>
-                  </>
-                ) : (
-                  <p className="px-1 font-mono text-[10px] text-muted">Empty seat</p>
-                )}
-              </div>
-            );
-          })}
+        {pick && (
+          <div className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {COMMANDERS.map((c) => (
+              <AvatarCard
+                key={c.id}
+                profile={c}
+                compact
+                selected={commanderId === c.id}
+                onSelect={() => {
+                  setCommander(commander, c.id as CommanderId);
+                  setPick(false);
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <Stat label="Program funds" value={formatUsd(credits)} icon={<Wind className="size-4" />} />
+          <Stat label="Oxygen stored" value={formatKg(oxygenKg)} icon={<Wind className="size-4" />} />
+          <Stat
+            label="Habitats / flights"
+            value={`${habitats} / ${missionsDone}`}
+            icon={<Home className="size-4" />}
+          />
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {CREW_ROSTER.map((m) => {
-            const hired = crewHired.includes(m.id);
-            const seatedHere = crewSeats.includes(m.id);
-            const locked = missionsDone < m.unlockAfterMissions;
-            const canAfford = m.hireCost === 0 || credits >= m.hireCost;
-            const label = m.id === "cmd-self" ? commander || "You" : m.name;
+        <div className="mt-8">
+          <SuccessCarousel />
+        </div>
 
-            return (
-              <article
-                key={m.id}
-                className={`group relative rounded-xl border p-4 transition-colors ${
-                  seatedHere
-                    ? "border-accent/50 bg-accent/5"
-                    : locked
-                      ? "border-border/60 bg-raised/40 opacity-70"
-                      : "border-border bg-raised hover:border-accent/35"
-                }`}
-                title={m.fact}
-              >
-                <div className="flex gap-3">
-                  <CrewAvatar member={m} size={56} displayName={label} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <h3 className="font-display text-sm font-semibold text-fg">{label}</h3>
-                      {seatedHere && (
-                        <span className="inline-flex items-center gap-0.5 rounded-sm bg-accent/20 px-1.5 py-0.5 font-mono text-[9px] text-accent">
-                          <Check className="size-2.5" /> SEATED
-                        </span>
-                      )}
-                    </div>
-                    <p className="font-mono text-[10px] uppercase tracking-wide text-muted">
-                      {roleLabel(m.role)} · {m.title}
-                    </p>
-                    <p className="mt-1.5 text-xs leading-snug text-muted">{m.blurb}</p>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {m.skills.map((sk) => (
-                        <span
-                          key={sk}
-                          className="rounded-sm border border-border bg-surface px-1.5 py-0.5 font-mono text-[9px] text-fg/80"
-                        >
-                          {sk}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+        <div className="mt-8">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Next world</p>
+          <h2 className="mt-1 font-display text-2xl font-semibold">Pick a mission picture, then fly it</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            {MISSION_SHOTS.map((shot) => (
+              <article key={shot.id} className="overflow-hidden rounded-xl border border-border bg-surface">
+                <div className="relative aspect-[16/9] overflow-hidden">
+                  <img src={shot.src} alt="" className="h-full w-full object-cover" />
+                  <Badge className="absolute left-3 top-3" tone={shot.id === "moon" ? "accent" : "warn"}>
+                    {shot.kicker}
+                  </Badge>
                 </div>
-
-                {/* Hover fact */}
-                <p className="mt-3 hidden border-t border-border pt-2 text-[11px] leading-snug text-accent group-hover:block">
-                  {m.fact}
-                </p>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {locked ? (
-                    <p className="font-mono text-[10px] text-muted">Unlock after {m.unlockAfterMissions} mission(s)</p>
-                  ) : !hired ? (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={!canAfford}
-                      onClick={() => hireCrew(m.id)}
-                    >
-                      Hire · {m.hireCost === 0 ? "free" : formatUsd(m.hireCost)}
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant={seatedHere ? "secondary" : "primary"}
-                      onClick={() => toggleCrewSeat(m.id)}
-                    >
-                      {seatedHere ? "Remove seat" : "Assign seat"}
-                    </Button>
-                  )}
+                <div className="p-4 sm:p-5">
+                  <h3 className="font-display text-xl font-semibold">{shot.title}</h3>
+                  <dl className="mt-3 grid grid-cols-2 gap-2">
+                    {shot.facts.map((f) => (
+                      <div key={f.label} className="rounded-md border border-border bg-raised px-3 py-2">
+                        <dt className="text-[0.65rem] uppercase tracking-wide text-muted">{f.label}</dt>
+                        <dd className="font-mono text-sm tabular-nums">{f.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p className="mt-3 text-sm text-muted">{shot.science}</p>
+                  <Button className="mt-4" onClick={() => goPlan(shot.id)}>
+                    Plan {shot.id === "moon" ? "Moon" : "Mars"} flight <Rocket className="size-4" />
+                  </Button>
                 </div>
               </article>
-            );
-          })}
+            ))}
+          </div>
         </div>
-        <p className="mt-4 flex items-center gap-1.5 text-xs text-muted">
-          <Users className="size-3.5" />
-          Seated crew applies when you plan a <span className="text-fg">Crewmark-3</span> flight. Hauler-9 is machines
-          only.
-        </p>
-      </section>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
-        <section className="rounded-xl border border-accent/30 bg-gradient-to-br from-accent/10 to-surface p-5 sm:p-6 md:col-span-2">
-          <Badge tone="accent">Interactive lunar explorer</Badge>
-          <h2 className="mt-3 font-display text-xl font-semibold">Explore the Moon</h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
-            Rotate the lunar globe, visit the South Pole and Shackleton Crater, and follow a scientifically grounded
-            path from regolith to oxygen.
-          </p>
-          <Button className="mt-5" onClick={() => go("explore")}>
-            Open Moon explorer <Moon className="size-4" />
+        <div className="mt-8 overflow-hidden rounded-xl border border-border bg-surface">
+          <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div>
+              <Badge>Gaming FPV</Badge>
+              <h2 className="mt-2 font-display text-xl font-semibold">Cockpit over a real sky</h2>
+              <p className="mt-2 max-w-xl text-sm text-muted">
+                Drag to look. Earth, Moon and Mars are the same photo-mapped globes as the mission camera. During cruise
+                that view costs program funds; this preview is free so you can learn the path first.
+              </p>
+            </div>
+            <Button variant={fpvMode ? "primary" : "secondary"} onClick={() => setFpvMode(true)}>
+              <Camera className="size-4" /> {fpvMode ? "Looking FPV" : "Switch sky to FPV"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          {MOTIVATION.slice(0, 2).map((beat) => (
+            <section key={beat.title} className="rounded-lg border border-border bg-surface p-4 sm:p-5">
+              <p className="text-[0.65rem] font-medium uppercase tracking-[0.16em] text-accent">{beat.kicker}</p>
+              <h2 className="mt-1 font-display text-lg font-semibold">{beat.title}</h2>
+              <p className="mt-2 text-sm text-muted">{beat.body}</p>
+              <button
+                type="button"
+                className="mt-3 inline-flex items-center gap-1 text-xs text-accent underline-offset-2 hover:underline"
+                onClick={() => openLibrary(beat.libraryId)}
+              >
+                <BookOpen className="size-3" /> Classroom note
+              </button>
+            </section>
+          ))}
+        </div>
+
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <Button size="lg" onClick={() => goPlan(dest)}>
+            Let’s go — open planner <ArrowRight className="size-4" />
           </Button>
-        </section>
-        <section className="rounded-xl border border-border bg-surface p-5 sm:p-6">
-          <Badge tone="accent">Next flight</Badge>
-          <h2 className="mt-3 font-display text-xl font-semibold">Plan a mission</h2>
-          <p className="mt-2 text-sm text-muted">
-            Moon cargo is the gentle start. Mars crew is the long, expensive exam. Prices change with distance and with
-            whether people are on board.
-          </p>
-          <Button className="mt-5" onClick={() => go("plan")}>
-            Open planner <Rocket className="size-4" />
-          </Button>
-        </section>
-        <section className="rounded-xl border border-border bg-surface p-5 sm:p-6">
-          <Badge>Classroom</Badge>
-          <h2 className="mt-3 font-display text-xl font-semibold">Science library</h2>
-          <p className="mt-2 text-sm text-muted">
-            Electrolysis, MOXIE, launch windows, Max-Q, and why a kilogram of ice is mostly oxygen. Written for school
-            science, not textbooks.
-          </p>
-          <Button variant="secondary" className="mt-5" onClick={() => openLibrary("why-oxygen")}>
+          <Button variant="secondary" onClick={() => openLibrary("why-oxygen")}>
             Browse notes <BookOpen className="size-4" />
           </Button>
-        </section>
-      </div>
+        </div>
 
-      <div className="mt-8 flex flex-wrap items-center gap-3 text-xs text-muted">
-        <span>New program starts at {formatUsd(STARTING_CREDITS)}.</span>
-        <button type="button" className="underline-offset-2 hover:text-fg hover:underline" onClick={resetProgress}>
-          Reset funds and progress
-        </button>
-        <span className="inline-flex items-center gap-1">
-          Continue <ArrowRight className="size-3" />
-        </span>
+        <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-muted">
+          <span>New program starts at {formatUsd(STARTING_CREDITS)}.</span>
+          <button type="button" className="underline-offset-2 hover:text-fg hover:underline" onClick={resetProgress}>
+            Reset funds and progress
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -233,48 +212,26 @@ function Stat({ label, value, icon }: { label: string; value: string; icon: Reac
   );
 }
 
-/** Procedural SVG flight-suit avatar — no external art required. */
-function CrewAvatar({
-  member,
-  size = 48,
-  displayName,
+function Chip({
+  active,
+  onClick,
+  children,
 }: {
-  member: CrewMember;
-  size?: number;
-  displayName: string;
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
 }) {
-  const initial = (displayName || member.name || "?").trim().charAt(0).toUpperCase();
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 64 64"
-      className="shrink-0 rounded-full"
-      role="img"
-      aria-label={displayName}
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        active
+          ? "inline-flex items-center gap-1 rounded-md border border-accent bg-bg/80 px-3 py-2 text-xs font-medium text-fg backdrop-blur-sm"
+          : "inline-flex items-center gap-1 rounded-md border border-border bg-bg/50 px-3 py-2 text-xs font-medium text-muted backdrop-blur-sm hover:text-fg"
+      }
     >
-      <circle cx="32" cy="32" r="32" fill={member.suit} />
-      <circle cx="32" cy="32" r="30" fill="none" stroke={member.accent} strokeWidth="2" opacity="0.7" />
-      {/* shoulders / suit collar */}
-      <ellipse cx="32" cy="54" rx="22" ry="12" fill={member.suit} />
-      <ellipse cx="32" cy="52" rx="18" ry="8" fill={member.accent} opacity="0.35" />
-      {/* head */}
-      <circle cx="32" cy="28" r="14" fill={member.skin} />
-      {/* visor hint */}
-      <rect x="22" y="24" width="20" height="8" rx="3" fill={member.accent} opacity="0.45" />
-      {/* initial badge */}
-      <circle cx="48" cy="48" r="9" fill={member.accent} />
-      <text
-        x="48"
-        y="51.5"
-        textAnchor="middle"
-        fontSize="10"
-        fontFamily="ui-monospace, monospace"
-        fontWeight="700"
-        fill="#090C12"
-      >
-        {initial}
-      </text>
-    </svg>
+      {children}
+    </button>
   );
 }

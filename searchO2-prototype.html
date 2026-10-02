@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>searchO2 — Farm Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-top:#CDEDE8;
+    --sky-bot:#EAF6E7;
+    --soil:#8B5A3C;
+    --soil-dark:#6E4429;
+    --grass:#6FA85A;
+    --grass-dark:#588A46;
+    --gold:#F0AC3D;
+    --pine:#2C4A32;
+    --pine-soft:#3E6B49;
+    --cream:#FBF6EC;
+    --coral:#E8785A;
+    --shadow: 0 6px 18px rgba(44,74,50,0.18);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Nunito', sans-serif;
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bot) 55%, #DCEFD4 100%);
+    color: var(--pine);
+    min-height:100vh;
+    padding: 20px 14px 60px;
+  }
+  h1,h2,h3, .title-font{ font-family:'Baloo 2', sans-serif; }
+
+  .wrap{ max-width: 900px; margin: 0 auto; }
+
+  header.topbar{
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+    gap:12px; margin-bottom:18px;
+  }
+  header.topbar .brand{
+    display:flex; align-items:center; gap:10px;
+  }
+  header.topbar .brand .leaf{
+    width:38px;height:38px; flex:none;
+  }
+  header.topbar h1{
+    font-size: 1.5rem; margin:0; color:var(--pine); font-weight:800; letter-spacing:0.2px;
+  }
+  header.topbar .tag{
+    font-size:0.78rem; color:var(--pine-soft); margin-top:1px;
+  }
+
+  .stats{
+    display:flex; gap:8px; flex-wrap:wrap;
+  }
+  .stat-pill{
+    background: var(--cream);
+    border-radius: 999px;
+    padding: 7px 14px;
+    box-shadow: var(--shadow);
+    font-weight:700; font-size:0.85rem;
+    display:flex; align-items:center; gap:6px;
+    white-space:nowrap;
+  }
+  .stat-pill .val{ color: var(--pine); }
+  .stat-pill .lbl{ color: var(--pine-soft); font-weight:600; font-size:0.72rem; }
+
+  .season-strip{
+    display:flex; align-items:center; justify-content:space-between;
+    background: var(--cream); border-radius:16px; padding:10px 16px;
+    box-shadow: var(--shadow); margin-bottom:16px; gap:12px; flex-wrap:wrap;
+  }
+  .season-strip .season-name{ font-family:'Baloo 2'; font-weight:700; color:var(--pine); }
+  .season-strip .season-name .emoji{ margin-right:6px; }
+  .speed-toggle{ display:flex; gap:6px; align-items:center; font-size:0.78rem; color:var(--pine-soft); }
+  .speed-toggle select{
+    font-family:'Nunito'; font-weight:700; border-radius:10px; border:2px solid var(--grass);
+    padding:4px 8px; background:white; color:var(--pine); cursor:pointer;
+  }
+
+  .field-card{
+    background: linear-gradient(180deg, #DCEFD4, #CBE7C0);
+    border-radius: 26px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+    border: 3px solid rgba(255,255,255,0.5);
+  }
+  .field-grid{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:14px;
+  }
+  @media (max-width:560px){ .field-grid{ grid-template-columns: repeat(2, 1fr); } }
+
+  .plot{
+    position:relative; border-radius:18px; overflow:hidden; cursor:pointer;
+    aspect-ratio: 1 / 1;
+    box-shadow: 0 4px 10px rgba(44,74,50,0.15);
+    border: 3px solid rgba(255,255,255,0.6);
+    transition: transform 0.15s ease;
+  }
+  .plot:hover{ transform: translateY(-3px); }
+  .plot svg{ width:100%; height:100%; display:block; }
+
+  .plot .badge{
+    position:absolute; top:6px; right:6px; background: rgba(251,246,236,0.92);
+    border-radius:8px; padding:2px 6px; font-size:0.65rem; font-weight:800; color:var(--pine);
+  }
+  .plot .progress-track{
+    position:absolute; bottom:0; left:0; right:0; height:6px; background: rgba(255,255,255,0.5);
+  }
+  .plot .progress-fill{
+    height:100%; background: var(--gold); transition: width 0.4s ease;
+  }
+
+  .panels{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+  @media (max-width: 700px){ .panels{ grid-template-columns: 1fr; } }
+
+  .panel{
+    background: var(--cream); border-radius: 20px; padding:16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .panel h2{ font-size:1.05rem; margin:0 0 10px; display:flex; align-items:center; gap:6px; }
+
+  .task-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 0; border-bottom: 1px dashed rgba(44,74,50,0.15); font-size:0.85rem;
+  }
+  .task-row:last-child{ border-bottom:none; }
+  .task-row .name{ font-weight:700; }
+  .task-row .meta{ color: var(--pine-soft); font-size:0.78rem; }
+  .claim-btn{
+    background: var(--gold); border:none; border-radius:10px; padding:5px 12px;
+    font-weight:800; color: #543A0F; cursor:pointer; font-size:0.78rem;
+  }
+  .claim-btn:disabled{ opacity:0.4; cursor:default; }
+
+  .empty-note{ color: var(--pine-soft); font-size:0.82rem; font-style:italic; }
+
+  .ach-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+  .ach{
+    display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:12px;
+    background: #EFE7D3; font-size:0.75rem; font-weight:700; color: #A99668;
+  }
+  .ach.unlocked{ background: linear-gradient(135deg, #FFE7A8, #F0AC3D); color:#543A0F; }
+
+  .facts{ font-size:0.82rem; line-height:1.5; color: var(--pine-soft); }
+  .facts b{ color: var(--pine); }
+
+  /* modal */
+  .overlay{
+    position:fixed; inset:0; background: rgba(44,74,50,0.55);
+    display:flex; align-items:center; justify-content:center; z-index:50;
+    padding: 20px;
+  }
+  .modal{
+    background: var(--cream); border-radius:22px; padding:26px; max-width:420px; width:100%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  }
+  .modal h2{ margin-top:0; }
+  .modal .row{ display:flex; justify-content:space-between; padding:6px 0; font-size:0.92rem; }
+  .modal .row .v{ font-weight:800; }
+  .modal button{
+    margin-top:16px; width:100%; padding:11px; border:none; border-radius:12px;
+    background: var(--grass); color:white; font-weight:800; font-size:0.95rem; cursor:pointer;
+    font-family:'Baloo 2';
+  }
+
+  .shop-tip{ font-size:0.75rem; color:var(--pine-soft); margin-top:8px; }
+
+  .picker{
+    position:absolute; inset:0; background: rgba(20,30,20,0.72); display:flex;
+    flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:8px;
+  }
+  .picker button{
+    width:100%; border:none; border-radius:8px; padding:6px 4px; font-weight:800;
+    font-size:0.68rem; cursor:pointer; background:white; color:var(--pine);
+  }
+  .picker .cost{ font-weight:600; font-size:0.6rem; color:var(--pine-soft); }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">Loading your farm…</div>
+
+<script>
+(function(){
+
+// Simple storage adapter using localStorage with Promise API
+function makeStorage(){
+  var prefix = 'searchO2:';
+  return {
+    get: function(key){
+      return new Promise(function(resolve){
+        try{
+          var v = localStorage.getItem(prefix+key);
+          resolve({ value: v });
+        }catch(e){ resolve({ value: null }); }
+      });
+    },
+    set: function(key, val){
+      return new Promise(function(resolve, reject){
+        try{
+          localStorage.setItem(prefix+key, val);
+          resolve(true);
+        }catch(e){ reject(e); }
+      });
+    },
+    remove: function(key){
+      return new Promise(function(resolve){
+        try{ localStorage.removeItem(prefix+key); }catch(e){}
+        resolve(true);
+      });
+    }
+  };
+}
+if (!window.storage) window.storage = makeStorage();
+
+
+// ---------- CONSTANTS (traceable to Blueprint v2, Milestone 3) ----------
+var REAL_MS_PER_GAME_HOUR_SPEC = 15 * 60 * 1000; // spec: 15 real min = 1 game hour
+var SPEED_OPTIONS = [
+  {label:'1x — spec accurate', factor:1},
+  {label:'60x — demo', factor:60},
+  {label:'180x — demo (default)', factor:180},
+  {label:'600x — fast demo', factor:600}
+];
+var SEASON_LEN_GAME_HOURS = 96; // one game-week per season, cycles every 4 (matches 24h-real=96h-game day unit)
+var SEASONS = [
+  {name:'Spring', emoji:'🌱', growth:1.20, income:1.00},
+  {name:'Summer', emoji:'☀️', growth:1.00, income:1.25},
+  {name:'Autumn', emoji:'🍂', growth:1.00, income:1.20},
+  {name:'Winter', emoji:'❄️', growth:0.85, income:1.00}
+];
+var O2_RATE = 0.05; // € per O2 unit, per Blueprint "Oxygen Economy"
+var PREP_DURATION_HOURS = 3; // "Dig Land" per Blueprint Task Queue example
+
+var TREE_TYPES = {
+  oak: {
+    label:'Oak', category:'Oxygen Tree', cost:120,
+    stages:[ {n:'Seed',h:1}, {n:'Sprout',h:2}, {n:'Young Plant',h:4}, {n:'Mature Tree',h:99999} ],
+    o2AtStage: [0,0,2,6],
+    fact:'A mature oak can produce oxygen for around 2 people per year and absorbs roughly 21kg of CO₂ annually.'
+  },
+  apple: {
+    label:'Apple', category:'Fruit Tree', cost:90,
+    stages:[ {n:'Seed',h:1}, {n:'Sprout',h:1.5}, {n:'Young Plant',h:2.5}, {n:'Flowering',h:2}, {n:'Fruiting',h:99999} ],
+    o2AtStage:[0,0,1.5,2,3.5],
+    fruitBonus: 0.9, // extra € per game-hour once fruiting, before season multiplier
+    fact:'Apple trees produce both oxygen and fruit — flowering stages attract pollinators like bees.'
+  },
+  tomato: {
+    label:'Tomato', category:'Vegetable', cost:35,
+    stages:[ {n:'Seed',h:0.5}, {n:'Sprout',h:0.5}, {n:'Young Plant',h:1}, {n:'Harvest Ready',h:99999} ],
+    o2AtStage:[0,0,0.5,1],
+    fruitBonus: 0.6,
+    fact:'Vegetable crops like tomato grow fast and give quick cash — useful for early-game income.'
+  }
+};
+
+var ACHIEVEMENTS = [
+  {id:'first_tree', label:'🌱 First Tree', check: function(s){ return s.treesPlanted>=1; }},
+  {id:'green_starter', label:'🍃 Green Starter (100 O2)', check: function(s){ return s.totalO2AllTime>=100; }},
+  {id:'eco_farmer', label:'🌳 Eco Farmer (1,000 O2)', check: function(s){ return s.totalO2AllTime>=1000; }},
+  {id:'forest_maker', label:'🌲 Forest Maker (all plots planted)', check: function(s){ return s.plots.every(function(p){return p.status==='growing';}); }},
+  {id:'oxygen_hero', label:'💚 Oxygen Hero (10,000 O2)', check: function(s){ return s.totalO2AllTime>=10000; }}
+];
+
+var PLOT_COUNT = 6;
+
+// ---------- STATE ----------
+var state = null;
+var tickHandle = null;
+var lastRealTs = Date.now();
+var pendingPicker = null; // plot id currently showing tree picker
+var offlineSummary = null;
+
+function freshState(){
+  var plots = [];
+  for (var i=0;i<PLOT_COUNT;i++){
+    plots.push({ id:i, status:'barren', treeType:null, growHours:0, prepHours:0 });
+  }
+  return {
+    money: 10000,
+    totalO2: 0,
+    totalO2AllTime: 0,
+    treesPlanted: 0,
+    gameHour: 0,
+    plots: plots,
+    achUnlocked: {},
+    speedFactor: 180,
+    lastSaveReal: Date.now()
+  };
+}
+
+// ---------- PERSISTENCE ----------
+function saveState(){
+  state.lastSaveReal = Date.now();
+  window.storage.set('searchO2-save', JSON.stringify(state)).catch(function(e){
+    console.error('Save failed', e);
+  });
+}
+
+function loadState(){
+  window.storage.get('searchO2-save').then(function(res){
+    if (res && res.value){
+      try{
+        var loaded = JSON.parse(res.value);
+        var elapsedReal = Date.now() - (loaded.lastSaveReal || Date.now());
+        state = loaded;
+        if (elapsedReal > 5000){
+          var before = { money: state.money, totalO2AllTime: state.totalO2AllTime, treesPlanted: state.treesPlanted };
+          var gh = gameHoursFromReal(elapsedReal, state.speedFactor);
+          gh = Math.min(gh, 24*4*30); // cap catch-up at ~30 game-days for sanity
+          advanceGame(gh);
+          offlineSummary = {
+            realMinutes: Math.round(elapsedReal/60000),
+            gameHours: Math.round(gh*10)/10,
+            moneyGained: Math.round((state.money-before.money)*100)/100,
+            o2Gained: Math.round((state.totalO2AllTime-before.totalO2AllTime)*10)/10
+          };
+        }
+      }catch(e){ console.error('Parse failed, starting fresh', e); state = freshState(); }
+    } else {
+      state = freshState();
+    }
+    lastRealTs = Date.now();
+    startLoop();
+    render();
+  }).catch(function(e){
+    console.error('Load failed, starting fresh', e);
+    state = freshState();
+    lastRealTs = Date.now();
+    startLoop();
+    render();
+  });
+}
+
+// ---------- GAME LOGIC ----------
+function gameHoursFromReal(realMs, speedFactor){
+  return (realMs / REAL_MS_PER_GAME_HOUR_SPEC) * speedFactor;
+}
+
+function currentSeason(){
+  var cyclePos = state.gameHour % (SEASON_LEN_GAME_HOURS*4);
+  var idx = Math.floor(cyclePos / SEASON_LEN_GAME_HOURS) % 4;
+  return SEASONS[idx];
+}
+
+function forestBonus(){
+  var planted = state.plots.filter(function(p){return p.status==='growing';}).length;
+  return planted === PLOT_COUNT ? 0.10 : 0;
+}
+function diversityBonus(){
+  var types = {};
+  state.plots.forEach(function(p){ if(p.treeType) types[p.treeType]=true; });
+  return Object.keys(types).length >= 2 ? 0.15 : 0;
+}
+
+// Advances the whole game by dh game-hours in ONE step (used by both the live
+// tick loop with tiny dh, and offline catch-up with a larger dh). This is a
+// deliberate prototype-level simplification — see Blueprint v2 Delivery
+// Phasing note: exact stage-boundary integration is a Phase 2/3 concern once
+// this runs against a server-authoritative clock.
+function advanceGame(dh){
+  if (dh<=0) return;
+  var season = currentSeason();
+  var fBonus = forestBonus();
+  var dBonus = diversityBonus();
+  var totalMult = 1 + fBonus + dBonus;
+
+  state.gameHour += dh;
+
+  state.plots.forEach(function(p){
+    if (p.status==='preparing'){
+      p.prepHours += dh;
+      if (p.prepHours >= PREP_DURATION_HOURS){
+        p.status = 'ready';
+      }
+    } else if (p.status==='growing'){
+      var def = TREE_TYPES[p.treeType];
+      var growDh = dh * season.growth;
+      p.growHours += growDh;
+      var stageIdx = stageIndexFor(def, p.growHours);
+      var o2Rate = def.o2AtStage[stageIdx];
+      var o2Gain = o2Rate * dh; // O2 production isn't season-scaled, only growth speed is
+      state.totalO2 += o2Gain;
+      state.totalO2AllTime += o2Gain;
+      var income = o2Gain * O2_RATE * totalMult;
+      var isFruitingStage = def.stages[stageIdx].n === 'Fruiting' || def.stages[stageIdx].n === 'Harvest Ready';
+      if (isFruitingStage && def.fruitBonus){
+        income += def.fruitBonus * dh * season.income * totalMult;
+      }
+      state.money += income;
+    }
+  });
+}
+
+function stageIndexFor(def, growHours){
+  var acc = 0;
+  for (var i=0;i<def.stages.length;i++){
+    acc += def.stages[i].h;
+    if (growHours < acc) return i;
+  }
+  return def.stages.length-1;
+}
+
+function plotStageInfo(p){
+  if (p.status!=='growing') return null;
+  var def = TREE_TYPES[p.treeType];
+  var idx = stageIndexFor(def, p.growHours);
+  var acc = 0;
+  for (var i=0;i<idx;i++) acc += def.stages[i].h;
+  var into = p.growHours - acc;
+  var dur = def.stages[idx].h;
+  var pct = dur>9000 ? 100 : Math.min(100, Math.round((into/dur)*100));
+  return { def:def, idx:idx, name:def.stages[idx].n, pct: pct, isFinal: dur>9000 };
+}
+
+function checkAchievements(){
+  ACHIEVEMENTS.forEach(function(a){
+    if (!state.achUnlocked[a.id] && a.check(state)){
+      state.achUnlocked[a.id] = true;
+    }
+  });
+}
+
+// ---------- ACTIONS ----------
+function startPrep(plotId){
+  var p = state.plots[plotId];
+  if (p.status!=='barren') return;
+  var LABOR_COST = 15;
+  if (state.money < LABOR_COST) return;
+  state.money -= LABOR_COST;
+  p.status = 'preparing';
+  p.prepHours = 0;
+  render(); saveState();
+}
+
+function openPicker(plotId){
+  var p = state.plots[plotId];
+  if (p.status!=='ready') return;
+  pendingPicker = plotId;
+  render();
+}
+
+function plantTree(plotId, type){
+  var p = state.plots[plotId];
+  var def = TREE_TYPES[type];
+  if (p.status!=='ready' || state.money < def.cost) return;
+  state.money -= def.cost;
+  p.status = 'growing';
+  p.treeType = type;
+  p.growHours = 0;
+  state.treesPlanted += 1;
+  pendingPicker = null;
+  checkAchievements();
+  render(); saveState();
+}
+
+function setSpeed(factor){
+  state.speedFactor = factor;
+  saveState();
+  render();
+}
+
+// ---------- LOOP ----------
+function startLoop(){
+  if (tickHandle) clearInterval(tickHandle);
+  tickHandle = setInterval(function(){
+    var now = Date.now();
+    var realDelta = now - lastRealTs;
+    lastRealTs = now;
+    var dh = gameHoursFromReal(realDelta, state.speedFactor);
+    advanceGame(dh);
+    checkAchievements();
+    render();
+  }, 1000);
+  setInterval(saveState, 15000);
+}
+
+// ---------- RENDERING ----------
+function svgPlot(p){
+  var stageInfo = plotStageInfo(p);
+  var soil = '<rect x="0" y="0" width="200" height="200" fill="url(#soilGrad)"/>';
+  var top = '';
+  var content = '';
+
+  if (p.status==='barren'){
+    top = '<g opacity="0.55">'+
+      '<circle cx="55" cy="150" r="5" fill="#6E4429"/><circle cx="100" cy="160" r="4" fill="#6E4429"/>'+
+      '<circle cx="140" cy="145" r="6" fill="#6E4429"/><circle cx="75" cy="120" r="3" fill="#6E4429"/>'+
+      '</g>';
+  } else if (p.status==='preparing'){
+    top = '<g>'+
+      '<rect x="30" y="130" width="140" height="10" rx="5" fill="#6E4429"/>'+
+      '<rect x="30" y="150" width="140" height="10" rx="5" fill="#6E4429"/>'+
+      '<rect x="30" y="170" width="140" height="10" rx="5" fill="#6E4429"/>'+
+      '</g>';
+  } else if (p.status==='ready'){
+    top = '<g>'+
+      '<ellipse cx="100" cy="170" rx="70" ry="14" fill="#7A9B5F"/>'+
+      '<circle cx="100" cy="120" r="18" fill="'+ (Date.now()%1000<500 ? '#F0AC3D':'#F7CB74') +'" opacity="0.9"/>'+
+      '<text x="100" y="126" font-size="18" text-anchor="middle" fill="#543A0F">+</text>'+
+      '</g>';
+  } else if (p.status==='growing'){
+    var def = TREE_TYPES[p.treeType];
+    var idx = stageInfo.idx;
+    var swayClass = 'sway';
+    if (idx===0){ // seed
+      top = '<circle cx="100" cy="168" r="6" fill="#4A3320"/>';
+    } else if (idx===1){ // sprout
+      top = '<g class="'+swayClass+'"><rect x="97" y="140" width="6" height="35" fill="#588A46"/><circle cx="100" cy="138" r="10" fill="#79B25F"/></g>';
+    } else {
+      var canopyColor = p.treeType==='oak' ? '#4E8F52' : (p.treeType==='apple' ? '#5FA85B' : '#6FBF5E');
+      var trunkH = 55;
+      var canopyR = 34 + Math.min(idx,3)*4;
+      var fruits = '';
+      if ((p.treeType==='apple' && idx>=3) || (p.treeType==='tomato' && idx>=3)){
+        var dotColor = p.treeType==='apple' ? '#D8483C' : '#E2412F';
+        fruits = '<circle cx="82" cy="95" r="5" fill="'+dotColor+'"/><circle cx="118" cy="88" r="5" fill="'+dotColor+'"/><circle cx="100" cy="70" r="5" fill="'+dotColor+'"/><circle cx="90" cy="115" r="5" fill="'+dotColor+'"/>';
+      }
+      top = '<g class="'+swayClass+'" style="transform-origin:100px 175px;">'+
+        '<rect x="93" y="'+(175-trunkH)+'" width="14" height="'+trunkH+'" rx="4" fill="'+(p.treeType==='oak'?'#6E4429':'#7A5334')+'"/>'+
+        '<circle cx="100" cy="'+(175-trunkH-canopyR*0.55)+'" r="'+canopyR+'" fill="'+canopyColor+'"/>'+
+        fruits +
+        '</g>';
+      // O2 particles for mature-ish stages
+      if (stageInfo.def.o2AtStage[idx] > 0){
+        top += '<g class="rise"><circle cx="70" cy="80" r="4" fill="#F0AC3D" opacity="0.8"/></g>'+
+               '<g class="rise2"><circle cx="130" cy="90" r="3" fill="#F0AC3D" opacity="0.7"/></g>';
+      }
+    }
+  }
+
+  var badge = '';
+  if (p.status==='growing') badge = '<div class="badge">'+stageInfo.name+'</div>';
+  else if (p.status==='preparing') badge = '<div class="badge">Preparing…</div>';
+  else if (p.status==='ready') badge = '<div class="badge">Tap to plant</div>';
+  else badge = '<div class="badge">Barren</div>';
+
+  var progressPct = 0;
+  if (p.status==='preparing') progressPct = Math.min(100, Math.round((p.prepHours/PREP_DURATION_HOURS)*100));
+  else if (p.status==='growing' && stageInfo && !stageInfo.isFinal) progressPct = stageInfo.pct;
+  else if (p.status==='growing' && stageInfo && stageInfo.isFinal) progressPct = 100;
+
+  var svg = '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">'+
+    '<defs><linearGradient id="soilGrad" x1="0" y1="0" x2="0" y2="1">'+
+    '<stop offset="0%" stop-color="#8FBB70"/><stop offset="45%" stop-color="#8FBB70"/>'+
+    '<stop offset="46%" stop-color="#8B5A3C"/><stop offset="100%" stop-color="#6E4429"/>'+
+    '</linearGradient></defs>'+
+    soil + top +
+    '</svg>';
+
+  var picker = '';
+  if (pendingPicker === p.id){
+    picker = '<div class="picker">'+
+      Object.keys(TREE_TYPES).map(function(k){
+        var d = TREE_TYPES[k];
+        return '<button data-plant="'+p.id+'" data-type="'+k+'">'+d.label+'<div class="cost">€'+d.cost+' · '+d.category+'</div></button>';
+      }).join('') +
+      '<button data-cancel="1" style="background:transparent;color:white;font-weight:600;">✕ Cancel</button>'+
+      '</div>';
+  }
+
+  return '<div class="plot" data-plot="'+p.id+'">'+svg+badge+picker+
+    '<div class="progress-track"><div class="progress-fill" style="width:'+progressPct+'%"></div></div>'+
+    '</div>';
+}
+
+function render(){
+  if (!state) return;
+  var season = currentSeason();
+  var gameDay = Math.floor(state.gameHour/24)+1;
+
+  var fBonus = forestBonus(), dBonus = diversityBonus();
+  var bonusText = [];
+  if (fBonus) bonusText.push('Forest Bonus +10%');
+  if (dBonus) bonusText.push('Diverse Species +15%');
+
+  var tasksHtml = '';
+  var anyTasks = false;
+  state.plots.forEach(function(p){
+    if (p.status==='barren'){
+      anyTasks = true;
+      tasksHtml += '<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Dig Land</div><div class="meta">€15 · 3 game-hours</div></div><button class="claim-btn" data-prep="'+p.id+'">Start</button></div>';
+    } else if (p.status==='preparing'){
+      anyTasks = true;
+      var pct = Math.min(100, Math.round((p.prepHours/PREP_DURATION_HOURS)*100));
+      tasksHtml += '<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Preparing Soil</div><div class="meta">'+pct+'% done</div></div><button class="claim-btn" disabled>…</button></div>';
+    } else if (p.status==='ready'){
+      anyTasks = true;
+      tasksHtml += '<div class="task-row"><div><div class="name">Plot '+(p.id+1)+' — Ready to Plant</div><div class="meta">Choose a tree below</div></div><button class="claim-btn" data-open="'+p.id+'">Plant</button></div>';
+    }
+  });
+  if (!anyTasks) tasksHtml = '<div class="empty-note">No pending tasks — your farm is fully planted! 🌳</div>';
+
+  var achHtml = ACHIEVEMENTS.map(function(a){
+    var on = !!state.achUnlocked[a.id];
+    return '<div class="ach'+(on?' unlocked':'')+'">'+a.label+'</div>';
+  }).join('');
+
+  var speedOptsHtml = SPEED_OPTIONS.map(function(o){
+    return '<option value="'+o.factor+'" '+(o.factor===state.speedFactor?'selected':'')+'>'+o.label+'</option>';
+  }).join('');
+
+  var html = ''+
+  '<header class="topbar">'+
+    '<div class="brand">'+
+      '<svg class="leaf" viewBox="0 0 40 40"><circle cx="20" cy="20" r="19" fill="#6FA85A"/><path d="M12 24 Q20 8 30 12 Q26 26 12 24Z" fill="#FBF6EC"/></svg>'+
+      '<div><h1>searchO2</h1><div class="tag">Phase 1 prototype — core loop</div></div>'+
+    '</div>'+
+    '<div class="stats">'+
+      '<div class="stat-pill"><span class="val">€'+state.money.toFixed(2)+'</span><span class="lbl">balance</span></div>'+
+      '<div class="stat-pill"><span class="val">'+state.totalO2.toFixed(1)+'</span><span class="lbl">O₂ units</span></div>'+
+      '<div class="stat-pill"><span class="val">Day '+gameDay+'</span><span class="lbl">game time</span></div>'+
+    '</div>'+
+  '</header>'+
+
+  '<div class="season-strip">'+
+    '<div class="season-name"><span class="emoji">'+season.emoji+'</span>'+season.name+
+      (bonusText.length? ' · <span style="color:#B8842E">'+bonusText.join(', ')+'</span>' : '')+
+    '</div>'+
+    '<div class="speed-toggle">Clock speed: <select id="speedSel">'+speedOptsHtml+'</select></div>'+
+  '</div>'+
+
+  '<div class="field-card">'+
+    '<div class="field-grid">'+ state.plots.map(svgPlot).join('') +'</div>'+
+  '</div>'+
+
+  '<div class="panels">'+
+    '<div class="panel">'+
+      '<h2>📋 Tasks</h2>'+tasksHtml+
+      '<div class="shop-tip">Prices &amp; durations come straight from the blueprint\'s Task Queue / Workers sections.</div>'+
+    '</div>'+
+    '<div class="panel">'+
+      '<h2>🏆 Achievements</h2>'+
+      '<div class="ach-grid">'+achHtml+'</div>'+
+      '<div class="facts" style="margin-top:12px;"><b>Did you know?</b> '+ (function(){
+        var planted = state.plots.filter(function(p){return p.status==='growing';});
+        if (!planted.length) return 'Plant your first tree to unlock oxygen facts here.';
+        var p = planted[Math.floor((Date.now()/4000)%planted.length)];
+        return TREE_TYPES[p.treeType].fact;
+      })() +'</div>'+
+    '</div>'+
+  '</div>';
+
+  document.getElementById('app').innerHTML = html;
+
+  if (offlineSummary){
+    var s = offlineSummary;
+    document.body.insertAdjacentHTML('beforeend',
+      '<div class="overlay" id="offlineModal"><div class="modal">'+
+      '<h2>🌤️ Welcome back!</h2>'+
+      '<div class="row"><span>Time away</span><span class="v">'+s.realMinutes+' min real time</span></div>'+
+      '<div class="row"><span>Game time passed</span><span class="v">'+s.gameHours+' hours</span></div>'+
+      '<div class="row"><span>Oxygen produced</span><span class="v">+'+s.o2Gained+' O₂</span></div>'+
+      '<div class="row"><span>Income earned</span><span class="v">+€'+s.moneyGained.toFixed(2)+'</span></div>'+
+      '<button id="closeOffline">Back to the farm</button>'+
+      '</div></div>'
+    );
+    document.getElementById('closeOffline').onclick = function(){
+      offlineSummary = null;
+      document.getElementById('offlineModal').remove();
+    };
+  }
+
+  wireEvents();
+}
+
+function wireEvents(){
+  document.querySelectorAll('[data-prep]').forEach(function(btn){
+    btn.onclick = function(e){ e.stopPropagation(); startPrep(parseInt(btn.getAttribute('data-prep'))); };
+  });
+  document.querySelectorAll('[data-open]').forEach(function(btn){
+    btn.onclick = function(e){ e.stopPropagation(); openPicker(parseInt(btn.getAttribute('data-open'))); };
+  });
+  document.querySelectorAll('.plot').forEach(function(el){
+    el.onclick = function(){
+      var id = parseInt(el.getAttribute('data-plot'));
+      var p = state.plots[id];
+      if (p.status==='barren') startPrep(id);
+      else if (p.status==='ready') openPicker(id);
+    };
+  });
+  document.querySelectorAll('[data-plant]').forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      plantTree(parseInt(btn.getAttribute('data-plant')), btn.getAttribute('data-type'));
+    };
+  });
+  var cancelBtn = document.querySelector('[data-cancel]');
+  if (cancelBtn) cancelBtn.onclick = function(e){ e.stopPropagation(); pendingPicker=null; render(); };
+
+  var speedSel = document.getElementById('speedSel');
+  if (speedSel) speedSel.onchange = function(){ setSpeed(parseInt(speedSel.value)); };
+}
+
+// tiny inline animation styles
+var styleEl = document.createElement('style');
+styleEl.textContent = '.sway{animation:sway 3s ease-in-out infinite;} @keyframes sway{0%,100%{transform:rotate(-1.5deg);}50%{transform:rotate(1.5deg);}}'+
+  '.rise{animation:rise 3s ease-in infinite;} .rise2{animation:rise 3.6s ease-in infinite 1s;}'+
+  '@keyframes rise{0%{opacity:0.8; transform:translateY(0);}100%{opacity:0; transform:translateY(-40px);}}';
+document.head.appendChild(styleEl);
+
+loadState();
+})();
+</script>
+</body>
+</html>

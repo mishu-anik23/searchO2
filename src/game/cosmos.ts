@@ -206,148 +206,479 @@ export const BODIES: SkyBody[] = [
   },
 ];
 
-/** Convert approximate RA (hours) / Dec (degrees) to a unit direction vector.
- *  Coordinate frame: +Y ≈ north celestial pole, +Z ≈ vernal equinox-ish for cockpit view. */
-export function raDecToDir(raHours: number, decDeg: number): V {
-  const ra = (raHours / 24) * Math.PI * 2;
-  const dec = (decDeg * Math.PI) / 180;
-  const cosD = Math.cos(dec);
-  return {
-    x: cosD * Math.sin(ra),
-    y: Math.sin(dec),
-    z: cosD * Math.cos(ra),
-  };
+export function nrm(v: V): V {
+  const l = Math.hypot(v.x, v.y, v.z) || 1;
+  return { x: v.x / l, y: v.y / l, z: v.z / l };
 }
 
-/** Approximate RGB from spectral class letter. */
-export function spectralColor(sp: string): { r: number; g: number; b: number; hex: string } {
-  const c = (sp[0] || "G").toUpperCase();
-  const map: Record<string, [number, number, number]> = {
-    O: [155, 176, 255],
-    B: [170, 191, 255],
-    A: [202, 216, 255],
-    F: [248, 247, 255],
-    G: [255, 244, 234],
-    K: [255, 210, 161],
-    M: [255, 160, 100],
-  };
-  const [r, g, b] = map[c] ?? map.G;
-  const hex = `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
-  return { r, g, b, hex };
+function cross(a: V, b: V): V {
+  return { x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x };
 }
+
+/** Place a star in the tangent plane of `center` so figures stay readable. */
+function offsetDir(center: V, u: number, v: number, scale = 0.16): V {
+  const f = nrm(center);
+  const worldUp = Math.abs(f.y) > 0.92 ? { x: 0, y: 0, z: 1 } : { x: 0, y: 1, z: 0 };
+  const r = nrm(cross(worldUp, f));
+  const up = nrm(cross(f, r));
+  return nrm({
+    x: f.x + (r.x * u + up.x * v) * scale,
+    y: f.y + (r.y * u + up.y * v) * scale,
+    z: f.z + (r.z * u + up.z * v) * scale,
+  });
+}
+
+const DIPPER = nrm({ x: 0.48, y: 0.68, z: -0.55 });
+const CASS = nrm({ x: -0.5, y: 0.74, z: 0.45 });
 
 export type NamedStar = {
   id: string;
   name: string;
-  catalogNames?: string[];
   dir: V;
   color: string;
-  mag: number; // apparent magnitude scale for render (higher = brighter in our UI)
-  appMag: number; // real apparent magnitude (lower = brighter)
-  spectral: string;
-  distLy: number;
-  constellation?: string;
+  mag: number;
+  spec: string;
   blurb: string;
   fact: string;
   dist: string;
-  ra?: number;
-  dec?: number;
 };
 
-/** Bright recognizable stars with approximate real sky positions (RA hours, Dec deg). */
 export const NAMED_STARS: NamedStar[] = [
-  { id: "sirius", name: "Sirius", catalogNames: ["α CMa", "HIP 32349"], dir: raDecToDir(6.75, -16.7), color: spectralColor("A").hex, mag: 1.9, appMag: -1.46, spectral: "A1V", distLy: 8.6, constellation: "Canis Major", dist: "8.6 ly", blurb: "Brightest star in the night sky", fact: "A nearby A-type star with a white-dwarf companion. Light-year ≈ 9.46 trillion km." },
-  { id: "canopus", name: "Canopus", catalogNames: ["α Car", "HIP 30438"], dir: raDecToDir(6.4, -52.7), color: spectralColor("F").hex, mag: 1.7, appMag: -0.74, spectral: "A9II", distLy: 310, constellation: "Carina", dist: "310 ly", blurb: "Second-brightest star", fact: "A southern giant used by spacecraft for attitude reference." },
-  { id: "acen", name: "α Centauri", catalogNames: ["Rigil Kentaurus", "HIP 71683"], dir: raDecToDir(14.66, -60.8), color: spectralColor("G").hex, mag: 1.55, appMag: -0.27, spectral: "G2V", distLy: 4.37, constellation: "Centaurus", dist: "4.37 ly", blurb: "Nearest star system to the Sun", fact: "Triple system; Proxima hosts a small planet in the habitable zone. Still ~9,000× farther than Neptune." },
-  { id: "arcturus", name: "Arcturus", catalogNames: ["α Boo", "HIP 69673"], dir: raDecToDir(14.26, 19.2), color: spectralColor("K").hex, mag: 1.5, appMag: -0.05, spectral: "K1.5III", distLy: 36.7, constellation: "Boötes", dist: "37 ly", blurb: "Orange giant · spring sky", fact: "An aging K-giant racing through the galaxy; one of the brightest northern stars." },
-  { id: "vega", name: "Vega", catalogNames: ["α Lyr", "HIP 91262"], dir: raDecToDir(18.62, 38.8), color: spectralColor("A").hex, mag: 1.45, appMag: 0.03, spectral: "A0V", distLy: 25, constellation: "Lyra", dist: "25 ly", blurb: "Summer Triangle · white-hot", fact: "Former and future pole star as Earth precesses over ~26,000 years." },
-  { id: "capella", name: "Capella", catalogNames: ["α Aur", "HIP 24608"], dir: raDecToDir(5.28, 46.0), color: spectralColor("G").hex, mag: 1.4, appMag: 0.08, spectral: "G8III", distLy: 42.9, constellation: "Auriga", dist: "43 ly", blurb: "Yellow giant pair", fact: "Actually a quadruple system; two bright G-giants dominate the light." },
-  { id: "rigel", name: "Rigel", catalogNames: ["β Ori", "HIP 24436"], dir: raDecToDir(5.24, -8.2), color: spectralColor("B").hex, mag: 1.5, appMag: 0.13, spectral: "B8Ia", distLy: 860, constellation: "Orion", dist: "860 ly", blurb: "Orion’s blue foot", fact: "Blue supergiant ~120,000× the Sun’s luminosity. Frames Orion with Betelgeuse." },
-  { id: "procyon", name: "Procyon", catalogNames: ["α CMi", "HIP 37279"], dir: raDecToDir(7.66, 5.2), color: spectralColor("F").hex, mag: 1.35, appMag: 0.34, spectral: "F5IV", distLy: 11.5, constellation: "Canis Minor", dist: "11.5 ly", blurb: "Before the dog", fact: "F-type subgiant with a white-dwarf companion; rises before Sirius." },
-  { id: "achernar", name: "Achernar", catalogNames: ["α Eri", "HIP 7588"], dir: raDecToDir(1.63, -57.3), color: spectralColor("B").hex, mag: 1.35, appMag: 0.46, spectral: "B6Vep", distLy: 139, constellation: "Eridanus", dist: "139 ly", blurb: "End of the river", fact: "One of the flattest stars known — spinning so fast it is strongly oblate." },
-  { id: "betelgeuse", name: "Betelgeuse", catalogNames: ["α Ori", "HIP 27989"], dir: raDecToDir(5.92, 7.4), color: spectralColor("M").hex, mag: 1.55, appMag: 0.5, spectral: "M1–2Ia", distLy: 640, constellation: "Orion", dist: "640 ly", blurb: "Red supergiant in Orion", fact: "A dying giant. Placed at the Sun it would swallow Earth. Light left ~when Galileo was young." },
-  { id: "altair", name: "Altair", catalogNames: ["α Aql", "HIP 97649"], dir: raDecToDir(19.85, 8.9), color: spectralColor("A").hex, mag: 1.25, appMag: 0.76, spectral: "A7V", distLy: 16.7, constellation: "Aquila", dist: "17 ly", blurb: "Summer Triangle · rapid rotator", fact: "Spins in under 10 hours; noticeably flattened at the poles." },
-  { id: "aldebaran", name: "Aldebaran", catalogNames: ["α Tau", "HIP 21421"], dir: raDecToDir(4.6, 16.5), color: spectralColor("K").hex, mag: 1.3, appMag: 0.86, spectral: "K5III", distLy: 65, constellation: "Taurus", dist: "65 ly", blurb: "The follower · bull’s eye", fact: "Orange giant that appears to follow the Pleiades across the sky." },
-  { id: "antares", name: "Antares", catalogNames: ["α Sco", "HIP 80763"], dir: raDecToDir(16.49, -26.4), color: spectralColor("M").hex, mag: 1.35, appMag: 0.96, spectral: "M1.5Iab", distLy: 550, constellation: "Scorpius", dist: "550 ly", blurb: "Rival of Mars", fact: "Red supergiant whose color rivaled Mars to ancient observers — hence the name." },
-  { id: "spica", name: "Spica", catalogNames: ["α Vir", "HIP 65474"], dir: raDecToDir(13.42, -11.2), color: spectralColor("B").hex, mag: 1.2, appMag: 0.97, spectral: "B1III–IV", distLy: 250, constellation: "Virgo", dist: "250 ly", blurb: "Ear of wheat", fact: "Close binary of two hot B-stars; the brightest in Virgo." },
-  { id: "pollux", name: "Pollux", catalogNames: ["β Gem", "HIP 37826"], dir: raDecToDir(7.76, 28.0), color: spectralColor("K").hex, mag: 1.15, appMag: 1.14, spectral: "K0III", distLy: 33.8, constellation: "Gemini", dist: "34 ly", blurb: "The immortal twin", fact: "Orange giant with a known exoplanet; Castor’s brighter companion in myth." },
-  { id: "fomalhaut", name: "Fomalhaut", catalogNames: ["α PsA", "HIP 113368"], dir: raDecToDir(22.96, -29.6), color: spectralColor("A").hex, mag: 1.15, appMag: 1.16, spectral: "A4V", distLy: 25, constellation: "Piscis Austrinus", dist: "25 ly", blurb: "Mouth of the southern fish", fact: "Hosts a dusty debris disk; one of the first stars imaged with a candidate planet." },
-  { id: "deneb", name: "Deneb", catalogNames: ["α Cyg", "HIP 102098"], dir: raDecToDir(20.69, 45.3), color: spectralColor("A").hex, mag: 1.35, appMag: 1.25, spectral: "A2Ia", distLy: 2600, constellation: "Cygnus", dist: "~2,600 ly", blurb: "Tail of the swan", fact: "Luminous supergiant — among the most distant first-magnitude stars." },
-  { id: "regulus", name: "Regulus", catalogNames: ["α Leo", "HIP 49669"], dir: raDecToDir(10.14, 11.97), color: spectralColor("B").hex, mag: 1.1, appMag: 1.35, spectral: "B7V", distLy: 79, constellation: "Leo", dist: "79 ly", blurb: "Heart of the lion", fact: "Rapid rotator nearly at breakup speed; lies almost on the ecliptic." },
-  { id: "bellatrix", name: "Bellatrix", catalogNames: ["γ Ori", "HIP 25336"], dir: raDecToDir(5.42, 6.35), color: spectralColor("B").hex, mag: 1.05, appMag: 1.64, spectral: "B2III", distLy: 250, constellation: "Orion", dist: "250 ly", blurb: "Orion’s left shoulder", fact: "Hot B-giant completing the hunter’s outline with Betelgeuse, Rigel and the belt." },
-  { id: "alnitak", name: "Alnitak", catalogNames: ["ζ Ori", "HIP 26727"], dir: raDecToDir(5.68, -1.94), color: spectralColor("O").hex, mag: 1.0, appMag: 1.77, spectral: "O9.5Ib", distLy: 1260, constellation: "Orion", dist: "1,260 ly", blurb: "East star of Orion’s belt", fact: "Triple system; the Horsehead Nebula lies just south of it." },
-  { id: "alnilam", name: "Alnilam", catalogNames: ["ε Ori", "HIP 26311"], dir: raDecToDir(5.6, -1.2), color: spectralColor("B").hex, mag: 1.05, appMag: 1.69, spectral: "B0Ia", distLy: 2000, constellation: "Orion", dist: "2,000 ly", blurb: "Middle of Orion’s belt", fact: "Blue supergiant ~375,000× as luminous as the Sun." },
-  { id: "mintaka", name: "Mintaka", catalogNames: ["δ Ori", "HIP 25930"], dir: raDecToDir(5.53, -0.3), color: spectralColor("O").hex, mag: 0.95, appMag: 2.23, spectral: "O9.5II", distLy: 1200, constellation: "Orion", dist: "1,200 ly", blurb: "West star of Orion’s belt", fact: "Near the celestial equator — rises due east, sets due west." },
-  { id: "polaris", name: "Polaris", catalogNames: ["α UMi", "HIP 11767"], dir: raDecToDir(2.53, 89.26), color: spectralColor("F").hex, mag: 1.15, appMag: 1.98, spectral: "F7Ib", distLy: 433, constellation: "Ursa Minor", dist: "430 ly", blurb: "The pole star", fact: "Earth’s axis points near Polaris; a quiet north reference in the cockpit." },
-  { id: "castor", name: "Castor", catalogNames: ["α Gem", "HIP 36850"], dir: raDecToDir(7.58, 31.9), color: spectralColor("A").hex, mag: 1.0, appMag: 1.58, spectral: "A1V", distLy: 51, constellation: "Gemini", dist: "51 ly", blurb: "The mortal twin", fact: "Sextuple star system; appears as a single bright point to the eye." },
-  { id: "shaula", name: "Shaula", catalogNames: ["λ Sco", "HIP 85927"], dir: raDecToDir(17.56, -37.1), color: spectralColor("B").hex, mag: 1.05, appMag: 1.62, spectral: "B2IV", distLy: 570, constellation: "Scorpius", dist: "570 ly", blurb: "Stinger of the scorpion", fact: "Hot B-star marking the scorpion’s tail tip." },
+  {
+    id: "sirius",
+    name: "Sirius",
+    dir: nrm({ x: 0.55, y: -0.25, z: -0.8 }),
+    color: "#cfe8ff",
+    mag: 1.85,
+    spec: "A1V",
+    dist: "8.6 light-years",
+    blurb: "Brightest star in our night sky",
+    fact: "A nearby A-type star, hotter and bigger than the Sun. The belt of Orion points almost straight at it.",
+  },
+  {
+    id: "vega",
+    name: "Vega",
+    dir: nrm({ x: -0.4, y: 0.72, z: -0.55 }),
+    color: "#e8f2ff",
+    mag: 1.35,
+    spec: "A0V",
+    dist: "25 light-years",
+    blurb: "Summer triangle · white-hot",
+    fact: "Once the north star, and it will be again as Earth wobbles on its axis (precession) over 26,000 years.",
+  },
+  {
+    id: "betelgeuse",
+    name: "Betelgeuse",
+    dir: nrm({ x: 0.72, y: 0.18, z: 0.67 }),
+    color: "#ffb080",
+    mag: 1.55,
+    spec: "M1-2 Ia",
+    dist: "640 light-years",
+    blurb: "Red supergiant · Orion’s shoulder",
+    fact: "A dying giant. If it sat where the Sun is, it would swallow Earth. Its light left around the time of Galileo.",
+  },
+  {
+    id: "rigel",
+    name: "Rigel",
+    dir: nrm({ x: 0.58, y: -0.22, z: 0.78 }),
+    color: "#c8dcff",
+    mag: 1.45,
+    spec: "B8 Ia",
+    dist: "860 light-years",
+    blurb: "Orion’s blue foot",
+    fact: "A blue supergiant — far hotter than the Sun. With Betelgeuse it frames the hunter you can still read from a cockpit.",
+  },
+  {
+    id: "bellatrix",
+    name: "Bellatrix",
+    dir: nrm({ x: 0.62, y: 0.28, z: 0.72 }),
+    color: "#d0e4ff",
+    mag: 1.08,
+    spec: "B2 III",
+    dist: "250 light-years",
+    blurb: "Orion’s left shoulder",
+    fact: "A hot B-star. Shoulders, belt, and feet make Orion the easiest figure in this sky.",
+  },
+  {
+    id: "alnitak",
+    name: "Alnitak",
+    dir: nrm({ x: 0.66, y: 0.02, z: 0.75 }),
+    color: "#bcd4ff",
+    mag: 0.98,
+    spec: "O9.5 Ib",
+    dist: "1,200 light-years",
+    blurb: "East star of Orion’s belt",
+    fact: "One of three belt stars in a straight line. The Horsehead Nebula sits just south of it, too faint for unaided eyes.",
+  },
+  {
+    id: "alnilam",
+    name: "Alnilam",
+    dir: nrm({ x: 0.68, y: 0.04, z: 0.73 }),
+    color: "#c4d8ff",
+    mag: 1.08,
+    spec: "B0 Ia",
+    dist: "2,000 light-years",
+    blurb: "Middle of Orion’s belt",
+    fact: "A blue supergiant about 375,000 times as luminous as the Sun. The belt is a ruler in the sky.",
+  },
+  {
+    id: "mintaka",
+    name: "Mintaka",
+    dir: nrm({ x: 0.64, y: 0.08, z: 0.76 }),
+    color: "#d0e0ff",
+    mag: 0.92,
+    spec: "O9.5 II",
+    dist: "1,200 light-years",
+    blurb: "West star of Orion’s belt",
+    fact: "Sits almost on the celestial equator, so from Earth it rises due east and sets due west.",
+  },
+  {
+    id: "saiph",
+    name: "Saiph",
+    dir: nrm({ x: 0.7, y: -0.18, z: 0.69 }),
+    color: "#c4d4ff",
+    mag: 0.95,
+    spec: "B0.5 Ia",
+    dist: "720 light-years",
+    blurb: "Orion’s other foot",
+    fact: "Closes the hunter’s rectangle with Rigel. Less famous, same class of blue giant.",
+  },
+  {
+    id: "polaris",
+    name: "Polaris",
+    dir: nrm({ x: 0.05, y: 0.98, z: -0.18 }),
+    color: "#fff6e0",
+    mag: 1.18,
+    spec: "F7 Ib",
+    dist: "430 light-years",
+    blurb: "The pole star · north on Earth",
+    fact: "Earth’s axis points near Polaris, so it barely moves in our sky. In a cockpit it is a quiet north-reference, not a destination.",
+  },
+  {
+    id: "acen",
+    name: "α Centauri",
+    dir: nrm({ x: -0.62, y: -0.48, z: -0.62 }),
+    color: "#fff0d2",
+    mag: 1.28,
+    spec: "G2V + K1V",
+    dist: "4.37 light-years",
+    blurb: "Nearest star system to the Sun",
+    fact: "Three stars, including Proxima with a small planet in the goldilocks zone. Still about 9,000 times farther than Neptune.",
+  },
+  {
+    id: "dubhe",
+    name: "Dubhe",
+    dir: offsetDir(DIPPER, 0.25, 0.7),
+    color: "#ffe2b8",
+    mag: 1.12,
+    spec: "K0 III",
+    dist: "123 light-years",
+    blurb: "Pointer star of the Big Dipper",
+    fact: "A line from Merak through Dubhe points to Polaris. That is how you find north without a compass.",
+  },
+  {
+    id: "merak",
+    name: "Merak",
+    dir: offsetDir(DIPPER, -0.7, 0.45),
+    color: "#e8f0ff",
+    mag: 1.0,
+    spec: "A1V",
+    dist: "80 light-years",
+    blurb: "Other pointer of the Dipper",
+    fact: "With Dubhe it makes the ‘pointers.’ Follow them five dipper-lengths to Polaris.",
+  },
+  {
+    id: "phecda",
+    name: "Phecda",
+    dir: offsetDir(DIPPER, -0.7, -0.55),
+    color: "#e4ecff",
+    mag: 0.88,
+    spec: "A0 Ve",
+    dist: "83 light-years",
+    blurb: "Dipper bowl, south-east corner",
+    fact: "Part of the bowl of Ursa Major. The whole dipper is nearby — tens of light-years, not thousands.",
+  },
+  {
+    id: "megrez",
+    name: "Megrez",
+    dir: offsetDir(DIPPER, 0.2, -0.3),
+    color: "#e8eeff",
+    mag: 0.72,
+    spec: "A3 V",
+    dist: "81 light-years",
+    blurb: "Dim joint of bowl and handle",
+    fact: "The faintest of the seven. The handle attaches here.",
+  },
+  {
+    id: "alioth",
+    name: "Alioth",
+    dir: offsetDir(DIPPER, 0.85, -0.15),
+    color: "#e6eeff",
+    mag: 1.1,
+    spec: "A1 III-IV",
+    dist: "83 light-years",
+    blurb: "Brightest of the Dipper",
+    fact: "Start of the handle. Ursa Major is a real family of stars moving together — a leftover cluster.",
+  },
+  {
+    id: "mizar",
+    name: "Mizar",
+    dir: offsetDir(DIPPER, 1.4, 0.2),
+    color: "#e8f0ff",
+    mag: 1.05,
+    spec: "A2 V",
+    dist: "83 light-years",
+    blurb: "The double in the handle",
+    fact: "Keen eyes see a companion, Alcor. A telescope splits Mizar itself into two — a teaching double.",
+  },
+  {
+    id: "alkaid",
+    name: "Alkaid",
+    dir: offsetDir(DIPPER, 2.05, 0.05),
+    color: "#c8d8ff",
+    mag: 1.08,
+    spec: "B3 V",
+    dist: "104 light-years",
+    blurb: "Tip of the Dipper handle",
+    fact: "Not part of the moving family — a hotter, independent star at the end of the handle.",
+  },
+  {
+    id: "schedar",
+    name: "Schedar",
+    dir: offsetDir(CASS, -0.55, 0.55),
+    color: "#ffd8b0",
+    mag: 0.95,
+    spec: "K0 IIIa",
+    dist: "228 light-years",
+    blurb: "Brightest of Cassiopeia",
+    fact: "The W (or M) of Cassiopeia sits opposite the Dipper across Polaris. Both circle the pole.",
+  },
+  {
+    id: "caph",
+    name: "Caph",
+    dir: offsetDir(CASS, -1.2, -0.2),
+    color: "#e8f2ff",
+    mag: 0.9,
+    spec: "F2 III-IV",
+    dist: "54 light-years",
+    blurb: "West end of Cassiopeia’s W",
+    fact: "A nearby white giant. The W is five stars; follow the zigzag.",
+  },
+  {
+    id: "nachi",
+    name: "γ Cas",
+    dir: offsetDir(CASS, 0.05, -0.1),
+    color: "#dce8ff",
+    mag: 0.95,
+    spec: "B0.5 IVe",
+    dist: "550 light-years",
+    blurb: "Middle of the W",
+    fact: "An eruptive hot star. It is the peak of Cassiopeia’s zigzag.",
+  },
+  {
+    id: "ruchbah",
+    name: "Ruchbah",
+    dir: offsetDir(CASS, 0.65, 0.5),
+    color: "#e4ecff",
+    mag: 0.82,
+    spec: "A5 V",
+    dist: "99 light-years",
+    blurb: "Fourth star of the W",
+    fact: "A quiet A-star. Cassiopeia never sets from mid-northern Earth.",
+  },
+  {
+    id: "segin",
+    name: "Segin",
+    dir: offsetDir(CASS, 1.25, -0.25),
+    color: "#c8d8ff",
+    mag: 0.78,
+    spec: "B3 III",
+    dist: "440 light-years",
+    blurb: "East end of the W",
+    fact: "Closes Cassiopeia. The whole W is a polar landmark, like the Dipper on the other side.",
+  },
+  {
+    id: "acrux",
+    name: "Acrux",
+    dir: nrm({ x: -0.15, y: -0.92, z: 0.35 }),
+    color: "#c4d4ff",
+    mag: 1.2,
+    spec: "B0.5 IV",
+    dist: "320 light-years",
+    blurb: "Foot of the Southern Cross",
+    fact: "The bright foot of Crux. The long axis of the Cross points toward the south celestial pole.",
+  },
+  {
+    id: "mimosa",
+    name: "Mimosa",
+    dir: nrm({ x: -0.05, y: -0.9, z: 0.42 }),
+    color: "#c8d8ff",
+    mag: 1.15,
+    spec: "B0.5 III",
+    dist: "280 light-years",
+    blurb: "East arm of the Cross",
+    fact: "With Acrux, Gacrux and δ Cru it makes the smallest of the 88 constellations — and one of the clearest.",
+  },
+  {
+    id: "gacrux",
+    name: "Gacrux",
+    dir: nrm({ x: -0.12, y: -0.86, z: 0.5 }),
+    color: "#ffc8a0",
+    mag: 1.05,
+    spec: "M3.5 III",
+    dist: "89 light-years",
+    blurb: "Head of the Southern Cross",
+    fact: "The red head. A line from Gacrux through Acrux aims at the south pole of the sky — no bright pole star there.",
+  },
+  {
+    id: "delcru",
+    name: "δ Cru",
+    dir: nrm({ x: -0.22, y: -0.88, z: 0.42 }),
+    color: "#c8d4ff",
+    mag: 0.9,
+    spec: "B2 IV",
+    dist: "345 light-years",
+    blurb: "West arm of the Cross",
+    fact: "Completes the kite. Crux sits in a rich Milky Way band, so the background is crowded.",
+  },
 ];
 
-export const CONSTELLATIONS: { name: string; ids: string[] }[] = [
-  { name: "Orion belt", ids: ["alnitak", "alnilam", "mintaka"] },
-  { name: "Orion west", ids: ["betelgeuse", "alnitak", "rigel"] },
-  { name: "Orion east", ids: ["bellatrix", "mintaka", "rigel"] },
-  { name: "Summer Triangle", ids: ["vega", "altair", "deneb"] },
-  { name: "Winter Triangle", ids: ["sirius", "procyon", "betelgeuse"] },
-];
-
-export type DeepSkyObject = {
+export type Constel = {
   id: string;
   name: string;
-  catalogNames?: string[];
-  type: "galaxy" | "nebula" | "open-cluster" | "globular-cluster" | "supernova-remnant";
+  segs: [string, string][];
+  blurb: string;
+  fact: string;
+  dist: string;
+  meaning: string;
+};
+
+export const CONSTELLATIONS: Constel[] = [
+  {
+    id: "orion",
+    name: "Orion",
+    segs: [
+      ["betelgeuse", "bellatrix"],
+      ["betelgeuse", "alnitak"],
+      ["bellatrix", "mintaka"],
+      ["alnitak", "alnilam"],
+      ["alnilam", "mintaka"],
+      ["alnitak", "saiph"],
+      ["mintaka", "rigel"],
+      ["saiph", "rigel"],
+    ],
+    blurb: "The Hunter · winter’s brightest figure",
+    meaning: "Shoulders, a three-star belt, two feet. The belt points toward Sirius.",
+    dist: "250–2,000 ly (stars at very different distances)",
+    fact: "The lines are a drawing, not a place. Betelgeuse is hundreds of light-years closer than Alnilam. From a cockpit the figure still works as a ruler.",
+  },
+  {
+    id: "ursa-major",
+    name: "Ursa Major",
+    segs: [
+      ["dubhe", "merak"],
+      ["merak", "phecda"],
+      ["phecda", "megrez"],
+      ["megrez", "dubhe"],
+      ["megrez", "alioth"],
+      ["alioth", "mizar"],
+      ["mizar", "alkaid"],
+    ],
+    blurb: "The Big Dipper · northern ladle",
+    meaning: "A saucepan in the north. Pointers (Merak → Dubhe) run to Polaris.",
+    dist: "80–120 light-years (a real star family)",
+    fact: "Most of these stars were born together and still drift as a group. Follow the pointers five lengths to find north.",
+  },
+  {
+    id: "cassiopeia",
+    name: "Cassiopeia",
+    segs: [
+      ["caph", "schedar"],
+      ["schedar", "nachi"],
+      ["nachi", "ruchbah"],
+      ["ruchbah", "segin"],
+    ],
+    blurb: "The W · queen on her throne",
+    meaning: "A zigzag W (or M) opposite the Dipper, across Polaris.",
+    dist: "54–550 light-years",
+    fact: "It never sets from mid-northern Earth. When the Dipper is low, Cassiopeia is high — a backup north mark.",
+  },
+  {
+    id: "crux",
+    name: "Crux",
+    segs: [
+      ["gacrux", "acrux"],
+      ["mimosa", "delcru"],
+    ],
+    blurb: "Southern Cross · smallest constellation",
+    meaning: "A kite. The long axis (Gacrux → Acrux) aims at the south celestial pole.",
+    dist: "89–345 light-years",
+    fact: "There is no bright south pole star. The Cross is how southern navigators found south. It sits in a rich Milky Way band.",
+  },
+];
+
+export const STAR_BY_ID = new Map(NAMED_STARS.map((s) => [s.id, s]));
+
+export const NEBULAE: {
+  id: string;
+  name: string;
   dir: V;
-  ra?: number;
-  dec?: number;
-  distanceLy?: number;
-  magnitude?: number;
-  constellation?: string;
-  angularSize?: number;
-  description?: string;
-  origin?: string;
-  // legacy render fields
+  color: string;
+  rx: number;
+  ry: number;
+  blurb: string;
+  fact: string;
+  dist: string;
+}[] = [
+  {
+    id: "m42",
+    name: "Orion Nebula",
+    dir: nrm({ x: 0.67, y: -0.08, z: 0.74 }),
+    color: "255,168,196",
+    rx: 0.55,
+    ry: 0.32,
+    dist: "1,350 light-years",
+    blurb: "A star factory under Orion’s belt",
+    fact: "A cloud of gas where new stars are lighting up. Pink in photos from hydrogen; your eye sees it as a faint mist.",
+  },
+];
+
+export const GALAXIES: {
+  id: string;
+  name: string;
+  dir: V;
   rx: number;
   ry: number;
   color: string;
   dist: string;
   blurb: string;
   fact: string;
-};
-
-export const GALAXIES: DeepSkyObject[] = [
-  { id: "andromeda", name: "Andromeda Galaxy", catalogNames: ["M31", "NGC 224"], type: "galaxy", dir: raDecToDir(0.71, 41.3), ra: 0.71, dec: 41.3, distanceLy: 2.54e6, magnitude: 3.4, constellation: "Andromeda", angularSize: 3.2, description: "Nearest major spiral galaxy", origin: "Named for the mythical princess; catalogued by Messier as M31.", rx: 1.15, ry: 0.42, color: "#d8c8f0", dist: "2.5 million ly", blurb: "Nearest big spiral galaxy", fact: "On a long collision course with the Milky Way; they will merge in a few billion years." },
-  { id: "m33", name: "Triangulum Galaxy", catalogNames: ["M33", "NGC 598"], type: "galaxy", dir: raDecToDir(1.56, 30.7), ra: 1.56, dec: 30.7, distanceLy: 2.73e6, magnitude: 5.7, constellation: "Triangulum", angularSize: 0.9, description: "Third-largest member of the Local Group", origin: "Messier 33; visible under dark skies as a faint patch.", rx: 0.7, ry: 0.55, color: "#c8d0f0", dist: "2.7 million ly", blurb: "Local Group spiral", fact: "Face-on spiral rich in star-forming regions; a quiet neighbor of Andromeda." },
-  { id: "lmc", name: "Large Magellanic Cloud", catalogNames: ["LMC", "Nubecula Major"], type: "galaxy", dir: raDecToDir(5.39, -69.8), ra: 5.39, dec: -69.8, distanceLy: 163000, magnitude: 0.9, constellation: "Dorado", angularSize: 10, description: "Satellite galaxy of the Milky Way", origin: "Named for Ferdinand Magellan’s voyage; visible from the southern hemisphere.", rx: 0.55, ry: 0.28, color: "#f0d8c8", dist: "160,000 ly", blurb: "Milky Way satellite", fact: "Still forming stars; home to the Tarantula Nebula, one of the most active starburst regions nearby." },
-  { id: "smc", name: "Small Magellanic Cloud", catalogNames: ["SMC", "Nubecula Minor"], type: "galaxy", dir: raDecToDir(0.88, -72.8), ra: 0.88, dec: -72.8, distanceLy: 200000, magnitude: 2.7, constellation: "Tucana", angularSize: 5, description: "Smaller Magellanic companion", origin: "Companion of the LMC; both are being tidally distorted by the Milky Way.", rx: 0.35, ry: 0.22, color: "#e8d0c0", dist: "200,000 ly", blurb: "Smaller Magellanic Cloud", fact: "Irregular dwarf galaxy; a stream of gas links it to the LMC and the Milky Way." },
-  { id: "m51", name: "Whirlpool Galaxy", catalogNames: ["M51", "NGC 5194"], type: "galaxy", dir: raDecToDir(13.5, 47.2), ra: 13.5, dec: 47.2, distanceLy: 23e6, magnitude: 8.4, constellation: "Canes Venatici", angularSize: 0.18, description: "Classic face-on spiral with companion", origin: "Messier 51; the spiral structure was first noted by Lord Rosse in 1845.", rx: 0.5, ry: 0.45, color: "#d0c8e8", dist: "23 million ly", blurb: "Grand-design spiral", fact: "Interacting with NGC 5195; a textbook face-on spiral for amateur telescopes." },
-  { id: "m104", name: "Sombrero Galaxy", catalogNames: ["M104", "NGC 4594"], type: "galaxy", dir: raDecToDir(12.67, -11.6), ra: 12.67, dec: -11.6, distanceLy: 31e6, magnitude: 8.0, constellation: "Virgo", angularSize: 0.15, description: "Edge-on spiral with a bright dust lane", origin: "Named for its hat-like appearance; Messier 104.", rx: 0.55, ry: 0.2, color: "#e0d0b8", dist: "31 million ly", blurb: "Edge-on spiral with dust lane", fact: "Huge central bulge and dark equatorial dust lane give the famous ‘sombrero’ silhouette." },
-  { id: "m81", name: "Bode's Galaxy", catalogNames: ["M81", "NGC 3031"], type: "galaxy", dir: raDecToDir(9.93, 69.1), ra: 9.93, dec: 69.1, distanceLy: 12e6, magnitude: 6.9, constellation: "Ursa Major", angularSize: 0.35, description: "Bright spiral near the Big Dipper", origin: "Discovered by Johann Bode in 1774; Messier 81.", rx: 0.6, ry: 0.4, color: "#d8d0e8", dist: "12 million ly", blurb: "Grand spiral in Ursa Major", fact: "Pairs with M82; one of the brightest galaxies in the northern sky." },
-  { id: "m82", name: "Cigar Galaxy", catalogNames: ["M82", "NGC 3034"], type: "galaxy", dir: raDecToDir(9.93, 69.7), ra: 9.93, dec: 69.7, distanceLy: 12e6, magnitude: 8.4, constellation: "Ursa Major", angularSize: 0.18, description: "Starburst galaxy with outflows", origin: "Messier 82; the ‘cigar’ shape comes from edge-on orientation and dust.", rx: 0.45, ry: 0.18, color: "#e8c8a0", dist: "12 million ly", blurb: "Starburst edge-on galaxy", fact: "Violent star formation driven by interaction with M81; spectacular in infrared." },
-  { id: "cena", name: "Centaurus A", catalogNames: ["NGC 5128", "Cen A"], type: "galaxy", dir: raDecToDir(13.42, -43.0), ra: 13.42, dec: -43.0, distanceLy: 13e6, magnitude: 6.8, constellation: "Centaurus", angularSize: 0.4, description: "Peculiar galaxy with a dark dust lane", origin: "Brightest galaxy in Centaurus; strong radio source.", rx: 0.55, ry: 0.35, color: "#e0c8a8", dist: "13 million ly", blurb: "Radio galaxy with dust lane", fact: "Hosts a supermassive black hole powering radio jets; a merger remnant." },
-  { id: "m101", name: "Pinwheel Galaxy", catalogNames: ["M101", "NGC 5457"], type: "galaxy", dir: raDecToDir(14.05, 54.3), ra: 14.05, dec: 54.3, distanceLy: 21e6, magnitude: 7.9, constellation: "Ursa Major", angularSize: 0.4, description: "Face-on grand-design spiral", origin: "Messier 101; classic pinwheel appearance.", rx: 0.55, ry: 0.5, color: "#d0d8f0", dist: "21 million ly", blurb: "Face-on spiral pinwheel", fact: "Large, face-on spiral with prominent H II regions; a favorite deep-sky target." },
-  { id: "m42", name: "Orion Nebula", catalogNames: ["M42", "NGC 1976"], type: "nebula", dir: raDecToDir(5.59, -5.4), ra: 5.59, dec: -5.4, distanceLy: 1340, magnitude: 4.0, constellation: "Orion", angularSize: 1.0, description: "Brightest emission nebula in the sky", origin: "The ‘sword’ of Orion; known since antiquity, catalogued as M42.", rx: 0.4, ry: 0.35, color: "#a0d0ff", dist: "1,340 ly", blurb: "Emission / reflection nebula", fact: "A stellar nursery lit by the Trapezium cluster; the nearest massive star-forming region." },
-  { id: "m8", name: "Lagoon Nebula", catalogNames: ["M8", "NGC 6523"], type: "nebula", dir: raDecToDir(18.06, -24.4), ra: 18.06, dec: -24.4, distanceLy: 4100, magnitude: 6.0, constellation: "Sagittarius", angularSize: 0.5, description: "Bright emission nebula in the summer Milky Way", origin: "Named for the dark lagoon of dust bisecting the glow; Messier 8.", rx: 0.45, ry: 0.3, color: "#f0a0b0", dist: "4,100 ly", blurb: "Emission nebula", fact: "H II region in Sagittarius; a dark dust lane creates the lagoon appearance." },
-  { id: "m20", name: "Trifid Nebula", catalogNames: ["M20", "NGC 6514"], type: "nebula", dir: raDecToDir(18.04, -23.0), ra: 18.04, dec: -23.0, distanceLy: 5200, magnitude: 6.3, constellation: "Sagittarius", angularSize: 0.3, description: "Emission and reflection nebula with dark lanes", origin: "Named ‘trifid’ for the three dark dust lanes that trisect it; Messier 20.", rx: 0.35, ry: 0.3, color: "#e0a0d0", dist: "5,200 ly", blurb: "Emission + reflection nebula", fact: "Pink emission and blue reflection regions divided by dark dust lanes." },
-  { id: "m16", name: "Eagle Nebula", catalogNames: ["M16", "NGC 6611"], type: "nebula", dir: raDecToDir(18.31, -13.8), ra: 18.31, dec: -13.8, distanceLy: 7000, magnitude: 6.0, constellation: "Serpens", angularSize: 0.3, description: "Star-forming pillars of gas and dust", origin: "Messier 16; famous for the ‘Pillars of Creation’ imaged by Hubble.", rx: 0.35, ry: 0.32, color: "#d0b0a0", dist: "7,000 ly", blurb: "Emission nebula · pillars", fact: "Pillars of dust and gas where new stars are forming; a Hubble icon." },
-  { id: "carina", name: "Carina Nebula", catalogNames: ["NGC 3372", "η Carinae Nebula"], type: "nebula", dir: raDecToDir(10.75, -59.9), ra: 10.75, dec: -59.9, distanceLy: 7500, magnitude: 1.0, constellation: "Carina", angularSize: 2.0, description: "Huge southern emission nebula", origin: "Surrounds the unstable star η Carinae; among the brightest nebulae.", rx: 0.7, ry: 0.4, color: "#f0c0a0", dist: "7,500 ly", blurb: "Southern emission complex", fact: "Home to η Carinae and the Keyhole Nebula; far brighter than Orion from the south." },
-  { id: "rosette", name: "Rosette Nebula", catalogNames: ["NGC 2237", "Caldwell 49"], type: "nebula", dir: raDecToDir(6.53, 4.9), ra: 6.53, dec: 4.9, distanceLy: 5200, magnitude: 9.0, constellation: "Monoceros", angularSize: 1.3, description: "Circular emission nebula with open cluster", origin: "Named for its rose-like shape; surrounds the cluster NGC 2244.", rx: 0.4, ry: 0.38, color: "#f0a0b8", dist: "5,200 ly", blurb: "Rose-shaped H II region", fact: "Young cluster winds have carved a cavity; a classic rose in monochrome photos." },
-  { id: "m1", name: "Crab Nebula", catalogNames: ["M1", "NGC 1952"], type: "supernova-remnant", dir: raDecToDir(5.58, 22.0), ra: 5.58, dec: 22.0, distanceLy: 6500, magnitude: 8.4, constellation: "Taurus", angularSize: 0.1, description: "Remnant of the 1054 supernova", origin: "Messier’s first object; the guest star of 1054 recorded in Chinese chronicles.", rx: 0.25, ry: 0.22, color: "#c0d0f0", dist: "6,500 ly", blurb: "Supernova remnant", fact: "Pulsar at the center spins 30 times per second; the expanding shell is the Crab." },
-  { id: "m45", name: "Pleiades", catalogNames: ["M45", "Seven Sisters"], type: "open-cluster", dir: raDecToDir(3.79, 24.1), ra: 3.79, dec: 24.1, distanceLy: 444, magnitude: 1.6, constellation: "Taurus", angularSize: 1.8, description: "Bright open cluster", origin: "Known since antiquity; Messier 45. Reflection nebulosity surrounds the stars.", rx: 0.5, ry: 0.45, color: "#c8e0ff", dist: "444 ly", blurb: "Open cluster · Seven Sisters", fact: "Young hot stars still wrapped in reflection nebulosity; a naked-eye landmark." },
-  { id: "omega", name: "Omega Centauri", catalogNames: ["NGC 5139", "ω Cen"], type: "globular-cluster", dir: raDecToDir(13.45, -47.5), ra: 13.45, dec: -47.5, distanceLy: 15800, magnitude: 3.9, constellation: "Centaurus", angularSize: 0.6, description: "Brightest globular cluster", origin: "Once thought a star; largest and brightest globular in the Milky Way.", rx: 0.35, ry: 0.35, color: "#f0e0c0", dist: "16,000 ly", blurb: "Brightest globular cluster", fact: "May be the remnant core of a disrupted dwarf galaxy; ~10 million stars." },
+}[] = [
+  {
+    id: "andromeda",
+    name: "Andromeda",
+    dir: nrm({ x: -0.58, y: 0.36, z: -0.73 }),
+    rx: 1.15,
+    ry: 0.42,
+    color: "#d8c8f0",
+    dist: "2.5 million light-years",
+    blurb: "Nearest big spiral galaxy",
+    fact: "The closest giant spiral — about 2.5 million light-years. It is on a long fall toward the Milky Way. They will mix in a few billion years.",
+  },
+  {
+    id: "lmc",
+    name: "Large Magellanic Cloud",
+    dir: nrm({ x: 0.2, y: -0.86, z: 0.47 }),
+    rx: 0.72,
+    ry: 0.38,
+    color: "#f0d8c8",
+    dist: "160,000 light-years",
+    blurb: "A satellite galaxy of the Milky Way",
+    fact: "A companion galaxy you can see from Earth’s south. New stars are still lighting up inside it — a factory next door, on galaxy terms.",
+  },
 ];
 
-export type Star = {
-  x: number;
-  y: number;
-  z: number;
-  b: number;
-  s: number;
-  cr: number;
-  cg: number;
-  cb: number;
-  mag?: number;
-  spectral?: string;
-};
+export type Star = { x: number; y: number; z: number; b: number; s: number; cr: number; cg: number; cb: number };
 
 function rng(seed: number) {
   let s = seed >>> 0;
@@ -364,44 +695,20 @@ function onSphere(rnd: () => number): V {
   return { x: r * Math.cos(a), y: z, z: r * Math.sin(a) };
 }
 
-/** Deterministic field with magnitude-weighted brightness and spectral colors. */
 export function makeField(n: number, seed: number): Star[] {
   const rnd = rng(seed);
   const out: Star[] = [];
-  const spectralWeights = [
-    { sp: "O", w: 0.01 },
-    { sp: "B", w: 0.05 },
-    { sp: "A", w: 0.1 },
-    { sp: "F", w: 0.15 },
-    { sp: "G", w: 0.2 },
-    { sp: "K", w: 0.25 },
-    { sp: "M", w: 0.24 },
-  ];
   for (let i = 0; i < n; i++) {
     const d = onSphere(rnd);
-    // Power-law-ish magnitude distribution (more faint stars)
-    const u = rnd();
-    const appMag = 1.8 + Math.pow(u, 0.55) * 5.2; // brighter overall
-    const bright = Math.max(0.22, Math.min(1, Math.pow(2.512, 4.8 - appMag) * 0.55));
-    let roll = rnd();
-    let sp = "G";
-    for (const s of spectralWeights) {
-      roll -= s.w;
-      if (roll <= 0) {
-        sp = s.sp;
-        break;
-      }
-    }
-    const col = spectralColor(sp);
+    const mag = Math.pow(rnd(), 2.6);
+    const warm = rnd();
     out.push({
       ...d,
-      b: bright,
-      s: Math.max(0.55, Math.min(3.2, 0.55 + (6.2 - appMag) * 0.42)),
-      cr: col.r,
-      cg: col.g,
-      cb: col.b,
-      mag: appMag,
-      spectral: sp,
+      b: 0.1 + mag * 0.9,
+      s: 0.32 + mag * 2.1,
+      cr: 210 + warm * 45,
+      cg: 220 + (1 - warm) * 22,
+      cb: 255 - warm * 70,
     });
   }
   return out;
@@ -417,27 +724,23 @@ export function makeMilkyWay(n: number): Star[] {
     const z = Math.sin(along);
     const y = off + (rnd() - 0.5) * 0.07;
     const len = Math.hypot(x, y, z) || 1;
-    const warm = rnd();
-    const appMag = 3.2 + rnd() * 3.8;
-    const bright = Math.max(0.18, Math.min(0.95, Math.pow(2.512, 5.2 - appMag) * 0.4));
+    const mag = Math.pow(rnd(), 2.2);
     out.push({
       x: x / len,
       y: y / len,
       z: z / len,
-      b: bright,
-      s: 0.5 + rnd() * 1.4,
-      cr: 230 + warm * 25,
-      cg: 215 + (1 - warm) * 30,
-      cb: 195 + rnd() * 45,
-      mag: appMag,
+      b: 0.12 + mag * 0.62,
+      s: 0.35 + mag * 1.35,
+      cr: 235 + rnd() * 20,
+      cg: 205 + rnd() * 30,
+      cb: 175 + rnd() * 50,
     });
   }
   return out;
 }
 
-/** ~5,000+ catalog stars for a dense but readable sky. Architecture scales further. */
-export const FIELD = makeField(3600, 17);
-export const MILKY = makeMilkyWay(1800);
+export const FIELD = makeField(1200, 17);
+export const MILKY = makeMilkyWay(1700);
 
 export type Rock = { x: number; y: number; z: number; r: number };
 export const ASTEROIDS: Rock[] = (() => {
@@ -512,104 +815,28 @@ export function startPose(dest: "moon" | "mars"): { pos: V; vel: V; pitch: numbe
   };
 }
 
-/**
- * Predicted transfer corridor.
- * Moon: simplified translunar intercept — aim at where the Moon will be at arrival,
- * with a slight out-of-plane arc (not a straight chord).
- * Mars: heliocentric transfer arc inspired by a Hohmann half-ellipse (sun at focus),
- * evaluated at current simulation time so both planets keep moving.
- * Units: same compressed world units as BODIES (AU = 72).
- */
-export function transferPath(dest: "moon" | "mars", t: number, n = 64): V[] {
+export function transferPath(dest: "moon" | "mars", t: number, n = 48): V[] {
   const cache = new Map<string, V>();
   const earth = posOf("earth", t, cache);
+  const destP = posOf(dest, t, cache);
   const out: V[] = [];
-
-  if (dest === "moon") {
-    // Lead the Moon: intercept at ~3 days of lunar motion (period ~27 sim units scaled)
-    const leadT = t + 1.6;
-    const moonLead = posOf("moon", leadT, new Map());
-    for (let i = 0; i <= n; i++) {
-      const u = i / n;
-      // Cubic-ish smooth with a gentle vertical arc (translunar coast)
-      const rise = Math.sin(u * Math.PI) * 2.2;
-      out.push({
-        x: earth.x + (moonLead.x - earth.x) * u,
-        y: earth.y + (moonLead.y - earth.y) * u + rise,
-        z: earth.z + (moonLead.z - earth.z) * u,
-      });
-    }
-    return out;
-  }
-
-  // Mars: Hohmann-like transfer ellipse from Earth's current angle
-  const fromAng = angOf("earth", t);
-  const r1 = AU;
-  const r2 = 102;
-  const a = (r1 + r2) / 2;
-  const e = Math.abs(r2 - r1) / (r1 + r2);
-  // Phase of Mars at departure for intercept (simplified lead)
-  const marsAng0 = angOf("mars", t);
-  // Transfer true anomaly 0 → π
   for (let i = 0; i <= n; i++) {
     const u = i / n;
-    const th = u * Math.PI;
-    const r = (a * (1 - e * e)) / (1 + e * Math.cos(th));
-    const ang = fromAng + th;
-    // Slight inclination for visibility
-    const y = Math.sin(u * Math.PI) * 4.5;
-    out.push({ x: Math.cos(ang) * r, y, z: Math.sin(ang) * r });
+    if (dest === "moon") {
+      out.push({
+        x: earth.x + (destP.x - earth.x) * u,
+        y: earth.y + (destP.y - earth.y) * u + Math.sin(u * Math.PI) * 1.6,
+        z: earth.z + (destP.z - earth.z) * u,
+      });
+    } else {
+      out.push({
+        x: earth.x * (1 - u) + destP.x * u,
+        y: 5 * Math.sin(u * Math.PI) + earth.y * (1 - u) + destP.y * u,
+        z: earth.z * (1 - u) + destP.z * u,
+      });
+    }
   }
-  // Nudge endpoint toward current Mars position so the corridor stays relevant
-  const marsNow = posOf("mars", t, cache);
-  const last = out[out.length - 1];
-  if (last) {
-    const blend = 0.35;
-    last.x = last.x * (1 - blend) + marsNow.x * blend;
-    last.y = last.y * (1 - blend) + marsNow.y * blend;
-    last.z = last.z * (1 - blend) + marsNow.z * blend;
-  }
-  void marsAng0;
   return out;
-}
-
-/** Cumulative path length of a polyline in world units. */
-export function pathLength(pts: V[]): number {
-  let sum = 0;
-  for (let i = 1; i < pts.length; i++) {
-    const a = pts[i - 1];
-    const b = pts[i];
-    sum += Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
-  }
-  return sum;
-}
-
-/** Format a distance in world units for HUD (Moon scale vs AU scale). */
-export function formatDistSmart(units: number, dest: "moon" | "mars"): string {
-  if (dest === "moon" || units < 50) {
-    const km = units * (384400 / 16);
-    if (km >= 1e6) return `${(km / 1e6).toFixed(2)} million km`;
-    if (km >= 1000) return `${(km / 1000).toFixed(0)} thousand km`;
-    return `${km.toFixed(0)} km`;
-  }
-  const au = units / AU;
-  if (au < 0.01) {
-    const km = au * 1.496e8;
-    return `${(km / 1000).toFixed(0)} thousand km`;
-  }
-  if (au < 0.5) return `${(au * 1.496e8 / 1e6).toFixed(1)} million km`;
-  return `${au.toFixed(2)} AU`;
-}
-
-/** Azimuth (0–360°) and elevation (−90…+90°) of a world direction relative to ship frame.
- *  Azimuth: 0 = +Z projected, increasing clockwise when viewed from above (+Y).
- *  Elevation: angle above the local horizontal plane of the ship. */
-export function azElFromCam(cam: V): { az: number; el: number } {
-  const horiz = Math.hypot(cam.x, cam.z) || 1e-9;
-  const el = (Math.atan2(cam.y, horiz) * 180) / Math.PI;
-  let az = (Math.atan2(cam.x, -cam.z) * 180) / Math.PI;
-  if (az < 0) az += 360;
-  return { az, el };
 }
 
 /** Hohmann ellipse in the ecliptic, sun at a focus, periapsis aligned with `fromAng`. */
@@ -618,7 +845,7 @@ export function hohmannEllipse(r1: number, r2: number, fromAng: number, n = 72):
   const e = Math.abs(r2 - r1) / (r1 + r2);
   const out: V[] = [];
   for (let i = 0; i <= n; i++) {
-    const th = (i / n) * Math.PI; // 0 at periapsis → π at apoapsis (the transfer half)
+    const th = (i / n) * Math.PI;
     const r = (a * (1 - e * e)) / (1 + e * Math.cos(th));
     const ang = fromAng + th;
     out.push({ x: Math.cos(ang) * r, y: 0, z: Math.sin(ang) * r });
@@ -627,7 +854,6 @@ export function hohmannEllipse(r1: number, r2: number, fromAng: number, n = 72):
 }
 
 export function orbitSpeedHint(orbit: number): number {
-  // vis-viva analog for near-circular: v ∝ 1/√r
   return 1 / Math.sqrt(Math.max(8, orbit) / AU);
 }
 
@@ -635,7 +861,20 @@ const textures = new Map<string, HTMLCanvasElement>();
 const photos = new Map<string, HTMLImageElement>();
 let photosStarted = false;
 
-const PHOTO_IDS = ["earth", "moon", "mars", "jupiter", "saturn", "sun", "venus", "uranus", "andromeda"] as const;
+const PHOTO_IDS = [
+  "earth",
+  "moon",
+  "mars",
+  "jupiter",
+  "saturn",
+  "sun",
+  "venus",
+  "uranus",
+  "andromeda",
+  "mercury",
+  "neptune",
+  "lmc",
+] as const;
 
 export function warmupPhotos() {
   if (photosStarted || typeof Image === "undefined") return;
@@ -645,20 +884,14 @@ export function warmupPhotos() {
     im.crossOrigin = "anonymous";
     im.decoding = "async";
     im.src = `/cosmos/${id}.webp`;
-    im.onerror = () => { im.dataset.failed = "1"; };
     photos.set(id, im);
   }
 }
 
 export function photoOf(id: string): HTMLImageElement | null {
   const im = photos.get(id);
-  if (im && im.dataset.failed !== "1" && im.complete && im.naturalWidth > 1 && im.naturalHeight > 1) return im;
+  if (im && im.complete && im.naturalWidth > 1) return im;
   return null;
-}
-
-/** Return a warmed image while it is still loading so renderers can subscribe to load/error. */
-export function photoImage(id: string): HTMLImageElement | null {
-  return photos.get(id) ?? null;
 }
 
 function bake(id: string, paint: (g: CanvasRenderingContext2D, w: number, h: number) => void, size = 384) {
@@ -846,6 +1079,14 @@ export function formatRange(units: number, dest: "moon" | "mars"): string {
     return `${km.toFixed(0)} km`;
   }
   const au = units / AU;
-  if (au < 0.08) return `${(au * 1.496e8 / 1000).toFixed(0)} thousand km`;
+  if (au < 0.08) return `${((au * 1.496e8) / 1000).toFixed(0)} thousand km`;
   return `${au.toFixed(2)} AU`;
+}
+
+export function distToSeg(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const vx = bx - ax;
+  const vy = by - ay;
+  const l2 = vx * vx + vy * vy || 1;
+  const t = Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / l2));
+  return Math.hypot(px - (ax + t * vx), py - (ay + t * vy));
 }

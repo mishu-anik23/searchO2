@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { formatKg } from "@/lib/utils";
-import { SurfaceScene3D } from "./three/SurfaceScene3D";
 
 export function Surface() {
   const mission = useGame((s) => s.mission);
@@ -21,7 +20,7 @@ export function Surface() {
 
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
-      <SurfaceArt3D dest={mission.destination} step={plantStep} />
+      <SurfaceArt dest={mission.destination} step={plantStep} />
       <aside className="rounded-xl border border-border bg-surface p-5">
         <Badge tone="accent">{dest.plantName}</Badge>
         <h1 className="mt-3 font-display text-2xl font-semibold">
@@ -80,7 +79,7 @@ export function Habitat() {
 
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]">
-      <HabitatArt3D step={habitatStep} dest={mission.destination} />
+      <HabitatArt step={habitatStep} dest={mission.destination} />
       <aside className="rounded-xl border border-border bg-surface p-5">
         <Badge>Crew habitat</Badge>
         <h1 className="mt-3 font-display text-2xl font-semibold">{done ? "A place to stay" : step.title}</h1>
@@ -114,10 +113,6 @@ export function Habitat() {
       </aside>
     </div>
   );
-}
-
-function SurfaceArt3D({ dest, step }: { dest: "moon" | "mars"; step: number }) {
-  return <SurfaceScene3D dest={dest} step={step} />;
 }
 
 function SurfaceArt({ dest, step }: { dest: "moon" | "mars"; step: number }) {
@@ -186,11 +181,6 @@ function SurfaceArt({ dest, step }: { dest: "moon" | "mars"; step: number }) {
       </svg>
     </div>
   );
-}
-
-function HabitatArt3D({ step, dest }: { step: number; dest: "moon" | "mars" }) {
-  // Reuse the surface scene as the backdrop for habitat construction
-  return <SurfaceScene3D dest={dest} step={Math.max(step, 1)} />;
 }
 
 function HabitatArt({ step, dest }: { step: number; dest: "moon" | "mars" }) {
