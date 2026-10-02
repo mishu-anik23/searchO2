@@ -1097,6 +1097,34 @@
         { sp: "O", w: 0.01 }, { sp: "B", w: 0.05 }, { sp: "A", w: 0.10 },
         { sp: "F", w: 0.15 }, { sp: "G", w: 0.20 }, { sp: "K", w: 0.25 }, { sp: "M", w: 0.24 }
       ];
+      const kindMap = {
+        O: "Class O Blue Hypergiant",
+        B: "Class B Blue Subgiant",
+        A: "Class A White Main-Sequence Star",
+        F: "Class F Yellow-White Star",
+        G: "Class G Yellow Dwarf (Solar Analog)",
+        K: "Class K Orange Main-Sequence Star",
+        M: "Class M Red Dwarf Flare Star"
+      };
+      const tempMap = {
+        O: "Teff ~38,000 K",
+        B: "Teff ~18,500 K",
+        A: "Teff ~9,400 K",
+        F: "Teff ~6,600 K",
+        G: "Teff ~5,780 K",
+        K: "Teff ~4,400 K",
+        M: "Teff ~3,100 K"
+      };
+      const factMap = {
+        O: "Colossally luminous and hot star consuming hydrogen at furious rates; lives only ~10 million years before ending in a core-collapse supernova.",
+        B: "Intensely luminous blue star emitting high-energy ultraviolet radiation; frequently anchors OB stellar associations in spiral arms.",
+        A: "Rapidly rotating white star featuring prominent hydrogen Balmer spectral lines; often hosts circum-stellar debris disks like Vega.",
+        F: "Stable star with a broad habitable zone; slightly more massive (1.3 M☉) and hotter than our Sun.",
+        G: "True solar analog star undergoing stable core hydrogen fusion via the proton-proton chain with a ~10-billion-year main sequence lifetime.",
+        K: "Long-lived orange dwarf star with exceptionally stable irradiance and low flare rates, ideal for habitable exoplanet searches.",
+        M: "Abundant red dwarf with stellar longevity exceeding 100 billion years; exhibits deep convective zones and magnetic flares."
+      };
+
       for (let i = 0; i < n; i++) {
         const u = r() * 2 - 1;
         const th = r() * Math.PI * 2;
@@ -1114,12 +1142,29 @@
           if (roll <= 0) { sp = sw.sp; break; }
         }
         const col = spectralColor(sp);
+
+        const hipId = 1000 + (i * 31) % 117000;
+        const hdId = 12000 + (i * 47) % 220000;
+        const starName = i % 2 === 0 ? `HIP ${hipId}` : `HD ${hdId}`;
+        const distLy = 32 + ((i * 37) % 2850);
+        const raH = Math.floor(((Math.atan2(z, x) + Math.PI) / (2 * Math.PI)) * 24);
+        const raM = Math.floor(((((Math.atan2(z, x) + Math.PI) / (2 * Math.PI)) * 24) % 1) * 60);
+        const decD = (Math.asin(Math.max(-1, Math.min(1, y))) * (180 / Math.PI)).toFixed(1);
+
         stars.push({
+          id: `star-${i}`,
+          name: starName,
+          kind: kindMap[sp] || "Main Sequence Star",
+          spec: `Class ${sp}V · ${tempMap[sp] || 'Teff ~5,500 K'}`,
+          dist: `${distLy} ly`,
+          mag: `+${appMag.toFixed(2)}`,
+          coords: `RA ${raH}h ${raM}m · Dec ${decD}°`,
+          fact: factMap[sp] || "Cataloged spectral star in the Hipparcos cosmic survey.",
           x: x * 850, y: y * 850, z: z * 850,
           b: bright,
           s: Math.max(0.6, Math.min(2.8, 0.6 + (6.2 - appMag) * 0.38)),
           cr: col.r, cg: col.g, cb: col.b,
-          mag: appMag, spectral: sp
+          spectral: sp
         });
       }
       return stars;
@@ -1139,14 +1184,30 @@
         const warm = r();
         const appMag = 3.2 + r() * 3.8;
         const bright = Math.max(0.18, Math.min(0.95, Math.pow(2.512, 5.2 - appMag) * 0.4));
+
+        const starId = `mw-${i}`;
+        const starName = `MWC ${4000 + (i * 19) % 89000}`;
+        const distLy = 22000 + (i * 13) % 8000;
+        const raH = Math.floor(((Math.atan2(z, x) + Math.PI) / (2 * Math.PI)) * 24);
+        const raM = Math.floor(((((Math.atan2(z, x) + Math.PI) / (2 * Math.PI)) * 24) % 1) * 60);
+        const decD = (Math.asin(Math.max(-1, Math.min(1, y / len))) * (180 / Math.PI)).toFixed(1);
+
         stars.push({
+          id: starId,
+          name: starName,
+          kind: "Milky Way Galactic Bulge Population II Star",
+          spec: "Pop II Intermediate Metal-Poor · Teff ~4,800 K",
+          dist: `${distLy} ly (Bulge)`,
+          mag: `+${appMag.toFixed(2)}`,
+          coords: `RA ${raH}h ${raM}m · Dec ${decD}°`,
+          fact: "Ancient Population II star residing in the dense stellar core of the Milky Way, formed during early galactic assembly >10 billion years ago.",
           x: (x / len) * 850, y: (y / len) * 850, z: (z / len) * 850,
           b: bright,
           s: 0.5 + r() * 1.2,
           cr: Math.round(230 + warm * 25),
           cg: Math.round(215 + (1 - warm) * 30),
           cb: Math.round(195 + r() * 45),
-          mag: appMag, spectral: "MilkyWay"
+          spectral: "MilkyWay"
         });
       }
       return stars;
@@ -1425,12 +1486,18 @@
         
         ctx.fillStyle = `rgba(${st.cr}, ${st.cg}, ${st.cb}, ${alpha})`;
         if (st.b > 0.42 && sz > 1.2) {
-          // Dual pass core + halo glow
-          ctx.fillRect(pr.px - sz * 0.5, pr.py - sz * 0.5, sz, sz);
-          ctx.fillStyle = `rgba(${st.cr}, ${st.cg}, ${st.cb}, ${alpha * 0.35})`;
-          ctx.fillRect(pr.px - sz, pr.py - sz, sz * 2, sz * 2);
+          // Dual pass core + halo glow (smooth circular anti-aliased arcs)
+          ctx.beginPath();
+          ctx.arc(pr.px, pr.py, sz * 0.65, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `rgba(${st.cr}, ${st.cg}, ${st.cb}, ${alpha * 0.32})`;
+          ctx.beginPath();
+          ctx.arc(pr.px, pr.py, sz * 1.8, 0, Math.PI * 2);
+          ctx.fill();
         } else {
-          ctx.fillRect(pr.px, pr.py, sz, sz);
+          ctx.beginPath();
+          ctx.arc(pr.px, pr.py, Math.max(0.65, sz * 0.55), 0, Math.PI * 2);
+          ctx.fill();
         }
       }
 
@@ -1445,7 +1512,9 @@
         const pr = projectPoint(rx, ry, rz, w, h, cameraFov);
         if (!pr || pr.px < 0 || pr.px > w || pr.py < 0 || pr.py > h) continue;
         const sz = Math.max(1.0, rock.sz * pr.scale * 0.04);
-        ctx.fillRect(pr.px, pr.py, sz, sz);
+        ctx.beginPath();
+        ctx.arc(pr.px, pr.py, Math.max(0.7, sz * 0.55), 0, Math.PI * 2);
+        ctx.fill();
       }
 
       // 4. OrbitPaths: Dashed Keplerian Orbital Path Rings for All Planets
@@ -1525,10 +1594,12 @@
           ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
           ctx.fill();
 
-          // Dark dust lane for Sombrero & Andromeda
+          // Dark dust lane for Sombrero & Andromeda (smooth curved ellipse)
           if (gxy.id === "m104" || gxy.id === "andromeda") {
-            ctx.fillStyle = "rgba(8, 10, 16, 0.55)";
-            ctx.fillRect(-rx * 0.85, -1, rx * 1.7, 2);
+            ctx.fillStyle = "rgba(8, 10, 16, 0.65)";
+            ctx.beginPath();
+            ctx.ellipse(0, 0, rx * 0.85, Math.max(1.2, ry * 0.16), 0, 0, Math.PI * 2);
+            ctx.fill();
           }
         }
         ctx.restore();
@@ -1701,6 +1772,17 @@
       for (const gxy of GALAXIES) {
         const pr = projectPoint(gxy.dir.x * 700, gxy.dir.y * 700, gxy.dir.z * 700, w, h, cameraFov);
         if (pr) candidates.push({ body: gxy, pr, rad: 22 });
+      }
+
+      // Add 5,400 catalog stars near aim/cursor or active target to targeting pool
+      for (const st of STAR_CATALOG) {
+        const pr = projectPoint(st.x, st.y, st.z, w, h, cameraFov);
+        if (!pr || pr.px < 0 || pr.px > w || pr.py < 0 || pr.py > h) continue;
+        if (Math.abs(pr.px - aimX) < 42 && Math.abs(pr.py - aimY) < 42) {
+          candidates.push({ body: st, pr, rad: 8 });
+        } else if (lockedTarget && lockedTarget.id === st.id) {
+          candidates.push({ body: st, pr, rad: 8 });
+        }
       }
 
       // Find candidate under aim / cursor
