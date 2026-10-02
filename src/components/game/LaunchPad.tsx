@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { LaunchScene, type LaunchPhase } from "./LaunchScene";
+import { createLaunchSim, LAUNCH_EDUCATION, type LaunchTelemetry, toGamePhase } from "@/game/launch/launchPhysics";
 import { cn } from "@/lib/utils";
 
 export function LaunchPad() {
@@ -240,59 +241,75 @@ function LaunchRun() {
   const finishLaunch = useGame((s) => s.finishLaunch);
   const reduced = useGame((s) => s.reducedMotion);
   const openLibrary = useGame((s) => s.openLibrary);
+  const windKnots = useGame((s) => s.windKnots);
   const [phase, setPhase] = useState<LaunchPhase>("countdown");
   const [tMinus, setTMinus] = useState(10);
   const [altitude, setAltitude] = useState(0);
   const [gantry, setGantry] = useState(false);
-  const acc = useRef(0);
+  const [tel, setTel] = useState<LaunchTelemetry | null>(null);
+  const [eduId, setEduId] = useState<string | null>(null);
+  const [callout, setCallout] = useState("");
+  const sim = useRef<ReturnType<typeof createLaunchSim> | null>(null);
   const last = useRef(0);
   const lastBeep = useRef(10);
   const fired = useRef({ rumble: false, zero: false });
+  const seenEdu = useRef(new Set<string>());
 
   useEffect(() => {
+    if (!mission) return;
+    sim.current = createLaunchSim(mission.rocket, reduced);
     last.current = performance.now();
     let id = 0;
     const loop = (now: number) => {
       const dt = Math.min(0.1, (now - last.current) / 1000);
       last.current = now;
-      acc.current += dt;
-      const speed = reduced ? 2.4 : 1;
-      const t = acc.current * speed;
+      const s = sim.current;
+      if (!s) return;
+      const snap = s.step(dt);
+      const sp = s.getPhase();
+      const gp = toGamePhase(sp);
+      setPhase(gp);
+      setTel(snap);
+      setTMinus(s.getCountdown());
+      setAltitude(snap.altitudeNorm);
+      setGantry(s.getCountdown() < 7 || snap.missionTime > 0);
 
-      if (t < 10) {
-        const next = 10 - t;
-        setPhase("countdown");
-        setTMinus(next);
-        setGantry(t > 3);
-        const whole = Math.ceil(next);
+      // Audio
+      if (gp === "countdown") {
+        const whole = Math.ceil(s.getCountdown());
         if (whole < lastBeep.current && whole >= 0) {
           lastBeep.current = whole;
           tickCountdown();
         }
-      } else if (t < 11.6) {
-        if (!fired.current.rumble) {
-          fired.current.rumble = true;
-          rumble(1.4);
+      }
+      if (gp === "ignition" && !fired.current.rumble) {
+        fired.current.rumble = true;
+        rumble(1.4);
+        setCallout("Engine ignition sequence start.");
+      }
+      if (gp === "liftoff" && !fired.current.zero) {
+        fired.current.zero = true;
+        tickZero();
+        setCallout("Liftoff.");
+      }
+      if (gp === "maxq") setCallout("Maximum dynamic pressure.");
+      if (gp === "sep") setCallout("Stage separation.");
+      if (gp === "space") setCallout("Vehicle has cleared the sensible atmosphere.");
+
+      // Education events (non-blocking)
+      for (const ev of LAUNCH_EDUCATION) {
+        if (seenEdu.current.has(ev.id)) continue;
+        let hit = false;
+        if (ev.trigger === gp) hit = true;
+        if (ev.trigger === "altitude" && ev.altMin != null && snap.altitudeM >= ev.altMin) hit = true;
+        if (hit) {
+          seenEdu.current.add(ev.id);
+          setEduId(ev.id);
+          break;
         }
-        setPhase("ignition");
-        setTMinus(0);
-      } else if (t < 16) {
-        if (!fired.current.zero) {
-          fired.current.zero = true;
-          tickZero();
-        }
-        setPhase("liftoff");
-        setAltitude((t - 11.6) / 14);
-      } else if (t < 19) {
-        setPhase("maxq");
-        setAltitude((t - 11.6) / 14);
-      } else if (t < 22) {
-        setPhase("sep");
-        setAltitude((t - 11.6) / 14);
-      } else if (t < 26) {
-        setPhase("space");
-        setAltitude(Math.min(1, (t - 11.6) / 14));
-      } else {
+      }
+
+      if (s.isDone()) {
         finishLaunch();
         return;
       }
@@ -300,12 +317,16 @@ function LaunchRun() {
     };
     id = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(id);
-  }, [reduced, finishLaunch]);
+  }, [mission, reduced, finishLaunch]);
 
   if (!mission) return null;
+  const dest = DESTINATIONS[mission.destination];
+  const rocket = ROCKETS[mission.rocket];
+  const edu = LAUNCH_EDUCATION.find((e) => e.id === eduId);
+  const cloudDensity = Math.max(0.2, Math.min(1, 1 - windKnots / 40));
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1.2fr)_20rem]">
+    <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[minmax(0,1.2fr)_22rem]">
       <LaunchScene
         rocket={mission.rocket}
         phase={phase}
@@ -313,34 +334,89 @@ function LaunchRun() {
         altitude={altitude}
         gantryOpen={gantry}
         reduced={reduced}
+        telemetry={tel ?? undefined}
+        windKnots={windKnots}
+        cloudDensity={cloudDensity}
       />
-      <aside className="rounded-xl border border-border bg-surface p-5">
-        <Badge tone="accent">{phase.toUpperCase()}</Badge>
-        <h2 className="mt-3 font-display text-xl font-semibold">{caption(phase)}</h2>
-        <p className="mt-2 text-sm text-muted">{explain(phase)}</p>
-        {phase === "maxq" && (
-          <button
-            type="button"
-            className="mt-3 text-sm text-accent underline-offset-2 hover:underline"
-            onClick={() => openLibrary("maxq")}
-          >
-            What is Max-Q?
-          </button>
+      <aside className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="accent">{phase.toUpperCase()}</Badge>
+          <span className="font-mono text-[10px] text-muted">
+            {dest.name.toUpperCase()} · {rocket.name}
+          </span>
+        </div>
+        <h2 className="font-display text-xl font-semibold">{caption(phase)}</h2>
+        <p className="text-sm text-muted">{explain(phase)}</p>
+        {callout && (
+          <p className="rounded border border-accent/30 bg-bg/60 px-2 py-1 font-mono text-[11px] text-accent">
+            MCC: {callout}
+          </p>
         )}
-        <ol className="mt-4 space-y-1 font-mono text-xs text-muted">
+        {tel && phase !== "countdown" && phase !== "idle" && (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-[11px] tabular-nums">
+            <dt className="text-muted">Altitude</dt>
+            <dd className="text-right text-fg">
+              {tel.altitudeM < 1000
+                ? `${Math.round(tel.altitudeM)} m`
+                : `${(tel.altitudeM / 1000).toFixed(1)} km`}
+            </dd>
+            <dt className="text-muted">Velocity</dt>
+            <dd className="text-right text-fg">{Math.round(tel.totalVelocityMps)} m/s</dd>
+            <dt className="text-muted">Accel</dt>
+            <dd className="text-right text-fg">{(tel.accelerationMps2 / 9.81).toFixed(1)} g</dd>
+            <dt className="text-muted">Throttle</dt>
+            <dd className="text-right text-fg">{Math.round(tel.throttle * 100)}%</dd>
+            <dt className="text-muted">Dyn. Q</dt>
+            <dd className="text-right text-fg">{(tel.dynamicPressurePa / 1000).toFixed(1)} kPa</dd>
+            <dt className="text-muted">Pitch</dt>
+            <dd className="text-right text-fg">{tel.pitchDeg.toFixed(0)}°</dd>
+            <dt className="text-muted">Atmosphere</dt>
+            <dd className="text-right text-fg">{Math.round(tel.atmosphericFraction * 100)}%</dd>
+            <dt className="text-muted">Downrange</dt>
+            <dd className="text-right text-fg">{tel.downrangeKm.toFixed(1)} km</dd>
+            <dt className="text-muted">MET</dt>
+            <dd className="text-right text-fg">
+              T+{Math.max(0, tel.missionTime).toFixed(1)}s
+            </dd>
+          </dl>
+        )}
+        {edu && (
+          <article className="rounded-md border border-accent/35 bg-bg/80 p-3">
+            <p className="font-display text-sm font-semibold text-fg">{edu.title}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">{edu.shortText}</p>
+            {edu.libraryId && (
+              <button
+                type="button"
+                className="mt-2 text-xs text-accent underline-offset-2 hover:underline"
+                onClick={() => openLibrary(edu.libraryId!)}
+              >
+                Learn more
+              </button>
+            )}
+            <button
+              type="button"
+              className="mt-1 block text-[10px] text-muted hover:text-fg"
+              onClick={() => setEduId(null)}
+            >
+              Dismiss
+            </button>
+          </article>
+        )}
+        <ol className="mt-auto space-y-1 font-mono text-xs text-muted">
           {["countdown", "ignition", "liftoff", "maxq", "sep", "space"].map((p) => (
             <li key={p} className={cn(p === phase && "text-accent")}>
               {p}
             </li>
           ))}
         </ol>
-        <Button variant="secondary" className="mt-6 w-full" onClick={finishLaunch}>
+        <Button variant="secondary" className="w-full" onClick={finishLaunch}>
           Skip to cruise
         </Button>
       </aside>
     </div>
   );
 }
+
 
 function caption(phase: LaunchPhase) {
   switch (phase) {

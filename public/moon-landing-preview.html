@@ -224,13 +224,76 @@
       content: "ⓘ";
       font-size: 11px;
     }
+
+    /* ACTIVITY MODAL & GAMIFICATION */
+    .gamify-pills {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      gap: 8px;
+      z-index: 15;
+    }
+    .pill {
+      background: rgba(19, 24, 32, 0.85);
+      border: 1px solid #2A3344;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+      backdrop-filter: blur(8px);
+    }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 12, 18, 0.85);
+      backdrop-filter: blur(10px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+    .activity-card {
+      background: #131820;
+      border: 1px solid #7EB8C9;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      padding: 24px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 24px rgba(126,184,201,0.2);
+    }
+    .btn-secondary {
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px;
+      background: #1A222E;
+      color: #7EB8C9;
+      border: 1px solid #2A3344;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .btn-secondary:hover {
+      background: rgba(126, 184, 201, 0.15);
+      border-color: #7EB8C9;
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="brand-group">
-      <span class="badge">MISSION SCHOOL</span>
-      <h1>OxyForge — Moon Landing (3D)</h1>
+      <span class="badge" id="headerBadge">MISSION SCHOOL</span>
+      <h1 id="headerTitle">OxyForge — Moon Landing &amp; Polar ISRU Plant (3D)</h1>
     </div>
     <div class="header-nav">
       <a href="oxyforge.html" class="nav-link">
@@ -262,24 +325,32 @@
   <div class="layout">
     <div id="canvas-wrap">
       <canvas id="c"></canvas>
-      <div class="hud">
+      <div class="hud" id="hud-box">
         <div id="hud-call">LOI · ALT 500 km</div>
         <div class="muted" id="hud-speed">2.3 → 1.6 km/s</div>
       </div>
-      <div class="hint">Drag to orbit · scroll zoom · hover glowing markers for science</div>
+      <div class="gamify-pills" id="gamifyPills">
+        <span class="pill" id="pillXp" style="color:#00E5FF;border-color:rgba(0,229,255,0.4);">⚡ 0 XP</span>
+        <span class="pill" id="pillO2" style="color:#6FBF9A;border-color:rgba(111,191,154,0.4);">💧 0 kg O₂</span>
+        <span class="pill" id="pillBadge" style="color:#FFB300;border-color:rgba(255,179,0,0.4);">🏅 0 Badges</span>
+      </div>
+      <div class="hint" id="canvasHint">Drag to orbit · scroll zoom · hover glowing markers for science</div>
       <div id="tooltip"></div>
     </div>
     <aside class="panel">
       <div>
         <span class="callsign" id="callsign">LOI</span>
-        <span class="dest">Moon landing</span>
+        <span class="dest" id="phaseTag">Phase 1 · Moon Landing</span>
       </div>
       <h2 id="title">Capture burn</h2>
       <p class="body" id="body">Fire retrograde as you swing behind the Moon. The oval closes. Miss this burn and you fly past into solar orbit.</p>
       <div class="why" id="why">The Moon’s gravity is weak. Speed that was fine for the coast is too fast to stay.</div>
+      <div id="mathCard" style="display:none;background:#1A222E;border:1px solid #2A3344;padding:8px 12px;border-radius:6px;font-family:ui-monospace,monospace;font-size:0.8rem;color:#6FBF9A;margin-bottom:14px;">
+        <span id="mathFormula">2 H₂O → 2 H₂ + O₂</span>
+      </div>
       <div class="stats">
-        <div class="stat"><dt>Altitude</dt><dd id="alt">500 km</dd></div>
-        <div class="stat"><dt>Speed</dt><dd id="speed">2.3 → 1.6 km/s</dd></div>
+        <div class="stat"><dt id="statLabel1">Altitude</dt><dd id="alt">500 km</dd></div>
+        <div class="stat"><dt id="statLabel2">Speed</dt><dd id="speed">2.3 → 1.6 km/s</dd></div>
       </div>
       <div class="progress-label">
         <span id="step-label">Step 1 / 6</span>
@@ -288,8 +359,32 @@
       <div class="progress-bar"><div class="progress-fill" id="bar" style="width:17%"></div></div>
       <ol class="steps" id="steps-list"></ol>
       <button class="next" id="btn">Run LLO →</button>
-      <p class="fact-note">Hover the cyan markers in the 3D view for extra science. No air on the Moon — every metre of leftover orbital speed is propellant.</p>
+      <button class="btn-secondary" id="btnActivity" style="display:none;" onclick="openActivityModal()">
+        <span>📖</span>
+        <span>Open Classroom Activity Card</span>
+      </button>
+      <p class="fact-note" id="factNote">Hover the cyan markers in the 3D view for extra science. No air on the Moon — every metre of leftover orbital speed is propellant.</p>
     </aside>
+  </div>
+
+  <!-- CLASSROOM ACTIVITY MODAL -->
+  <div id="activityModal" class="modal-backdrop">
+    <div class="activity-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span id="actBadge" class="badge">ISRU BADGE</span>
+        <button onclick="closeActivityModal()" style="background:none;border:none;color:#8B97A8;font-size:1.4rem;cursor:pointer;">✕</button>
+      </div>
+      <h3 id="actTitle" style="font-size:1.25rem;color:#FFF;margin-bottom:8px;">Activity Title</h3>
+      <p id="actKid" style="color:#7EB8C9;font-size:0.9rem;line-height:1.45;margin-bottom:12px;"></p>
+      <p id="actBody" style="color:#8B97A8;font-size:0.85rem;line-height:1.45;margin-bottom:12px;"></p>
+      <div id="actMathBox" style="display:none;background:#1A222E;border:1px solid #2A3344;padding:10px 12px;border-radius:6px;font-family:ui-monospace,monospace;font-size:0.82rem;color:#6FBF9A;margin-bottom:14px;">
+        <span id="actMath"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
+        <span id="actXpBonus" style="color:#FFB300;font-family:ui-monospace,monospace;font-size:0.85rem;font-weight:700;">+50 Research XP</span>
+        <button id="actCompleteBtn" class="next" style="width:auto;padding:8px 18px;margin-top:0;" onclick="claimActivityXp()">Claim Badge &amp; Advance →</button>
+      </div>
+    </div>
   </div>
 
   <script type="importmap">
@@ -543,6 +638,257 @@
     lander.add(plume);
     scene.add(lander);
 
+    // --- 3D POLAR ISRU SURFACE PLANT EQUIPMENT ---
+    const isruGroup = new THREE.Group();
+    isruGroup.visible = false;
+    scene.add(isruGroup);
+
+    // 1. Polar Ground Terrain with subtle undulating craters
+    const isruGroundGeo = new THREE.PlaneGeometry(32, 32, 48, 48);
+    const posAttr = isruGroundGeo.attributes.position;
+    for (let i = 0; i < posAttr.count; i++) {
+      const x = posAttr.getX(i);
+      const y = posAttr.getY(i);
+      let h = Math.sin(x * 0.35) * 0.08 + Math.cos(y * 0.28) * 0.06;
+      if (Math.hypot(x, y) < 1.4) h *= 0.2;
+      posAttr.setZ(i, h);
+    }
+    posAttr.needsUpdate = true;
+    isruGroundGeo.computeVertexNormals();
+    const isruGround = new THREE.Mesh(
+      isruGroundGeo,
+      new THREE.MeshStandardMaterial({ color: 0x2A3344, roughness: 0.95, metalness: 0.04 })
+    );
+    isruGround.rotation.x = -Math.PI / 2;
+    isruGroup.add(isruGround);
+
+    // 2. Central Plant Pad
+    const isruPad = new THREE.Mesh(
+      new THREE.CircleGeometry(1.8, 32),
+      new THREE.MeshStandardMaterial({ color: 0x1A222E, roughness: 0.9 })
+    );
+    isruPad.rotation.x = -Math.PI / 2;
+    isruPad.position.y = 0.02;
+    isruGroup.add(isruPad);
+
+    // 3. Solar Array Wings
+    const solarGroup = new THREE.Group();
+    solarGroup.position.set(2.0, 1.0, -1.8);
+    const solarWingMat = new THREE.MeshStandardMaterial({
+      color: 0x1a3048,
+      emissive: 0x3a6a90,
+      emissiveIntensity: 0.2,
+      metalness: 0.5
+    });
+    const solarWing = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.05, 1.1), solarWingMat);
+    solarWing.rotation.set(0.25, 0.35, 0);
+    solarGroup.add(solarWing);
+    const solarMast = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.08, 1.1, 8),
+      new THREE.MeshStandardMaterial({ color: 0x8B97A8 })
+    );
+    solarMast.position.y = -0.55;
+    solarGroup.add(solarMast);
+    isruGroup.add(solarGroup);
+
+    // 4. Mining Rover with Scoop
+    const roverGroup = new THREE.Group();
+    roverGroup.position.set(2.8, 0.28, 1.0);
+    const roverMat = new THREE.MeshStandardMaterial({ color: 0xC5D4E3, roughness: 0.5 });
+    const roverBody = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.38, 0.55), roverMat);
+    roverGroup.add(roverBody);
+    const scoop = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.15, 0.25),
+      new THREE.MeshStandardMaterial({ color: 0x7EB8C9, metalness: 0.6 })
+    );
+    scoop.position.set(0.45, -0.1, 0);
+    roverGroup.add(scoop);
+    [[-0.28, 0.24], [0.28, 0.24], [-0.28, -0.24], [0.28, -0.24]].forEach(([wx, wz]) => {
+      const wheel = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.11, 0.11, 0.09, 12),
+        new THREE.MeshStandardMaterial({ color: 0x1A222E })
+      );
+      wheel.position.set(wx, -0.2, wz);
+      wheel.rotation.z = Math.PI / 2;
+      roverGroup.add(wheel);
+    });
+    isruGroup.add(roverGroup);
+
+    // 5. Thermal Melter Drum
+    const melterMat = new THREE.MeshStandardMaterial({ color: 0x8B97A8, metalness: 0.5 });
+    const melterDrum = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.8, 16), melterMat);
+    melterDrum.position.set(-0.9, 0.45, 0.4);
+    isruGroup.add(melterDrum);
+
+    // 6. Solid Oxide Electrolyzer Box
+    const electroGroup = new THREE.Group();
+    electroGroup.position.set(-2.4, 0.48, 1.4);
+    const electroMat = new THREE.MeshStandardMaterial({ color: 0x4a6070, metalness: 0.45, emissive: 0x7EB8C9, emissiveIntensity: 0.2 });
+    const electroBox = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.75, 0.75), electroMat);
+    electroGroup.add(electroBox);
+    const electroLight = new THREE.PointLight(0x00E5FF, 0.8, 4);
+    electroLight.position.set(0, 0.5, 0);
+    electroGroup.add(electroLight);
+    isruGroup.add(electroGroup);
+
+    // 7. Cryogenic Liquid O2 Tanks
+    const tanksGroup = new THREE.Group();
+    tanksGroup.position.set(-1.1, 0.6, 2.2);
+    const tankMat = new THREE.MeshStandardMaterial({ color: 0xC5D4E3, metalness: 0.6, emissive: 0x6FBF9A, emissiveIntensity: 0.1 });
+    [0, 0.6].forEach(tx => {
+      const tankCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 1.1, 14), tankMat);
+      tankCyl.position.x = tx;
+      tanksGroup.add(tankCyl);
+    });
+    isruGroup.add(tanksGroup);
+
+    // 8. Distant Earth in Lunar Polar Sky
+    const isruEarthGroup = new THREE.Group();
+    isruEarthGroup.position.set(-8, 5.0, -7);
+    const isruEarth = new THREE.Mesh(
+      new THREE.SphereGeometry(0.65, 32, 32),
+      new THREE.MeshStandardMaterial({ color: 0x3d7ab0, emissive: 0x14283d, emissiveIntensity: 0.4, roughness: 0.5 })
+    );
+    isruEarthGroup.add(isruEarth);
+    const isruEarthHalo = new THREE.Mesh(
+      new THREE.SphereGeometry(0.72, 24, 24),
+      new THREE.MeshBasicMaterial({ color: 0x6EB4FF, transparent: true, opacity: 0.35, side: THREE.BackSide })
+    );
+    isruEarthGroup.add(isruEarthHalo);
+    isruGroup.add(isruEarthGroup);
+
+    // 9. Status Beacon
+    const beaconMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 12, 12),
+      new THREE.MeshBasicMaterial({ color: 0x6FBF9A })
+    );
+    beaconMesh.position.set(0, 1.5, 0);
+    isruGroup.add(beaconMesh);
+
+    // --- ISRU PLANT DATA STEPS (FROM DATA.TS) ---
+    const ISRU_STEPS = [
+      {
+        id: "site",
+        callsign: "ISRU-1",
+        title: "Pick the South Pole",
+        body: "Some craters never see sunlight. Ancient water ice has remained frozen there for billions of years. We set up near Shackleton Crater, with solar arrays perched high on the illuminated rim.",
+        kidFriendly: "Mission: choose a polar “freezer” crater for cold-trap ice and a sunny mountain ridge for 24/7 solar electricity.",
+        math: "Solar irradiance at lunar polar ridges ≈ 1,361 W/m². Sun elevation angle ≈ 1.5° above horizon.",
+        alt: "Shackleton Rim (89.9°S)",
+        speed: "0 km/h (Surface)",
+        oxygenKg: 0,
+        xp: 40,
+        badge: "Site Scout",
+        color: "#7EB8C9",
+        hotspots: [
+          { pos: [0, 0.5, 0], label: "Plant Pad", fact: "Central polar foundation anchored into basalt bedrock. Houses the core processing and transfer hub." },
+          { pos: [-8, 5.0, -7], label: "Earth Home Base", fact: "Earth looms 4× larger than the Moon appears from home, constantly hanging at the northern horizon." }
+        ]
+      },
+      {
+        id: "solar",
+        callsign: "ISRU-2",
+        title: "Unfold Solar Arrays",
+        body: "The chemical extraction plant runs entirely on electric power. On the Moon the sky is pitch-black even at noon, but sunlight along polar peaks of eternal light provides months of uninterrupted energy.",
+        kidFriendly: "Unfold the photovoltaic wings! No clouds, no air, pure clean sunlight powering heaters and reactors.",
+        math: "P = A · η · I ≈ 24 m² · 0.32 · 1,361 W/m² ≈ 10.4 kW continuous electric generation.",
+        alt: "Ridge Elevation +1.2 km",
+        speed: "Deploying wings",
+        oxygenKg: 0,
+        xp: 50,
+        badge: "Power Up",
+        color: "#E8C070",
+        hotspots: [
+          { pos: [2.0, 1.2, -1.8], label: "Solar Arrays", fact: "High-efficiency triple-junction solar cells track the low-angle sun circling the lunar polar horizon." }
+        ]
+      },
+      {
+        id: "mine",
+        callsign: "ISRU-3",
+        title: "Mine Ice & Regolith",
+        body: "An autonomous cryogenic rover descends into the permanent shadow. It scoops sub-surface icy soil (5.5 wt% H₂O) and ilmenite-rich regolith, returning them to the processing hub.",
+        kidFriendly: "Rover scoop time: dig icy dirt from the cold shadow freezer and ilmenite rocks packed with trapped oxygen!",
+        math: "Bulk regolith density ≈ 1.5 g/cm³. Water ice fraction in PSR cold traps estimated at 5.5% ± 1.5%.",
+        alt: "PSR Floor (-230°C)",
+        speed: "1.2 km/h rover traverse",
+        oxygenKg: 0,
+        xp: 60,
+        badge: "Regolith Miner",
+        color: "#C9A86F",
+        hotspots: [
+          { pos: [2.8, 0.5, 1.0], label: "Mining Rover", fact: "Heated robotic scoop and sealed hopper prevent volatiles from sublimating during the climb back into sunlight." }
+        ]
+      },
+      {
+        id: "heat",
+        callsign: "ISRU-4",
+        title: "Thermal Sublimation & Melt",
+        body: "We seal the mined regolith inside a closed thermal melter and heat it to 120°C. Water ice sublimates into vapor and is condensed through ceramic particulate dust filters.",
+        kidFriendly: "Bake the dirt gently: ice melts and steams into pure clean water, leaving dusty rocks behind.",
+        math: "Latent heat of vaporization of H₂O ≈ 2,260 kJ/kg. Dust filtration efficiency > 99.8% at 5 microns.",
+        alt: "Thermal Chamber (120°C)",
+        speed: "3.2 kg/hr condensation",
+        oxygenKg: 0,
+        xp: 55,
+        badge: "Ice Melter",
+        color: "#9FD0D4",
+        hotspots: [
+          { pos: [-0.9, 0.7, 0.4], label: "Sublimation Melter", fact: "Rotary drum equipped with infrared quartz heaters drives out water vapor into a sealed condenser coil." }
+        ]
+      },
+      {
+        id: "electrolysis",
+        callsign: "ISRU-5",
+        title: "Split Water (Electrolysis)",
+        body: "Condensed water flows into the Solid Oxide Electrolysis Cell (SOEC). Direct electric current fractures the polar covalent bonds, generating pure oxygen gas at the anode and hydrogen at the cathode.",
+        kidFriendly: "Zap the water with electricity! 2 H₂O → 2 H₂ + O₂. About 89% of water's mass is pure breathable oxygen!",
+        math: "2 H₂O (l) → 2 H₂ (g) + O₂ (g). Molar mass: H₂O = 18.015 g/mol, O₂ = 32.0 g/mol (88.8% O₂ by mass).",
+        alt: "Electrolysis Core (80°C)",
+        speed: "Splitting 50 A/m²",
+        oxygenKg: 180,
+        xp: 100,
+        badge: "O₂ Maker",
+        color: "#6FBF9A",
+        hotspots: [
+          { pos: [-2.4, 0.9, 1.4], label: "Electrolysis Reactor", fact: "Proton exchange membrane splits H₂O molecules into oxygen for life support and hydrogen for recycling." }
+        ]
+      },
+      {
+        id: "store",
+        callsign: "ISRU-6",
+        title: "Cryogenic Liquefaction & LOX Storage",
+        body: "Oxygen gas is routed through a Stirling cryocooler down to 90 Kelvin (-183°C) and compressed into double-walled vacuum-insulated storage tanks as dense liquid oxidizer (LOX).",
+        kidFriendly: "Deep-freeze the oxygen into shimmering pale-blue liquid at -183°C for long-term habitat and rocket fuel tanks!",
+        math: "Liquid O₂ density ≈ 1,141 kg/m³ at 90 K. Cryocooler COP ≈ 0.08 at 90 K.",
+        alt: "Cryo Tanks (90 K / -183°C)",
+        speed: "18.5 bar compression",
+        oxygenKg: 220,
+        xp: 70,
+        badge: "Tank Captain",
+        color: "#80C29B",
+        hotspots: [
+          { pos: [-1.1, 1.0, 2.2], label: "Liquid O₂ Cryotanks", fact: "Multilayer insulation (MLI) blankets prevent boil-off under the vacuum of the lunar environment." }
+        ]
+      },
+      {
+        id: "ilmenite",
+        callsign: "ISRU-7",
+        title: "Ilmenite Hydrogen Reduction",
+        body: "Recycled hydrogen from water splitting is injected into hot lunar basalt at 900°C. Hydrogen strips oxygen from iron titanate minerals (ilmenite), yielding iron, titanium oxide, and additional water!",
+        kidFriendly: "Rock Alchemist Bonus: hot hydrogen pulls oxygen directly out of solid Moon stones (FeTiO₃). Regolith is a massive oxygen treasure bank!",
+        math: "FeTiO₃ + H₂ → Fe + TiO₂ + H₂O (at 900°C), followed by secondary water electrolysis.",
+        alt: "High-Temp Reactor (900°C)",
+        speed: "Mineral reduction",
+        oxygenKg: 310,
+        xp: 120,
+        badge: "Rock Alchemist",
+        color: "#C4896A",
+        hotspots: [
+          { pos: [-0.9, 0.9, 0.4], label: "Ilmenite Reactor", fact: "Enables virtually unlimited oxygen extraction across mare basalts even outside permanently shadowed craters." }
+        ]
+      }
+    ];
+
     // Hotspot markers
     const hotspotMeshes = [];
     const raycaster = new THREE.Raycaster();
@@ -584,6 +930,19 @@
       { pos: [0, 0.18, 0], rot: [0, 0.1, 0], scale: 0.36 },
     ];
 
+    // GAMIFICATION STATE
+    let isIsruMode = false;
+    let isruStep = 0;
+    let totalXp = 0;
+    let totalO2 = 0;
+    const earnedBadges = new Set();
+
+    function updateGamificationDisplay() {
+      document.getElementById("pillXp").textContent = `⚡ ${totalXp} XP`;
+      document.getElementById("pillO2").textContent = `💧 ${totalO2} kg O₂`;
+      document.getElementById("pillBadge").textContent = `🏅 ${earnedBadges.size} Badges`;
+    }
+
     function applyStep(i) {
       const s = STEPS[i];
       const orbital = i <= 2;
@@ -594,6 +953,8 @@
       ring.visible = orbital;
       surfaceGroup.visible = !orbital;
       plume.visible = burn && !landed;
+      isruGroup.visible = false;
+      lander.visible = true;
 
       const p = poses[i];
       lander.position.set(...p.pos);
@@ -604,19 +965,33 @@
 
       // UI
       document.getElementById("callsign").textContent = s.callsign;
+      document.getElementById("phaseTag").textContent = "Phase 1 · Moon Landing";
       document.getElementById("title").textContent = s.title;
       document.getElementById("body").textContent = s.body;
       document.getElementById("why").textContent = s.why;
+      document.getElementById("mathCard").style.display = "none";
+      document.getElementById("btnActivity").style.display = "none";
       document.getElementById("alt").textContent = s.alt;
       document.getElementById("speed").textContent = s.speed;
+      document.getElementById("statLabel1").textContent = "Altitude";
+      document.getElementById("statLabel2").textContent = "Speed";
       document.getElementById("hud-call").textContent = `${s.callsign} · ALT ${s.alt}`;
       document.getElementById("hud-speed").textContent = s.speed;
+
       const pct = Math.round(((i + 1) / STEPS.length) * 100);
       document.getElementById("pct").textContent = pct + "%";
       document.getElementById("bar").style.width = pct + "%";
       document.getElementById("step-label").textContent = `Step ${i + 1} / ${STEPS.length}`;
-      document.getElementById("btn").textContent =
-        i >= STEPS.length - 1 ? "Touchdown complete ✓" : `Run ${STEPS[i + 1].callsign} →`;
+      
+      if (i >= STEPS.length - 1) {
+        document.getElementById("btn").textContent = "Enter Polar ISRU Surface Plant →";
+        document.getElementById("btn").style.background = "linear-gradient(135deg, #00E5FF, #00B0FF)";
+        document.getElementById("btn").style.color = "#090C12";
+      } else {
+        document.getElementById("btn").textContent = `Run ${STEPS[i + 1].callsign} →`;
+        document.getElementById("btn").style.background = "#7EB8C9";
+        document.getElementById("btn").style.color = "#090C12";
+      }
 
       const list = document.getElementById("steps-list");
       list.innerHTML = STEPS.map((st, idx) => {
@@ -626,10 +1001,151 @@
       }).join("");
     }
 
+    // --- TRANSITION TO PHASE 2: POLAR ISRU SURFACE PLANT ---
+    function startIsruPhase() {
+      isIsruMode = true;
+      isruStep = 0;
+      totalXp += 50; // Touchdown bonus!
+      earnedBadges.add("Lunar Touchdown");
+      updateGamificationDisplay();
+
+      // Adjust camera for ground plant inspection
+      camera.position.set(4.2, 3.2, 6.5);
+      controls.target.set(0, 0.4, 0);
+      controls.minDistance = 2.5;
+      controls.maxDistance = 16;
+      controls.maxPolarAngle = Math.PI * 0.48;
+
+      moon.visible = false;
+      ring.visible = false;
+      surfaceGroup.visible = false;
+      lander.visible = false;
+      isruGroup.visible = true;
+
+      document.getElementById("headerBadge").textContent = "PHASE 2 · ISRU PLANT";
+      document.getElementById("headerBadge").style.background = "#00E5FF";
+      document.getElementById("gamifyPills").style.display = "flex";
+      document.getElementById("btnActivity").style.display = "inline-flex";
+
+      applyIsruStep(0);
+    }
+
+    function applyIsruStep(idx) {
+      const s = ISRU_STEPS[idx];
+      totalO2 = s.oxygenKg;
+      if (s.badge && !earnedBadges.has(s.badge)) {
+        earnedBadges.add(s.badge);
+        totalXp += s.xp || 50;
+      }
+      updateGamificationDisplay();
+
+      addHotspots(s.hotspots);
+
+      // Emissive highlights on equipment
+      solarWingMat.emissive.setHex(idx === 1 ? 0xE8C070 : 0x3a6a90);
+      solarWingMat.emissiveIntensity = idx === 1 ? 0.75 : 0.2;
+      roverMat.emissive.setHex(idx === 2 ? 0xC9A86F : 0x000000);
+      roverMat.emissiveIntensity = idx === 2 ? 0.5 : 0.0;
+      melterMat.emissive.setHex(idx === 3 || idx === 6 ? 0xE8C070 : 0x000000);
+      melterMat.emissiveIntensity = idx === 3 || idx === 6 ? 0.6 : 0.0;
+      electroMat.emissive.setHex(idx === 4 ? 0x6FBF9A : 0x7EB8C9);
+      electroMat.emissiveIntensity = idx === 4 ? 0.75 : 0.2;
+      electroLight.intensity = idx === 4 ? 1.5 : 0.6;
+      tankMat.emissive.setHex(idx === 5 ? 0x80C29B : 0x000000);
+      tankMat.emissiveIntensity = idx === 5 ? 0.65 : 0.05;
+
+      // Update UI
+      document.getElementById("callsign").textContent = s.callsign;
+      document.getElementById("phaseTag").textContent = `Phase 2 · ${s.badge.toUpperCase()}`;
+      document.getElementById("title").textContent = s.title;
+      document.getElementById("body").textContent = s.kidFriendly || s.body;
+      document.getElementById("why").textContent = s.body;
+
+      if (s.math) {
+        document.getElementById("mathCard").style.display = "block";
+        document.getElementById("mathFormula").textContent = `🔬 ${s.math}`;
+      } else {
+        document.getElementById("mathCard").style.display = "none";
+      }
+
+      document.getElementById("alt").textContent = s.alt;
+      document.getElementById("speed").textContent = `${totalO2} kg O₂ Stored`;
+      document.getElementById("statLabel1").textContent = "Plant Location";
+      document.getElementById("statLabel2").textContent = "Stored Oxygen";
+      document.getElementById("hud-call").textContent = `${s.callsign} · ${s.title.toUpperCase()}`;
+      document.getElementById("hud-speed").textContent = `${totalO2} kg O₂ · ${totalXp} XP`;
+
+      const pct = Math.round(((idx + 1) / ISRU_STEPS.length) * 100);
+      document.getElementById("pct").textContent = pct + "%";
+      document.getElementById("bar").style.width = pct + "%";
+      document.getElementById("step-label").textContent = `ISRU Step ${idx + 1} / ${ISRU_STEPS.length}`;
+
+      if (idx >= ISRU_STEPS.length - 1) {
+        document.getElementById("btn").textContent = "Mission Success · Return to HQ →";
+        document.getElementById("btn").style.background = "linear-gradient(135deg, #6FBF9A, #4CAF50)";
+        document.getElementById("btn").style.color = "#090C12";
+      } else {
+        document.getElementById("btn").textContent = `Advance to ${ISRU_STEPS[idx + 1].badge} (+${ISRU_STEPS[idx+1].xp} XP) →`;
+        document.getElementById("btn").style.background = "#7EB8C9";
+        document.getElementById("btn").style.color = "#090C12";
+      }
+
+      const list = document.getElementById("steps-list");
+      list.innerHTML = ISRU_STEPS.map((st, i) => {
+        const cls = i < idx ? "done" : i === idx ? "now" : "";
+        const prefix = i < idx ? "Done · " : i === idx ? "Active · " : "";
+        return `<li class="${cls}"><span class="cs">${st.callsign}</span> · ${prefix}${st.title} (${st.badge})</li>`;
+      }).join("");
+    }
+
+    // --- CLASSROOM ACTIVITY MODAL HELPERS ---
+    window.openActivityModal = function() {
+      if (!isIsruMode) return;
+      const s = ISRU_STEPS[isruStep];
+      document.getElementById("actTitle").textContent = s.title;
+      document.getElementById("actBadge").textContent = `🏅 ${s.badge.toUpperCase()}`;
+      document.getElementById("actKid").textContent = s.kidFriendly;
+      document.getElementById("actBody").textContent = s.body;
+      if (s.math) {
+        document.getElementById("actMathBox").style.display = "block";
+        document.getElementById("actMath").textContent = `Formula: ${s.math}`;
+      } else {
+        document.getElementById("actMathBox").style.display = "none";
+      }
+      document.getElementById("actXpBonus").textContent = `+${s.xp || 50} Research XP`;
+      document.getElementById("activityModal").classList.add("open");
+    };
+
+    window.closeActivityModal = function() {
+      document.getElementById("activityModal").classList.remove("open");
+    };
+
+    window.claimActivityXp = function() {
+      window.closeActivityModal();
+      if (isruStep < ISRU_STEPS.length - 1) {
+        isruStep++;
+        applyIsruStep(isruStep);
+      } else {
+        window.location.href = "oxyforge.html";
+      }
+    };
+
+    // --- PRIMARY ACTION BUTTON CLICK ---
     document.getElementById("btn").addEventListener("click", () => {
-      if (step < STEPS.length - 1) {
-        step++;
-        applyStep(step);
+      if (!isIsruMode) {
+        if (step < STEPS.length - 1) {
+          step++;
+          applyStep(step);
+        } else {
+          startIsruPhase();
+        }
+      } else {
+        if (isruStep < ISRU_STEPS.length - 1) {
+          isruStep++;
+          applyIsruStep(isruStep);
+        } else {
+          window.location.href = "oxyforge.html";
+        }
       }
     });
 
@@ -680,6 +1196,10 @@
       if (plume.visible) {
         plume.scale.y = 1 + Math.sin(t * 18) * 0.12;
         plume.scale.x = 1 + Math.sin(t * 22) * 0.08;
+      }
+      if (isruGroup.visible) {
+        isruEarth.rotation.y += 0.002;
+        beaconMesh.scale.setScalar(1 + Math.sin(t * 4) * 0.15);
       }
       hotspotMeshes.forEach((h) => {
         const s = 1 + Math.sin(t * 3) * 0.12;
