@@ -9,11 +9,13 @@ export type Screen =
   | "cruise"
   | "landing"
   | "surface"
+  | "explore"
+  | "explore-mars"
   | "habitat"
   | "debrief";
 
-export const STARTING_CREDITS = 10_000;
-export const FPV_RATE_PER_SEC = 1.80; // Calibrated to SearchO2/OxyForge economy (€1.80/s = 180 GC/s)
+export const STARTING_CREDITS = 2_500_000;
+export const FPV_RATE_PER_SEC = 180;
 export const OXYGEN_PRICE_PER_KG = 40;
 export const SAVE_VERSION = 1;
 export const SAVE_KEY = "oxyforge-save-v1";
@@ -104,279 +106,6 @@ export function navFromProgress(dest: DestinationId, pathPct: number) {
   const etaHours = spec.hours * (1 - p);
   return { travelledKm, remainKm, etaHours, vKms: spec.vKms, totalKm: spec.km, totalHours: spec.hours };
 }
-
-export type CommanderId =
-  | "kai"
-  | "nia"
-  | "rafa"
-  | "amira"
-  | "elena"
-  | "haru"
-  | "cmd-self"
-  | "pilot-nova"
-  | "sys-kade"
-  | "sci-mira"
-  | "med-sol"
-  | "pilot-jax";
-
-export interface CommanderProfile {
-  id: CommanderId;
-  name: string;
-  callsign: string;
-  age: number;
-  gender: "male" | "female";
-  role: string;
-  bio: string;
-  src: string;
-}
-
-export const COMMANDERS: CommanderProfile[] = [
-  {
-    id: "cmd-self",
-    name: "You",
-    callsign: "Director",
-    age: 32,
-    gender: "male",
-    role: "Flight Director",
-    bio: "You run the program from HQ. On Crewmark flights you still sit the commander seat.",
-    src: "/commanders/cmd-self.webp",
-  },
-  {
-    id: "kai",
-    name: "Kai Mori",
-    callsign: "Vector",
-    age: 24,
-    gender: "male",
-    role: "Guidance cadet",
-    bio: "Fresh from flight school. Treats every burn as a vis-viva problem you can feel.",
-    src: "/commanders/kai.webp",
-  },
-  {
-    id: "nia",
-    name: "Nia Okoye",
-    callsign: "Ember",
-    age: 27,
-    gender: "female",
-    role: "Plant engineer",
-    bio: "Splits water in her sleep. Ice is not scenery to her — it is 89% oxygen by mass.",
-    src: "/commanders/nia.webp",
-  },
-  {
-    id: "rafa",
-    name: "Rafael Soto",
-    callsign: "Ballast",
-    age: 36,
-    gender: "male",
-    role: "Pad chief",
-    bio: "Counts mass like money. Crew costs more because people have seats, air, and an abort tower.",
-    src: "/commanders/rafa.webp",
-  },
-  {
-    id: "amira",
-    name: "Amira Haddad",
-    callsign: "Window",
-    age: 44,
-    gender: "female",
-    role: "Flight director",
-    bio: "Does not aim at where Mars is. Aims at where Mars will be after seven months of coast.",
-    src: "/commanders/amira.webp",
-  },
-  {
-    id: "elena",
-    name: "Elena Voss",
-    callsign: "Ridge",
-    age: 56,
-    gender: "female",
-    role: "Habitat lead",
-    bio: "Two metres of dirt is a cheaper roof than any metal from Earth. She has buried more than one home.",
-    src: "/commanders/elena.webp",
-  },
-  {
-    id: "haru",
-    name: "Haru Tanabe",
-    callsign: "Apsis",
-    age: 63,
-    gender: "male",
-    role: "Veteran skipper",
-    bio: "Flew the long ovals before the plants existed. Still says the quiet part: most of the trip is engines off.",
-    src: "/commanders/haru.webp",
-  },
-  {
-    id: "pilot-nova",
-    name: "Nova Reyes",
-    callsign: "Vanguard",
-    age: 29,
-    gender: "female",
-    role: "Ascent / descent pilot",
-    bio: "Hands on the stick for Max-Q and the last kilometres of powered descent.",
-    src: "/commanders/nova.webp",
-  },
-  {
-    id: "sys-kade",
-    name: "Kade Okonkwo",
-    callsign: "Circuit",
-    age: 34,
-    gender: "male",
-    role: "Vehicle systems",
-    bio: "Watches power, thermal, and propellant margins from the capsule screens.",
-    src: "/commanders/kade.webp",
-  },
-  {
-    id: "sci-mira",
-    name: "Mira Chen",
-    callsign: "Catalyst",
-    age: 31,
-    gender: "female",
-    role: "ISRU science",
-    bio: "Owns the oxygen plant plan — ice, electrolysis, or MOXIE stacks.",
-    src: "/commanders/mira.webp",
-  },
-  {
-    id: "med-sol",
-    name: "Dr. Sol Park",
-    callsign: "Pulse",
-    age: 38,
-    gender: "female",
-    role: "Crew health",
-    bio: "Radiation, sleep, and the closed air loop when people are on board.",
-    src: "/commanders/sol.webp",
-  },
-  {
-    id: "pilot-jax",
-    name: "Jax Moreau",
-    callsign: "Drift",
-    age: 41,
-    gender: "male",
-    role: "Transfer pilot",
-    bio: "Specialist for long coasts and mid-course burns on Mars paths.",
-    src: "/commanders/jax.webp",
-  },
-];
-
-export function commanderById(id: string | undefined | null): CommanderProfile {
-  return COMMANDERS.find((c) => c.id === id) ?? COMMANDERS[0];
-}
-
-export interface MotivationBeat {
-  kicker: string;
-  title: string;
-  body: string;
-  libraryId: string;
-}
-
-export const MOTIVATION: MotivationBeat[] = [
-  {
-    kicker: "Before you fly",
-    title: "Oxygen is the payload",
-    body: "A person uses about 0.8 kg of O₂ a day. Mailing that from Earth is mailing air across a vacuum. The whole game is learning to make it there.",
-    libraryId: "why-oxygen",
-  },
-  {
-    kicker: "The cheap path",
-    title: "Two burns, then a fall",
-    body: "A Hohmann transfer is not a race. Burn to leave Earth’s circle, coast on a long oval that kisses the next world, burn again to stay. Waiting is fuel you do not spend.",
-    libraryId: "hohmann",
-  },
-  {
-    kicker: "Moon vs Mars",
-    title: "Three days, or seven months",
-    body: "The Moon is 384,400 km — a weekend if the window is good. Mars is 78–400 million km and a 26-month wait if you miss. Distance is not just kilometres. It is mass, food, and shielding.",
-    libraryId: "distance",
-  },
-  {
-    kicker: "Why it works",
-    title: "Ice and the wrong air",
-    body: "Lunar ice is mostly oxygen by mass once you split the water. Mars already breathes carbon dioxide — heat ceramic cells, keep the O₂, vent the rest. Same need, two chemistries.",
-    libraryId: "electrolysis",
-  },
-];
-
-export interface MissionShot {
-  id: DestinationId;
-  title: string;
-  src: string;
-  kicker: string;
-  facts: { label: string; value: string }[];
-  science: string;
-}
-
-export const MISSION_SHOTS: MissionShot[] = [
-  {
-    id: "moon",
-    title: "Lunar south pole",
-    src: "/missions/moon-landing.webp",
-    kicker: "First flight · cargo or crew",
-    facts: [
-      { label: "Range", value: "384,400 km" },
-      { label: "Coast", value: "≈ 3 days" },
-      { label: "Gravity", value: "1/6 g" },
-      { label: "Air", value: "None" },
-    ],
-    science: "Land on a ridge that sees the Sun. Mine ice in the permanent shadow. Electricity splits H₂O — about 89% of that mass is oxygen you can breathe or burn.",
-  },
-  {
-    id: "mars",
-    title: "MOXIE-class plant",
-    src: "/missions/mars-plant.webp",
-    kicker: "Long exam · windows every 26 months",
-    facts: [
-      { label: "Range", value: "78–400 million km" },
-      { label: "Coast", value: "≈ 7 months" },
-      { label: "Gravity", value: "≈ 3/8 g" },
-      { label: "Air", value: "Thin CO₂" },
-    ],
-    science: "Do not aim at Mars. Aim at where it will be. On arrival, heat ceramic cells to ~800 °C and split the air you cannot breathe into the air you can: 2 CO₂ → 2 CO + O₂.",
-  },
-];
-
-export interface SuccessSlide {
-  id: string;
-  title: string;
-  kicker: string;
-  body: string;
-  fact: string;
-  src: string;
-  libraryId: string;
-}
-
-export const SUCCESS_SLIDES: SuccessSlide[] = [
-  {
-    id: "earth-moon",
-    title: "Earth to Moon coast",
-    kicker: "Success path · 384,400 km",
-    body: "Leave low Earth orbit with a trans-lunar injection. Most of the three days the engines stay off. The Moon’s gravity does the last capture.",
-    fact: "Free-return trajectories loop home if the capture burn fails — a built-in abort.",
-    src: "/missions/earth-moon.webp",
-    libraryId: "hohmann",
-  },
-  {
-    id: "pole",
-    title: "South-pole touchdown",
-    kicker: "Landing · 1/6 g",
-    body: "Long shadows, no air, Earth hanging in a black sky. Solar arrays live on the rim. Ice waits in craters that have not seen the Sun in a billion years.",
-    fact: "Descent is a powered fall. There is no atmosphere to brake against.",
-    src: "/missions/moon-landing.webp",
-    libraryId: "landing",
-  },
-  {
-    id: "earth-mars",
-    title: "Hohmann to Mars",
-    kicker: "Success path · ~225 million km",
-    body: "The cheap oval kisses Mars’ orbit on the far side. You launch when Earth and Mars line up — about every 26 months — or you pay in propellant.",
-    fact: "vis-viva: closer to the Sun you go faster; climbing out, you slow. That is the coast.",
-    src: "/missions/earth-mars.webp",
-    libraryId: "windows",
-  },
-  {
-    id: "moxie",
-    title: "Oxygen from Martian air",
-    kicker: "Plant · NASA-proven 2021",
-    body: "A compressor inhales thin CO₂. Solid-oxide cells at 800 °C let oxide ions walk one way through ceramic. Oxygen tanks fill. Carbon monoxide is vented or saved as fuel stock.",
-    fact: "A crew of three needs ~2.4 kg of O₂ per day, plus leaks. Scale is the real exam.",
-    src: "/missions/mars-plant.webp",
-    libraryId: "moxie",
-  },
-];
 
 /** Launch price in USD: rocket × destination. */
 export const LAUNCH_PRICE: Record<RocketId, Record<DestinationId, number>> = {
@@ -473,13 +202,6 @@ export const CHECKLIST: ChecklistItem[] = [
     action: "Run radio check",
     kind: "radio",
   },
-  {
-    id: "deluge",
-    title: "Sound suppression deluge",
-    why: "1.1 million liters of water flood the flame trench to cushion 220 dB acoustic pressure so reflected shockwaves cannot crack the heatshield.",
-    action: "Arm sound suppression deluge",
-    kind: "toggle",
-  },
 ];
 
 export interface PlantStep {
@@ -489,6 +211,14 @@ export interface PlantStep {
   math?: string;
   libraryId?: string;
   oxygenKg: number;
+  /** Classroom-friendly one-liner */
+  kidFriendly?: string;
+  /** XP awarded when the step is completed */
+  xp?: number;
+  /** Badge label shown in the gamified UI */
+  badge?: string;
+  /** Accent color for the step card / 3D highlight */
+  color?: string;
 }
 
 export const MOON_STEPS: PlantStep[] = [
@@ -496,49 +226,77 @@ export const MOON_STEPS: PlantStep[] = [
     id: "site",
     title: "Pick the south pole",
     body: "Some craters never see sunlight. Ice can wait there for billions of years. We land near those shadows, with solar arrays on a ridge that does see the Sun.",
+    kidFriendly: "Mission: choose a polar “freezer” crater for ice and a sunny ridge for solar power.",
     libraryId: "moon-ice",
     oxygenKg: 0,
+    xp: 40,
+    badge: "Site Scout",
+    color: "#7EB8C9",
   },
   {
     id: "solar",
     title: "Unfold solar arrays",
     body: "The factory runs on electricity. No coal, no gas — just sunlight. On the Moon the sky is black even at noon, but the Sun is harsh and reliable at the poles.",
+    kidFriendly: "Unfold the solar wings! On the Moon the sky stays black, but sunlight is strong and clean.",
     oxygenKg: 0,
+    xp: 50,
+    badge: "Power Up",
+    color: "#E8C070",
   },
   {
     id: "mine",
     title: "Mine ice and regolith",
     body: "A small rover scoops frozen soil. Some of it is water ice mixed with dust. Some grains are ilmenite, a mineral that also holds oxygen in its crystal.",
+    kidFriendly: "Rover scoop time: dig dusty ice and special rocks that hide oxygen inside their crystals.",
     libraryId: "moon-ice",
     oxygenKg: 0,
+    xp: 60,
+    badge: "Regolith Miner",
+    color: "#C9A86F",
   },
   {
     id: "heat",
     title: "Warm ice into water",
     body: "We seal the scoops in a drum and heat them. Ice becomes liquid water. Dust stays behind. Water is heavy to ship from Earth, so making it here is a big win.",
+    kidFriendly: "Heat the frozen dirt carefully — ice melts into water while dusty rocks stay behind.",
     oxygenKg: 0,
+    xp: 55,
+    badge: "Ice Melter",
+    color: "#9FD0D4",
   },
   {
     id: "electrolysis",
     title: "Split water with electricity",
     body: "Two electrodes in the water. Current in, gases out. This is the same idea as a school electrolysis demo — just bigger, and the oxygen is for breathing.",
+    kidFriendly: "Zap the water with electricity: hydrogen bubbles one way, oxygen the other — like a school science demo, but for rockets!",
     math: "2 H₂O → 2 H₂ + O₂. Water is 18 g/mol; oxygen is 16 of those 18 grams. About 89% of the mass of water is oxygen.",
     libraryId: "electrolysis",
     oxygenKg: 180,
+    xp: 100,
+    badge: "O₂ Maker",
+    color: "#6FBF9A",
   },
   {
     id: "store",
     title: "Store oxygen, recycle hydrogen",
     body: "Oxygen goes into cold tanks. Hydrogen is too useful to throw away — we can pipe it back to help pull more oxygen out of ilmenite rock.",
+    kidFriendly: "Chill the oxygen into cold tanks. Keep the hydrogen — it helps unlock even more oxygen from rock!",
     oxygenKg: 40,
+    xp: 70,
+    badge: "Tank Captain",
+    color: "#80C29B",
   },
   {
     id: "ilmenite",
     title: "Squeeze oxygen from rock",
     body: "Ilmenite is FeTiO₃. Hot hydrogen steals oxygen from the mineral and makes more water, which we split again. The Moon’s dirt is a giant oxygen bank.",
+    kidFriendly: "Bonus level: hot hydrogen pulls oxygen out of lunar rock (ilmenite). Moon dirt is basically an oxygen treasure chest!",
     math: "FeTiO₃ + H₂ → Fe + TiO₂ + H₂O, then split the water as before.",
     libraryId: "moon-ice",
     oxygenKg: 90,
+    xp: 120,
+    badge: "Rock Alchemist",
+    color: "#C4896A",
   },
 ];
 
@@ -547,49 +305,77 @@ export const MARS_STEPS: PlantStep[] = [
     id: "deploy",
     title: "Deploy the compressor",
     body: "Mars air is thin — about 1% as thick as Earth’s — but it is 95% carbon dioxide. We need a pump to gather enough of it.",
+    kidFriendly: "Switch on the air pump! Mars air is thin, but packed with CO₂ we can use.",
     libraryId: "moxie",
     oxygenKg: 0,
+    xp: 40,
+    badge: "Air Scout",
+    color: "#C4896A",
   },
   {
     id: "inhale",
     title: "Inhale carbon dioxide",
     body: "Filters take out dust. The compressor squeezes CO₂ into the cell stack. You can think of it as the base taking a slow, mechanical breath.",
+    kidFriendly: "The base takes a slow mechanical breath — filter dust, squeeze CO₂ into the machine.",
     oxygenKg: 0,
+    xp: 45,
+    badge: "Dust Fighter",
+    color: "#E8A070",
   },
   {
     id: "heat",
     title: "Heat the ceramic cells",
     body: "Solid-oxide cells work around 800 °C. Heat is not a bug — it is how oxide ions can move through the ceramic like a one-way street.",
+    kidFriendly: "Heat the ceramic cells until they glow — hot chemistry is ready to make oxygen!",
     libraryId: "moxie",
     oxygenKg: 0,
+    xp: 55,
+    badge: "Cell Chef",
+    color: "#E8C070",
   },
   {
     id: "split",
     title: "Split CO₂ into O₂",
     body: "This is the MOXIE trick NASA proved on Mars in 2021. Carbon dioxide in, oxygen and carbon monoxide out. No plants required — though we will add those later.",
+    kidFriendly: "MOXIE magic: CO₂ in, oxygen out for tanks. NASA proved it on the real Perseverance rover!",
     math: "2 CO₂ → 2 CO + O₂. One oxygen molecule from two carbon dioxide molecules.",
     libraryId: "moxie",
     oxygenKg: 160,
+    xp: 100,
+    badge: "MOXIE Hero",
+    color: "#6FBF9A",
   },
   {
     id: "store",
     title: "Tank the oxygen",
     body: "We store O₂ as a cold liquid to save volume. Carbon monoxide is vented, or saved as a fuel ingredient for later trips home.",
+    kidFriendly: "Chill oxygen into liquid form and lock it in the tanks — fuel and air for later!",
     oxygenKg: 50,
+    xp: 70,
+    badge: "Cryo Keeper",
+    color: "#80C29B",
   },
   {
     id: "ice",
     title: "Mine subsurface ice",
     body: "Mars hides water ice under dust at mid-latitudes and in the poles. Mining it gives drinking water and a second oxygen path through electrolysis.",
+    kidFriendly: "Dig for buried ice! Melt it for water — and more oxygen through electrolysis.",
     libraryId: "electrolysis",
     oxygenKg: 70,
+    xp: 80,
+    badge: "Ice Digger",
+    color: "#7EB8C9",
   },
   {
     id: "scale",
     title: "Scale the plant",
     body: "NASA’s MOXIE made about 12 grams of oxygen per hour — a proof. A crew needs kilograms per hour. We add more cell stacks and more solar power.",
+    kidFriendly: "Level up! More cells and solar power so a whole crew gets enough oxygen every day.",
     math: "A person uses roughly 0.8 kg of oxygen a day. Three crew ≈ 2.4 kg/day, plus leaks and extra for the habitat.",
     oxygenKg: 80,
+    xp: 110,
+    badge: "Plant Boss",
+    color: "#9FD0D4",
   },
 ];
 

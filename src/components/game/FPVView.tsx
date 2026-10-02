@@ -11,11 +11,9 @@ import {
   LESSONS,
   MILKY,
   NAMED_STARS,
-  NEBULAE,
-  STAR_BY_ID,
   angOf,
+  azElFromCam,
   bodyTexture,
-  distToSeg,
   formatRange,
   hohmannEllipse,
   orbitSpeedHint,
@@ -25,7 +23,6 @@ import {
   startPose,
   transferPath,
   warmupPhotos,
-  type Constel,
   type LessonId,
   type SkyBody,
   type V,
@@ -33,30 +30,13 @@ import {
 import { useGame } from "@/game/store";
 import { formatEta, formatKm, formatUsd } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { CockpitScene } from "./three/CockpitScene";
 
 const held = new Set<string>();
 let injected: string[] | null = null;
 let steerOverride: number | null = null;
 const look = { dx: 0, dy: 0 };
 const pointer = { x: 0.5, y: 0.5, active: false };
-
-let activeZoom = 1.0;
-let activeLockId: string | null = null;
-let lastTargetRef: TargetInfo | null = null;
-
-export function setFpvZoom(z: number) {
-  activeZoom = z;
-}
-
-export function toggleFpvTargetLock(id?: string) {
-  if (id) {
-    activeLockId = activeLockId === id ? null : id;
-  } else if (lastTargetRef) {
-    activeLockId = activeLockId === lastTargetRef.id ? null : lastTargetRef.id;
-  } else {
-    activeLockId = null;
-  }
-}
 
 function codesHas(code: string) {
   if (injected) return injected.includes(code);
@@ -139,9 +119,7 @@ export function FPVView({ destination }: { destination: DestinationId }) {
   return (
     <FpvErrorBoundary onClose={closeFpv}>
       <div className="fixed inset-0 z-40 bg-bg" style={{ touchAction: "none" }}>
-        <SpaceCanvas destination={destination} />
-        <CockpitOverlay />
-        <Hud destination={destination} />
+        <CockpitScene destination={destination} />
         <TouchPad />
       </div>
     </FpvErrorBoundary>
@@ -156,11 +134,6 @@ function SpaceCanvas({ destination }: { destination: DestinationId }) {
     const down = (e: KeyboardEvent) => {
       held.add(e.code);
       if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
-      if (e.code === "Digit1") activeZoom = 1.0;
-      if (e.code === "Digit2") activeZoom = 2.5;
-      if (e.code === "Digit3") activeZoom = 5.0;
-      if (e.code === "Digit4") activeZoom = 10.0;
-      if (e.code === "Escape") activeLockId = null;
     };
     const up = (e: KeyboardEvent) => held.delete(e.code);
     const blur = () => held.clear();
@@ -203,6 +176,8 @@ function SpaceCanvas({ destination }: { destination: DestinationId }) {
       vel: { ...pose.vel },
       quat: qEulerYXZ(pose.pitch, 0, 0),
       yaw: 0,
+      travelled: 0,
+      prevPos: { ...pose.pos },
     };
     qNorm(ship.quat);
     const trail: V[] = [];
@@ -262,29 +237,10 @@ function SpaceCanvas({ destination }: { destination: DestinationId }) {
     const onUp = () => {
       dragging = false;
     };
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      if (e.deltaY < 0) {
-        if (activeZoom === 1.0) activeZoom = 2.5;
-        else if (activeZoom === 2.5) activeZoom = 5.0;
-        else if (activeZoom === 5.0) activeZoom = 10.0;
-      } else {
-        if (activeZoom === 10.0) activeZoom = 5.0;
-        else if (activeZoom === 5.0) activeZoom = 2.5;
-        else if (activeZoom === 2.5) activeZoom = 1.0;
-      }
-    };
-    const onClick = () => {
-      if (lastTargetRef) {
-        activeLockId = activeLockId === lastTargetRef.id ? null : lastTargetRef.id;
-      }
-    };
     wrap.addEventListener("pointerdown", onDown);
     wrap.addEventListener("pointermove", onMove);
     wrap.addEventListener("pointerup", onUp);
     wrap.addEventListener("pointercancel", onUp);
-    wrap.addEventListener("wheel", onWheel, { passive: false });
-    wrap.addEventListener("click", onClick);
 
     const loop = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.1);
@@ -355,9 +311,49 @@ function SpaceCanvas({ destination }: { destination: DestinationId }) {
           ship.vel.y *= damp;
           ship.vel.z *= damp;
         }
+
+        // Soft gravitational influence from Sun (and Earth for Moon runs) — simplified μ/r².
+        // Units are compressed; this is a gentle steering bias, not high-fidelity ephemeris.
+        {
+          const cacheG = new Map<string, V>();
+          const sunP = posOf("sun", simT, cacheG);
+          const dx = sunP.x - ship.pos.x;
+          const dy = sunP.y - ship.pos.y;
+          const dz = sunP.z - ship.pos.z;
+          const r2 = dx * dx + dy * dy + dz * dz;
+          const r = Math.sqrt(r2) || 1;
+          const muSun = 2.8; // tuned for gentle curve in compressed units
+          const aSun = muSun / r2;
+          ship.vel.x += (dx / r) * aSun * dt;
+          ship.vel.y += (dy / r) * aSun * dt;
+          ship.vel.z += (dz / r) * aSun * dt;
+          if (destination === "moon") {
+            const earthP = posOf("earth", simT, cacheG);
+            const ex = earthP.x - ship.pos.x;
+            const ey = earthP.y - ship.pos.y;
+            const ez = earthP.z - ship.pos.z;
+            const er2 = ex * ex + ey * ey + ez * ez;
+            const er = Math.sqrt(er2) || 1;
+            const muEarth = 0.45;
+            const aE = muEarth / er2;
+            ship.vel.x += (ex / er) * aE * dt;
+            ship.vel.y += (ey / er) * aE * dt;
+            ship.vel.z += (ez / er) * aE * dt;
+          }
+        }
+
         ship.pos.x += ship.vel.x * dt;
         ship.pos.y += ship.vel.y * dt;
         ship.pos.z += ship.vel.z * dt;
+        // Cumulative path length (not chord distance)
+        ship.travelled += Math.hypot(
+          ship.pos.x - ship.prevPos.x,
+          ship.pos.y - ship.prevPos.y,
+          ship.pos.z - ship.prevPos.z,
+        );
+        ship.prevPos.x = ship.pos.x;
+        ship.prevPos.y = ship.pos.y;
+        ship.prevPos.z = ship.pos.z;
         ship.yaw = yawFromQuat(ship.quat);
 
         trailAcc += dt;
@@ -377,8 +373,6 @@ function SpaceCanvas({ destination }: { destination: DestinationId }) {
             thrust,
             boost: boost > 1,
             target: frame.target,
-            zoom: activeZoom,
-            isLocked: !!activeLockId && frame.target?.id === activeLockId,
             lesson: frame.lesson,
             drifted: frame.drifted,
             pathPct: frame.pathPct,
@@ -387,6 +381,12 @@ function SpaceCanvas({ destination }: { destination: DestinationId }) {
             remainKm: frame.remainKm,
             etaHours: frame.etaHours,
             vKms: frame.vKms,
+            targetAz: frame.targetAz,
+            targetEl: frame.targetEl,
+            distEarth: frame.distEarth,
+            distTarget: frame.distTarget,
+            metHours: frame.metHours,
+            phase: frame.phase,
           });
         }
       }
@@ -401,8 +401,6 @@ function SpaceCanvas({ destination }: { destination: DestinationId }) {
       wrap.removeEventListener("pointermove", onMove);
       wrap.removeEventListener("pointerup", onUp);
       wrap.removeEventListener("pointercancel", onUp);
-      wrap.removeEventListener("wheel", onWheel);
-      wrap.removeEventListener("click", onClick);
       delete window.__controlsTest;
       injected = null;
       steerOverride = null;
@@ -416,7 +414,7 @@ function SpaceCanvas({ destination }: { destination: DestinationId }) {
   );
 }
 
-type TargetInfo = {
+export type TargetInfo = {
   id: string;
   name: string;
   kind: string;
@@ -424,9 +422,12 @@ type TargetInfo = {
   fact: string;
   dist: string;
   range: string;
-  spec?: string;
-  meaning?: string;
-  isLocked?: boolean;
+  catalog?: string;
+  constellation?: string;
+  spectral?: string;
+  appMag?: number;
+  az?: number;
+  el?: number;
 };
 
 type FrameInfo = {
@@ -439,6 +440,12 @@ type FrameInfo = {
   remainKm: number;
   etaHours: number;
   vKms: number;
+  targetAz: number;
+  targetEl: number;
+  distEarth: number;
+  distTarget: number;
+  metHours: number;
+  phase: string;
 };
 
 type Proj = { x: number; y: number; z: number; s: number; cam?: V };
@@ -446,7 +453,7 @@ type Proj = { x: number; y: number; z: number; s: number; cam?: V };
 function paint(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
-  ship: { pos: V; vel: V; quat: Q },
+  ship: { pos: V; vel: V; quat: Q; travelled: number },
   destination: DestinationId,
   simT: number,
   thrust: number,
@@ -457,7 +464,7 @@ function paint(
   ctx.fillStyle = "#05060a";
   ctx.fillRect(0, 0, w, h);
 
-  const fl = ((0.5 * h) / Math.tan((62 * Math.PI) / 180 / 2)) * activeZoom;
+  const fl = (0.5 * h) / Math.tan((62 * Math.PI) / 180 / 2);
   const inv = qConj(ship.quat);
   const cache = new Map<string, V>();
 
@@ -475,127 +482,100 @@ function paint(
     return { x: w / 2 + r.x * s, y: h / 2 - r.y * s, z: r.z, s, cam: r };
   };
 
-  const milky = projectDir({ x: 0.2, y: 0.05, z: 1 });
+  // Subtle galactic plane glow (not atmospheric fog)
+  const milky = projectDir({ x: 0.15, y: 0.02, z: 1 });
   if (milky) {
-    const g = ctx.createRadialGradient(milky.x, milky.y, 0, milky.x, milky.y, h * 0.85);
-    g.addColorStop(0, "rgba(110,88,64,0.22)");
-    g.addColorStop(0.45, "rgba(70,60,90,0.08)");
+    const g = ctx.createRadialGradient(milky.x, milky.y, 0, milky.x, milky.y, h * 0.9);
+    g.addColorStop(0, "rgba(110,88,64,0.2)");
+    g.addColorStop(0.4, "rgba(70,60,90,0.07)");
     g.addColorStop(1, "rgba(5,6,10,0)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
   }
 
+  // Dense star field — magnitude-scaled, spectral-colored (GPU-friendly points via canvas)
   const drawStar = (st: { x: number; y: number; z: number; b: number; s: number; cr: number; cg: number; cb: number }) => {
     const p = projectDir(st);
     if (!p) return;
-    if (p.x < -8 || p.y < -8 || p.x > w + 8 || p.y > h + 8) return;
-    const scale = Math.min(2.4, w / 900);
-    const sz = st.s * scale;
-    if (st.b > 0.62 && sz > 1.15) {
-      const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, sz * 3.2);
-      glow.addColorStop(0, `rgba(${st.cr | 0},${st.cg | 0},${st.cb | 0},${Math.min(0.85, st.b)})`);
-      glow.addColorStop(0.35, `rgba(${st.cr | 0},${st.cg | 0},${st.cb | 0},${st.b * 0.28})`);
-      glow.addColorStop(1, "rgba(5,6,10,0)");
-      ctx.fillStyle = glow;
+    if (p.x < -6 || p.y < -6 || p.x > w + 6 || p.y > h + 6) return;
+    const sz = st.s * Math.min(2.0, w / 1000);
+    if (sz < 0.4 && st.b < 0.25) return; // skip dimmest for performance
+    ctx.fillStyle = `rgba(${st.cr | 0},${st.cg | 0},${st.cb | 0},${Math.min(1, st.b)})`;
+    if (sz >= 1.6 && st.b > 0.55) {
       ctx.beginPath();
-      ctx.arc(p.x, p.y, sz * 3.2, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, sz * 0.55, 0, Math.PI * 2);
       ctx.fill();
+    } else {
+      ctx.fillRect(p.x, p.y, Math.max(0.6, sz), Math.max(0.6, sz));
     }
-    ctx.fillStyle = `rgba(${st.cr | 0},${st.cg | 0},${st.cb | 0},${st.b})`;
-    const core = Math.max(0.6, sz);
-    ctx.fillRect(p.x - core * 0.4, p.y - core * 0.4, core, core);
   };
   for (const st of MILKY) drawStar(st);
   for (const st of FIELD) drawStar(st);
 
-  for (const neb of NEBULAE) {
-    const p = projectDir(neb.dir);
-    if (!p) continue;
-    const rx = Math.min(h * 0.08, 70 * neb.rx);
-    const ry = rx * (neb.ry / neb.rx);
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.rotate(-0.35);
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-    g.addColorStop(0, `rgba(${neb.color},0.38)`);
-    g.addColorStop(0.45, `rgba(${neb.color},0.12)`);
-    g.addColorStop(1, "rgba(5,6,10,0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  const starProj = new Map<string, Proj>();
-  for (const star of NAMED_STARS) {
-    const p = projectDir(star.dir);
-    if (p) starProj.set(star.id, p);
-  }
-
-  const aimX = pointer.active && !document.pointerLockElement ? pointer.x * w : w / 2;
-  const aimY = pointer.active && !document.pointerLockElement ? pointer.y * h : h / 2;
-
-  let hoverConst: Constel | null = null;
-  let hoverConstScore = 18;
+  // Constellation lines
+  ctx.lineWidth = Math.max(1, w / 1600);
+  ctx.strokeStyle = "rgba(126,184,201,0.26)";
   for (const c of CONSTELLATIONS) {
-    for (const [a, b] of c.segs) {
-      const pa = starProj.get(a);
-      const pb = starProj.get(b);
-      if (!pa || !pb) continue;
-      const d = distToSeg(aimX, aimY, pa.x, pa.y, pb.x, pb.y);
-      if (d < hoverConstScore) {
-        hoverConstScore = d;
-        hoverConst = c;
-      }
-    }
-  }
-  if (hoverConstScore > 16) hoverConst = null;
-
-  for (const c of CONSTELLATIONS) {
-    const hot = hoverConst?.id === c.id;
-    ctx.lineWidth = hot ? Math.max(1.6, w / 1100) : Math.max(1, w / 1700);
-    ctx.strokeStyle = hot ? "rgba(201,168,111,0.85)" : "rgba(126,184,201,0.22)";
     ctx.beginPath();
     let started = false;
-    for (const [a, b] of c.segs) {
-      const pa = starProj.get(a);
-      const pb = starProj.get(b);
-      if (!pa || !pb) {
+    for (const id of c.ids) {
+      const star = NAMED_STARS.find((s) => s.id === id);
+      if (!star) {
         started = false;
         continue;
       }
-      ctx.moveTo(pa.x, pa.y);
-      ctx.lineTo(pb.x, pb.y);
-      started = true;
-    }
-    if (started) ctx.stroke();
-    if (hot) {
-      const pts = c.segs.flatMap(([a, b]) => [starProj.get(a), starProj.get(b)]).filter(Boolean) as Proj[];
-      if (pts.length) {
-        const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
-        const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
-        ctx.font = `600 ${Math.max(13, w / 95)}px Outfit, sans-serif`;
-        ctx.fillStyle = "rgba(201,168,111,0.95)";
-        ctx.fillText(c.name, cx + 12, cy - 10);
-        ctx.font = `400 ${Math.max(10, w / 140)}px Atkinson Hyperlegible, sans-serif`;
-        ctx.fillStyle = "rgba(232,237,244,0.75)";
-        ctx.fillText(c.meaning, cx + 12, cy + 8);
+      const p = projectDir(star.dir);
+      if (!p) {
+        started = false;
+        continue;
       }
+      if (!started) {
+        ctx.moveTo(p.x, p.y);
+        started = true;
+      } else ctx.lineTo(p.x, p.y);
     }
+    ctx.stroke();
   }
 
+  // Deep-sky layer (galaxies, nebulae, clusters) — declutter: only brighter / larger near center
+  const cx = w / 2;
+  const cy = h / 2;
   for (const gxy of GALAXIES) {
     const p = projectDir(gxy.dir);
     if (!p) continue;
-    drawGalaxy(ctx, p.x, p.y, h, gxy, false);
+    const off = Math.hypot(p.x - cx, p.y - cy);
+    const mag = gxy.magnitude ?? 8;
+    // Show all bright ones; fainter only near reticle or large angular size
+    if (mag > 6.5 && off > h * 0.28 && (gxy.angularSize ?? 0) < 0.4) continue;
+    drawGalaxy(ctx, p.x, p.y, h, gxy);
   }
 
+  // Named bright stars — crosshair + label (declutter by magnitude)
   for (const star of NAMED_STARS) {
-    const p = starProj.get(star.id);
+    const p = projectDir(star.dir);
     if (!p) continue;
-    const inFig = hoverConst?.segs.some(([a, b]) => a === star.id || b === star.id) ?? false;
-    drawNamedStar(ctx, p.x, p.y, star, inFig, w);
+    const m = 4 + star.mag * 2.8;
+    ctx.strokeStyle = star.color;
+    ctx.globalAlpha = 0.85;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(p.x - m, p.y);
+    ctx.lineTo(p.x + m, p.y);
+    ctx.moveTo(p.x, p.y - m);
+    ctx.lineTo(p.x, p.y + m);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = star.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.5 + star.mag * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    // Labels only for brighter stars or those near center
+    const off = Math.hypot(p.x - cx, p.y - cy);
+    if (star.appMag < 1.3 || off < h * 0.22) {
+      ctx.font = `500 ${Math.max(10, w / 115)}px Outfit, sans-serif`;
+      ctx.fillStyle = "rgba(232,237,244,0.75)";
+      ctx.fillText(star.name, p.x + 8, p.y - 6);
+    }
   }
 
   const destId = destination;
@@ -710,12 +690,14 @@ function paint(
     drawWorldBody(ctx, d.pr.x, d.pr.y, d.rad, d.body, sunCam, d.pr.cam);
   }
 
+  const aimX = pointer.active && !document.pointerLockElement ? pointer.x * w : w / 2;
+  const aimY = pointer.active && !document.pointerLockElement ? pointer.y * h : h / 2;
+
   type Cand = TargetInfo & { score: number; x: number; y: number; rad: number };
   const cands: Cand[] = [];
   for (const d of drawn) {
     const distPx = Math.hypot(d.pr.x - aimX, d.pr.y - aimY);
-    const hitPad = d.rad + 18;
-    if (distPx > hitPad) continue;
+    const score = distPx - d.rad * 0.8;
     cands.push({
       id: d.body.id,
       name: d.body.name,
@@ -724,110 +706,108 @@ function paint(
       fact: d.body.fact,
       dist: d.body.dist,
       range: formatRange(d.dist, destination),
-      score: distPx - Math.min(d.rad, 36) * 0.35,
+      score,
       x: d.pr.x,
       y: d.pr.y,
       rad: d.rad,
     });
+    if (d.rad > 3 || distPx < 110) {
+      ctx.font = `600 ${Math.max(12, Math.min(18, d.rad * 0.16 + w / 85))}px Outfit, sans-serif`;
+      ctx.fillStyle = "rgba(232,237,244,0.92)";
+      ctx.fillText(d.body.name, d.pr.x + d.rad + 10, d.pr.y - 4);
+      ctx.font = `400 ${Math.max(10, w / 130)}px Atkinson Hyperlegible, sans-serif`;
+      ctx.fillStyle = "rgba(139,151,168,0.95)";
+      ctx.fillText(`${d.body.dist} · ${formatRange(d.dist, destination)}`, d.pr.x + d.rad + 10, d.pr.y + 14);
+    }
   }
   for (const star of NAMED_STARS) {
-    const p = starProj.get(star.id);
+    const p = projectDir(star.dir);
     if (!p) continue;
     const distPx = Math.hypot(p.x - aimX, p.y - aimY);
-    if (distPx > 28) continue;
-    cands.push({
-      id: star.id,
-      name: star.name,
-      kind: "star",
-      blurb: star.blurb,
-      fact: star.fact,
-      dist: star.dist,
-      range: star.dist,
-      spec: star.spec,
-      score: distPx - 4,
-      x: p.x,
-      y: p.y,
-      rad: 8 + star.mag,
-    });
+    if (distPx < 56) {
+      const dirCam = rotate(inv, star.dir);
+      const azel = azElFromCam(dirCam);
+      cands.push({
+        id: star.id,
+        name: star.name,
+        kind: "star",
+        blurb: star.blurb,
+        fact: star.fact,
+        dist: star.dist,
+        range: star.dist,
+        catalog: star.catalogNames?.join(" · "),
+        constellation: star.constellation,
+        spectral: star.spectral,
+        appMag: star.appMag,
+        az: azel.az,
+        el: azel.el,
+        score: distPx,
+        x: p.x,
+        y: p.y,
+        rad: 10,
+      });
+    }
   }
   for (const gxy of GALAXIES) {
     const p = projectDir(gxy.dir);
     if (!p) continue;
     const distPx = Math.hypot(p.x - aimX, p.y - aimY);
-    if (distPx > 72) continue;
-    cands.push({
-      id: gxy.id,
-      name: gxy.name,
-      kind: "galaxy",
-      blurb: gxy.blurb,
-      fact: gxy.fact,
-      dist: gxy.dist,
-      range: gxy.dist,
-      score: distPx - 12,
-      x: p.x,
-      y: p.y,
-      rad: 28,
-    });
-  }
-  for (const neb of NEBULAE) {
-    const p = projectDir(neb.dir);
-    if (!p) continue;
-    const distPx = Math.hypot(p.x - aimX, p.y - aimY);
-    if (distPx > 48) continue;
-    cands.push({
-      id: neb.id,
-      name: neb.name,
-      kind: "nebula",
-      blurb: neb.blurb,
-      fact: neb.fact,
-      dist: neb.dist,
-      range: neb.dist,
-      score: distPx,
-      x: p.x,
-      y: p.y,
-      rad: 22,
-    });
-  }
-  if (hoverConst) {
-    const pts = hoverConst.segs.flatMap(([a, b]) => [starProj.get(a), starProj.get(b)]).filter(Boolean) as Proj[];
-    const cx = pts.length ? pts.reduce((s, p) => s + p.x, 0) / pts.length : aimX;
-    const cy = pts.length ? pts.reduce((s, p) => s + p.y, 0) / pts.length : aimY;
-    cands.push({
-      id: hoverConst.id,
-      name: hoverConst.name,
-      kind: "constellation",
-      blurb: hoverConst.blurb,
-      fact: hoverConst.fact,
-      dist: hoverConst.dist,
-      range: hoverConst.dist,
-      meaning: hoverConst.meaning,
-      score: hoverConstScore - 6,
-      x: cx,
-      y: cy,
-      rad: 36,
-    });
+    if (distPx < 100) {
+      const dirCam = rotate(inv, gxy.dir);
+      const azel = azElFromCam(dirCam);
+      cands.push({
+        id: gxy.id,
+        name: gxy.name,
+        kind: gxy.type,
+        blurb: gxy.blurb,
+        fact: gxy.fact,
+        dist: gxy.dist,
+        range: gxy.dist,
+        catalog: gxy.catalogNames?.join(" · "),
+        constellation: gxy.constellation,
+        appMag: gxy.magnitude,
+        az: azel.az,
+        el: azel.el,
+        score: distPx - 15,
+        x: p.x,
+        y: p.y,
+        rad: 28,
+      });
+    }
   }
   cands.sort((a, b) => a.score - b.score);
 
-  let target: Cand | null = null;
-  if (activeLockId) {
-    const locked = cands.find((c) => c.id === activeLockId);
-    if (locked) target = locked;
-  }
-  if (!target) {
-    target = cands[0] && cands[0].score < 40 ? cands[0] : null;
-  }
+  let target: Cand | null = cands[0] && cands[0].score < 46 ? cands[0] : null;
   if (!target) {
     const destCand = cands.find((c) => c.id === destId);
-    if (destCand && destCand.score < 28) target = destCand;
+    if (destCand) target = destCand;
+    else if (cands[0] && cands[0].score < 90) target = cands[0];
+    else {
+      const onRoad = drawn
+        .filter((d) => d.body.id === destId || d.body.id === "earth" || d.body.id === "moon" || d.body.id === "sun")
+        .sort((a, b) => a.dist - b.dist)[0];
+      if (onRoad) {
+        target = {
+          id: onRoad.body.id,
+          name: onRoad.body.name,
+          kind: onRoad.body.kind,
+          blurb: onRoad.body.blurb,
+          fact: onRoad.body.fact,
+          dist: onRoad.body.dist,
+          range: formatRange(onRoad.dist, destination),
+          score: 0,
+          x: onRoad.pr.x,
+          y: onRoad.pr.y,
+          rad: onRoad.rad,
+        };
+      }
+    }
   }
-  lastTargetRef = target ? { ...target, isLocked: target.id === activeLockId } : null;
 
   if (target) {
-    const isTargetLocked = target.id === activeLockId;
-    const m = Math.max(16, Math.min(target.rad + 10, 90));
-    ctx.strokeStyle = isTargetLocked ? "#FFB300" : (target.kind === "constellation" ? "#c9a86f" : "#7eb8c9");
-    ctx.lineWidth = isTargetLocked ? 2.0 : 1.5;
+    const m = Math.max(16, target.rad + 10);
+    ctx.strokeStyle = "#7eb8c9";
+    ctx.lineWidth = 1.5;
     const { x, y } = target;
     ctx.beginPath();
     ctx.moveTo(x - m, y - m + 10);
@@ -843,27 +823,17 @@ function paint(
     ctx.lineTo(x - m, y + m);
     ctx.lineTo(x - m, y + m - 10);
     ctx.stroke();
-
-    if (isTargetLocked) {
-      ctx.font = `700 ${Math.max(10, w / 130)}px Outfit, sans-serif`;
-      ctx.fillStyle = "#FFB300";
-      ctx.fillText("TARGET LOCKED · 100% TRK", x - m, y - m - 6);
-    }
-    const side = x < w * 0.55 ? 1 : -1;
-    const lx = x + side * (Math.min(target.rad, 80) + 14);
-    ctx.textAlign = side > 0 ? "left" : "right";
-    ctx.font = `600 ${Math.max(12, w / 100)}px Outfit, sans-serif`;
-    ctx.fillStyle = "rgba(232,237,244,0.95)";
-    ctx.fillText(target.name, lx, y - 4);
-    ctx.font = `400 ${Math.max(10, w / 140)}px Atkinson Hyperlegible, sans-serif`;
-    ctx.fillStyle = "rgba(139,151,168,0.95)";
-    ctx.fillText(target.spec ? `${target.spec} · ${target.dist}` : `${target.dist} · ${target.range}`, lx, y + 14);
-    ctx.textAlign = "left";
     const body = BODIES.find((b) => b.id === target.id);
     if (body) drawPip(ctx, w, h, body, sunCam, target.range);
-    else if (target.kind === "galaxy") drawGalaxyPip(ctx, w, h, target.id, target.name);
-    else if (target.kind === "star") drawStarPip(ctx, w, h, target);
-    else if (target.kind === "constellation" && hoverConst) drawConstelPip(ctx, w, h, hoverConst);
+    else if (
+      target.kind === "galaxy" ||
+      target.kind === "nebula" ||
+      target.kind === "open-cluster" ||
+      target.kind === "globular-cluster" ||
+      target.kind === "supernova-remnant"
+    ) {
+      drawGalaxyPip(ctx, w, h, target.id, target.name);
+    }
   }
 
   // Velocity / prograde arrow from screen center
@@ -891,23 +861,6 @@ function paint(
     ctx.fillRect(0, h * 0.58, w, h * 0.42);
   }
 
-  ctx.strokeStyle = "rgba(232,237,244,0.35)";
-  ctx.lineWidth = 1;
-  const rsz = Math.max(10, w / 160);
-  ctx.beginPath();
-  ctx.moveTo(aimX - rsz, aimY);
-  ctx.lineTo(aimX - 4, aimY);
-  ctx.moveTo(aimX + 4, aimY);
-  ctx.lineTo(aimX + rsz, aimY);
-  ctx.moveTo(aimX, aimY - rsz);
-  ctx.lineTo(aimX, aimY - 4);
-  ctx.moveTo(aimX, aimY + 4);
-  ctx.lineTo(aimX, aimY + rsz);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(aimX, aimY, 3, 0, Math.PI * 2);
-  ctx.stroke();
-
   const lesson = pickLesson({
     dest: destination,
     thrusting: thrust !== 0,
@@ -917,6 +870,35 @@ function paint(
 
   const au = Math.hypot(ship.pos.x - sunP.x, ship.pos.y - sunP.y, ship.pos.z - sunP.z) / AU;
   const nav = navFromProgress(destination, pathPct);
+
+  // Distances in world units → km via destination scale
+  const earthDistU = Math.hypot(ship.pos.x - earth.x, ship.pos.y - earth.y, ship.pos.z - earth.z);
+  const destDistU = Math.hypot(ship.pos.x - destP.x, ship.pos.y - destP.y, ship.pos.z - destP.z);
+  const scaleKm = destination === "moon" ? 384400 / 16 : 1.496e8 / AU;
+  const travelledKmSim = ship.travelled * scaleKm;
+  // Blend sim path length with nominal progress for stable HUD
+  const travelledKm = pathPct > 0.02 ? nav.travelledKm * 0.65 + travelledKmSim * 0.35 : travelledKmSim;
+  const remainKm = Math.max(0, nav.totalKm - travelledKm);
+
+  // Target azimuth/elevation of destination
+  const destCam = rotate(inv, { x: destP.x - ship.pos.x, y: destP.y - ship.pos.y, z: destP.z - ship.pos.z });
+  const destAzEl = azElFromCam(destCam);
+
+  // Mission elapsed time (compressed sim → hours using nominal transfer duration)
+  const metHours = nav.totalHours * pathPct;
+
+  const phase =
+    destination === "mars"
+      ? pathPct < 0.08
+        ? "Departure burn"
+        : pathPct > 0.92
+          ? "Approach / capture"
+          : "Heliocentric transfer"
+      : pathPct < 0.1
+        ? "TLI burn"
+        : pathPct > 0.9
+          ? "LOI approach"
+          : "Translunar coast";
 
   return {
     target: target
@@ -928,18 +910,28 @@ function paint(
           fact: target.fact,
           dist: target.dist,
           range: target.range,
-          spec: target.spec,
-          meaning: target.meaning,
+          catalog: target.catalog,
+          constellation: target.constellation,
+          spectral: target.spectral,
+          appMag: target.appMag,
+          az: target.az,
+          el: target.el,
         }
       : null,
     lesson,
     drifted,
     pathPct,
     au,
-    travelledKm: nav.travelledKm,
-    remainKm: nav.remainKm,
-    etaHours: nav.etaHours,
+    travelledKm,
+    remainKm,
+    etaHours: Math.max(0, nav.totalHours * (1 - pathPct)),
     vKms: nav.vKms,
+    targetAz: destAzEl.az,
+    targetEl: destAzEl.el,
+    distEarth: earthDistU * scaleKm,
+    distTarget: destDistU * scaleKm,
+    metHours,
+    phase,
   };
 }
 
@@ -990,19 +982,16 @@ function drawGalaxy(
   y: number,
   h: number,
   gxy: (typeof GALAXIES)[number],
-  labeled: boolean,
 ) {
-  const photo = photoOf(gxy.id);
+  const photo = gxy.id === "andromeda" ? photoOf("andromeda") : null;
   if (photo) {
     const scale = Math.min(h * 0.42, 320 * gxy.rx);
     const iw = photo.naturalWidth;
     const ih = photo.naturalHeight;
     ctx.drawImage(photo, x - scale / 2, y - (scale * ih) / iw / 2, scale, (scale * ih) / iw);
-    if (labeled) {
-      ctx.font = `600 ${Math.max(11, h / 70)}px Outfit, sans-serif`;
-      ctx.fillStyle = "rgba(232,237,244,0.7)";
-      ctx.fillText(gxy.name, x + scale * 0.18, y - 12);
-    }
+    ctx.font = `600 ${Math.max(11, h / 70)}px Outfit, sans-serif`;
+    ctx.fillStyle = "rgba(232,237,244,0.7)";
+    ctx.fillText(gxy.name, x + scale * 0.18, y - 12);
     return;
   }
   const scale = Math.min(h * 0.2, 100 * gxy.rx);
@@ -1023,143 +1012,9 @@ function drawGalaxy(
     ctx.fillRect(Math.cos(a) * scale * 0.62 * ((i % 7) / 7), Math.sin(a) * scale * 0.3 * ((i % 5) / 5), 1.3, 1.3);
   }
   ctx.restore();
-  if (labeled) {
-    ctx.font = `600 ${Math.max(10, h / 72)}px Outfit, sans-serif`;
-    ctx.fillStyle = "rgba(232,237,244,0.6)";
-    ctx.fillText(gxy.name, x + 10, y - 8);
-  }
-}
-
-function hexRgb(hex: string): { r: number; g: number; b: number } {
-  const h = hex.replace("#", "");
-  return {
-    r: parseInt(h.slice(0, 2), 16) || 220,
-    g: parseInt(h.slice(2, 4), 16) || 220,
-    b: parseInt(h.slice(4, 6), 16) || 255,
-  };
-}
-
-function drawNamedStar(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  star: { color: string; mag: number; name: string },
-  named: boolean,
-  w: number,
-) {
-  const { r, g, b } = hexRgb(star.color);
-  const core = 1.3 + star.mag * 0.7;
-  const halo = core * 5.5;
-  const glow = ctx.createRadialGradient(x, y, 0, x, y, halo);
-  glow.addColorStop(0, `rgba(${r},${g},${b},0.95)`);
-  glow.addColorStop(0.18, `rgba(${r},${g},${b},0.55)`);
-  glow.addColorStop(0.55, `rgba(${r},${g},${b},0.12)`);
-  glow.addColorStop(1, "rgba(5,6,10,0)");
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(x, y, halo, 0, Math.PI * 2);
-  ctx.fill();
-  if (star.mag > 1.2) {
-    ctx.strokeStyle = `rgba(${r},${g},${b},0.35)`;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x - halo * 0.85, y);
-    ctx.lineTo(x + halo * 0.85, y);
-    ctx.moveTo(x, y - halo * 0.55);
-    ctx.lineTo(x, y + halo * 0.55);
-    ctx.stroke();
-  }
-  ctx.fillStyle = `rgb(${r},${g},${b})`;
-  ctx.beginPath();
-  ctx.arc(x, y, core, 0, Math.PI * 2);
-  ctx.fill();
-  if (named) {
-    ctx.font = `500 ${Math.max(11, w / 120)}px Outfit, sans-serif`;
-    ctx.fillStyle = "rgba(232,237,244,0.88)";
-    ctx.fillText(star.name, x + 10, y - 6);
-  }
-}
-
-function drawStarPip(ctx: CanvasRenderingContext2D, w: number, h: number, t: TargetInfo) {
-  const size = Math.min(168, Math.max(110, w * 0.14));
-  const x = w - 28 * (w / 1280) - size / 2;
-  const y = h * 0.34;
-  ctx.fillStyle = "rgba(9,12,18,0.78)";
-  ctx.strokeStyle = "rgba(126,184,201,0.55)";
-  ctx.lineWidth = 1.6;
-  roundRect(ctx, x - size / 2 - 10, y - size / 2 - 14, size + 20, size + 48, 10);
-  ctx.fill();
-  ctx.stroke();
-  const star = NAMED_STARS.find((s) => s.id === t.id);
-  if (star) drawNamedStar(ctx, x, y, star, false, w);
-  ctx.textAlign = "center";
-  ctx.font = `600 ${Math.max(11, w / 120)}px Outfit, sans-serif`;
-  ctx.fillStyle = "#7eb8c9";
-  ctx.fillText("Star zoom", x, y + size / 2 + 8);
-  ctx.font = `400 ${Math.max(10, w / 140)}px Atkinson Hyperlegible, sans-serif`;
-  ctx.fillStyle = "#8b97a8";
-  ctx.fillText(`${t.name} · ${t.spec ?? ""}`, x, y + size / 2 + 24);
-  ctx.textAlign = "left";
-}
-
-function drawConstelPip(ctx: CanvasRenderingContext2D, w: number, h: number, c: Constel) {
-  const size = Math.min(188, Math.max(120, w * 0.16));
-  const x = w - 28 * (w / 1280) - size / 2;
-  const y = h * 0.34;
-  ctx.fillStyle = "rgba(9,12,18,0.78)";
-  ctx.strokeStyle = "rgba(201,168,111,0.55)";
-  ctx.lineWidth = 1.6;
-  roundRect(ctx, x - size / 2 - 10, y - size / 2 - 14, size + 20, size + 52, 10);
-  ctx.fill();
-  ctx.stroke();
-  const ids = [...new Set(c.segs.flat())];
-  const pts = ids.map((id) => STAR_BY_ID.get(id)).filter(Boolean) as typeof NAMED_STARS;
-  let minX = 1e9,
-    maxX = -1e9,
-    minY = 1e9,
-    maxY = -1e9;
-  const raw = pts.map((s) => {
-    const px = s.dir.x;
-    const py = -s.dir.y;
-    minX = Math.min(minX, px);
-    maxX = Math.max(maxX, px);
-    minY = Math.min(minY, py);
-    maxY = Math.max(maxY, py);
-    return { s, px, py };
-  });
-  const span = Math.max(maxX - minX, maxY - minY, 0.08);
-  const map = (px: number, py: number) => ({
-    x: x + ((px - (minX + maxX) / 2) / span) * size * 0.62,
-    y: y + ((py - (minY + maxY) / 2) / span) * size * 0.62,
-  });
-  ctx.strokeStyle = "rgba(201,168,111,0.85)";
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  for (const [a, b] of c.segs) {
-    const sa = STAR_BY_ID.get(a);
-    const sb = STAR_BY_ID.get(b);
-    if (!sa || !sb) continue;
-    const pa = map(sa.dir.x, -sa.dir.y);
-    const pb = map(sb.dir.x, -sb.dir.y);
-    ctx.moveTo(pa.x, pa.y);
-    ctx.lineTo(pb.x, pb.y);
-  }
-  ctx.stroke();
-  for (const r of raw) {
-    const p = map(r.px, r.py);
-    ctx.fillStyle = r.s.color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.textAlign = "center";
-  ctx.font = `600 ${Math.max(11, w / 120)}px Outfit, sans-serif`;
-  ctx.fillStyle = "#c9a86f";
-  ctx.fillText("Constellation", x, y + size / 2 + 10);
-  ctx.font = `400 ${Math.max(10, w / 140)}px Atkinson Hyperlegible, sans-serif`;
-  ctx.fillStyle = "#8b97a8";
-  ctx.fillText(c.name, x, y + size / 2 + 26);
-  ctx.textAlign = "left";
+  ctx.font = `600 ${Math.max(10, h / 72)}px Outfit, sans-serif`;
+  ctx.fillStyle = "rgba(232,237,244,0.6)";
+  ctx.fillText(gxy.name, x + 10, y - 8);
 }
 
 function drawWorldBody(
@@ -1351,7 +1206,7 @@ function drawGalaxyPip(ctx: CanvasRenderingContext2D, w: number, h: number, id: 
   ctx.fill();
   ctx.stroke();
   const gxy = GALAXIES.find((g) => g.id === id);
-  if (gxy) drawGalaxy(ctx, x, y, size * 2.2, gxy, false);
+  if (gxy) drawGalaxy(ctx, x, y, size * 2.2, gxy);
   ctx.textAlign = "center";
   ctx.font = `600 ${Math.max(11, w / 120)}px Outfit, sans-serif`;
   ctx.fillStyle = "#7eb8c9";
@@ -1378,8 +1233,6 @@ type HudSnap = {
   thrust: number;
   boost: boolean;
   target: TargetInfo | null;
-  zoom: number;
-  isLocked: boolean;
   lesson: LessonId;
   drifted: boolean;
   pathPct: number;
@@ -1388,6 +1241,12 @@ type HudSnap = {
   remainKm: number;
   etaHours: number;
   vKms: number;
+  targetAz: number;
+  targetEl: number;
+  distEarth: number;
+  distTarget: number;
+  metHours: number;
+  phase: string;
 };
 
 const hudListeners = new Set<(h: HudSnap) => void>();
@@ -1407,8 +1266,6 @@ function Hud({ destination }: { destination: DestinationId }) {
     thrust: 0,
     boost: false,
     target: null,
-    zoom: 1.0,
-    isLocked: false,
     lesson: destination === "mars" ? "hohmann" : "visviva",
     drifted: false,
     pathPct: 0,
@@ -1417,6 +1274,12 @@ function Hud({ destination }: { destination: DestinationId }) {
     remainKm: TRANSFER[destination].km,
     etaHours: TRANSFER[destination].hours,
     vKms: TRANSFER[destination].vKms,
+    targetAz: 0,
+    targetEl: 0,
+    distEarth: 0,
+    distTarget: TRANSFER[destination].km,
+    metHours: 0,
+    phase: destination === "mars" ? "Heliocentric transfer" : "Translunar coast",
   });
 
   useEffect(() => {
@@ -1462,67 +1325,65 @@ function Hud({ destination }: { destination: DestinationId }) {
               {hud.drifted ? " · off corridor" : ""}
             </p>
           </div>
-          <div className="min-w-[16.5rem] rounded-md border border-accent/35 bg-bg/85 px-3 py-2">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-accent">Nav computer · {destLabel}</p>
+          <div className="min-w-[17.5rem] rounded-md border border-accent/35 bg-bg/85 px-3 py-2">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-accent">
+              {destination === "mars" ? "MARS TRANSFER" : "MOON TRANSFER"} · {hud.phase}
+            </p>
             <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-xs tabular-nums">
+              <dt className="text-muted">MET</dt>
+              <dd className="text-right text-fg">{formatEta(hud.metHours)}</dd>
               <dt className="text-muted">Travelled</dt>
               <dd className="text-right text-fg">{formatKm(hud.travelledKm)}</dd>
               <dt className="text-muted">Remaining</dt>
               <dd className="text-right text-fg">{formatKm(hud.remainKm)}</dd>
-              <dt className="text-muted">Time to {destLabel}</dt>
+              <dt className="text-muted">ETA</dt>
               <dd className="text-right text-accent">{formatEta(hud.etaHours)}</dd>
-              <dt className="text-muted">Range rate</dt>
-              <dd className="text-right text-fg">−{hud.vKms.toFixed(2)} km/s</dd>
+              <dt className="text-muted">Velocity</dt>
+              <dd className="text-right text-fg">{hud.vKms.toFixed(2)} km/s</dd>
+              <dt className="text-muted">Dist Earth</dt>
+              <dd className="text-right text-fg">{formatKm(hud.distEarth)}</dd>
+              <dt className="text-muted">Dist {destLabel}</dt>
+              <dd className="text-right text-fg">{formatKm(hud.distTarget)}</dd>
+              <dt className="text-muted">Target AZ</dt>
+              <dd className="text-right text-fg">{hud.targetAz.toFixed(1)}°</dd>
+              <dt className="text-muted">Target EL</dt>
+              <dd className="text-right text-fg">
+                {hud.targetEl >= 0 ? "+" : ""}
+                {hud.targetEl.toFixed(1)}°
+              </dd>
             </dl>
             <div className="mt-2 h-1 overflow-hidden rounded-full bg-raised">
               <div className="h-full bg-accent" style={{ width: `${Math.round(hud.pathPct * 100)}%` }} />
             </div>
+            <p className="mt-1 font-mono text-[10px] text-muted">Progress {Math.round(hud.pathPct * 100)}%</p>
           </div>
           {hud.target && (
             <article className="max-w-sm rounded-md border border-accent/40 bg-bg/85 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-display text-sm font-semibold text-fg">{hud.target.name}</p>
-                <button
-                  type="button"
-                  className={cn(
-                    "pointer-events-auto rounded px-2 py-0.5 font-mono text-[10px] font-bold uppercase transition-colors",
-                    hud.isLocked
-                      ? "border border-amber-500/50 bg-amber-500/20 text-amber-400"
-                      : "border border-border bg-surface text-muted hover:text-fg"
-                  )}
-                  onClick={() => toggleFpvTargetLock(hud.target?.id)}
-                >
-                  {hud.isLocked ? "🔒 Locked" : "🔓 Click to Lock"}
-                </button>
-              </div>
-              <p className="mt-0.5 font-mono text-[11px] text-accent">
-                {hud.target.kind === "constellation" ? "Constellation" : hud.target.kind}
-                {hud.target.spec ? ` · ${hud.target.spec}` : ""} · {hud.target.dist}
+              <p className="font-display text-sm font-semibold text-fg">{hud.target.name}</p>
+              {hud.target.catalog && (
+                <p className="mt-0.5 font-mono text-[11px] text-accent">{hud.target.catalog}</p>
+              )}
+              <p className="mt-0.5 font-mono text-[11px] text-muted">
+                {hud.target.kind}
+                {hud.target.constellation ? ` · ${hud.target.constellation}` : ""}
+                {hud.target.spectral ? ` · ${hud.target.spectral}` : ""}
+                {hud.target.appMag != null ? ` · mag ${hud.target.appMag.toFixed(2)}` : ""}
               </p>
-              {hud.target.meaning && <p className="mt-1 text-xs text-fg/90">{hud.target.meaning}</p>}
+              <p className="mt-0.5 font-mono text-[11px] text-accent">
+                {hud.target.range} · {hud.target.dist}
+              </p>
+              {hud.target.az != null && (
+                <p className="mt-0.5 font-mono text-[11px] text-muted">
+                  AZ {hud.target.az.toFixed(1)}° · EL {hud.target.el != null && hud.target.el >= 0 ? "+" : ""}
+                  {hud.target.el?.toFixed(1)}°
+                </p>
+              )}
               <p className="mt-1 text-xs text-fg/90">{hud.target.blurb}</p>
               <p className="mt-2 text-xs leading-relaxed text-muted">{hud.target.fact}</p>
             </article>
           )}
         </div>
         <div className="flex flex-col items-end gap-2">
-          <div className="pointer-events-auto flex items-center gap-1 rounded-md border border-border bg-bg/85 p-1 shadow-md">
-            <span className="px-1 font-mono text-[10px] text-muted">OPTIC</span>
-            {[1, 2.5, 5, 10].map((z) => (
-              <button
-                key={z}
-                type="button"
-                className={cn(
-                  "rounded px-2 py-0.5 font-mono text-xs transition-colors",
-                  hud.zoom === z ? "bg-accent text-bg font-bold shadow-sm" : "text-muted hover:text-fg hover:bg-surface"
-                )}
-                onClick={() => setFpvZoom(z)}
-              >
-                {z}x
-              </button>
-            ))}
-            <span className="pl-1 pr-1.5 font-mono text-[10px] text-accent">FOV {(62 / hud.zoom).toFixed(1)}°</span>
-          </div>
           <Button
             className="pointer-events-auto"
             variant="secondary"
@@ -1572,7 +1433,7 @@ function Hud({ destination }: { destination: DestinationId }) {
           </button>
         </div>
         <p className="hidden max-w-xs text-[11px] text-muted sm:block">
-          Reticle locks what you point at — planets, stars, or constellation lines. W/S thrust · A/D yaw (A left) · drag to look · Z damp · X brake
+          Reticle auto-locks worlds on the path. W/S thrust · A/D yaw (A left) · drag to look · Z damp · X brake
         </p>
       </div>
     </div>
