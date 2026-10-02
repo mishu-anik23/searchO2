@@ -433,6 +433,35 @@
       pointer-events: none;
       z-index: 15;
     }
+
+    /* CRUISE DEBRIEF / EXIT MODAL */
+    .exit-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 6, 10, 0.88);
+      backdrop-filter: blur(14px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .exit-modal-backdrop.open {
+      display: flex;
+    }
+    .exit-modal {
+      width: 90%;
+      max-width: 520px;
+      background: #0D121D;
+      border: 1px solid rgba(0, 229, 255, 0.35);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(0,229,255,0.15);
+      animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.94) translateY(12px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
   </style>
 </head>
 <body>
@@ -451,6 +480,9 @@
           <a href="mars-explorer-preview.html" class="nav-btn">🔴 Mars 3D</a>
           <a href="lunar-explorer-preview.html" class="nav-btn">🌕 Lunar 3D</a>
           <a href="moon-landing-preview.html" class="nav-btn">🌙 3D Moon Landing</a>
+          <button onclick="endCruiseFlight()" class="nav-btn" style="background:rgba(255,82,82,0.18);border-color:#FF5252;color:#FF8A80;cursor:pointer;font-weight:800;">
+            🛑 Exit Cruise / End FPV
+          </button>
         </div>
       </div>
 
@@ -570,10 +602,85 @@
       <div class="flight-tip">
         <span>Steer: <span class="kbd">W/S</span> Thrust · <span class="kbd">A/D</span> Yaw · <span class="kbd">R/F</span> Pitch · <span class="kbd">Q/E</span> Roll · <span class="kbd">Z</span> Damp · <span class="kbd">X</span> Brake · <span class="kbd">1-4</span> Zoom · <span class="kbd">Click</span> Lock Target</span>
       </div>
+      <button onclick="endCruiseFlight()" class="nav-btn" style="background:rgba(255,82,82,0.18);border-color:#FF5252;color:#FF8A80;cursor:pointer;font-weight:700;padding:4px 10px;font-size:0.72rem;">
+        🛑 End FPV
+      </button>
+    </div>
+
+    <!-- CRUISE FLIGHT DEBRIEF MODAL -->
+    <div class="exit-modal-backdrop" id="exitDebriefModal">
+      <div class="exit-modal">
+        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:1.5rem;">🛰️</span>
+            <div>
+              <h3 style="font-size:1.15rem;font-weight:800;color:#FFF;letter-spacing:-0.3px;">FPV Mission Telemetry Debrief</h3>
+              <p style="font-size:0.75rem;color:var(--fg-muted);">Transfer Cruise Phase Complete · Propulsion &amp; Telemetry Halted</p>
+            </div>
+          </div>
+          <button onclick="resumeCruiseFlight()" style="background:none;border:none;color:var(--fg-muted);font-size:1.2rem;cursor:pointer;">✕</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+          <div style="background:rgba(255,179,0,0.08);border:1px solid rgba(255,179,0,0.3);border-radius:8px;padding:12px;">
+            <div style="font-size:0.65rem;color:var(--fg-muted);text-transform:uppercase;font-family:var(--mono);">Telemetry Billed (€1.80/s)</div>
+            <div style="font-size:1.3rem;font-weight:800;color:var(--gold);font-family:var(--mono);" id="debriefBilledVal">€0.00</div>
+          </div>
+          <div style="background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.3);border-radius:8px;padding:12px;">
+            <div style="font-size:0.65rem;color:var(--fg-muted);text-transform:uppercase;font-family:var(--mono);">Remaining Funds</div>
+            <div style="font-size:1.3rem;font-weight:800;color:var(--accent);font-family:var(--mono);" id="debriefFundsVal">€10,000.00</div>
+          </div>
+          <div style="background:var(--surface-elevated);border:1px solid var(--border);border-radius:8px;padding:12px;">
+            <div style="font-size:0.65rem;color:var(--fg-muted);text-transform:uppercase;font-family:var(--mono);">Mission Elapsed Time</div>
+            <div style="font-size:1.1rem;font-weight:700;color:#FFF;font-family:var(--mono);" id="debriefMetVal">00:00:00</div>
+          </div>
+          <div style="background:var(--surface-elevated);border:1px solid var(--border);border-radius:8px;padding:12px;">
+            <div style="font-size:0.65rem;color:var(--fg-muted);text-transform:uppercase;font-family:var(--mono);">Flight Guidance</div>
+            <div style="font-size:1.1rem;font-weight:700;color:#4CAF50;font-family:var(--mono);">TRANSIT NOMINAL</div>
+          </div>
+        </div>
+
+        <p style="font-size:0.82rem;line-height:1.5;color:var(--fg);margin-bottom:20px;">
+          Your spacecraft has safely completed the translunar cruise burn. Telemetry streaming has paused and no additional funds are being consumed. Select your next mission phase:
+        </p>
+
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <a href="moon-landing-preview.html" class="nav-btn" style="justify-content:center;background:linear-gradient(135deg,#00E5FF,#0091EA);color:#05060A;font-weight:800;padding:10px;font-size:0.88rem;border:none;text-align:center;">
+            Proceed to 3D Moon Landing &amp; Polar ISRU Plant →
+          </a>
+          <div style="display:flex;gap:10px;">
+            <button onclick="resumeCruiseFlight()" class="nav-btn" style="flex:1;justify-content:center;padding:8px;cursor:pointer;">
+              ▶ Resume Cruise FPV
+            </button>
+            <a href="oxyforge.html" class="nav-btn" style="flex:1;justify-content:center;padding:8px;text-align:center;">
+              Return to Mission HQ
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
+    // --- TEXTURE PRELOADER FOR REALISTIC 3D PLANETS & DEEP SKY ---
+    const PLANET_TEXTURES = {};
+    const TEXTURE_PATHS = {
+      sun: "cosmos/sun.webp",
+      earth: "cosmos/earth.webp",
+      moon: "cosmos/moon.webp",
+      mars: "cosmos/mars.webp",
+      jupiter: "cosmos/jupiter.webp",
+      saturn: "cosmos/saturn.webp",
+      uranus: "cosmos/uranus.webp",
+      venus: "cosmos/venus.webp",
+      andromeda: "cosmos/andromeda.webp"
+    };
+    for (const [key, path] of Object.entries(TEXTURE_PATHS)) {
+      const img = new Image();
+      img.src = path;
+      PLANET_TEXTURES[key] = img;
+    }
+
     // --- AUDIO SYNTHESIZER ---
     let audioCtx = null;
     function initAudio() {
@@ -613,8 +720,10 @@
 
     let sessionBilled = 0.00;
     let missionTimeSec = 0;
+    let isCruiseActive = true;
 
     function tickBilling(dt) {
+      if (!isCruiseActive) return;
       missionTimeSec += dt;
       const cost = FPV_RATE_PER_SEC * dt;
       sessionBilled += cost;
@@ -632,6 +741,30 @@
       document.getElementById('metTimerVal').textContent = 
         `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
+
+    // --- EXIT CRUISE / PAUSE BILLING DEBRIEF MODAL ---
+    window.endCruiseFlight = function() {
+      isCruiseActive = false;
+      initAudio();
+      playBeep(650, 0.12);
+
+      const hrs = Math.floor(missionTimeSec / 3600);
+      const mins = Math.floor((missionTimeSec % 3600) / 60);
+      const secs = Math.floor(missionTimeSec % 60);
+      const metFormatted = `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+      document.getElementById('debriefBilledVal').textContent = `€${sessionBilled.toFixed(2)}`;
+      document.getElementById('debriefFundsVal').textContent = `€${totalMissionFunds.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('debriefMetVal').textContent = metFormatted;
+      document.getElementById('exitDebriefModal').classList.add('open');
+    };
+
+    window.resumeCruiseFlight = function() {
+      isCruiseActive = true;
+      initAudio();
+      playBeep(1100, 0.08);
+      document.getElementById('exitDebriefModal').classList.remove('open');
+    };
 
     // --- CELESTIAL COSMOS CATALOG & ASTROPHYSICS ---
     function raDecToDir(raHours, decDeg) {
@@ -1362,27 +1495,41 @@
         ctx.translate(pr.px, pr.py);
         if (gxy.id === "andromeda") ctx.rotate(0.65);
         
-        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-        if (gxy.id === "andromeda") {
-          grad.addColorStop(0, "rgba(255, 245, 230, 0.95)");
-          grad.addColorStop(0.2, "rgba(220, 200, 240, 0.72)");
-          grad.addColorStop(0.55, "rgba(160, 140, 210, 0.30)");
-          grad.addColorStop(1, "rgba(5, 6, 10, 0)");
+        if (gxy.id === "andromeda" && PLANET_TEXTURES['andromeda'] && PLANET_TEXTURES['andromeda'].complete && PLANET_TEXTURES['andromeda'].naturalWidth > 0) {
+          // Realistic Andromeda photographic spiral rendering
+          ctx.drawImage(PLANET_TEXTURES['andromeda'], -rx * 1.6, -ry * 1.6, rx * 3.2, ry * 3.2);
+          const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, rx * 1.8);
+          halo.addColorStop(0, "rgba(255, 245, 230, 0.45)");
+          halo.addColorStop(0.35, "rgba(210, 190, 245, 0.25)");
+          halo.addColorStop(0.75, "rgba(140, 120, 200, 0.10)");
+          halo.addColorStop(1, "rgba(5, 6, 10, 0)");
+          ctx.fillStyle = halo;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, rx * 1.8, ry * 1.8, 0, 0, Math.PI * 2);
+          ctx.fill();
         } else {
-          grad.addColorStop(0, "rgba(255, 255, 255, 0.85)");
-          grad.addColorStop(0.25, gxy.color + "99");
-          grad.addColorStop(0.6, gxy.color + "33");
-          grad.addColorStop(1, "rgba(5, 6, 10, 0)");
-        }
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
-        ctx.fill();
+          const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+          if (gxy.id === "andromeda") {
+            grad.addColorStop(0, "rgba(255, 245, 230, 0.95)");
+            grad.addColorStop(0.2, "rgba(220, 200, 240, 0.72)");
+            grad.addColorStop(0.55, "rgba(160, 140, 210, 0.30)");
+            grad.addColorStop(1, "rgba(5, 6, 10, 0)");
+          } else {
+            grad.addColorStop(0, "rgba(255, 255, 255, 0.85)");
+            grad.addColorStop(0.25, gxy.color + "99");
+            grad.addColorStop(0.6, gxy.color + "33");
+            grad.addColorStop(1, "rgba(5, 6, 10, 0)");
+          }
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+          ctx.fill();
 
-        // Dark dust lane for Sombrero & Andromeda
-        if (gxy.id === "m104" || gxy.id === "andromeda") {
-          ctx.fillStyle = "rgba(8, 10, 16, 0.55)";
-          ctx.fillRect(-rx * 0.85, -1, rx * 1.7, 2);
+          // Dark dust lane for Sombrero & Andromeda
+          if (gxy.id === "m104" || gxy.id === "andromeda") {
+            ctx.fillStyle = "rgba(8, 10, 16, 0.55)";
+            ctx.fillRect(-rx * 0.85, -1, rx * 1.7, 2);
+          }
         }
         ctx.restore();
       }
@@ -1450,31 +1597,87 @@
 
         const rad = Math.max(4.0, b.r * pr.scale * 0.05);
 
-        // Body sphere & atmospheric corona
-        const grad = ctx.createRadialGradient(pr.px, pr.py, 0, pr.px, pr.py, rad * 1.5);
-        grad.addColorStop(0, b.color);
-        grad.addColorStop(0.75, b.color);
-        grad.addColorStop(1, "rgba(5, 6, 10, 0)");
-        ctx.fillStyle = grad;
+        // 1. Render 3D textured spherical planet with terminator shading
+        ctx.save();
         ctx.beginPath();
         ctx.arc(pr.px, pr.py, rad, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.clip();
 
-        // Saturn Rings
+        const tex = PLANET_TEXTURES[b.id];
+        if (tex && tex.complete && tex.naturalWidth > 0) {
+          const texW = rad * 2.6;
+          const texH = rad * 2.0;
+          ctx.drawImage(tex, pr.px - rad * 1.3, pr.py - rad, texW, texH);
+        } else {
+          ctx.fillStyle = b.color;
+          ctx.fill();
+        }
+
+        // 3D Spherical Shading & Day/Night Terminator
+        if (b.id === 'sun') {
+          const sunGlow = ctx.createRadialGradient(pr.px, pr.py, rad * 0.2, pr.px, pr.py, rad);
+          sunGlow.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+          sunGlow.addColorStop(0.5, "rgba(255, 240, 160, 0.4)");
+          sunGlow.addColorStop(1, "rgba(255, 180, 0, 0)");
+          ctx.fillStyle = sunGlow;
+          ctx.fill();
+        } else {
+          const shadeGrad = ctx.createRadialGradient(
+            pr.px - rad * 0.35, pr.py - rad * 0.35, rad * 0.05,
+            pr.px + rad * 0.25, pr.py + rad * 0.25, rad * 1.05
+          );
+          shadeGrad.addColorStop(0, "rgba(255, 255, 255, 0.28)");
+          shadeGrad.addColorStop(0.45, "rgba(0, 0, 0, 0.0)");
+          shadeGrad.addColorStop(0.85, "rgba(0, 0, 0, 0.70)");
+          shadeGrad.addColorStop(1.0, "rgba(0, 0, 0, 0.94)");
+          ctx.fillStyle = shadeGrad;
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // 2. Atmospheric Limb Glow Rim & Solar Corona
+        if (b.id === 'earth') {
+          const atmoGrad = ctx.createRadialGradient(pr.px, pr.py, rad * 0.85, pr.px, pr.py, rad * 1.35);
+          atmoGrad.addColorStop(0, "rgba(110, 180, 255, 0.65)");
+          atmoGrad.addColorStop(1, "rgba(110, 180, 255, 0)");
+          ctx.fillStyle = atmoGrad;
+          ctx.beginPath();
+          ctx.arc(pr.px, pr.py, rad * 1.35, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (b.id === 'sun') {
+          const corona = ctx.createRadialGradient(pr.px, pr.py, rad * 0.85, pr.px, pr.py, rad * 2.4);
+          corona.addColorStop(0, "rgba(255, 210, 60, 0.55)");
+          corona.addColorStop(0.5, "rgba(255, 120, 0, 0.22)");
+          corona.addColorStop(1, "rgba(255, 100, 0, 0)");
+          ctx.fillStyle = corona;
+          ctx.beginPath();
+          ctx.arc(pr.px, pr.py, rad * 2.4, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (b.id === 'venus') {
+          const vGlow = ctx.createRadialGradient(pr.px, pr.py, rad * 0.85, pr.px, pr.py, rad * 1.25);
+          vGlow.addColorStop(0, "rgba(235, 210, 160, 0.45)");
+          vGlow.addColorStop(1, "rgba(235, 210, 160, 0)");
+          ctx.fillStyle = vGlow;
+          ctx.beginPath();
+          ctx.arc(pr.px, pr.py, rad * 1.25, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 3. Saturn Rings with Cassini Division
         if (b.hasRings) {
           ctx.save();
           ctx.translate(pr.px, pr.py);
           ctx.rotate(0.35);
-          ctx.strokeStyle = "rgba(227, 208, 168, 0.75)";
-          ctx.lineWidth = rad * 0.45;
+          ctx.strokeStyle = "rgba(227, 208, 168, 0.82)";
+          ctx.lineWidth = rad * 0.5;
           ctx.beginPath();
-          ctx.ellipse(0, 0, rad * 2.2, rad * 0.6, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, rad * 2.3, rad * 0.62, 0, 0, Math.PI * 2);
           ctx.stroke();
           // Cassini Division
-          ctx.strokeStyle = "rgba(5, 6, 10, 0.7)";
-          ctx.lineWidth = 1.2;
+          ctx.strokeStyle = "rgba(5, 6, 10, 0.85)";
+          ctx.lineWidth = 1.4;
           ctx.beginPath();
-          ctx.ellipse(0, 0, rad * 2.05, rad * 0.55, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, rad * 2.12, rad * 0.57, 0, 0, Math.PI * 2);
           ctx.stroke();
           ctx.restore();
         }

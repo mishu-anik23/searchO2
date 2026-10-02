@@ -1,5 +1,4 @@
 import { BookOpen, Wallet } from "lucide-react";
-import { commanderById } from "@/game/data";
 import { formatKg, formatUsd } from "@/lib/utils";
 import { useGame } from "@/game/store";
 import { Button } from "@/components/ui/button";
@@ -9,29 +8,13 @@ export function Chrome({ onLibrary }: { onLibrary: () => void }) {
   const credits = useGame((s) => s.credits);
   const oxygenKg = useGame((s) => s.oxygenKg);
   const commander = useGame((s) => s.commander);
-  const commanderId = useGame((s) => s.commanderId);
   const fpvOpen = useGame((s) => s.fpvOpen);
-  const profile = commanderById(commanderId);
 
   return (
     <header className="flex items-center justify-between gap-3 border-b border-border bg-surface/90 px-4 py-3 backdrop-blur-sm">
-      <div className="flex min-w-0 items-center gap-3">
-        {commanderId ? (
-          <img
-            src={profile.src}
-            alt=""
-            width={36}
-            height={36}
-            className="size-9 rounded-md object-cover object-top"
-          />
-        ) : null}
-        <div className="min-w-0">
-          <p className="font-display text-sm font-semibold tracking-tight">OxyForge</p>
-          <p className="truncate text-xs text-muted">
-            {commander || "Cadet"}
-            {commanderId ? ` · ${profile.callsign}` : " · Mission control"}
-          </p>
-        </div>
+      <div className="min-w-0">
+        <p className="font-display text-sm font-semibold tracking-tight">OxyForge</p>
+        <p className="truncate text-xs text-muted">{commander || "Cadet"} · Mission control</p>
       </div>
       <div className="flex items-center gap-2">
         <div className="hidden items-center gap-2 sm:flex">
