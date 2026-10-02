@@ -2147,11 +2147,14 @@
   .crew-recruit-btn b{ font-size:0.78rem; color:var(--pine); }
   .crew-recruit-btn span{ font-size:0.68rem; color:var(--pine-soft); }
 
-  .hint-toast{ position:absolute; top:70px; left:50%; transform:translateX(-50%) translateY(-10px); z-index:35;
-    background: rgba(44,74,50,0.94); color:white; padding:11px 18px; border-radius:14px; font-size:0.82rem; max-width:420px;
-    text-align:center; box-shadow:0 10px 26px rgba(0,0,0,0.3); opacity:0; pointer-events:none; transition: opacity 0.5s ease, transform 0.5s ease; }
-  .hint-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-  .hint-toast b{ color:var(--gold); }
+  .hint-toast{ display: none !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+  .hint-toast.show{ display: none !important; opacity: 0 !important; }
+
+  /* Cut Down Tree & Road Labor Enhancements */
+  .tree-cutdown-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+  .tree-cutdown-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(216,67,21,0.18); }
+  .botanical-fact-card { box-shadow: 0 2px 6px rgba(46,125,50,0.08); }
+  .road-crew-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; font-size: 0.74rem; font-weight: 700; }
 
   /* ================= GAME-ORIENTED CHILDREN-ATTRACTIVE EDUCATIONAL DISCOVERY POPUPS ================= */
   .educational-discovery-layer {
@@ -3347,10 +3350,10 @@
       pointer-events: none !important;
     }
     .hint-toast {
-      top: 56px !important;
-      max-width: calc(100vw - 24px) !important;
-      font-size: 0.75rem !important;
-      padding: 8px 12px !important;
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
     }
 
     /* Floating Panels: Native Mobile Bottom Sheets with Sticky Header */
@@ -9438,7 +9441,7 @@ function freshState(){
       health:100, ageHours:0, downtimeHours:0, zeroHealthStreakHours:0, o2Produced:0, pendingHarvest:0, harvesting:false, harvestStartReal:0, harvestAmount:0,
       careAnimUntil:0, careAnimType:null, assignedWorker:null, accessories:{irrigation:false, fertilizer:false, boundary:false}, animal:null });
   }
-  return {
+  var fresh = {
     money: 10000, totalO2: 0, totalO2AllTime: 0, treesPlanted: 0, treesRemoved: 0, gameHour: 0,
     plots: plots, achUnlocked: {}, speedFactor: 180, lastSaveReal: Date.now(),
     workers: [], roleCounters: { laborer: 0, farmer: 0, botanist: 0, engineer: 0 }, lastPaidDay: 0, nextTreeId: 1, reports: [], pestHandled: 0, demerits: 0,
@@ -9450,14 +9453,14 @@ function freshState(){
     equipment: { owned: {}, leased: {} },
     farmStandItems: [],
     roads: {
-      main: {built:false,building:false,buildHours:0},
-      subway: {built:false,building:false,buildHours:0},
-      crew_trail: {built:false,building:false,buildHours:0},
-      garden_walk: {built:false,building:false,buildHours:0},
-      market_promenade: {built:false,building:false,buildHours:0}
+      main: {built:false,building:false,buildHours:0,assignedLaborers:[]},
+      subway: {built:false,building:false,buildHours:0,assignedLaborers:[]},
+      crew_trail: {built:false,building:false,buildHours:0,assignedLaborers:[]},
+      garden_walk: {built:false,building:false,buildHours:0,assignedLaborers:[]},
+      market_promenade: {built:false,building:false,buildHours:0,assignedLaborers:[]}
     },
     buildings: {
-      road: {built:false,building:false,buildHours:0},
+      road: {built:false,building:false,buildHours:0,assignedLaborers:[]},
       crew_shed: {built:false,building:false,buildHours:0},
       garage: {built:false,building:false,buildHours:0},
       garden: {built:false,building:false,buildHours:0,flowerType:null,freshness:100,warnedLow:false,careAnimUntil:0,beds:[
@@ -9505,6 +9508,85 @@ function freshState(){
     rocksCleared: false, rocksClearing: false, rocksClearHours: 0,
     lawnOvergrowth: 0, lawnMowing: false, lawnMowHours: 0,
     marketplaceUnlocked: {}
+  };
+  if (state && typeof state === 'object'){
+    for (var k in state){
+      if (!fresh.hasOwnProperty(k)) delete state[k];
+    }
+    Object.assign(state, fresh);
+    return state;
+  }
+  state = fresh;
+  return state;
+}
+state = freshState();
+
+// ================= BULLETPROOF MONEY SANITIZATION & TASK PROGRESS =================
+function sanitizeMoney(val, fallback){
+  if (val !== null && val !== undefined && val !== '' && typeof val !== 'boolean'){
+    var n = Number(val);
+    if (Number.isFinite(n)) return n;
+  }
+  try {
+    var item = localStorage.getItem('searchO2_last_valid_money');
+    if (item !== null && item !== undefined && item !== ''){
+      var cached = Number(item);
+      if (Number.isFinite(cached)) return cached;
+    }
+  } catch(e){}
+  return (fallback !== undefined) ? fallback : 5000;
+}
+
+function adjustMoney(delta, reason){
+  if (!state) return 0;
+  if (!Number.isFinite(state.money)){
+    state.money = sanitizeMoney(state.money, 5000);
+  }
+  var d = Number(delta);
+  if (!Number.isFinite(d)){
+    console.warn('[adjustMoney] Non-finite delta ignored:', delta, 'Reason:', reason);
+    return state.money;
+  }
+  state.money += d;
+  if (!Number.isFinite(state.money)){
+    state.money = sanitizeMoney(null, 5000);
+  }
+  try {
+    localStorage.setItem('searchO2_last_valid_money', state.money.toFixed(2));
+  } catch(e){}
+  return state.money;
+}
+
+function formatRemainingTime(realSeconds, remGameHours){
+  if (!Number.isFinite(realSeconds) || realSeconds <= 0) return 'Almost done';
+  if (realSeconds < 60){
+    return Math.max(1, Math.round(realSeconds)) + 's remaining' + (remGameHours ? ' (' + (Math.round(remGameHours * 10) / 10) + 'h game)' : '');
+  }
+  var m = Math.floor(realSeconds / 60);
+  var s = Math.round(realSeconds % 60);
+  if (m < 60){
+    return m + 'm ' + (s > 0 ? s + 's ' : '') + 'remaining' + (remGameHours ? ' (' + (Math.round(remGameHours * 10) / 10) + 'h game)' : '');
+  }
+  var h = Math.floor(m / 60);
+  var rm = m % 60;
+  return h + 'h ' + rm + 'm remaining';
+}
+
+function formatTaskProgress(doneHours, totalHours, speedMult){
+  totalHours = Math.max(0.1, Number(totalHours) || 1);
+  doneHours = Math.max(0, Math.min(totalHours, Number(doneHours) || 0));
+  var pct = Math.min(100, Math.round((doneHours / totalHours) * 100));
+  var mult = Math.max(0.1, Number(speedMult) || 1);
+  var remHours = Math.max(0, (totalHours - doneHours) / mult);
+  var sf = (state && Number.isFinite(state.speedFactor) && state.speedFactor > 0) ? state.speedFactor : 180;
+  var realSeconds = remHours * ((typeof REAL_MS_PER_GAME_HOUR_SPEC !== 'undefined' ? REAL_MS_PER_GAME_HOUR_SPEC : 900000) / 1000) / sf;
+  var timeStr = formatRemainingTime(realSeconds, remHours);
+  return {
+    pct: pct,
+    remHours: remHours,
+    realSeconds: realSeconds,
+    timeStr: timeStr,
+    display: pct + '% · ' + timeStr
   };
 }
 
@@ -14281,6 +14363,12 @@ var savePending = false;
 var saveInFlight = false;
 function doSave(){
   if (!window.storage || !state) return;
+  if (!Number.isFinite(state.money)){
+    state.money = sanitizeMoney(state.money, 5000);
+  }
+  if (!Number.isFinite(state.gameHour)) state.gameHour = 0;
+  if (!Number.isFinite(state.totalO2)) state.totalO2 = 0;
+  if (!Number.isFinite(state.totalO2AllTime)) state.totalO2AllTime = 0;
   if (saveInFlight){ savePending = true; return; }
   saveInFlight = true;
   state.lastSaveReal = Date.now();
@@ -14299,6 +14387,14 @@ function requestSave(){
   saveTimer = setTimeout(function(){ saveTimer=null; savePending=false; doSave(); }, 3000);
 }
 window.addEventListener('beforeunload', function(){ if (window.storage && state) doSave(); });
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'visible'){
+    lastRealTs = Date.now();
+    if (state && !Number.isFinite(state.money)){
+      state.money = sanitizeMoney(state.money, 5000);
+    }
+  }
+});
 function loadState(){
   if (!window.storage){ state = freshState(); afterLoad(); return; }
   window.storage.get('searchO2-save-v4').then(function(res){
@@ -14454,16 +14550,28 @@ function loadState(){
         state.equipment = state.equipment || { owned: {}, leased: {} };
         if (!state.farmStandItems) state.farmStandItems = [];
         nextWorkerId = 1 + state.workers.reduce(function(m,w){return Math.max(m,w.id);},0);
-        if (elapsedReal > 5000){
+
+        // Defensive sanitation for loaded numeric state fields
+        state.money = sanitizeMoney(state.money, 10000);
+        if (!Number.isFinite(state.gameHour) || state.gameHour < 0) state.gameHour = 0;
+        if (!Number.isFinite(state.totalO2) || state.totalO2 < 0) state.totalO2 = 0;
+        if (!Number.isFinite(state.totalO2AllTime) || state.totalO2AllTime < 0) state.totalO2AllTime = 0;
+        if (!Number.isFinite(state.lastPaidDay)) state.lastPaidDay = Math.floor(state.gameHour / 24);
+        if (!Number.isFinite(state.speedFactor) || state.speedFactor <= 0) state.speedFactor = 180;
+
+        if (Number.isFinite(elapsedReal) && elapsedReal > 5000){
           var before = { money: state.money, totalO2AllTime: state.totalO2AllTime };
-          var gh = gameHoursFromReal(elapsedReal, state.speedFactor);
-          gh = Math.min(gh, 24*4*30);
-          advanceGame(gh);
-          offlineSummary = {
-            realMinutes: Math.round(elapsedReal/60000), gameHours: Math.round(gh*10)/10,
-            moneyGained: Math.round((state.money-before.money)*100)/100,
-            o2Gained: Math.round((state.totalO2AllTime-before.totalO2AllTime)*10)/10
-          };
+          var clampedElapsed = Math.min(Math.max(0, elapsedReal), 7 * 24 * 60 * 60 * 1000); // at most 7 real days
+          var gh = gameHoursFromReal(clampedElapsed, state.speedFactor);
+          if (Number.isFinite(gh) && gh > 0){
+            gh = Math.min(gh, 24*4*30);
+            advanceGame(gh);
+            offlineSummary = {
+              realMinutes: Math.round(clampedElapsed/60000), gameHours: Math.round(gh*10)/10,
+              moneyGained: Math.round((state.money-before.money)*100)/100,
+              o2Gained: Math.round((state.totalO2AllTime-before.totalO2AllTime)*10)/10
+            };
+          }
         }
       }catch(e){ console.error('Parse failed, starting fresh', e); state = freshState(); }
     } else { state = freshState(); }
@@ -14477,7 +14585,7 @@ function afterLoad(){
   buildSeasonChipOnce();
   startLoop();
   render();
-  startHintLoop();
+  // Note: startHintLoop removed in favor of integrated contextual modal cards
   scheduleBirds();
 }
 
@@ -14552,13 +14660,18 @@ function plotKpi(p){
 }
 
 function advanceGame(dh){
-  if (dh<=0) return;
+  if (!Number.isFinite(dh) || dh <= 0) return;
+  dh = Math.min(dh, 720); // Cap single-tick simulation advance to 30 game days
+  if (!Number.isFinite(state.gameHour) || state.gameHour < 0) state.gameHour = 0;
+  if (!Number.isFinite(state.money)) state.money = sanitizeMoney(state.money, 5000);
+
   var season = currentSeason();
-  var prevSeasonName = season.name;
+  var prevSeasonName = season ? season.name : 'Spring';
   var totalMult = 1 + forestBonus() + diversityBonus() + engineerBonus();
+  if (!Number.isFinite(totalMult)) totalMult = 1.0;
   state.gameHour += dh;
   var nextSeason = currentSeason();
-  if (nextSeason.name !== prevSeasonName && typeof SoundTrackEngine !== 'undefined'){
+  if (nextSeason && nextSeason.name !== prevSeasonName && typeof SoundTrackEngine !== 'undefined'){
     SoundTrackEngine.playSFX('season', nextSeason.name);
   }
 
@@ -14579,16 +14692,32 @@ function advanceGame(dh){
 
   BUILDING_ORDER.forEach(function(key){
     var b = state.buildings[key]; var def = BUILDING_TYPES[key];
-    if (b.building){
-      b.buildHours += dh;
+    if (b && b.building && def){
+      var laborSpeedMult = 1.0;
+      if (key === 'road'){
+        var assignedLab = (b.assignedLaborers && b.assignedLaborers.length) ? b.assignedLaborers.length : 2;
+        laborSpeedMult = Math.max(1.0, assignedLab / 2);
+      }
+      b.buildHours += dh * laborSpeedMult;
       if (b.buildHours >= def.buildHours){
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
         b.building=false; b.built=true;
+        if (key === 'road' && b.assignedLaborers && b.assignedLaborers.length){
+          b.assignedLaborers.forEach(function(wid){
+            var w = state.workers.find(function(wk){ return wk.id === wid; });
+            if (w){
+              w.assignedBuilding = null;
+              if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'crew_shed', 'road');
+            }
+          });
+          b.assignedLaborers = [];
+        }
         pushReport(def.icon+' '+def.label+' construction complete! '+(def.category==='decorative' ? 'Reputation +'+def.reputationBonus+'.' : 'Ready to operate.'));
         if (key==='garden') showNotification('🌷','Your Garden is ready — choose what to plant!','building',key);
         else if (key==='pond') showNotification('🪷','Your Pond is ready — choose Fish Farm or Duck Farm!','building',key);
         else if (key==='crop_field') showNotification('🌾','Crop Field constructed — ready to sow crops!','building',key);
         else if (key==='cattle_farm') showNotification('🐄','Cattle Farm constructed — 4 stalls ready to adopt cows & sheep!','building',key);
+        else if (key==='road') showNotification('⛩️','Main Arterial Road constructed! Heavy transport gate is now open.','building',key);
         else if (key==='energy_storage'){
           b.storedKWh = 0;
           b.maxKWh = 500;
@@ -14706,7 +14835,7 @@ function advanceGame(dh){
         var assignedWorkerObj = cf.assignedWorker ? state.workers.find(function(w){ return w.id === cf.assignedWorker; }) : null;
         if (assignedWorkerObj){
           if (cf.feedLevel < 40 && state.money >= 10){
-            state.money -= 10;
+            adjustMoney(-10, 'cattle_auto_feed');
             cf.feedLevel = 100;
             cf.freshness = Math.min(100, (cf.freshness || 100) + 20);
           }
@@ -14838,7 +14967,7 @@ function advanceGame(dh){
         if (es.storedKWh >= exportBatch){
           var revenue = Math.round(exportBatch * 0.80); // €0.80 per kWh = €40
           es.storedKWh -= exportBatch;
-          state.money += revenue;
+          adjustMoney(revenue, 'clean_energy_export');
           es.totalSoldRevenue = (es.totalSoldRevenue || 0) + revenue;
           pushReport('⚡ Battery Substation exported 50 kWh clean surplus electricity to the grid (+€' + revenue + ').');
         }
@@ -14904,9 +15033,21 @@ function advanceGame(dh){
     ['subway','crew_trail','garden_walk','market_promenade'].forEach(function(rk){
       var seg = state.roads[rk]; var def = ROAD_SEGMENTS[rk];
       if (seg && seg.building && def){
-        seg.buildHours += dh;
+        var assignedLab = (seg.assignedLaborers && seg.assignedLaborers.length) ? seg.assignedLaborers.length : 1;
+        var laborSpeedMult = Math.max(1.0, assignedLab / 1);
+        seg.buildHours += dh * laborSpeedMult;
         if (seg.buildHours >= def.buildHours){
           seg.building = false; seg.built = true;
+          if (seg.assignedLaborers && seg.assignedLaborers.length){
+            seg.assignedLaborers.forEach(function(wid){
+              var w = state.workers.find(function(wk){ return wk.id === wid; });
+              if (w){
+                w.assignedBuilding = null;
+                if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'crew_shed', 'road');
+              }
+            });
+            seg.assignedLaborers = [];
+          }
           if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
           pushReport(def.icon + ' ' + def.label + ' construction complete! ' + def.desc);
           showNotification(def.icon, def.label + ' constructed!', 'building', 'road');
@@ -14930,7 +15071,9 @@ function advanceGame(dh){
         var b = state.buildings[key]; if (!b.built) return;
         var def = BUILDING_TYPES[key];
         var visitorRev = ((def.upkeep / 24) * 1.2 + (baseRep / 24) * 0.4) * dh * magnetMult * promenadeBoost;
-        state.money += visitorRev;
+        if (Number.isFinite(visitorRev) && visitorRev > 0){
+          adjustMoney(visitorRev, 'visitor_refreshments');
+        }
         if (Math.random() < 0.12 && typeof SoundTrackEngine !== 'undefined'){
           if (key === 'coffee_shop') SoundTrackEngine.playSFX('brew');
           else SoundTrackEngine.playSFX('pour');
@@ -15017,7 +15160,7 @@ function advanceGame(dh){
         p.taskHours += dh * remMult;
         if (p.taskHours >= remCfg.hours){
           var salvage = Math.round(remDef.cost * remCfg.salvagePct * 100)/100;
-          state.money += salvage;
+          if (Number.isFinite(salvage) && salvage > 0) adjustMoney(salvage, 'dead_tree_salvage');
           state.treesRemoved = (state.treesRemoved||0) + 1;
           pushReport('🪓 Removed the dead '+remDef.label+' (#'+p.treeId+') from Plot '+(p.id+1)+'.'+(salvage>0?' Salvaged €'+salvage.toFixed(2)+' from the wood.':''));
           if (remCfg.vehicle) spawnVehicleAnimation(PLOT_LAYOUT[p.id]);
@@ -15034,9 +15177,10 @@ function advanceGame(dh){
         }
       }
     } else if (p.status==='growing'){
-      var def = TREE_TYPES[p.treeType];
+      var def = p.treeType ? TREE_TYPES[p.treeType] : null;
+      if (!def) return;
       p.ageHours += dh;
-      p.health = Math.max(0, p.health - dh*HEALTH_DECAY[def.category]);
+      p.health = Math.max(0, p.health - dh*(HEALTH_DECAY[def.category] || 1.0));
       if (p.health<=0){
         p.downtimeHours += dh; // stopped producing oxygen entirely
         p.zeroHealthStreakHours += dh;
@@ -15073,17 +15217,20 @@ function advanceGame(dh){
           }
         }
 
-        var growDh = dh * season.growth * growMult * irrMult * fertGrowMult * healthMult;
+        var growDh = dh * (season ? season.growth : 1.0) * growMult * irrMult * fertGrowMult * healthMult;
         p.growHours += growDh;
         var stageIdx = stageIndexFor(def, p.growHours);
-        var o2Rate = def.o2AtStage[stageIdx];
+        var o2Rate = (def.o2AtStage && def.o2AtStage[stageIdx] !== undefined) ? def.o2AtStage[stageIdx] : 0;
         var o2Gain = o2Rate * dh * fertO2Mult * healthMult;
+        if (!Number.isFinite(o2Gain) || o2Gain < 0) o2Gain = 0;
         state.totalO2 += o2Gain; state.totalO2AllTime += o2Gain; p.o2Produced += o2Gain;
-        state.money += o2Gain * O2_RATE * totalMult;
+        var o2Rev = o2Gain * (typeof O2_RATE !== 'undefined' ? O2_RATE : 0.05) * totalMult;
+        if (Number.isFinite(o2Rev) && o2Rev > 0) adjustMoney(o2Rev, 'o2_income');
         var isFinalStage = stageIdx === def.stages.length-1;
         if (isFinalStage && def.lateBonus){
-          var harvestAmt = def.lateBonus*dh*season.income*totalMult*healthMult*fertYieldMult;
-          if (state.storage.built){ p.pendingHarvest = Math.min(150, p.pendingHarvest + harvestAmt); }
+          var harvestAmt = def.lateBonus * dh * (season ? season.income : 1.0) * totalMult * healthMult * fertYieldMult;
+          if (!Number.isFinite(harvestAmt) || harvestAmt < 0) harvestAmt = 0;
+          if (state.storage.built){ p.pendingHarvest = Math.min(150, (p.pendingHarvest || 0) + harvestAmt); }
           else { p.pendingHarvest = Math.min(25, (p.pendingHarvest || 0) + harvestAmt * 0.2); } // unharvested crops rot without storage
         }
       }
@@ -15091,9 +15238,9 @@ function advanceGame(dh){
 
     if (p.animal && state.gameHour >= p.animal.expiresAtHour){
       var a = ANIMALS.find(function(x){return x.key===p.animal.key;});
-      state.money -= ANIMAL_PENALTY; state.demerits += 1;
+      adjustMoney(-ANIMAL_PENALTY, 'animal_penalty'); state.demerits += 1;
       if (p.status==='preparing' || p.status==='clearing'){ p.taskHours = Math.max(0, p.taskHours-1); }
-      pushReport('🐾 A '+a.name+' passed through Plot '+(p.id+1)+' unnoticed — minor setback (-€'+ANIMAL_PENALTY+', +1 demerit). '+a.fact);
+      pushReport('🐾 A '+(a ? a.name : 'wild animal')+' passed through Plot '+(p.id+1)+' unnoticed — minor setback (-€'+ANIMAL_PENALTY+', +1 demerit). '+(a ? a.fact : ''));
       p.animal = null;
     }
   });
@@ -15114,30 +15261,37 @@ function advanceGame(dh){
 
   var newDay = Math.floor(state.gameHour/24);
   if (newDay > state.lastPaidDay){
-    var days = newDay - state.lastPaidDay;
+    var days = Math.max(1, newDay - state.lastPaidDay);
     if (state.workers.length){
-      var dailyWage = state.workers.reduce(function(s,w){return s+WORKER_TYPES[w.type].wage;},0);
-      state.money -= dailyWage * days;
+      var dailyWage = state.workers.reduce(function(s,w){
+        var wt = WORKER_TYPES[w.type];
+        return s + (wt && Number.isFinite(wt.wage) ? wt.wage : 20);
+      }, 0);
+      if (Number.isFinite(dailyWage) && dailyWage > 0){
+        adjustMoney(-(dailyWage * days), 'daily_wages');
+      }
     }
     var buildingUpkeep = 0;
     BUILDING_ORDER.forEach(function(key){
       var b = state.buildings[key]; var def = BUILDING_TYPES[key];
-      if (b.built && def.upkeep) buildingUpkeep += def.upkeep;
+      if (b && b.built && def && def.upkeep) buildingUpkeep += def.upkeep;
     });
-    if (buildingUpkeep) state.money -= buildingUpkeep * days;
+    if (buildingUpkeep && Number.isFinite(buildingUpkeep)){
+      adjustMoney(-(buildingUpkeep * days), 'building_upkeep');
+    }
     // Municipal plot upkeep & estate land tax (€2.00 per plot per day)
-    state.money -= PLOT_COUNT * 2 * days;
+    adjustMoney(-(PLOT_COUNT * 2 * days), 'plot_tax');
 
     // Deduct equipment lease fees
     if (state.equipment && state.equipment.leased){
       var leasedTotal = 0;
       Object.keys(state.equipment.leased).forEach(function(k){
-        if (state.equipment.leased[k] && FARM_EQUIPMENT_CATALOG[k]){
+        if (state.equipment.leased[k] && FARM_EQUIPMENT_CATALOG[k] && Number.isFinite(FARM_EQUIPMENT_CATALOG[k].leaseDaily)){
           leasedTotal += FARM_EQUIPMENT_CATALOG[k].leaseDaily;
         }
       });
-      if (leasedTotal > 0){
-        state.money -= leasedTotal * days;
+      if (leasedTotal > 0 && Number.isFinite(leasedTotal)){
+        adjustMoney(-(leasedTotal * days), 'equipment_lease');
         pushReport('🚜 Deducted daily equipment leasing fees: €' + (leasedTotal * days).toFixed(2));
       }
     }
@@ -15147,17 +15301,23 @@ function advanceGame(dh){
           pushReport('🏦 Loan fully repaid! Your farm is debt-free.');
           state.loan = null; break;
         }
-        var installment = Math.min(state.loan.dailyInstallment, state.loan.remainingBalance);
+        var installment = Math.min(state.loan.dailyInstallment || 0, state.loan.remainingBalance || 0);
+        if (!Number.isFinite(installment) || installment <= 0){
+          state.loan = null; break;
+        }
         if (state.money >= installment){
-          state.money -= installment; state.loan.remainingBalance -= installment; state.loan.daysPaid += 1;
+          adjustMoney(-installment, 'loan_installment');
+          state.loan.remainingBalance = Math.max(0, state.loan.remainingBalance - installment);
+          state.loan.daysPaid = (state.loan.daysPaid || 0) + 1;
         } else {
           var paid = Math.max(0, state.money);
-          var shortfall = installment - paid;
-          var penalty = shortfall * LOAN_PENALTY_RATE;
+          var shortfall = Math.max(0, installment - paid);
+          var penalty = shortfall * (typeof LOAN_PENALTY_RATE !== 'undefined' ? LOAN_PENALTY_RATE : 0.05);
           state.money = 0;
-          state.loan.remainingBalance = Math.max(0, state.loan.remainingBalance - paid + penalty);
+          adjustMoney(0, 'loan_shortfall_reset');
+          state.loan.remainingBalance = Math.max(0, (state.loan.remainingBalance || 0) - paid + penalty);
           state.loan.missedPayments = (state.loan.missedPayments||0) + 1;
-          state.demerits += 1;
+          state.demerits = (state.demerits || 0) + 1;
           pushReport('⚠️ Missed a loan payment (€'+installment.toFixed(2)+' due) — €'+penalty.toFixed(2)+' penalty added to what you still owe, +1 demerit.');
         }
       }
@@ -15165,22 +15325,26 @@ function advanceGame(dh){
     state.plots.forEach(function(p){
       if (p.status==='growing'){
         var w2 = workerOnPlot(p.id);
-        if (w2 && w2.type==='botanist'){
-          var def2 = TREE_TYPES[p.treeType];
+        var def2 = p.treeType ? TREE_TYPES[p.treeType] : null;
+        if (w2 && w2.type==='botanist' && def2){
           var rec = p.health<40 ? 'Urgent: water and consider pruning soon.' : (p.health<70 ? 'Recommend watering this plot.' : 'Looking healthy — no action needed.');
           pushReport('📋 Botanist report — Plot '+(p.id+1)+' ('+def2.label+', #'+p.treeId+'): health '+Math.round(p.health)+'%, KPI '+plotKpi(p)+'%, stage "'+def2.stages[stageIndexFor(def2,p.growHours)].n+'". '+rec);
         }
         if (p.health<=0){
-          state.money -= DEMERIT_FINE * days; state.demerits += days;
-          pushReport('⚠️ Plot '+(p.id+1)+' ('+TREE_TYPES[p.treeType].label+' #'+p.treeId+') produced no oxygen today — 0% health. -€'+(DEMERIT_FINE*days)+', +'+days+' demerit.');
+          adjustMoney(-(DEMERIT_FINE * days), 'demerit_fine_dead_plot');
+          state.demerits += days;
+          var tLabel = def2 ? def2.label : 'Tree';
+          pushReport('⚠️ Plot '+(p.id+1)+' ('+tLabel+' #'+p.treeId+') produced no oxygen today — 0% health. -€'+(DEMERIT_FINE*days)+', +'+days+' demerit.');
         }
       }
       if (p.status==='dead'){
-        state.money -= DEMERIT_FINE * days; state.demerits += days;
+        adjustMoney(-(DEMERIT_FINE * days), 'demerit_fine_dead_tree');
+        state.demerits += days;
         pushReport('⚠️ Plot '+(p.id+1)+' has an untended dead tree. Environmental violation fine: -€'+(DEMERIT_FINE*days)+', +'+days+' demerit.');
       }
       if (p.status==='overgrown'){
-        state.money -= DEMERIT_FINE * days; state.demerits += days;
+        adjustMoney(-(DEMERIT_FINE * days), 'demerit_fine_overgrown');
+        state.demerits += days;
         pushReport('⚠️ Plot '+(p.id+1)+' remains overgrown and uncleared. -€'+(DEMERIT_FINE*days)+', +'+days+' demerit.');
       }
     });
@@ -15289,6 +15453,56 @@ function startRemoveTree(plotId){
     assignWorker(avail.id, plotId);
   }
   render(); requestSave();
+}
+function cutDownGrowingTree(plotId){
+  var p = state.plots[plotId];
+  if (!p || p.status !== 'growing') return;
+  var def = p.treeType ? TREE_TYPES[p.treeType] : null;
+  if (!def) return;
+  var stageInfo = plotStageInfo(p);
+  var stageIdx = (stageInfo && Number.isFinite(stageInfo.index)) ? stageInfo.index : 0;
+  var totalStages = (def.stages && def.stages.length) ? def.stages.length : 4;
+  var stageFrac = Math.max(0.25, (stageIdx + 1) / totalStages);
+  var salvagePct = (def.category === 'Timber Tree') ? 0.75 : ((def.category === 'Vegetable') ? 0.50 : 0.40);
+  var cost = Number.isFinite(def.cost) ? def.cost : 50;
+  var lumberSalvage = Math.round(cost * salvagePct * stageFrac);
+  var pendingHarvest = Math.round((Number.isFinite(p.pendingHarvest) ? p.pendingHarvest : 0) * 100) / 100;
+  var totalSalvage = Math.max(0, lumberSalvage + pendingHarvest);
+
+  adjustMoney(totalSalvage, 'cut_down_growing_tree');
+  state.treesRemoved = (state.treesRemoved || 0) + 1;
+
+  var w = workerOnPlot(p.id);
+  if (w){
+    var retWorker = w;
+    var retPlotId = p.id;
+    p.assignedWorker = null;
+    retWorker.assignedPlot = null;
+    if (typeof animateWorkerPathWalk === 'function'){
+      animateWorkerPathWalk(retWorker, 'crew_shed', retPlotId);
+    }
+  }
+
+  // Best-case scenario: soil remains cultivated and ready for replanting immediately with zero penalty
+  p.status = 'ready';
+  p.treeType = null;
+  p.treeId = null;
+  p.growHours = 0;
+  p.taskHours = 0;
+  p.weedHours = 0;
+  p.health = 100;
+  p.ageHours = 0;
+  p.downtimeHours = 0;
+  p.zeroHealthStreakHours = 0;
+  p.pendingHarvest = 0;
+  p.o2Produced = 0;
+
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('harvest');
+  pushReport('🪓 Cut down ' + def.label + ' on Plot ' + (p.id + 1) + '. Best-case salvage payout: €' + totalSalvage.toFixed(2) + ' (Lumber/Biomass: €' + lumberSalvage + (pendingHarvest > 0 ? ', Harvest: €' + pendingHarvest.toFixed(2) : '') + '). Soil is cultivated and ready for replanting!');
+  showNotification('🪓', 'Cut down ' + def.label + '! Salvaged €' + totalSalvage.toFixed(2) + ' net cash.', 'plot', p.id);
+  checkAchievements();
+  render();
+  requestSave();
 }
 function plantTree(plotId, type){
   var p = state.plots[plotId]; var def = TREE_TYPES[type];
@@ -16422,13 +16636,30 @@ function unassignLaborerFromStorage(){
   }
 }
 
+function getIdleLaborers(){
+  if (!state || !state.workers) return [];
+  return state.workers.filter(function(w){
+    return w.type === 'laborer' &&
+           w.assignedPlot === null &&
+           !w.assignedBuilding &&
+           (!state.storage || state.storage.assignedLaborerId !== w.id) &&
+           (!state.rocksClearing || state.rocksWorkerId !== w.id) &&
+           (!state.lawnMowing || state.lawnWorkerId !== w.id);
+  });
+}
+
 function startBuildRoadSegment(segmentKey){
   if (segmentKey === 'main'){
-    var hasLaborer = state.workers && state.workers.some(function(w){ return w.type === 'laborer'; });
-    if (!hasLaborer){
-      showLockedStepPopup(2);
-      showNotification('👷', 'Recruit a Field Laborer from the Crew Shed first before paving the Main Road!', 'building', 'crew_shed');
-      pushReport('⚠️ Road construction halted: A recruited Field Laborer is required to clear boulders and assist roadworks.');
+    var allLaborers = state.workers.filter(function(w){ return w.type === 'laborer'; });
+    if (allLaborers.length < 2){
+      showNotification('👷', 'Paving the Main Arterial Road requires at least 2 Laborers! Recruit personnel from the Crew Shed.', 'building', 'crew_shed');
+      pushReport('⚠️ Main Road construction halted: At least 2 Laborers must be recruited to pave the main arterial highway.');
+      return;
+    }
+    var idleLaborers = getIdleLaborers();
+    if (idleLaborers.length < 2){
+      showNotification('👷', 'At least 2 idle Laborers are required to begin paving the Main Road. Recall busy crew or recruit more.', 'building', 'crew_shed');
+      pushReport('⚠️ Main Road construction waiting: 2 idle Laborers needed on site.');
       return;
     }
     if (!state.rocksCleared){
@@ -16439,11 +16670,43 @@ function startBuildRoadSegment(segmentKey){
       }
       return;
     }
-    startBuildBuilding('road');
+    var b = state.buildings.road;
+    var def = BUILDING_TYPES.road;
+    if (!b || b.built || b.building) return;
+    if (state.money < def.cost) return;
+    adjustMoney(-def.cost, 'pave_main_road');
+    b.building = true;
+    b.buildHours = 0;
+    // Assign 2 idle laborers to main road
+    var lab1 = idleLaborers[0];
+    var lab2 = idleLaborers[1];
+    lab1.assignedBuilding = 'road';
+    lab2.assignedBuilding = 'road';
+    b.assignedLaborers = [lab1.id, lab2.id];
+    if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
+    pushReport('🚧 Began paving Main Arterial Road (€' + def.cost + ') with 2 Laborers assigned (' + (lab1.name || '#'+lab1.id) + ' & ' + (lab2.name || '#'+lab2.id) + ').');
+    showNotification('🚧', 'Began paving Main Arterial Road with 2 Laborers!', 'building', 'road');
+    render(); requestSave();
     return;
   }
+
+  // Sub roads require rocks cleared and Main Road built
   if (!state.rocksCleared){
     showNotification('🪨', 'Clear boulders and rock obstacles before paving roads!', 'tasks', 'rocks');
+    return;
+  }
+  if (!state.buildings.road || !state.buildings.road.built){
+    showNotification('⛩️', 'Pave the Main Arterial Road first before paving feeder paths.', 'building', 'road');
+    return;
+  }
+  var subAllLaborers = state.workers.filter(function(w){ return w.type === 'laborer'; });
+  if (subAllLaborers.length < 1){
+    showNotification('👷', 'Paving sub roads requires at least 1 Laborer! Recruit personnel in the Crew Shed.', 'building', 'crew_shed');
+    return;
+  }
+  var subIdleLaborers = getIdleLaborers();
+  if (subIdleLaborers.length < 1){
+    showNotification('👷', 'An idle Laborer is required to pave this road. Recall a worker or recruit one in the Crew Shed.', 'building', 'crew_shed');
     return;
   }
   if (!state.roads){
@@ -16455,16 +16718,72 @@ function startBuildRoadSegment(segmentKey){
   var seg = state.roads[segmentKey];
   var def = ROAD_SEGMENTS[segmentKey];
   if (!seg || !def || seg.built || seg.building) return;
-  if (!state.buildings.road.built){
-    showNotification('⛩️', 'Pave the Main Arterial Road first before paving feeder paths.', 'building', 'road');
-    return;
-  }
   if (state.money < def.cost) return;
-  state.money -= def.cost;
+  adjustMoney(-def.cost, 'pave_' + segmentKey);
   seg.building = true;
   seg.buildHours = 0;
+  var subLab = subIdleLaborers[0];
+  subLab.assignedBuilding = 'road_' + segmentKey;
+  seg.assignedLaborers = [subLab.id];
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
-  pushReport('🚧 Began paving ' + def.label + ' (€' + def.cost + ').');
+  pushReport('🚧 Began paving ' + def.label + ' (€' + def.cost + ') with Laborer ' + (subLab.name || ('#' + subLab.id)) + ' assigned.');
+  showNotification(def.icon, 'Began paving ' + def.label + ' with 1 Laborer!', 'building', 'road');
+  render(); requestSave();
+}
+
+function assignLaborerToRoad(segmentKey){
+  var idleLaborers = getIdleLaborers();
+  if (!idleLaborers.length){
+    showNotification('👷', 'No idle Laborers available. Recruit more in the Crew Shed or recall busy crew.', 'building', 'crew_shed');
+    return;
+  }
+  var lab = idleLaborers[0];
+  if (segmentKey === 'main'){
+    var b = state.buildings.road;
+    if (!b || !b.building) return;
+    if (!b.assignedLaborers) b.assignedLaborers = [];
+    b.assignedLaborers.push(lab.id);
+    lab.assignedBuilding = 'road';
+    var speedMult = Math.round((b.assignedLaborers.length / 2) * 100);
+    pushReport('👷 Assigned extra Laborer ' + (lab.name || ('#' + lab.id)) + ' to Main Road crew (' + b.assignedLaborers.length + ' laborers total · ' + speedMult + '% paving speed).');
+    showNotification('👷', (lab.name || 'Laborer') + ' joined Main Road crew (+' + Math.round((b.assignedLaborers.length/2 - 1)*100) + '% speed)!', 'building', 'road');
+  } else {
+    var seg = state.roads && state.roads[segmentKey];
+    if (!seg || !seg.building) return;
+    if (!seg.assignedLaborers) seg.assignedLaborers = [];
+    seg.assignedLaborers.push(lab.id);
+    lab.assignedBuilding = 'road_' + segmentKey;
+    var speedMult = Math.round((seg.assignedLaborers.length / 1) * 100);
+    pushReport('👷 Assigned extra Laborer ' + (lab.name || ('#' + lab.id)) + ' to ' + ROAD_SEGMENTS[segmentKey].label + ' crew (' + seg.assignedLaborers.length + ' laborers total · ' + speedMult + '% speed).');
+    showNotification('👷', (lab.name || 'Laborer') + ' joined ' + ROAD_SEGMENTS[segmentKey].label + ' crew (+' + Math.round((seg.assignedLaborers.length - 1)*100) + '% speed)!', 'building', 'road');
+  }
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+  render(); requestSave();
+}
+
+function unassignLaborerFromRoad(segmentKey, workerId){
+  var minRequired = (segmentKey === 'main' ? 2 : 1);
+  if (segmentKey === 'main'){
+    var b = state.buildings.road;
+    if (!b || !b.assignedLaborers || b.assignedLaborers.length <= minRequired){
+      showNotification('⚠️', 'At least ' + minRequired + ' Laborers are required to maintain Main Road paving operations!', 'building', 'road');
+      return;
+    }
+    b.assignedLaborers = b.assignedLaborers.filter(function(id){ return id !== workerId; });
+  } else {
+    var seg = state.roads && state.roads[segmentKey];
+    if (!seg || !seg.assignedLaborers || seg.assignedLaborers.length <= minRequired){
+      showNotification('⚠️', 'At least ' + minRequired + ' Laborer is required to maintain paving operations!', 'building', 'road');
+      return;
+    }
+    seg.assignedLaborers = seg.assignedLaborers.filter(function(id){ return id !== workerId; });
+  }
+  var w = state.workers.find(function(wk){ return wk.id === workerId; });
+  if (w){
+    w.assignedBuilding = null;
+    if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'crew_shed', 'road');
+  }
+  pushReport('↩ Recalled Laborer ' + (w ? (w.name || ('#' + w.id)) : '') + ' from road paving crew back to Crew Shed.');
   render(); requestSave();
 }
 
@@ -16740,24 +17059,12 @@ function startBuildBuilding(key){
     return;
   }
   if (key === 'road'){
-    var hasLaborer = state.workers && state.workers.some(function(w){ return w.type === 'laborer'; });
-    if (!hasLaborer){
-      showLockedStepPopup(2);
-      showNotification('👷', 'Recruit a Field Laborer from the Crew Shed first before paving the Main Road!', 'building', 'crew_shed');
-      pushReport('⚠️ Road construction halted: A recruited Field Laborer is required to clear boulders and assist roadworks.');
-      return;
-    }
-    if (!state.rocksCleared){
-      if (state.rocksClearing){
-        showNotification('⛏️', 'Laborer is currently clearing bedrock boulders from the road corridor (' + Math.round(Math.min(100, (state.rocksClearHours/2)*100)) + '%)...', 'building', 'road');
-      } else {
-        prepareClearRocksTask();
-      }
-      return;
-    }
+    startBuildRoadSegment('main');
+    return;
   }
   if (state.money < def.cost) return;
-  state.money -= def.cost; b.building = true; b.buildHours = 0;
+  adjustMoney(-def.cost, 'build_' + key);
+  b.building = true; b.buildHours = 0;
   render(); requestSave();
 }
 function getGardenPolycultureInfo(){
@@ -17230,9 +17537,16 @@ function togglePanel(name){ openPanel = (openPanel===name) ? null : name; active
 function startLoop(){
   if (tickHandle) clearInterval(tickHandle);
   tickHandle = setInterval(function(){
-    var now=Date.now(); var realDelta = now-lastRealTs; lastRealTs=now;
-    var dh = gameHoursFromReal(realDelta, state.speedFactor);
-    advanceGame(dh); checkAchievements(); processHarvests(); checkBankruptcy(); render();
+    var now = Date.now();
+    if (!lastRealTs || now < lastRealTs) lastRealTs = now;
+    var realDelta = Math.min(Math.max(0, now - lastRealTs), 1000 * 60 * 30);
+    lastRealTs = now;
+    var sf = (state && Number.isFinite(state.speedFactor) && state.speedFactor > 0) ? state.speedFactor : 180;
+    var dh = gameHoursFromReal(realDelta, sf);
+    if (Number.isFinite(dh) && dh > 0){
+      advanceGame(dh);
+    }
+    checkAchievements(); processHarvests(); checkBankruptcy(); render();
   }, 1000);
   setInterval(requestSave, 20000);
 }
@@ -17240,14 +17554,16 @@ function processHarvests(){
   state.plots.forEach(function(p){
     var hDur = hasTractor() ? 3500 : 10000;
     if (p.harvesting && Date.now() - p.harvestStartReal >= hDur){
-      var amt = p.harvestAmount||0;
+      var amt = Number.isFinite(p.harvestAmount) ? p.harvestAmount : 0;
       var treeDef = TREE_TYPES[p.treeType];
       var isTimber = treeDef && treeDef.category === 'Timber Tree';
       var dest = p.harvestDestination || 'storage';
 
       if (dest === 'wholesale'){
-        var wholesaleNet = amt * 0.85;
-        state.money += wholesaleNet;
+        var wholesaleNet = Math.max(0, amt * 0.85);
+        if (Number.isFinite(wholesaleNet)){
+          adjustMoney(wholesaleNet, 'wholesale_harvest');
+        }
         state.harvestCount = (state.harvestCount||0)+1;
         pushReport('🪙 Wholesale Freight dispatched €' + amt.toFixed(2) + ' of ' + (treeDef ? treeDef.label : 'produce') + ' to regional market for €' + wholesaleNet.toFixed(2) + ' net cash.');
         showNotification('🪙', 'Wholesale Freight sold for €' + wholesaleNet.toFixed(2) + '!', 'plot', p.id);
@@ -17355,16 +17671,11 @@ function refillHintQueue(){
   hintQueue = facts;
 }
 function showNextHint(){
-  if (!state) return;
-  if (!hintQueue.length) refillHintQueue();
-  var text = hintQueue.shift(); if (!text) return;
-  var el = document.getElementById('hintToast'); if (!el) return;
-  el.innerHTML = '<b>Did you know?</b><br>'+text;
-  el.classList.add('show');
-  clearTimeout(el._hideT);
-  el._hideT = setTimeout(function(){ el.classList.remove('show'); }, 6500);
+  // Deprecated toast: facts now merged into plot inspection, building modals, and tasks panel
 }
-function startHintLoop(){ setTimeout(showNextHint, 2500); setInterval(showNextHint, 9000); }
+function startHintLoop(){
+  // Deprecated floating toast: disabled
+}
 
 // Enhanced 3D Isometric Avian System: 5 distinct 3D bird species with volumetric body facets,
 // articulated dual-wing depth layers, and high-sky horizon trajectories that never hinder 3D farm buildings.
@@ -18956,7 +19267,10 @@ function openTaskMasterplanModal(){
     if (isBuilt){
       actionBadge = '<span style="color:#2E7D32;font-weight:800;font-size:0.75rem;background:#E8F5E9;padding:3px 8px;border-radius:8px;">✓ Built (+Rep)</span>';
     } else if (isBuilding){
-      actionBadge = '<span style="color:#F57F17;font-weight:800;font-size:0.75rem;background:#FFF3E0;padding:3px 8px;border-radius:8px;">🏗️ ' + Math.round(Math.min(100,(rSeg.buildHours/rDef.buildHours)*100)) + '%</span>';
+      var assignedLab = (rSeg.assignedLaborers && rSeg.assignedLaborers.length) ? rSeg.assignedLaborers.length : 1;
+      var speedMult = Math.max(1.0, assignedLab / 1);
+      var prog = formatTaskProgress(rSeg.buildHours, rDef.buildHours, speedMult);
+      actionBadge = '<span style="color:#F57F17;font-weight:800;font-size:0.75rem;background:#FFF3E0;padding:3px 8px;border-radius:8px;">🏗️ ' + prog.display + '</span>';
     } else if (mainRoadBuilt){
       actionBadge = '<button class="primary mini-btn" onclick="closeModal();startBuildRoadSegment(\'' + rk + '\')" style="padding:4px 10px;font-size:0.75rem;font-weight:800;border-radius:8px;">👉 Pave (€' + rDef.cost + ')</button>';
     } else {
@@ -18986,7 +19300,10 @@ function openTaskMasterplanModal(){
     var agBadge = isBuilt
       ? '<span style="color:#2E7D32;font-weight:800;font-size:0.75rem;background:#E8F5E9;padding:3px 8px;border-radius:8px;">✓ Operational</span>'
       : (isBuilding
-        ? '<span style="color:#F57F17;font-weight:800;font-size:0.75rem;background:#FFF3E0;padding:3px 8px;border-radius:8px;">🏗️ Building</span>'
+        ? (function(){
+            var bProg = formatTaskProgress(b.buildHours, ag.buildHours, 1.0);
+            return '<span style="color:#F57F17;font-weight:800;font-size:0.75rem;background:#FFF3E0;padding:3px 8px;border-radius:8px;">🏗️ ' + bProg.display + '</span>';
+          })()
         : (isRdBuilt
           ? '<button class="primary mini-btn" onclick="closeModal();openModal(\'building\',\'' + k + '\')" style="padding:4px 10px;font-size:0.75rem;font-weight:800;border-radius:8px;">👉 Build (€' + ag.cost + ')</button>'
           : '<button class="secondary mini-btn" onclick="showLockedStepPopup(null,\'' + k + '\')" style="padding:4px 9px;font-size:0.74rem;font-weight:800;border-radius:8px;">🔒 Info</button>'));
@@ -19014,7 +19331,10 @@ function openTaskMasterplanModal(){
     var optBadge = isBuilt
       ? '<span style="color:#2E7D32;font-weight:800;font-size:0.75rem;background:#E8F5E9;padding:3px 8px;border-radius:8px;">✓ Operational</span>'
       : (isBuilding
-        ? '<span style="color:#F57F17;font-weight:800;font-size:0.75rem;background:#FFF3E0;padding:3px 8px;border-radius:8px;">🏗️ Building</span>'
+        ? (function(){
+            var bProg = formatTaskProgress(b.buildHours, opt.buildHours, 1.0);
+            return '<span style="color:#F57F17;font-weight:800;font-size:0.75rem;background:#FFF3E0;padding:3px 8px;border-radius:8px;">🏗️ ' + bProg.display + '</span>';
+          })()
         : (isRdBuilt
           ? '<button class="primary mini-btn" onclick="closeModal();openModal(\'building\',\'' + k + '\')" style="padding:4px 10px;font-size:0.75rem;font-weight:800;border-radius:8px;">👉 Build (€' + opt.cost + ')</button>'
           : '<button class="secondary mini-btn" onclick="showLockedStepPopup(null,\'' + k + '\')" style="padding:4px 9px;font-size:0.74rem;font-weight:800;border-radius:8px;">🔒 Info</button>'));
@@ -25981,9 +26301,9 @@ function windTurbineModalHtml(cornerKey){
     }
   } else if (wt.building){
     // Building state
-    var bPct = Math.round(Math.min(100, (wt.buildHours / 4) * 100));
-    html += '<div style="font-size:0.82rem;font-weight:700;color:#1565C0;margin-bottom:6px;">🚧 Erection Progress: ' + bPct + '% (' + wt.buildHours.toFixed(1) + ' / 4.0h)</div>' +
-      '<div class="healthbar" style="height:12px;background:#CFD8DC;border-radius:6px;overflow:hidden;margin-bottom:10px;"><div class="fill" style="width:' + bPct + '%;background:#00BCD4;height:100%;"></div></div>' +
+    var wtProg = formatTaskProgress(wt.buildHours, 4, 1.0);
+    html += '<div style="font-size:0.82rem;font-weight:700;color:#1565C0;margin-bottom:6px;">🚧 Erection Progress: ' + wtProg.display + ' (' + wt.buildHours.toFixed(1) + ' / 4.0h)</div>' +
+      '<div class="healthbar" style="height:12px;background:#CFD8DC;border-radius:6px;overflow:hidden;margin-bottom:10px;"><div class="fill" style="width:' + wtProg.pct + '%;background:#00BCD4;height:100%;"></div></div>' +
       '<div style="font-size:0.78rem;color:#546E7A;">Steel tower assembly, nacelle installation, and blade mounting underway at the ' + spot.corner + ' ridge pad.</div>';
   } else if (wt.checklistPending){
     // Checklist pending
@@ -26117,7 +26437,32 @@ function buildingModalHtml(key){
     if (b.built){
       html += '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built &amp; Paved</span></div>';
     } else if (b.building){
-      html += '<div class="row"><span>Paving Main Road</span><span class="v">' + Math.round(Math.min(100,(b.buildHours/def.buildHours)*100)) + '%</span></div>';
+      var assignedLab = (b.assignedLaborers && b.assignedLaborers.length) ? b.assignedLaborers.length : 2;
+      var speedMult = Math.max(1.0, assignedLab / 2);
+      var prog = formatTaskProgress(b.buildHours, def.buildHours, speedMult);
+      var idleLab = getIdleLaborers();
+      html += '<div class="row"><span>Paving Main Road</span><span class="v" style="font-weight:800;color:#2E7D32;">' + prog.display + '</span></div>' +
+        '<div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:' + prog.pct + '%;background:#F57F17;"></div></div>' +
+        '<div style="background:#FFFDE7;border:1.5px solid #FFE082;border-radius:10px;padding:8px 10px;margin-bottom:8px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+            '<span style="font-weight:800;font-size:0.80rem;color:#B78103;">👷 Crew (' + assignedLab + ' Laborers · ' + Math.round(speedMult * 100) + '% speed)</span>' +
+            '<span style="font-size:0.70rem;color:#E65100;font-weight:700;">Min 2 Required</span>' +
+          '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">' +
+            (b.assignedLaborers || []).map(function(wid){
+              var wk = state.workers.find(function(w){ return w.id === wid; });
+              var wName = wk ? (wk.name || ('Laborer #' + wk.id)) : ('Laborer #' + wid);
+              var canRecall = (b.assignedLaborers.length > 2);
+              return '<span class="road-crew-badge" style="background:#FFF;border:1px solid #FFD54F;color:#5D4037;font-size:0.72rem;padding:2px 6px;border-radius:4px;">' +
+                '👷 ' + wName +
+                (canRecall ? ' <a href="javascript:void(0)" onclick="unassignLaborerFromRoad(\'main\',' + wid + ')" style="color:#D84315;font-weight:800;text-decoration:none;margin-left:4px;" title="Recall worker">✕</a>' : '') +
+              '</span>';
+            }).join('') +
+          '</div>' +
+          (idleLab.length > 0
+            ? '<button type="button" class="primary mini-btn" onclick="assignLaborerToRoad(\'main\')" style="padding:4px 10px;font-size:0.75rem;font-weight:700;">➕ Assign Laborer (' + (idleLab[0].name || '#'+idleLab[0].id) + ') ➔ +50% Speed</button>'
+            : '<span style="font-size:0.70rem;color:#795548;">All recruited laborers busy. Recruit more in Crew Shed to accelerate speed.</span>') +
+        '</div>';
     } else if (state.rocksCleared){
       html += '<div style="background:#E8F5E9;border:1px solid #C8E6C9;border-radius:8px;padding:8px 12px;font-size:0.78rem;color:#2E7D32;font-weight:700;margin:6px 0;">' +
         '✓ Boulders cleared! Road corridor is prepped and ready for paving.' +
@@ -26154,7 +26499,34 @@ function buildingModalHtml(key){
       (sw && sw.built
         ? '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built &amp; Connected (+5 Rep, +50% Speed)</span></div>'
         : (sw && sw.building
-          ? '<div class="row"><span>Laying Cobblestone</span><span class="v">' + Math.round(Math.min(100,(sw.buildHours/swDef.buildHours)*100)) + '%</span></div>'
+          ? (function(){
+              var assignedLab = (sw.assignedLaborers && sw.assignedLaborers.length) ? sw.assignedLaborers.length : 1;
+              var speedMult = Math.max(1.0, assignedLab / 1);
+              var prog = formatTaskProgress(sw.buildHours, swDef.buildHours, speedMult);
+              var idleLab = getIdleLaborers();
+              return '<div class="row"><span>Laying Cobblestone</span><span class="v" style="font-weight:800;color:#2E7D32;">' + prog.display + '</span></div>' +
+                '<div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:' + prog.pct + '%;background:#F57F17;"></div></div>' +
+                '<div style="background:#FFFDE7;border:1px solid #FFE082;border-radius:8px;padding:6px 10px;margin-bottom:8px;">' +
+                  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+                    '<span style="font-weight:800;font-size:0.78rem;color:#B78103;">👷 Crew (' + assignedLab + ' Laborer' + (assignedLab > 1 ? 's' : '') + ' · ' + Math.round(speedMult * 100) + '% speed)</span>' +
+                    '<span style="font-size:0.68rem;color:#E65100;font-weight:700;">Min 1 Required</span>' +
+                  '</div>' +
+                  '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">' +
+                    (sw.assignedLaborers || []).map(function(wid){
+                      var wk = state.workers.find(function(w){ return w.id === wid; });
+                      var wName = wk ? (wk.name || ('Laborer #' + wk.id)) : ('Laborer #' + wid);
+                      var canRecall = (sw.assignedLaborers.length > 1);
+                      return '<span class="road-crew-badge" style="background:#FFF;border:1px solid #FFD54F;color:#5D4037;font-size:0.72rem;padding:2px 6px;border-radius:4px;">' +
+                        '👷 ' + wName +
+                        (canRecall ? ' <a href="javascript:void(0)" onclick="unassignLaborerFromRoad(\'subway\',' + wid + ')" style="color:#D84315;font-weight:800;text-decoration:none;margin-left:4px;" title="Recall worker">✕</a>' : '') +
+                      '</span>';
+                    }).join('') +
+                  '</div>' +
+                  (idleLab.length > 0
+                    ? '<button type="button" class="primary mini-btn" onclick="assignLaborerToRoad(\'subway\')" style="padding:4px 8px;font-size:0.74rem;font-weight:700;">➕ Assign Extra Laborer ➔ +100% Speed</button>'
+                    : '<span style="font-size:0.70rem;color:#795548;">All recruited laborers busy.</span>') +
+                '</div>';
+            })()
           : '<button class="secondary" data-build-road-segment="subway" ' + (!b.built || state.money<swDef.cost?'disabled':'') + '>Pave Feeder Subways — €' + swDef.cost + ' (' + swDef.buildHours + 'h)</button>')) +
     '</div>';
 
@@ -26172,7 +26544,34 @@ function buildingModalHtml(key){
       (ct && ct.built
         ? '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built &amp; Connected (+4 Rep)</span></div>'
         : (ct && ct.building
-          ? '<div class="row"><span>Paving Trail</span><span class="v">' + Math.round(Math.min(100,(ct.buildHours/ctDef.buildHours)*100)) + '%</span></div>'
+          ? (function(){
+              var assignedLab = (ct.assignedLaborers && ct.assignedLaborers.length) ? ct.assignedLaborers.length : 1;
+              var speedMult = Math.max(1.0, assignedLab / 1);
+              var prog = formatTaskProgress(ct.buildHours, ctDef.buildHours, speedMult);
+              var idleLab = getIdleLaborers();
+              return '<div class="row"><span>Paving Trail</span><span class="v" style="font-weight:800;color:#2E7D32;">' + prog.display + '</span></div>' +
+                '<div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:' + prog.pct + '%;background:#F57F17;"></div></div>' +
+                '<div style="background:#FFFDE7;border:1px solid #FFE082;border-radius:8px;padding:6px 10px;margin-bottom:8px;">' +
+                  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+                    '<span style="font-weight:800;font-size:0.78rem;color:#B78103;">👷 Crew (' + assignedLab + ' Laborer' + (assignedLab > 1 ? 's' : '') + ' · ' + Math.round(speedMult * 100) + '% speed)</span>' +
+                    '<span style="font-size:0.68rem;color:#E65100;font-weight:700;">Min 1 Required</span>' +
+                  '</div>' +
+                  '<div style="display:flex;flex-wrap:gap;gap:4px;margin-bottom:6px;">' +
+                    (ct.assignedLaborers || []).map(function(wid){
+                      var wk = state.workers.find(function(w){ return w.id === wid; });
+                      var wName = wk ? (wk.name || ('Laborer #' + wk.id)) : ('Laborer #' + wid);
+                      var canRecall = (ct.assignedLaborers.length > 1);
+                      return '<span class="road-crew-badge" style="background:#FFF;border:1px solid #FFD54F;color:#5D4037;font-size:0.72rem;padding:2px 6px;border-radius:4px;">' +
+                        '👷 ' + wName +
+                        (canRecall ? ' <a href="javascript:void(0)" onclick="unassignLaborerFromRoad(\'crew_trail\',' + wid + ')" style="color:#D84315;font-weight:800;text-decoration:none;margin-left:4px;" title="Recall worker">✕</a>' : '') +
+                      '</span>';
+                    }).join('') +
+                  '</div>' +
+                  (idleLab.length > 0
+                    ? '<button type="button" class="primary mini-btn" onclick="assignLaborerToRoad(\'crew_trail\')" style="padding:4px 8px;font-size:0.74rem;font-weight:700;">➕ Assign Extra Laborer ➔ +100% Speed</button>'
+                    : '<span style="font-size:0.70rem;color:#795548;">All recruited laborers busy.</span>') +
+                '</div>';
+            })()
           : '<button class="secondary" data-build-road-segment="crew_trail" ' + (!b.built || state.money<ctDef.cost?'disabled':'') + '>Pave Crew Trail — €' + ctDef.cost + ' (' + ctDef.buildHours + 'h)</button>')) +
     '</div>';
 
@@ -26192,7 +26591,34 @@ function buildingModalHtml(key){
       (gw && gw.built
         ? '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built (+4 Rep)</span></div>'
         : (gw && gw.building
-          ? '<div class="row"><span>Paving Walkway</span><span class="v">' + Math.round(Math.min(100,(gw.buildHours/gwDef.buildHours)*100)) + '%</span></div>'
+          ? (function(){
+              var assignedLab = (gw.assignedLaborers && gw.assignedLaborers.length) ? gw.assignedLaborers.length : 1;
+              var speedMult = Math.max(1.0, assignedLab / 1);
+              var prog = formatTaskProgress(gw.buildHours, gwDef.buildHours, speedMult);
+              var idleLab = getIdleLaborers();
+              return '<div class="row"><span>Paving Walkway</span><span class="v" style="font-weight:800;color:#2E7D32;">' + prog.display + '</span></div>' +
+                '<div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:' + prog.pct + '%;background:#F57F17;"></div></div>' +
+                '<div style="background:#FFFDE7;border:1px solid #FFE082;border-radius:8px;padding:6px 10px;margin-bottom:8px;">' +
+                  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+                    '<span style="font-weight:800;font-size:0.78rem;color:#B78103;">👷 Crew (' + assignedLab + ' Laborer' + (assignedLab > 1 ? 's' : '') + ' · ' + Math.round(speedMult * 100) + '% speed)</span>' +
+                    '<span style="font-size:0.68rem;color:#E65100;font-weight:700;">Min 1 Required</span>' +
+                  '</div>' +
+                  '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">' +
+                    (gw.assignedLaborers || []).map(function(wid){
+                      var wk = state.workers.find(function(w){ return w.id === wid; });
+                      var wName = wk ? (wk.name || ('Laborer #' + wk.id)) : ('Laborer #' + wid);
+                      var canRecall = (gw.assignedLaborers.length > 1);
+                      return '<span class="road-crew-badge" style="background:#FFF;border:1px solid #FFD54F;color:#5D4037;font-size:0.72rem;padding:2px 6px;border-radius:4px;">' +
+                        '👷 ' + wName +
+                        (canRecall ? ' <a href="javascript:void(0)" onclick="unassignLaborerFromRoad(\'garden_walk\',' + wid + ')" style="color:#D84315;font-weight:800;text-decoration:none;margin-left:4px;" title="Recall worker">✕</a>' : '') +
+                      '</span>';
+                    }).join('') +
+                  '</div>' +
+                  (idleLab.length > 0
+                    ? '<button type="button" class="primary mini-btn" onclick="assignLaborerToRoad(\'garden_walk\')" style="padding:4px 8px;font-size:0.74rem;font-weight:700;">➕ Assign Extra Laborer ➔ +100% Speed</button>'
+                    : '<span style="font-size:0.70rem;color:#795548;">All recruited laborers busy.</span>') +
+                '</div>';
+            })()
           : '<button class="secondary" data-build-road-segment="garden_walk" ' + (!b.built || state.money<gwDef.cost?'disabled':'') + '>Construct Garden Walkway — €' + gwDef.cost + ' (' + gwDef.buildHours + 'h)</button>')) +
     '</div>';
 
@@ -26207,7 +26633,34 @@ function buildingModalHtml(key){
       (mp && mp.built
         ? '<div class="row"><span>Status</span><span class="v" style="color:#2E7D32;">✓ Built (+6 Rep, +15% Sales)</span></div>'
         : (mp && mp.building
-          ? '<div class="row"><span>Paving Promenade</span><span class="v">' + Math.round(Math.min(100,(mp.buildHours/mpDef.buildHours)*100)) + '%</span></div>'
+          ? (function(){
+              var assignedLab = (mp.assignedLaborers && mp.assignedLaborers.length) ? mp.assignedLaborers.length : 1;
+              var speedMult = Math.max(1.0, assignedLab / 1);
+              var prog = formatTaskProgress(mp.buildHours, mpDef.buildHours, speedMult);
+              var idleLab = getIdleLaborers();
+              return '<div class="row"><span>Paving Promenade</span><span class="v" style="font-weight:800;color:#2E7D32;">' + prog.display + '</span></div>' +
+                '<div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:' + prog.pct + '%;background:#F57F17;"></div></div>' +
+                '<div style="background:#FFFDE7;border:1px solid #FFE082;border-radius:8px;padding:6px 10px;margin-bottom:8px;">' +
+                  '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+                    '<span style="font-weight:800;font-size:0.78rem;color:#B78103;">👷 Crew (' + assignedLab + ' Laborer' + (assignedLab > 1 ? 's' : '') + ' · ' + Math.round(speedMult * 100) + '% speed)</span>' +
+                    '<span style="font-size:0.68rem;color:#E65100;font-weight:700;">Min 1 Required</span>' +
+                  '</div>' +
+                  '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">' +
+                    (mp.assignedLaborers || []).map(function(wid){
+                      var wk = state.workers.find(function(w){ return w.id === wid; });
+                      var wName = wk ? (wk.name || ('Laborer #' + wk.id)) : ('Laborer #' + wid);
+                      var canRecall = (mp.assignedLaborers.length > 1);
+                      return '<span class="road-crew-badge" style="background:#FFF;border:1px solid #FFD54F;color:#5D4037;font-size:0.72rem;padding:2px 6px;border-radius:4px;">' +
+                        '👷 ' + wName +
+                        (canRecall ? ' <a href="javascript:void(0)" onclick="unassignLaborerFromRoad(\'market_promenade\',' + wid + ')" style="color:#D84315;font-weight:800;text-decoration:none;margin-left:4px;" title="Recall worker">✕</a>' : '') +
+                      '</span>';
+                    }).join('') +
+                  '</div>' +
+                  (idleLab.length > 0
+                    ? '<button type="button" class="primary mini-btn" onclick="assignLaborerToRoad(\'market_promenade\')" style="padding:4px 8px;font-size:0.74rem;font-weight:700;">➕ Assign Extra Laborer ➔ +100% Speed</button>'
+                    : '<span style="font-size:0.70rem;color:#795548;">All recruited laborers busy.</span>') +
+                '</div>';
+            })()
           : '<button class="secondary" data-build-road-segment="market_promenade" ' + (!b.built || state.money<mpDef.cost?'disabled':'') + '>Construct Marketplace Promenade — €' + mpDef.cost + ' (' + mpDef.buildHours + 'h)</button>')) +
     '</div>';
   } else if (key === 'crew_shed'){
@@ -26365,7 +26818,9 @@ function buildingModalHtml(key){
                 '</div>' +
               '</div>';
     } else if (b.building){
-      html += '<div class="row"><span>Construction Progress</span><span class="v">' + Math.round(Math.min(100,(b.buildHours/def.buildHours)*100)) + '%</span></div>';
+      var csProg = formatTaskProgress(b.buildHours, def.buildHours, 1.0);
+      html += '<div class="row"><span>Construction Progress</span><span class="v" style="font-weight:800;color:#2E7D32;">' + csProg.display + '</span></div>' +
+        '<div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:' + csProg.pct + '%;background:#F0AC3D;"></div></div>';
     } else {
       html += '<button class="primary" data-buildbuilding="crew_shed" ' + (state.money<def.cost?'disabled':'') + '>Construct Crew Shed — €' + def.cost + ' (' + def.buildHours + 'h)</button>';
     }
@@ -26384,13 +26839,17 @@ function buildingModalHtml(key){
                 '<button class="primary" style="margin-top:8px;" onclick="acquireTractor()" ' + (state.money<350?'disabled':'') + '>🚜 Acquire Farm Utility Tractor — €350 (Fast 3.5s Harvest)</button>') +
               '<div class="empty-note" style="margin-top:8px;">When harvesting mature plots, farm vehicles haul crops directly to the Storage Barn loading bay.</div>';
     } else if (b.building){
-      html += '<div class="row"><span>Construction Progress</span><span class="v">' + Math.round(Math.min(100,(b.buildHours/def.buildHours)*100)) + '%</span></div>';
+      var garProg = formatTaskProgress(b.buildHours, def.buildHours, 1.0);
+      html += '<div class="row"><span>Construction Progress</span><span class="v" style="font-weight:800;color:#2E7D32;">' + garProg.display + '</span></div>' +
+        '<div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:' + garProg.pct + '%;background:#F0AC3D;"></div></div>';
     } else {
       html += '<button class="primary" data-buildbuilding="garage" ' + (state.money<def.cost?'disabled':'') + '>Construct Farm Garage — €' + def.cost + ' (' + def.buildHours + 'h)</button>';
     }
     html += '</div>';
   } else if (b.building){
-    html += '<div class="row"><span>Under construction</span><span class="v">'+Math.round(Math.min(100,(b.buildHours/def.buildHours)*100))+'%</span></div>';
+    var genProg = formatTaskProgress(b.buildHours, def.buildHours, 1.0);
+    html += '<div class="row"><span>Under construction</span><span class="v" style="font-weight:800;color:#2E7D32;">' + genProg.display + '</span></div>' +
+      '<div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:' + genProg.pct + '%;background:#F0AC3D;"></div></div>';
   } else if (b.built){
     if (key === 'crop_field'){
       return cropFieldModalHtml();
@@ -26545,9 +27004,11 @@ function storageModalHtml(){
         '</button>' +
       '</div>';
   } else if (s.building){
-    html += '<div class="sub">Barn is currently under construction.</div><div class="row"><span>Progress</span><span class="v">'+Math.round(Math.min(100,(s.buildHours/STORAGE_BUILD_HOURS)*100))+'%</span></div>';
+    var sProg = formatTaskProgress(s.buildHours, STORAGE_BUILD_HOURS, 1.0);
+    html += '<div class="sub">Barn is currently under construction.</div><div class="row"><span>Progress</span><span class="v" style="font-weight:800;color:#2E7D32;">'+sProg.display+'</span></div><div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:'+sProg.pct+'%;background:#F0AC3D;"></div></div>';
   } else if (s.expanding){
-    html += '<div class="sub">Expanding cold cellar to level '+(s.level+1)+'.</div><div class="row"><span>Progress</span><span class="v">'+Math.round(Math.min(100,(s.expandHours/STORAGE_EXPAND_HOURS)*100))+'%</span></div>';
+    var sExpProg = formatTaskProgress(s.expandHours, STORAGE_EXPAND_HOURS, 1.0);
+    html += '<div class="sub">Expanding cold cellar to level '+(s.level+1)+'.</div><div class="row"><span>Progress</span><span class="v" style="font-weight:800;color:#2E7D32;">'+sExpProg.display+'</span></div><div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:'+sExpProg.pct+'%;background:#F0AC3D;"></div></div>';
   } else {
     var items = s.items || [];
     var produceItems = items.filter(function(x){ return x.category === 'produce'; });
@@ -27434,12 +27895,13 @@ function modalHtml(){
     '</div>';
   } else if (p.status==='preparing' || p.status==='clearing'){
     var dur = p.status==='preparing'?PREP_DURATION_HOURS:CLEAR_DURATION_HOURS;
-    var pct = Math.round(Math.min(100,(p.taskHours/dur)*100));
+    var wMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : (w ? 1.25 : 1);
+    var prog = formatTaskProgress(p.taskHours, dur, wMult);
     html += '<div class="plot-action-card">'+
       '<div class="plot-action-badge progress">'+(p.status==='preparing'?'⛏️ Digging Soil in Progress':'🌿 Clearing Overgrowth')+'</div>'+
       '<div class="sub" style="margin-top:6px;margin-bottom:8px;">'+(p.status==='preparing'?'Soil will be rich, leveled, and ready for planting once digging completes.':'Laborer clearing wild brush.')+'</div>'+
-      '<div class="row"><span>Progress</span><span class="v" style="font-weight:800;color:#2E7D32;">'+pct+'%</span></div>'+
-      '<div class="healthbar" style="margin-bottom:12px;"><div class="fill" style="width:'+pct+'%;background:#F0AC3D;"></div></div>'+
+      '<div class="row"><span>Progress</span><span class="v" style="font-weight:800;color:#2E7D32;">'+prog.display+'</span></div>'+
+      '<div class="healthbar" style="margin-bottom:12px;"><div class="fill" style="width:'+prog.pct+'%;background:#F0AC3D;"></div></div>'+
       (w ? renderAssignedWorkerCard(w, p.id)
          : (function(){
             var idleCrew = state.workers.filter(function(x){return x.assignedPlot===null && !x.assignedBuilding && (x.type==='laborer' || x.type==='farmer');});
@@ -27461,12 +27923,13 @@ function modalHtml(){
     '</div>';
   } else if (p.status==='removing'){
     var remCfg2 = REMOVE_CONFIG[def.category];
-    var remPct = Math.round(Math.min(100,(p.taskHours/remCfg2.hours)*100));
+    var remMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : (w ? 1.25 : 1);
+    var remProg = formatTaskProgress(p.taskHours, remCfg2.hours, remMult);
     html += '<div class="plot-action-card">'+
-      '<div class="plot-action-badge progress">🪓 Cutting Down Tree ('+remPct+'%)</div>'+
+      '<div class="plot-action-badge progress">🪓 Cutting Down Tree ('+remProg.pct+'%)</div>'+
       '<div class="sub" style="margin-top:6px;margin-bottom:8px;">Cutting down dead '+def.label+' with a '+remCfg2.tool+(remCfg2.vehicle?', then hauling it away by truck.':'.')+'</div>'+
-      '<div class="row"><span>Progress</span><span class="v">'+remPct+'%</span></div>'+
-      '<div class="healthbar" style="margin-bottom:10px;"><div class="fill" style="width:'+remPct+'%;background:#E8785A;"></div></div>'+
+      '<div class="row"><span>Progress</span><span class="v" style="font-weight:800;color:#2E7D32;">'+remProg.display+'</span></div>'+
+      '<div class="healthbar" style="margin-bottom:10px;"><div class="fill" style="width:'+remProg.pct+'%;background:#E8785A;"></div></div>'+
       (w ? renderAssignedWorkerCard(w, p.id)
          : (function(){
             var idleCrew = state.workers.filter(function(x){return x.assignedPlot===null && !x.assignedBuilding && (x.type==='laborer' || x.type==='farmer');});
@@ -27640,8 +28103,37 @@ function modalHtml(){
             return idle.map(function(iw){ return renderWorkerSelectionCard(iw, p.id); }).join('');
           })());
 
-    // 6. SPECIES BOTANICAL INFO
-    html += '<div class="tree-fact-box"><span class="fact-icon">💡</span> <span><b>About this species:</b> ' + def.fact + '</span></div>';
+    // 6. SPECIES BOTANICAL INFO & FARMING TIP
+    html += '<div class="botanical-fact-card" style="background:#E8F5E9;border:1.5px solid #A5D6A7;border-radius:10px;padding:10px 12px;margin:12px 0 10px;font-size:0.78rem;color:#1B5E20;line-height:1.45;">' +
+      '<div style="font-weight:800;display:flex;align-items:center;gap:6px;margin-bottom:4px;color:#2E7D32;">' +
+        '<span>💡</span> Botanical Science &amp; Farming Insight' +
+      '</div>' +
+      '<div>' + (def.fact || 'Thrives with timely irrigation and pruning.') + '</div>' +
+    '</div>';
+
+    // 7. CUT DOWN TREE / CLEAR PLOT (BEST-CASE SCENARIO SALVAGE)
+    var stageIdx = (stageInfo && Number.isFinite(stageInfo.index)) ? stageInfo.index : 0;
+    var totalStages = (def.stages && def.stages.length) ? def.stages.length : 4;
+    var stageFrac = Math.max(0.25, (stageIdx + 1) / totalStages);
+    var salvagePct = (def.category === 'Timber Tree') ? 0.75 : ((def.category === 'Vegetable') ? 0.50 : 0.40);
+    var lumberSalvage = Math.round(def.cost * salvagePct * stageFrac);
+    var pendingCropVal = Math.round((Number.isFinite(p.pendingHarvest) ? p.pendingHarvest : 0) * 100) / 100;
+    var estSalvage = Math.max(0, lumberSalvage + pendingCropVal);
+
+    html += '<div class="tree-cutdown-card" style="margin-top:10px;background:#FFF8E1;border:1.5px solid #FFE082;border-radius:10px;padding:10px 12px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+        '<span style="font-weight:800;font-size:0.84rem;color:#B78103;display:flex;align-items:center;gap:6px;">' +
+          '<span>🪓</span> Cut Down / Clear Plot (Best-Case Salvage)' +
+        '</span>' +
+        '<span style="font-weight:800;font-size:0.86rem;color:#2E7D32;">+€' + estSalvage.toFixed(2) + ' payout</span>' +
+      '</div>' +
+      '<div style="font-size:0.74rem;color:#6D4C41;line-height:1.4;margin-bottom:8px;">' +
+        'Fell this ' + def.label + ' early to repurpose the plot immediately. You will recover <b>€' + lumberSalvage + '</b> in lumber/biomass salvage' + (pendingCropVal > 0 ? ' plus <b>€' + pendingCropVal.toFixed(2) + '</b> of current harvest' : '') + ' with zero penalties, leaving cultivated soil ready for replanting.' +
+      '</div>' +
+      '<button type="button" class="danger mini-btn" data-cutdowntree="' + p.id + '" onclick="cutDownGrowingTree(' + p.id + ')" style="width:100%;padding:8px 12px;font-size:0.82rem;font-weight:700;background:#D84315;border-color:#BF360C;color:#FFF;border-radius:8px;cursor:pointer;">' +
+        '🪓 Cut Down ' + def.label + ' (Collect €' + estSalvage.toFixed(2) + ' &amp; Clear Soil)' +
+      '</button>' +
+    '</div>';
   }
 
   html += '</div>'; // close modal-body-scroll
@@ -27670,17 +28162,36 @@ function panelHtml(){
         actionBtn = '<span style="color:#2E7D32;font-weight:900;font-size:0.75rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Complete</span>';
       } else if (isUnlocked){
         if (s.step === 1){
-          actionBtn = '<button class="claim-btn active" onclick="startBuildBuilding(\'crew_shed\')" ' + (state.money < s.cost ? 'disabled' : '') + '>Build (€' + s.cost + ')</button>';
+          if (state.buildings.crew_shed && state.buildings.crew_shed.building){
+            var csProg = formatTaskProgress(state.buildings.crew_shed.buildHours, BUILDING_TYPES.crew_shed.buildHours, 1.0);
+            actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'crew_shed\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + csProg.display + '</button>';
+          } else {
+            actionBtn = '<button class="claim-btn active" onclick="startBuildBuilding(\'crew_shed\')" ' + (state.money < s.cost ? 'disabled' : '') + '>Build (€' + s.cost + ')</button>';
+          }
         } else if (s.step === 2){
           actionBtn = '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'crew_shed\');">Recruit</button>';
         } else if (s.step === 3){
           if (!state.rocksCleared){
-            actionBtn = '<button class="claim-btn active" onclick="prepareClearRocksTask()" style="background:#5D4037;">🪨 Clear Rocks</button>';
+            if (state.rocksClearing){
+              var rkProg = formatTaskProgress(state.rocksClearHours, 2, 1.0);
+              actionBtn = '<button class="claim-btn" onclick="openModal(\'building\',\'road\');" style="background:#5D4037;font-size:0.72rem;padding:4px 8px;">⛏️ ' + rkProg.display + '</button>';
+            } else {
+              actionBtn = '<button class="claim-btn active" onclick="prepareClearRocksTask()" style="background:#5D4037;">🪨 Clear Rocks</button>';
+            }
+          } else if (state.buildings.road && state.buildings.road.building){
+            var rdLab = (state.buildings.road.assignedLaborers && state.buildings.road.assignedLaborers.length) ? state.buildings.road.assignedLaborers.length : 2;
+            var rdProg = formatTaskProgress(state.buildings.road.buildHours, BUILDING_TYPES.road.buildHours, Math.max(1, rdLab/2));
+            actionBtn = '<button class="claim-btn" onclick="openModal(\'building\',\'road\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + rdProg.display + '</button>';
           } else {
             actionBtn = '<button class="claim-btn active" onclick="startBuildRoadSegment(\'main\')" ' + (state.money < 120 ? 'disabled' : '') + '>Pave (€120)</button>';
           }
         } else if (s.step === 4){
-          actionBtn = '<button class="claim-btn active" data-buildstorage="1" ' + (state.money < s.cost ? 'disabled' : '') + '>Build (€' + s.cost + ')</button>';
+          if (state.storage && state.storage.building){
+            var stProg = formatTaskProgress(state.storage.buildHours, STORAGE_BUILD_HOURS, 1.0);
+            actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'storage\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + stProg.display + '</button>';
+          } else {
+            actionBtn = '<button class="claim-btn active" data-buildstorage="1" ' + (state.money < s.cost ? 'disabled' : '') + '>Build (€' + s.cost + ')</button>';
+          }
         } else if (s.step === 5){
           actionBtn = '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',0);">Cultivate</button>';
         } else if (s.step === 6){
@@ -27688,7 +28199,12 @@ function panelHtml(){
         } else if (s.step === 7){
           actionBtn = '<button class="claim-btn active" onclick="closePanel();openWindTurbineModal();">Open Grid</button>';
         } else if (s.step === 8){
-          actionBtn = '<button class="claim-btn active" onclick="startBuildBuilding(\'energy_storage\')" ' + (state.money < s.cost ? 'disabled' : '') + '>Build BESS</button>';
+          if (state.buildings.energy_storage && state.buildings.energy_storage.building){
+            var esProg = formatTaskProgress(state.buildings.energy_storage.buildHours, BUILDING_TYPES.energy_storage.buildHours, 1.0);
+            actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'energy_storage\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + esProg.display + '</button>';
+          } else {
+            actionBtn = '<button class="claim-btn active" onclick="startBuildBuilding(\'energy_storage\')" ' + (state.money < s.cost ? 'disabled' : '') + '>Build BESS</button>';
+          }
         }
       } else {
         actionBtn = '<button class="secondary mini-btn" onclick="showLockedStepPopup(' + s.step + ')" style="padding:4px 8px;font-size:0.72rem;background:#ECEFF1;border-color:#CFD8DC;color:#455A64;">🔒 Info</button>';
@@ -27715,7 +28231,10 @@ function panelHtml(){
       if (isBuilt){
         actionBtn = '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Built (+Rep)</span>';
       } else if (isBuilding){
-        actionBtn = '<button class="claim-btn" disabled style="opacity:0.8;">🏗️ ' + Math.round(Math.min(100,(rSeg.buildHours/rDef.buildHours)*100)) + '%</button>';
+        var assignedLab = (rSeg.assignedLaborers && rSeg.assignedLaborers.length) ? rSeg.assignedLaborers.length : 1;
+        var speedMult = Math.max(1.0, assignedLab / 1);
+        var prog = formatTaskProgress(rSeg.buildHours, rDef.buildHours, speedMult);
+        actionBtn = '<button class="claim-btn" onclick="openModal(\'building\',\'road\')" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
       } else if (mainRoadBuilt){
         actionBtn = '<button class="claim-btn" onclick="startBuildRoadSegment(\'' + rk + '\')" ' + (state.money < rDef.cost ? 'disabled' : '') + '>Pave (€' + rDef.cost + ')</button>';
       } else {
@@ -27743,7 +28262,8 @@ function panelHtml(){
       if (isBuilt){
         actionBtn = '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active</span>';
       } else if (isBuilding){
-        actionBtn = '<button class="claim-btn" disabled style="opacity:0.8;">🏗️ Building</button>';
+        var bProg = formatTaskProgress(b.buildHours, ag.buildHours, 1.0);
+        actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ak + '\')" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + bProg.display + '</button>';
       } else if (isAgUnlocked){
         actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ak + '\')" ' + (state.money < ag.cost ? 'disabled' : '') + '>Build (€' + ag.cost + ')</button>';
       } else {
@@ -27771,7 +28291,8 @@ function panelHtml(){
       if (isBuilt){
         actionBtn = '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active</span>';
       } else if (isBuilding){
-        actionBtn = '<button class="claim-btn" disabled style="opacity:0.8;">🏗️ Building</button>';
+        var bProg = formatTaskProgress(b.buildHours, opt.buildHours, 1.0);
+        actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ok + '\')" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + bProg.display + '</button>';
       } else if (isOptUnlocked){
         actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ok + '\')" ' + (state.money < opt.cost ? 'disabled' : '') + '>Build (€' + opt.cost + ')</button>';
       } else {
@@ -28687,9 +29208,22 @@ window.startMowLawn = startMowLawn;
 window.startPrep = startPrep;
 window.startClear = startClear;
 window.startRemoveTree = startRemoveTree;
+window.cutDownGrowingTree = cutDownGrowingTree;
 window.startHarvest = startHarvest;
 window.startBuildBuilding = startBuildBuilding;
 window.startBuildRoadSegment = startBuildRoadSegment;
+window.assignLaborerToRoad = assignLaborerToRoad;
+window.unassignLaborerFromRoad = unassignLaborerFromRoad;
+window.sanitizeMoney = sanitizeMoney;
+window.adjustMoney = adjustMoney;
+window.formatRemainingTime = formatRemainingTime;
+window.formatTaskProgress = formatTaskProgress;
+window.getIdleLaborers = getIdleLaborers;
+window.modalHtml = modalHtml;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.hireWorker = hireWorker;
+window.plantTree = plantTree;
 window.buildingModalHtml = buildingModalHtml;
 window.roadPromenadeHtml = roadPromenadeHtml;
 window.advanceGame = advanceGame;
@@ -28700,6 +29234,21 @@ window.drawBackgroundWeedsSvg = drawBackgroundWeedsSvg;
 window.BACKGROUND_WEED_PATCHES = BACKGROUND_WEED_PATCHES;
 window.updateToolStrip = updateToolStrip;
 window.switchScreen = switchScreen;
+window.state = state;
+try {
+  Object.defineProperty(window, 'state', {
+    get: function(){ return state; },
+    set: function(v){
+      if (v && typeof v === 'object' && state && typeof state === 'object'){
+        for (var k in state){ if (!v.hasOwnProperty(k)) delete state[k]; }
+        Object.assign(state, v);
+      } else {
+        state = v;
+      }
+    },
+    configurable: true
+  });
+} catch(e){}
 window.freshState = freshState;
 window.assignWorker = assignWorker;
 window.unassignWorker = unassignWorker;
@@ -28939,14 +29488,43 @@ if (typeof globalThis !== 'undefined'){
   globalThis.startPrep = startPrep;
   globalThis.startClear = startClear;
   globalThis.startRemoveTree = startRemoveTree;
+  globalThis.cutDownGrowingTree = cutDownGrowingTree;
   globalThis.startHarvest = startHarvest;
   globalThis.startBuildBuilding = startBuildBuilding;
+  globalThis.startBuildRoadSegment = startBuildRoadSegment;
+  globalThis.assignLaborerToRoad = assignLaborerToRoad;
+  globalThis.unassignLaborerFromRoad = unassignLaborerFromRoad;
+  globalThis.sanitizeMoney = sanitizeMoney;
+  globalThis.adjustMoney = adjustMoney;
+  globalThis.formatRemainingTime = formatRemainingTime;
+  globalThis.formatTaskProgress = formatTaskProgress;
+  globalThis.getIdleLaborers = getIdleLaborers;
+  globalThis.openModal = openModal;
+  globalThis.closeModal = closeModal;
+  globalThis.hireWorker = hireWorker;
+  globalThis.plantTree = plantTree;
   globalThis.advanceGame = advanceGame;
   globalThis.farmReputation = farmReputation;
   globalThis.fieldBackgroundSVG = fieldBackgroundSVG;
   globalThis.drawSystematicLawnMowingSvg = drawSystematicLawnMowingSvg;
   globalThis.drawBackgroundWeedsSvg = drawBackgroundWeedsSvg;
   globalThis.BACKGROUND_WEED_PATCHES = BACKGROUND_WEED_PATCHES;
+  globalThis.state = state;
+  try {
+    Object.defineProperty(globalThis, 'state', {
+      get: function(){ return state; },
+      set: function(v){
+        if (v && typeof v === 'object' && state && typeof state === 'object'){
+          for (var k in state){ if (!v.hasOwnProperty(k)) delete state[k]; }
+          Object.assign(state, v);
+        } else {
+          state = v;
+        }
+      },
+      configurable: true
+    });
+  } catch(e){}
+  globalThis.freshState = freshState;
   globalThis.assignWorker = assignWorker;
   globalThis.unassignWorker = unassignWorker;
   globalThis.fireWorker = fireWorker;
@@ -29531,6 +30109,7 @@ function wireEvents(){
   document.querySelectorAll('[data-prep]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); startPrep(parseInt(b.getAttribute('data-prep'))); }; });
   document.querySelectorAll('[data-clear]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); startClear(parseInt(b.getAttribute('data-clear'))); }; });
   document.querySelectorAll('[data-removetree]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); startRemoveTree(parseInt(b.getAttribute('data-removetree'))); }; });
+  document.querySelectorAll('[data-cutdowntree]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); cutDownGrowingTree(parseInt(b.getAttribute('data-cutdowntree'))); }; });
   document.querySelectorAll('[data-plant]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); plantTree(parseInt(b.getAttribute('data-plant')), b.getAttribute('data-type')); }; });
   document.querySelectorAll('[data-water]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); waterPlot(parseInt(b.getAttribute('data-water'))); }; });
   document.querySelectorAll('[data-prune]').forEach(function(b){ b.onclick=function(e){ e.stopPropagation(); prunePlot(parseInt(b.getAttribute('data-prune'))); }; });
