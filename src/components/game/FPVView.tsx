@@ -27,10 +27,24 @@ import {
   type SkyBody,
   type V,
 } from "@/game/cosmos";
+import {
+  AGENCY_STYLE,
+  PUBLIC_SATELLITES,
+  REGIME_STYLE,
+  getSatellite,
+  regimeLesson,
+  satWorldPos,
+  satellitesForParent,
+  type OrbitRegime,
+  type SatelliteEntry,
+} from "@/game/satellites";
 import { useGame } from "@/game/store";
 import { formatEta, formatKm, formatUsd } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CockpitScene } from "./three/CockpitScene";
+import { getConstellationByName } from "@/game/constellations";
+import { setSelectedConstellation } from "./three/constellationFocus";
+import { ConstellationPanel } from "./ConstellationPanel";
 
 const held = new Set<string>();
 let injected: string[] | null = null;
@@ -428,6 +442,14 @@ export type TargetInfo = {
   appMag?: number;
   az?: number;
   el?: number;
+  /** Satellite extras */
+  agency?: string;
+  regime?: string;
+  altitudeKm?: number;
+  mission?: string;
+  missionDetail?: string;
+  status?: string;
+  launched?: string;
 };
 
 type FrameInfo = {
@@ -512,12 +534,13 @@ function paint(
   for (const st of MILKY) drawStar(st);
   for (const st of FIELD) drawStar(st);
 
-  // Constellation lines
+  // Constellation lines + labels (all 88 figures with mapped stars)
   ctx.lineWidth = Math.max(1, w / 1600);
-  ctx.strokeStyle = "rgba(126,184,201,0.26)";
+  const labeled = new Set<string>();
   for (const c of CONSTELLATIONS) {
     ctx.beginPath();
     let started = false;
+    const pts: { x: number; y: number }[] = [];
     for (const id of c.ids) {
       const star = NAMED_STARS.find((s) => s.id === id);
       if (!star) {
@@ -529,12 +552,32 @@ function paint(
         started = false;
         continue;
       }
+      pts.push(p);
       if (!started) {
         ctx.moveTo(p.x, p.y);
         started = true;
       } else ctx.lineTo(p.x, p.y);
     }
+    ctx.strokeStyle = "rgba(126,184,201,0.32)";
     ctx.stroke();
+    if (pts.length >= 1) {
+      const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+      const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+      const name = c.constellation || c.name;
+      if (!labeled.has(name) && cx > 40 && cx < w - 40 && cy > 30 && cy < h - 30) {
+        labeled.add(name);
+        ctx.font = `600 ${Math.max(9, w / 150)}px Atkinson Hyperlegible, sans-serif`;
+        ctx.fillStyle = "rgba(126,184,201,0.75)";
+        ctx.fillText(name, cx + 6, cy - 6);
+      }
+      // single-star anchor dots
+      if (pts.length === 1) {
+        ctx.fillStyle = "rgba(126,184,201,0.55)";
+        ctx.beginPath();
+        ctx.arc(pts[0].x, pts[0].y, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
 
   // Deep-sky layer (galaxies, nebulae, clusters) — declutter: only brighter / larger near center
@@ -690,6 +733,104 @@ function paint(
     drawWorldBody(ctx, d.pr.x, d.pr.y, d.rad, d.body, sunCam, d.pr.cam);
   }
 
+  // —— Public satellites (LEO / MEO / GEO) around Earth & Mars ——
+  type SatDrawn = {
+    sat: SatelliteEntry;
+    pr: NonNullable<ReturnType<typeof project>>;
+    dist: number;
+    rad: number;
+  };
+  const satDrawn: SatDrawn[] = [];
+  for (const parentId of ["earth", "mars"] as const) {
+    const parentBody = BODIES.find((b) => b.id === parentId);
+    if (!parentBody) continue;
+    const parentP = posOf(parentId, simT, cache);
+    const parentPr = project(parentP);
+    const parentDist = Math.hypot(parentP.x - ship.pos.x, parentP.y - ship.pos.y, parentP.z - ship.pos.z);
+    // Show rings when the planet is near enough that orbits are readable
+    const showRings = parentPr && parentDist < (parentId === "earth" ? 120 : 90);
+    if (showRings && parentPr) {
+      const regimes: OrbitRegime[] =
+        parentId === "earth" ? ["LEO", "MEO", "GEO"] : ["LEO"];
+      for (const regime of regimes) {
+        const style = REGIME_STYLE[regime];
+        const mult = regime === "LEO" ? 1.22 : regime === "MEO" ? 2.1 : 3.55;
+        const R = parentBody.r * mult;
+        ctx.strokeStyle = style.glow;
+        ctx.lineWidth = regime === "LEO" ? 1.2 : 1.0;
+        ctx.setLineDash(regime === "GEO" ? [6, 4] : []);
+        // Approximate ring in parent equatorial plane projected as world loop around parent
+        const ringPts: V[] = [];
+        for (let i = 0; i <= 64; i++) {
+          const a = (i / 64) * Math.PI * 2;
+          ringPts.push({
+            x: parentP.x + Math.cos(a) * R,
+            y: parentP.y,
+            z: parentP.z + Math.sin(a) * R,
+          });
+        }
+        strokeWorldPolyline(ctx, project, ringPts);
+        ctx.setLineDash([]);
+        // Regime label near ring limb
+        const lab = project({ x: parentP.x + R, y: parentP.y, z: parentP.z });
+        if (lab) {
+          ctx.font = `600 ${Math.max(9, w / 140)}px Atkinson Hyperlegible, sans-serif`;
+          ctx.fillStyle = style.color;
+          ctx.fillText(
+            `${style.label} ${style.bandKm}`,
+            lab.x + 6,
+            lab.y - 4,
+          );
+        }
+      }
+    }
+
+    for (const sat of satellitesForParent(parentId)) {
+      const sp = satWorldPos(sat, parentP, parentBody.r, simT);
+      const pr = project(sp);
+      if (!pr) continue;
+      const dist = Math.hypot(sp.x - ship.pos.x, sp.y - ship.pos.y, sp.z - ship.pos.z);
+      // Only draw when parent is not tiny on screen or we are near the planet
+      if (parentDist > 160 && !parentPr) continue;
+      if (parentDist > 200) continue;
+      const rad = Math.max(3.5, Math.min(11, 180 / Math.max(8, dist)));
+      satDrawn.push({ sat, pr, dist, rad });
+    }
+  }
+  satDrawn.sort((a, b) => a.pr.z - b.pr.z);
+  for (const s of satDrawn) {
+    const ag = AGENCY_STYLE[s.sat.agency];
+    const rg = REGIME_STYLE[s.sat.regime];
+    // outer agency ring
+    ctx.beginPath();
+    ctx.arc(s.pr.x, s.pr.y, s.rad + 2.5, 0, Math.PI * 2);
+    ctx.strokeStyle = ag.color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // core regime fill
+    ctx.beginPath();
+    ctx.arc(s.pr.x, s.pr.y, s.rad, 0, Math.PI * 2);
+    ctx.fillStyle = rg.color;
+    ctx.globalAlpha = 0.9;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // agency tick
+    ctx.fillStyle = ag.color;
+    ctx.fillRect(s.pr.x + s.rad + 1, s.pr.y - 2, 8, 4);
+    if (s.rad > 4 || s.dist < 40) {
+      ctx.font = `600 ${Math.max(10, w / 120)}px Outfit, sans-serif`;
+      ctx.fillStyle = "rgba(232,237,244,0.95)";
+      ctx.fillText(s.sat.name, s.pr.x + s.rad + 12, s.pr.y - 2);
+      ctx.font = `400 ${Math.max(9, w / 140)}px Atkinson Hyperlegible, sans-serif`;
+      ctx.fillStyle = rg.color;
+      ctx.fillText(
+        `${ag.short} · ${rg.label} · ~${s.sat.altitudeKm.toLocaleString()} km`,
+        s.pr.x + s.rad + 12,
+        s.pr.y + 12,
+      );
+    }
+  }
+
   const aimX = pointer.active && !document.pointerLockElement ? pointer.x * w : w / 2;
   const aimY = pointer.active && !document.pointerLockElement ? pointer.y * h : h / 2;
 
@@ -719,6 +860,34 @@ function paint(
       ctx.fillStyle = "rgba(139,151,168,0.95)";
       ctx.fillText(`${d.body.dist} · ${formatRange(d.dist, destination)}`, d.pr.x + d.rad + 10, d.pr.y + 14);
     }
+  }
+  for (const s of satDrawn) {
+    const distPx = Math.hypot(s.pr.x - aimX, s.pr.y - aimY);
+    const score = distPx - s.rad * 1.2;
+    const ag = AGENCY_STYLE[s.sat.agency];
+    const rg = REGIME_STYLE[s.sat.regime];
+    cands.push({
+      id: s.sat.id,
+      name: s.sat.name,
+      kind: `satellite · ${rg.label}`,
+      blurb: s.sat.blurb,
+      fact: s.sat.fact,
+      dist: `${rg.label} · ~${s.sat.altitudeKm.toLocaleString()} km altitude`,
+      range: formatRange(s.dist, destination),
+      catalog: `${s.sat.catalogId} · ${ag.short}`,
+      spectral: s.sat.mission,
+      agency: s.sat.agency,
+      regime: s.sat.regime,
+      altitudeKm: s.sat.altitudeKm,
+      mission: s.sat.mission,
+      missionDetail: s.sat.missionDetail,
+      status: s.sat.status,
+      launched: s.sat.launched,
+      score,
+      x: s.pr.x,
+      y: s.pr.y,
+      rad: s.rad + 4,
+    });
   }
   for (const star of NAMED_STARS) {
     const p = projectDir(star.dir);
@@ -825,7 +994,9 @@ function paint(
     ctx.stroke();
     const body = BODIES.find((b) => b.id === target.id);
     if (body) drawPip(ctx, w, h, body, sunCam, target.range);
-    else if (
+    else if (target.agency) {
+      drawSatellitePip(ctx, w, h, target);
+    } else if (
       target.kind === "galaxy" ||
       target.kind === "nebula" ||
       target.kind === "open-cluster" ||
@@ -916,6 +1087,13 @@ function paint(
           appMag: target.appMag,
           az: target.az,
           el: target.el,
+          agency: target.agency,
+          regime: target.regime,
+          altitudeKm: target.altitudeKm,
+          mission: target.mission,
+          missionDetail: target.missionDetail,
+          status: target.status,
+          launched: target.launched,
         }
       : null,
     lesson,
@@ -1195,6 +1373,56 @@ function drawPip(
   ctx.textAlign = "left";
 }
 
+
+function drawSatellitePip(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  target: TargetInfo,
+) {
+  const x = 18;
+  const y = h - 132;
+  const boxW = Math.min(320, w * 0.42);
+  const regime = (target.regime || "LEO") as OrbitRegime;
+  const style = REGIME_STYLE[regime] || REGIME_STYLE.LEO;
+  const agColor = target.agency && AGENCY_STYLE[target.agency as keyof typeof AGENCY_STYLE]
+    ? AGENCY_STYLE[target.agency as keyof typeof AGENCY_STYLE].color
+    : "#e8edf4";
+  ctx.fillStyle = "rgba(9,12,18,0.88)";
+  roundRect(ctx, x, y, boxW, 116, 8);
+  ctx.fill();
+  ctx.strokeStyle = style.color;
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, x, y, boxW, 116, 8);
+  ctx.stroke();
+  // agency badge
+  ctx.fillStyle = agColor;
+  roundRect(ctx, x + 10, y + 10, 64, 18, 4);
+  ctx.fill();
+  ctx.fillStyle = "#0b0e14";
+  ctx.font = "700 10px Atkinson Hyperlegible, sans-serif";
+  ctx.fillText((target.agency || "SAT").slice(0, 12), x + 16, y + 23);
+  ctx.fillStyle = style.color;
+  ctx.font = "700 11px Outfit, sans-serif";
+  ctx.fillText(style.label, x + 82, y + 23);
+  ctx.fillStyle = "#e8edf4";
+  ctx.font = "600 13px Outfit, sans-serif";
+  ctx.fillText(target.name, x + 12, y + 48);
+  ctx.fillStyle = "#8b97a8";
+  ctx.font = "400 11px Atkinson Hyperlegible, sans-serif";
+  ctx.fillText(target.catalog || "", x + 12, y + 66);
+  ctx.fillStyle = style.color;
+  ctx.fillText(
+    `Alt ~${(target.altitudeKm ?? 0).toLocaleString()} km · ${target.status || ""}`,
+    x + 12,
+    y + 84,
+  );
+  ctx.fillStyle = "#c5d0dc";
+  ctx.font = "400 10px Atkinson Hyperlegible, sans-serif";
+  const detail = (target.missionDetail || target.fact || "").slice(0, 72);
+  ctx.fillText(detail + (detail.length >= 72 ? "…" : ""), x + 12, y + 102);
+}
+
 function drawGalaxyPip(ctx: CanvasRenderingContext2D, w: number, h: number, id: string, name: string) {
   const size = Math.min(200, Math.max(130, w * 0.18));
   const x = w - 28 * (w / 1280) - size / 2;
@@ -1255,6 +1483,7 @@ function publishHud(h: HudSnap) {
 }
 
 function Hud({ destination }: { destination: DestinationId }) {
+  const [satModalTarget, setSatModalTarget] = useState<TargetInfo | null>(null);
   const closeFpv = useGame((s) => s.closeFpv);
   const beginLanding = useGame((s) => s.beginLanding);
   const credits = useGame((s) => s.credits);
@@ -1359,7 +1588,19 @@ function Hud({ destination }: { destination: DestinationId }) {
           </div>
           {hud.target && (
             <article className="max-w-sm rounded-md border border-accent/40 bg-bg/85 p-3">
-              <p className="font-display text-sm font-semibold text-fg">{hud.target.name}</p>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="font-display text-sm font-semibold text-fg">{hud.target.name}</p>
+                {hud.target.agency && (
+                  <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[10px] text-accent">
+                    {hud.target.agency}
+                  </span>
+                )}
+                {hud.target.regime && (
+                  <span className="rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] text-accent">
+                    {hud.target.regime}
+                  </span>
+                )}
+              </div>
               {hud.target.catalog && (
                 <p className="mt-0.5 font-mono text-[11px] text-accent">{hud.target.catalog}</p>
               )}
@@ -1368,10 +1609,18 @@ function Hud({ destination }: { destination: DestinationId }) {
                 {hud.target.constellation ? ` · ${hud.target.constellation}` : ""}
                 {hud.target.spectral ? ` · ${hud.target.spectral}` : ""}
                 {hud.target.appMag != null ? ` · mag ${hud.target.appMag.toFixed(2)}` : ""}
+                {hud.target.status ? ` · ${hud.target.status}` : ""}
+                {hud.target.launched ? ` · ${hud.target.launched}` : ""}
               </p>
               <p className="mt-0.5 font-mono text-[11px] text-accent">
                 {hud.target.range} · {hud.target.dist}
               </p>
+              {hud.target.altitudeKm != null && (
+                <p className="mt-0.5 font-mono text-[11px] text-go">
+                  Altitude ~{hud.target.altitudeKm.toLocaleString()} km
+                  {hud.target.mission ? ` · ${hud.target.mission}` : ""}
+                </p>
+              )}
               {hud.target.az != null && (
                 <p className="mt-0.5 font-mono text-[11px] text-muted">
                   AZ {hud.target.az.toFixed(1)}° · EL {hud.target.el != null && hud.target.el >= 0 ? "+" : ""}
@@ -1380,6 +1629,48 @@ function Hud({ destination }: { destination: DestinationId }) {
               )}
               <p className="mt-1 text-xs text-fg/90">{hud.target.blurb}</p>
               <p className="mt-2 text-xs leading-relaxed text-muted">{hud.target.fact}</p>
+              {hud.target.missionDetail && (
+                <p className="mt-2 rounded border border-border bg-raised/80 p-2 text-[11px] leading-relaxed text-fg/90">
+                  <span className="font-mono text-[10px] uppercase tracking-wide text-accent">Mission · </span>
+                  {hud.target.missionDetail}
+                </p>
+              )}
+              {hud.target.regime && (
+                <p className="mt-2 text-[10px] leading-relaxed text-muted">
+                  {hud.target.regime === "LEO"
+                    ? "LEO: ~90 min periods, drag matters, Earth is huge in the window."
+                    : hud.target.regime === "MEO"
+                      ? "MEO: GNSS home (~12 h). Global coverage from medium altitude."
+                      : hud.target.regime === "GEO"
+                        ? "GEO: period = 1 sidereal day — appears fixed over one longitude."
+                        : "Special high / L2-class orbit beyond classic LEO shells."}
+                </p>
+              )}
+              {Boolean(hud.target.agency || hud.target.regime) && (
+                <div className="mt-2.5 pt-2 border-t border-white/10 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="pointer-events-auto rounded bg-cyan-500/20 border border-cyan-400 px-2 py-1 font-mono text-[10px] font-bold text-cyan-200 hover:bg-cyan-500/30 transition-colors shadow-sm"
+                    onClick={() => setSatModalTarget(hud.target)}
+                  >
+                    🎓 Open Orbital Mechanics Tutorial
+                  </button>
+                </div>
+              )}
+              {Boolean(hud.target.constellation) && (
+                <div className="mt-2.5 pt-2 border-t border-white/10 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="pointer-events-auto rounded bg-amber-500/20 border border-amber-400 px-2 py-1 font-mono text-[10px] font-bold text-amber-200 hover:bg-amber-500/30 transition-colors shadow-sm"
+                    onClick={() => {
+                      const c = getConstellationByName(hud.target!.constellation!);
+                      if (c) setSelectedConstellation(c.id);
+                    }}
+                  >
+                    🏛️ Constellation Classroom ({hud.target.constellation})
+                  </button>
+                </div>
+              )}
             </article>
           )}
         </div>
@@ -1436,6 +1727,8 @@ function Hud({ destination }: { destination: DestinationId }) {
           Reticle auto-locks worlds on the path. W/S thrust · A/D yaw (A left) · drag to look · Z damp · X brake
         </p>
       </div>
+      <SatelliteTutorialModal target={satModalTarget} onClose={() => setSatModalTarget(null)} />
+      <ConstellationPanel />
     </div>
   );
 }
@@ -1561,4 +1854,108 @@ declare global {
       setSteer?: (v: number) => void;
     };
   }
+}
+
+function SatelliteTutorialModal({
+  target,
+  onClose,
+}: {
+  target: TargetInfo | null;
+  onClose: () => void;
+}) {
+  if (!target) return null;
+  const sat = getSatellite(target.id);
+  const regime = (target.regime || "LEO") as OrbitRegime;
+  const lesson = regimeLesson(regime);
+  const style = REGIME_STYLE[regime] || REGIME_STYLE.LEO;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 pointer-events-auto"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg rounded-xl border border-cyan-500/40 bg-slate-950/95 p-5 shadow-2xl text-slate-100 flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between border-b border-white/10 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span
+                className="rounded px-2 py-0.5 font-mono text-[10px] font-bold text-black uppercase"
+                style={{ backgroundColor: style.color }}
+              >
+                {style.label} · {style.bandKm}
+              </span>
+              {target.agency && (
+                <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-[10px] text-cyan-200">
+                  {target.agency}
+                </span>
+              )}
+            </div>
+            <h3 className="mt-1 text-lg font-bold font-display text-white">{target.name}</h3>
+            {sat?.catalogId && (
+              <p className="font-mono text-xs text-muted">COSPAR / Designator: {sat.catalogId}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded p-1 text-slate-400 hover:text-white hover:bg-white/10"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        {/* Telemetry specs grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-xs">
+          <div className="rounded bg-slate-900 p-2 border border-white/5">
+            <span className="text-[10px] text-muted block uppercase">Altitude</span>
+            <span className="text-cyan-300 font-bold">~{(target.altitudeKm ?? 0).toLocaleString()} km</span>
+          </div>
+          <div className="rounded bg-slate-900 p-2 border border-white/5">
+            <span className="text-[10px] text-muted block uppercase">Period</span>
+            <span className="text-white font-bold">{sat?.periodMin ? `${sat.periodMin} min` : "N/A"}</span>
+          </div>
+          <div className="rounded bg-slate-900 p-2 border border-white/5">
+            <span className="text-[10px] text-muted block uppercase">Inclination</span>
+            <span className="text-white font-bold">{sat?.inclinationDeg ? `${sat.inclinationDeg}°` : "0°"}</span>
+          </div>
+          <div className="rounded bg-slate-900 p-2 border border-white/5">
+            <span className="text-[10px] text-muted block uppercase">Status</span>
+            <span className="text-go font-bold">{target.status || "Operational"}</span>
+          </div>
+        </div>
+
+        {/* Educational Tutorial & Lesson */}
+        <div className="rounded-lg border border-cyan-500/20 bg-cyan-950/20 p-3.5 space-y-2">
+          <div className="flex items-center gap-1.5 text-cyan-300 font-bold text-xs uppercase tracking-wide">
+            <span>🎓</span>
+            <span>Orbital Mechanics Classroom Lesson: {style.label} ({style.bandKm})</span>
+          </div>
+          <p className="text-xs leading-relaxed text-slate-200 whitespace-pre-line">{lesson}</p>
+          <div className="rounded bg-slate-900/80 p-2 font-mono text-[11px] text-cyan-200 border border-cyan-500/10">
+            💡 Takeaway: {regime === "LEO" ? "Requires ~7.8 km/s orbital velocity to balance gravity; encounters atmospheric drag below 1,000 km." : regime === "MEO" ? "Optimal compromise between coverage area and signal path delay for global navigation constellations." : regime === "GEO" ? "Orbital period matches 23h 56m 4s sidereal rotation at 35,786 km altitude." : "Used for specialized observation geometry and stable gravitational equilibrium."}
+          </div>
+        </div>
+
+        {/* Mission details & fact */}
+        <div className="space-y-2 text-xs">
+          <div className="font-semibold text-white">Mission Overview:</div>
+          <p className="text-slate-300 leading-relaxed">{sat?.missionDetail || target.blurb}</p>
+          {target.fact && (
+            <p className="rounded bg-slate-900 p-2 text-muted leading-relaxed italic border border-white/5">
+              “{target.fact}”
+            </p>
+          )}
+        </div>
+
+        <div className="flex justify-end pt-2 border-t border-white/10">
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            Close Tutorial
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }

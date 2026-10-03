@@ -41,6 +41,7 @@ import { FamilyShapeOverlay } from "./FamilyShapeOverlay";
 import { FamilyRevealHud } from "../FamilyRevealHud";
 import { globalFamilyRevealController } from "@/game/familyReveal/FamilyRevealController";
 import { ConstellationPanel } from "../ConstellationPanel";
+import { ConstellationMenu, ConstellationMenuToggle } from "../ConstellationMenu";
 import { CelestialBody, OrbitPaths } from "./CelestialBody";
 import { GalaxySprites } from "./GalaxySprite";
 import { getTargetFocus, resetTargetFocus } from "./targetFocus";
@@ -757,6 +758,7 @@ function MissionTargetCue({ hud, destination }: { hud: HudSnap; destination: Des
 
 /* ---------- Main CockpitScene component ---------- */
 export function CockpitScene({ destination }: { destination: DestinationId }) {
+  const [atlasOpen, setAtlasOpen] = useState(false);
   useEffect(() => { resetTargetFocus(destination); }, [destination]);
   const start = startPose(destination);
   const target = posOf(destination, 0, new Map());
@@ -829,6 +831,8 @@ export function CockpitScene({ destination }: { destination: DestinationId }) {
       >
         <SceneContent ship={shipRef} simTRef={simTRef} destination={destination} />
       </Canvas>
+      <ConstellationMenuToggle open={atlasOpen} onToggle={() => setAtlasOpen((v) => !v)} />
+      <ConstellationMenu open={atlasOpen} onClose={() => setAtlasOpen(false)} />
       <CockpitHudOverlay destination={destination} />
       <FamilyRevealHud />
       <ConstellationPanel />
