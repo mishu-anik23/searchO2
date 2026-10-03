@@ -15,7 +15,8 @@
 ## 📑 Table of Contents
 1. [Core Concepts & Ecological Philosophy](#-core-concepts--ecological-philosophy)
 2. [Gameplay Quickstart & Instructions](#-gameplay-quickstart--instructions)
-3. [Interactive Architecture & System Flows (Mermaid Diagrams)](#-interactive-architecture--system-flows)
+3. [Interactive Architecture & System Flows (3D Mermaid Diagrams)](#-interactive-architecture--system-flows)
+   - [Platform Stack (Isometric 3D Blocks)](#0-platform-stack-isometric-3d-blocks)
    - [Core Simulation & Multi-System Game Loop](#1-core-simulation--multi-system-game-loop)
    - [Agroforestry & Clean Energy System Topology](#2-agroforestry--clean-energy-system-topology)
    - [Polyculture Companion Planting & Guild Matrix](#3-polyculture-companion-planting--guild-matrix)
@@ -23,6 +24,11 @@
    - [Macro-Economic Balance & Cash Flow](#5-macro-economic-balance--cash-flow)
    - [Plot Lifecycle State Machine](#6-plot-lifecycle-state-machine)
    - [Manhattan Road & Waypoint Navigation Network](#7-manhattan-road--waypoint-navigation-network)
+   - [OxyForge Mission Screen & 3D Flight Pipeline](#8-oxyforge-mission-screen--3d-flight-pipeline)
+   - [Authentication, Guest Merge & Session Security](#9-authentication-guest-merge--session-security)
+   - [Server-Authoritative API & Anti-Cheat Intent Flow](#10-server-authoritative-api--anti-cheat-intent-flow)
+   - [WebSocket Live Sync & Observer Mode](#11-websocket-live-sync--observer-mode)
+   - [Payments, Crypto Ledger & KYC On-Ramp](#12-payments-crypto-ledger--kyc-on-ramp)
 4. [Deep Dive: Game Mechanics & Subsystems](#-deep-dive-game-mechanics--subsystems)
    - [3D Decagonal 3-Sector Polyculture Flower Garden](#3d-decagonal-3-sector-polyculture-flower-garden)
    - [Clean Energy Microgrid & 500 kWh BESS Substation](#clean-energy-microgrid--500-kwh-bess-substation)
@@ -150,12 +156,68 @@ You begin in the Central European Grassland (Germany) with **€10,000.00 GC** i
 
 ## 🔄 Interactive Architecture & System Flows
 
+These diagrams use **layered 3D-style Mermaid** (`block-beta`, themed `flowchart`s, and depth-stacked `subgraph`s) so you can read **vertical tiers** (client → API → data) and **horizontal workflows** (farm loop, logistics, missions) on [GitHub](https://github.com/mishu-anik23/searchO2) and in Mermaid-compatible viewers.
+
+| Layer (Z) | Meaning |
+|:---:|:---|
+| **Z+2** | Browser UI, HUD, 3D canvas (farm SVG/Canvas, React Three Fiber cockpit) |
+| **Z+1** | Game logic, server engine, WebSocket fan-out |
+| **Z+0** | PostgreSQL, Redis, append-only economy ledger |
+
+---
+
+### 0. Platform Stack (Isometric 3D Blocks)
+
+```mermaid
+block-beta
+    columns 3
+
+    block:client:3
+        columns 1
+        farmSPA["🌾 Farm SPA<br/>index.html · Canvas 2D/SVG"]
+        oxyApp["🚀 OxyForge App<br/>Vite · React · R3F · Zustand"]
+        previews["🎬 Public Previews<br/>launchpad · moon · cruise HTML"]
+
+    block:edge:3
+        columns 1
+        api["⚡ Express REST<br/>/api/* modules"]
+        ws["📡 WebSocket<br/>/ws JWT or observer"]
+        static["🌐 CDN / Static Host<br/>searcho2.online"]
+
+    block:data:3
+        columns 1
+        pg["🐘 PostgreSQL 18<br/>farms · plots · ledger"]
+        redis["⚡ Redis<br/>sessions · leaderboard cache"]
+        chain["🪙 Base L2 + Stripe<br/>AFC · payments · Sumsub KYC"]
+
+    farmSPA --> api
+    oxyApp --> api
+    previews --> static
+    api --> pg
+    api --> redis
+    api --> chain
+    ws --> redis
+```
+
+---
+
 ### 1. Core Simulation & Multi-System Game Loop
 
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#E8F5E9','secondaryColor':'#FFF8E1','tertiaryColor':'#E3F2FD','primaryBorderColor':'#2E7D32','lineColor':'#558B2F'}}}%%
 flowchart TD
-    A["⏱️ 1-Second Real-Time Clock Tick"] --> B["Time Compression Engine<br/>(1h Real = 4h Game | dh Delta Calculation)"]
-    
+    subgraph Z2_UI ["🖥️ Z+2 · Render & HUD"]
+        direction LR
+        HUD["Zen HUD Telemetry"]
+        CANVAS["Farm Canvas + 3D Garden"]
+    end
+
+    subgraph Z1_LOOP ["⚙️ Z+1 · 1s Tick Orchestrator"]
+        A["⏱️ 1-Second Real-Time Clock Tick"] --> B["Time Compression Engine<br/>(REAL_MS_PER_GAME_HOUR · speedFactor · Δh)"]
+    end
+
+    subgraph Z0_SIM ["🌱 Z+0 · Biological & Economic Kernels"]
+        direction TB
     B --> C["Advance Plot Biology & Agroforestry"]
     C --> C1["Health Decay: -0.4% to -1.2%/h"]
     C --> C2["Calculate Vegetative Stage: Sapling ➔ Young ➔ Mature"]
@@ -200,7 +262,12 @@ flowchart TD
     
     J --> K{"Treasury Balance < -€50.00?"}
     K -- Yes --> L["🚨 Trigger Community Bank Bailout Protocol"]
-    K -- No --> M["Update Zen HUD Telemetry & Render 3D Canvas"]
+    K -- No --> M["Commit Frame State"]
+    end
+
+    M --> HUD
+    M --> CANVAS
+    L --> HUD
 ```
 
 ---
@@ -208,8 +275,9 @@ flowchart TD
 ### 2. Agroforestry & Clean Energy System Topology
 
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#E1F5FE','secondaryColor':'#F1F8E9','tertiaryColor':'#FFF3E0','lineColor':'#0277BD'}}}%%
 flowchart TB
-    subgraph NorthTerrace ["⛰️ North Hilltop & Upper Yard"]
+    subgraph NorthTerrace ["⛰️ Z+1 · North Hilltop & Upper Yard"]
         WT_NW["💨 NW Wind Turbine<br/>(Bird-Safe Ultrasonic Nacelle)"]
         CF["🐄 Livestock Cattle Farm<br/>& Sheep Pasture Paddock"]
         P0["🌱 Plot 0 (Northwest)"]
@@ -220,7 +288,7 @@ flowchart TB
         WT_NE["💨 NE Wind Turbine<br/>(Aerodynamic Airfoil Stator)"]
     end
 
-    subgraph CentralCorridor ["🛣️ Central Arterial Corridor & Promenade"]
+    subgraph CentralCorridor ["🛣️ Z+0 · Central Arterial Corridor & Promenade"]
         WT_SW["💨 SW Wind Turbine"]
         BESS["🔋 500 kWh BESS Substation<br/>(Digital LED Gauge & Grid Inverter)"]
         CS["🏠 Crew Shed & Tool Workshop<br/>(Living Quarters & Roster)"]
@@ -231,7 +299,7 @@ flowchart TB
         WT_SE["💨 SE Wind Turbine"]
     end
 
-    subgraph SouthTerrace ["🌾 South Terrace & Agroecology Commons"]
+    subgraph SouthTerrace ["🌾 Z-1 · South Terrace & Agroecology Commons"]
         GARDEN["🌷 3D Decagonal Polyculture Garden<br/>(3 Sectors · Tiered Water Fountain)"]
         P3["🌱 Plot 3 (Southwest)"]
         P4["🌱 Plot 4 (South-Central)"]
@@ -255,6 +323,7 @@ flowchart TB
 ### 3. Polyculture Companion Planting & Guild Matrix
 
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#FCE4EC','secondaryColor':'#E8F5E9','tertiaryColor':'#FFF9C4','lineColor':'#AD1457'}}}%%
 flowchart LR
     subgraph FlowerGuild ["🌷 3-Sector Decagonal Garden"]
         direction TB
@@ -292,15 +361,22 @@ flowchart LR
 ### 4. Multi-Modal Logistics & Freight Dispatch Pipeline
 
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'actorBkg':'#E3F2FD','actorBorder':'#1565C0','actorTextColor':'#0D47A1','signalColor':'#37474F'}}}%%
 sequenceDiagram
     autonumber
-    actor Player
-    participant Field as Plots / Crop Field / Livestock
-    participant Garage as Farm Garage (Tractor Depot)
-    participant Storage as Cold Cellar Barn (4.2°C)
-    participant Gate as Grand Main Entry Gate
-    participant Carrier as Specialized Freight Fleet
-    participant Bank as Virtual Euro Treasury
+    box rgba(232,245,233,0.9) Z+2 · Player & HUD
+        actor Player
+    end
+    box rgba(255,243,224,0.9) Z+1 · Farm Operations
+        participant Field as Plots / Crop Field / Livestock
+        participant Garage as Farm Garage (Tractor Depot)
+        participant Storage as Cold Cellar Barn (4.2°C)
+        participant Gate as Grand Main Entry Gate
+    end
+    box rgba(227,242,253,0.9) Z+0 · Settlement
+        participant Carrier as Specialized Freight Fleet
+        participant Bank as Virtual Euro Treasury
+    end
 
     Note over Field: Fruit Matures / Grain Ripens / Cows Milked
     
@@ -344,8 +420,9 @@ sequenceDiagram
 ### 5. Macro-Economic Balance & Cash Flow
 
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#C8E6C9','secondaryColor':'#FFCDD2','tertiaryColor':'#FFF9C4','lineColor':'#33691E'}}}%%
 flowchart LR
-    subgraph Inflows ["💰 Capital Inflows"]
+    subgraph Inflows ["💰 Z+1 · Capital Inflows"]
         I1["Oxygen Carbon Subsidies<br/>(O2 × €0.03 × Biodiversity Mult)"]
         I2["Wholesale Crop & Fruit Sales<br/>(Cold Cellar Freight Dispatch)"]
         I3["Livestock Dairy & Wool<br/>(Cow Milk €350 / Sheep Wool €220)"]
@@ -355,12 +432,12 @@ flowchart LR
         I7["Community Bank Loans<br/>(€2k, €5k, €12k Tiers)"]
     end
 
-    subgraph Treasury ["🏦 Farm Treasury (€ Balance)"]
+    subgraph Treasury ["🏦 Z+0 · Farm Treasury Ledger"]
         direction TB
-        BAL["Current Working Balance"]
+        BAL["Current Working Balance<br/>+ append-only economy_transactions"]
     end
 
-    subgraph Outflows ["💸 Mandatory Outflows"]
+    subgraph Outflows ["💸 Z-1 · Mandatory Outflows"]
         O1["Municipal Land Taxes<br/>(€2.00 / plot / day)"]
         O2["Worker Payroll<br/>(Laborer €30, Farmer €70, Botanist €130, Engineer €180)"]
         O3["Building & Equipment Maintenance<br/>(Shops, BESS, Turbines, Shed, Barn)"]
@@ -379,7 +456,9 @@ flowchart LR
 ### 6. Plot Lifecycle State Machine
 
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#DCEDC8','primaryTextColor':'#1B5E20','lineColor':'#689F38'}}}%%
 stateDiagram-v2
+    direction LR
     [*] --> Barren: Farm Initialization
 
     Barren --> Preparing: Dig Land Action (€15, 3h)
@@ -411,22 +490,241 @@ stateDiagram-v2
 ### 7. Manhattan Road & Waypoint Navigation Network
 
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#ECEFF1','secondaryColor':'#E8F5E9','lineColor':'#455A64'}}}%%
 flowchart TD
-    GATE["⛩️ Grand Farm Main Entry Gate (x=91.5%, y=47%)"] <--> HIGHWAY["🛣️ Main Arterial Highway (y=47%, Horizontal Corridor)"]
-    
-    HIGHWAY <--> FS_NW["West Wing Access (x=8.5%)"] <--> CS["🏠 Crew Shed & 🔋 BESS Substation"]
-    HIGHWAY <--> FS_P0["Feeder North 0 (x=16%)"] <--> P0["Plot 0 & 🐄 Cattle Paddock"]
-    HIGHWAY <--> FS_P1["Central Access Road (x=41%)"] <--> P1["Plot 1 & 🏚️ Cold Cellar Storage Barn"]
-    HIGHWAY <--> FS_P2["Feeder North 2 (x=73%)"] <--> P2["Plot 2 & 🚜 Farm Garage Depot"]
-    
-    HIGHWAY <--> FS_P3["Feeder South 3 (x=16%)"] <--> P3["Plot 3"]
-    HIGHWAY <--> FS_P4["Feeder South 4 (x=41%)"] <--> P4["Plot 4 & 🌾 Octagonal Crop Field"]
-    HIGHWAY <--> FS_P5["Feeder South 5 (x=73%)"] <--> P5["Plot 5"]
-    
-    HIGHWAY <--> AP_POND["North Curbside Apron (x=38%)"] <--> POND["🏞️ Duck & Fish Pond"]
-    HIGHWAY <--> AP_GARDEN["South Curbside Apron (x=38%)"] <--> GARDEN["🌷 3D Decagonal Polyculture Garden"]
-    HIGHWAY <--> AP_CAFE["North Curbside Apron (x=67%)"] <--> CAFE["☕ The Coffee House"]
-    HIGHWAY <--> AP_JUICE["South Curbside Apron (x=67%)"] <--> JUICE["🧃 The Juice & Ice Bar"]
+    GATE["⛩️ Grand Farm Main Entry Gate<br/>(x=91.5%, y=47%)"] <--> HIGHWAY["🛣️ Main Arterial Highway<br/>(y=47% · Manhattan spine)"]
+
+    HIGHWAY <--> FS_NW["West Wing (x=8.5%)"] --> CS["🏠 Crew Shed & 🔋 BESS"]
+    HIGHWAY <--> FS_P0["Feeder N0 (x=16%)"] --> P0["Plot 0 · 🐄 Pasture"]
+    HIGHWAY <--> FS_P1["Central Rd (x=41%)"] --> P1["Plot 1 · 🏚️ Cold Cellar"]
+    HIGHWAY <--> FS_P2["Feeder N2 (x=73%)"] --> P2["Plot 2 · 🚜 Garage"]
+
+    HIGHWAY <--> FS_P3["Feeder S3 (x=16%)"] --> P3["Plot 3"]
+    HIGHWAY <--> FS_P4["Feeder S4 (x=41%)"] --> P4["Plot 4 · 🌾 Crop Field"]
+    HIGHWAY <--> FS_P5["Feeder S5 (x=73%)"] --> P5["Plot 5"]
+
+    HIGHWAY <--> AP_POND["North Curb (x=38%)"] --> POND["🏞️ Duck & Fish Pond"]
+    HIGHWAY <--> AP_GARDEN["South Curb (x=38%)"] --> GARDEN["🌷 3D Decagonal Garden"]
+    HIGHWAY <--> AP_CAFE["North Curb (x=67%)"] --> CAFE["☕ Coffee House"]
+    HIGHWAY <--> AP_JUICE["South Curb (x=67%)"] --> JUICE["🧃 Juice & Ice Bar"]
+
+    subgraph Z1_North ["Z+1 · North branch"]
+        FS_NW
+        FS_P0
+        FS_P1
+        FS_P2
+        P0
+        P1
+        P2
+        CS
+    end
+    subgraph Z0_Spine ["Z+0 · Spine"]
+        GATE
+        HIGHWAY
+    end
+    subgraph Z_1_South ["Z-1 · South branch"]
+        FS_P3
+        FS_P4
+        FS_P5
+        AP_POND
+        AP_GARDEN
+        AP_CAFE
+        AP_JUICE
+        P3
+        P4
+        P5
+        POND
+        GARDEN
+        CAFE
+        JUICE
+    end
+```
+
+---
+
+### 8. OxyForge Mission Screen & 3D Flight Pipeline
+
+Mirrors the React `GameApp` screen router (`src/components/game/GameApp.tsx`) and persisted Zustand mission state (`oxyforge-save-v1`).
+
+```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#E1BEE7','secondaryColor':'#B3E5FC','lineColor':'#4527A0'}}}%%
+stateDiagram-v2
+    direction TB
+
+    [*] --> briefing: First visit / reset
+    briefing --> hq: Accept commander name
+
+    hq --> plan: Open Mission Planner
+    plan --> pad: selectMission(rocket, destination)
+    pad --> launch: Pre-flight checklist GO
+    launch --> cruise: Liftoff & stage events
+    cruise --> landing: Trans-lunar / Hohmann coast complete
+    landing --> surface: PDI & touchdown
+
+    surface --> explore: destination = moon
+    surface --> explore_mars: destination = mars
+    explore --> habitat: ISRU plant steps
+    explore_mars --> habitat: MOXIE / regolith O₂
+
+    habitat --> debrief: Contract pay + O₂ kg credited
+    debrief --> hq: Resume ops at HQ
+
+    state pad {
+        [*] --> checklist
+        checklist --> fueling: LOX/CH4 · gyro · wind polls
+        fueling --> crew_seats: Crewmark ≤3 seats
+    }
+
+    state cruise {
+        [*] --> cockpit3D
+        cockpit3D --> fpv: Optional FPVView (€/sec)
+        fpv --> cockpit3D: Close FPV overlay
+    }
+```
+
+---
+
+### 9. Authentication, Guest Merge & Session Security
+
+```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'actorBkg':'#F3E5F5','actorBorder':'#6A1B9A','signalColor':'#4A148C'}}}%%
+sequenceDiagram
+    autonumber
+    actor User
+    participant SPA as Farm / OxyForge Client
+    participant API as /api/auth
+    participant Merge as guestMerge.service
+    participant DB as PostgreSQL
+
+    alt Guest classroom onboarding
+        User->>SPA: Play without account
+        SPA->>API: POST /guest
+        API->>DB: Create guest user + starter farm (€10k)
+        API-->>SPA: accessToken (memory) + refresh HttpOnly cookie
+    else Register with farm claim
+        User->>SPA: email + password + optional guestId/recoveryCode
+        SPA->>API: POST /register
+        API->>Merge: Claim guest farm if identifier matches
+        Merge->>DB: Re-link plots, ledger, workers
+        API-->>SPA: JWT + mergedGuest flag
+    else Google OAuth sandbox
+        User->>SPA: Google GIS credential
+        SPA->>API: POST /google
+        API->>DB: Upsert OAuth profile + farm
+    end
+
+    Note over SPA,API: Refresh rotation via POST /refresh<br/>Bcrypt cost-12 · 15m access JWT
+
+    SPA->>API: Authenticated /api/farm/* intents
+    API->>DB: Server-authoritative tick + ledger append
+```
+
+---
+
+### 10. Server-Authoritative API & Anti-Cheat Intent Flow
+
+```mermaid
+block-beta
+    columns 3
+
+    block:client:3
+        columns 1
+        farmSPA["🌾 Farm SPA<br/>Player intents"]
+        oxySPA["🚀 OxyForge SPA<br/>Mission + FPV"]
+
+    block:api:3
+        columns 1
+        auth["🔐 /api/auth"]
+        farm["🌱 /api/farm<br/>gameEngine.ts"]
+        economy["📒 /api/economy"]
+        oxy["🛰️ /api/oxyforge"]
+        pay["💳 payments · crypto · kyc"]
+
+    block:data:3
+        columns 1
+        pg["PostgreSQL 18"]
+        redis["Redis cache"]
+
+    farmSPA --> auth
+    oxySPA --> auth
+    farmSPA --> farm
+    oxySPA --> oxy
+    auth --> pg
+    farm --> pg
+    economy --> pg
+    oxy --> pg
+    pay --> pg
+    farm --> redis
+```
+
+**Intent pipeline:** client sends **actions** (`plant`, `harvest`, `build`) → Zod validation + rate limits → `gameEngine` recomputes elapsed hours from `last_tick_timestamp` → rejects impossible state transitions → writes **append-only** `economy_transactions`.
+
+---
+
+### 11. WebSocket Live Sync & Observer Mode
+
+```mermaid
+flowchart LR
+    subgraph Z2 ["Z+2 · Tabs & Devices"]
+        TAB1["Farm tab"]
+        TAB2["Leaderboard spectator"]
+    end
+
+    subgraph Z1 ["Z+1 · socketManager"]
+        WSS["WebSocket /ws"]
+        JWT{"?token= access JWT"}
+        FAN["userSockets Map fan-out"]
+        PING["30s heartbeat · pong"]
+    end
+
+    subgraph Z0 ["Z+0 · Events"]
+        EV1["CONNECTED"]
+        EV2["FARM_STATE_PATCH"]
+        EV3["LEADERBOARD_UPDATE"]
+    end
+
+    TAB1 --> WSS
+    TAB2 --> WSS
+    WSS --> JWT
+    JWT -->|valid| FAN
+    JWT -->|missing| OBS["Guest observer mode"]
+    FAN --> EV1
+    FAN --> EV2
+    FAN --> EV3
+    WSS --> PING
+```
+
+---
+
+### 12. Payments, Crypto Ledger & KYC On-Ramp
+
+```mermaid
+flowchart TB
+    subgraph Z2_UI ["Z+2 · Wallet UI"]
+        WAL["Base L2 Smart Wallet HUD"]
+        TOP["Stripe / PayPal checkout"]
+    end
+
+    subgraph Z1_API ["Z+1 · Compliance Gate"]
+        CAT["GET /api/payments/catalog"]
+        KYC["POST /api/kyc/initiate"]
+        HOOK["POST /api/kyc/webhooks/sumsub"]
+        CRYPTO["POST /api/crypto/* mutations"]
+    end
+
+    subgraph Z0_LEDGER ["Z+0 · Tri-Asset Ledger"]
+        EUR["€ Real EUR"]
+        AFC["200 AFC / €"]
+        GC["2,000 GC / €"]
+    end
+
+    WAL --> CRYPTO
+    TOP --> CAT
+    CAT --> KYC
+    KYC --> HOOK
+    CRYPTO --> AFC
+    AFC --> GC
+    GC --> EUR
 ```
 
 ---
