@@ -99,14 +99,18 @@ $$\text{Play} \longrightarrow \text{Discover} \longrightarrow \text{Understand} 
 | **⭐ Experience** | Player Journey | Tracks Chapter 1–8 milestones across Earth, Moon, and Mars |
 
 - **Chapters 1 to 8 Roadmap ("My Sustainability Journey"):**
-  - **Ch. 1 — 🌱 Bring the Land to Life:** Soil preparation, photosynthesis discovery, and initial oxygen generation.
-  - **Ch. 2 — 🚜 Build Your Farm:** Storage Granary Barn rot prevention, arterial highway paving, and workforce recruitment.
-  - **Ch. 3 — 🌳 Build an Ecosystem:** Polyculture companion guilds, pollinator bee corridors, and biodiversity score.
-  - **Ch. 4 — ♻️ Close the Loop:** Silvopasture livestock, organic manure composting, and aquatic pond balance.
-  - **Ch. 5 — ⚡ Power Your Community:** Redundant wind turbines, certified engineers, and 500 kWh BESS storage.
-  - **Ch. 6 — 🏘️ Build an Eco-Village:** Organic juice bar, coffee house, artisan recipes, and eco-tourism commerce.
-  - **Ch. 7 — 🌍 Become Self-Sustaining:** 6-pillar sustainability dashboard (80+ score) and regional Eco Passport.
-  - **Ch. 8 — 🚀 Beyond Earth:** Space Science Level 4, €120,000 funding, and closed-loop life support on the Moon and Mars.
+  - **Ch. 1 — 🌱 Bring the Land to Life:** Soil preparation, photosynthesis discovery, initial oxygen generation, and living quarters crew shed.
+  - **Ch. 2 — 🚜 Build Your Farm:** Storage Granary Barn rot prevention, arterial highway paving, feeder subways, farm machinery garage, and workforce recruitment.
+  - **Ch. 3 — 🌳 Build an Ecosystem:** Polyculture companion guilds, 3-sector decagonal botanical flower garden, pollinator bee corridors, and nature walkways.
+  - **Ch. 4 — ♻️ Close the Loop:** Silvopasture livestock grazing pasture, organic manure composting, and freshwater aquatic biodiversity pond.
+  - **Ch. 5 — ⚡ Power Your Community:** 4-corner redundant wind turbine grid, certified electrical engineers, and 500 kWh BESS battery storage substation.
+  - **Ch. 6 — 🏘️ Build an Eco-Village:** Organic juice bar, fairtrade coffee house, artisan recipes, marketplace promenade, and regional commercial contracts.
+  - **Ch. 7 — 🌍 Become Self-Sustaining:** 6-pillar sustainability dashboard (80+ score), closed-loop resilience, and international Eco-Passport biome travel.
+  - **Ch. 8 — 🚀 Beyond Earth:** Space Science Level 4, €120,000 funding, closed-loop off-Earth hydroponics on the Moon and Mars, and 3D FPV celestial flight.
+- **Chapter-Based Tasks & Masterplan Menu:** The in-game Tasks menu (`openPanel === 'tasks'`) and Masterplan modal feature an interactive 8-chapter progression roadmap with player fantasies, milestone tasks, direct actionable triggers (`🌱 Dig Plot`, `🍎 Plant Seed`, `🏚️ Build Barn`, `⛩️ Pave Road`, `💨 Turbines`, `🔋 BESS`, `🧃 Juice Bar`, `🚀 Space Flight`), and subway credibility sub-steps.
+- **Chapter-Based Farming Object Unlocking Mechanism:** Farming objects, plots, and village buildings unlock systematically based on chapter progression (Ch. 1 Plot/Crew Shed $\to$ Ch. 2 Road/Storage/Garage $\to$ Ch. 3 Garden/Crops $\to$ Ch. 4 Cattle/Pond $\to$ Ch. 5 Wind/BESS $\to$ Ch. 6 Juice Bar/Coffee Shop $\to$ Ch. 7 Eco-Passport $\to$ Ch. 8 Artemis Moon Base), displaying chapter requirements on canvas spot cards.
+- **Chapter-Responsive Living Visitor Feedback:** Strolling visitors along the promenade dynamically comment with reflections and tips tailored to the player's active chapter progress and eco-score (Section 35).
+- **Section 7 Opening Flow & Kids-Friendly Motivational Speech Bubbles:** Warm opening welcome modal (*"Welcome to SearchO₂ — This land is yours. Turn it into a thriving, sustainable community. 🌱 Start Growing"*), instant Plot 0 pulse, transparent beginner choices (Apple, Vegetable, Oak), and non-intrusive Oxy speech bubbles that dismiss smoothly on any visual graphic activity.
 - **Dynamic "Why?" System & 3 Learning Depths:** Reusable `💡 Why?` buttons across buildings and plots offer **🌱 Quick Fact** (1–2 sentences), **🔬 Learn More** (diagram & practical tips), and **📚 Deep Dive** (scientific formulas such as $6\text{CO}_2 + 6\text{H}_2\text{O} \to \text{C}_6\text{H}_{12}\text{O}_6 + 6\text{O}_2$ and Betz limit $P = \frac{1}{2}\rho A v^3 C_p$).
 - **Collectible Discovery Cards:** Encounters trigger collectible cards (Photosynthesis, Pollination, BESS Buffer, Nitrogen Cycle, Mycorrhizae, Agroforestry) with `+5 to +25 Knowledge XP`.
 - **Non-Punitive Eco Challenges:** Quizzes award positive knowledge rewards (research points, capability unlocks) with **zero demerits** on deferral or skip.
