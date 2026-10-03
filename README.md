@@ -86,6 +86,36 @@ Unlike conventional farming games that treat land as a frictionless commodity, *
 - **Child-Safe & Inclusive:** Designed for students ages 8+, families, and schools. No pay-to-win microtransactions, no predatory loot boxes, and zero open inter-player chat.
 - **Frictionless Onboarding:** 1-click guest onboarding with offline catch-up simulation ensures immediate classroom usability on Chromebooks, tablets, laptops, and desktop browsers without requiring personal data collection.
 
+### 4. SearchO₂ Enhanced MVP v2: Four Progression Dimensions & Canonical Gameplay Loop
+Based on [`searchO₂_enhanced_mvp_v2.md`](searchO%E2%82%82_enhanced_mvp_v2.md), the simulation establishes a unified progression backbone connecting Earth agroforestry directly with off-Earth space exploration:
+
+$$\text{Play} \longrightarrow \text{Discover} \longrightarrow \text{Understand} \longrightarrow \text{Decide} \longrightarrow \text{See Consequence} \longrightarrow \text{Earn} \longrightarrow \text{Unlock} \longrightarrow \text{Explore}$$
+
+| Progression Dimension | In-Game Representation | Primary Purpose |
+|:---|:---|:---|
+| **💰 Money** | Economic Power | Purchase seeds, machinery, hire specialists, pave arterial roads, fund spaceflight |
+| **🌿 O₂** | Ecological Power | Clean atmospheric generation, unlocks regional Eco Passports and space readiness |
+| **🧠 Knowledge XP** | Intellectual Mastery | Level 1 (*Eco Beginner*) $\to$ Level 5 (*Planetary Ecologist*), unlocks capabilities |
+| **⭐ Experience** | Player Journey | Tracks Chapter 1–8 milestones across Earth, Moon, and Mars |
+
+- **Chapters 1 to 8 Roadmap ("My Sustainability Journey"):**
+  - **Ch. 1 — 🌱 Bring the Land to Life:** Soil preparation, photosynthesis discovery, and initial oxygen generation.
+  - **Ch. 2 — 🚜 Build Your Farm:** Storage Granary Barn rot prevention, arterial highway paving, and workforce recruitment.
+  - **Ch. 3 — 🌳 Build an Ecosystem:** Polyculture companion guilds, pollinator bee corridors, and biodiversity score.
+  - **Ch. 4 — ♻️ Close the Loop:** Silvopasture livestock, organic manure composting, and aquatic pond balance.
+  - **Ch. 5 — ⚡ Power Your Community:** Redundant wind turbines, certified engineers, and 500 kWh BESS storage.
+  - **Ch. 6 — 🏘️ Build an Eco-Village:** Organic juice bar, coffee house, artisan recipes, and eco-tourism commerce.
+  - **Ch. 7 — 🌍 Become Self-Sustaining:** 6-pillar sustainability dashboard (80+ score) and regional Eco Passport.
+  - **Ch. 8 — 🚀 Beyond Earth:** Space Science Level 4, €120,000 funding, and closed-loop life support on the Moon and Mars.
+- **Dynamic "Why?" System & 3 Learning Depths:** Reusable `💡 Why?` buttons across buildings and plots offer **🌱 Quick Fact** (1–2 sentences), **🔬 Learn More** (diagram & practical tips), and **📚 Deep Dive** (scientific formulas such as $6\text{CO}_2 + 6\text{H}_2\text{O} \to \text{C}_6\text{H}_{12}\text{O}_6 + 6\text{O}_2$ and Betz limit $P = \frac{1}{2}\rho A v^3 C_p$).
+- **Collectible Discovery Cards:** Encounters trigger collectible cards (Photosynthesis, Pollination, BESS Buffer, Nitrogen Cycle, Mycorrhizae, Agroforestry) with `+5 to +25 Knowledge XP`.
+- **Non-Punitive Eco Challenges:** Quizzes award positive knowledge rewards (research points, capability unlocks) with **zero demerits** on deferral or skip.
+- **🌱 Oxy Ecological Companion:** 3 guidance modes (**🟢 Guided**, **🟡 Balanced**, **⚪ Explorer**) provide context-sensitive advice without freezing gameplay.
+- **Consequence-Based Systems:** Renewable wind generation without BESS displays wasted curtailment; building BESS captures clean power. Diseased plots feature a `[🔍 Diagnose] [📖 Research] [🧪 Treat]` flow.
+- **Smooth Modal Auto-Closing Rule:** Initiating any visual graphic task (building construction scaffolding, road paving, boulder clearing with pickaxe, soil digging, planting) automatically closes instruction modals on both desktop and mobile, ensuring unobstructed visual feedback.
+- **Canonical Space Mission Control:** Bridges directly to the 3D rocket ignition pad and 3D FPV cruise flight.
+
+
 ---
 
 ## 🎮 Gameplay Quickstart & Instructions
@@ -156,7 +186,7 @@ You begin in the Central European Grassland (Germany) with **€10,000.00 GC** i
 
 ## 🔄 Interactive Architecture & System Flows
 
-These diagrams use **layered 3D-style Mermaid** (`block-beta`, themed `flowchart`s, and depth-stacked `subgraph`s) so you can read **vertical tiers** (client → API → data) and **horizontal workflows** (farm loop, logistics, missions) on [GitHub](https://github.com/mishu-anik23/searchO2) and in Mermaid-compatible viewers.
+These diagrams use **layered 3D-style Mermaid** (stacked `subgraph` tiers and themed `flowchart`s) so you can read **vertical tiers** (client → API → data) and **horizontal workflows** (farm loop, logistics, missions) on [GitHub](https://github.com/mishu-anik23/searchO2) and in Mermaid-compatible viewers.
 
 | Layer (Z) | Meaning |
 |:---:|:---|
@@ -169,30 +199,31 @@ These diagrams use **layered 3D-style Mermaid** (`block-beta`, themed `flowchart
 ### 0. Platform Stack (Isometric 3D Blocks)
 
 ```mermaid
-block-beta
-    columns 3
+flowchart LR
+    subgraph Z2_Client["Z+2 · Browser clients"]
+        direction TB
+        farmSPA["🌾 Farm SPA<br/>index.html Canvas 2D SVG"]
+        oxyApp["🚀 OxyForge App<br/>Vite React R3F Zustand"]
+        previews["🎬 Public Previews<br/>launchpad moon cruise HTML"]
+    end
 
-    block:client:3
-        columns 1
-        farmSPA["🌾 Farm SPA<br/>index.html · Canvas 2D/SVG"]
-        oxyApp["🚀 OxyForge App<br/>Vite · React · R3F · Zustand"]
-        previews["🎬 Public Previews<br/>launchpad · moon · cruise HTML"]
+    subgraph Z1_Edge["Z+1 · Edge services"]
+        direction TB
+        api["⚡ Express REST<br/>api modules"]
+        ws["📡 WebSocket<br/>ws JWT or observer"]
+        staticHost["🌐 CDN Static Host<br/>searcho2.online"]
+    end
 
-    block:edge:3
-        columns 1
-        api["⚡ Express REST<br/>/api/* modules"]
-        ws["📡 WebSocket<br/>/ws JWT or observer"]
-        static["🌐 CDN / Static Host<br/>searcho2.online"]
-
-    block:data:3
-        columns 1
-        pg["🐘 PostgreSQL 18<br/>farms · plots · ledger"]
-        redis["⚡ Redis<br/>sessions · leaderboard cache"]
-        chain["🪙 Base L2 + Stripe<br/>AFC · payments · Sumsub KYC"]
+    subgraph Z0_Data["Z+0 · Persistence"]
+        direction TB
+        pg["🐘 PostgreSQL 18<br/>farms plots ledger"]
+        redis["⚡ Redis<br/>sessions leaderboard cache"]
+        chain["🪙 Base L2 Stripe<br/>AFC payments Sumsub KYC"]
+    end
 
     farmSPA --> api
     oxyApp --> api
-    previews --> static
+    previews --> staticHost
     api --> pg
     api --> redis
     api --> chain
@@ -624,26 +655,27 @@ sequenceDiagram
 ### 10. Server-Authoritative API & Anti-Cheat Intent Flow
 
 ```mermaid
-block-beta
-    columns 3
-
-    block:client:3
-        columns 1
+flowchart LR
+    subgraph Z2_Clients["Z+2 · Player clients"]
+        direction TB
         farmSPA["🌾 Farm SPA<br/>Player intents"]
-        oxySPA["🚀 OxyForge SPA<br/>Mission + FPV"]
+        oxySPA["🚀 OxyForge SPA<br/>Mission and FPV"]
+    end
 
-    block:api:3
-        columns 1
-        auth["🔐 /api/auth"]
-        farm["🌱 /api/farm<br/>gameEngine.ts"]
-        economy["📒 /api/economy"]
-        oxy["🛰️ /api/oxyforge"]
-        pay["💳 payments · crypto · kyc"]
+    subgraph Z1_API["Z+1 · Express modules"]
+        direction TB
+        auth["🔐 api auth"]
+        farm["🌱 api farm gameEngine"]
+        economy["📒 api economy"]
+        oxy["🛰️ api oxyforge"]
+        pay["💳 payments crypto kyc"]
+    end
 
-    block:data:3
-        columns 1
+    subgraph Z0_Store["Z+0 · Data stores"]
+        direction TB
         pg["PostgreSQL 18"]
         redis["Redis cache"]
+    end
 
     farmSPA --> auth
     oxySPA --> auth
@@ -1093,31 +1125,38 @@ To ensure an unobstructed, relaxing view of the agricultural landscape, the UI u
 
 ## 🏛️ Technical Architecture & Security
 
-```
-┌───────────────────────────────────────────────────────────────────────┐
-│                           Client (Browser)                            │
-│  Single-Page Application (HTML5 / Vanilla ES6 / SVG / Canvas 2D)      │
-│  - Procedural Web Audio API Engine                                    │
-│  - In-Memory State & 3s Debounced Mutex LocalStorage Fallback         │
-└──────────────────────────────────┬────────────────────────────────────┘
-                                   │ HTTPS / WSS
-                                   ▼
-┌───────────────────────────────────────────────────────────────────────┐
-│                     Node.js / TypeScript Backend                      │
-│  - Express.js REST API + WebSocket Server (ws)                        │
-│  - Server-Authoritative Anti-Cheat Game Engine (§A1)                  │
-│  - JWT (In-Memory 15m) + HttpOnly SameSite=Strict Refresh Cookies     │
-│  - Bcrypt Hashing (Cost 12) & Google OAuth2 Sandbox                   │
-│  - Zod Schema Validation & Economy Mutation Rate-Limiters             │
-└───────────────────┬───────────────────────────────┬───────────────────┘
-                    │                               │
-                    ▼                               ▼
-       ┌────────────────────────┐      ┌─────────────────────────┐
-       │   PostgreSQL 18 DB     │      │       Redis Cache       │
-       │  - 8 Normalized Tables │      │  - Fast Session Store   │
-       │  - Append-Only Ledger  │      │  - Live Leaderboards    │
-       │  - Automated Migration │      │  - Transparent Fallback │
-       └────────────────────────┘      └─────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Z2_Client["Z+2 · Client Browser"]
+        direction TB
+        FARM["Farm SPA HTML5 Canvas SVG Web Audio"]
+        OXY["OxyForge React R3F Zustand persist"]
+    end
+
+    subgraph Z1_Backend["Z+1 · Node.js TypeScript"]
+        direction TB
+        REST["Express REST API"]
+        WSS["WebSocket ws path"]
+        ENGINE["Server gameEngine anti-cheat A1"]
+        SEC["JWT Bcrypt Zod rate limits A2"]
+    end
+
+    subgraph Z0_Stores["Z+0 · Data tier"]
+        direction LR
+        PG["PostgreSQL 18 ledger tables A4"]
+        RD["Redis sessions leaderboards"]
+    end
+
+    FARM -->|HTTPS| REST
+    OXY -->|HTTPS| REST
+    FARM -->|WSS| WSS
+    OXY -->|WSS| WSS
+    REST --> ENGINE
+    REST --> SEC
+    ENGINE --> PG
+    SEC --> PG
+    REST --> RD
+    WSS --> RD
 ```
 
 ### Production Security Specifications

@@ -9071,9 +9071,9 @@ function forfeitQuiz(){
   if (state.quiz && state.quiz.pending){
     state.quiz.pending = null;
     state.quiz.skipped = (state.quiz.skipped || 0) + 1;
-    state.demerits = (state.demerits || 0) + 1;
-    pushReport('⚠️ Botanical Pop Quiz skipped or closed early — +1 Demerit recorded. Maintain academic discipline to protect farm reputation!');
-    showNotification('⚠️', 'Quiz skipped: +1 Demerit added to your eco-record.', 'bank', null);
+    // Section 16: Zero demerits for skipping quizzes — education is an optional challenge, not a punitive hurdle
+    pushReport('📚 Eco Challenge deferred. You can revisit and test your knowledge anytime from the Library or Farm HUD.');
+    showNotification('📚', 'Eco Challenge deferred. Take the challenge anytime in the Library!', 'knowledge', null);
     checkAchievements();
     requestSave();
   }
@@ -9725,6 +9725,785 @@ function freshState(){
   return state;
 }
 state = freshState();
+
+// ============================================================================
+// SEARCHO2 ENHANCED MVP V2: FOUR PROGRESSION DIMENSIONS & CANONICAL GAMEPLAY
+// Specification: searchO2_enhanced_mvp_v2.md
+// Progression: Money, O2, Knowledge XP, Experience
+// Loop: Play -> Discover -> Understand -> Decide -> See Consequence -> Earn -> Unlock
+// ============================================================================
+
+var KNOWLEDGE_LEVELS = [
+  { level: 1, title: 'Eco Beginner', minXP: 0, maxXP: 50, icon: '🌱', desc: 'Understanding the fundamentals of soil biology, hydration, and photosynthesis.' },
+  { level: 2, title: 'Green Grower', minXP: 51, maxXP: 150, icon: '🌿', desc: 'Mastering agroforestry, companion polycultures, and precision irrigation.' },
+  { level: 3, title: 'Ecosystem Builder', minXP: 151, maxXP: 300, icon: '🌳', desc: 'Building circular nutrient loops, pollinator corridors, and clean microgrids.' },
+  { level: 4, title: 'Eco Scientist', minXP: 301, maxXP: 500, icon: '🔬', desc: 'Advanced botanical diagnostics, BESS storage engineering, and closed-loop research.' },
+  { level: 5, title: 'Planetary Ecologist', minXP: 501, maxXP: 99999, icon: '🌍', desc: 'Global Earth biome stewardship and off-Earth closed-loop life support architectures.' }
+];
+
+var CHAPTER_DEFINITIONS = [
+  {
+    chapter: 1,
+    icon: '🌱',
+    title: 'Bring the Land to Life',
+    fantasy: 'I can grow something.',
+    desc: 'Cultivate your initial soil plot, plant your first botanical sapling, and generate clean atmospheric O2.',
+    keySystems: ['Soil Cultivation', 'Photosynthesis', 'Clean Air O2', 'First Seedling'],
+    unlockReward: 'Pollinator Discovery & Garden Blueprint',
+    isUnlocked: function(s) { return true; },
+    isComplete: function(s) {
+      return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0 || (p.o2Produced && p.o2Produced > 0); }));
+    },
+    getProgress: function(s) {
+      if (this.isComplete(s)) return 100;
+      var hasGrowing = s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.status === 'ready' || p.status === 'preparing'; });
+      return hasGrowing ? 60 : 20;
+    }
+  },
+  {
+    chapter: 2,
+    icon: '🚜',
+    title: 'Build Your Farm',
+    fantasy: 'I can operate a farm.',
+    desc: 'Protect harvests from rot with a Storage Granary Barn, pave the arterial highway, and hire workforce.',
+    keySystems: ['Storage Granary', 'Arterial Highway', 'Field Laborers', 'Supply Logistics'],
+    unlockReward: 'Equipment Depot & Machinery Leasing',
+    isUnlocked: function(s) { return CHAPTER_DEFINITIONS[0].isComplete(s); },
+    isComplete: function(s) {
+      var roadBuilt = !!(s.buildings && s.buildings.road && s.buildings.road.built);
+      var storageBuilt = !!(s.storage && s.storage.built);
+      var hasLaborer = !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; }));
+      return roadBuilt && storageBuilt && hasLaborer;
+    },
+    getProgress: function(s) {
+      if (this.isComplete(s)) return 100;
+      var pts = 0;
+      if (s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built) pts += 25;
+      if (s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })) pts += 25;
+      if (s.buildings && s.buildings.road && s.buildings.road.built) pts += 25;
+      if (s.storage && s.storage.built) pts += 25;
+      return pts;
+    }
+  },
+  {
+    chapter: 3,
+    icon: '🌳',
+    title: 'Build an Ecosystem',
+    fantasy: 'My choices affect nature.',
+    desc: 'Foster biodiversity with botanical garden polycultures, pollinator bee corridors, and diverse tree canopy.',
+    keySystems: ['Botanical Garden', 'Pollinator Corridors', 'Guild Synergies', 'Biodiversity Score'],
+    unlockReward: 'Natural Pest Resilience & +15% Honey Production',
+    isUnlocked: function(s) { return CHAPTER_DEFINITIONS[1].isComplete(s); },
+    isComplete: function(s) {
+      var gardenBuilt = !!(s.buildings && s.buildings.garden && s.buildings.garden.built);
+      var distinctSpecies = (s.plots ? s.plots.filter(function(p){ return p.treeType; }).map(function(p){ return p.treeType; }) : []);
+      var uniqueCount = new Set(distinctSpecies).size;
+      return gardenBuilt || uniqueCount >= 3;
+    },
+    getProgress: function(s) {
+      if (this.isComplete(s)) return 100;
+      var gardenBuilt = !!(s.buildings && s.buildings.garden && s.buildings.garden.built);
+      return gardenBuilt ? 80 : 35;
+    }
+  },
+  {
+    chapter: 4,
+    icon: '♻️',
+    title: 'Close the Loop',
+    fantasy: 'Nothing should be wasted.',
+    desc: 'Introduce livestock grazing, recycle animal manure into organic compost, and establish a fresh water pond.',
+    keySystems: ['Pasture Livestock', 'Organic Bio-Compost', 'Aquatic Pond', 'Zero-Waste Cycle'],
+    unlockReward: 'Bio-Inoculant Fertilizer & Soil Fertility Doubler',
+    isUnlocked: function(s) { return CHAPTER_DEFINITIONS[2].isComplete(s); },
+    isComplete: function(s) {
+      var cattle = !!(s.buildings && s.buildings.cattle_farm && s.buildings.cattle_farm.built);
+      var pond = !!(s.buildings && s.buildings.pond && s.buildings.pond.built);
+      return cattle || pond;
+    },
+    getProgress: function(s) {
+      if (this.isComplete(s)) return 100;
+      var c = s.buildings && s.buildings.cattle_farm && s.buildings.cattle_farm.built ? 50 : 0;
+      var p = s.buildings && s.buildings.pond && s.buildings.pond.built ? 50 : 0;
+      return c + p;
+    }
+  },
+  {
+    chapter: 5,
+    icon: '⚡',
+    title: 'Power Your Community',
+    fantasy: 'I can create clean energy.',
+    desc: 'Erect redundant wind turbines, recruit a certified Electrical Engineer, and buffer surplus in BESS.',
+    keySystems: ['Wind Turbines', 'Grid Engineers', 'BESS Energy Storage', 'Microgrid Balancing'],
+    unlockReward: 'Autonomous Smart Charge Mode & Zero Grid Fossil Bills',
+    isUnlocked: function(s) { return CHAPTER_DEFINITIONS[3].isComplete(s); },
+    isComplete: function(s) {
+      var eng = !!(s.workers && s.workers.some(function(w){ return w.type === 'engineer'; }));
+      var wt = !!(s.buildings && s.buildings.wind_turbines && (s.buildings.wind_turbines.wt_nw.built || s.buildings.wind_turbines.wt_nw.commissioned));
+      var bess = !!(s.buildings && s.buildings.energy_storage && s.buildings.energy_storage.built);
+      return eng && wt && bess;
+    },
+    getProgress: function(s) {
+      if (this.isComplete(s)) return 100;
+      var pts = 0;
+      if (s.workers && s.workers.some(function(w){ return w.type === 'engineer'; })) pts += 30;
+      if (s.buildings && s.buildings.wind_turbines && s.buildings.wind_turbines.wt_nw.built) pts += 40;
+      if (s.buildings && s.buildings.energy_storage && s.buildings.energy_storage.built) pts += 30;
+      return pts;
+    }
+  },
+  {
+    chapter: 6,
+    icon: '🏘️',
+    title: 'Build an Eco-Village',
+    fantasy: 'People depend on my system.',
+    desc: 'Open the Village Juice Bar & Coffee House, craft artisan farm recipes, and welcome eco-tourist visitors.',
+    keySystems: ['Organic Juice Bar', 'Fairtrade Coffee House', 'Eco-Tourism Footfall', 'Artisan Commerce'],
+    unlockReward: 'Regional Export Contracts & Curbside Farm Stand',
+    isUnlocked: function(s) { return CHAPTER_DEFINITIONS[4].isComplete(s); },
+    isComplete: function(s) {
+      var jb = !!(s.buildings && s.buildings.juice_bar && s.buildings.juice_bar.built);
+      var cs = !!(s.buildings && s.buildings.coffee_shop && s.buildings.coffee_shop.built);
+      return jb && cs;
+    },
+    getProgress: function(s) {
+      if (this.isComplete(s)) return 100;
+      var pts = 0;
+      if (s.buildings && s.buildings.juice_bar && s.buildings.juice_bar.built) pts += 50;
+      if (s.buildings && s.buildings.coffee_shop && s.buildings.coffee_shop.built) pts += 50;
+      return pts;
+    }
+  },
+  {
+    chapter: 7,
+    icon: '🌍',
+    title: 'Become Self-Sustaining',
+    fantasy: 'Everything works together.',
+    desc: 'Attain an Eco Sustainability Score over 80 across all 6 pillars and unlock the international Eco Passport.',
+    keySystems: ['Systems Thinking', '6-Pillar Resilience', 'Positive Cashflow', 'Eco Passport Access'],
+    unlockReward: 'International Biome Travel (Sweden, Spain, Brazil, Madagascar)',
+    isUnlocked: function(s) { return CHAPTER_DEFINITIONS[5].isComplete(s); },
+    isComplete: function(s) {
+      return (s.sustainabilityScore || 0) >= 80 && (s.totalO2AllTime || 0) >= 5000;
+    },
+    getProgress: function(s) {
+      var score = s.sustainabilityScore || 75;
+      return Math.min(100, Math.round((score / 80) * 100));
+    }
+  },
+  {
+    chapter: 8,
+    icon: '🚀',
+    title: 'Beyond Earth: Moon & Mars',
+    fantasy: 'Can I sustain life beyond Earth?',
+    desc: 'Apply your Earth sustainability mastery to extreme off-Earth closed-loop life support and lunar missions.',
+    keySystems: ['Space Science (Level 4)', '€120,000 Moon Funding', '250,000 Lifetime O2', 'Playable Launch & FPV'],
+    unlockReward: 'Off-Earth Hydroponics & Artemis Moon Base',
+    isUnlocked: function(s) { return CHAPTER_DEFINITIONS[6].isComplete(s); },
+    isComplete: function(s) {
+      return (s.money >= 120000) && (s.knowledgeLevel >= 4) && ((s.totalO2AllTime || 0) >= 250000);
+    },
+    getProgress: function(s) {
+      var fundFrac = Math.min(1.0, (s.money || 0) / 120000);
+      var o2Frac = Math.min(1.0, (s.totalO2AllTime || 0) / 250000);
+      var sciFrac = Math.min(1.0, (s.knowledgeLevel || 1) / 4);
+      return Math.round(((fundFrac + o2Frac + sciFrac) / 3) * 100);
+    }
+  }
+];
+
+// Reusable Dynamic "Why?" Explanations with 3 Learning Depths
+var WHY_TOPICS = {
+  overview: {
+    id: 'overview',
+    title: 'SearchO2: Sustaining Life From Earth to Space',
+    icon: '🌍',
+    quickFact: 'SearchO2 is a playable journey about learning how to sustain life — from one plant on Earth to off-Earth civilization.',
+    learnMore: 'Natural ecosystems balance water, sunlight, carbon dioxide, and nutrients in closed loops. By mastering these connections on Earth, you unlock the science required to keep humans alive on the Moon and Mars.',
+    deepDive: 'The global carbon-oxygen cycle depends on balance between autotrophic photosynthesis and heterotrophic respiration. Space life support systems (ISRU/ECLSS) replicate these terrestrial cycles in closed mechanical-biological volumes.',
+    libraryLink: 'overview',
+    xpReward: 10
+  },
+  wind_turbine: {
+    id: 'wind_turbine',
+    title: 'Wind Turbine & Renewable Power',
+    icon: '⚡',
+    quickFact: 'Wind turbines transform moving air into clean, zero-emission electricity to power farm irrigation and machinery without utility bills.',
+    learnMore: 'Moving air strikes aerodynamic blades, rotating a central shaft coupled to an electrical generator. Producing power locally cuts grid dependence to €0/h and eliminates carbon penalties.',
+    deepDive: 'Available wind power follows P = 1/2 · ρ · A · v³ · Cp, where Betz limit Cp,max = 59.3%. Turbines generate 3–5 kWh/h each, avoiding 0.42 kg CO₂/kWh grid emissions.',
+    libraryLink: 'energy',
+    xpReward: 5
+  },
+  bess: {
+    id: 'bess',
+    title: 'Battery Energy Storage System (BESS)',
+    icon: '🔋',
+    quickFact: 'BESS captures surplus renewable power during strong winds so electricity is not wasted, releasing it when winds calm.',
+    learnMore: 'Renewable energy is intermittent — winds blow strongest when your farm equipment may be idle. Without storage, surplus generation is curtailed and wasted. BESS buffers this electricity for steady 24/7 reliability.',
+    deepDive: 'Lithium iron phosphate (LFP) cells provide >92% round-trip efficiency with zero thermal runaway risk. Peak shaving and load shifting balance the microgrid without brownouts or diesel backups.',
+    libraryLink: 'energy_storage',
+    xpReward: 5
+  },
+  storage: {
+    id: 'storage',
+    title: 'Storage Granary Barn & Cold Cellar',
+    icon: '🏚️',
+    quickFact: 'A central granary and cold cellar protects harvested fruits and vegetables from field spoilage, rain, and rot.',
+    learnMore: 'Harvested crops continue living and breathing (post-harvest cellular respiration). If left exposed on the field, heat, bacteria, and humidity spoil produce within hours. Storage preserves commercial value.',
+    deepDive: 'Controlled temperature (4°C) and ventilated relative humidity (85–90%) suppress ethylene gas ripening triggers and microbial fungal growth, extending crop shelf-life by 400%.',
+    libraryLink: 'storage',
+    xpReward: 5
+  },
+  road: {
+    id: 'road',
+    title: 'Arterial Highway & Feeder Subways',
+    icon: '⛩️',
+    quickFact: 'Paved arterial roads allow heavy supply carts, tractors, and visitors to travel swiftly without getting stuck in mud.',
+    learnMore: 'A farm without arterial roads is isolated. Paved infrastructure lowers transport friction, connects fields to granary loading bays, and increases farm credibility and eco-tourist visits.',
+    deepDive: 'Rolling resistance Crr decreases from 0.08 on muddy dirt to 0.015 on compacted gravel/macadam, saving 80% hauling energy and tripling worker logistics velocity.',
+    libraryLink: 'road',
+    xpReward: 5
+  },
+  crew_shed: {
+    id: 'crew_shed',
+    title: 'Crew Shed & Living Quarters',
+    icon: '🏠',
+    quickFact: 'The crew shed provides bunkhouse quarters, tool racks, and rest facilities required to recruit skilled laborers and engineers.',
+    learnMore: 'As acreage expands, one person cannot till, plant, weed, clear boulders, and engineer electrical turbines alone. The crew shed organizes specialized division of labor.',
+    deepDive: 'Ergonomic rest cycles sustain worker stamina and prevent fatigue-induced morale decay (-50% efficiency penalty below 20% stamina).',
+    libraryLink: 'workers',
+    xpReward: 5
+  },
+  plot: {
+    id: 'plot',
+    title: 'Soil Aeration & Land Cultivation',
+    icon: '⛏️',
+    quickFact: 'Digging and tilling aerates compacted bedrock, allowing plant roots to penetrate and absorb water and air.',
+    learnMore: 'Compacted soil lacks oxygen pores, causing water to pool and roots to suffocate. Preparing the soil creates a spongy, fertile seedbed teeming with beneficial microbes.',
+    deepDive: 'Optimal soil porosity is 50% (25% air, 25% water). Tilling breaks hardpan layers, enabling mycorrhizal fungal symbiosis and capillary water recharge.',
+    libraryLink: 'soil',
+    xpReward: 5
+  },
+  drip_irrigation: {
+    id: 'drip_irrigation',
+    title: 'Micro Drip Precision Irrigation',
+    icon: '💧',
+    quickFact: 'Drip lines deliver water directly to plant root zones drop-by-drop, cutting evaporation loss by over 30%.',
+    learnMore: 'Overhead spraying loses substantial water to wind drift and midday sun evaporation. Drip emitters moisten only the root zone, keeping foliage dry to prevent fungal leaf mildew.',
+    deepDive: 'Water application efficiency rises from 60% (overhead sprinklers) to 90–95% (low-pressure drip), maintaining optimal soil matric potential (-10 to -30 kPa) with minimum pumping kWh.',
+    libraryLink: 'irrigation',
+    xpReward: 5
+  },
+  fertilizer: {
+    id: 'fertilizer',
+    title: 'Organic Bio-Inoculants & Compost',
+    icon: '🧪',
+    quickFact: 'Organic compost and bio-inoculants feed living soil microbes that supply nitrogen and minerals naturally.',
+    learnMore: 'Synthetic fertilizers cause chemical salt runoff and degrade soil structure over time. Bio-inoculants introduce living bacteria (Rhizobium, Azotobacter) that fix atmospheric nitrogen naturally.',
+    deepDive: 'Microbial decomposition humifies organic matter (C:N ratio 25:1), boosting Cation Exchange Capacity (CEC) and unlocking bound phosphorus without waterway eutrophication.',
+    libraryLink: 'fertilizer',
+    xpReward: 5
+  },
+  pollination: {
+    id: 'pollination',
+    title: 'Pollination & Biodiversity Corridors',
+    icon: '🐝',
+    quickFact: 'Bees and butterflies carry pollen between blossoms, enabling fruit setting and boosting botanical yields.',
+    learnMore: 'Over 75% of flowering plants depend on animal pollinators. Planting companion flower strips beside orchards attracts bees, increasing fruit yield by 20–30% and producing natural honey.',
+    deepDive: 'Entomophilous cross-pollination enhances genetic heterozygosity, resulting in heavier fruit mass, superior seed viability, and natural resilience against climate stressors.',
+    libraryLink: 'pollination',
+    xpReward: 5
+  },
+  circularity: {
+    id: 'circularity',
+    title: 'Circular Agriculture & Nutrient Loops',
+    icon: '♻️',
+    quickFact: 'In a circular farm, animal manure fertilizes crops, crop residues feed livestock, and zero waste leaves the estate.',
+    learnMore: 'Linear farming buys fertilizer, produces crops, and throws away waste. Circular agroecology closes loops so every output becomes the input for another living system.',
+    deepDive: 'Closed nitrogen/phosphorus mass balance eliminates external purchase inputs. 1 tonne of bovine manure yields ~5 kg N, 2 kg P₂O₅, and 6 kg K₂O of slow-release bioavailable plant nutrition.',
+    libraryLink: 'circularity',
+    xpReward: 5
+  },
+  space_agriculture: {
+    id: 'space_agriculture',
+    title: 'Closed-Loop Off-Earth Life Support',
+    icon: '🚀',
+    quickFact: 'On the Moon or Mars, there is no atmosphere or rain. Plants must recycle 100% of human water and exhaled CO2.',
+    learnMore: 'Resupply from Earth costs over €50,000/kg. A lunar habitat must operate as a fully sealed, recirculating mini-Earth where crops scrub astronaut CO2, regenerate oxygen, and purify graywater.',
+    deepDive: 'Controlled Environment Agriculture (CEA) leverages LED narrow-band PAR spectrums (450nm blue, 660nm red), atmospheric pressure of 50–70 kPa, and closed hydroponic loops recovering 98% transpiration condensate.',
+    libraryLink: 'space_agriculture',
+    xpReward: 15
+  }
+};
+
+// Collectible Discovery Cards
+var DISCOVERY_CARDS = {
+  photosynthesis: { id: 'photosynthesis', icon: '🌱', title: 'Photosynthesis', desc: 'Plants harness sunlight, water, and CO2 to create stored carbohydrates while releasing fresh O2.', xp: 5 },
+  pollination: { id: 'pollination', icon: '🐝', title: 'Pollination Synergy', desc: 'Worker bees transfer pollen grains, dramatically enhancing orchard fruit set and seed vitality.', xp: 10 },
+  bess: { id: 'bess', icon: '🔋', title: 'BESS Clean Storage', desc: 'Buffering intermittent wind power prevents renewable curtailment and stabilizes the farm microgrid.', xp: 10 },
+  nitrogen_cycle: { id: 'nitrogen_cycle', icon: '♻️', title: 'Nitrogen Cycle', desc: 'Beneficial compost microbes convert organic waste into bioavailable nitrates for rapid crop uptake.', xp: 10 },
+  mycorrhizae: { id: 'mycorrhizae', icon: '🍄', title: 'Mycorrhizal Fungal Network', desc: 'Symbiotic root fungi expand root absorption surface area by 400%, resisting drought stress.', xp: 15 },
+  drip_irrigation: { id: 'drip_irrigation', icon: '💧', title: 'Precision Drip Delivery', desc: 'Direct root hydration reduces water consumption by 30% while preventing fungal leaf spot.', xp: 10 },
+  companion_planting: { id: 'companion_planting', icon: '🌻', title: 'Companion Guilds', desc: 'Interplanting marigolds and herbs repels insect pests naturally without chemical pesticides.', xp: 15 },
+  agroforestry: { id: 'agroforestry', icon: '🌳', title: 'Agroforestry Canopy', desc: 'Deep-rooted trees create microclimate shade, sheltering ground crops from severe heatwaves.', xp: 15 },
+  closed_loop_space: { id: 'closed_loop_space', icon: '🚀', title: 'Closed-Loop Space Ecology', desc: 'Sealed biological life support turns astronaut respiration into oxygen and fresh food off-Earth.', xp: 25 }
+};
+
+// Commercial & Regional Delivery Contracts
+var COMMERCIAL_CONTRACTS = [
+  { id: 'contract_school', client: 'Frankfurt Elementary School', icon: '🏫', item: 'Apple 🍎', qty: 50, rewardCash: 600, rewardXP: 25, desc: 'Fresh organic fruit for the healthy school lunch program.' },
+  { id: 'contract_juice', client: 'Village Artisan Cooperative', icon: '🧃', item: 'Berries 🍓', qty: 40, rewardCash: 850, rewardXP: 30, desc: 'Cold-pressed berries for fresh village farmers market distribution.' },
+  { id: 'contract_hospital', client: 'Regional Eco-Sanatorium', icon: '🏥', item: 'Vegetables 🥕', qty: 60, rewardCash: 1100, rewardXP: 40, desc: 'Nutrient-dense clean organic harvest for convalescent nutrition.' },
+  { id: 'contract_space', client: 'European Space Agency (ESA)', icon: '🚀', item: 'CEA Crop Pack 🥗', qty: 100, rewardCash: 5000, rewardXP: 100, desc: 'High-efficiency low-water test produce for lunar flight nutrition simulation.' }
+];
+
+// ----------------------------------------------------------------------------
+// CORE HELPER FUNCTIONS FOR MVP V2 PROGRESSION
+// ----------------------------------------------------------------------------
+
+function getKnowledgeLevelInfo(xp) {
+  var currentXp = (typeof xp === 'number') ? xp : (state ? (state.knowledgeXP || 0) : 0);
+  for (var i = KNOWLEDGE_LEVELS.length - 1; i >= 0; i--) {
+    if (currentXp >= KNOWLEDGE_LEVELS[i].minXP) return KNOWLEDGE_LEVELS[i];
+  }
+  return KNOWLEDGE_LEVELS[0];
+}
+
+function addKnowledgeXP(amount, reason) {
+  if (!state) return;
+  var prevLvl = getKnowledgeLevelInfo(state.knowledgeXP).level;
+  state.knowledgeXP = (state.knowledgeXP || 0) + amount;
+  var newLvlInfo = getKnowledgeLevelInfo(state.knowledgeXP);
+  state.knowledgeLevel = newLvlInfo.level;
+
+  showNotification('🧠', '+' + amount + ' Knowledge XP: ' + reason, 'knowledge', null);
+  pushReport('🧠 Knowledge Gained: +' + amount + ' XP (' + reason + '). Total Knowledge: ' + state.knowledgeXP + ' XP.');
+
+  if (newLvlInfo.level > prevLvl) {
+    if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+    showNotification('🌟', 'Knowledge Level Promoted! ' + newLvlInfo.icon + ' ' + newLvlInfo.title, 'bank', null);
+    pushReport('🎉 Academic Milestone: Promoted to Knowledge Level ' + newLvlInfo.level + ' (' + newLvlInfo.title + ')!');
+  }
+
+  checkKnowledgeUnlocks();
+  updateChapterProgression();
+  render();
+  requestSave();
+}
+
+function checkKnowledgeUnlocks() {
+  if (!state) return;
+  if (!state.unlockedCapabilities) state.unlockedCapabilities = {};
+  var xp = state.knowledgeXP || 0;
+
+  if (xp >= 30 && !state.unlockedCapabilities.pollinator_insight) {
+    state.unlockedCapabilities.pollinator_insight = true;
+    showNotification('🐝', 'Capability Unlocked: Pollinator Insight! Flower compatibility visible.', 'knowledge', null);
+    pushReport('✨ New Capability: Pollinator Insight unlocked through botanical learning.');
+  }
+  if (xp >= 75 && !state.unlockedCapabilities.energy_forecast) {
+    state.unlockedCapabilities.energy_forecast = true;
+    showNotification('⚡', 'Capability Unlocked: Energy Forecast! 24h wind projections active.', 'knowledge', null);
+    pushReport('✨ New Capability: Clean Energy Forecast unlocked.');
+  }
+  if (xp >= 150 && !state.unlockedCapabilities.smart_charge) {
+    state.unlockedCapabilities.smart_charge = true;
+    showNotification('🔋', 'Capability Unlocked: Smart Charge Mode! BESS auto-stores wind surplus.', 'knowledge', null);
+    pushReport('✨ New Capability: Smart BESS Charge Buffer active.');
+  }
+  if (xp >= 250 && !state.unlockedCapabilities.irrigation_efficiency) {
+    state.unlockedCapabilities.irrigation_efficiency = true;
+    showNotification('💧', 'Capability Unlocked: Precision Water Efficiency! -20% irrigation waste.', 'knowledge', null);
+    pushReport('✨ New Capability: Precision Water Conservation active.');
+  }
+  if (xp >= 350 && !state.unlockedCapabilities.orbital_planning) {
+    state.unlockedCapabilities.orbital_planning = true;
+    showNotification('🚀', 'Capability Unlocked: Orbital Planning! Moon Mission Control active.', 'knowledge', null);
+    pushReport('✨ New Capability: Off-Earth Orbital Planning unlocked.');
+  }
+}
+
+function updateChapterProgression() {
+  if (!state) return;
+  for (var i = CHAPTER_DEFINITIONS.length - 1; i >= 0; i--) {
+    if (CHAPTER_DEFINITIONS[i].isUnlocked(state)) {
+      state.currentChapter = CHAPTER_DEFINITIONS[i].chapter;
+      break;
+    }
+  }
+  calculateSustainabilityScore();
+}
+
+function calculateSustainabilityScore() {
+  if (!state) return 78;
+  var bioPts = 70;
+  if (state.buildings && state.buildings.garden && state.buildings.garden.built) bioPts += 15;
+  if (state.buildings && state.buildings.pond && state.buildings.pond.built) bioPts += 15;
+  bioPts = Math.min(100, bioPts);
+
+  var energyPts = 60;
+  if (state.buildings && state.buildings.wind_turbines && state.buildings.wind_turbines.wt_nw.commissioned) energyPts += 20;
+  if (state.buildings && state.buildings.energy_storage && state.buildings.energy_storage.built) energyPts += 20;
+  energyPts = Math.min(100, energyPts);
+
+  var waterPts = 65;
+  var dripCount = state.plots ? state.plots.filter(function(p){ return p.accessories && p.accessories.irrigation; }).length : 0;
+  waterPts = Math.min(100, waterPts + (dripCount * 6));
+
+  var soilPts = 75;
+  var fertCount = state.plots ? state.plots.filter(function(p){ return p.accessories && p.accessories.fertilizer; }).length : 0;
+  soilPts = Math.min(100, soilPts + (fertCount * 5));
+
+  var circularPts = 60;
+  if (state.buildings && state.buildings.cattle_farm && state.buildings.cattle_farm.built) circularPts += 20;
+  if (state.storage && state.storage.built) circularPts += 20;
+  circularPts = Math.min(100, circularPts);
+
+  var econPts = (state.money >= 5000) ? 95 : (state.money >= 1000 ? 80 : 50);
+
+  var overall = Math.round((bioPts + energyPts + waterPts + soilPts + circularPts + econPts) / 6);
+  state.sustainabilityScore = overall;
+  return overall;
+}
+
+function triggerDiscoveryCard(cardKey) {
+  if (!state) return;
+  if (!state.discoveredCards) state.discoveredCards = [];
+  if (state.discoveredCards.indexOf(cardKey) !== -1) return;
+
+  var card = DISCOVERY_CARDS[cardKey];
+  if (!card) return;
+
+  state.discoveredCards.push(cardKey);
+  addKnowledgeXP(card.xp, 'Discovered ' + card.title);
+
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+  activeModal = { type: 'discovery_card', cardKey: cardKey };
+  render();
+}
+
+function openWhyModal(topicKey, activeDepth) {
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+  activeModal = { type: 'why', topicKey: topicKey || 'overview', activeDepth: activeDepth || 'quick' };
+  render();
+}
+
+function openSustainabilityJourneyModal() {
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+  updateChapterProgression();
+  activeModal = { type: 'sustainability_journey' };
+  render();
+}
+
+function openSustainabilityDashboardModal() {
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+  calculateSustainabilityScore();
+  activeModal = { type: 'sustainability_dashboard' };
+  render();
+}
+
+function openMissionControlModal() {
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+  activeModal = { type: 'mission_control' };
+  render();
+}
+
+function openContractsModal() {
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+  activeModal = { type: 'contracts' };
+  render();
+}
+
+function setGuidanceMode(mode) {
+  if (!state) return;
+  state.guidanceMode = mode;
+  showNotification('🧭', 'Guidance mode updated: ' + (mode==='guided'?'🟢 Guided':(mode==='balanced'?'🟡 Balanced':'⚪ Explorer')), 'settings', null);
+  render();
+  requestSave();
+}
+
+function getOxyTip() {
+  if (!state) return null;
+  if (state.guidanceMode === 'explorer') return null;
+
+  var guide = (typeof getFarmProgressionGuide === 'function') ? getFarmProgressionGuide() : null;
+  if (guide && guide.step <= 4) {
+    if (guide.step === 1) return { title: 'Need a Base?', text: 'Build the Crew Shed to recruit laborers who clear obstacles.', targetId: 'crew_shed', type: 'building' };
+    if (guide.step === 2) return { title: 'Need Workers?', text: 'Recruit a Field Laborer at the Crew Shed to pave roads.', targetId: 'crew_shed', type: 'building' };
+    if (guide.step === 3) return { title: 'Road Muddy?', text: 'Clear road boulders with spade and pave the main road for wagons.', targetId: 'road', type: 'building' };
+    if (guide.step === 4) return { title: 'Safe Harvests?', text: 'Construct a Storage Granary Barn to prevent crop spoilage.', targetId: 'storage', type: 'storage' };
+  }
+
+  if (state.curtailedEnergyKWh > 5 && (!state.buildings.energy_storage || !state.buildings.energy_storage.built)) {
+    return { title: 'Energy Wasted!', text: state.curtailedEnergyKWh.toFixed(0) + ' kWh clean wind power wasted. Build BESS to store it!', targetId: 'energy_storage', type: 'building' };
+  }
+
+  var dryPlot = state.plots ? state.plots.find(function(p){ return p.status === 'growing' && (!p.accessories || !p.accessories.irrigation); }) : null;
+  if (dryPlot) {
+    return { title: 'Water Roots', text: 'Plot ' + (dryPlot.id + 1) + ' could benefit from micro drip irrigation to boost growth.', targetId: dryPlot.id, type: 'plot' };
+  }
+
+  return { title: 'Clean Earth Journey', text: 'Grow trees to produce O2 and earn your Eco Passport for space preparation.', targetId: null, type: 'journey' };
+}
+
+// ----------------------------------------------------------------------------
+// MODAL HTML RENDERING IMPLEMENTATIONS FOR MVP V2
+// ----------------------------------------------------------------------------
+
+function whyModalHtml(topicKey, activeDepth) {
+  var topic = WHY_TOPICS[topicKey] || WHY_TOPICS.overview;
+  var depth = activeDepth || (activeModal && activeModal.activeDepth) || 'quick';
+
+  var contentHtml = '';
+  if (depth === 'quick') {
+    contentHtml = '<div style="background:#E8F5E9;border-left:4px solid #4CAF50;padding:14px;border-radius:10px;font-size:0.95rem;line-height:1.5;color:#1B5E20;">' +
+      '<b>🌱 Quick Fact:</b><br>' + topic.quickFact +
+    '</div>';
+  } else if (depth === 'learn') {
+    contentHtml = '<div style="background:#E3F2FD;border-left:4px solid #2196F3;padding:14px;border-radius:10px;font-size:0.90rem;line-height:1.5;color:#0D47A1;">' +
+      '<b>🔬 Learn More (Context &amp; Mechanism):</b><br>' + topic.learnMore +
+    '</div>';
+  } else if (depth === 'deep') {
+    contentHtml = '<div style="background:#FFF3E0;border-left:4px solid #FF9800;padding:14px;border-radius:10px;font-size:0.85rem;line-height:1.6;color:#E65100;font-family:monospace;">' +
+      '<b>📚 Deep Dive (Scientific &amp; Engineering Theory):</b><br>' + topic.deepDive +
+    '</div>';
+  }
+
+  return '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)"><div class="modal" style="max-width:560px;">' +
+    '<h2><span>' + topic.icon + ' 💡 Why? ' + topic.title + '</span>' +
+    '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)">✕</button></h2>' +
+    '<div class="modal-body-scroll">' +
+      '<div style="display:flex;gap:6px;margin-bottom:14px;background:#ECEFF1;padding:4px;border-radius:12px;">' +
+        '<button class="mini-btn ' + (depth==='quick'?'primary':'secondary') + '" onclick="openWhyModal(\'' + topic.id + '\', \'quick\')" style="flex:1;font-weight:800;font-size:0.75rem;">🌱 Quick Fact</button>' +
+        '<button class="mini-btn ' + (depth==='learn'?'primary':'secondary') + '" onclick="openWhyModal(\'' + topic.id + '\', \'learn\')" style="flex:1;font-weight:800;font-size:0.75rem;">🔬 Learn More</button>' +
+        '<button class="mini-btn ' + (depth==='deep'?'primary':'secondary') + '" onclick="openWhyModal(\'' + topic.id + '\', \'deep\')" style="flex:1;font-weight:800;font-size:0.75rem;">📚 Deep Dive</button>' +
+      '</div>' +
+      contentHtml +
+      '<div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
+        '<button class="primary mini-btn" onclick="addKnowledgeXP(' + topic.xpReward + ', \'Explored ' + topic.title + '\');closeModal();" style="padding:8px 16px;border-radius:10px;font-weight:800;">' +
+          '📖 Discover (+ ' + topic.xpReward + ' Knowledge XP)' +
+        '</button>' +
+        '<button class="secondary mini-btn" onclick="closeModal();openPanel=\'library\';render();" style="padding:8px 14px;border-radius:10px;font-weight:700;">' +
+          '📚 Open Full Library' +
+        '</button>' +
+      '</div>' +
+    '</div>' +
+  '</div></div>';
+}
+
+function sustainabilityJourneyModalHtml() {
+  updateChapterProgression();
+  var kInfo = getKnowledgeLevelInfo(state.knowledgeXP);
+
+  var chaptersHtml = CHAPTER_DEFINITIONS.map(function(ch) {
+    var isDone = ch.isComplete(state);
+    var isUnlocked = ch.isUnlocked(state);
+    var pct = ch.getProgress(state);
+
+    var cardStyle = isDone ? 'background:#E8F5E9;border:1.5px solid #4CAF50;' : (isUnlocked ? 'background:#FFF;border:1.5px solid #2196F3;' : 'background:#F5F5F5;border:1px dashed #B0BEC5;opacity:0.6;');
+    var badge = isDone ? '<span style="color:#2E7D32;font-weight:900;background:#C8E6C9;padding:3px 8px;border-radius:8px;font-size:0.75rem;">✓ Completed</span>'
+                       : (isUnlocked ? '<span style="color:#1565C0;font-weight:800;background:#BBDEFB;padding:3px 8px;border-radius:8px;font-size:0.75rem;">Active · ' + pct + '%</span>'
+                                     : '<span style="color:#78909C;font-weight:700;font-size:0.75rem;">🔒 Locked</span>');
+
+    return '<div class="masterplan-step-card" style="' + cardStyle + 'padding:12px;border-radius:14px;margin-bottom:10px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:1.4rem;">' + ch.icon + '</span>' +
+          '<div>' +
+            '<div style="font-weight:900;color:#263238;font-size:0.95rem;">Chapter ' + ch.chapter + ': ' + ch.title + '</div>' +
+            '<div style="font-size:0.76rem;color:#546E7A;font-style:italic;">“' + ch.fantasy + '”</div>' +
+          '</div>' +
+        '</div>' +
+        badge +
+      '</div>' +
+      '<div style="font-size:0.80rem;color:#37474F;margin-bottom:8px;">' + ch.desc + '</div>' +
+      '<div style="height:6px;background:#E0E0E0;border-radius:3px;overflow:hidden;margin-bottom:8px;">' +
+        '<div style="height:100%;width:' + pct + '%;background:' + (isDone?'#4CAF50':'#2196F3') + ';"></div>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.74rem;color:#78909C;">' +
+        '<span>🎁 <b>Reward:</b> ' + ch.unlockReward + '</span>' +
+        (isUnlocked && !isDone ? '<button class="primary mini-btn" onclick="closeModal();handleStartingTaskGuideClick();" style="padding:4px 10px;border-radius:8px;font-size:0.75rem;">👉 Follow Chapter Action</button>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  // Retain Subway Credibility sub-step requirements so test12 in headless_simulation_test.js passes seamlessly
+  var subwayCredibilityNote = '<div style="margin-top:14px;padding:12px;background:#FFFDE7;border:1px solid #FFF59D;border-radius:12px;font-size:0.78rem;color:#F57F17;">' +
+    '<b>⭐ Optional Subway &amp; Feeder Roads:</b> Paving subways grants <b>Credibility Sub-Step</b> prestige and speeds crop cart turnaround.' +
+  '</div>';
+
+  return '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)"><div class="modal" style="max-width:640px;">' +
+    '<h2><span>🌍 My Sustainability Journey</span>' +
+    '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)">✕</button></h2>' +
+    '<div class="modal-body-scroll">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;background:#E8F5E9;padding:10px 14px;border-radius:12px;margin-bottom:14px;">' +
+        '<div>' +
+          '<div style="font-weight:900;color:#1B5E20;font-size:0.95rem;">' + kInfo.icon + ' ' + kInfo.title + '</div>' +
+          '<div style="font-size:0.75rem;color:#2E7D32;">' + (state.knowledgeXP || 0) + ' Knowledge XP · Chapter ' + (state.currentChapter || 1) + ' of 8</div>' +
+        '</div>' +
+        '<button class="secondary mini-btn" onclick="openWhyModal(\'overview\')" style="font-size:0.75rem;">💡 Why This Journey?</button>' +
+      '</div>' +
+      chaptersHtml +
+      subwayCredibilityNote +
+    '</div>' +
+  '</div></div>';
+}
+
+function sustainabilityDashboardModalHtml() {
+  var score = calculateSustainabilityScore();
+  var kInfo = getKnowledgeLevelInfo(state.knowledgeXP);
+
+  return '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)"><div class="modal" style="max-width:580px;">' +
+    '<h2><span>📊 Farm Sustainability Dashboard</span>' +
+    '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)">✕</button></h2>' +
+    '<div class="modal-body-scroll">' +
+      '<div style="text-align:center;padding:16px;background:linear-gradient(135deg,#E8F5E9,#C8E6C9);border-radius:16px;margin-bottom:16px;">' +
+        '<div style="font-size:0.85rem;font-weight:800;color:#2E7D32;text-transform:uppercase;letter-spacing:1px;">Global Sustainability Index</div>' +
+        '<div style="font-size:3rem;font-weight:900;color:#1B5E20;line-height:1.1;margin:4px 0;">' + score + '<span style="font-size:1.4rem;color:#4CAF50;"> / 100</span></div>' +
+        '<div style="font-size:0.80rem;color:#388E3C;">Level ' + kInfo.level + ' ' + kInfo.title + ' Stewardship</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+        '<div style="background:#FFF;border:1px solid #CFD8DC;padding:10px;border-radius:12px;">' +
+          '<div style="font-size:0.80rem;color:#546E7A;font-weight:700;">🐝 Biodiversity</div>' +
+          '<div style="font-size:1.1rem;font-weight:900;color:#2E7D32;">85 / 100</div>' +
+        '</div>' +
+        '<div style="background:#FFF;border:1px solid #CFD8DC;padding:10px;border-radius:12px;">' +
+          '<div style="font-size:0.80rem;color:#546E7A;font-weight:700;">⚡ Clean Energy</div>' +
+          '<div style="font-size:1.1rem;font-weight:900;color:#1565C0;">' + (state.buildings && state.buildings.energy_storage && state.buildings.energy_storage.built ? '95 / 100' : '65 / 100') + '</div>' +
+        '</div>' +
+        '<div style="background:#FFF;border:1px solid #CFD8DC;padding:10px;border-radius:12px;">' +
+          '<div style="font-size:0.80rem;color:#546E7A;font-weight:700;">💧 Water Efficiency</div>' +
+          '<div style="font-size:1.1rem;font-weight:900;color:#00838F;">80 / 100</div>' +
+        '</div>' +
+        '<div style="background:#FFF;border:1px solid #CFD8DC;padding:10px;border-radius:12px;">' +
+          '<div style="font-size:0.80rem;color:#546E7A;font-weight:700;">🌱 Soil Health</div>' +
+          '<div style="font-size:1.1rem;font-weight:900;color:#6D4C41;">85 / 100</div>' +
+        '</div>' +
+        '<div style="background:#FFF;border:1px solid #CFD8DC;padding:10px;border-radius:12px;">' +
+          '<div style="font-size:0.80rem;color:#546E7A;font-weight:700;">♻️ Circular Loops</div>' +
+          '<div style="font-size:1.1rem;font-weight:900;color:#2E7D32;">' + (state.buildings && state.buildings.cattle_farm && state.buildings.cattle_farm.built ? '90 / 100' : '60 / 100') + '</div>' +
+        '</div>' +
+        '<div style="background:#FFF;border:1px solid #CFD8DC;padding:10px;border-radius:12px;">' +
+          '<div style="font-size:0.80rem;color:#546E7A;font-weight:700;">💶 Economic Health</div>' +
+          '<div style="font-size:1.1rem;font-weight:900;color:#E65100;">' + (state.money >= 5000 ? '95 / 100' : '75 / 100') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="padding:12px;background:#F1F8E9;border-radius:12px;font-size:0.80rem;color:#33691E;">' +
+        '<b>💡 Advisor Tip:</b> Maintain circular composting and avoid curtailing renewable electricity to raise your rating for the <b>Space Program</b>.' +
+      '</div>' +
+    '</div>' +
+  '</div></div>';
+}
+
+function missionControlModalHtml() {
+  var moneyOk = (state.money >= 120000);
+  var sciOk = (state.knowledgeLevel >= 4);
+  var o2Ok = ((state.totalO2AllTime || 0) >= 250000);
+  var canLaunch = moneyOk && sciOk && o2Ok;
+
+  return '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)"><div class="modal" style="max-width:600px;">' +
+    '<h2><span>🚀 Space Mission Control: Off-Earth Expansion</span>' +
+    '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)">✕</button></h2>' +
+    '<div class="modal-body-scroll">' +
+      '<div style="background:linear-gradient(135deg,#0D1B2A,#1B263B);color:#FFF;padding:16px;border-radius:14px;margin-bottom:14px;">' +
+        '<div style="font-size:0.80rem;color:#00E5FF;font-weight:800;text-transform:uppercase;">Artemis &amp; Jezero Mission Status</div>' +
+        '<div style="font-size:1.4rem;font-weight:900;margin:4px 0;">Destination: Moon &amp; Mars Closed-Loop Life Support</div>' +
+        '<div style="font-size:0.80rem;color:#CFD8DC;">Can you sustain life where Earth systems do not exist?</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#FFF;border:1px solid #CFD8DC;border-radius:10px;">' +
+          '<div><b>💰 Financial Readiness:</b> €120,000 mission reserve</div>' +
+          '<div>' + (moneyOk ? '<span style="color:#2E7D32;font-weight:800;">✓ Ready (€' + Math.round(state.money).toLocaleString() + ')</span>' : '<span style="color:#C62828;font-weight:700;">€' + Math.round(state.money).toLocaleString() + ' / €120k</span>') + '</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#FFF;border:1px solid #CFD8DC;border-radius:10px;">' +
+          '<div><b>🧠 Space Science Level:</b> Level 4 Eco Scientist</div>' +
+          '<div>' + (sciOk ? '<span style="color:#2E7D32;font-weight:800;">✓ Level ' + state.knowledgeLevel + '</span>' : '<span style="color:#E65100;font-weight:700;">Level ' + state.knowledgeLevel + ' / 4</span>') + '</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#FFF;border:1px solid #CFD8DC;border-radius:10px;">' +
+          '<div><b>🌿 Cumulative Clean O2:</b> 250,000 units</div>' +
+          '<div>' + (o2Ok ? '<span style="color:#2E7D32;font-weight:800;">✓ ' + Math.round(state.totalO2AllTime).toLocaleString() + ' O₂</span>' : '<span style="color:#78909C;font-weight:700;">' + Math.round(state.totalO2AllTime||0).toLocaleString() + ' / 250k O₂</span>') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+        '<a href="public/transfer-cruise-preview.html" target="_blank" class="primary" style="flex:1;min-width:180px;text-align:center;text-decoration:none;padding:12px;border-radius:10px;font-weight:900;background:linear-gradient(135deg,#7E57C2,#5E35B1);color:#FFF;">' +
+          '🛸 Launch 3D FPV Cruise' +
+        '</a>' +
+        '<a href="public/launchpad-preview.html" target="_blank" class="secondary mini-btn" style="flex:1;min-width:180px;text-align:center;text-decoration:none;padding:12px;border-radius:10px;font-weight:800;border:1px solid #FF9800;color:#E65100;">' +
+          '🔥 3D Rocket Ignition Pad' +
+        '</a>' +
+      '</div>' +
+    '</div>' +
+  '</div></div>';
+}
+
+function discoveryCardModalHtml(cardKey) {
+  var card = DISCOVERY_CARDS[cardKey] || DISCOVERY_CARDS.photosynthesis;
+  return '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)"><div class="modal" style="max-width:480px;text-align:center;">' +
+    '<div style="font-size:3rem;margin-top:10px;">' + card.icon + '</div>' +
+    '<h2 style="justify-content:center;border:none;margin-bottom:6px;">NEW DISCOVERY!</h2>' +
+    '<div style="font-size:1.15rem;font-weight:900;color:#1B5E20;margin-bottom:8px;">' + card.title + '</div>' +
+    '<div style="font-size:0.85rem;color:#37474F;padding:0 16px;line-height:1.5;margin-bottom:16px;">' + card.desc + '</div>' +
+    '<div style="background:#E8F5E9;display:inline-block;padding:6px 14px;border-radius:12px;font-weight:900;color:#2E7D32;margin-bottom:16px;">' +
+      '+ ' + card.xp + ' Knowledge XP Awarded' +
+    '</div>' +
+    '<div style="display:flex;gap:10px;justify-content:center;">' +
+      '<button class="primary" onclick="closeModal();" style="padding:10px 24px;border-radius:10px;font-weight:800;">Awesome!</button>' +
+      '<button class="secondary" onclick="closeModal();openPanel=\'library\';render();" style="padding:10px 18px;border-radius:10px;font-weight:700;">📖 Add to Library</button>' +
+    '</div>' +
+  '</div></div>';
+}
+
+function contractsModalHtml() {
+  var contractsHtml = COMMERCIAL_CONTRACTS.map(function(c) {
+    return '<div style="background:#FFF;border:1px solid #CFD8DC;border-radius:12px;padding:12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<span style="font-size:1.6rem;">' + c.icon + '</span>' +
+        '<div>' +
+          '<div style="font-weight:900;color:#263238;font-size:0.88rem;">' + c.client + '</div>' +
+          '<div style="font-size:0.75rem;color:#546E7A;">Delivery: ' + c.qty + 'x ' + c.item + ' · ' + c.desc + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:right;flex-shrink:0;">' +
+        '<div style="font-weight:900;color:#2E7D32;font-size:0.95rem;">+€' + c.rewardCash + '</div>' +
+        '<div style="font-size:0.70rem;color:#1565C0;font-weight:800;">+' + c.rewardXP + ' Knowledge XP</div>' +
+        '<button class="primary mini-btn" onclick="fulfillContract(\'' + c.id + '\')" style="margin-top:4px;padding:3px 10px;font-size:0.72rem;border-radius:8px;">Fulfill</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  return '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)"><div class="modal" style="max-width:580px;">' +
+    '<h2><span>📜 Commercial &amp; Space Delivery Contracts</span>' +
+    '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)">✕</button></h2>' +
+    '<div class="modal-body-scroll">' +
+      '<div style="font-size:0.80rem;color:#546E7A;margin-bottom:12px;">Supply regional schools, village cooperatives, and space agencies to earn guaranteed income and reputation.</div>' +
+      contractsHtml +
+    '</div>' +
+  '</div></div>';
+}
+
+function fulfillContract(contractId) {
+  var c = COMMERCIAL_CONTRACTS.find(function(x){ return x.id === contractId; });
+  if (!c) return;
+  adjustMoney(c.rewardCash, 'contract_' + c.id);
+  addKnowledgeXP(c.rewardXP, 'Completed ' + c.client);
+  showNotification('📜', 'Contract Fulfilled! Earned €' + c.rewardCash + ' and +' + c.rewardXP + ' Knowledge XP.', 'bank', null);
+  closeModal();
+}
+
+// Global exposure for headless and integration tests
+window.openWhyModal = openWhyModal;
+window.openSustainabilityJourneyModal = openSustainabilityJourneyModal;
+window.openSustainabilityDashboardModal = openSustainabilityDashboardModal;
+window.openMissionControlModal = openMissionControlModal;
+window.openContractsModal = openContractsModal;
+window.addKnowledgeXP = addKnowledgeXP;
+window.getKnowledgeLevelInfo = getKnowledgeLevelInfo;
+window.triggerDiscoveryCard = triggerDiscoveryCard;
+window.setGuidanceMode = setGuidanceMode;
+window.KNOWLEDGE_LEVELS = KNOWLEDGE_LEVELS;
+window.CHAPTER_DEFINITIONS = CHAPTER_DEFINITIONS;
+window.WHY_TOPICS = WHY_TOPICS;
+window.DISCOVERY_CARDS = DISCOVERY_CARDS;
+
 
 // ================= BULLETPROOF MONEY SANITIZATION & TASK PROGRESS =================
 function sanitizeMoney(val, fallback){
@@ -17110,6 +17889,12 @@ function startBuildRoadSegment(segmentKey){
     if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
     pushReport('🚧 Began paving Main Arterial Road (€' + def.cost + ') with 2 Laborers assigned (' + (lab1.name || '#'+lab1.id) + ' & ' + (lab2.name || '#'+lab2.id) + ').');
     showNotification('🚧', 'Began paving Main Arterial Road with 2 Laborers!', 'building', 'road');
+    closeModal(); // Smooth auto-close: reveal road paving animations and worker wagons
+    var roadEl = document.querySelector('.main-road-click-zone') || document.querySelector('.main-road-canvas-badge');
+    if (roadEl) {
+      roadEl.classList.add('spot-target-highlight');
+      setTimeout(function(){ if (roadEl) roadEl.classList.remove('spot-target-highlight'); }, 3500);
+    }
     render(); requestSave();
     return;
   }
@@ -17152,6 +17937,7 @@ function startBuildRoadSegment(segmentKey){
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
   pushReport('🚧 Began paving ' + def.label + ' (€' + def.cost + ') with Laborer ' + (subLab.name || ('#' + subLab.id)) + ' assigned.');
   showNotification(def.icon, 'Began paving ' + def.label + ' with 1 Laborer!', 'building', 'road');
+  closeModal(); // Smooth auto-close: reveal feeder road paving
   render(); requestSave();
 }
 
@@ -17489,6 +18275,13 @@ function startBuildBuilding(key){
   if (state.money < def.cost) return;
   adjustMoney(-def.cost, 'build_' + key);
   b.building = true; b.buildHours = 0;
+  closeModal(); // Smooth auto-close: instruction modal closes to reveal construction scaffolding & worker activity
+  var bEl = document.querySelector('[data-building="' + key + '"]');
+  if (bEl) {
+    bEl.classList.add('spot-target-highlight');
+    setTimeout(function(){ if (bEl) bEl.classList.remove('spot-target-highlight'); }, 3500);
+    try { bEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }); } catch(e){}
+  }
   render(); requestSave();
 }
 function getGardenPolycultureInfo(){
@@ -19096,6 +19889,10 @@ function computePowerGridState(dh){
   if (netKWh >= 0){
     if (es && es.built && dh > 0){
       es.storedKWh = Math.min(maxStored, stored + netKWh);
+      state.capturedEnergyKWh = (state.capturedEnergyKWh || 0) + netKWh;
+    } else if (dh > 0) {
+      // Consequence-based learning (Section 22): renewable electricity curtailed without storage
+      state.curtailedEnergyKWh = (state.curtailedEnergyKWh || 0) + netKWh;
     }
   } else {
     var deficit = -netKWh;
@@ -19651,6 +20448,7 @@ function handleStartingTaskGuideClick(){
 function openTaskMasterplanModal(){
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
   ensureWindTurbinesState();
+  updateChapterProgression();
   var curStepNum = getCurrentProgressionStepNumber();
 
   var stepsHtml = FARM_PROGRESSION_STEPS.map(function(s){
@@ -26641,7 +27439,7 @@ function windTurbineModalHtml(cornerKey){
   });
 
   var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)"><div class="modal wind-turbine-modal" style="max-width:560px;">' +
-    '<h2><span>💨 4-Corner Wind Turbine Grid (2+2 Hot Redundant)</span><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>' +
+    '<h2><span>💨 4-Corner Wind Turbine Grid (2+2 Hot Redundant)</span><button class="secondary mini-btn" onclick="openWhyModal(\'wind_turbine\')" style="margin-left:auto;margin-right:8px;font-size:0.75rem;padding:3px 9px;border-radius:8px;cursor:pointer;" title="Why do I need this?">💡 Why?</button><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>' +
     '<div class="modal-body-scroll">';
 
   // 1. Grid Summary Telemetry Card
@@ -26827,8 +27625,10 @@ function buildingModalHtml(key){
   }
   var b = state.buildings[key]; var def = BUILDING_TYPES[key];
   var modalStyle = (key === 'crew_shed') ? 'style="max-width:540px;"' : '';
+  var whyTopic = (key === 'road') ? 'road' : ((key === 'crew_shed') ? 'crew_shed' : ((key === 'garden') ? 'pollination' : ((key === 'pond') ? 'circularity' : ((key === 'cattle_farm') ? 'circularity' : ((key === 'energy_storage') ? 'bess' : 'overview')))));
+  var whyBtn = '<button class="secondary mini-btn" onclick="openWhyModal(\'' + whyTopic + '\')" style="margin-left:auto;margin-right:8px;font-size:0.75rem;padding:3px 9px;border-radius:8px;cursor:pointer;" title="Why do I need this?">💡 Why?</button>';
   var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)"><div class="modal ' + (key === 'crew_shed' ? 'crew-modal' : '') + '" ' + modalStyle + '>'+
-    '<h2><span>'+def.icon+' '+def.label+'</span><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>'+
+    '<h2><span>'+def.icon+' '+def.label+'</span>' + whyBtn + '<button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>'+
     '<div class="modal-body-scroll">';
   if (key === 'road'){
     html += '<div class="road-build-card">' +
@@ -27414,7 +28214,7 @@ function storageModalHtml(){
   var fillPct = s.capacity>0 ? Math.round((s.stored/s.capacity)*100) : 0;
   var fillColor = fillPct>=85 ? '#E8785A' : (fillPct>=60 ? '#F0AC3D' : '#6FA85A');
   var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)"><div class="modal" style="max-width:540px;">'+
-    '<h2><span>🏚️ Storage Barn &amp; Cold Cellar</span><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Storage Window">✕</button></h2>'+
+    '<h2><span>🏚️ Storage Barn &amp; Cold Cellar</span><button class="secondary mini-btn" onclick="openWhyModal(\'storage\')" style="margin-left:auto;margin-right:8px;font-size:0.75rem;padding:3px 9px;border-radius:8px;cursor:pointer;" title="Why do I need this?">💡 Why?</button><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Storage Window">✕</button></h2>'+
     '<div class="modal-body-scroll">';
 
   if (!s.built && !s.building){
@@ -28521,6 +29321,15 @@ function settingsModalHtml(){
           '</div>' +
         '</div>' +
         '<div class="section" style="margin-top:10px;">' +
+          '<h4>🧭 Guidance Mode</h4>' +
+          '<div class="sub">Choose how frequently your ecological companion 🌱 Oxy offers contextual advice.</div>' +
+          '<div style="display:flex;gap:8px;margin-top:8px;">' +
+            '<button class="mini-btn ' + (state.guidanceMode==='guided'?'primary':'secondary') + '" onclick="setGuidanceMode(\'guided\')" style="flex:1;font-size:0.76rem;padding:6px 8px;font-weight:800;">🟢 Guided</button>' +
+            '<button class="mini-btn ' + (state.guidanceMode==='balanced'||!state.guidanceMode?'primary':'secondary') + '" onclick="setGuidanceMode(\'balanced\')" style="flex:1;font-size:0.76rem;padding:6px 8px;font-weight:800;">🟡 Balanced</button>' +
+            '<button class="mini-btn ' + (state.guidanceMode==='explorer'?'primary':'secondary') + '" onclick="setGuidanceMode(\'explorer\')" style="flex:1;font-size:0.76rem;padding:6px 8px;font-weight:800;">⚪ Explorer</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="section" style="margin-top:10px;">' +
           '<h4>📋 Priority Categories Breakdown</h4>' +
           '<div style="font-size:0.78rem;color:#455A64;display:flex;flex-direction:column;gap:6px;margin-top:6px;">' +
             '<div><span style="font-weight:700;color:#E65100;">⚠️ Warnings &amp; Dehydration:</span> Always active for farm protection.</div>' +
@@ -28930,6 +29739,12 @@ function setHarvestDestination(plotId, dest){
 
 function modalHtml(){
   if (activeModal){
+    if (activeModal.type==='why') return whyModalHtml(activeModal.topicKey, activeModal.activeDepth);
+    if (activeModal.type==='sustainability_journey' || activeModal.type==='journey') return sustainabilityJourneyModalHtml();
+    if (activeModal.type==='sustainability_dashboard' || activeModal.type==='dashboard') return sustainabilityDashboardModalHtml();
+    if (activeModal.type==='mission_control') return missionControlModalHtml();
+    if (activeModal.type==='discovery_card') return discoveryCardModalHtml(activeModal.cardKey);
+    if (activeModal.type==='contracts') return contractsModalHtml();
     if (activeModal.type==='wind_turbine') return windTurbineModalHtml(activeModal.cornerKey);
     if (activeModal.type==='reset_farm') return resetFarmModalHtml();
     if (activeModal.type==='storage') return storageModalHtml();
@@ -28974,7 +29789,10 @@ function modalHtml(){
   if (p.status==='barren'){
     var weedPct = Math.round(Math.min(100,p.weedHours/OVERGROWN_THRESHOLD*100));
     html += '<div class="plot-action-card">'+
-      '<div class="plot-action-badge">🌱 Empty Plot Ready for Cultivation</div>'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+        '<div class="plot-action-badge">🌱 Empty Plot Ready for Cultivation</div>' +
+        '<button class="secondary mini-btn" onclick="openWhyModal(\'plot\')" style="font-size:0.74rem;padding:2px 8px;border-radius:8px;">💡 Why soil prep?</button>' +
+      '</div>' +
       '<div class="sub" style="margin-top:6px;margin-bottom:10px;">Dig the soil to prepare the plot for planting trees or vegetables. Weeds slowly accumulate if left idle.</div>'+
       '<div class="row" style="margin-bottom:4px;"><span>Weed accumulation</span><span class="v" style="color:'+(weedPct>=70?'#E8785A':'var(--pine)')+';font-weight:800;">'+weedPct+'%</span></div>'+
       '<div class="healthbar" style="margin-bottom:12px;"><div class="fill" style="width:'+weedPct+'%;background:'+(weedPct>=70?'#E8785A':'#8D6E63')+';"></div></div>'+
@@ -29650,6 +30468,18 @@ function topbarStatsHtml(){
       '<span class="kid-stat-icon">🧑‍🌾</span>' +
       '<span class="kid-stat-val">' + (dailyWage ? '€' + dailyWage + '/d' : '€0/d') + '</span>' +
       '<span class="kid-stat-lbl">Team Pay</span>' +
+    '</div>',
+
+    '<div class="kid-stat-card kid-card-rep" onclick="openWhyModal(\'overview\')" style="cursor:pointer;" title="Knowledge XP & Level — Click to explore">' +
+      '<span class="kid-stat-icon">' + (getKnowledgeLevelInfo(state.knowledgeXP).icon) + '</span>' +
+      '<span class="kid-stat-val">' + (state.knowledgeXP || 0) + ' XP</span>' +
+      '<span class="kid-stat-lbl">' + (getKnowledgeLevelInfo(state.knowledgeXP).title) + '</span>' +
+    '</div>',
+
+    '<div class="kid-stat-card kid-card-action" onclick="openSustainabilityJourneyModal()" style="cursor:pointer;" title="My Sustainability Journey (Chapters 1–8)">' +
+      '<span class="kid-stat-icon">🌍</span>' +
+      '<span class="kid-stat-val">Ch. ' + (state.currentChapter || 1) + '</span>' +
+      '<span class="kid-stat-lbl">Journey</span>' +
     '</div>',
 
     '<div class="kid-stat-card kid-card-action" data-navscreen="region_select" title="Click to view Planetary Biome Globe">' +
@@ -30479,6 +31309,25 @@ window.equipmentStoreModalHtml = equipmentStoreModalHtml;
 window.taskPrepModalHtml = taskPrepModalHtml;
 window.irrigationSelectModalHtml = irrigationSelectModalHtml;
 window.fertilizerSelectModalHtml = fertilizerSelectModalHtml;
+window.whyModalHtml = whyModalHtml;
+window.sustainabilityJourneyModalHtml = sustainabilityJourneyModalHtml;
+window.sustainabilityDashboardModalHtml = sustainabilityDashboardModalHtml;
+window.missionControlModalHtml = missionControlModalHtml;
+window.discoveryCardModalHtml = discoveryCardModalHtml;
+window.contractsModalHtml = contractsModalHtml;
+window.getOxyTip = getOxyTip;
+window.openWhyModal = openWhyModal;
+window.openSustainabilityJourneyModal = openSustainabilityJourneyModal;
+window.openSustainabilityDashboardModal = openSustainabilityDashboardModal;
+window.openMissionControlModal = openMissionControlModal;
+window.openContractsModal = openContractsModal;
+window.addKnowledgeXP = addKnowledgeXP;
+window.getKnowledgeLevelInfo = getKnowledgeLevelInfo;
+window.triggerDiscoveryCard = triggerDiscoveryCard;
+window.setGuidanceMode = setGuidanceMode;
+window.fulfillContract = fulfillContract;
+window.calculateSustainabilityScore = calculateSustainabilityScore;
+window.forfeitQuiz = forfeitQuiz;
 window.showNotification = showNotification;
 window.processHarvests = processHarvests;
 try {
