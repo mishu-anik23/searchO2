@@ -692,7 +692,7 @@ const path = require('path');
         report.test12.details.push(`Failed checks: step1Ok=${step1Ok}, plotLockedOk=${plotLockedOk}, storageLockedOk=${storageLockedOk}, roadLockedStep1Ok=${roadLockedStep1Ok}, step2Ok=${step2Ok}, roadLockedStep2Ok=${roadLockedStep2Ok}, roadPaveBlockedOk=${roadPaveBlockedOk}, step3Ok=${step3Ok}, roadPaveBlockedByRocksOk=${roadPaveBlockedByRocksOk}, taskDialogOpened=${taskDialogOpened}, clearingStartedOk=${clearingStartedOk}, rocksClearedOk=${rocksClearedOk}, roadPavedOk=${roadPavedOk}, mpHasSubwayCredibility=${mpHasSubwayCredibility}, roadModalHasCredibility=${roadModalHasCredibility}, step4Ok=${step4Ok}, storageUnlockedOk=${storageUnlockedOk}, step5Ok=${step5Ok}, plotUnlockedOk=${plotUnlockedOk}`);
       }
     } catch (e) {
-      report.test12.details.push('Error: ' + e.message);
+      report.test12.details.push('Error: ' + (e.stack || e.message));
     }
 
     return report;

@@ -23,6 +23,13 @@ function setAuthCookies(res: Response, accessToken: string, refreshToken: string
   res.cookie('refresh_token', refreshToken, COOKIE_OPTIONS);
 }
 
+function extractSessionMeta(req: Request) {
+  return {
+    ipAddress: (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || '127.0.0.1',
+    userAgent: (req.headers['user-agent'] as string) || 'Mozilla/5.0',
+  };
+}
+
 // POST /api/auth/register (Supports optional guestId or recoveryCode merge)
 router.post(
   '/register',
@@ -32,7 +39,7 @@ router.post(
     try {
       const { email, password, displayName, guestId, recoveryCode } = req.body;
       const guestIdentifier = guestId || recoveryCode;
-      const result = await authService.register(email, password, displayName, guestIdentifier);
+      const result = await authService.register(email, password, displayName, guestIdentifier, extractSessionMeta(req));
       setAuthCookies(res, result.accessToken, result.refreshToken);
       res.status(201).json({
         message: result.mergedGuest
@@ -81,7 +88,7 @@ router.post(
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { email, password } = req.body;
-      const result = await authService.login(email, password);
+      const result = await authService.login(email, password, extractSessionMeta(req));
       setAuthCookies(res, result.accessToken, result.refreshToken);
       res.json({
         message: 'Signed in successfully.',
@@ -114,7 +121,7 @@ router.post(
         return;
       }
 
-      const result = await authService.loginWithGoogle(googleProfile);
+      const result = await authService.loginWithGoogle(googleProfile, extractSessionMeta(req));
       setAuthCookies(res, result.accessToken, result.refreshToken);
       res.json({
         message: 'Signed in with Google successfully.',
@@ -134,7 +141,7 @@ router.post(
   authLimiter,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const result = await authService.createGuestSession();
+      const result = await authService.createGuestSession(extractSessionMeta(req));
       setAuthCookies(res, result.accessToken, result.refreshToken);
       res.status(201).json({
         message: 'Anonymous guest session created.',
@@ -173,13 +180,17 @@ router.post(
         }
       }
 
-      const result = await authService.upgradeGuest(currentUser.userId, {
-        provider,
-        email,
-        password,
-        displayName,
-        googleProfile,
-      });
+      const result = await authService.upgradeGuest(
+        currentUser.userId,
+        {
+          provider,
+          email,
+          password,
+          displayName,
+          googleProfile,
+        },
+        extractSessionMeta(req)
+      );
 
       setAuthCookies(res, result.accessToken, result.refreshToken);
       res.json({
@@ -205,7 +216,7 @@ router.post(
         return;
       }
 
-      const result = await authService.refreshToken(refreshToken);
+      const result = await authService.refreshToken(refreshToken, extractSessionMeta(req));
       setAuthCookies(res, result.accessToken, result.refreshToken);
       res.json({
         message: 'Tokens refreshed.',

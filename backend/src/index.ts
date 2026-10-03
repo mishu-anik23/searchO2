@@ -17,6 +17,7 @@ import { cryptoRouter } from './modules/crypto/crypto.controller';
 import { paymentsRouter } from './modules/payments/payments.controller';
 import { kycRouter } from './modules/kyc/kyc.controller';
 import { oxyforgeRouter } from './modules/oxyforge/oxyforge.controller';
+import { adminRouter } from './modules/admin/admin.controller';
 
 const app = express();
 const server = http.createServer(app);
@@ -50,6 +51,7 @@ app.use('/api/crypto', cryptoRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/kyc', kycRouter);
 app.use('/api/oxyforge', oxyforgeRouter);
+app.use('/api/admin', adminRouter);
 
 // 4. Fallback 404 Handler
 app.use('*', (req, res) => {

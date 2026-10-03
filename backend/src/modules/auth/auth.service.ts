@@ -34,7 +34,11 @@ export class AuthService {
     });
   }
 
-  private async createRefreshTokenSession(userId: string, dbClient?: any): Promise<string> {
+  private async createRefreshTokenSession(
+    userId: string,
+    dbClient?: any,
+    sessionMeta?: { ipAddress?: string; userAgent?: string; deviceType?: string; browser?: string; os?: string }
+  ): Promise<string> {
     const rawToken = uuidv4() + '.' + crypto.randomBytes(32).toString('hex');
     const tokenHash = this.hashToken(rawToken);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
@@ -44,6 +48,21 @@ export class AuthService {
       `INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
       [userId, tokenHash, expiresAt]
     );
+
+    try {
+      const ip = sessionMeta?.ipAddress || '127.0.0.1';
+      const ua = sessionMeta?.userAgent || 'Mozilla/5.0';
+      const dev = sessionMeta?.deviceType || (ua.includes('Mobile') ? 'Mobile' : ua.includes('Tablet') ? 'Tablet' : 'Desktop');
+      const browser = sessionMeta?.browser || (ua.includes('Chrome') ? 'Chrome' : ua.includes('Firefox') ? 'Firefox' : ua.includes('Safari') ? 'Safari' : ua.includes('Edge') ? 'Edge' : 'Browser');
+      const os = sessionMeta?.os || (ua.includes('Windows') ? 'Windows' : ua.includes('Mac') ? 'macOS' : ua.includes('Android') ? 'Android' : ua.includes('iPhone') ? 'iOS' : 'Linux');
+      const geo = JSON.stringify({ country: 'Germany', countryCode: 'DE', city: 'Frankfurt', region: 'Hesse' });
+
+      await exec(
+        `INSERT INTO user_sessions (user_id, session_token_hash, ip_address, geo_location, device_type, browser, os, user_agent, expires_at)
+         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9)`,
+        [userId, tokenHash, ip, geo, dev, browser, os, ua, expiresAt]
+      );
+    } catch {}
 
     return rawToken;
   }
@@ -76,7 +95,13 @@ export class AuthService {
     return farmId;
   }
 
-  async register(email: string, password: string, displayName: string, guestIdToMerge?: string): Promise<AuthResult> {
+  async register(
+    email: string,
+    password: string,
+    displayName: string,
+    guestIdToMerge?: string,
+    sessionMeta?: { ipAddress?: string; userAgent?: string }
+  ): Promise<AuthResult> {
     const existing = await query(`SELECT id FROM users WHERE email = $1`, [email.toLowerCase()]);
     if (existing.rowCount && existing.rowCount > 0) {
       throw { statusCode: 409, message: 'An account with this email already exists.' };
@@ -98,7 +123,7 @@ export class AuthService {
 
       if (guestIdToMerge && guestIdToMerge.trim() !== '') {
         try {
-          const mergeResult = await guestMergeService.mergeGuestIntoUser(user.id, guestIdToMerge.trim());
+          const mergeResult = await guestMergeService.mergeGuestIntoUser(user.id, guestIdToMerge.trim(), false, client);
           farmId = mergeResult.farmId;
           mergedGuest = true;
         } catch (err: any) {
@@ -118,7 +143,7 @@ export class AuthService {
       };
 
       const accessToken = this.generateAccessToken(authPayload);
-      const refreshToken = await this.createRefreshTokenSession(user.id, client);
+      const refreshToken = await this.createRefreshTokenSession(user.id, client, sessionMeta);
 
       return {
         user: {
@@ -137,7 +162,11 @@ export class AuthService {
     });
   }
 
-  async login(email: string, password: string): Promise<AuthResult> {
+  async login(
+    email: string,
+    password: string,
+    sessionMeta?: { ipAddress?: string; userAgent?: string }
+  ): Promise<AuthResult> {
     const userRes = await query(
       `SELECT id, email, password_hash, display_name, role, auth_provider, avatar_url
        FROM users WHERE email = $1`,
@@ -177,7 +206,7 @@ export class AuthService {
     };
 
     const accessToken = this.generateAccessToken(authPayload);
-    const refreshToken = await this.createRefreshTokenSession(user.id);
+    const refreshToken = await this.createRefreshTokenSession(user.id, null, sessionMeta);
 
     return {
       user: {
@@ -194,7 +223,10 @@ export class AuthService {
     };
   }
 
-  async loginWithGoogle(profile: GoogleUserProfile): Promise<AuthResult> {
+  async loginWithGoogle(
+    profile: GoogleUserProfile,
+    sessionMeta?: { ipAddress?: string; userAgent?: string }
+  ): Promise<AuthResult> {
     const existing = await query(
       `SELECT id, email, display_name, role, auth_provider, avatar_url, google_id
        FROM users WHERE google_id = $1 OR email = $2`,
@@ -241,7 +273,7 @@ export class AuthService {
       };
 
       const accessToken = this.generateAccessToken(authPayload);
-      const refreshToken = await this.createRefreshTokenSession(user.id, client);
+      const refreshToken = await this.createRefreshTokenSession(user.id, client, sessionMeta);
 
       return {
         user: {
@@ -259,7 +291,7 @@ export class AuthService {
     });
   }
 
-  async createGuestSession(): Promise<AuthResult> {
+  async createGuestSession(sessionMeta?: { ipAddress?: string; userAgent?: string }): Promise<AuthResult> {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const displayName = `Guest Farmer #${randomSuffix}`;
 
@@ -283,7 +315,7 @@ export class AuthService {
       };
 
       const accessToken = this.generateAccessToken(authPayload);
-      const refreshToken = await this.createRefreshTokenSession(user.id, client);
+      const refreshToken = await this.createRefreshTokenSession(user.id, client, sessionMeta);
 
       return {
         user: {
@@ -309,7 +341,8 @@ export class AuthService {
       password?: string;
       displayName?: string;
       googleProfile?: GoogleUserProfile;
-    }
+    },
+    sessionMeta?: { ipAddress?: string; userAgent?: string }
   ): Promise<AuthResult> {
     const guestRes = await query(`SELECT id, role FROM users WHERE id = $1`, [guestUserId]);
     if (!guestRes.rowCount || guestRes.rows[0].role !== 'guest') {
@@ -348,7 +381,7 @@ export class AuthService {
         };
 
         const accessToken = this.generateAccessToken(authPayload);
-        const refreshToken = await this.createRefreshTokenSession(guestUserId, client);
+        const refreshToken = await this.createRefreshTokenSession(guestUserId, client, sessionMeta);
 
         return {
           user: {
@@ -407,7 +440,7 @@ export class AuthService {
         };
 
         const accessToken = this.generateAccessToken(authPayload);
-        const refreshToken = await this.createRefreshTokenSession(targetUserId, client);
+        const refreshToken = await this.createRefreshTokenSession(targetUserId, client, sessionMeta);
 
         return {
           user: {
@@ -426,7 +459,10 @@ export class AuthService {
     }
   }
 
-  async refreshToken(rawRefreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  async refreshToken(
+    rawRefreshToken: string,
+    sessionMeta?: { ipAddress?: string; userAgent?: string }
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const tokenHash = this.hashToken(rawRefreshToken);
     const tokenRes = await query(
       `SELECT id, user_id, expires_at, revoked
@@ -445,6 +481,9 @@ export class AuthService {
 
     // Revoke used token (token rotation security)
     await query(`UPDATE refresh_tokens SET revoked = TRUE WHERE id = $1`, [session.id]);
+    try {
+      await query(`UPDATE user_sessions SET is_revoked = TRUE WHERE session_token_hash = $1`, [tokenHash]);
+    } catch {}
 
     const userRes = await query(
       `SELECT id, role, auth_provider FROM users WHERE id = $1`,
@@ -467,7 +506,7 @@ export class AuthService {
     };
 
     const newAccessToken = this.generateAccessToken(authPayload);
-    const newRefreshToken = await this.createRefreshTokenSession(user.id);
+    const newRefreshToken = await this.createRefreshTokenSession(user.id, null, sessionMeta);
 
     return {
       accessToken: newAccessToken,
@@ -479,6 +518,9 @@ export class AuthService {
     if (!rawRefreshToken) return;
     const tokenHash = this.hashToken(rawRefreshToken);
     await query(`UPDATE refresh_tokens SET revoked = TRUE WHERE token_hash = $1`, [tokenHash]);
+    try {
+      await query(`UPDATE user_sessions SET is_revoked = TRUE WHERE session_token_hash = $1`, [tokenHash]);
+    } catch {}
   }
 }
 

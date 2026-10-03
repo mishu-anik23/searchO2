@@ -39,9 +39,10 @@ export class GuestMergeService {
   /**
    * Verifies a guest recovery code and returns the associated guest user ID.
    */
-  async verifyRecoveryCode(recoveryCode: string): Promise<string | null> {
+  async verifyRecoveryCode(recoveryCode: string, dbClient?: any): Promise<string | null> {
     const normalizedCode = recoveryCode.trim().toUpperCase();
-    const res = await query(
+    const runner = dbClient || { query };
+    const res = await runner.query(
       `SELECT guest_user_id, secret_hash, expires_at, consumed, attempts
        FROM guest_recovery_secrets
        WHERE consumed = FALSE AND expires_at > NOW()`
@@ -67,12 +68,13 @@ export class GuestMergeService {
   async mergeGuestIntoUser(
     targetUserId: string,
     guestIdentifier: string, // guest UUID or GUEST-XXXX recovery code
-    recoveryCodeUsed: boolean = false
+    recoveryCodeUsed: boolean = false,
+    dbClient?: any
   ): Promise<GuestMergeResult> {
     let sourceGuestUserId = guestIdentifier;
 
     if (guestIdentifier.startsWith('GUEST-')) {
-      const verifiedGuestId = await this.verifyRecoveryCode(guestIdentifier);
+      const verifiedGuestId = await this.verifyRecoveryCode(guestIdentifier, dbClient);
       if (!verifiedGuestId) {
         throw { statusCode: 400, message: 'Invalid or expired guest recovery code.' };
       }
@@ -84,7 +86,7 @@ export class GuestMergeService {
       throw { statusCode: 400, message: 'Cannot merge an account into itself.' };
     }
 
-    return transaction(async (client) => {
+    const execute = async (client: any) => {
       // 1. Lock and verify source guest user
       const guestRes = await client.query(
         `SELECT id, role, display_name FROM users WHERE id = $1 FOR UPDATE`,
@@ -207,7 +209,7 @@ export class GuestMergeService {
 
       // 8. Soft-deactivate source guest user record
       await client.query(
-        `UPDATE users SET role = 'guest_merged', updated_at = NOW() WHERE id = $1`,
+        `UPDATE users SET status = 'merged', updated_at = NOW() WHERE id = $1`,
         [sourceGuestUserId]
       );
 
@@ -220,7 +222,12 @@ export class GuestMergeService {
         migratedPlotsCount,
         message: `Guest profile successfully claimed and merged! Retained €${migratedMoney.toFixed(2)} balance and ${migratedPlotsCount} plots.`,
       };
-    });
+    };
+
+    if (dbClient) {
+      return execute(dbClient);
+    }
+    return transaction(execute);
   }
 }
 

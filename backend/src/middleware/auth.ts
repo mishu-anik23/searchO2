@@ -51,3 +51,17 @@ export function requireRegisteredUser(req: Request, res: Response, next: NextFun
   }
   return next();
 }
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  if (!req.user) {
+    res.status(401).json({ error: 'Authentication required. Please sign in.' });
+    return;
+  }
+  if (req.user.role !== 'admin') {
+    res.status(403).json({
+      error: 'Access denied: Administrator privileges required to access this resource.',
+    });
+    return;
+  }
+  return next();
+}
