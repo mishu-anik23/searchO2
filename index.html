@@ -6254,8 +6254,10 @@ var GARAGE_SPOT    = { top: 15.0, left: 87.5, w: 11, h: 20 };
 
 // ---- Buildings & Infrastructure Framework ----
 var BUILDING_TYPES = {
-  road:        { label:'Main Road & Gate', icon:'⛩️', cost:250, buildHours:4, category:'infrastructure', reputationBonus:6,
-    desc:'Grand Farm Main Entry Gate at Eastern entrance and Arterial Transport Road connecting to Storage and the Village. Enables motorized freight trucks and shop visitor access.' },
+  gate:        { label:'Grand Farm Entrance Gate', icon:'⛩️', cost:120, buildHours:2, category:'infrastructure', reputationBonus:5,
+    desc:'3D Ashlar stone and timber perimeter gate establishing farm biosecurity against herbivore intrusion, defining legal estate boundaries, and welcoming visitors.' },
+  road:        { label:'Main Arterial Road', icon:'🛣️', cost:250, buildHours:4, category:'infrastructure', reputationBonus:6,
+    desc:'Central paved arterial highway connecting the Farm Entrance Gate to Storage and the Village. Enables motorized freight trucks and shop visitor access.' },
   crew_shed:   { label:'Crew Shed',        icon:'🏠', cost:200, buildHours:3, category:'infrastructure', reputationBonus:4,
     desc:'Living quarters and tool workshop for farm workers. Must be constructed before hiring Laborers, Farmers, and Botanists.' },
   garage:      { label:'Farm Garage',      icon:'🚜', cost:350, buildHours:4, category:'infrastructure', reputationBonus:5,
@@ -6293,6 +6295,7 @@ var BUILDING_ORDER = ['road','crew_shed','garage','pond','garden','coffee_shop',
 
 // Manhattan Block-Wise Opposing Layout: Symmetrical, generous distances, ample visible road patterns
 var VILLAGE_LAYOUT = {
+  gate:           GATE_SPOT,
   road:           GATE_SPOT,
   crew_shed:      CREW_SHED_SPOT,                      // South West block (top:66, left:8, w:9.5, h:20)
   energy_storage: ENERGY_STORAGE_SPOT,                 // SW utility yard beside Crew Shed (top:66, left:1.2, w:6.6, h:20)
@@ -9685,7 +9688,13 @@ var ACHIEVEMENTS = [
   {id:'lumberjack', label:'🪓 First Removal', check:function(s){return (s.treesRemoved||0)>=1;}},
   {id:'quiz_whiz', label:'🎓 Eco Scholar (3 Quizzes Complete)', check:function(s){return s.quiz && s.quiz.totalCompleted>=3;}},
   {id:'botanical_master', label:'📖 Botanical Master (High Honors)', check:function(s){return s.quiz && s.quiz.history && s.quiz.history.some(function(h){return h.score>=8;});}},
-  {id:'visitor_patron', label:'🚶 Welcoming Host (5 Visitors)', check:function(s){return s.visitorStats && s.visitorStats.totalVisitors>=5;}}
+  {id:'visitor_patron', label:'🚶 Welcoming Host (5 Visitors)', check:function(s){return s.visitorStats && s.visitorStats.totalVisitors>=5;}},
+  {id:'gate_builder', label:'⛩️ Grand Gateway (Entrance Gate Built)', check:function(s){return !!(s.buildings && s.buildings.gate && s.buildings.gate.built);}},
+  {id:'road_paved', label:'🛤️ Macadam Arterial (Main Road Paved)', check:function(s){return !!(s.buildings && s.buildings.road && s.buildings.road.built);}},
+  {id:'knowledge_novice', label:'🌱 Eco Apprentice (50+ Knowledge XP)', check:function(s){return (s.knowledgeXP||0)>=50;}},
+  {id:'knowledge_expert', label:'🎓 Ecological Master (200+ Knowledge XP)', check:function(s){return (s.knowledgeXP||0)>=200;}},
+  {id:'regenerative_steward', label:'🌿 Regenerative Steward (Tilth & Soil Care)', check:function(s){return (s.soilTilth||0)>=60 || (s.stewardship && s.stewardship.tasksCompleted>=3);}},
+  {id:'chapter_champion', label:'🏆 Master of Seasons (Chapter 3+ Reached)', check:function(s){return (s.currentChapter||1)>=3;}}
 ];
 
 var PLOT_COUNT = 6;
@@ -9710,7 +9719,104 @@ var openPanel = null;
 var offlineSummary = null;
 var nextWorkerId = 1;
 
+var STEWARDSHIP_TASKS = {
+  soil_tilth: {
+    key: 'soil_tilth',
+    icon: '🌿',
+    name: 'Regenerative Soil Tilth & Microbial Aeration',
+    cost: 20,
+    hours: 1.5,
+    xp: 5,
+    rep: 4,
+    stat: '+10% Soil Tilth',
+    why: 'Compacted subsoil suffocates root respiration and blocks rain absorption. Microbial broadforking restores porosity and fungal mycorrhizae without disrupting natural soil stratification.',
+    roadmap: 'Available across all chapters. Regular broadforking prevents plot hardpan formation and improves seedling vigor.'
+  },
+  bio_mulch: {
+    key: 'bio_mulch',
+    icon: '🍂',
+    name: 'Organic Biomass Shredding & Bio-Mulching',
+    cost: 15,
+    hours: 1.5,
+    xp: 5,
+    rep: 2,
+    stat: '+15 Compost Units',
+    why: 'Shreds pruned twigs and orchard trimmings into an active carbon-rich protective blanket. Shields topsoil from solar radiation, stops moisture evaporation, and enriches humic crumb.',
+    roadmap: 'Generates direct organic compost for crop plots and keeps soil moisture buffered during dry weather.'
+  },
+  mow_lawn: {
+    key: 'mow_lawn',
+    icon: '🌾',
+    name: 'Pollinator Turf Manicuring & Meadow Mowing',
+    cost: 15,
+    hours: 1.5,
+    xp: 5,
+    rep: 8,
+    stat: 'Curb Appeal & Verges',
+    why: 'Carefully trims estate footpaths and building borders while conserving blooming white clover, dandelion, and wildflower verges for pollinating bee highways.',
+    roadmap: 'Elevates estate curb appeal (+8 Reputation) and provides continuous floral forage across the estate.'
+  },
+  clear_rocks: {
+    key: 'clear_rocks',
+    icon: '🪨',
+    name: 'Geological Boulder Extraction & Road Ballast',
+    cost: 50,
+    hours: 2.0,
+    xp: 15,
+    rep: 5,
+    stat: 'Crushed Rock Ballast',
+    why: 'Extracts massive glacial granite boulders from transport avenues and crushes them into angular stone ballast for macadam road basecourses.',
+    roadmap: 'Chapter 2 milestone: Mandatory clearing required before paving the Main Arterial Road.'
+  },
+  drip_flush: {
+    key: 'drip_flush',
+    icon: '💧',
+    name: 'Drip Emitter Descaling & Sediment Line Flushing',
+    cost: 25,
+    hours: 1.0,
+    xp: 5,
+    rep: 2,
+    stat: '+10% Water Efficiency',
+    why: 'Flushes calcium scale and biological biofilm from micro-irrigation feeder lines, ensuring uniform drip discharge and zero emitter clogging.',
+    roadmap: 'Maintains optimal irrigation flow, lowering water loss and maximizing crop watering efficiency.'
+  },
+  ladybug_release: {
+    key: 'ladybug_release',
+    icon: '🐞',
+    name: 'Beneficial Ladybug Habitat Release & Pest Patrol',
+    cost: 20,
+    hours: 1.0,
+    xp: 5,
+    rep: 3,
+    stat: '+15 Pest Resilience',
+    why: 'Introduces native Coccinellidae (ladybugs) and green lacewings to flowering hedgerows to naturally prey on aphids and thrips without synthetic insecticides.',
+    roadmap: 'Strengthens biological pest control (+15 Resilience) and shields organic crops from destructive pest outbreaks.'
+  }
+};
+
+function ensureStewardshipState(s){
+  if (!s) s = (typeof state !== 'undefined' ? state : null);
+  if (!s) return;
+  if (!s.stewardship){
+    s.stewardship = {
+      soilTilthActive: false,
+      soilTilthHours: 0,
+      bioMulchActive: false,
+      bioMulchHours: 0,
+      irrigationFlushActive: false,
+      irrigationFlushHours: 0,
+      pestPatrolActive: false,
+      pestPatrolHours: 0,
+      soilTilthLevel: 50,
+      waterEfficiency: 80,
+      pestResilience: 70,
+      tasksCompleted: 0
+    };
+  }
+}
+
 function freshState(){
+
   var plots = [];
   for (var i=0;i<PLOT_COUNT;i++){
     plots.push({ id:i, status:'barren', treeType:null, treeId:null, growHours:0, taskHours:0, weedHours:0,
@@ -9736,6 +9842,7 @@ function freshState(){
       market_promenade: {built:false,building:false,buildHours:0,assignedLaborers:[]}
     },
     buildings: {
+      gate: {built:false,building:false,buildHours:0,assignedLaborers:[]},
       road: {built:false,building:false,buildHours:0,assignedLaborers:[]},
       crew_shed: {built:false,building:false,buildHours:0},
       garage: {built:false,building:false,buildHours:0},
@@ -9783,6 +9890,22 @@ function freshState(){
     cattleFenceBuilt: false, cattleFenceBuilding: false, cattleFenceHours: 0,
     rocksCleared: false, rocksClearing: false, rocksClearHours: 0,
     lawnOvergrowth: 0, lawnMowing: false, lawnMowHours: 0,
+    stewardship: {
+      soilTilthActive: false,
+      soilTilthHours: 0,
+      bioMulchActive: false,
+      bioMulchHours: 0,
+      irrigationFlushActive: false,
+      irrigationFlushHours: 0,
+      pestPatrolActive: false,
+      pestPatrolHours: 0,
+      soilTilthLevel: 50,
+      waterEfficiency: 80,
+      pestResilience: 70,
+      tasksCompleted: 0
+    },
+    soilTilth: 50,
+    compost: 0,
     marketplaceUnlocked: {},
     // Chapter-Based Progression & Motivation
     knowledgeXP: 0,
@@ -10002,6 +10125,7 @@ var CHAPTER_DEFINITIONS = [
 // ================= CHAPTER-BASED OBJECT UNLOCKS CATALOG =================
 var OBJECT_CHAPTER_UNLOCKS = {
   plot: { chapter: 1, name: 'Plot Cultivation', icon: '🌱', desc: 'Cultivate bedrock into fertile soil beds for botanical planting.' },
+  gate: { chapter: 2, name: 'Grand Farm Entrance Gate', icon: '⛩️', desc: 'Ashlar stone and timber perimeter gate establishing farm biosecurity and welcoming visitors.' },
   crew_shed: { chapter: 1, name: 'Crew Shed & Depot', icon: '🏠', desc: 'Living quarters and tool equipment racks to recruit farm workers.' },
   laborer: { chapter: 2, name: 'Field Laborer Crew', icon: '👷', desc: 'Skilled workforce to clear bedrock boulders and pave roads.' },
   road: { chapter: 2, name: 'Main Arterial Road', icon: '⛩️', desc: 'Central paved thoroughfare connecting the entrance gate to the granary.' },
@@ -10173,25 +10297,48 @@ var CHAPTER_CHALLENGES = {
       }
     },
     {
-      id: 'ch2_road',
+      id: 'ch2_gate',
       icon: '⛩️',
+      title: 'The Biosecurity Gateway',
+      shortTitle: 'Construct Gate',
+      subtitle: 'Construct an ashlar stone & timber perimeter gate to secure agroforestry saplings against herbivore intrusion and welcome eco-tourists.',
+      whyTopic: 'main_gate',
+      whyLabel: 'Why Biosecurity Gate?',
+      reward: '+15 Knowledge XP · Farm Biosecurity',
+      isUnlocked: function(s) { return !!s.rocksCleared; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.gate && s.buildings.gate.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Built</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(null, \'gate\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Clear Boulders First</button>';
+        if (s.buildings && s.buildings.gate && s.buildings.gate.building) {
+          var gLab = (s.buildings.gate.assignedLaborers && s.buildings.gate.assignedLaborers.length) ? s.buildings.gate.assignedLaborers.length : 1;
+          var prog = formatTaskProgress(s.buildings.gate.buildHours, (BUILDING_TYPES.gate ? BUILDING_TYPES.gate.buildHours : 2.0), Math.min(2.0, Math.max(1.0, gLab)));
+          return '<button class="claim-btn" onclick="openModal(\'building\',\'road\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
+        }
+        return '<button class="claim-btn active" onclick="startBuildGate()" ' + (s.money < (BUILDING_TYPES.gate ? BUILDING_TYPES.gate.cost : 120) ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Gate (€' + (BUILDING_TYPES.gate ? BUILDING_TYPES.gate.cost : 120) + ')</button>';
+      }
+    },
+    {
+      id: 'ch2_road',
+      icon: '🛣️',
       title: 'Arterial Lifeline',
       shortTitle: 'Arterial Road',
       subtitle: 'Pave a durable crushed-stone arterial highway connecting the entrance gate directly to the granary.',
       whyTopic: 'road',
       whyLabel: 'Why Arterial Roads?',
       reward: '+15 Knowledge XP · Road Infrastructure',
-      isUnlocked: function(s) { return !!s.rocksCleared; },
+      isUnlocked: function(s) { return !!s.rocksCleared && (!s.buildings || !s.buildings.gate || s.buildings.gate.built); },
       isComplete: function(s) { return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
       getActionHtml: function(s) {
         if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Paved</span>';
-        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(3)" style="font-size:0.72rem;padding:4px 8px;">🔒 Clear Rocks First</button>';
+        if (!s.rocksCleared) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(null, \'road\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Clear Rocks First</button>';
+        if (s.buildings && s.buildings.gate && !s.buildings.gate.built) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(null, \'road\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Build Gate First</button>';
         if (s.buildings && s.buildings.road && s.buildings.road.building) {
           var rdLab = (s.buildings.road.assignedLaborers && s.buildings.road.assignedLaborers.length) ? s.buildings.road.assignedLaborers.length : 2;
           var prog = formatTaskProgress(s.buildings.road.buildHours, BUILDING_TYPES.road.buildHours, Math.max(1, rdLab/2));
           return '<button class="claim-btn" onclick="openModal(\'building\',\'road\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
         }
-        return '<button class="claim-btn active" onclick="startBuildRoadSegment(\'main\')" ' + (s.money < 120 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Pave (€120)</button>';
+        return '<button class="claim-btn active" onclick="startBuildRoadSegment(\'main\')" ' + (s.money < BUILDING_TYPES.road.cost ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Pave (€' + BUILDING_TYPES.road.cost + ')</button>';
       }
     },
     {
@@ -10729,10 +10876,20 @@ var WHY_TOPICS = {
     libraryLink: 'storage',
     xpReward: 5
   },
+  main_gate: {
+    id: 'main_gate',
+    title: 'Grand Farm Entrance Gate & Biosecurity Perimeter',
+    icon: '⛩️',
+    quickFact: 'An entrance gate creates an essential biosecurity barrier protecting delicate agroforestry saplings from invasive wildlife and delineating estate boundaries.',
+    learnMore: 'Without an entrance gate, wild deer, boars, and stray livestock can wander into young tree plantations and browse tender terminal buds, destroying years of canopy growth in a single night. A majestic gate also serves as the formal reception portal for eco-tourists and commercial transport haulers.',
+    deepDive: 'Perimeter exclusion fencing and biometric/swing gates reduce mammalian wildlife crop damage by >94%. Legally demarcating organic parcel boundaries prevents pesticide drift disputes, while welcoming agritourism visitors with clear signage increases on-farm direct commerce revenue by +25%.',
+    libraryLink: 'main_gate',
+    xpReward: 15
+  },
   road: {
     id: 'road',
     title: 'Arterial Highway & Feeder Subways',
-    icon: '⛩️',
+    icon: '🛣️',
     quickFact: 'Paved arterial roads allow heavy supply carts, tractors, and visitors to travel swiftly without getting stuck in mud.',
     learnMore: 'A farm without arterial roads is isolated. Paved infrastructure lowers transport friction, connects fields to granary loading bays, and increases farm credibility and eco-tourist visits.',
     deepDive: 'Rolling resistance Crr decreases from 0.08 on muddy dirt to 0.015 on compacted gravel/macadam, saving 80% hauling energy and tripling worker logistics velocity.',
@@ -11127,6 +11284,10 @@ function getOxyTip() {
 
 function whyModalHtml(topicKey, activeDepth) {
   var aliasMap = {
+    biosecurity_gate: 'main_gate',
+    main_gate: 'main_gate',
+    entrance_gate: 'main_gate',
+    gate: 'main_gate',
     soil_aeration: 'plot',
     division_of_labor: 'crew_shed',
     rural_infrastructure: 'road',
@@ -16786,7 +16947,10 @@ function advanceGame(dh){
     var b = state.buildings[key]; var def = BUILDING_TYPES[key];
     if (b && b.building && def){
       var laborSpeedMult = 1.0;
-      if (key === 'road'){
+      if (key === 'gate'){
+        var assignedLab = (b.assignedLaborers && b.assignedLaborers.length) ? b.assignedLaborers.length : 1;
+        laborSpeedMult = Math.min(2.0, Math.max(1.0, assignedLab)); // 1 laborer = 1x (2h), 2 laborers = 2x (1h)
+      } else if (key === 'road'){
         var assignedLab = (b.assignedLaborers && b.assignedLaborers.length) ? b.assignedLaborers.length : 2;
         laborSpeedMult = Math.max(1.0, assignedLab / 2);
       }
@@ -16794,22 +16958,25 @@ function advanceGame(dh){
       if (b.buildHours >= def.buildHours){
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
         b.building=false; b.built=true;
-        if (key === 'road' && b.assignedLaborers && b.assignedLaborers.length){
+        if ((key === 'gate' || key === 'road') && b.assignedLaborers && b.assignedLaborers.length){
           b.assignedLaborers.forEach(function(wid){
             var w = state.workers.find(function(wk){ return wk.id === wid; });
             if (w){
               w.assignedBuilding = null;
-              if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'crew_shed', 'road');
+              if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'crew_shed', key);
             }
           });
           b.assignedLaborers = [];
         }
         pushReport(def.icon+' '+def.label+' construction complete! '+(def.category==='decorative' ? 'Reputation +'+def.reputationBonus+'.' : 'Ready to operate.'));
-        if (key==='garden') showNotification('🌷','Your Garden is ready — choose what to plant!','building',key);
+        if (key==='gate'){
+          if (typeof addKnowledgeXP === 'function') addKnowledgeXP(15, 'Ecosystem Biosecurity Gate Built');
+          showNotification('⛩️', 'Grand Farm Entrance Gate built! Boundary secured against pests & ready to pave Main Road (+15 XP).', 'building', 'gate');
+        } else if (key==='garden') showNotification('🌷','Your Garden is ready — choose what to plant!','building',key);
         else if (key==='pond') showNotification('🪷','Your Pond is ready — choose Fish Farm or Duck Farm!','building',key);
         else if (key==='crop_field') showNotification('🌾','Crop Field constructed — ready to sow crops!','building',key);
         else if (key==='cattle_farm') showNotification('🐄','Cattle Farm constructed — 4 stalls ready to adopt cows & sheep!','building',key);
-        else if (key==='road') showNotification('⛩️','Main Arterial Road constructed! Heavy transport gate is now open.','building',key);
+        else if (key==='road') showNotification('🛣️','Main Arterial Road constructed! Heavy transport corridor is now open.','building',key);
         else if (key==='energy_storage'){
           b.storedKWh = 0;
           b.maxKWh = 500;
@@ -16993,6 +17160,8 @@ function advanceGame(dh){
     if (state.rocksClearHours >= 2){
       state.rocksClearing = false;
       state.rocksCleared = true;
+      if (typeof addKnowledgeXP === 'function') addKnowledgeXP(15, 'Geological Boulder Extraction & Road Ballast');
+      if (state.stewardship) state.stewardship.tasksCompleted = (state.stewardship.tasksCompleted || 0) + 1;
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
       pushReport('🪨 Boulders and rock obstacles successfully cleared from road corridor! Paving unlocked.');
       showNotification('🪨', 'Boulders cleared! Road corridor is ready for paving.', 'building', 'road');
@@ -17107,6 +17276,9 @@ function advanceGame(dh){
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
       pushReport('🌿 Estate lawn mowed and manicured! Pristine grounds restored (+5 reputation).');
       showNotification('🌿', 'Lawn manicured! Farm curb appeal restored.', 'tasks', null);
+      if (typeof addKnowledgeXP === 'function') addKnowledgeXP(5, 'Pollinator Turf Manicuring & Meadow Mowing');
+      state.reputation = (state.reputation || 0) + 8;
+      if (state.stewardship) state.stewardship.tasksCompleted = (state.stewardship.tasksCompleted || 0) + 1;
       if (state.lawnWorkerId !== undefined){
         var lnW = state.workers.find(function(w){ return w.id === state.lawnWorkerId; });
         if (lnW && typeof animateWorkerPathWalk === 'function'){
@@ -17118,6 +17290,106 @@ function advanceGame(dh){
   } else {
     // Lawn grass gradually grows over time (1.2% per game hour)
     state.lawnOvergrowth = Math.min(100, (state.lawnOvergrowth || 0) + dh * 1.2);
+  }
+
+  // Regenerative Stewardship Timers
+  if (state.stewardship){
+    if (state.stewardship.soilTilthActive){
+      state.stewardship.soilTilthHours += dh;
+      if (state.stewardship.soilTilthHours >= 1.5){
+        state.stewardship.soilTilthActive = false;
+        state.stewardship.soilTilthLevel = Math.min(100, (state.stewardship.soilTilthLevel || 50) + 10);
+        state.soilTilth = state.stewardship.soilTilthLevel;
+        state.stewardship.tasksCompleted = (state.stewardship.tasksCompleted || 0) + 1;
+        state.reputation = (state.reputation || 0) + 4;
+        if (typeof addKnowledgeXP === 'function') addKnowledgeXP(5, 'Regenerative Soil Tilth & Microbial Aeration');
+        pushReport('🌿 Subsoil broadforking complete! Microbial porosity and fungal mycorrhizae restored (+5 XP, +4 Rep).');
+        showNotification('🌿', 'Soil Tilth Aerated! Infiltration boosted (+5 Knowledge XP).', 'tasks', null);
+        if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+        if (state.stewardship.soilTilthWorkerId !== undefined){
+          var stW = state.workers.find(function(w){ return w.id === state.stewardship.soilTilthWorkerId; });
+          if (stW && typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(stW, 'crew_shed', 'lawn');
+          delete state.stewardship.soilTilthWorkerId;
+        }
+      }
+    }
+    if (state.stewardship.bioMulchActive){
+      state.stewardship.bioMulchHours += dh;
+      if (state.stewardship.bioMulchHours >= 1.5){
+        state.stewardship.bioMulchActive = false;
+        state.compost = (state.compost || 0) + 15;
+        state.stewardship.tasksCompleted = (state.stewardship.tasksCompleted || 0) + 1;
+        state.reputation = (state.reputation || 0) + 2;
+        if (typeof addKnowledgeXP === 'function') addKnowledgeXP(5, 'Organic Biomass Bio-Mulching');
+        pushReport('🍂 Biomass shredded and distributed! Topsoil evaporation shielded (+15 Compost, +5 XP).');
+        showNotification('🍂', 'Bio-Mulch Applied! Protective topsoil blanket active (+15 Compost, +5 XP).', 'tasks', null);
+        if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+        if (state.stewardship.bioMulchWorkerId !== undefined){
+          var bmW = state.workers.find(function(w){ return w.id === state.stewardship.bioMulchWorkerId; });
+          if (bmW && typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(bmW, 'crew_shed', 'lawn');
+          delete state.stewardship.bioMulchWorkerId;
+        }
+      }
+    }
+    if (state.stewardship.irrigationFlushActive){
+      state.stewardship.irrigationFlushHours += dh;
+      if (state.stewardship.irrigationFlushHours >= 1.0){
+        state.stewardship.irrigationFlushActive = false;
+        state.stewardship.waterEfficiency = Math.min(100, (state.stewardship.waterEfficiency || 80) + 10);
+        state.stewardship.tasksCompleted = (state.stewardship.tasksCompleted || 0) + 1;
+        if (typeof addKnowledgeXP === 'function') addKnowledgeXP(5, 'Irrigation Sediment Line Flushing');
+        pushReport('💧 Drip irrigation lines flushed and descaled! High water efficiency restored (+5 XP).');
+        showNotification('💧', 'Drip Lines Descaled! Flow balance restored (+10% Water Efficiency, +5 XP).', 'tasks', null);
+        if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+        if (state.stewardship.irrigationWorkerId !== undefined){
+          var irW = state.workers.find(function(w){ return w.id === state.stewardship.irrigationWorkerId; });
+          if (irW && typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(irW, 'crew_shed', 'lawn');
+          delete state.stewardship.irrigationWorkerId;
+        }
+      }
+    }
+    if (state.stewardship.pestPatrolActive){
+      state.stewardship.pestPatrolHours += dh;
+      if (state.stewardship.pestPatrolHours >= 1.0){
+        state.stewardship.pestPatrolActive = false;
+        state.stewardship.pestResilience = Math.min(100, (state.stewardship.pestResilience || 70) + 15);
+        state.stewardship.tasksCompleted = (state.stewardship.tasksCompleted || 0) + 1;
+        state.reputation = (state.reputation || 0) + 3;
+        if (typeof addKnowledgeXP === 'function') addKnowledgeXP(5, 'Beneficial Ladybug Habitat Release');
+        pushReport('🐞 Beneficial ladybugs released along hedgerow! Natural pest balance restored (+5 XP, +3 Rep).');
+        showNotification('🐞', 'Ladybug Habitat Active! Biological aphid protection boosted (+5 XP).', 'tasks', null);
+        if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+      }
+    }
+  }
+
+  // Grand Farm Entrance Gate Construction Timer
+  if (state.buildings && state.buildings.gate && state.buildings.gate.building){
+    var gb = state.buildings.gate;
+    var gDef = BUILDING_TYPES.gate || { cost: 120, buildHours: 2.0 };
+    var gAssigned = (gb.assignedLaborers && gb.assignedLaborers.length) ? gb.assignedLaborers.length : 1;
+    var gSpeed = Math.min(2.0, Math.max(1.0, gAssigned)); // 1 worker = 1.0x speed (2h), 2 workers = 2.0x speed (1h)
+    gb.buildHours += dh * gSpeed;
+    if (gb.buildHours >= gDef.buildHours){
+      gb.buildHours = gDef.buildHours;
+      gb.building = false;
+      gb.built = true;
+      if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+      pushReport('⛩️ Grand Farm Entrance Gate construction completed! Farm biosecurity established (+15 Knowledge XP, +5 Reputation).');
+      showNotification('⛩️', 'Grand Farm Entrance Gate completed (+15 Knowledge XP)!', 'building', 'gate');
+      if (typeof addKnowledgeXP === 'function') addKnowledgeXP(15, 'Grand Farm Entrance Gate & Biosecurity');
+      state.reputation = (state.reputation || 0) + (gDef.reputationBonus || 5);
+      if (gb.assignedLaborers && gb.assignedLaborers.length > 0){
+        gb.assignedLaborers.forEach(function(wId){
+          var w = state.workers.find(function(x){ return x.id === wId; });
+          if (w){
+            w.assignedBuilding = null;
+            if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'crew_shed', 'gate');
+          }
+        });
+        gb.assignedLaborers = [];
+      }
+    }
   }
 
   // Block-wise road construction timers
@@ -17710,7 +17982,183 @@ function startClearRocks(dispatchedFromPrep, specificWorkerId){
   pushReport('🪨 Dispatched Field Laborer ' + (worker ? (worker.name || ('#' + worker.id)) : '') + ' with Heavy Trenching Spade & Pickaxe to clear boulders from the road corridor (€' + cost + ' · 2h).');
   render(); requestSave();
 }
+
+function stewardSoilTilth(){
+  ensureStewardshipState();
+  if (state.stewardship.soilTilthActive) return;
+  if (!hasAvailableFieldWorker()){
+    showNotification('👷', 'Recruit a Laborer or Farmer from the Crew Shed to aerate subsoil!', 'building', 'crew_shed');
+    return;
+  }
+  var cost = 20;
+  if (state.money < cost){
+    showNotification('🪙', 'Insufficient funds (€' + cost + ' needed) for subsoil aeration.', 'tasks', null);
+    return;
+  }
+  state.money -= cost;
+  state.stewardship.soilTilthActive = true;
+  state.stewardship.soilTilthHours = 0;
+  var worker = state.workers.find(function(w){
+    return (w.type === 'laborer' || w.type === 'farmer') && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
+  });
+  if (worker){
+    state.stewardship.soilTilthWorkerId = worker.id;
+    if (typeof activeModal !== 'undefined' && activeModal) closeModal();
+    if (typeof openPanel !== 'undefined' && openPanel) closePanel();
+    if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'lawn');
+  }
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+  pushReport('🌿 Dispatched ' + (worker ? WORKER_TYPES[worker.type].label : 'Worker') + ' with broadfork for regenerative subsoil tilth and microbial aeration (€' + cost + ' · 1.5h).');
+  render(); requestSave();
+}
+
+function stewardBioMulch(){
+  ensureStewardshipState();
+  if (state.stewardship.bioMulchActive) return;
+  if (!hasAvailableFieldWorker()){
+    showNotification('👷', 'Recruit a Laborer or Farmer from the Crew Shed to shred biomass!', 'building', 'crew_shed');
+    return;
+  }
+  var cost = 15;
+  if (state.money < cost){
+    showNotification('🪙', 'Insufficient funds (€' + cost + ' needed) for bio-mulching.', 'tasks', null);
+    return;
+  }
+  state.money -= cost;
+  state.stewardship.bioMulchActive = true;
+  state.stewardship.bioMulchHours = 0;
+  var worker = state.workers.find(function(w){
+    return (w.type === 'laborer' || w.type === 'farmer') && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
+  });
+  if (worker){
+    state.stewardship.bioMulchWorkerId = worker.id;
+    if (typeof activeModal !== 'undefined' && activeModal) closeModal();
+    if (typeof openPanel !== 'undefined' && openPanel) closePanel();
+    if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'lawn');
+  }
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+  pushReport('🍂 Dispatched ' + (worker ? WORKER_TYPES[worker.type].label : 'Worker') + ' to shred organic biomass into protective soil armor (€' + cost + ' · 1.5h).');
+  render(); requestSave();
+}
+
+function stewardIrrigationFlush(){
+  ensureStewardshipState();
+  if (state.stewardship.irrigationFlushActive) return;
+  if (!hasAvailableFieldWorker()){
+    showNotification('👷', 'Recruit a Laborer or Farmer to descale irrigation lines!', 'building', 'crew_shed');
+    return;
+  }
+  var cost = 25;
+  if (state.money < cost){
+    showNotification('🪙', 'Insufficient funds (€' + cost + ' needed) for irrigation descaling.', 'tasks', null);
+    return;
+  }
+  state.money -= cost;
+  state.stewardship.irrigationFlushActive = true;
+  state.stewardship.irrigationFlushHours = 0;
+  var worker = state.workers.find(function(w){
+    return (w.type === 'laborer' || w.type === 'farmer') && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
+  });
+  if (worker){
+    state.stewardship.irrigationWorkerId = worker.id;
+    if (typeof activeModal !== 'undefined' && activeModal) closeModal();
+    if (typeof openPanel !== 'undefined' && openPanel) closePanel();
+    if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(worker, 'lawn');
+  }
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+  pushReport('💧 Dispatched ' + (worker ? WORKER_TYPES[worker.type].label : 'Worker') + ' to descale drip lines and flush sediment deposits (€' + cost + ' · 1h).');
+  render(); requestSave();
+}
+
+function stewardLadybugRelease(){
+  ensureStewardshipState();
+  if (state.stewardship.pestPatrolActive) return;
+  var cost = 20;
+  if (state.money < cost){
+    showNotification('🪙', 'Insufficient funds (€' + cost + ' needed) for biological pest control.', 'tasks', null);
+    return;
+  }
+  state.money -= cost;
+  state.stewardship.pestPatrolActive = true;
+  state.stewardship.pestPatrolHours = 0;
+  if (typeof activeModal !== 'undefined' && activeModal) closeModal();
+  if (typeof openPanel !== 'undefined' && openPanel) closePanel();
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+  pushReport('🐞 Released beneficial native ladybug & lacewing colonies along perimeter hedgerow banks (€' + cost + ' · 1h).');
+  render(); requestSave();
+}
+
+function showStewardshipRoadmap(tk){
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+  if (typeof closeLockedStepPopup === 'function') closeLockedStepPopup();
+  ensureStewardshipState();
+  var tsk = STEWARDSHIP_TASKS[tk];
+  if (!tsk) return;
+
+  var actionCall = (tk === 'clear_rocks' ? 'prepareClearRocksTask()' :
+    (tk === 'mow_lawn' ? 'startMowLawn()' :
+    (tk === 'soil_tilth' ? 'stewardSoilTilth()' :
+    (tk === 'bio_mulch' ? 'stewardBioMulch()' :
+    (tk === 'drip_flush' ? 'stewardIrrigationFlush()' : 'stewardLadybugRelease()')))));
+
+  var html = '<div class="step-instruction-popup-wrapper" id="stepInstructionPopupWrapper" onclick="if(event.target===this)closeLockedStepPopup()">' +
+    '<div class="step-instruction-popup-card" onmouseenter="pauseLockedStepPopupTimer()" onmouseleave="resumeLockedStepPopupTimer()" ontouchstart="pauseLockedStepPopupTimer()">' +
+      '<div class="step-instruction-popup-header">' +
+        '<div class="step-instruction-popup-title">' +
+          '<span>' + tsk.icon + '</span>' +
+          '<span>' + tsk.name + '</span>' +
+        '</div>' +
+        '<button class="step-instruction-popup-close" onclick="closeLockedStepPopup()" title="Close Details">✕</button>' +
+      '</div>' +
+      '<div class="step-instruction-popup-body">' +
+        '<div class="step-instruction-lock-banner" style="background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7;">' +
+          '<span>🌿</span>' +
+          '<span>Regenerative Stewardship Task · €' + tsk.cost + ' · ' + tsk.hours + 'h</span>' +
+        '</div>' +
+        '<div class="step-instruction-box">' +
+          '<div class="step-instruction-box-title"><span>🌱</span> Scientific &amp; Ecological Rationale:</div>' +
+          '<div class="step-instruction-box-content" style="line-height:1.45;">' + tsk.why + '</div>' +
+        '</div>' +
+        '<div class="step-instruction-box">' +
+          '<div class="step-instruction-box-title"><span>🏆</span> Educational &amp; Farm Awards:</div>' +
+          '<div class="step-instruction-box-content">' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+              '<span style="background:#E8F5E9;color:#2E7D32;padding:3px 8px;border-radius:6px;font-weight:800;font-size:0.75rem;">+' + tsk.xp + ' Knowledge XP</span>' +
+              '<span style="background:#FFF3E0;color:#E65100;padding:3px 8px;border-radius:6px;font-weight:800;font-size:0.75rem;">+' + tsk.rep + ' Reputation</span>' +
+              '<span style="background:#E1F5FE;color:#0277BD;padding:3px 8px;border-radius:6px;font-weight:800;font-size:0.75rem;">' + tsk.stat + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="step-instruction-box">' +
+          '<div class="step-instruction-box-title"><span>🗺️</span> Regenerative Roadmap Alignment:</div>' +
+          '<div class="step-instruction-box-content">' + tsk.roadmap + '</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">' +
+          '<button class="primary" onclick="closeLockedStepPopup();' + actionCall + '" style="flex:1;min-height:42px;font-size:0.86rem;font-weight:800;border-radius:12px;">' +
+            '👉 Execute Stewardship (€' + tsk.cost + ')' +
+          '</button>' +
+          '<button class="secondary mini-btn" onclick="closeLockedStepPopup()" style="padding:0 12px;border-radius:12px;font-weight:700;">' +
+            '✕ Dismiss' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="step-instruction-timer-track">' +
+        '<div class="step-instruction-timer-fill" id="stepPopupProgress"></div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  var div = document.createElement('div');
+  div.innerHTML = html;
+  document.body.appendChild(div.firstChild);
+
+  _lockedStepPopupStartTime = Date.now();
+  _lockedStepPopupRemaining = 8000;
+  _lockedStepPopupTimer = setTimeout(closeLockedStepPopup, 8000);
+}
+
 function startMowLawn(){
+
   if (state.lawnMowing || (state.lawnOvergrowth || 0) < 30) return;
   if (!hasAvailableFieldWorker()){
     showNotification('👷', 'Recruit a Laborer or Farmer from the Crew Shed to mow the lawn!', 'building', 'crew_shed');
@@ -18750,6 +19198,107 @@ function getIdleLaborers(){
   });
 }
 
+function startBuildGate(requestedCount){
+  var allLaborers = state.workers.filter(function(w){ return w.type === 'laborer'; });
+  if (allLaborers.length < 1){
+    showNotification('👷', 'Constructing the Grand Farm Entrance Gate requires at least 1 recruited Laborer! Recruit personnel from the Crew Shed.', 'building', 'crew_shed');
+    pushReport('⚠️ Gate construction halted: At least 1 Field Laborer must be recruited.');
+    return false;
+  }
+  var idleLaborers = getIdleLaborers();
+  if (idleLaborers.length < 1){
+    showNotification('👷', 'At least 1 idle Laborer is required to begin constructing the Entrance Gate. Recall busy crew or recruit more.', 'building', 'crew_shed');
+    pushReport('⚠️ Gate construction waiting: Idle Laborer needed on site.');
+    return false;
+  }
+  if (!state.rocksCleared){
+    showNotification('⛏️', 'Bedrock boulders must be cleared from the entrance corridor before laying gate foundations!', 'building', 'road');
+    return false;
+  }
+  if (!state.buildings.gate){
+    state.buildings.gate = { built: false, building: false, buildHours: 0, assignedLaborers: [] };
+  }
+  var b = state.buildings.gate;
+  var def = BUILDING_TYPES.gate || { cost: 120, buildHours: 2.0 };
+  if (b.built || b.building) return false;
+  if (state.money < def.cost) return false;
+
+  adjustMoney(-def.cost, 'build_gate');
+  b.building = true;
+  b.buildHours = 0;
+
+  var toAssign = 1;
+  if (typeof requestedCount === 'number') {
+    toAssign = Math.min(2, Math.max(1, requestedCount));
+  }
+  var assigned = [];
+  for (var i = 0; i < toAssign && i < idleLaborers.length; i++){
+    var lab = idleLaborers[i];
+    lab.assignedBuilding = 'gate';
+    assigned.push(lab.id);
+  }
+  b.assignedLaborers = assigned;
+
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('pave');
+  var speedLabel = assigned.length === 2 ? '200% speed (1.0h)' : '100% speed (2.0h)';
+  pushReport('⛩️ Began constructing Grand Farm Entrance Gate (€' + def.cost + ') with ' + assigned.length + ' Laborers assigned (' + speedLabel + ').');
+  showNotification('⛩️', 'Began constructing Entrance Gate with ' + assigned.length + ' Laborers (' + speedLabel + ')!', 'building', 'gate');
+  closeModal(); // Smooth auto-close rule to reveal canvas visual activities
+
+  var gateEl = document.querySelector('.main-road-click-zone') || document.querySelector('[data-building="road"]');
+  if (gateEl){
+    gateEl.classList.add('spot-target-highlight');
+    setTimeout(function(){ if (gateEl) gateEl.classList.remove('spot-target-highlight'); }, 3500);
+  }
+  render(); requestSave();
+  return true;
+}
+
+function assignLaborerToGate(specificWorkerId){
+  var b = state.buildings && state.buildings.gate;
+  if (!b || !b.building) return false;
+  if (!b.assignedLaborers) b.assignedLaborers = [];
+  if (b.assignedLaborers.length >= 2){
+    showNotification('⚠️', 'Maximum 2 Laborers can work simultaneously on the Entrance Gate site!', 'building', 'gate');
+    return false;
+  }
+  var idleLaborers = getIdleLaborers();
+  var lab = null;
+  if (specificWorkerId !== undefined && specificWorkerId !== null){
+    lab = idleLaborers.find(function(w){ return w.id === specificWorkerId; });
+  }
+  if (!lab && idleLaborers.length > 0){
+    lab = idleLaborers[0];
+  }
+  if (!lab){
+    showNotification('👷', 'No idle Laborers available. Recruit more in the Crew Shed.', 'building', 'crew_shed');
+    return false;
+  }
+  b.assignedLaborers.push(lab.id);
+  lab.assignedBuilding = 'gate';
+  pushReport('👷 Assigned extra Laborer ' + (lab.name || ('#' + lab.id)) + ' to Gate crew (2 Laborers · 200% speed · 1.0h build time).');
+  showNotification('👷', (lab.name || 'Laborer') + ' joined Gate crew (+100% speed ➔ 2x faster)!', 'building', 'gate');
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+  render(); requestSave();
+  return true;
+}
+
+function unassignLaborerFromGate(workerId){
+  var b = state.buildings.gate;
+  if (!b || !b.assignedLaborers || b.assignedLaborers.length <= 1){
+    showNotification('⚠️', 'At least 1 Laborer is required to maintain Gate construction!', 'building', 'gate');
+    return;
+  }
+  b.assignedLaborers = b.assignedLaborers.filter(function(id){ return id !== workerId; });
+  var w = state.workers.find(function(wk){ return wk.id === workerId; });
+  if (w){
+    w.assignedBuilding = null;
+    if (typeof animateWorkerPathWalk === 'function') animateWorkerPathWalk(w, 'crew_shed', 'gate');
+  }
+  showNotification('👷', (w ? (w.name || 'Laborer') : 'Laborer') + ' recalled from Gate crew.', 'building', 'crew_shed');
+  render(); requestSave();
+}
+
 function startBuildRoadSegment(segmentKey){
   if (segmentKey === 'main'){
     var allLaborers = state.workers.filter(function(w){ return w.type === 'laborer'; });
@@ -18770,6 +19319,11 @@ function startBuildRoadSegment(segmentKey){
       } else {
         prepareClearRocksTask();
       }
+      return;
+    }
+    if (state.buildings && state.buildings.gate && !state.buildings.gate.built){
+      showNotification('⛩️', 'Grand Farm Entrance Gate must be constructed before paving the Main Arterial Road! Secure estate biosecurity first.', 'building', 'gate');
+      pushReport('⚠️ Main Road paving blocked: Grand Farm Entrance Gate must be constructed first.');
       return;
     }
     var b = state.buildings.road;
@@ -19489,8 +20043,8 @@ function openModal(type, plotId){
   // Enforce progression locks on game object clicks
   if (type === 'plot'){
     if (!state.storage || !state.storage.built){
-      showLockedStepPopup(5);
-      showNotification('🔒', 'Plot Cultivation Locked: Construct Storage Granary Barn (Step 4) first!', 'storage', 'storage');
+      showLockedStepPopup(null, 'plot');
+      showNotification('🔒', 'Plot Cultivation Locked: Prepare Granary Barn (Chapter 2) first to store harvests!', 'storage', 'storage');
       pushReport('🔒 Plots Locked: Field plots require a constructed Storage Barn to store harvests.');
       return;
     }
@@ -19498,26 +20052,26 @@ function openModal(type, plotId){
 
   if (type === 'storage'){
     if (!state.storage.built && (!state.buildings.road || !state.buildings.road.built)){
-      showLockedStepPopup(4);
-      showNotification('🔒', 'Storage Granary Barn Locked: Pave the Main Arterial Road (Step 3) first!', 'building', 'road');
+      showLockedStepPopup(null, 'storage');
+      showNotification('🔒', 'Storage Granary Barn Locked: Pave the Main Arterial Road (Chapter 2) first!', 'building', 'road');
       pushReport('🔒 Storage Locked: Transport wagons cannot reach the estate without the Main Arterial Road.');
       return;
     }
   }
 
   if (type === 'building'){
-    if (plotId === 'road'){
+    if (plotId === 'road' || plotId === 'gate'){
       if (!state.buildings.crew_shed || !state.buildings.crew_shed.built){
-        showLockedStepPopup(1);
-        showNotification('🔒', 'Roadworks Locked: Construct Crew Shed & Depot (Step 1) first!', 'building', 'crew_shed');
-        pushReport('🔒 Roadworks Locked: Living quarters and crew depot required before starting roadworks.');
+        showLockedStepPopup(null, 'crew_shed');
+        showNotification('🔒', 'Infrastructure Locked: Construct Crew Shed & Depot (Chapter 1) first!', 'building', 'crew_shed');
+        pushReport('🔒 Infrastructure Locked: Living quarters and crew depot required before starting roadworks.');
         return;
       }
       var hasLaborer = state.workers && state.workers.some(function(w){ return w.type === 'laborer'; });
       if (!hasLaborer){
-        showLockedStepPopup(2);
-        showNotification('🔒', 'Roadworks Locked: Recruit a Field Laborer at Crew Shed (Step 2) to clear boulders and pave road!', 'building', 'crew_shed');
-        pushReport('🔒 Roadworks Locked: A recruited Field Laborer is required to clear boulders and pave the road.');
+        showLockedStepPopup(null, 'laborer');
+        showNotification('🔒', 'Infrastructure Locked: Recruit a Field Laborer at Crew Shed (Chapter 2) to clear boulders, build gate & pave road!', 'building', 'crew_shed');
+        pushReport('🔒 Infrastructure Locked: A recruited Field Laborer is required to clear boulders, build gate and pave road.');
         return;
       }
       if (!state.rocksCleared){
@@ -19531,8 +20085,8 @@ function openModal(type, plotId){
     } else if (plotId === 'wind_turbine' || (plotId && plotId.indexOf('wt_') === 0)){
       var hasEng = state.workers && state.workers.some(function(w){ return w.type === 'engineer'; });
       if (!hasEng){
-        showLockedStepPopup(6);
-        showNotification('🔒', 'Wind Turbine Grid Locked: Recruit a certified Engineer at Crew Shed (Step 6) first!', 'building', 'crew_shed');
+        showLockedStepPopup(null, 'engineer');
+        showNotification('🔒', 'Wind Turbine Grid Locked: Recruit a certified Engineer at Crew Shed (Chapter 5) first!', 'building', 'crew_shed');
         pushReport('🔒 Wind Grid Locked: A certified Engineer is required to engineer and supervise the wind turbine installation.');
         return;
       }
@@ -19541,15 +20095,15 @@ function openModal(type, plotId){
       var wts = state.buildings && state.buildings.wind_turbines;
       var wtCommissioned = wts && wts.wt_nw.commissioned && wts.wt_ne.commissioned;
       if (!wtCommissioned){
-        showLockedStepPopup(8);
-        showNotification('🔒', 'BESS Battery Substation Locked: Commission the Wind Turbine Grid (Step 7) first!', 'building', 'wind_turbine');
+        showLockedStepPopup(null, 'energy_storage');
+        showNotification('🔒', 'BESS Battery Substation Locked: Commission the Wind Turbine Grid (Chapter 5) first!', 'building', 'wind_turbine');
         pushReport('🔒 BESS Substation Locked: Renewable wind generation required before commissioning energy storage.');
         return;
       }
     } else if (plotId && BUILDING_TYPES[plotId] && BUILDING_TYPES[plotId].requiresRoad){
       if (!state.buildings.road || !state.buildings.road.built){
         showLockedStepPopup(null, plotId);
-        showNotification('🔒', (BUILDING_TYPES[plotId] ? BUILDING_TYPES[plotId].label : 'Facility') + ' Locked: Pave Main Arterial Road (Step 3) first!', 'building', 'road');
+        showNotification('🔒', (BUILDING_TYPES[plotId] ? BUILDING_TYPES[plotId].label : 'Facility') + ' Locked: Pave Main Arterial Road (Chapter 2) first!', 'building', 'road');
         pushReport('🔒 Construction Locked: ' + (BUILDING_TYPES[plotId] ? BUILDING_TYPES[plotId].label : 'Facility') + ' requires the Main Arterial Road.');
         return;
       }
@@ -20826,7 +21380,7 @@ var FARM_PROGRESSION_STEPS = [
     icon: '🏠',
     title: 'Construct Crew Shed & Depot',
     subtitle: 'Tool depot & living quarters to hire farm workers & engineers',
-    badgeText: 'Step 1: Crew Shed',
+    badgeText: 'Ch. 1: Crew Shed',
     cost: 140,
     costLabel: '€140',
     targetType: 'building',
@@ -20847,7 +21401,7 @@ var FARM_PROGRESSION_STEPS = [
     icon: '👷',
     title: 'Recruit Field Laborer',
     subtitle: 'Hire a Laborer at the Crew Shed to tend grounds & clear road boulders',
-    badgeText: 'Step 2: Hire Laborer',
+    badgeText: 'Ch. 2: Hire Laborer',
     cost: 15,
     costLabel: '€15/d wage',
     targetType: 'building',
@@ -20858,7 +21412,7 @@ var FARM_PROGRESSION_STEPS = [
     unlockedWhen: function(s){ return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
     isComplete: function(s){ return !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })); },
     instructions: {
-      afterWhich: 'Unlocks after Step 1 (Construct Crew Shed & Depot) is built and operational.',
+      afterWhich: 'Unlocks in Chapter 2 after Crew Shed & Depot (Chapter 1) is built and operational.',
       howTo: '1. Build the Crew Shed & Depot (Step 1).\n2. Open the Crew Shed and click "Recruit Laborer" (€15/d wage).\n3. Field Laborer reports to bunkhouse, required to clear boulders from the road.'
     }
   },
@@ -20868,7 +21422,7 @@ var FARM_PROGRESSION_STEPS = [
     icon: '⛩️',
     title: 'Clear Boulders & Pave Main Road',
     subtitle: 'Clear bedrock boulders with spade/pickaxe, then pave the arterial road',
-    badgeText: 'Step 3: Pave Road',
+    badgeText: 'Ch. 2: Pave Road',
     cost: 170,
     costLabel: '€50 clear + €120 pave',
     targetType: 'building',
@@ -20879,7 +21433,7 @@ var FARM_PROGRESSION_STEPS = [
     unlockedWhen: function(s){ return !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })); },
     isComplete: function(s){ return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
     instructions: {
-      afterWhich: 'Unlocks after Step 2 (Recruit Field Laborer) is hired.',
+      afterWhich: 'Unlocks in Chapter 2 after clearing boulders and erecting the Grand Entrance Gate.',
       howTo: '1. Recruit a Field Laborer at the Crew Shed (Step 2).\n2. Acquire a Heavy Trenching Spade & Pickaxe (€45 buy or €6/d lease).\n3. Clear boulder obstacles from the road corridor (€50 · 2h).\n4. Pave the Main Arterial Road (€120) to enable supply wagons and visitor access.\n5. (Optional): Pave feeder subways to boost Farm Credibility (+Reputation) and worker speed.'
     }
   },
@@ -20889,7 +21443,7 @@ var FARM_PROGRESSION_STEPS = [
     icon: '🏚️',
     title: 'Build Storage Granary Barn',
     subtitle: 'Prevents harvest spoilage & holds farm crops for market sale',
-    badgeText: 'Step 4: Storage',
+    badgeText: 'Ch. 2: Storage',
     cost: (typeof STORAGE_COST !== 'undefined' ? STORAGE_COST : 100),
     costLabel: '€' + (typeof STORAGE_COST !== 'undefined' ? STORAGE_COST : 100),
     targetType: 'storage',
@@ -20900,7 +21454,7 @@ var FARM_PROGRESSION_STEPS = [
     unlockedWhen: function(s){ return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
     isComplete: function(s){ return !!(s.storage && s.storage.built); },
     instructions: {
-      afterWhich: 'Unlocks after Step 3 (Main Arterial Road paved), allowing supply wagons to reach the barn site.',
+      afterWhich: 'Unlocks in Chapter 2 after Main Arterial Road is paved, allowing supply wagons to reach the barn site.',
       howTo: '1. Pave the Main Arterial Road (Step 3).\n2. Click the Granary Barn plot peg or HUD Storage button.\n3. Construct the Granary Barn (€100) to safeguard harvested crops from rotting.'
     }
   },
@@ -20910,7 +21464,7 @@ var FARM_PROGRESSION_STEPS = [
     icon: '🌱',
     title: 'Cultivate Soil & Plant Crops',
     subtitle: 'Dig soil, plant botanical flora, and produce O₂ & revenue',
-    badgeText: 'Step 5: Till Soil',
+    badgeText: 'Ch. 1: Till Soil',
     cost: 25,
     costLabel: '€25 prep',
     targetType: 'plot',
@@ -20921,7 +21475,7 @@ var FARM_PROGRESSION_STEPS = [
     unlockedWhen: function(s){ return !!(s.storage && s.storage.built); },
     isComplete: function(s){ return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; })); },
     instructions: {
-      afterWhich: 'Unlocks after Step 4 (Storage Granary Barn constructed).',
+      afterWhich: 'Unlocks in Chapter 1 & 2 after Granary Barn is built to safeguard harvests from rot.',
       howTo: '1. Construct the Storage Granary Barn (Step 4).\n2. Click Plot 1 on the farm to begin digging the soil (€25).\n3. Select a botanical seed or tree to plant and generate revenue & oxygen.'
     }
   },
@@ -20931,7 +21485,7 @@ var FARM_PROGRESSION_STEPS = [
     icon: '👨‍🔧',
     title: 'Recruit Certified Engineer',
     subtitle: 'Hire an Engineer at the Crew Shed (€180/d) for renewable energy',
-    badgeText: 'Step 6: Hire Engineer',
+    badgeText: 'Ch. 5: Hire Engineer',
     cost: 180,
     costLabel: '€180/d wage',
     targetType: 'building',
@@ -20942,7 +21496,7 @@ var FARM_PROGRESSION_STEPS = [
     unlockedWhen: function(s){ return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; })); },
     isComplete: function(s){ return !!(s.workers && s.workers.some(function(w){ return w.type === 'engineer'; })); },
     instructions: {
-      afterWhich: 'Unlocks after Step 5 (Cultivate Soil & Plant Crops) generates steady farm revenue.',
+      afterWhich: 'Unlocks in Chapter 5 to supervise clean grid and renewable wind turbine operations.',
       howTo: '1. Accumulate farm funds from harvested crops.\n2. Open the Crew Shed & Depot.\n3. Recruit a certified Engineer (€180/d) — mandatory prerequisite to oversee electrical grid and wind turbine systems.'
     }
   },
@@ -20952,7 +21506,7 @@ var FARM_PROGRESSION_STEPS = [
     icon: '💨',
     title: 'Install 4-Corner Wind Turbine Grid (2+2 Redundant)',
     subtitle: '4-corner perimeter clean energy grid producing 12 kWh/h power',
-    badgeText: 'Step 7: Wind Grid',
+    badgeText: 'Ch. 5: Wind Grid',
     cost: 275,
     costLabel: '€275 each (€1,100 total)',
     targetType: 'building',
@@ -20968,7 +21522,7 @@ var FARM_PROGRESSION_STEPS = [
       return !!(wts.wt_nw && wts.wt_nw.built && wts.wt_nw.commissioned && wts.wt_ne && wts.wt_ne.built && wts.wt_ne.commissioned);
     },
     instructions: {
-      afterWhich: 'Unlocks after Step 6 (Certified Engineer on farm roster).',
+      afterWhich: 'Unlocks in Chapter 5 with a certified Engineer on the farm roster.',
       howTo: '1. Recruit an Engineer at the Crew Shed (Step 6).\n2. Click the 4 outer perimeter corner spots (NW Ridge, NE Hilltop, SW Meadow, SE Orchard).\n3. Erect turbines (€275 each) and have the Engineer execute the 3-point technical safety inspection (Gearbox, Rotor Pitch, Grid Inverter) for a 2+2 hot-redundant grid.'
     }
   },
@@ -20978,7 +21532,7 @@ var FARM_PROGRESSION_STEPS = [
     icon: '🔋',
     title: 'Build Battery Substation (BESS) & Export',
     subtitle: 'Store surplus clean power beside Crew Shed & export to grid (+€80)',
-    badgeText: 'Step 8: Energy BESS',
+    badgeText: 'Ch. 6: Energy BESS',
     cost: 400,
     costLabel: '€400',
     targetType: 'building',
@@ -20993,7 +21547,7 @@ var FARM_PROGRESSION_STEPS = [
     },
     isComplete: function(s){ return !!(s.buildings && s.buildings.energy_storage && s.buildings.energy_storage.built); },
     instructions: {
-      afterWhich: 'Unlocks after Step 7 (Wind Turbines commissioned and generating clean electricity).',
+      afterWhich: 'Unlocks in Chapter 6 after wind turbines are commissioned and generating clean electricity.',
       howTo: '1. Commission your primary wind turbines so clean power flows.\n2. Click the Battery Substation spot beside the Crew Shed.\n3. Construct the 500 kWh BESS (€400) to store surplus energy and export to the regional grid for +€80 per 100 kWh.'
     }
   }
@@ -21008,7 +21562,7 @@ var AGRICULTURAL_PRODUCTION_FACILITIES = {
     benefit: '+8 Farm Reputation · 4 companion beds for grain, corn & vegetables',
     category: 'agriculture',
     prereqStep: 2,
-    afterWhich: 'Unlocks after Step 2 (Main Arterial Road) connects the south field to estate transport.',
+    afterWhich: 'Unlocks in Chapter 2 after Main Arterial Road connects the south field to estate transport.',
     howTo: '1. Pave the Main Road (Step 2).\n2. Click the octagonal crop field site in the south block.\n3. Construct the 4-bed companion planting field (€350) to cultivate staple grains, corn, squash & legumes (+8 Rep).'
   },
   cattle_farm: {
@@ -21019,7 +21573,7 @@ var AGRICULTURAL_PRODUCTION_FACILITIES = {
     benefit: '+10 Farm Reputation · Grazing paddock, cows & sheep for milk and wool',
     category: 'livestock',
     prereqStep: 2,
-    afterWhich: 'Unlocks after Step 2 (Main Arterial Road) is completed, enabling livestock deliveries.',
+    afterWhich: 'Unlocks in Chapter 3 after Main Arterial Road is completed, enabling livestock deliveries.',
     howTo: '1. Pave the Main Road (Step 2).\n2. Click the north-west pasture site.\n3. Construct the cattle barn (€400), erect the perimeter fence (€200), and adopt dairy cows & sheep (+10 Rep).'
   }
 };
@@ -21032,7 +21586,7 @@ var OPTIONAL_CREDIBILITY_BUILDINGS = {
     cost: 400,
     benefit: '+10 Farm Reputation · Freshwater ecosystem & fish harvesting',
     prereqStep: 2,
-    afterWhich: 'Unlocks after Step 2 (Main Arterial Road) is completed, allowing construction deliveries.',
+    afterWhich: 'Unlocks in Chapter 4 (Aquatic Ecology & Water Loops) after Main Road is paved.',
     howTo: '1. Pave the Main Road (Step 2).\n2. Click the serene pond site on the north curb.\n3. Construct the pond (€400) and choose Fish Farm or Duck Reserve to raise farm credibility (+10 Rep).'
   },
   garden: {
@@ -21042,7 +21596,7 @@ var OPTIONAL_CREDIBILITY_BUILDINGS = {
     cost: 300,
     benefit: '+8 Farm Reputation · Pollinator biodiversity & floral beauty',
     prereqStep: 2,
-    afterWhich: 'Unlocks after Step 2 (Main Arterial Road) is paved.',
+    afterWhich: 'Unlocks in Chapter 4 (Botanical Polyculture) after Main Road is paved.',
     howTo: '1. Pave the Main Road (Step 2).\n2. Click the flower garden site on the south curb opposite the pond.\n3. Construct the garden (€300) and plant Sunflowers, Roses, or Daisies to attract beneficial bees (+8 Rep).'
   },
   coffee_shop: {
@@ -21052,7 +21606,7 @@ var OPTIONAL_CREDIBILITY_BUILDINGS = {
     cost: 800,
     benefit: '+5 Farm Reputation · Visitor hospitality & roasted bean revenue',
     prereqStep: 2,
-    afterWhich: 'Unlocks after Step 2 (Main Arterial Road) connects the farm to village visitor traffic.',
+    afterWhich: 'Unlocks in Chapter 7 (The Living Market & Community Commerce) after Main Road brings visitors.',
     howTo: '1. Pave the Main Road (Step 2) to invite village visitors.\n2. Click the North Promenade commercial plot.\n3. Build the Coffee Shop (€800) to serve espresso and roasted beans to estate tourists (+5 Rep).'
   },
   juice_bar: {
@@ -21134,82 +21688,144 @@ function resumeLockedStepPopupTimer(){
   }
 }
 
+function openChapterRoadmapFromPopup(targetCh){
+  closeLockedStepPopup();
+  if (typeof closeModal === 'function') closeModal();
+  if (typeof openPanel !== 'undefined') openPanel = 'tasks';
+  if (typeof state !== 'undefined' && state) state.selectedChapterTab = targetCh;
+  if (typeof render === 'function') render();
+}
+
+function openWhyFromPopup(topic){
+  closeLockedStepPopup();
+  if (typeof openWhyModal === 'function') openWhyModal(topic);
+}
+
 function showLockedStepPopup(stepNum, optKey){
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
   if (_lockedStepPopupTimer) clearTimeout(_lockedStepPopupTimer);
   var existing = document.getElementById('stepInstructionPopupWrapper');
   if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
 
-  var stepData = null;
-  if (optKey && typeof AGRICULTURAL_PRODUCTION_FACILITIES !== 'undefined' && AGRICULTURAL_PRODUCTION_FACILITIES[optKey]){
-    var ag = AGRICULTURAL_PRODUCTION_FACILITIES[optKey];
-    stepData = {
-      icon: ag.icon,
-      title: ag.title,
-      stepBadge: '🌾 Agricultural & Livestock Production',
-      cost: '€' + ag.cost,
-      benefit: ag.benefit,
-      afterWhich: ag.afterWhich,
-      howTo: ag.howTo,
-      prereqStep: ag.prereqStep || 2,
-      targetId: ag.key
-    };
-  } else if (optKey && OPTIONAL_CREDIBILITY_BUILDINGS[optKey]){
-    var opt = OPTIONAL_CREDIBILITY_BUILDINGS[optKey];
-    stepData = {
-      icon: opt.icon,
-      title: opt.title,
-      stepBadge: '⭐ Optional Credibility Expansion',
-      cost: '€' + opt.cost,
-      benefit: opt.benefit,
-      afterWhich: opt.afterWhich,
-      howTo: opt.howTo,
-      prereqStep: opt.prereqStep || 2,
-      targetId: opt.key
-    };
-  } else {
-    var stepDef = FARM_PROGRESSION_STEPS.find(function(s){ return s.step === stepNum; });
-    if (!stepDef) stepDef = FARM_PROGRESSION_STEPS[0];
-    stepData = {
-      icon: stepDef.icon,
-      title: 'Step ' + stepDef.step + ': ' + stepDef.title,
-      stepBadge: '🔒 Step ' + stepDef.step + ' Currently Locked',
-      cost: stepDef.costLabel,
-      benefit: stepDef.subtitle,
-      afterWhich: stepDef.instructions.afterWhich,
-      howTo: stepDef.instructions.howTo,
-      prereqStep: stepDef.prereqStep || 1,
-      targetId: stepDef.key
-    };
+  // Resolve object key and chapter context
+  var key = 'road';
+  if (typeof optKey === 'string' && optKey.length > 0){
+    key = optKey;
+  } else if (typeof optKey === 'number'){
+    key = 'plot';
+  } else if (typeof stepNum === 'number'){
+    var stepMap = { 1: 'crew_shed', 2: 'laborer', 3: 'gate', 4: 'storage', 5: 'plot', 6: 'engineer', 7: 'wind_turbine', 8: 'energy_storage' };
+    key = stepMap[stepNum] || 'road';
   }
+
+  var info = (typeof getObjectChapterInfo === 'function') ? getObjectChapterInfo(key) : { chapter: 2, name: key, icon: '🌾' };
+  var targetCh = info.chapter || 2;
+  var chDef = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[targetCh - 1]) ? CHAPTER_DEFINITIONS[targetCh - 1] : { title: 'Estate Progression', fantasy: 'Regenerative Agriculture' };
+  var curCh = (typeof state !== 'undefined' && state && state.currentChapter) ? state.currentChapter : 1;
+
+  var objIcon = info.icon || '🌾';
+  var objTitle = (typeof BUILDING_TYPES !== 'undefined' && BUILDING_TYPES[key]) ? BUILDING_TYPES[key].label : info.name;
+  var costLabel = (typeof BUILDING_TYPES !== 'undefined' && BUILDING_TYPES[key]) ? ('€' + BUILDING_TYPES[key].cost) : '';
+  if (key === 'plot') costLabel = '€25 prep';
+  else if (key === 'storage') costLabel = '€100';
+  else if (key === 'laborer') costLabel = '€15/d wage';
+  else if (key === 'engineer') costLabel = '€180/d wage';
+
+  // Ecological & Economic Purpose Context
+  var whyPurposes = {
+    gate: 'Erects an ashlar stone & timber perimeter barrier preventing wild herbivores from browsing tender saplings, demarcating legal estate boundaries, and creating a formal welcome portal for eco-tourists and haulers.',
+    road: 'Paves a high-capacity cambered macadam arterial thoroughfare. Reduces cart hauling friction by 80%, links all field subways directly to granary loading docks, and permits motorized freight access.',
+    crew_shed: 'Establishes tool workshop benches, equipment racks, and bunkhouse rest facilities. Essential division of labor allowing you to recruit specialized Field Laborers and certified Engineers.',
+    laborer: 'Skilled community hands required to clear ancient glacial boulders with trenching spades, erect the entrance gate, and lay stone thoroughfares across the estate.',
+    storage: 'Constructs a climate-controlled granary barn and cold cellar. Suppresses post-harvest cellular respiration, fungal spores, and bacterial rot to preserve crop commercial value.',
+    plot: 'Aerates compacted bedrock into fertile, loam-rich soil with balanced microbial flora, kickstarting autotrophic photosynthesis and continuous breathable O₂ generation.',
+    garden: 'Introduces a 3-sector decagonal flower polyculture. Supplies continuous nectar and pollen corridors to sustain wild pollinator colonies and boosts estate reputation.',
+    pond: 'Creates a perennial freshwater retention reservoir, stabilizing groundwater levels, buffering summer drought, and offering duck or fish aquaculture.',
+    crop_field: '4-quadrant companion polyculture field intercropping staple grains, corn, beans, and squash for high-yield soil nitrogen fixation.',
+    cattle_farm: 'Multi-chamber fenced grazing paddock for dairy cows and sheep. Rotational grazing converts grass into organic milk, wool, and nutrient-dense soil manure.',
+    wind_turbine: '4-corner perimeter aerodynamic wind turbines capturing kinetic atmospheric energy, generating 12 kWh/h clean zero-emission electricity.',
+    energy_storage: 'Industrial 500 kWh LFP battery substation buffering intermittent renewable generation, powering 24/7 night loads and exporting surplus power to the municipal grid.',
+    engineer: 'Certified electrical systems engineer possessing high-voltage safety credentials required to supervise turbine grid synchronization and BESS operations.',
+    coffee_shop: 'Artisanal farm-to-cup café roasting estate-grown beans and welcoming village tourists, driving high-margin hospitality commerce.',
+    juice_bar: 'Cold-pressed organic orchard juice and cider bar converting freshly harvested fruits into value-added beverages with +25% direct visitor markup.'
+  };
+  var purposeText = whyPurposes[key] || info.desc || 'Vital ecological and economic component of the SearchO2 regenerative estate.';
+
+  // Suggested Roadmap Path
+  var roadmapHtml = '';
+  if (targetCh > curCh){
+    roadmapHtml = '<div style="display:flex;flex-direction:column;gap:6px;">' +
+      '<div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;">' +
+        '<span style="background:#ECEFF1;color:#455A64;padding:2px 6px;border-radius:4px;font-weight:800;">1. Current</span>' +
+        '<span>Complete Chapter ' + curCh + ' objectives</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;">' +
+        '<span style="background:#FFF3E0;color:#E65100;padding:2px 6px;border-radius:4px;font-weight:800;">2. Next</span>' +
+        '<span>Advance to <b>Chapter ' + targetCh + ': ' + chDef.title + '</b></span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;">' +
+        '<span style="background:#E8F5E9;color:#2E7D32;padding:2px 6px;border-radius:4px;font-weight:800;">3. Target</span>' +
+        '<span><b>' + objIcon + ' ' + objTitle + '</b> unlocked &amp; ready to build!</span>' +
+      '</div>' +
+    '</div>';
+  } else {
+    // Current chapter milestone roadmap
+    var prereqs = {
+      gate: '1. Recruit Field Laborer in Crew Shed ➔ 2. Clear Boulders with Trenching Spade ➔ 3. Build Grand Entrance Gate',
+      road: '1. Clear Boulders from corridor ➔ 2. Construct Grand Entrance Gate ➔ 3. Pave Main Arterial Road',
+      storage: '1. Construct Grand Gate & Main Road ➔ 2. Build Storage Granary Barn ➔ 3. Safe Harvests from Rot',
+      plot: '1. Build Granary Storage ➔ 2. Till Bedrock Soil on Plot ➔ 3. Plant First Botanical Flora',
+      laborer: '1. Build Crew Shed & Depot Quarters ➔ 2. Recruit Field Laborer ➔ 3. Begin Road Infrastructure',
+      crew_shed: '1. Available at Game Start ➔ 2. Build Crew Shed Quarters (€150) ➔ 3. Recruit Personnel',
+      engineer: '1. Advance Farm Revenue ➔ 2. Open Crew Shed Quarters ➔ 3. Recruit Certified Engineer (€180/d)',
+      wind_turbine: '1. Recruit Certified Engineer ➔ 2. Construct 4-Corner Turbines ➔ 3. Commission Clean Grid',
+      energy_storage: '1. Commission 4-Corner Wind Turbines ➔ 2. Build BESS Substation ➔ 3. Store Surplus Power'
+    };
+    var stepsStr = prereqs[key] || ('1. Meet Chapter ' + targetCh + ' prerequisite milestones ➔ 2. Construct ' + objTitle);
+    var parts = stepsStr.split('➔');
+    roadmapHtml = '<div style="display:flex;flex-direction:column;gap:6px;">' +
+      parts.map(function(pt, idx){
+        var badgeColor = idx === parts.length - 1 ? '#E8F5E9;color:#2E7D32;' : '#ECEFF1;color:#455A64;';
+        return '<div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;">' +
+          '<span style="background:' + badgeColor + 'padding:2px 6px;border-radius:4px;font-weight:800;">' + (idx + 1) + '</span>' +
+          '<span>' + pt.trim() + '</span>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
+  var whyTopic = (key === 'gate' ? 'main_gate' : (key === 'road' ? 'road' : (key === 'storage' ? 'storage' : (key === 'crew_shed' ? 'crew_shed' : (key === 'plot' ? 'plot' : (key === 'wind_turbine' ? 'wind_turbine' : (key === 'energy_storage' ? 'bess' : 'overview')))))));
 
   var html = '<div class="step-instruction-popup-wrapper" id="stepInstructionPopupWrapper" onclick="if(event.target===this)closeLockedStepPopup()">' +
     '<div class="step-instruction-popup-card" onmouseenter="pauseLockedStepPopupTimer()" onmouseleave="resumeLockedStepPopupTimer()" ontouchstart="pauseLockedStepPopupTimer()">' +
       '<div class="step-instruction-popup-header">' +
         '<div class="step-instruction-popup-title">' +
-          '<span>' + stepData.icon + '</span>' +
-          '<span>' + stepData.title + '</span>' +
+          '<span>' + objIcon + '</span>' +
+          '<span>' + objTitle + '</span>' +
         '</div>' +
-        '<button class="step-instruction-popup-close" onclick="closeLockedStepPopup()" title="Close Instructions">✕</button>' +
+        '<button class="step-instruction-popup-close" onclick="closeLockedStepPopup()" title="Close Details">✕</button>' +
       '</div>' +
       '<div class="step-instruction-popup-body">' +
-        '<div class="step-instruction-lock-banner">' +
+        '<div class="step-instruction-lock-banner" style="background:#FFF3E0;color:#E65100;border:1px solid #FFE082;">' +
           '<span>🔒</span>' +
-          '<span>' + stepData.stepBadge + ' · ' + stepData.cost + '</span>' +
+          '<span>Chapter ' + targetCh + ' Milestone · ' + chDef.title + (costLabel ? ' · ' + costLabel : '') + '</span>' +
         '</div>' +
         '<div class="step-instruction-box">' +
-          '<div class="step-instruction-box-title"><span>⏳</span> After Which Point Can This Be Unlocked?</div>' +
-          '<div class="step-instruction-box-content">' + stepData.afterWhich + '</div>' +
+          '<div class="step-instruction-box-title"><span>🌱</span> Ecological &amp; Economic Purpose:</div>' +
+          '<div class="step-instruction-box-content" style="line-height:1.45;">' + purposeText + '</div>' +
         '</div>' +
         '<div class="step-instruction-box">' +
-          '<div class="step-instruction-box-title"><span>📋</span> How to Unlock:</div>' +
-          '<div class="step-instruction-box-content" style="white-space:pre-line;">' + stepData.howTo + '</div>' +
+          '<div class="step-instruction-box-title"><span>🗺️</span> Suggested Roadmap to Unlock:</div>' +
+          '<div class="step-instruction-box-content">' + roadmapHtml + '</div>' +
         '</div>' +
-        '<div style="display:flex;gap:8px;margin-top:14px;">' +
-          '<button class="primary" onclick="closeLockedStepPopup();closeModal();navigateAndHighlightStep(' + stepData.prereqStep + ');" style="flex:1;min-height:42px;font-size:0.86rem;font-weight:800;border-radius:12px;">' +
-            '👉 Go to Step ' + stepData.prereqStep + ' Prerequisite' +
+        '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">' +
+          '<button class="primary" onclick="openChapterRoadmapFromPopup(' + targetCh + ')" style="flex:1;min-height:42px;font-size:0.86rem;font-weight:800;border-radius:12px;">' +
+            '👉 Open Chapter ' + targetCh + ' Roadmap &amp; Tasks' +
           '</button>' +
-          '<button class="secondary mini-btn" onclick="closeLockedStepPopup();" style="padding:0 14px;border-radius:12px;font-weight:700;">' +
+          '<button class="secondary mini-btn" onclick="openWhyFromPopup(\'' + whyTopic + '\')" style="padding:0 12px;border-radius:12px;font-weight:700;">' +
+            '💡 Why?' +
+          '</button>' +
+          '<button class="secondary mini-btn" onclick="closeLockedStepPopup()" style="padding:0 12px;border-radius:12px;font-weight:700;">' +
             '✕ Dismiss' +
           '</button>' +
         '</div>' +
@@ -25778,162 +26394,248 @@ function drawGardenScene(flowerType, freshness, tending, isBuilding){
 }
 
 function drawMainGateScene(road){
-  var isBuilt = road && road.built;
-  var isBuilding = road && road.building;
-  var pct = isBuilding ? Math.round(Math.min(100, (road.buildHours / 4) * 100)) : 0;
+  var gate = (typeof state !== 'undefined' && state && state.buildings) ? state.buildings.gate : null;
+  var isGateBuilt = gate ? gate.built : (road && road.built);
+  var isGateBuilding = gate ? gate.building : false;
+  var gateLabs = (gate && gate.assignedLaborers && gate.assignedLaborers.length) ? gate.assignedLaborers.length : 1;
+  var gatePct = isGateBuilding ? Math.round(Math.min(100, (gate.buildHours / 2.0) * 100)) : (isGateBuilt ? 100 : 0);
 
-  var statusBadge = isBuilt
-    ? '<text x="80" y="116" font-size="6.5" font-weight="900" fill="#2E7D32" text-anchor="middle" filter="drop-shadow(0 1px 2px rgba(255,255,255,0.8))">✓ GRAND GATE & ROAD OPEN</text>'
-    : (isBuilding
-      ? '<text x="80" y="116" font-size="6.5" font-weight="900" fill="#E65100" text-anchor="middle" filter="drop-shadow(0 1px 2px rgba(255,255,255,0.8))">🚧 PAVING ROAD (' + pct + '%)</text>'
-      : '<text x="80" y="116" font-size="6.2" font-weight="800" fill="#5D4037" text-anchor="middle" filter="drop-shadow(0 1px 2px rgba(255,255,255,0.8))">🔒 GRAND GATEWAY · CLICK TO PAVE</text>');
+  var isRoadBuilt = road && road.built;
+  var isRoadBuilding = road && road.building;
+  var roadPct = isRoadBuilding ? Math.round(Math.min(100, (road.buildHours / 4.0) * 100)) : (isRoadBuilt ? 100 : 0);
 
   return '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;overflow:visible;">' +
     '<defs>' +
-      // Cambered Macadam Road Gradient matching Farm Main Road
+      // Authentic Cambered Macadam Road Gradient matching Farm Main Road (NO BLACK STRIPES)
       '<linearGradient id="gateMacadamGrad" x1="0" y1="0" x2="0" y2="1">' +
-        '<stop offset="0%" stop-color="#A1887F"/>' +
-        '<stop offset="25%" stop-color="#BCAAA4"/>' +
+        '<stop offset="0%" stop-color="#5D4037"/>' +
+        '<stop offset="4%" stop-color="#8D6E63"/>' +
+        '<stop offset="15%" stop-color="#BCAAA4"/>' +
         '<stop offset="50%" stop-color="#D7CCC8"/>' +
-        '<stop offset="75%" stop-color="#A1887F"/>' +
-        '<stop offset="100%" stop-color="#6D4C41"/>' +
+        '<stop offset="85%" stop-color="#BCAAA4"/>' +
+        '<stop offset="96%" stop-color="#8D6E63"/>' +
+        '<stop offset="100%" stop-color="#4E342E"/>' +
       '</linearGradient>' +
       '<linearGradient id="gateStonePillarGrad" x1="0" y1="0" x2="1" y2="1">' +
         '<stop offset="0%" stop-color="#ECEFF1"/>' +
         '<stop offset="40%" stop-color="#CFD8DC"/>' +
-        '<stop offset="100%" stop-color="#78909C"/>' +
+        '<stop offset="80%" stop-color="#90A4AE"/>' +
+        '<stop offset="100%" stop-color="#546E7A"/>' +
       '</linearGradient>' +
       '<radialGradient id="lanternGlow" cx="50%" cy="50%" r="50%">' +
-        '<stop offset="0%" stop-color="#FFF9C4" stop-opacity="0.9"/>' +
-        '<stop offset="45%" stop-color="#FFE082" stop-opacity="0.55"/>' +
+        '<stop offset="0%" stop-color="#FFF9C4" stop-opacity="0.95"/>' +
+        '<stop offset="45%" stop-color="#FFE082" stop-opacity="0.6"/>' +
         '<stop offset="100%" stop-color="#FFB300" stop-opacity="0"/>' +
       '</radialGradient>' +
     '</defs>' +
 
-    '<!-- 1. Roadbed Foundation matching Rustic Country Main Road (NO BLACK STRIPES) -->' +
-    '<rect x="0" y="32" width="160" height="56" fill="#1B2E15" opacity="0.3" rx="4"/>' +
-    (isBuilt
-      ? '<!-- 3D Cambered Compacted Macadam & Gravel Roadway -->' +
-        '<rect x="0" y="34" width="160" height="4" fill="#558B2F" opacity="0.85"/>' + // North grassy shoulder
-        '<rect x="0" y="37" width="160" height="3" fill="#6D4C41"/>' + // North earth ditch
-        '<rect x="0" y="39" width="160" height="44" fill="url(#gateMacadamGrad)" stroke="#5D4037" stroke-width="0.8"/>' +
-        // Stone Gravel Texture
-        '<ellipse cx="20" cy="48" rx="2" ry="1.2" fill="#EFEBE9" opacity="0.7"/>' +
-        '<ellipse cx="48" cy="68" rx="2.5" ry="1.4" fill="#D7CCC8" opacity="0.8"/>' +
-        '<ellipse cx="110" cy="46" rx="2" ry="1.2" fill="#EFEBE9" opacity="0.7"/>' +
-        '<ellipse cx="138" cy="72" rx="2.2" ry="1.3" fill="#D7CCC8" opacity="0.8"/>' +
-        '<line x1="0" y1="39" x2="160" y2="39" stroke="#EFEBE9" stroke-width="1.8" opacity="0.95"/>' + // Sunlit stone curb crest
-        '<line x1="0" y1="83" x2="160" y2="83" stroke="#3E2723" stroke-width="2.2"/>' + // South shadow curb
-        '<rect x="0" y="84" width="160" height="3" fill="#5D4037"/>' + // South earth ditch
-        '<rect x="0" y="86" width="160" height="4" fill="#4E7230" opacity="0.85"/>' + // South grassy shoulder
-        '<!-- Dual Rustic Wagon Wheel Rut Tracks -->' +
-        '<line x1="0" y1="52" x2="160" y2="52" stroke="#795548" stroke-width="3" opacity="0.4" stroke-dasharray="14,8,22,6"/>' +
-        '<line x1="0" y1="52" x2="160" y2="52" stroke="#4E342E" stroke-width="1.2" opacity="0.5"/>' +
-        '<line x1="0" y1="70" x2="160" y2="70" stroke="#795548" stroke-width="3" opacity="0.4" stroke-dasharray="18,10,26,7"/>' +
-        '<line x1="0" y1="70" x2="160" y2="70" stroke="#4E342E" stroke-width="1.2" opacity="0.5"/>' +
-        '<!-- Cobblestone Threshold Crossing Apron at the Gateposts -->' +
-        '<g transform="translate(62, 39)">' +
-          '<rect x="0" y="0" width="34" height="44" fill="none" stroke="#78909C" stroke-width="0.8"/>' +
-          '<line x1="8" y1="0" x2="8" y2="44" stroke="#78909C" stroke-width="0.8" stroke-dasharray="4,4"/>' +
-          '<line x1="17" y1="0" x2="17" y2="44" stroke="#78909C" stroke-width="0.8" stroke-dasharray="4,4"/>' +
-          '<line x1="26" y1="0" x2="26" y2="44" stroke="#78909C" stroke-width="0.8" stroke-dasharray="4,4"/>' +
-        '</g>'
-      : '<!-- Earth & Gravel Unpaved Track -->' +
-        '<rect x="0" y="38" width="160" height="44" fill="#5D4037" stroke="#3E2723" stroke-width="1.2" stroke-dasharray="8,5"/>' +
-        '<line x1="0" y1="60" x2="160" y2="60" stroke="#8D6E63" stroke-width="1.8" stroke-dasharray="6,6"/>') +
-
-    '<!-- 2. North Ashlar Stone Gatepost with Pyramidal Cap & Lantern -->' +
-    '<g transform="translate(68, 10)">' +
-      // Plinth base
-      '<rect x="-2" y="24" width="28" height="6" rx="2" fill="#546E7A" stroke="#263238" stroke-width="1"/>' +
-      // Main Ashlar Pillar Shaft
-      '<rect x="0" y="0" width="24" height="25" rx="3" fill="url(#gateStonePillarGrad)" stroke="#37474F" stroke-width="1.4"/>' +
-      // Stone Joint Seams
-      '<line x1="0" y1="9" x2="24" y2="9" stroke="#78909C" stroke-width="0.9"/>' +
-      '<line x1="0" y1="17" x2="24" y2="17" stroke="#78909C" stroke-width="0.9"/>' +
-      '<line x1="12" y1="0" x2="12" y2="9" stroke="#78909C" stroke-width="0.7"/>' +
-      '<line x1="8" y1="9" x2="8" y2="17" stroke="#78909C" stroke-width="0.7"/>' +
-      '<line x1="16" y1="17" x2="16" y2="25" stroke="#78909C" stroke-width="0.7"/>' +
-      // Pyramidal Stone Cap
-      '<polygon points="-2,1 12,-9 26,1" fill="#78909C" stroke="#263238" stroke-width="1.2"/>' +
-      '<polygon points="0,0 12,-7 24,0" fill="#CFD8DC"/>' +
-      '<circle cx="12" cy="-9" r="2.8" fill="#FFB300" stroke="#FF6F00" stroke-width="0.7"/>' +
-      // Wrought Iron Lantern Arm & Lantern
-      '<line x1="0" y1="13" x2="-6" y2="13" stroke="#263238" stroke-width="1.8"/>' +
-      '<line x1="-6" y1="13" x2="-6" y2="9" stroke="#263238" stroke-width="1.4"/>' +
-      '<circle cx="-6" cy="14" r="9" fill="url(#lanternGlow)"/>' +
-      '<rect x="-8.5" y="9" width="5" height="9" rx="1.5" fill="#FFE082" stroke="#263238" stroke-width="0.9"/>' +
-      '<polygon points="-9.5,9 -6,6 -2.5,9" fill="#263238"/>' +
+    '<!-- 1. Authentic 3D Cambered Macadam Roadbed matching Main Road Corridor (NO BLACK STRIPES) -->' +
+    '<rect x="0" y="32" width="160" height="58" fill="#1B2E15" opacity="0.25" rx="4"/>' +
+    '<rect x="0" y="34" width="160" height="4" fill="#558B2F" opacity="0.85"/>' + // North grassy verge
+    '<rect x="0" y="37" width="160" height="3" fill="#6D4C41"/>' + // North earth shoulder ditch
+    '<rect x="0" y="39" width="160" height="44" fill="url(#gateMacadamGrad)" stroke="#5D4037" stroke-width="0.8"/>' +
+    // Subtle gravel texture
+    '<ellipse cx="24" cy="48" rx="2" ry="1.2" fill="#EFEBE9" opacity="0.7"/>' +
+    '<ellipse cx="52" cy="68" rx="2.5" ry="1.4" fill="#D7CCC8" opacity="0.8"/>' +
+    '<ellipse cx="112" cy="46" rx="2" ry="1.2" fill="#EFEBE9" opacity="0.7"/>' +
+    '<ellipse cx="138" cy="72" rx="2.2" ry="1.3" fill="#D7CCC8" opacity="0.8"/>' +
+    // 3D Sunlit stone crest curb & shadow curb
+    '<line x1="0" y1="39" x2="160" y2="39" stroke="#EFEBE9" stroke-width="1.8" opacity="0.95"/>' +
+    '<line x1="0" y1="83" x2="160" y2="83" stroke="#3E2723" stroke-width="2.2"/>' +
+    '<rect x="0" y="84" width="160" height="3" fill="#5D4037"/>' +
+    '<rect x="0" y="86" width="160" height="4" fill="#4E7230" opacity="0.85"/>' +
+    // Dual Rustic Cart Wheel Rut Tracks in warm natural earth (NO black lines)
+    '<line x1="0" y1="52" x2="160" y2="52" stroke="#795548" stroke-width="3" opacity="0.4" stroke-dasharray="14,8,22,6"/>' +
+    '<line x1="0" y1="52" x2="160" y2="52" stroke="#4E342E" stroke-width="1.2" opacity="0.5"/>' +
+    '<line x1="0" y1="70" x2="160" y2="70" stroke="#795548" stroke-width="3" opacity="0.4" stroke-dasharray="18,10,26,7"/>' +
+    '<line x1="0" y1="70" x2="160" y2="70" stroke="#4E342E" stroke-width="1.2" opacity="0.5"/>' +
+    // Cobblestone Threshold Crossing Apron
+    '<g transform="translate(62, 39)">' +
+      '<rect x="0" y="0" width="34" height="44" fill="none" stroke="#78909C" stroke-width="0.8"/>' +
+      '<line x1="8" y1="0" x2="8" y2="44" stroke="#78909C" stroke-width="0.8" stroke-dasharray="4,4"/>' +
+      '<line x1="17" y1="0" x2="17" y2="44" stroke="#78909C" stroke-width="0.8" stroke-dasharray="4,4"/>' +
+      '<line x1="26" y1="0" x2="26" y2="44" stroke="#78909C" stroke-width="0.8" stroke-dasharray="4,4"/>' +
     '</g>' +
 
-    '<!-- 3. South Ashlar Stone Gatepost with Pyramidal Cap & Lantern -->' +
-    '<g transform="translate(68, 82)">' +
-      // Plinth base
-      '<rect x="-2" y="-4" width="28" height="6" rx="2" fill="#546E7A" stroke="#263238" stroke-width="1"/>' +
-      // Main Ashlar Pillar Shaft
-      '<rect x="0" y="1" width="24" height="25" rx="3" fill="url(#gateStonePillarGrad)" stroke="#37474F" stroke-width="1.4"/>' +
-      // Stone Joint Seams
-      '<line x1="0" y1="9" x2="24" y2="9" stroke="#78909C" stroke-width="0.9"/>' +
-      '<line x1="0" y1="17" x2="24" y2="17" stroke="#78909C" stroke-width="0.9"/>' +
-      '<line x1="14" y1="1" x2="14" y2="9" stroke="#78909C" stroke-width="0.7"/>' +
-      '<line x1="6" y1="9" x2="6" y2="17" stroke="#78909C" stroke-width="0.7"/>' +
-      '<line x1="16" y1="17" x2="16" y2="25" stroke="#78909C" stroke-width="0.7"/>' +
-      // Pyramidal Stone Cap
-      '<polygon points="-2,25 12,35 26,25" fill="#78909C" stroke="#263238" stroke-width="1.2"/>' +
-      '<polygon points="0,25 12,33 24,25" fill="#546E7A"/>' +
-      '<circle cx="12" cy="35" r="2.8" fill="#FFB300" stroke="#FF6F00" stroke-width="0.7"/>' +
-      // Wrought Iron Lantern Arm & Lantern
-      '<line x1="0" y1="11" x2="-6" y2="11" stroke="#263238" stroke-width="1.8"/>' +
-      '<line x1="-6" y1="11" x2="-6" y2="7" stroke="#263238" stroke-width="1.4"/>' +
-      '<circle cx="-6" cy="12" r="9" fill="url(#lanternGlow)"/>' +
-      '<rect x="-8.5" y="7" width="5" height="9" rx="1.5" fill="#FFE082" stroke="#263238" stroke-width="0.9"/>' +
-      '<polygon points="-9.5,7 -6,4 -2.5,7" fill="#263238"/>' +
-    '</g>' +
+    (isGateBuilt
+      ? ('<!-- 2. BUILT: North Ashlar Stone Pillar with 3D Bevel, Cap & Lantern -->' +
+        '<g transform="translate(68, 10)">' +
+          '<rect x="-2" y="24" width="28" height="6" rx="2" fill="#546E7A" stroke="#263238" stroke-width="1"/>' +
+          '<rect x="0" y="0" width="24" height="25" rx="3" fill="url(#gateStonePillarGrad)" stroke="#37474F" stroke-width="1.4"/>' +
+          '<line x1="0" y1="9" x2="24" y2="9" stroke="#78909C" stroke-width="0.9"/>' +
+          '<line x1="0" y1="17" x2="24" y2="17" stroke="#78909C" stroke-width="0.9"/>' +
+          '<line x1="12" y1="0" x2="12" y2="9" stroke="#78909C" stroke-width="0.7"/>' +
+          '<line x1="8" y1="9" x2="8" y2="17" stroke="#78909C" stroke-width="0.7"/>' +
+          '<line x1="16" y1="17" x2="16" y2="25" stroke="#78909C" stroke-width="0.7"/>' +
+          '<polygon points="-2,1 12,-9 26,1" fill="#78909C" stroke="#263238" stroke-width="1.2"/>' +
+          '<polygon points="0,0 12,-7 24,0" fill="#CFD8DC"/>' +
+          '<circle cx="12" cy="-9" r="2.8" fill="#FFB300" stroke="#FF6F00" stroke-width="0.7"/>' +
+          '<line x1="0" y1="13" x2="-6" y2="13" stroke="#263238" stroke-width="1.8"/>' +
+          '<line x1="-6" y1="13" x2="-6" y2="9" stroke="#263238" stroke-width="1.4"/>' +
+          '<circle cx="-6" cy="14" r="9" fill="url(#lanternGlow)"/>' +
+          '<rect x="-8.5" y="9" width="5" height="9" rx="1.5" fill="#FFE082" stroke="#263238" stroke-width="0.9"/>' +
+          '<polygon points="-9.5,9 -6,6 -2.5,9" fill="#263238"/>' +
+        '</g>' +
 
-    '<!-- 4. Grand Curved Timber Arch bowing gently inward into the Farm -->' +
-    '<path d="M80,24 Q56,60 80,96" stroke="#3E2723" stroke-width="8" fill="none" stroke-linecap="round"/>' +
-    '<path d="M82,26 Q60,60 82,94" stroke="#6D4C41" stroke-width="5" fill="none" stroke-linecap="round"/>' +
-    '<path d="M83,27 Q63,60 83,93" stroke="#8D6E63" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
+        '<!-- 3. BUILT: South Ashlar Stone Pillar with 3D Bevel, Cap & Lantern -->' +
+        '<g transform="translate(68, 82)">' +
+          '<rect x="-2" y="-4" width="28" height="6" rx="2" fill="#546E7A" stroke="#263238" stroke-width="1"/>' +
+          '<rect x="0" y="1" width="24" height="25" rx="3" fill="url(#gateStonePillarGrad)" stroke="#37474F" stroke-width="1.4"/>' +
+          '<line x1="0" y1="9" x2="24" y2="9" stroke="#78909C" stroke-width="0.9"/>' +
+          '<line x1="0" y1="17" x2="24" y2="17" stroke="#78909C" stroke-width="0.9"/>' +
+          '<line x1="14" y1="1" x2="14" y2="9" stroke="#78909C" stroke-width="0.7"/>' +
+          '<line x1="6" y1="9" x2="6" y2="17" stroke="#78909C" stroke-width="0.7"/>' +
+          '<line x1="16" y1="17" x2="16" y2="25" stroke="#78909C" stroke-width="0.7"/>' +
+          '<polygon points="-2,25 12,35 26,25" fill="#78909C" stroke="#263238" stroke-width="1.2"/>' +
+          '<polygon points="0,25 12,33 24,25" fill="#546E7A"/>' +
+          '<circle cx="12" cy="35" r="2.8" fill="#FFB300" stroke="#FF6F00" stroke-width="0.7"/>' +
+          '<line x1="0" y1="11" x2="-6" y2="11" stroke="#263238" stroke-width="1.8"/>' +
+          '<line x1="-6" y1="11" x2="-6" y2="7" stroke="#263238" stroke-width="1.4"/>' +
+          '<circle cx="-6" cy="12" r="9" fill="url(#lanternGlow)"/>' +
+          '<rect x="-8.5" y="7" width="5" height="9" rx="1.5" fill="#FFE082" stroke="#263238" stroke-width="0.9"/>' +
+          '<polygon points="-9.5,7 -6,4 -2.5,7" fill="#263238"/>' +
+        '</g>' +
 
-    '<!-- 5. Suspended Estate Carved Signboard facing incoming Countryside traffic -->' +
-    '<g transform="translate(74, 46)">' +
-      '<rect x="-8" y="-12" width="18" height="52" rx="4" fill="#FDFBF7" stroke="#5D4037" stroke-width="1.4" filter="drop-shadow(0 2px 5px rgba(0,0,0,0.25))"/>' +
-      '<rect x="-6" y="-10" width="14" height="48" rx="2.5" fill="#F7F2E7" stroke="#A1887F" stroke-width="0.7"/>' +
-      '<text x="2" y="1" font-size="6.5" font-weight="900" fill="#1B5E20" transform="rotate(90, 2, 1)" text-anchor="middle" letter-spacing="0.5">🌿 searchO2 🌿</text>' +
-      '<text x="2" y="8" font-size="4.6" font-weight="800" fill="#4E342E" transform="rotate(90, 2, 8)" text-anchor="middle" letter-spacing="0.4">ECO-ESTATE</text>' +
-    '</g>' +
+        '<!-- 4. BUILT: Grand Curved 3D Timber Arch -->' +
+        '<path d="M80,24 Q56,60 80,96" stroke="#3E2723" stroke-width="8" fill="none" stroke-linecap="round"/>' +
+        '<path d="M82,26 Q60,60 82,94" stroke="#6D4C41" stroke-width="5" fill="none" stroke-linecap="round"/>' +
+        '<path d="M83,27 Q63,60 83,93" stroke="#8D6E63" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
 
-    '<!-- 6. Dynamic Gate Leaves (Open vs Closed) -->' +
-    (isBuilt
-      ? '<g stroke="#3E2723" stroke-width="1.8">' +
-          // North Gate Leaf angled inward along road shoulder
+        '<!-- 5. BUILT: Suspended SearchO2 Estate Signboard -->' +
+        '<g transform="translate(74, 46)">' +
+          '<rect x="-8" y="-12" width="18" height="52" rx="4" fill="#FDFBF7" stroke="#5D4037" stroke-width="1.4" filter="drop-shadow(0 2px 5px rgba(0,0,0,0.25))"/>' +
+          '<rect x="-6" y="-10" width="14" height="48" rx="2.5" fill="#F7F2E7" stroke="#A1887F" stroke-width="0.7"/>' +
+          '<text x="2" y="1" font-size="6.5" font-weight="900" fill="#1B5E20" transform="rotate(90, 2, 1)" text-anchor="middle" letter-spacing="0.5">🌿 searchO2 🌿</text>' +
+          '<text x="2" y="8" font-size="4.6" font-weight="800" fill="#4E342E" transform="rotate(90, 2, 8)" text-anchor="middle" letter-spacing="0.4">ECO-ESTATE</text>' +
+        '</g>' +
+
+        '<!-- 6. BUILT: Dynamic Open Swing Gate Leaves -->' +
+        '<g stroke="#3E2723" stroke-width="1.8">' +
           '<line x1="78" y1="36" x2="42" y2="33" stroke-linecap="round"/>' +
           '<line x1="70" y1="35" x2="70" y2="29"/><line x1="56" y1="34" x2="56" y2="29"/>' +
           '<circle cx="42" cy="33" r="2.2" fill="#FFB300" stroke="#E65100" stroke-width="0.6"/>' +
-          // South Gate Leaf angled inward along road shoulder
           '<line x1="78" y1="84" x2="42" y2="87" stroke-linecap="round"/>' +
           '<line x1="70" y1="85" x2="70" y2="91"/><line x1="56" y1="86" x2="56" y2="91"/>' +
           '<circle cx="42" cy="87" r="2.2" fill="#FFB300" stroke="#E65100" stroke-width="0.6"/>' +
-        '</g>'
-      : '<g stroke="#D32F2F" stroke-width="2.2" stroke-dasharray="5,4">' +
-          '<line x1="80" y1="36" x2="80" y2="84"/>' +
-          '<circle cx="80" cy="60" r="6.5" fill="#EF5350" stroke="#B71C1C" stroke-width="1"/>' +
-          '<text x="80" y="63.5" font-size="7.5" fill="white" font-weight="900" text-anchor="middle">✕</text>' +
-        '</g>') +
+        '</g>' +
 
-    '<!-- 7. Flower Planter Urns on Countryside Entry Approach -->' +
-    '<rect x="98" y="14" width="12" height="15" rx="3" fill="#8D6E63" stroke="#4E342E" stroke-width="1"/>' +
-    '<circle cx="104" cy="16" r="4.5" fill="#43A047"/><circle cx="104" cy="12" r="3.2" fill="#E91E63"/><circle cx="107" cy="15" r="2.5" fill="#FFEB3B"/>' +
-    '<rect x="98" y="91" width="12" height="15" rx="3" fill="#8D6E63" stroke="#4E342E" stroke-width="1"/>' +
-    '<circle cx="104" cy="99" r="4.5" fill="#43A047"/><circle cx="104" cy="103" r="3.2" fill="#FF9800"/><circle cx="101" cy="96" r="2.5" fill="#E91E63"/>' +
+        '<!-- 7. BUILT: Flower Planter Urns -->' +
+        '<rect x="98" y="14" width="12" height="15" rx="3" fill="#8D6E63" stroke="#4E342E" stroke-width="1"/>' +
+        '<circle cx="104" cy="16" r="4.5" fill="#43A047"/><circle cx="104" cy="12" r="3.2" fill="#E91E63"/><circle cx="107" cy="15" r="2.5" fill="#FFEB3B"/>' +
+        '<rect x="98" y="91" width="12" height="15" rx="3" fill="#8D6E63" stroke="#4E342E" stroke-width="1"/>' +
+        '<circle cx="104" cy="99" r="4.5" fill="#43A047"/><circle cx="104" cy="103" r="3.2" fill="#FF9800"/><circle cx="101" cy="96" r="2.5" fill="#E91E63"/>' +
 
-    statusBadge +
+        '<text x="80" y="116" font-size="6.5" font-weight="900" fill="#2E7D32" text-anchor="middle" filter="drop-shadow(0 1px 2px rgba(255,255,255,0.8))">✓ GRAND BIOSECURITY GATE OPEN</text>')
+      : (isGateBuilding
+        ? ('<!-- 2. BUILDING: 3D Scaffolding & Plinths -->' +
+          '<g transform="translate(66, 8)">' +
+            '<rect x="0" y="16" width="26" height="12" rx="2" fill="url(#gateStonePillarGrad)" stroke="#37474F" stroke-width="1.2"/>' +
+            '<line x1="0" y1="22" x2="26" y2="22" stroke="#78909C" stroke-width="0.8"/>' +
+            '<line x1="-3" y1="0" x2="-3" y2="32" stroke="#5D4037" stroke-width="2.2"/>' +
+            '<line x1="29" y1="0" x2="29" y2="32" stroke="#5D4037" stroke-width="2.2"/>' +
+            '<line x1="-3" y1="10" x2="29" y2="10" stroke="#8D6E63" stroke-width="1.8"/>' +
+            '<line x1="-3" y1="22" x2="29" y2="22" stroke="#8D6E63" stroke-width="1.8"/>' +
+            '<line x1="-3" y1="0" x2="29" y2="22" stroke="#A1887F" stroke-width="1.2" stroke-dasharray="3,1"/>' +
+            '<rect x="-5" y="8" width="36" height="3" fill="#D7CCC8" stroke="#5D4037" stroke-width="0.7"/>' +
+          '</g>' +
+          '<g transform="translate(66, 80)">' +
+            '<rect x="0" y="2" width="26" height="12" rx="2" fill="url(#gateStonePillarGrad)" stroke="#37474F" stroke-width="1.2"/>' +
+            '<line x1="0" y1="8" x2="26" y2="8" stroke="#78909C" stroke-width="0.8"/>' +
+            '<line x1="-3" y1="-2" x2="-3" y2="30" stroke="#5D4037" stroke-width="2.2"/>' +
+            '<line x1="29" y1="-2" x2="29" y2="30" stroke="#5D4037" stroke-width="2.2"/>' +
+            '<line x1="-3" y1="10" x2="29" y2="10" stroke="#8D6E63" stroke-width="1.8"/>' +
+            '<line x1="-3" y1="22" x2="29" y2="22" stroke="#8D6E63" stroke-width="1.8"/>' +
+            '<line x1="-3" y1="22" x2="29" y2="0" stroke="#A1887F" stroke-width="1.2" stroke-dasharray="3,1"/>' +
+            '<rect x="-5" y="8" width="36" height="3" fill="#D7CCC8" stroke="#5D4037" stroke-width="0.7"/>' +
+          '</g>' +
+
+          '<!-- Suspended Timber Arch Beam being hoisted -->' +
+          '<path d="M79,22 Q60,60 79,98" stroke="#6D4C41" stroke-width="5" fill="none" stroke-dasharray="8,4" opacity="0.8"/>' +
+          '<line x1="79" y1="8" x2="79" y2="24" stroke="#FFE082" stroke-width="1.2"/>' +
+          '<line x1="79" y1="96" x2="79" y2="112" stroke="#FFE082" stroke-width="1.2"/>' +
+
+          '<!-- DYNAMIC WORKER 1: Hammering North Masonry/Timber Joint with Active Animation -->' +
+          '<g transform="translate(68, 14)">' +
+            '<rect x="-4" y="2" width="8" height="11" rx="1.5" fill="#FF6D00" stroke="#E65100" stroke-width="0.6"/>' +
+            '<line x1="-4" y1="5" x2="4" y2="5" stroke="#FFF" stroke-width="1"/>' +
+            '<line x1="-4" y1="8" x2="4" y2="8" stroke="#FFF" stroke-width="1"/>' +
+            '<circle cx="0" cy="-2" r="3" fill="#F2C79B"/>' +
+            '<path d="M-4,-3 Q0,-8 4,-3 Z" fill="#FFD600" stroke="#F57F17" stroke-width="0.7"/>' +
+            '<g>' +
+              '<animateTransform attributeName="transform" type="rotate" values="0, 3, 4; -40, 3, 4; 20, 3, 4; 0, 3, 4" dur="0.8s" repeatCount="indefinite"/>' +
+              '<line x1="3" y1="4" x2="9" y2="1" stroke="#F2C79B" stroke-width="1.8"/>' +
+              '<rect x="8" y="-2" width="3.5" height="5" rx="0.8" fill="#455A64" stroke="#263238" stroke-width="0.6"/>' +
+            '</g>' +
+            '<circle cx="12" cy="0" r="1.2" fill="#FFE082"><animate attributeName="opacity" values="0;1;0" dur="0.8s" repeatCount="indefinite"/></circle>' +
+            '<text x="0" y="18" font-size="3.2" font-weight="900" fill="#1B5E20" text-anchor="middle">👷 Worker #1</text>' +
+          '</g>' +
+
+          (gateLabs >= 2
+            ? ('<!-- DYNAMIC WORKER 2: Sawing South Timber Beam with Active Reciprocal Animation -->' +
+              '<g transform="translate(68, 88)">' +
+                '<rect x="-4" y="2" width="8" height="11" rx="1.5" fill="#FF6D00" stroke="#E65100" stroke-width="0.6"/>' +
+                '<line x1="-4" y1="5" x2="4" y2="5" stroke="#FFF" stroke-width="1"/>' +
+                '<line x1="-4" y1="8" x2="4" y2="8" stroke="#FFF" stroke-width="1"/>' +
+                '<circle cx="0" cy="-2" r="3" fill="#F2C79B"/>' +
+                '<path d="M-4,-3 Q0,-8 4,-3 Z" fill="#FFD600" stroke="#F57F17" stroke-width="0.7"/>' +
+                '<g>' +
+                  '<animateTransform attributeName="transform" type="translate" values="0,0; 3,-1; -2,1; 0,0" dur="0.6s" repeatCount="indefinite"/>' +
+                  '<line x1="3" y1="4" x2="10" y2="6" stroke="#F2C79B" stroke-width="1.8"/>' +
+                  '<polygon points="9,5 15,7 14,9 8,7" fill="#B0BEC5" stroke="#37474F" stroke-width="0.5"/>' +
+                '</g>' +
+                '<circle cx="14" cy="9" r="1" fill="#FFE082"><animate attributeName="opacity" values="0;1;0" dur="0.6s" repeatCount="indefinite"/></circle>' +
+                '<text x="0" y="18" font-size="3.2" font-weight="900" fill="#1B5E20" text-anchor="middle">👷 Worker #2</text>' +
+              '</g>')
+            : '') +
+
+          '<text x="80" y="116" font-size="6.2" font-weight="900" fill="#E65100" text-anchor="middle" filter="drop-shadow(0 1px 2px rgba(255,255,255,0.8))">🚧 ERECTING GATE (' + gatePct + '%) · ' + gateLabs + ' ' + (gateLabs===1?'WORKER':'WORKERS') + ' ACTIVE</text>')
+
+        : ('<!-- 2. UNBUILT: 3D Isometric Foundation Excavation Pit - North Side -->' +
+          '<g transform="translate(66, 12)">' +
+            '<polygon points="0,0 26,0 28,18 2,18" fill="#271B11" opacity="0.85"/>' +
+            '<polygon points="2,18 28,18 26,24 0,24" fill="#3E2723"/>' +
+            '<rect x="3" y="3" width="22" height="12" fill="#5D4037" stroke="#8D6E63" stroke-width="0.8" stroke-dasharray="3,2"/>' +
+            '<circle cx="8" cy="8" r="1.5" fill="#BCAAA4"/><circle cx="16" cy="10" r="1.8" fill="#D7CCC8"/><circle cx="21" cy="7" r="1.3" fill="#BCAAA4"/>' +
+            '<polygon points="-2,-4 0,-4 0,8 -2,8" fill="#8D6E63"/>' +
+            '<polygon points="0,-4 6,-6 2,-2" fill="#FF1744"/>' +
+            '<polygon points="26,-4 28,-4 28,8 26,8" fill="#8D6E63"/>' +
+            '<polygon points="28,-4 34,-6 30,-2" fill="#FF1744"/>' +
+            '<line x1="0" y1="0" x2="26" y2="0" stroke="#FFF" stroke-width="1" stroke-dasharray="3,3" opacity="0.9"/>' +
+          '</g>' +
+
+          '<!-- 3. UNBUILT: 3D Isometric Foundation Excavation Pit - South Side -->' +
+          '<g transform="translate(66, 84)">' +
+            '<polygon points="0,0 26,0 28,18 2,18" fill="#271B11" opacity="0.85"/>' +
+            '<polygon points="2,18 28,18 26,24 0,24" fill="#3E2723"/>' +
+            '<rect x="3" y="3" width="22" height="12" fill="#5D4037" stroke="#8D6E63" stroke-width="0.8" stroke-dasharray="3,2"/>' +
+            '<circle cx="9" cy="8" r="1.5" fill="#BCAAA4"/><circle cx="17" cy="11" r="1.8" fill="#D7CCC8"/><circle cx="22" cy="7" r="1.3" fill="#BCAAA4"/>' +
+            '<polygon points="-2,16 0,16 0,28 -2,28" fill="#8D6E63"/>' +
+            '<polygon points="0,16 6,14 2,18" fill="#FF1744"/>' +
+            '<polygon points="26,16 28,16 28,28 26,28" fill="#8D6E63"/>' +
+            '<polygon points="28,16 34,14 30,18" fill="#FF1744"/>' +
+            '<line x1="2" y1="18" x2="28" y2="18" stroke="#FFF" stroke-width="1" stroke-dasharray="3,3" opacity="0.9"/>' +
+          '</g>' +
+
+          '<!-- 4. UNBUILT: 3D Isometric Proposed Gate Milestone Easel -->' +
+          '<g transform="translate(68, 45)">' +
+            '<line x1="12" y1="0" x2="2" y2="30" stroke="#4E342E" stroke-width="2"/>' +
+            '<line x1="12" y1="0" x2="22" y2="30" stroke="#4E342E" stroke-width="2"/>' +
+            '<line x1="12" y1="0" x2="12" y2="28" stroke="#3E2723" stroke-width="1.8"/>' +
+            '<polygon points="-4,2 28,2 26,22 -6,22" fill="#FFFDE7" stroke="#5D4037" stroke-width="1.2" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.3))"/>' +
+            '<polygon points="-2,4 26,4 24,20 -4,20" fill="#FFF9C4"/>' +
+            '<text x="11" y="11" font-size="4.2" font-weight="900" fill="#B71C1C" text-anchor="middle">⛩️ PROPOSED GATE</text>' +
+            '<text x="11" y="17" font-size="3.2" font-weight="800" fill="#3E2723" text-anchor="middle">CH. 2 BIOSECURITY</text>' +
+          '</g>' +
+
+          '<text x="80" y="116" font-size="6.2" font-weight="800" fill="#5D4037" text-anchor="middle" filter="drop-shadow(0 1px 2px rgba(255,255,255,0.8))">🔒 UNBUILT GATEWAY · CLICK TO CONSTRUCT</text>'))) +
+
   '</svg>';
 }
 
 function drawRoadScene(road){
   return drawMainGateScene(road);
 }
+
 
 function drawCrewShedScene(b){
   var isBuilt = b && b.built;
@@ -27789,13 +28491,17 @@ function roadPromenadeHtml(){
     var badgeText = 'Pave Main Road — €120';
     var badgeClass = 'unbuilt ' + (isRoadRec ? 'guide-active-spot' : '');
 
+    var hasGate = state && state.buildings && state.buildings.gate && state.buildings.gate.built;
+    var isGateBuilding = state && state.buildings && state.buildings.gate && state.buildings.gate.building;
+    var gPct = isGateBuilding ? Math.round(Math.min(100, (state.buildings.gate.buildHours / 2.0) * 100)) : 0;
+
     if (!hasCrewShed){
       badgeIcon = '🔒';
-      badgeText = 'Step 1: Crew Shed Needed';
+      badgeText = 'Ch.1: Crew Shed Needed';
       badgeClass = 'unbuilt';
     } else if (!hasLaborer){
       badgeIcon = '🔒';
-      badgeText = 'Step 2: Recruit Laborer Needed';
+      badgeText = 'Ch.2: Recruit Laborer Needed';
       badgeClass = 'unbuilt';
     } else if (!rocksCleared){
       if (rocksClearing){
@@ -27807,10 +28513,20 @@ function roadPromenadeHtml(){
         badgeText = 'Clear Boulders (€50 · 2h)';
         badgeClass = 'unbuilt guide-active-spot';
       }
+    } else if (!hasGate){
+      if (isGateBuilding){
+        badgeIcon = '⛩️';
+        badgeText = 'Erecting Gate (' + gPct + '%)';
+        badgeClass = 'building';
+      } else {
+        badgeIcon = '⛩️';
+        badgeText = 'Build Entrance Gate (€120)';
+        badgeClass = 'unbuilt guide-active-spot';
+      }
     }
 
     innerBadge = '<div class="main-road-canvas-badge ' + badgeClass + '" onclick="openModal(\'building\',\'road\')">' +
-      (isRoadRec ? '<span class="road-badge-guide-tag">🎯 Step 3: Roadworks</span>' : '') +
+      (isRoadRec ? '<span class="road-badge-guide-tag">🎯 Ch.2: Infrastructure</span>' : '') +
       '<span class="badge-icon">' + badgeIcon + '</span>' +
       '<span class="badge-text">' + badgeText + '</span>' +
     '</div>';
@@ -27892,130 +28608,162 @@ function getPendingTasksList(){
   var tasks = [];
   if (!state) return tasks;
 
-  // Step 1: Storage Granary Barn
-  if (!state.storage || !state.storage.built){
+  // Chapter 1: Crew Shed & Depot
+  if (state.buildings && state.buildings.crew_shed && !state.buildings.crew_shed.built && !state.buildings.crew_shed.building){
     tasks.push({
       step: 1,
       category: 'core',
-      stepName: 'Step 1: Storage Granary Barn',
-      type: 'storage_build',
-      targetId: null,
-      label: '🏚️ Step 1: Build Storage Barn (€' + STORAGE_COST + ')',
-      cost: STORAGE_COST,
+      stepName: 'Ch. 1: Crew Shed & Depot',
+      type: 'building',
+      targetId: 'crew_shed',
+      label: '🏠 Ch. 1: Construct Crew Shed (€' + BUILDING_TYPES.crew_shed.cost + ')',
+      cost: BUILDING_TYPES.crew_shed.cost,
       isUnlocked: true,
       isComplete: false
     });
   }
 
-  // Step 2: Main Arterial Road & Grand Gate
-  if (state.buildings && state.buildings.road && !state.buildings.road.built && !state.buildings.road.building){
-    var s2Unlocked = (typeof isStepUnlocked === 'function') ? isStepUnlocked(2) : false;
+  // Chapter 1: Till Soil & Cultivate Plot 1
+  var hasGrowing = state.plots && state.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; });
+  if (!hasGrowing){
+    var s1PlotUnlocked = !!(state.storage && state.storage.built);
+    tasks.push({
+      step: 1,
+      category: 'core',
+      stepName: 'Ch. 1: Till Soil & Cultivate',
+      type: 'dig',
+      targetId: 0,
+      label: '🌱 Ch. 1: Dig Soil & Cultivate Plot 1 (€' + LABOR_COST + ')',
+      cost: LABOR_COST,
+      isUnlocked: s1PlotUnlocked,
+      isComplete: false
+    });
+  }
+
+  // Chapter 2: Recruit Field Laborer
+  if (state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built && (!state.workers || !state.workers.some(function(w){ return w.type === 'laborer'; }))){
     tasks.push({
       step: 2,
       category: 'core',
-      stepName: 'Step 2: Main Road & Grand Gate',
-      type: 'building',
-      targetId: 'road',
-      label: '⛩️ Step 2: Pave Main Road & Gate (€' + BUILDING_TYPES.road.cost + ')',
-      cost: BUILDING_TYPES.road.cost,
-      isUnlocked: s2Unlocked,
-      isComplete: false
-    });
-  }
-
-  // Step 3: Crew Shed & Depot
-  if (state.buildings && state.buildings.crew_shed && !state.buildings.crew_shed.built && !state.buildings.crew_shed.building){
-    var s3Unlocked = (typeof isStepUnlocked === 'function') ? isStepUnlocked(3) : false;
-    tasks.push({
-      step: 3,
-      category: 'core',
-      stepName: 'Step 3: Crew Shed & Depot',
-      type: 'building',
-      targetId: 'crew_shed',
-      label: '🏠 Step 3: Construct Crew Shed (€' + BUILDING_TYPES.crew_shed.cost + ')',
-      cost: BUILDING_TYPES.crew_shed.cost,
-      isUnlocked: s3Unlocked,
-      isComplete: false
-    });
-  }
-
-  // Step 4: Recruit Field Crew Personnel
-  if (state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built && (!state.workers || state.workers.length === 0)){
-    tasks.push({
-      step: 4,
-      category: 'core',
-      stepName: 'Step 4: Field Crew Personnel',
+      stepName: 'Ch. 2: Field Laborer Personnel',
       type: 'recruit_laborer',
       targetId: null,
-      label: '👷 Step 4: Recruit Field Crew Personnel (€' + WORKER_TYPES.laborer.wage + '/d)',
+      label: '👷 Ch. 2: Recruit Field Laborer (€' + WORKER_TYPES.laborer.wage + '/d)',
       cost: WORKER_TYPES.laborer.wage,
       isUnlocked: true,
       isComplete: false
     });
   }
 
-  // Step 5: Till Soil & Plant Crops
-  var hasGrowing = state.plots && state.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; });
-  if (!hasGrowing){
-    var s5Unlocked = (typeof isStepUnlocked === 'function') ? isStepUnlocked(5) : false;
+  // Chapter 2: Clear Boulders
+  if (!state.rocksCleared && !state.rocksClearing){
+    var hasLab = state.workers && state.workers.some(function(w){ return w.type === 'laborer'; });
+    tasks.push({
+      step: 2,
+      category: 'core',
+      stepName: 'Ch. 2: Clear Boulders',
+      type: 'clear_rocks',
+      targetId: 'road',
+      label: '🪨 Ch. 2: Clear Bedrock Boulders from Road Corridor (€50 · 2h)',
+      cost: 50,
+      isUnlocked: hasLab,
+      isComplete: false
+    });
+  }
+
+  // Chapter 2: Grand Farm Entrance Gate
+  if (state.buildings && state.buildings.gate && !state.buildings.gate.built && !state.buildings.gate.building){
+    var gUnlocked = !!state.rocksCleared;
+    var gCost = BUILDING_TYPES.gate ? BUILDING_TYPES.gate.cost : 120;
+    tasks.push({
+      step: 2,
+      category: 'core',
+      stepName: 'Ch. 2: Grand Entrance Gate',
+      type: 'building',
+      targetId: 'road',
+      optKey: 'gate',
+      label: '⛩️ Ch. 2: Construct Grand Entrance Gate (€' + gCost + ')',
+      cost: gCost,
+      isUnlocked: gUnlocked,
+      isComplete: false
+    });
+  }
+
+  // Chapter 2: Main Arterial Road
+  if (state.buildings && state.buildings.road && !state.buildings.road.built && !state.buildings.road.building){
+    var s2RoadUnlocked = !!(state.rocksCleared && (!state.buildings.gate || state.buildings.gate.built));
+    tasks.push({
+      step: 2,
+      category: 'core',
+      stepName: 'Ch. 2: Main Arterial Road',
+      type: 'building',
+      targetId: 'road',
+      label: '🛣️ Ch. 2: Pave Main Arterial Road (€' + BUILDING_TYPES.road.cost + ')',
+      cost: BUILDING_TYPES.road.cost,
+      isUnlocked: s2RoadUnlocked,
+      isComplete: false
+    });
+  }
+
+  // Chapter 2: Storage Granary Barn
+  if (!state.storage || !state.storage.built){
+    var s2StorageUnlocked = !!(state.buildings && state.buildings.road && state.buildings.road.built);
+    tasks.push({
+      step: 2,
+      category: 'core',
+      stepName: 'Ch. 2: Storage Granary Barn',
+      type: 'storage_build',
+      targetId: null,
+      label: '🏚️ Ch. 2: Build Storage Granary Barn (€' + STORAGE_COST + ')',
+      cost: STORAGE_COST,
+      isUnlocked: s2StorageUnlocked,
+      isComplete: false
+    });
+  }
+
+  // Chapter 5: Recruit Certified Engineer
+  var hasEng = state.workers && state.workers.some(function(w){ return w.type === 'engineer'; });
+  if (!hasEng && state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built){
     tasks.push({
       step: 5,
       category: 'core',
-      stepName: 'Step 5: Till Soil & Cultivate',
-      type: 'dig',
-      targetId: 0,
-      label: '🌱 Step 5: Dig Soil & Cultivate Plot 1 (€' + LABOR_COST + ')',
-      cost: LABOR_COST,
-      isUnlocked: s5Unlocked,
-      isComplete: false
-    });
-  }
-
-  // Step 6: Recruit Certified Engineer
-  var hasEng = state.workers && state.workers.some(function(w){ return w.type === 'engineer'; });
-  if (!hasEng && state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built){
-    var s6Unlocked = (typeof isStepUnlocked === 'function') ? isStepUnlocked(6) : false;
-    tasks.push({
-      step: 6,
-      category: 'core',
-      stepName: 'Step 6: Certified Engineer',
+      stepName: 'Ch. 5: Certified Engineer',
       type: 'recruit_engineer',
       targetId: null,
-      label: '👨‍🔧 Step 6: Recruit Certified Engineer (€' + WORKER_TYPES.engineer.wage + '/d)',
+      label: '👨‍🔧 Ch. 5: Recruit Certified Engineer (€' + WORKER_TYPES.engineer.wage + '/d)',
       cost: WORKER_TYPES.engineer.wage,
-      isUnlocked: s6Unlocked,
+      isUnlocked: true,
       isComplete: false
     });
   }
 
-  // Step 7: 4-Corner Wind Turbine Grid (2+2 Hot Redundant)
-  var s7Unlocked = (typeof isStepUnlocked === 'function') ? isStepUnlocked(7) : false;
+  // Chapter 5: 4-Corner Wind Turbine Grid (2+2 Hot Redundant)
   if (state.buildings && state.buildings.wind_turbines){
     Object.keys(WIND_TURBINE_SPOTS).forEach(function(k){
       var spot = WIND_TURBINE_SPOTS[k];
       var wt = state.buildings.wind_turbines[k];
       if (!wt.built && !wt.building){
         tasks.push({
-          step: 7,
+          step: 5,
           category: 'core',
-          stepName: 'Step 7: Wind Turbine Grid',
+          stepName: 'Ch. 5: Wind Turbine Grid',
           type: 'building_turbine',
           targetId: k,
           turbineId: k,
-          label: '💨 Step 7: Erect ' + spot.label + ' (' + spot.role + ' · €' + spot.cost + ')',
+          label: '💨 Ch. 5: Erect ' + spot.label + ' (' + spot.role + ' · €' + spot.cost + ')',
           cost: spot.cost,
-          isUnlocked: s7Unlocked,
+          isUnlocked: hasEng,
           isComplete: false
         });
       } else if (wt.built && wt.checklistPending){
         tasks.push({
-          step: 7,
+          step: 5,
           category: 'core',
-          stepName: 'Step 7: Commissioning',
+          stepName: 'Ch. 5: Commissioning',
           type: 'commission_turbine',
           targetId: k,
           turbineId: k,
-          label: '🔧 Step 7: Engineer Commissioning — ' + spot.label,
+          label: '🔧 Ch. 5: Engineer Commissioning — ' + spot.label,
           cost: 0,
           isUnlocked: hasEng,
           isComplete: false
@@ -28024,30 +28772,31 @@ function getPendingTasksList(){
     });
   }
 
-  // Step 8: Industrial Battery Substation BESS
+  // Chapter 6: Industrial Battery Substation BESS
   if (state.buildings && state.buildings.energy_storage){
     var es = state.buildings.energy_storage;
-    var s8Unlocked = (typeof isStepUnlocked === 'function') ? isStepUnlocked(8) : false;
+    var wts = state.buildings.wind_turbines;
+    var wtCommissioned = wts && wts.wt_nw && wts.wt_nw.built && wts.wt_nw.commissioned;
     if (!es.built && !es.building){
       tasks.push({
-        step: 8,
+        step: 6,
         category: 'core',
-        stepName: 'Step 8: Battery BESS',
+        stepName: 'Ch. 6: Battery BESS',
         type: 'building',
         targetId: 'energy_storage',
-        label: '🔋 Step 8: Build Battery Substation BESS (€' + BUILDING_TYPES.energy_storage.cost + ')',
+        label: '🔋 Ch. 6: Build Battery Substation BESS (€' + BUILDING_TYPES.energy_storage.cost + ')',
         cost: BUILDING_TYPES.energy_storage.cost,
-        isUnlocked: s8Unlocked,
+        isUnlocked: !!wtCommissioned,
         isComplete: false
       });
     } else if (es.built && (es.storedKWh || 0) >= 100){
       tasks.push({
-        step: 8,
+        step: 6,
         category: 'core',
-        stepName: 'Step 8: Energy Export',
+        stepName: 'Ch. 6: Energy Export',
         type: 'export_energy',
         targetId: null,
-        label: '⚡ Export 100 kWh Clean Power (+€80.00)',
+        label: '⚡ Ch. 6: Export 100 kWh Clean Power (+€80.00)',
         cost: 0,
         isUnlocked: true,
         isComplete: false
@@ -28577,14 +29326,74 @@ function buildingModalHtml(key){
     '<h2><span>'+def.icon+' '+def.label+'</span>' + whyBtn + '<button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>'+
     '<div class="modal-body-scroll">';
   if (key === 'road'){
+    // Subtask 1: Grand Farm Entrance Gate (Biosecurity Perimeter)
+    var gb = (state.buildings && state.buildings.gate) ? state.buildings.gate : { built: false, building: false, buildHours: 0, assignedLaborers: [] };
+    var gDef = (typeof BUILDING_TYPES !== 'undefined' && BUILDING_TYPES.gate) ? BUILDING_TYPES.gate : { label: 'Grand Farm Entrance Gate', cost: 120, buildHours: 2.0 };
+    var gLabs = (gb.assignedLaborers && gb.assignedLaborers.length) ? gb.assignedLaborers.length : 1;
+    var gSpeedMult = Math.min(2.0, Math.max(1.0, gLabs));
+    var gProg = formatTaskProgress(gb.buildHours, gDef.buildHours, gSpeedMult);
+
+    html += '<div class="road-build-card" style="border-left:4px solid #1B5E20;background:#F9FBF7;margin-bottom:12px;">' +
+      '<div class="road-build-header">' +
+        '<span class="road-build-title">⛩️ Subtask 1: Grand Farm Entrance Gate (Perimeter Biosecurity)</span>' +
+        '<span class="road-build-badge ' + (gb.built ? 'built' : (gb.building ? 'progress' : 'unbuilt')) + '">' +
+          (gb.built ? '✓ Built &amp; Secured (+15 XP)' : (gb.building ? gProg.display : '€' + gDef.cost)) +
+        '</span>' +
+      '</div>' +
+      '<div class="sub">3D Ashlar stone and carved timber perimeter gate. Establishes legal boundaries, prevents wild herbivores from destroying agroforestry saplings, and welcomes eco-tourists and haulers. Mandatory prerequisite before paving the Main Arterial Road.</div>';
+
+    if (gb.built){
+      html += '<div class="row"><span>Biosecurity Gate Status</span><span class="v" style="color:#2E7D32;font-weight:800;">✓ Constructed &amp; Functional (+15 Knowledge XP)</span></div>';
+    } else if (gb.building){
+      var idleLab = getIdleLaborers();
+      html += '<div class="row"><span>Constructing Entrance Gate</span><span class="v" style="font-weight:800;color:#2E7D32;">' + gProg.display + '</span></div>' +
+        '<div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:' + gProg.pct + '%;background:#F57F17;"></div></div>' +
+        '<div style="background:#FFFDE7;border:1.5px solid #FFE082;border-radius:10px;padding:8px 10px;margin-bottom:8px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+            '<span style="font-weight:800;font-size:0.80rem;color:#B78103;">👷 Gate Crew (' + gLabs + ' / 2 Laborers · ' + Math.round(gSpeedMult * 100) + '% speed · ' + (gLabs===2?'1.0h':'2.0h') + ' total)</span>' +
+            '<span style="font-size:0.70rem;color:#E65100;font-weight:700;">Max 2 Laborers (More Labor = Less Time)</span>' +
+          '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">' +
+            (gb.assignedLaborers || []).map(function(wid){
+              var wk = state.workers.find(function(w){ return w.id === wid; });
+              var wName = wk ? (wk.name || ('Laborer #' + wk.id)) : ('Laborer #' + wid);
+              var canRecall = (gb.assignedLaborers.length > 1);
+              return '<span class="road-crew-badge" style="background:#FFF;border:1px solid #FFD54F;color:#5D4037;font-size:0.72rem;padding:2px 6px;border-radius:4px;">' +
+                '👷 ' + wName +
+                (canRecall ? ' <a href="javascript:void(0)" onclick="unassignLaborerFromGate(' + wid + ')" style="color:#D84315;font-weight:800;text-decoration:none;margin-left:4px;" title="Recall worker">✕</a>' : '') +
+              '</span>';
+            }).join('') +
+          '</div>' +
+          (gLabs < 2 && idleLab.length > 0
+            ? '<button type="button" class="primary mini-btn" onclick="assignLaborerToGate()" style="padding:4px 10px;font-size:0.75rem;font-weight:700;">➕ Assign 2nd Laborer (' + (idleLab[0].name || '#'+idleLab[0].id) + ') ➔ 2x Speed (1.0h total)</button>'
+            : (gLabs >= 2 ? '<span style="font-size:0.70rem;color:#2E7D32;font-weight:800;">✓ Maximum 2 Laborers actively working (200% build speed).</span>' : '<span style="font-size:0.70rem;color:#795548;">All recruited laborers busy. Recruit more in Crew Shed.</span>')) +
+        '</div>';
+    } else {
+      if (!state.rocksCleared){
+        html += '<div style="background:#FFF3E0;border:1px solid #FFE082;border-radius:8px;padding:8px 10px;font-size:0.76rem;color:#E65100;margin-bottom:8px;">' +
+          '🔒 Clear bedrock boulders from the corridor before surveying the gate foundation.' +
+        '</div>' +
+        '<button class="secondary" disabled style="width:100%;min-height:38px;font-size:0.86rem;font-weight:700;opacity:0.7;">🔒 Build Gate — Clear Boulders First</button>';
+      } else {
+        html += '<div style="display:flex;gap:6px;margin-top:6px;">' +
+          '<button class="primary" onclick="startBuildGate()" ' + (state.money < gDef.cost ? 'disabled' : '') + ' style="flex:1;min-height:42px;font-size:0.88rem;font-weight:800;background:#1B5E20;border-color:#0D3B13;">' +
+            '⛩️ Construct Grand Entrance Gate (€' + gDef.cost + ' · 2h) — Up to 2 Laborers' +
+          '</button>' +
+          '<button class="secondary mini-btn" onclick="openWhyModal(\'main_gate\')" style="padding:0 12px;font-weight:700;">💡 Why Gate?</button>' +
+        '</div>';
+      }
+    }
+    html += '</div>';
+
+    // Subtask 2: Main Arterial Road
     html += '<div class="road-build-card">' +
       '<div class="road-build-header">' +
-        '<span class="road-build-title">⛩️ Main Arterial Road &amp; Grand Gate</span>' +
+        '<span class="road-build-title">🛣️ Subtask 2: Main Arterial Road</span>' +
         '<span class="road-build-badge ' + (b.built ? 'built' : (b.building ? 'progress' : 'unbuilt')) + '">' +
           (b.built ? '✓ Built &amp; Paved' : (b.building ? Math.round(Math.min(100,(b.buildHours/def.buildHours)*100)) + '%' : '€' + def.cost)) +
         '</span>' +
       '</div>' +
-      '<div class="sub">Connects the Farm Main Entry Gate to Storage and the village. Required for heavy freight trucks and shop visitor access.</div>';
+      '<div class="sub">High-capacity cambered macadam highway connecting the Entrance Gate to Storage and the village. Enables commercial delivery trucks and eco-tourist visitor access.</div>';
 
     if (!state.rocksCleared){
       var rkPct = Math.round(Math.min(100, (state.rocksClearHours/2)*100));
@@ -28634,10 +29443,19 @@ function buildingModalHtml(key){
             : '<span style="font-size:0.70rem;color:#795548;">All recruited laborers busy. Recruit more in Crew Shed to accelerate speed.</span>') +
         '</div>';
     } else if (state.rocksCleared){
-      html += '<div style="background:#E8F5E9;border:1px solid #C8E6C9;border-radius:8px;padding:8px 12px;font-size:0.78rem;color:#2E7D32;font-weight:700;margin:6px 0;">' +
-        '✓ Boulders cleared! Road corridor is prepped and ready for paving.' +
-      '</div>' +
-      '<button class="primary road-pave-btn" data-build-road-segment="main" onclick="startBuildRoadSegment(\'main\')" ' + (state.money < def.cost ? 'disabled' : '') + ' style="width:100%;min-height:44px;font-size:0.92rem;font-weight:800;margin-top:10px;">⛩️ Pave Main Road — €' + def.cost + ' (' + def.buildHours + 'h)</button>';
+      if (gb && !gb.built){
+        html += '<div style="background:#FFF3E0;border:1px solid #FFE082;border-radius:8px;padding:8px 10px;font-size:0.76rem;color:#E65100;margin:6px 0;">' +
+          '🔒 Grand Farm Entrance Gate must be constructed before paving the Main Arterial Road!' +
+        '</div>' +
+        '<button class="secondary" disabled style="width:100%;min-height:44px;font-size:0.90rem;font-weight:700;margin-top:6px;opacity:0.7;">' +
+          '🔒 Pave Main Road — Construct Gate First' +
+        '</button>';
+      } else {
+        html += '<div style="background:#E8F5E9;border:1px solid #C8E6C9;border-radius:8px;padding:8px 12px;font-size:0.78rem;color:#2E7D32;font-weight:700;margin:6px 0;">' +
+          '✓ Boulders cleared &amp; Gate secured! Road corridor is prepped and ready for paving.' +
+        '</div>' +
+        '<button class="primary road-pave-btn" data-build-road-segment="main" onclick="startBuildRoadSegment(\'main\')" ' + (state.money < def.cost ? 'disabled' : '') + ' style="width:100%;min-height:44px;font-size:0.92rem;font-weight:800;margin-top:10px;">🛣️ Pave Main Road — €' + def.cost + ' (' + def.buildHours + 'h)</button>';
+      }
     } else {
       html += '<button class="secondary" disabled style="width:100%;min-height:44px;font-size:0.90rem;font-weight:700;margin-top:10px;opacity:0.7;">' +
         '🔒 Pave Main Road — Clear Boulders First' +
@@ -31207,35 +32025,64 @@ function panelHtml(){
         }).join('');
     }
 
-    // Fieldwork Maintenance (Shown in Chapter 1 & 2 or when plots need care)
-    var maintRows = '';
-    var anyMaint = false;
-    if (selectedCh <= 2) {
-      if (!state.rocksCleared){
-        anyMaint = true;
-        maintRows += '<div class="task-row" style="border-left:4px solid #78909C;"><div class="task-info"><div class="name">🪨 Clear Boulder Obstacles from Road</div><div class="meta">€50 · 2h · clears rocks for Main Road</div></div><button class="claim-btn" onclick="prepareClearRocksTask()" ' + (state.money < 50 ? 'disabled' : '') + '>Clear (€50)</button></div>';
-      }
-      if ((state.lawnOvergrowth || 0) >= 30){
-        anyMaint = true;
-        maintRows += '<div class="task-row" style="border-left:4px solid #81C784;"><div class="task-info"><div class="name">🌿 Mow Estate Lawn & Trim Weeds</div><div class="meta">€15 · 1.5h · manicures turf (+5 Rep)</div></div><button class="claim-btn" onclick="startMowLawn()" ' + (state.money < 15 ? 'disabled' : '') + '>Mow (€15)</button></div>';
-      }
-      state.plots.forEach(function(p){
-        if (p.status === 'barren'){
-          anyMaint = true;
-          maintRows += '<div class="task-row"><div class="task-info"><div class="name">Plot ' + (p.id + 1) + ' — Dig Land</div><div class="meta">€' + LABOR_COST + ' · 3h</div></div><button class="claim-btn" data-prep="' + p.id + '">Dig</button></div>';
-        } else if (p.status === 'overgrown'){
-          anyMaint = true;
-          maintRows += '<div class="task-row"><div class="task-info"><div class="name">Plot ' + (p.id + 1) + ' — Clear Brush</div><div class="meta">€' + CLEAR_COST + ' · 2h</div></div><button class="claim-btn" data-clear="' + p.id + '">Clear</button></div>';
-        } else if (p.status === 'growing' && p.pendingHarvest >= 0.5 && !p.harvesting){
-          anyMaint = true;
-          maintRows += '<div class="task-row"><div class="task-info"><div class="name">🧺 Plot ' + (p.id + 1) + ' — Harvest Crop</div><div class="meta">€' + p.pendingHarvest.toFixed(2) + ' ripe crop waiting</div></div><button class="claim-btn" data-openplot="' + p.id + '">Harvest</button></div>';
+    // Regenerative Stewardship & Fieldwork Maintenance
+    ensureStewardshipState();
+    var maintRows = Object.keys(STEWARDSHIP_TASKS).map(function(tk){
+      var tsk = STEWARDSHIP_TASKS[tk];
+      if (tk === 'clear_rocks' && state.rocksCleared) return '';
+      
+      var isRunning = false;
+      var progDisplay = '';
+      if (tk === 'clear_rocks'){
+        isRunning = state.rocksClearing;
+        if (isRunning) progDisplay = Math.round(Math.min(100, (state.rocksClearHours/2)*100)) + '%';
+      } else if (tk === 'mow_lawn'){
+        isRunning = state.lawnMowing;
+        if (isRunning) progDisplay = Math.round(Math.min(100, (state.lawnMowHours/1.5)*100)) + '%';
+      } else if (state.stewardship){
+        if (tk === 'soil_tilth' && state.stewardship.soilTilthActive){
+          isRunning = true;
+          progDisplay = Math.round(Math.min(100, (state.stewardship.soilTilthHours/1.5)*100)) + '%';
+        } else if (tk === 'bio_mulch' && state.stewardship.bioMulchActive){
+          isRunning = true;
+          progDisplay = Math.round(Math.min(100, (state.stewardship.bioMulchHours/1.5)*100)) + '%';
+        } else if (tk === 'drip_flush' && state.stewardship.irrigationFlushActive){
+          isRunning = true;
+          progDisplay = Math.round(Math.min(100, (state.stewardship.irrigationFlushHours/1.0)*100)) + '%';
+        } else if (tk === 'ladybug_release' && state.stewardship.pestPatrolActive){
+          isRunning = true;
+          progDisplay = Math.round(Math.min(100, (state.stewardship.pestPatrolHours/1.0)*100)) + '%';
         }
-      });
-    }
-    var maintSectionHtml = '';
-    if (anyMaint) {
-      maintSectionHtml = '<div style="font-size:0.75rem;font-weight:800;color:#546E7A;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">🛠️ Fieldwork &amp; Ground Maintenance:</div>' + maintRows;
-    }
+      }
+
+      var actionCall = (tk === 'clear_rocks' ? 'prepareClearRocksTask()' :
+        (tk === 'mow_lawn' ? 'startMowLawn()' :
+        (tk === 'soil_tilth' ? 'stewardSoilTilth()' :
+        (tk === 'bio_mulch' ? 'stewardBioMulch()' :
+        (tk === 'drip_flush' ? 'stewardIrrigationFlush()' : 'stewardLadybugRelease()')))));
+
+      var actionBtn = isRunning
+        ? '<button class="claim-btn" disabled style="background:#5D4037;font-size:0.72rem;padding:4px 8px;">⏳ ' + progDisplay + '</button>'
+        : '<button class="claim-btn active" onclick="' + actionCall + '" ' + (state.money < tsk.cost ? 'disabled' : '') + ' style="font-size:0.74rem;padding:5px 10px;">Execute (€' + tsk.cost + ')</button>';
+
+      return '<div class="task-row" style="border-left:4px solid #43A047;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;margin-bottom:6px;background:#FAFAFA;border-radius:6px;">' +
+        '<div class="task-info" style="min-width:0;flex:1;">' +
+          '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
+            '<span class="name" style="font-weight:800;font-size:0.82rem;color:#1B3B24;">' + tsk.icon + ' ' + tsk.name + '</span>' +
+            '<span style="font-size:0.68rem;background:#E8F5E9;color:#2E7D32;padding:1px 5px;border-radius:4px;font-weight:700;">+' + tsk.xp + ' XP</span>' +
+            '<span style="font-size:0.68rem;background:#FFF3E0;color:#E65100;padding:1px 5px;border-radius:4px;font-weight:700;">+' + tsk.rep + ' Rep</span>' +
+            '<span style="font-size:0.68rem;background:#E1F5FE;color:#0277BD;padding:1px 5px;border-radius:4px;font-weight:700;">' + tsk.stat + '</span>' +
+          '</div>' +
+          '<div class="meta" style="font-size:0.72rem;color:#546E7A;margin-top:2px;line-height:1.35;">€' + tsk.cost + ' · ' + tsk.hours + 'h — ' + tsk.why.slice(0, 95) + '...</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' +
+          '<button class="secondary mini-btn" onclick="showStewardshipRoadmap(\'' + tk + '\')" style="font-size:0.70rem;padding:4px 8px;background:#F1F8E9;border-color:#C5E1A5;color:#33691E;font-weight:700;" title="View scientific reasoning & roadmap">🗺️ Why &amp; Roadmap</button>' +
+          actionBtn +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    var maintSectionHtml = '<div style="font-size:0.75rem;font-weight:800;color:#2E7D32;margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.5px;">🌿 Regenerative Stewardship &amp; Fieldwork Maintenance:</div>' + maintRows;
 
     var htmlTasks = '<div class="float-panel"><h2><span>📋 Chapter ' + selectedCh + ' Tasks &amp; Objectives</span><span class="close-x" data-closepanel="1" onclick="closePanel(event)" ontouchend="closePanel(event)" title="Close Panel">✕</span></h2>' +
       chapterTabsHtml +
@@ -31293,6 +32140,26 @@ function panelHtml(){
       '<button class="modal-bottom-close" data-closepanel="1" onclick="closePanel(event)" ontouchend="closePanel(event)" style="margin-top:12px;">✕ Close Workers Panel</button></div>';
   }
   if (openPanel==='achievements'){
+    var curCh = (state && state.currentChapter) || 1;
+    var kInfo = getKnowledgeLevelInfo(state ? state.knowledgeXP : 0);
+
+    var chapterDots = [1,2,3,4,5,6,7,8].map(function(c){
+      var isPast = c < curCh;
+      var isCur = c === curCh;
+      var bg = isPast ? '#2E7D32' : (isCur ? '#E65100' : '#CFD8DC');
+      var clr = isPast || isCur ? '#FFF' : '#546E7A';
+      return '<div style="flex:1;text-align:center;padding:4px 0;background:' + bg + ';color:' + clr + ';font-size:0.70rem;font-weight:800;border-radius:4px;">Ch.' + c + '</div>';
+    }).join('');
+
+    var chapterBanner = '<div style="background:#E8F5E9;border:1.5px solid #A5D6A7;border-radius:12px;padding:10px 12px;margin-bottom:12px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+        '<b style="font-size:0.88rem;color:#1B5E20;">🌟 Chapter Progression: Chapter ' + curCh + ' of 8</b>' +
+        '<span style="font-size:0.74rem;font-weight:800;color:#2E7D32;background:#C8E6C9;padding:2px 8px;border-radius:10px;">' + kInfo.icon + ' ' + kInfo.title + ' (Level ' + kInfo.level + ')</span>' +
+      '</div>' +
+      '<div style="font-size:0.75rem;color:#33691E;margin-bottom:8px;">' + (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[curCh-1] ? CHAPTER_DEFINITIONS[curCh-1].fantasy : 'Regenerative Farm Evolution') + '</div>' +
+      '<div style="display:flex;gap:4px;">' + chapterDots + '</div>' +
+    '</div>';
+
     var ach = ACHIEVEMENTS.map(function(a){ return '<div class="ach'+(state.achUnlocked[a.id]?' unlocked':'')+'">'+a.label+'</div>'; }).join('');
     
     // Academic Standing & Leaderboard Card
@@ -31338,6 +32205,7 @@ function panelHtml(){
     '</div>';
 
     return '<div class="float-panel"><h2><span>🏆 Achievements &amp; Eco-Transcript</span><span class="close-x" data-closepanel="1" onclick="closePanel(event)" ontouchend="closePanel(event)" title="Close Panel">✕</span></h2>' +
+      chapterBanner +
       academicCard +
       '<div class="ach-grid">'+ach+'</div>' +
       '<button class="modal-bottom-close" data-closepanel="1" onclick="closePanel(event)" ontouchend="closePanel(event)" style="margin-top:12px;">✕ Close Achievements Panel</button></div>';
@@ -32185,6 +33053,18 @@ window.startRemoveTree = startRemoveTree;
 window.cutDownGrowingTree = cutDownGrowingTree;
 window.startHarvest = startHarvest;
 window.startBuildBuilding = startBuildBuilding;
+window.openChapterRoadmapFromPopup = openChapterRoadmapFromPopup;
+window.openWhyFromPopup = openWhyFromPopup;
+window.stewardSoilTilth = stewardSoilTilth;
+window.stewardBioMulch = stewardBioMulch;
+window.stewardIrrigationFlush = stewardIrrigationFlush;
+window.stewardLadybugRelease = stewardLadybugRelease;
+window.showStewardshipRoadmap = showStewardshipRoadmap;
+window.ensureStewardshipState = ensureStewardshipState;
+window.STEWARDSHIP_TASKS = STEWARDSHIP_TASKS;
+window.startBuildGate = startBuildGate;
+window.assignLaborerToGate = assignLaborerToGate;
+window.unassignLaborerFromGate = unassignLaborerFromGate;
 window.startBuildRoadSegment = startBuildRoadSegment;
 window.assignLaborerToRoad = assignLaborerToRoad;
 window.unassignLaborerFromRoad = unassignLaborerFromRoad;
@@ -32495,6 +33375,18 @@ globalThis.isObjectUnlockedByChapter = isObjectUnlockedByChapter;
   globalThis.cutDownGrowingTree = cutDownGrowingTree;
   globalThis.startHarvest = startHarvest;
   globalThis.startBuildBuilding = startBuildBuilding;
+globalThis.openChapterRoadmapFromPopup = openChapterRoadmapFromPopup;
+globalThis.openWhyFromPopup = openWhyFromPopup;
+globalThis.stewardSoilTilth = stewardSoilTilth;
+globalThis.stewardBioMulch = stewardBioMulch;
+globalThis.stewardIrrigationFlush = stewardIrrigationFlush;
+globalThis.stewardLadybugRelease = stewardLadybugRelease;
+globalThis.showStewardshipRoadmap = showStewardshipRoadmap;
+globalThis.ensureStewardshipState = ensureStewardshipState;
+globalThis.STEWARDSHIP_TASKS = STEWARDSHIP_TASKS;
+  globalThis.startBuildGate = startBuildGate;
+  globalThis.assignLaborerToGate = assignLaborerToGate;
+  globalThis.unassignLaborerFromGate = unassignLaborerFromGate;
   globalThis.startBuildRoadSegment = startBuildRoadSegment;
   globalThis.assignLaborerToRoad = assignLaborerToRoad;
   globalThis.unassignLaborerFromRoad = unassignLaborerFromRoad;

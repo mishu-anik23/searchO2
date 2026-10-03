@@ -399,6 +399,7 @@ const path = require('path');
         { id: 2, type: 'laborer', assignedPlot: null, assignedBuilding: null }
       ];
       state.rocksCleared = true;
+      if (state.buildings && state.buildings.gate) state.buildings.gate.built = true;
       openModal('building', 'road');
       startBuildRoadSegment('main');
       const roadClosedOk = (activeModal === null && state.buildings.road.building === true);

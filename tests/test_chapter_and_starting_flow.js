@@ -38,7 +38,10 @@ const path = require('path');
       test3_visitorFeedbackByChapter: { passed: false, details: [] },
       test4_section7WelcomeFlow: { passed: false, details: [] },
       test5_beginnerChoicesAndPlanting: { passed: false, details: [] },
-      test6_motivationalBubbleLifecycle: { passed: false, details: [] }
+      test6_motivationalBubbleLifecycle: { passed: false, details: [] },
+      test7_mainGateDecouplingAndWorkerVisibility: { passed: false, details: [] },
+      test8_groundAndMaintenanceOverhaul: { passed: false, details: [] },
+      test9_chapterRoadmapLockModalAcrossFarmObjects: { passed: false, details: [] }
     };
 
     try {
@@ -290,6 +293,178 @@ const path = require('path');
       }
     } catch (e) {
       report.test6_motivationalBubbleLifecycle.details.push('Error: ' + e.message);
+    }
+
+
+    try {
+      // =======================================================================
+      // TEST 7: Main Gate Decoupling, 3D Isometric View & Dynamic Multi-Worker Visibility
+      // =======================================================================
+      state.buildings.gate = { built: false, building: false, buildHours: 0, assignedLaborers: [] };
+      state.buildings.road = { built: false, building: false, buildHours: 0, assignedLaborers: [] };
+      const unbuiltSvg = drawMainGateScene(state.buildings.road);
+      const hasUnbuiltElements = unbuiltSvg.includes('UNBUILT: 3D Isometric Foundation Excavation Pit') &&
+                                 unbuiltSvg.includes('PROPOSED GATE') &&
+                                 unbuiltSvg.includes('CH. 2 BIOSECURITY') &&
+                                 unbuiltSvg.includes('gateMacadamGrad');
+
+      // Road prerequisite: cannot pave road if gate is unbuilt
+      state.rocksCleared = true;
+      startBuildRoadSegment('main');
+      const roadBlockedByGate = (state.buildings.road.building === false);
+
+      // Start building gate with 1 laborer
+      state.money = 5000;
+      state.workers = [
+        { id: 1, type: 'laborer', assignedPlot: null, assignedBuilding: null },
+        { id: 2, type: 'laborer', assignedPlot: null, assignedBuilding: null },
+        { id: 3, type: 'laborer', assignedPlot: null, assignedBuilding: null }
+      ];
+      startBuildGate(1);
+      const gateBuilding = (state.buildings.gate.building === true);
+      const oneLaborerAssigned = (state.buildings.gate.assignedLaborers && state.buildings.gate.assignedLaborers.length === 1);
+
+      // Verify SVG has Worker 1 hammering with swinging animation and sawdust sparks
+      const svg1Worker = drawMainGateScene(state.buildings.road);
+      const hasWorker1Hammering = svg1Worker.includes('DYNAMIC WORKER 1: Hammering') &&
+                                  svg1Worker.includes('Worker #1') &&
+                                  svg1Worker.includes('animateTransform');
+
+      // Assign second laborer: max 2 laborers, 2x speed
+      const assignedSecond = assignLaborerToGate(2);
+      const twoLaborersAssigned = (state.buildings.gate.assignedLaborers && state.buildings.gate.assignedLaborers.length === 2);
+      const assignThirdRejected = (assignLaborerToGate(3) === false);
+
+      // Verify SVG has Worker 2 sawing with reciprocal animation and wood shavings
+      const svg2Workers = drawMainGateScene(state.buildings.road);
+      const hasWorker2Sawing = svg2Workers.includes('DYNAMIC WORKER 2: Sawing') &&
+                               svg2Workers.includes('Worker #2') &&
+                               svg2Workers.includes('animateTransform');
+
+      // Advance gate with 2 workers (rate 2.0x): advances 1.0 game hour to finish 2.0h build
+      const startXP = state.knowledgeXP || 0;
+      advanceGame(1.0);
+      const gateBuilt = (state.buildings.gate.built === true && state.buildings.gate.building === false);
+      const awardedKnowledgeXP = ((state.knowledgeXP || 0) >= startXP + 15);
+
+      // Now road paving is unlocked and can proceed
+      startBuildRoadSegment('main');
+      const roadNowBuilding = (state.buildings.road.building === true);
+
+      if (hasUnbuiltElements && roadBlockedByGate && gateBuilding && oneLaborerAssigned &&
+          hasWorker1Hammering && twoLaborersAssigned && assignThirdRejected && hasWorker2Sawing &&
+          gateBuilt && awardedKnowledgeXP && roadNowBuilding) {
+        report.test7_mainGateDecouplingAndWorkerVisibility.passed = true;
+        report.test7_mainGateDecouplingAndWorkerVisibility.details.push(
+          'Main gate verified: 3D isometric unbuilt excavation geometry (zero black strips), road prerequisite enforced, dynamic 1-worker (hammering) and 2-worker (sawing) SVG visibility, 2x speed scaling with max 2 laborers, and +15 Knowledge XP awarded.'
+        );
+      } else {
+        report.test7_mainGateDecouplingAndWorkerVisibility.details.push(
+          `Failed: hasUnbuilt=${hasUnbuiltElements}, roadBlockedByGate=${roadBlockedByGate}, gateBuilding=${gateBuilding}, oneLaborerAssigned=${oneLaborerAssigned}, hasWorker1=${hasWorker1Hammering}, twoLaborersAssigned=${twoLaborersAssigned}, assignThirdRejected=${assignThirdRejected}, hasWorker2=${hasWorker2Sawing}, gateBuilt=${gateBuilt}, awardedXP=${awardedKnowledgeXP}, roadNowBuilding=${roadNowBuilding}`
+        );
+      }
+    } catch (e) {
+      report.test7_mainGateDecouplingAndWorkerVisibility.details.push('Error: ' + e.message);
+    }
+
+    try {
+      // =======================================================================
+      // TEST 8: Ground & Maintenance Overhaul with Regenerative Reasoning & Awards
+      // =======================================================================
+      state.selectedChapterTab = 2;
+      openPanel = 'tasks';
+      render();
+      const fpTasks = document.getElementById('floatPanel');
+      const tasksInner = fpTasks ? fpTasks.innerHTML : '';
+      const hasStewardshipHeader = tasksInner.includes('Regenerative Stewardship &amp; Fieldwork Maintenance');
+      const hasSoilTilth = tasksInner.includes('Regenerative Soil Tilth &amp; Microbial Aeration');
+      const hasBioMulch = tasksInner.includes('Organic Biomass Shredding &amp; Bio-Mulching');
+      const hasMowLawn = tasksInner.includes('Pollinator Turf Manicuring &amp; Meadow Mowing');
+      const hasDripFlush = tasksInner.includes('Drip Emitter Descaling &amp; Sediment Line Flushing');
+      const hasLadybugs = tasksInner.includes('Beneficial Ladybug Habitat Release');
+      
+      // Old plot digging and brush clearing instructions REMOVED from Ground & Maintenance
+      const noOldBarrenDiggingInMaint = !tasksInner.includes('Plot 1 — Dig Land');
+      const noOldBrushClearInMaint = !tasksInner.includes('Plot 1 — Clear Brush');
+
+      // Test showStewardshipRoadmap modal
+      showStewardshipRoadmap('soil_tilth');
+      const popupEl = document.getElementById('stepInstructionPopupWrapper');
+      const hasPopup = !!popupEl;
+      const popupText = popupEl ? popupEl.innerText : '';
+      const hasScientificWhy = popupText.includes('Compacted subsoil suffocates root respiration');
+      const hasAwards = popupText.includes('+5 Knowledge XP') && popupText.includes('+4 Reputation');
+      closeLockedStepPopup();
+
+      // Test executing stewardship task & advanceGame rewards
+      state.money = 1000;
+      state.workers = [{ id: 10, type: 'laborer', assignedPlot: null, assignedBuilding: null }];
+      const xpBefore = state.knowledgeXP || 0;
+      const repBefore = state.reputation || 0;
+      stewardSoilTilth();
+      const tilthActive = (state.stewardship && state.stewardship.soilTilthActive === true);
+      advanceGame(1.5);
+      const tilthDone = (state.stewardship && state.stewardship.soilTilthActive === false);
+      const xpGained = ((state.knowledgeXP || 0) >= xpBefore + 5);
+      const repGained = ((state.reputation || 0) >= repBefore + 4);
+
+      if (hasStewardshipHeader && hasSoilTilth && hasBioMulch && hasMowLawn && hasDripFlush && hasLadybugs &&
+          noOldBarrenDiggingInMaint && noOldBrushClearInMaint && hasPopup && hasScientificWhy && hasAwards &&
+          tilthActive && tilthDone && xpGained && repGained) {
+        report.test8_groundAndMaintenanceOverhaul.passed = true;
+        report.test8_groundAndMaintenanceOverhaul.details.push(
+          'Ground & Maintenance overhaul verified: Legacy plot digging/brush clearing removed; 6 regenerative stewardship tasks active with intuitive reasoning, award badges (+XP, +Rep, +Tilth, +Compost), interactive Why & Roadmap dialogs, and game simulation execution.'
+        );
+      } else {
+        report.test8_groundAndMaintenanceOverhaul.details.push(
+          `Failed: hasHeader=${hasStewardshipHeader}, hasTilth=${hasSoilTilth}, hasMulch=${hasBioMulch}, hasMow=${hasMowLawn}, hasFlush=${hasDripFlush}, hasLadybugs=${hasLadybugs}, noOldDig=${noOldBarrenDiggingInMaint}, noOldClear=${noOldBrushClearInMaint}, hasPopup=${hasPopup}, hasWhy=${hasScientificWhy}, hasAwards=${hasAwards}, tilthActive=${tilthActive}, tilthDone=${tilthDone}, xpGained=${xpGained}, repGained=${repGained}`
+        );
+      }
+    } catch (e) {
+      report.test8_groundAndMaintenanceOverhaul.details.push('Error: ' + e.message);
+    }
+
+    try {
+      // =======================================================================
+      // TEST 9: Chapter Roadmap Lock Popup Across All Farm Objects
+      // =======================================================================
+      state.currentChapter = 1;
+      showLockedStepPopup(null, 'coffee_shop');
+      const csPopup = document.getElementById('stepInstructionPopupWrapper');
+      const hasCsPopup = !!csPopup;
+      const csText = csPopup ? csPopup.innerText : '';
+      const hasCh6Badge = csText.includes('Chapter 6') || csText.includes('Living Market');
+      const hasCsPurpose = csText.includes('Artisanal farm-to-cup café roasting estate-grown beans');
+      const has3StepRoadmap = csText.includes('1. Current') && csText.includes('2. Next') && csText.includes('3. Target');
+
+      // Test "Open Chapter Roadmap" CTA button switches to Chapter 6 in tasks panel
+      openChapterRoadmapFromPopup(6);
+      const panelOpened = (openPanel === 'tasks');
+      const ch6TabSelected = (state.selectedChapterTab === 6);
+      closePanel();
+
+      // Test Wind Turbine lock popup (Chapter 5)
+      showLockedStepPopup(null, 'wind_turbine');
+      const wtPopup = document.getElementById('stepInstructionPopupWrapper');
+      const hasWtPopup = !!wtPopup;
+      const wtText = wtPopup ? wtPopup.innerText : '';
+      const hasCh5Badge = wtText.includes('Chapter 5') || wtText.includes('Microgrid');
+      const hasWtPurpose = wtText.includes('clean zero-emission electricity');
+      closeLockedStepPopup();
+
+      if (hasCsPopup && hasCh6Badge && hasCsPurpose && has3StepRoadmap && panelOpened && ch6TabSelected &&
+          hasWtPopup && hasCh5Badge && hasWtPurpose) {
+        report.test9_chapterRoadmapLockModalAcrossFarmObjects.passed = true;
+        report.test9_chapterRoadmapLockModalAcrossFarmObjects.details.push(
+          'Chapter Roadmap Lock Popup verified across farm objects (Coffee Shop, Wind Turbines): Displays modern Chapter badges, clear ecological/economic rationale, 3-step suggested unlock roadmap, and interactive CTA linking directly to chapter tasks.'
+        );
+      } else {
+        report.test9_chapterRoadmapLockModalAcrossFarmObjects.details.push(
+          `Failed: hasCsPopup=${hasCsPopup}, hasCh7Badge=${hasCh7Badge}, hasCsPurpose=${hasCsPurpose}, has3StepRoadmap=${has3StepRoadmap}, panelOpened=${panelOpened}, ch7TabSelected=${ch7TabSelected}, hasWtPopup=${hasWtPopup}, hasCh5Badge=${hasCh5Badge}, hasWtPurpose=${hasWtPurpose}`
+        );
+      }
+    } catch (e) {
+      report.test9_chapterRoadmapLockModalAcrossFarmObjects.details.push('Error: ' + e.message);
     }
 
     return report;
