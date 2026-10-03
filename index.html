@@ -10035,6 +10035,501 @@ function isObjectUnlockedByChapter(key, s) {
   return currentCh >= info.chapter;
 }
 
+// ================= CHAPTER-BASED CHALLENGES & ACTIVITIES (CHAPTERS 1 → 8) =================
+var CHAPTER_CHALLENGES = {
+  1: [
+    {
+      id: 'ch1_soil',
+      icon: '🌱',
+      title: 'Awaken the Bedrock',
+      shortTitle: 'Awaken Soil',
+      subtitle: 'Till and aerate hard bedrock crust so roots can absorb moisture and microbial life can thrive.',
+      whyTopic: 'plot',
+      whyLabel: 'Why Aerate Bedrock?',
+      reward: '+5 Knowledge XP · Soil Aeration',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) {
+        return !!(s.plots && s.plots.some(function(p){ return p.status === 'ready' || p.status === 'growing' || p.harvestsDone > 0; }));
+      },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) {
+          return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Tilled</span>';
+        }
+        var p0 = s.plots && s.plots[0];
+        if (p0 && p0.status === 'preparing') {
+          return '<button class="claim-btn" onclick="openModal(\'plot\',0);" style="font-size:0.72rem;padding:4px 8px;">⛏️ Tilling (' + (p0.prepProgress||0) + '%)</button>';
+        }
+        return '<button class="claim-btn active" data-prep="0" style="font-size:0.75rem;padding:5px 10px;">🌱 Till Plot 1 (€' + LABOR_COST + ')</button>';
+      }
+    },
+    {
+      id: 'ch1_plant',
+      icon: '🍎',
+      title: 'First Breath of Life',
+      shortTitle: 'First Breath',
+      subtitle: 'Plant your first botanical seedling to begin photosynthesis and generate clean atmospheric O₂.',
+      whyTopic: 'overview',
+      whyLabel: 'Why Photosynthesis?',
+      reward: '+10 Knowledge XP · First Seedling',
+      isUnlocked: function(s) {
+        return !!(s.plots && s.plots.some(function(p){ return p.status === 'ready' || p.status === 'growing' || p.harvestsDone > 0; }));
+      },
+      isComplete: function(s) {
+        return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; }));
+      },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) {
+          return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Growing (+O₂)</span>';
+        }
+        if (!this.isUnlocked(s)) {
+          return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Prepare Plot 1 soil first!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Tilled Soil</button>';
+        }
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',0);" style="font-size:0.75rem;padding:5px 10px;">🍎 Plant Crop</button>';
+      }
+    },
+    {
+      id: 'ch1_vitality',
+      icon: '💧',
+      title: 'Vitality & Transpiration',
+      shortTitle: 'Hydration',
+      subtitle: 'Nurture your seedling through hydration and sunlight to release pure breathable oxygen.',
+      whyTopic: 'drip_irrigation',
+      whyLabel: 'Why Transpiration?',
+      reward: '+5 Knowledge XP · Hydration Cycle',
+      isUnlocked: function(s) {
+        return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; }));
+      },
+      isComplete: function(s) {
+        return (s.totalO2AllTime || 0) > 0 || (s.plots && s.plots.some(function(p){ return (p.o2Produced && p.o2Produced > 0) || p.harvestsDone > 0; }));
+      },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) {
+          return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active O₂</span>';
+        }
+        if (!this.isUnlocked(s)) {
+          return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Plant a seedling first!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Seedling</button>';
+        }
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',0);" style="font-size:0.75rem;padding:5px 10px;">💧 Check Moisture</button>';
+      }
+    }
+  ],
+  2: [
+    {
+      id: 'ch2_crew_shed',
+      icon: '🏠',
+      title: 'Living Quarters for Stewards',
+      shortTitle: 'Crew Shed',
+      subtitle: 'A regenerative estate cannot be managed alone! Build quarters and tool racks to assemble your workforce.',
+      whyTopic: 'crew_shed',
+      whyLabel: 'Why Division of Labor?',
+      reward: '+10 Knowledge XP · Workforce Depot',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Built</span>';
+        if (s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.building) {
+          var prog = formatTaskProgress(s.buildings.crew_shed.buildHours, BUILDING_TYPES.crew_shed.buildHours, 1.0);
+          return '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'crew_shed\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
+        }
+        return '<button class="claim-btn active" onclick="startBuildBuilding(\'crew_shed\')" ' + (s.money < 150 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build (€150)</button>';
+      }
+    },
+    {
+      id: 'ch2_laborer',
+      icon: '👷',
+      title: 'Community Hands',
+      shortTitle: 'Hire Laborer',
+      subtitle: 'Recruit skilled field laborers to clear stubborn bedrock boulders and lay arterial infrastructure.',
+      whyTopic: 'crew_shed',
+      whyLabel: 'Why Field Labor?',
+      reward: '+10 Knowledge XP · Field Laborer',
+      isUnlocked: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
+      isComplete: function(s) { return !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Recruited</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(1)" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Crew Shed</button>';
+        return '<button class="claim-btn active" onclick="hireWorker(\'laborer\')" ' + (s.money < 80 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Recruit (€80)</button>';
+      }
+    },
+    {
+      id: 'ch2_rocks',
+      icon: '🪨',
+      title: 'The Great Boulder Heist',
+      shortTitle: 'Clear Rocks',
+      subtitle: 'Ancient glacial boulders block transport corridors! Mobilize labor with trenching spades to clear road access.',
+      whyTopic: 'road',
+      whyLabel: 'Why Clear Boulders?',
+      reward: '+15 Knowledge XP · Route Cleared',
+      isUnlocked: function(s) { return !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })); },
+      isComplete: function(s) { return !!s.rocksCleared; },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Cleared</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(2)" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Laborer</button>';
+        if (s.rocksClearing) {
+          var prog = formatTaskProgress(s.rocksClearHours, 2.0, 1.0);
+          return '<button class="claim-btn" onclick="openModal(\'building\',\'road\');" style="background:#5D4037;font-size:0.72rem;padding:4px 8px;">⛏️ ' + prog.display + '</button>';
+        }
+        return '<button class="claim-btn active" onclick="prepareClearRocksTask()" style="background:#5D4037;font-size:0.75rem;padding:5px 10px;">🪨 Clear Rocks</button>';
+      }
+    },
+    {
+      id: 'ch2_road',
+      icon: '⛩️',
+      title: 'Arterial Lifeline',
+      shortTitle: 'Arterial Road',
+      subtitle: 'Pave a durable crushed-stone arterial highway connecting the entrance gate directly to the granary.',
+      whyTopic: 'road',
+      whyLabel: 'Why Arterial Roads?',
+      reward: '+15 Knowledge XP · Road Infrastructure',
+      isUnlocked: function(s) { return !!s.rocksCleared; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Paved</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(3)" style="font-size:0.72rem;padding:4px 8px;">🔒 Clear Rocks First</button>';
+        if (s.buildings && s.buildings.road && s.buildings.road.building) {
+          var rdLab = (s.buildings.road.assignedLaborers && s.buildings.road.assignedLaborers.length) ? s.buildings.road.assignedLaborers.length : 2;
+          var prog = formatTaskProgress(s.buildings.road.buildHours, BUILDING_TYPES.road.buildHours, Math.max(1, rdLab/2));
+          return '<button class="claim-btn" onclick="openModal(\'building\',\'road\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
+        }
+        return '<button class="claim-btn active" onclick="startBuildRoadSegment(\'main\')" ' + (s.money < 120 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Pave (€120)</button>';
+      }
+    },
+    {
+      id: 'ch2_storage',
+      icon: '🏚️',
+      title: 'The Spoilage Crisis',
+      shortTitle: 'Granary Barn',
+      subtitle: 'Perishable harvests rot within hours! Erect a ventilated granary barn and cold cellar to safeguard food from rot.',
+      whyTopic: 'storage',
+      whyLabel: 'Why Granary Storage?',
+      reward: '+20 Knowledge XP · Cold Cellar Preservation',
+      isUnlocked: function(s) { return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
+      isComplete: function(s) { return !!(s.storage && s.storage.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(3)" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Main Road</button>';
+        if (s.storage && s.storage.building) {
+          var prog = formatTaskProgress(s.storage.buildHours, STORAGE_BUILD_HOURS, 1.0);
+          return '<button class="claim-btn" onclick="closePanel();openModal(\'storage\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
+        }
+        return '<button class="claim-btn active" data-buildstorage="1" ' + (s.money < 250 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build (€250)</button>';
+      }
+    }
+  ],
+  3: [
+    {
+      id: 'ch3_garden',
+      icon: '🌷',
+      title: 'The Silent Meadow & Bee Sanctuary',
+      shortTitle: 'Botanical Garden',
+      subtitle: 'Monoculture fields attract crop blights! Plant a decagonal flower garden to welcome wild honeybee colonies.',
+      whyTopic: 'pollination',
+      whyLabel: 'Why Pollinator Synergy?',
+      reward: '+15 Knowledge XP · Pollinator Sanctuary',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.garden && s.buildings.garden.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active (+Bees)</span>';
+        if (s.buildings && s.buildings.garden && s.buildings.garden.building) {
+          var prog = formatTaskProgress(s.buildings.garden.buildHours, AGRICULTURAL_PRODUCTION_FACILITIES.garden.buildHours, 1.0);
+          return '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'garden\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
+        }
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'garden\');" ' + (s.money < 350 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Plant Garden (€350)</button>';
+      }
+    },
+    {
+      id: 'ch3_garden_walk',
+      icon: '🌸',
+      title: 'The Pollinator Highway',
+      shortTitle: 'Nature Walkway',
+      subtitle: 'Connect the granary to the flower sanctuary with a cobblestone nature walk so beneficial insects disperse easily.',
+      whyTopic: 'road',
+      whyLabel: 'Why Habitat Corridors?',
+      reward: '+10 Knowledge XP · Nature Promenade',
+      isUnlocked: function(s) { return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
+      isComplete: function(s) { return !!(s.roads && s.roads.garden_walk && s.roads.garden_walk.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Paved</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(3)" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Main Road</button>';
+        return '<button class="claim-btn active" onclick="startBuildRoadSegment(\'garden_walk\')" ' + (s.money < 120 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Pave Walkway (€120)</button>';
+      }
+    },
+    {
+      id: 'ch3_crop_field',
+      icon: '🌾',
+      title: 'Polyculture Companion Synergy',
+      shortTitle: 'Companion Field',
+      subtitle: 'Interplant companion crop beds with legumes and grain polycultures to fix nitrogen naturally.',
+      whyTopic: 'companion_planting',
+      whyLabel: 'Why Companion Crops?',
+      reward: '+15 Knowledge XP · Nitrogen Guild',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.crop_field && s.buildings.crop_field.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Established</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'crop_field\');" ' + (s.money < 280 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Field (€280)</button>';
+      }
+    }
+  ],
+  4: [
+    {
+      id: 'ch4_cattle',
+      icon: '🐄',
+      title: 'The Circular Grazing Cycle',
+      shortTitle: 'Cattle Pasture',
+      subtitle: 'Turn pasture forage into natural soil gold! Raise grazing cattle for dairy and organic manure that replaces synthetic NPK.',
+      whyTopic: 'rotational_grazing',
+      whyLabel: 'Why Rotational Grazing?',
+      reward: '+20 Knowledge XP · Organic Manure Loop',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.cattle_farm && s.buildings.cattle_farm.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active Pasture</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'cattle_farm\');" ' + (s.money < 500 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Pasture (€500)</button>';
+      }
+    },
+    {
+      id: 'ch4_pond',
+      icon: '🏞️',
+      title: 'Living Waters & Retention',
+      shortTitle: 'Aquatic Pond',
+      subtitle: 'Storm runoff washes away valuable topsoil! Dig an aquatic retention pond to buffer heatwaves and nurture wildlife.',
+      whyTopic: 'aquatic_retention',
+      whyLabel: 'Why Aquatic Ponds?',
+      reward: '+15 Knowledge XP · Freshwater Habitat',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.pond && s.buildings.pond.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Aquatic Basin</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'pond\');" ' + (s.money < 450 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Dig Pond (€450)</button>';
+      }
+    },
+    {
+      id: 'ch4_compost',
+      icon: '🧪',
+      title: 'Soil Alchemy & Bio-Inoculants',
+      shortTitle: 'Bio-Compost',
+      subtitle: 'Inoculate crop roots with mycorrhizal fungi and composted manure to double nutrient uptake naturally.',
+      whyTopic: 'fertilizer',
+      whyLabel: 'Why Bio-Inoculants?',
+      reward: '+15 Knowledge XP · Soil Microbiome',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) {
+        return !!(s.plots && s.plots.some(function(p){ return p.fertilizerTier && p.fertilizerTier > 0; }));
+      },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Inoculated</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',0);" style="font-size:0.75rem;padding:5px 10px;">🧪 Apply Inoculant</button>';
+      }
+    }
+  ],
+  5: [
+    {
+      id: 'ch5_wind',
+      icon: '💨',
+      title: 'Harnessing the Gales',
+      shortTitle: 'Wind Turbines',
+      subtitle: 'Fossil grid electricity pollutes and costs €/h! Erect perimeter wind turbines to capture 12 kWh/h clean kinetic power.',
+      whyTopic: 'wind_turbine',
+      whyLabel: 'Why Wind Power?',
+      reward: '+25 Knowledge XP · Kinetic Generation',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) {
+        return !!(s.buildings && s.buildings.wind_turbines && (s.buildings.wind_turbines.wt_nw.built || s.buildings.wind_turbines.wt_nw.commissioned));
+      },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Commissioned</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openWindTurbineModal();" style="font-size:0.75rem;padding:5px 10px;">💨 Erect Turbines</button>';
+      }
+    },
+    {
+      id: 'ch5_engineer',
+      icon: '👨‍🔧',
+      title: 'Master of the Grid',
+      shortTitle: 'Grid Engineer',
+      subtitle: 'High-voltage generation requires phase balancing and safety interlocks. Recruit a certified Electrical Engineer.',
+      whyTopic: 'wind_turbine',
+      whyLabel: 'Why Electrical Engineers?',
+      reward: '+15 Knowledge XP · Grid Specialist',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.workers && s.workers.some(function(w){ return w.type === 'engineer'; })); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ On Duty</span>';
+        return '<button class="claim-btn active" onclick="hireWorker(\'engineer\')" ' + (s.money < 300 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Recruit (€300)</button>';
+      }
+    },
+    {
+      id: 'ch5_bess',
+      icon: '🔋',
+      title: 'Defeating Intermittency',
+      shortTitle: 'BESS Storage',
+      subtitle: 'Wind does not always blow when pumps need power! Buffer surplus generation in BESS to eliminate curtailment loss.',
+      whyTopic: 'bess',
+      whyLabel: 'Why BESS Storage?',
+      reward: '+25 Knowledge XP · Zero Curtailment',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.energy_storage && s.buildings.energy_storage.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active Substation</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'energy_storage\');" ' + (s.money < 1500 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build BESS (€1,500)</button>';
+      }
+    }
+  ],
+  6: [
+    {
+      id: 'ch6_juice_bar',
+      icon: '🧃',
+      title: 'Cold-Pressed Vitality',
+      shortTitle: 'Artisan Juice Bar',
+      subtitle: 'Raw fruit sells cheap at wholesale. Cold-pressing orchard harvest into cider and juice creates 4x added margin!',
+      whyTopic: 'value_added_agriculture',
+      whyLabel: 'Why Value-Added Products?',
+      reward: '+20 Knowledge XP · Artisan Commerce',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.juice_bar && s.buildings.juice_bar.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Serving Guests</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'juice_bar\');" ' + (s.money < 650 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Juice Bar (€650)</button>';
+      }
+    },
+    {
+      id: 'ch6_coffee_shop',
+      icon: '☕',
+      title: 'The Community Hearth',
+      shortTitle: 'Village Coffee House',
+      subtitle: 'Open an ethical fairtrade coffee house to serve warm beverages and foster civic knowledge exchange among visitors.',
+      whyTopic: 'third_places',
+      whyLabel: 'Why Third Places?',
+      reward: '+20 Knowledge XP · Social Hub',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.coffee_shop && s.buildings.coffee_shop.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Open & Roasted</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'coffee_shop\');" ' + (s.money < 750 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Café (€750)</button>';
+      }
+    },
+    {
+      id: 'ch6_promenade',
+      icon: '🏛️',
+      title: 'The Walkable Promenade',
+      shortTitle: 'Market Promenade',
+      subtitle: 'Pave terracotta promenade bricks so tourists and visitors can easily walk between tasting bars and produce stands.',
+      whyTopic: 'pedestrianized_commerce',
+      whyLabel: 'Why Walkable Promenades?',
+      reward: '+15 Knowledge XP · Pedestrian Avenue',
+      isUnlocked: function(s) { return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
+      isComplete: function(s) { return !!(s.roads && s.roads.market_promenade && s.roads.market_promenade.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Paved</span>';
+        return '<button class="claim-btn active" onclick="startBuildRoadSegment(\'market_promenade\')" ' + (s.money < 200 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Pave Promenade (€200)</button>';
+      }
+    }
+  ],
+  7: [
+    {
+      id: 'ch7_equilibrium',
+      icon: '⚖️',
+      title: '6-Pillar Planetary Balance',
+      shortTitle: 'Eco Score 80+',
+      subtitle: 'Harmonize Soil, Water, Air, Energy, Biodiversity, and Community into a self-healing regenerative equilibrium.',
+      whyTopic: 'planetary_boundaries',
+      whyLabel: 'Why Planetary Boundaries?',
+      reward: '+30 Knowledge XP · Ecological Mastery',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return (s.sustainabilityScore || 0) >= 80; },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Balanced (' + (s.sustainabilityScore||0) + '/100)</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openSustainabilityDashboard();" style="font-size:0.75rem;padding:5px 10px;">📊 View Dashboard (' + (s.sustainabilityScore||0) + '/80)</button>';
+      }
+    },
+    {
+      id: 'ch7_o2_legacy',
+      icon: '🌲',
+      title: 'The Clean Atmosphere Legacy',
+      shortTitle: '5,000 O₂ Harvest',
+      subtitle: 'Every breath is sustained by green plant canopy. Mature your orchards and botanical groves to generate 5,000 kg O₂.',
+      whyTopic: 'atmospheric_oxygen',
+      whyLabel: 'Why Atmospheric Oxygen?',
+      reward: '+25 Knowledge XP · Clean Air Steward',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return (s.totalO2AllTime || 0) >= 5000; },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ ' + Math.round(s.totalO2AllTime||0) + ' O₂ Produced</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',0);" style="font-size:0.75rem;padding:5px 10px;">🌿 Grow Canopy (' + Math.round(s.totalO2AllTime||0) + '/5,000)</button>';
+      }
+    },
+    {
+      id: 'ch7_passport',
+      icon: '🌍',
+      title: 'Global Eco-Passport',
+      shortTitle: 'Global Biomes',
+      subtitle: 'Take your proven regenerative model to the world: Sweden boreal forests, Spanish steppes, and Madagascar.',
+      whyTopic: 'biogeoclimatic_zones',
+      whyLabel: 'Why Global Biomes?',
+      reward: '+30 Knowledge XP · International Clearance',
+      isUnlocked: function(s) { return (s.sustainabilityScore || 0) >= 80 && (s.totalO2AllTime || 0) >= 5000; },
+      isComplete: function(s) { return !!(s.unlockedCapabilities && s.unlockedCapabilities.global_passport); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Passport Granted</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Attain 80+ Eco Score & 5,000 O2 first!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs 80+ Score & 5k O₂</button>';
+        return '<button class="claim-btn active" onclick="state.unlockedCapabilities.global_passport=true;render();showNotification(\'🌍\',\'Unlocked Global Eco-Passport!\',\'achievement\');" style="font-size:0.75rem;padding:5px 10px;">Claim Passport</button>';
+      }
+    }
+  ],
+  8: [
+    {
+      id: 'ch8_science',
+      icon: '🔬',
+      title: 'Eco-Scientist Mastery',
+      shortTitle: 'Level 4 Scientist',
+      subtitle: 'Space allows zero margin for ecological failure. Master advanced biology, botany, and engineering for Level 4.',
+      whyTopic: 'space_agriculture',
+      whyLabel: 'Why Space Life Support?',
+      reward: '+30 Knowledge XP · Off-Earth Biologist',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return (s.knowledgeLevel || 1) >= 4; },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Level ' + (s.knowledgeLevel||1) + ' Eco-Scientist</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openSustainabilityJourneyModal();" style="font-size:0.75rem;padding:5px 10px;">🎓 Study Codex (Lvl ' + (s.knowledgeLevel||1) + '/4)</button>';
+      }
+    },
+    {
+      id: 'ch8_capital',
+      icon: '🌕',
+      title: 'Artemis Mission Capital',
+      shortTitle: '€120k Funding',
+      subtitle: 'Pressurized lunar domes and vacuum seals require serious capital generated from your thriving farm operations.',
+      whyTopic: 'space_economics',
+      whyLabel: 'Why Space Economics?',
+      reward: '+35 Knowledge XP · Mission Funding',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return (s.money || 0) >= 120000; },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ €' + Math.round(s.money||0).toLocaleString() + ' Reserved</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openCommercialContractsModal();" style="font-size:0.75rem;padding:5px 10px;">💰 Contracts (€' + Math.round(s.money||0).toLocaleString() + '/120k)</button>';
+      }
+    },
+    {
+      id: 'ch8_flight',
+      icon: '🚀',
+      title: 'Orbital Flight & Celestial Survey',
+      shortTitle: '3D FPV Cruise',
+      subtitle: 'Take flight! Pilot the transfer cruise, track 17 real satellites in LEO/MEO/GEO, and star-hop the 88 constellations.',
+      whyTopic: 'orbital_mechanics',
+      whyLabel: 'Why Orbital Navigation?',
+      reward: '+50 Research XP · Artemis Transfer',
+      isUnlocked: function(s) { return (s.knowledgeLevel >= 4) && (s.money >= 120000) && ((s.totalO2AllTime || 0) >= 250000); },
+      isComplete: function(s) { return false; },
+      getActionHtml: function(s) {
+        if (this.isUnlocked(s)) {
+          return '<button class="claim-btn active" onclick="window.open(\'public/transfer-cruise-preview.html\',\'_blank\');" style="background:linear-gradient(135deg,#673AB7,#3F51B5);font-size:0.75rem;padding:5px 10px;">🚀 Launch 3D FPV Cruise</button>';
+        }
+        return '<button class="secondary mini-btn" onclick="openSpaceMissionControlModal();" style="font-size:0.72rem;padding:4px 8px;">🛰️ Mission Control Gate</button>';
+      }
+    }
+  ]
+};
+
 // ================= SECTION 7: MOTIVATIONAL WORDS & FIRST INTERACTIONS =================
 var MOTIVATIONAL_SPEECHES = {
   welcome: {
@@ -10313,6 +10808,106 @@ var WHY_TOPICS = {
     deepDive: 'Controlled Environment Agriculture (CEA) leverages LED narrow-band PAR spectrums (450nm blue, 660nm red), atmospheric pressure of 50–70 kPa, and closed hydroponic loops recovering 98% transpiration condensate.',
     libraryLink: 'space_agriculture',
     xpReward: 15
+  },
+  companion_planting: {
+    id: 'companion_planting',
+    title: 'Companion Planting & Polycultures',
+    icon: '🌾',
+    quickFact: 'Interplanting compatible crops naturally confuses insect pests, fixes soil nitrogen, and boosts yields by over 30%.',
+    learnMore: 'Monocultures leave bare soil open to erosion and attract specialized pests. Polycultures create multi-tiered root and canopy architectures where companion plants shade soil and share nutrients.',
+    deepDive: 'Legume root nodules harbor Rhizobium symbionts that convert atmospheric N2 into plant-available ammonium. The Land Equivalent Ratio (LER) rises above 1.35 compared to monocrop controls.',
+    libraryLink: 'botany',
+    xpReward: 10
+  },
+  rotational_grazing: {
+    id: 'rotational_grazing',
+    title: 'Rotational Grazing & Carbon Sequestration',
+    icon: '🐄',
+    quickFact: 'Moving livestock between pasture paddocks prevents overgrazing and builds rich organic humus naturally.',
+    learnMore: 'Continuous grazing exhausts grass root crowns. High-density, short-duration grazing mimics wild herds, trampling organic residue into the soil to feed earthworms and dung beetles.',
+    deepDive: 'Holistic planned grazing accelerates biological carbon drawdown at rates up to 2.5 tonnes C/ha/year, elevating soil organic matter (SOM) and moisture retention capacity.',
+    libraryLink: 'circularity',
+    xpReward: 10
+  },
+  aquatic_retention: {
+    id: 'aquatic_retention',
+    title: 'Freshwater Retention & Microclimates',
+    icon: '🏞️',
+    quickFact: 'Farm ponds capture torrential stormwater runoff, cooling summer temperatures and creating aquatic predator habitats.',
+    learnMore: 'Runoff washes unprotected topsoil into streams. Retention basins hold precipitation, recharge the water table, and shelter frogs and dragonflies that naturally consume crop pests.',
+    deepDive: 'Evapotranspirative latent heat flux from open pond surfaces lowers surrounding ambient temperatures by 1.5–3.0°C during peak midday heat, protecting crops from thermal shock.',
+    libraryLink: 'irrigation',
+    xpReward: 10
+  },
+  value_added_agriculture: {
+    id: 'value_added_agriculture',
+    title: 'Value-Added Culinary Processing',
+    icon: '🧃',
+    quickFact: 'Cold-pressing orchard apples into artisan juice captures 4x retail profit margins while eliminating cosmetic fruit waste.',
+    learnMore: 'Raw wholesale commodity crops suffer extreme price volatility. Transforming seasonal harvests into shelf-stable or artisan consumables creates community wealth and steady employment.',
+    deepDive: 'Value-added supply chain integration increases farmer share of food dollar from 14.3% (raw wholesale commodity) to over 70% (direct artisan culinary commerce).',
+    libraryLink: 'economy',
+    xpReward: 10
+  },
+  third_places: {
+    id: 'third_places',
+    title: 'The Village Social Commons',
+    icon: '☕',
+    quickFact: 'A village coffee house and gathering space builds social trust, civic resilience, and grassroots knowledge exchange.',
+    learnMore: 'Sociologist Ray Oldenburg defined "third places" as social anchors beyond home and work where community bonds solidify through casual conversation and ethical commerce.',
+    deepDive: 'High local social capital correlates with 40% faster adoption of regenerative farming innovations and mutual aid resilience during climate or economic disruptions.',
+    libraryLink: 'community',
+    xpReward: 10
+  },
+  planetary_boundaries: {
+    id: 'planetary_boundaries',
+    title: 'Planetary Boundaries & 6-Pillar Equilibrium',
+    icon: '⚖️',
+    quickFact: 'Earth is a coupled super-system. Balancing Soil, Water, Air, Energy, Biodiversity, and Community ensures long-term survival.',
+    learnMore: 'Stockholm Resilience Centre identifies 9 safe operational thresholds for humanity. Crossing one boundary cascades instability into others through non-linear feedback loops.',
+    deepDive: 'Coupled Earth System models (ESMs) show closed-loop agroecology mitigates 4 boundaries simultaneously: biogeochemical nitrogen/phosphorus flux, freshwater withdrawal, land degradation, and biosphere integrity.',
+    libraryLink: 'sustainability',
+    xpReward: 15
+  },
+  atmospheric_oxygen: {
+    id: 'atmospheric_oxygen',
+    title: 'The Atmospheric Oxygen Shield',
+    icon: '🌲',
+    quickFact: 'Every breath you take was generated by photosynthesizing plants and algae converting sunlight and CO2 into clean O2.',
+    learnMore: 'Over 2.4 billion years ago, photosynthetic cyanobacteria triggered the Great Oxidation Event, shielding the surface from cosmic UV radiation and making terrestrial animal life possible.',
+    deepDive: 'Rubisco enzyme catalysis and water photolysis at Photosystem II (2H2O -> O2 + 4H+ + 4e-) maintains Earth\'s 20.95% atmospheric oxygen balance against planetary oxidation sinks.',
+    libraryLink: 'oxygen',
+    xpReward: 15
+  },
+  biogeoclimatic_zones: {
+    id: 'biogeoclimatic_zones',
+    title: 'Global Biomes & Ecological Adaptation',
+    icon: '🌍',
+    quickFact: 'From Sweden\'s boreal forests to Madagascar\'s tropics, ecological farming must adapt to local climate regimes.',
+    learnMore: 'Closed-loop principles are universal, but strategies differ: cold boreal systems require frost-tolerant perennials, while arid Mediterranean zones focus on deep root moisture banking.',
+    deepDive: 'Boreal taiga stores 85% of carbon below ground in cold peat/permafrost, whereas tropical rainforests store 70% in above-ground vegetative canopy, requiring distinct regenerative stewardship.',
+    libraryLink: 'global_biomes',
+    xpReward: 15
+  },
+  space_economics: {
+    id: 'space_economics',
+    title: 'Space Logistics & Mission Economics',
+    icon: '🌕',
+    quickFact: 'Hauling supplies to lunar orbit costs over €50,000 per kilogram, making local food and oxygen generation an economic imperative.',
+    learnMore: 'Commercial space infrastructure relies on bioregenerative life support to eliminate recurring resupply payloads, enabling permanent multi-planetary research stations.',
+    deepDive: 'Closed ecological life support systems (CELSS) achieve an equivalent system mass (ESM) breakeven over open-loop rocket resupply missions after ~2.3 years of crewed lunar surface operations.',
+    libraryLink: 'space_economics',
+    xpReward: 15
+  },
+  orbital_mechanics: {
+    id: 'orbital_mechanics',
+    title: 'Orbital Mechanics & Celestial Navigation',
+    icon: '🛰️',
+    quickFact: 'Spacecraft travel along gravitational Keplerian ellipses, using the 88 IAU constellations to guide interplanetary transfers.',
+    learnMore: 'Escaping Low Earth Orbit (LEO) toward the Moon requires calculating Hohmann transfer orbits, burning thrusters at precise orbital nodes to intercept lunar gravity.',
+    deepDive: 'Orbital period follows T = 2π√(a³/μ). Celestial star-trackers lock onto Bayer-designated anchor stars across constellations to maintain 3-axis spacecraft attitude within 0.001 degrees.',
+    libraryLink: 'space_flight',
+    xpReward: 20
   }
 };
 
@@ -10531,7 +11126,20 @@ function getOxyTip() {
 // ----------------------------------------------------------------------------
 
 function whyModalHtml(topicKey, activeDepth) {
-  var topic = WHY_TOPICS[topicKey] || WHY_TOPICS.overview;
+  var aliasMap = {
+    soil_aeration: 'plot',
+    division_of_labor: 'crew_shed',
+    rural_infrastructure: 'road',
+    food_preservation: 'storage',
+    logistical_efficiency: 'road',
+    pollinator_synergy: 'pollination',
+    bess_storage: 'bess',
+    wind_betz_limit: 'wind_turbine',
+    grid_engineering: 'wind_turbine',
+    pedestrianized_commerce: 'road'
+  };
+  var resolvedKey = aliasMap[topicKey] || topicKey;
+  var topic = WHY_TOPICS[resolvedKey] || WHY_TOPICS[topicKey] || WHY_TOPICS.overview;
   var depth = activeDepth || (activeModal && activeModal.activeDepth) || 'quick';
 
   var contentHtml = '';
@@ -20660,18 +21268,28 @@ function navigateAndHighlightStep(stepNum){
 function getFarmProgressionGuide(){
   if (typeof state === 'undefined' || !state) return null;
   ensureWindTurbinesState();
+  if (typeof updateChapterProgression === 'function') updateChapterProgression();
 
+  var curChNum = (state && state.currentChapter) ? state.currentChapter : 1;
   var curStepNum = getCurrentProgressionStepNumber();
   var stepDef = FARM_PROGRESSION_STEPS.find(function(s){ return s.step === curStepNum; });
+
+  var chList = (typeof CHAPTER_CHALLENGES !== 'undefined' && CHAPTER_CHALLENGES[curChNum]) ? CHAPTER_CHALLENGES[curChNum] : null;
+  var activeChTask = chList ? (chList.find(function(t){ return !t.isComplete(state); }) || chList[chList.length - 1]) : null;
+
+  var shortBadge = activeChTask ? ('Ch.' + curChNum + ' · ' + activeChTask.shortTitle) : (stepDef ? ('Ch.' + curChNum + ' · Step ' + stepDef.step) : 'Self-Sufficient!');
+
   if (stepDef){
     return {
       step: stepDef.step,
       totalSteps: 8,
+      chapter: curChNum,
+      chapterTask: activeChTask,
       key: stepDef.key,
-      icon: stepDef.icon,
-      title: stepDef.title,
-      subtitle: stepDef.subtitle,
-      badgeText: stepDef.badgeText,
+      icon: activeChTask ? activeChTask.icon : stepDef.icon,
+      title: activeChTask ? activeChTask.title : stepDef.title,
+      subtitle: activeChTask ? activeChTask.subtitle : stepDef.subtitle,
+      badgeText: shortBadge,
       cost: stepDef.cost,
       targetType: stepDef.targetType,
       targetId: stepDef.targetId,
@@ -20682,11 +21300,13 @@ function getFarmProgressionGuide(){
   return {
     step: 8,
     totalSteps: 8,
+    chapter: curChNum,
+    chapterTask: activeChTask,
     key: 'master',
-    icon: '⚡',
-    title: 'Self-Sufficient Farm Master',
-    subtitle: 'Zero grid bills, 4-corner redundant wind power active, trading clean energy!',
-    badgeText: 'Self-Sufficient!',
+    icon: activeChTask ? activeChTask.icon : '⚡',
+    title: activeChTask ? activeChTask.title : 'Self-Sufficient Farm Master',
+    subtitle: activeChTask ? activeChTask.subtitle : 'Zero grid bills, 4-corner redundant wind power active, trading clean energy!',
+    badgeText: shortBadge,
     cost: 0,
     targetType: 'building',
     targetId: 'energy_storage',
@@ -20774,31 +21394,29 @@ function openTaskMasterplanModal(){
     }).join('') +
   '</div>';
 
-  var stepsHtml = FARM_PROGRESSION_STEPS.map(function(s){
-    var isDone = s.isComplete(state);
-    var isActive = (curStepNum === s.step && !isDone);
-    var isLocked = !isDone && !isActive && !s.unlockedWhen(state);
-
-    var cardClass = isDone ? 'masterplan-step-card is-done' : (isActive ? 'masterplan-step-card is-active' : 'masterplan-step-card');
-    var statusBadge = isDone
-      ? '<span style="color:#2E7D32;font-weight:900;font-size:0.8rem;background:#E8F5E9;padding:3px 8px;border-radius:8px;">✓ Done</span>'
-      : (isActive
-        ? '<button class="primary" onclick="closeModal();handleStartingTaskGuideClick();" style="padding:5px 12px;font-size:0.78rem;font-weight:800;border-radius:12px;white-space:nowrap;">👉 Follow Task</button>'
-        : '<button class="secondary mini-btn" onclick="showLockedStepPopup(' + s.step + ')" style="padding:4px 9px;font-size:0.74rem;font-weight:800;border-radius:10px;">🔒 Locked · Info</button>');
-
-    return '<div class="' + cardClass + '" ' + (isLocked ? 'onclick="showLockedStepPopup(' + s.step + ')" style="cursor:pointer;"' : '') + '>' +
-      '<div class="masterplan-step-num">' + (isDone ? '✓' : s.step) + '</div>' +
-      '<div style="flex:1;min-width:0;">' +
-        '<div style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:0.88rem;color:#263238;">' +
-          '<span>' + s.icon + '</span>' +
-          '<span>Step ' + s.step + ': ' + s.title + '</span>' +
+  // Active Chapter Specific Challenges
+  var activeChList = (typeof CHAPTER_CHALLENGES !== 'undefined' && CHAPTER_CHALLENGES[curChNum]) ? CHAPTER_CHALLENGES[curChNum] : [];
+  var stepsHtml = '<div style="margin-bottom:12px;">' +
+    '<div style="font-size:0.78rem;font-weight:800;color:var(--pine);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">🎯 Active Chapter ' + curChNum + ' Challenges:</div>' +
+    activeChList.map(function(t, idx){
+      var isDone = t.isComplete(state);
+      var isTaskUnlocked = t.isUnlocked(state);
+      var borderCol = isDone ? '#2E7D32' : (isTaskUnlocked ? '#F57F17' : '#B0BEC5');
+      return '<div class="task-row" style="border-left:4px solid ' + borderCol + ';' + (isDone ? 'opacity:0.9;background:#F9FBE7;' : '') + 'margin-bottom:6px;">' +
+        '<div class="task-info">' +
+          '<div class="name" style="font-weight:800;font-size:0.86rem;color:' + (isDone ? '#1B5E20' : '#263238') + ';">' +
+            t.icon + ' ' + t.title + (isDone ? ' <span style="font-size:0.70rem;color:#2E7D32;font-weight:800;">✓ Done</span>' : '') +
+          '</div>' +
+          '<div class="meta" style="font-size:0.74rem;color:#455A64;line-height:1.35;margin-top:2px;">' + t.subtitle + '</div>' +
+          '<div style="margin-top:5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+            '<button type="button" class="secondary mini-btn" onclick="openWhyModal(\'' + t.whyTopic + '\',\'quick\')" style="padding:2px 8px;font-size:0.68rem;border-radius:6px;background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7;font-weight:800;cursor:pointer;">💡 ' + (t.whyLabel || 'Why?') + '</button>' +
+            '<span style="font-size:0.68rem;color:#E65100;font-weight:700;">🎁 ' + t.reward + '</span>' +
+          '</div>' +
         '</div>' +
-        '<div style="font-size:0.76rem;color:#546E7A;margin-top:2px;">' + s.subtitle + '</div>' +
-        '<div style="font-size:0.70rem;color:#E65100;font-weight:700;margin-top:2px;">' + s.costLabel + '</div>' +
-      '</div>' +
-      '<div style="margin-left:auto;flex-shrink:0;">' + statusBadge + '</div>' +
-    '</div>';
-  }).join('');
+        '<div style="flex-shrink:0;margin-left:8px;">' + t.getActionHtml(state) + '</div>' +
+      '</div>';
+    }).join('') +
+  '</div>';
 
   // Subway Feeder Roads Optional Credibility Sub-Steps
   var mainRoadBuilt = !!(state.buildings && state.buildings.road && state.buildings.road.built);
@@ -30099,7 +30717,9 @@ function modalHtml(){
     return offlineModalHtml();
   }
   if (!activeModal) return '';
-  var p = state.plots[activeModal.plotId];
+  var pid = (activeModal.plotId !== undefined) ? activeModal.plotId : activeModal.id;
+  var p = (state.plots && pid !== undefined) ? state.plots[pid] : null;
+  if (!p) return '';
   var def = p.treeType ? TREE_TYPES[p.treeType] : null;
   var stageInfo = plotStageInfo(p);
   var w = workerOnPlot(p.id);
@@ -30458,75 +31078,55 @@ function panelHtml(){
       '<div style="font-size:0.70rem;color:#E65100;font-weight:800;margin-top:6px;">🎁 Reward: ' + chDef.unlockReward + '</div>' +
     '</div>';
 
-    // 1. Core Progression Milestones
-    var coreRows = FARM_PROGRESSION_STEPS.map(function(s){
-      var isDone = s.isComplete(state);
-      var isActive = (curStepNum === s.step && !isDone);
-      var isUnlocked = s.unlockedWhen(state);
+    var isChapterUnlocked = chDef.isUnlocked(state);
+    var chChallenges = (typeof CHAPTER_CHALLENGES !== 'undefined' && CHAPTER_CHALLENGES[selectedCh]) ? CHAPTER_CHALLENGES[selectedCh] : [];
+    var challengesHtml = '';
 
-      var actionBtn = '';
-      if (isDone){
-        actionBtn = '<span style="color:#2E7D32;font-weight:900;font-size:0.75rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Complete</span>';
-      } else if (isUnlocked){
-        if (s.step === 1){
-          if (state.buildings.crew_shed && state.buildings.crew_shed.building){
-            var csProg = formatTaskProgress(state.buildings.crew_shed.buildHours, BUILDING_TYPES.crew_shed.buildHours, 1.0);
-            actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'crew_shed\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + csProg.display + '</button>';
-          } else {
-            actionBtn = '<button class="claim-btn active" onclick="startBuildBuilding(\'crew_shed\')" ' + (state.money < s.cost ? 'disabled' : '') + '>Build (€' + s.cost + ')</button>';
-          }
-        } else if (s.step === 2){
-          actionBtn = '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'crew_shed\');">Recruit</button>';
-        } else if (s.step === 3){
-          if (!state.rocksCleared){
-            if (state.rocksClearing){
-              var rkProg = formatTaskProgress(state.rocksClearHours, 2, 1.0);
-              actionBtn = '<button class="claim-btn" onclick="openModal(\'building\',\'road\');" style="background:#5D4037;font-size:0.72rem;padding:4px 8px;">⛏️ ' + rkProg.display + '</button>';
-            } else {
-              actionBtn = '<button class="claim-btn active" onclick="prepareClearRocksTask()" style="background:#5D4037;">🪨 Clear Rocks</button>';
-            }
-          } else if (state.buildings.road && state.buildings.road.building){
-            var rdLab = (state.buildings.road.assignedLaborers && state.buildings.road.assignedLaborers.length) ? state.buildings.road.assignedLaborers.length : 2;
-            var rdProg = formatTaskProgress(state.buildings.road.buildHours, BUILDING_TYPES.road.buildHours, Math.max(1, rdLab/2));
-            actionBtn = '<button class="claim-btn" onclick="openModal(\'building\',\'road\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + rdProg.display + '</button>';
-          } else {
-            actionBtn = '<button class="claim-btn active" onclick="startBuildRoadSegment(\'main\')" ' + (state.money < 120 ? 'disabled' : '') + '>Pave (€120)</button>';
-          }
-        } else if (s.step === 4){
-          if (state.storage && state.storage.building){
-            var stProg = formatTaskProgress(state.storage.buildHours, STORAGE_BUILD_HOURS, 1.0);
-            actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'storage\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + stProg.display + '</button>';
-          } else {
-            actionBtn = '<button class="claim-btn active" data-buildstorage="1" ' + (state.money < s.cost ? 'disabled' : '') + '>Build (€' + s.cost + ')</button>';
-          }
-        } else if (s.step === 5){
-          actionBtn = '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',0);">Cultivate</button>';
-        } else if (s.step === 6){
-          actionBtn = '<button class="claim-btn active" onclick="hireWorker(\'engineer\')" ' + (state.money < s.cost ? 'disabled' : '') + '>Recruit (€' + s.cost + ')</button>';
-        } else if (s.step === 7){
-          actionBtn = '<button class="claim-btn active" onclick="closePanel();openWindTurbineModal();">Open Grid</button>';
-        } else if (s.step === 8){
-          if (state.buildings.energy_storage && state.buildings.energy_storage.building){
-            var esProg = formatTaskProgress(state.buildings.energy_storage.buildHours, BUILDING_TYPES.energy_storage.buildHours, 1.0);
-            actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'energy_storage\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + esProg.display + '</button>';
-          } else {
-            actionBtn = '<button class="claim-btn active" onclick="startBuildBuilding(\'energy_storage\')" ' + (state.money < s.cost ? 'disabled' : '') + '>Build BESS</button>';
-          }
-        }
-      } else {
-        actionBtn = '<button class="secondary mini-btn" onclick="showLockedStepPopup(' + s.step + ')" style="padding:4px 8px;font-size:0.72rem;background:#ECEFF1;border-color:#CFD8DC;color:#455A64;">🔒 Info</button>';
-      }
+    if (!isChapterUnlocked) {
+      challengesHtml = '<div style="background:#FFF8E1;border:2px dashed #FFA000;border-radius:14px;padding:14px;text-align:center;margin:10px 0;">' +
+        '<span style="font-size:1.8rem;">🔒</span>' +
+        '<div style="font-weight:900;color:#E65100;font-size:0.92rem;margin-top:4px;">Chapter ' + selectedCh + ' is Locked</div>' +
+        '<div style="font-size:0.76rem;color:#6D4C41;margin-top:4px;">Complete Chapter ' + (selectedCh - 1) + ' to unlock these exciting ecological challenges!</div>' +
+      '</div>' +
+      '<div style="font-size:0.75rem;font-weight:800;color:#78909C;margin:10px 0 6px;text-transform:uppercase;letter-spacing:0.5px;">Upcoming Chapter Challenges (Preview):</div>' +
+      chChallenges.map(function(t){
+        return '<div class="task-row" style="border-left:4px solid #CFD8DC;opacity:0.75;">' +
+          '<div class="task-info">' +
+            '<div class="name">' + t.icon + ' ' + t.title + '</div>' +
+            '<div class="meta">' + t.subtitle + '</div>' +
+            '<div style="margin-top:4px;display:flex;gap:6px;align-items:center;">' +
+              '<button type="button" class="secondary mini-btn" onclick="openWhyModal(\'' + t.whyTopic + '\',\'quick\')" style="padding:2px 7px;font-size:0.68rem;border-radius:6px;background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7;font-weight:700;">💡 ' + (t.whyLabel || 'Why?') + '</button>' +
+              '<span style="font-size:0.68rem;color:#E65100;font-weight:700;">🎁 ' + t.reward + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div><button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Complete Chapter ' + (selectedCh - 1) + ' to unlock this challenge!\',\'task\')" style="padding:4px 8px;font-size:0.72rem;background:#ECEFF1;border-color:#CFD8DC;color:#455A64;">🔒 Info</button></div>' +
+        '</div>';
+      }).join('');
+    } else {
+      challengesHtml = '<div style="font-size:0.76rem;font-weight:800;color:var(--pine);margin:8px 0 6px;text-transform:uppercase;letter-spacing:0.5px;">🎯 Chapter ' + selectedCh + ' Challenges &amp; Activities:</div>' +
+      chChallenges.map(function(t){
+        var isDone = t.isComplete(state);
+        var isTaskUnlocked = t.isUnlocked(state);
+        var borderCol = isDone ? '#2E7D32' : (isTaskUnlocked ? '#F57F17' : '#B0BEC5');
+        var actionBtn = t.getActionHtml(state);
 
-      return '<div class="task-row" style="border-left:4px solid ' + (isDone ? '#2E7D32' : (isActive ? '#F57F17' : '#90A4AE')) + ';' + (isDone ? 'opacity:0.85;' : '') + '">' +
-        '<div class="task-info">' +
-          '<div class="name">' + s.icon + ' Step ' + s.step + ': ' + s.title + '</div>' +
-          '<div class="meta">' + s.subtitle + ' · ' + s.costLabel + '</div>' +
-        '</div>' +
-        '<div>' + actionBtn + '</div>' +
-      '</div>';
-    }).join('');
+        return '<div class="task-row" style="border-left:4px solid ' + borderCol + ';' + (isDone ? 'opacity:0.9;background:#F9FBE7;' : '') + '">' +
+          '<div class="task-info">' +
+            '<div class="name" style="font-weight:800;font-size:0.86rem;color:' + (isDone ? '#1B5E20' : '#263238') + ';">' +
+              t.icon + ' ' + t.title + (isDone ? ' <span style="font-size:0.70rem;color:#2E7D32;font-weight:800;">✓ Done</span>' : '') +
+            '</div>' +
+            '<div class="meta" style="font-size:0.74rem;color:#455A64;line-height:1.35;margin-top:2px;">' + t.subtitle + '</div>' +
+            '<div style="margin-top:5px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;">' +
+              '<button type="button" class="secondary mini-btn" onclick="openWhyModal(\'' + t.whyTopic + '\',\'quick\')" style="padding:2px 8px;font-size:0.68rem;border-radius:6px;background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7;font-weight:800;cursor:pointer;">💡 ' + (t.whyLabel || 'Why?') + '</button>' +
+              '<span style="font-size:0.68rem;color:#E65100;font-weight:700;">🎁 ' + t.reward + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div style="flex-shrink:0;margin-left:8px;">' + actionBtn + '</div>' +
+        '</div>';
+      }).join('');
+    }
 
-    // Subway Feeder Roads Optional Credibility Sub-Steps
+    // Optional Subway & Feeder Roads Credibility Sub-Steps (Rendered in Chapter 2)
     var mainRoadBuilt = !!(state.buildings && state.buildings.road && state.buildings.road.built);
     var subwayRoadRows = Object.keys(ROAD_SEGMENTS).filter(function(rk){ return rk !== 'main'; }).map(function(rk){
       var rDef = ROAD_SEGMENTS[rk];
@@ -30557,103 +31157,93 @@ function panelHtml(){
       '</div>';
     }).join('');
 
-    // 2. Agricultural & Livestock Production Facilities
-    var agriRows = Object.keys(AGRICULTURAL_PRODUCTION_FACILITIES).map(function(ak){
-      var ag = AGRICULTURAL_PRODUCTION_FACILITIES[ak];
-      var b = state.buildings && state.buildings[ak];
-      var isBuilt = b && b.built;
-      var isBuilding = b && b.building;
-      var isAgUnlocked = (typeof isStepUnlocked === 'function') ? isStepUnlocked(ag.prereqStep || 2) : false;
+    var subwaySectionHtml = '';
+    if (selectedCh === 2) {
+      subwaySectionHtml = '<div style="font-size:0.75rem;font-weight:800;color:#2E7D32;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">⭐ Optional Subway &amp; Feeder Roads (Enhances Farm Credibility &amp; Worker Speed):</div>' +
+        '<div style="font-size:0.72rem;color:#546E7A;margin-bottom:6px;">Building feeder subways, walkways, and promenades enhances Farm Credibility (+Reputation) and worker movement speed.</div>' +
+        subwayRoadRows;
+    }
 
-      var actionBtn = '';
-      if (isBuilt){
-        actionBtn = '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active</span>';
-      } else if (isBuilding){
-        var bProg = formatTaskProgress(b.buildHours, ag.buildHours, 1.0);
-        actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ak + '\')" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + bProg.display + '</button>';
-      } else if (isAgUnlocked){
-        actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ak + '\')" ' + (state.money < ag.cost ? 'disabled' : '') + '>Build (€' + ag.cost + ')</button>';
-      } else {
-        actionBtn = '<button class="secondary mini-btn" onclick="showLockedStepPopup(null,\'' + ak + '\')" style="padding:4px 8px;font-size:0.72rem;background:#ECEFF1;border-color:#CFD8DC;color:#455A64;">🔒 Info</button>';
-      }
+    // Chapter-Relevant Facilities
+    var extraFacilitiesHtml = '';
+    if (selectedCh === 3) {
+      var agriKeys = ['garden', 'crop_field'];
+      extraFacilitiesHtml = '<div style="font-size:0.75rem;font-weight:800;color:#E65100;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">🌷 Polyculture &amp; Ecosystem Facilities:</div>' +
+        agriKeys.filter(function(k){ return AGRICULTURAL_PRODUCTION_FACILITIES[k]; }).map(function(ak){
+          var ag = AGRICULTURAL_PRODUCTION_FACILITIES[ak];
+          var b = state.buildings && state.buildings[ak];
+          var isBuilt = b && b.built;
+          var isBuilding = b && b.building;
+          var actionBtn = isBuilt ? '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active</span>'
+            : (isBuilding ? '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ak + '\')" style="font-size:0.72rem;padding:4px 8px;">🏗️ Building...</button>'
+            : '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ak + '\')" ' + (state.money < ag.cost ? 'disabled' : '') + '>Build (€' + ag.cost + ')</button>');
+          return '<div class="task-row" style="border-left:4px solid ' + (isBuilt ? '#2E7D32' : '#E65100') + ';"><div class="task-info"><div class="name">' + ag.icon + ' ' + ag.label + '</div><div class="meta">' + ag.desc + ' · €' + ag.cost + '</div></div><div>' + actionBtn + '</div></div>';
+        }).join('');
+    } else if (selectedCh === 4) {
+      var circKeys = ['cattle_farm', 'pond'];
+      extraFacilitiesHtml = '<div style="font-size:0.75rem;font-weight:800;color:#E65100;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">♻️ Circular Bio-Cycle Facilities:</div>' +
+        circKeys.filter(function(k){ return AGRICULTURAL_PRODUCTION_FACILITIES[k]; }).map(function(ak){
+          var ag = AGRICULTURAL_PRODUCTION_FACILITIES[ak];
+          var b = state.buildings && state.buildings[ak];
+          var isBuilt = b && b.built;
+          var isBuilding = b && b.building;
+          var actionBtn = isBuilt ? '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active</span>'
+            : (isBuilding ? '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ak + '\')" style="font-size:0.72rem;padding:4px 8px;">🏗️ Building...</button>'
+            : '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ak + '\')" ' + (state.money < ag.cost ? 'disabled' : '') + '>Build (€' + ag.cost + ')</button>');
+          return '<div class="task-row" style="border-left:4px solid ' + (isBuilt ? '#2E7D32' : '#E65100') + ';"><div class="task-info"><div class="name">' + ag.icon + ' ' + ag.label + '</div><div class="meta">' + ag.desc + ' · €' + ag.cost + '</div></div><div>' + actionBtn + '</div></div>';
+        }).join('');
+    } else if (selectedCh === 6) {
+      var commKeys = ['juice_bar', 'coffee_shop'];
+      extraFacilitiesHtml = '<div style="font-size:0.75rem;font-weight:800;color:#E65100;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">🏘️ Village Commerce Facilities:</div>' +
+        commKeys.filter(function(k){ return AGRICULTURAL_PRODUCTION_FACILITIES[k]; }).map(function(ak){
+          var ag = AGRICULTURAL_PRODUCTION_FACILITIES[ak];
+          var b = state.buildings && state.buildings[ak];
+          var isBuilt = b && b.built;
+          var isBuilding = b && b.building;
+          var actionBtn = isBuilt ? '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active</span>'
+            : (isBuilding ? '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ak + '\')" style="font-size:0.72rem;padding:4px 8px;">🏗️ Building...</button>'
+            : '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ak + '\')" ' + (state.money < ag.cost ? 'disabled' : '') + '>Build (€' + ag.cost + ')</button>');
+          return '<div class="task-row" style="border-left:4px solid ' + (isBuilt ? '#2E7D32' : '#E65100') + ';"><div class="task-info"><div class="name">' + ag.icon + ' ' + ag.label + '</div><div class="meta">' + ag.desc + ' · €' + ag.cost + '</div></div><div>' + actionBtn + '</div></div>';
+        }).join('');
+    }
 
-      return '<div class="task-row" style="border-left:4px solid ' + (isBuilt ? '#2E7D32' : (isAgUnlocked ? '#E65100' : '#B0BEC5')) + ';">' +
-        '<div class="task-info">' +
-          '<div class="name">' + ag.icon + ' ' + ag.title + '</div>' +
-          '<div class="meta">' + ag.benefit + ' · €' + ag.cost + '</div>' +
-        '</div>' +
-        '<div>' + actionBtn + '</div>' +
-      '</div>';
-    }).join('');
-
-    // 3. Optional Farm Credibility & Expansion Steps
-    var optRows = Object.keys(OPTIONAL_CREDIBILITY_BUILDINGS).map(function(ok){
-      var opt = OPTIONAL_CREDIBILITY_BUILDINGS[ok];
-      var b = state.buildings && state.buildings[ok];
-      var isBuilt = b && b.built;
-      var isBuilding = b && b.building;
-      var isOptUnlocked = (typeof isStepUnlocked === 'function') ? isStepUnlocked(opt.prereqStep || 2) : false;
-
-      var actionBtn = '';
-      if (isBuilt){
-        actionBtn = '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active</span>';
-      } else if (isBuilding){
-        var bProg = formatTaskProgress(b.buildHours, opt.buildHours, 1.0);
-        actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ok + '\')" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + bProg.display + '</button>';
-      } else if (isOptUnlocked){
-        actionBtn = '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'' + ok + '\')" ' + (state.money < opt.cost ? 'disabled' : '') + '>Build (€' + opt.cost + ')</button>';
-      } else {
-        actionBtn = '<button class="secondary mini-btn" onclick="showLockedStepPopup(null,\'' + ok + '\')" style="padding:4px 8px;font-size:0.72rem;background:#ECEFF1;border-color:#CFD8DC;color:#455A64;">🔒 Info</button>';
-      }
-
-      return '<div class="task-row" style="border-left:4px solid ' + (isBuilt ? '#2E7D32' : (isOptUnlocked ? '#1B5E20' : '#B0BEC5')) + ';">' +
-        '<div class="task-info">' +
-          '<div class="name">' + opt.icon + ' ' + opt.title + '</div>' +
-          '<div class="meta">' + opt.benefit + ' · €' + opt.cost + '</div>' +
-        '</div>' +
-        '<div>' + actionBtn + '</div>' +
-      '</div>';
-    }).join('');
-
-    // 4. Maintenance Tasks
+    // Fieldwork Maintenance (Shown in Chapter 1 & 2 or when plots need care)
     var maintRows = '';
     var anyMaint = false;
-    if (!state.rocksCleared){
-      anyMaint = true;
-      maintRows += '<div class="task-row" style="border-left:4px solid #78909C;"><div class="task-info"><div class="name">🪨 Clear Boulder Obstacles from Road</div><div class="meta">€50 · 2h · clears rocks for Main Road</div></div><button class="claim-btn" onclick="prepareClearRocksTask()" ' + (state.money < 50 ? 'disabled' : '') + '>Clear (€50)</button></div>';
-    }
-    if ((state.lawnOvergrowth || 0) >= 30){
-      anyMaint = true;
-      maintRows += '<div class="task-row" style="border-left:4px solid #81C784;"><div class="task-info"><div class="name">🌿 Mow Estate Lawn & Trim Weeds</div><div class="meta">€15 · 1.5h · manicures turf (+5 Rep)</div></div><button class="claim-btn" onclick="startMowLawn()" ' + (state.money < 15 ? 'disabled' : '') + '>Mow (€15)</button></div>';
-    }
-    state.plots.forEach(function(p){
-      if (p.status === 'barren'){
+    if (selectedCh <= 2) {
+      if (!state.rocksCleared){
         anyMaint = true;
-        maintRows += '<div class="task-row"><div class="task-info"><div class="name">Plot ' + (p.id + 1) + ' — Dig Land</div><div class="meta">€' + LABOR_COST + ' · 3h</div></div><button class="claim-btn" data-prep="' + p.id + '">Dig</button></div>';
-      } else if (p.status === 'overgrown'){
-        anyMaint = true;
-        maintRows += '<div class="task-row"><div class="task-info"><div class="name">Plot ' + (p.id + 1) + ' — Clear Brush</div><div class="meta">€' + CLEAR_COST + ' · 2h</div></div><button class="claim-btn" data-clear="' + p.id + '">Clear</button></div>';
-      } else if (p.status === 'growing' && p.pendingHarvest >= 0.5 && !p.harvesting){
-        anyMaint = true;
-        maintRows += '<div class="task-row"><div class="task-info"><div class="name">🧺 Plot ' + (p.id + 1) + ' — Harvest Crop</div><div class="meta">€' + p.pendingHarvest.toFixed(2) + ' ripe crop waiting</div></div><button class="claim-btn" data-openplot="' + p.id + '">Harvest</button></div>';
+        maintRows += '<div class="task-row" style="border-left:4px solid #78909C;"><div class="task-info"><div class="name">🪨 Clear Boulder Obstacles from Road</div><div class="meta">€50 · 2h · clears rocks for Main Road</div></div><button class="claim-btn" onclick="prepareClearRocksTask()" ' + (state.money < 50 ? 'disabled' : '') + '>Clear (€50)</button></div>';
       }
-    });
-    if (!anyMaint) maintRows = '<div class="empty-note" style="padding:6px 0;">✓ All field plots and grounds currently manicured.</div>';
+      if ((state.lawnOvergrowth || 0) >= 30){
+        anyMaint = true;
+        maintRows += '<div class="task-row" style="border-left:4px solid #81C784;"><div class="task-info"><div class="name">🌿 Mow Estate Lawn & Trim Weeds</div><div class="meta">€15 · 1.5h · manicures turf (+5 Rep)</div></div><button class="claim-btn" onclick="startMowLawn()" ' + (state.money < 15 ? 'disabled' : '') + '>Mow (€15)</button></div>';
+      }
+      state.plots.forEach(function(p){
+        if (p.status === 'barren'){
+          anyMaint = true;
+          maintRows += '<div class="task-row"><div class="task-info"><div class="name">Plot ' + (p.id + 1) + ' — Dig Land</div><div class="meta">€' + LABOR_COST + ' · 3h</div></div><button class="claim-btn" data-prep="' + p.id + '">Dig</button></div>';
+        } else if (p.status === 'overgrown'){
+          anyMaint = true;
+          maintRows += '<div class="task-row"><div class="task-info"><div class="name">Plot ' + (p.id + 1) + ' — Clear Brush</div><div class="meta">€' + CLEAR_COST + ' · 2h</div></div><button class="claim-btn" data-clear="' + p.id + '">Clear</button></div>';
+        } else if (p.status === 'growing' && p.pendingHarvest >= 0.5 && !p.harvesting){
+          anyMaint = true;
+          maintRows += '<div class="task-row"><div class="task-info"><div class="name">🧺 Plot ' + (p.id + 1) + ' — Harvest Crop</div><div class="meta">€' + p.pendingHarvest.toFixed(2) + ' ripe crop waiting</div></div><button class="claim-btn" data-openplot="' + p.id + '">Harvest</button></div>';
+        }
+      });
+    }
+    var maintSectionHtml = '';
+    if (anyMaint) {
+      maintSectionHtml = '<div style="font-size:0.75rem;font-weight:800;color:#546E7A;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">🛠️ Fieldwork &amp; Ground Maintenance:</div>' + maintRows;
+    }
 
-    var htmlTasks = '<div class="float-panel"><h2><span>📋 Farm Tasks &amp; Objectives</span><span class="close-x" data-closepanel="1" onclick="closePanel(event)" ontouchend="closePanel(event)" title="Close Panel">✕</span></h2>' +
+    var htmlTasks = '<div class="float-panel"><h2><span>📋 Chapter ' + selectedCh + ' Tasks &amp; Objectives</span><span class="close-x" data-closepanel="1" onclick="closePanel(event)" ontouchend="closePanel(event)" title="Close Panel">✕</span></h2>' +
       chapterTabsHtml +
       chapterHeaderHtml +
-      '<div style="font-size:0.75rem;font-weight:800;color:var(--pine);margin:6px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">🏆 Core Progression Milestones (Chapters 1 → 8):</div>' +
-      coreRows +
-      '<div style="font-size:0.75rem;font-weight:800;color:#2E7D32;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">⭐ Optional Subway &amp; Feeder Roads (Enhances Farm Credibility &amp; Worker Speed):</div>' +
-      '<div style="font-size:0.72rem;color:#546E7A;margin-bottom:6px;">Building feeder subways, walkways, and promenades enhances Farm Credibility (+Reputation) and worker movement speed.</div>' +
-      subwayRoadRows +
-      '<div style="font-size:0.75rem;font-weight:800;color:#E65100;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">🌾 Agricultural &amp; Livestock Production:</div>' +
-      agriRows +
-      '<div style="font-size:0.75rem;font-weight:800;color:#2E7D32;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">⭐ Optional Farm Credibility &amp; Prestige Expansions:</div>' +
-      optRows +
-      '<div style="font-size:0.75rem;font-weight:800;color:#546E7A;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">🛠️ Fieldwork &amp; Ground Maintenance:</div>' +
-      maintRows +
+      challengesHtml +
+      subwaySectionHtml +
+      extraFacilitiesHtml +
+      maintSectionHtml +
       '<button class="modal-bottom-close" data-closepanel="1" onclick="closePanel(event)" ontouchend="closePanel(event)" style="margin-top:12px;">✕ Close Tasks Panel</button></div>';
     return htmlTasks;
   }
@@ -31541,6 +32131,7 @@ window.handleStartingTaskGuideClick = handleStartingTaskGuideClick;
 window.openTaskMasterplanModal = openTaskMasterplanModal;
 window.buildingSpotHtml = buildingSpotHtml;
 window.OBJECT_CHAPTER_UNLOCKS = OBJECT_CHAPTER_UNLOCKS;
+window.CHAPTER_CHALLENGES = CHAPTER_CHALLENGES;
 window.MOTIVATIONAL_SPEECHES = MOTIVATIONAL_SPEECHES;
 window.triggerMotivationalGuide = triggerMotivationalGuide;
 window.dismissMotivationalBubble = dismissMotivationalBubble;
@@ -31841,6 +32432,7 @@ if (typeof globalThis !== 'undefined'){
   globalThis.openTaskMasterplanModal = openTaskMasterplanModal;
 globalThis.buildingSpotHtml = buildingSpotHtml;
 globalThis.OBJECT_CHAPTER_UNLOCKS = OBJECT_CHAPTER_UNLOCKS;
+globalThis.CHAPTER_CHALLENGES = CHAPTER_CHALLENGES;
 globalThis.MOTIVATIONAL_SPEECHES = MOTIVATIONAL_SPEECHES;
 globalThis.triggerMotivationalGuide = triggerMotivationalGuide;
 globalThis.dismissMotivationalBubble = dismissMotivationalBubble;
