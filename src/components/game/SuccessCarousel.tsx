@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { SUCCESS_SLIDES } from "@/game/data";
+import { SUCCESS_SLIDES, type SuccessSlide } from "@/game/data";
 import { useGame } from "@/game/store";
 import { cn, formatKg } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ export function SuccessCarousel() {
   const mission = useGame((s) => s.mission);
   const openLibrary = useGame((s) => s.openLibrary);
 
-  const you =
+  const you: SuccessSlide | null =
     missionsDone > 0
       ? {
           id: "you",
@@ -31,7 +31,7 @@ export function SuccessCarousel() {
         }
       : null;
 
-  const slides = you ? [you, ...SUCCESS_SLIDES] : SUCCESS_SLIDES;
+  const slides: SuccessSlide[] = you ? [you, ...SUCCESS_SLIDES] : SUCCESS_SLIDES;
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   const slide = slides[i % slides.length];
