@@ -275,3 +275,7 @@ function StepActivityModal({
     </Dialog>
   );
 }
+
+export function Habitat() {
+  return <Surface />;
+}
