@@ -39,6 +39,7 @@ export interface StarNode {
 }
 
 export interface ConstellationEntry {
+  secondaryFamilies?: string[];
   id: string;
   name: string;
   familyId: MenzelFamilyId;
@@ -6048,4 +6049,13 @@ export function getBirthConstellation(month: number, day: number): {
     element: constellation.birthChart.element,
     patterns: BIRTH_CHART_PATTERNS
   };
+}
+
+
+// Auto-initialize globalFamilyRevealController with 88 constellations & Menzel families
+import { globalFamilyRevealController } from "./familyReveal/FamilyRevealController";
+try {
+  globalFamilyRevealController.init(CONSTELLATIONS_88, CONSTELLATION_FAMILIES);
+} catch (e) {
+  console.warn("FamilyRevealController deferred initialization:", e);
 }

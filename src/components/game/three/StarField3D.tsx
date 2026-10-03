@@ -19,6 +19,7 @@ import {
   subscribeConstellationFocus,
   type ConstellationFocusState,
 } from "./constellationFocus";
+import { globalFamilyRevealController } from "@/game/familyReveal/FamilyRevealController";
 
 interface StarField3DProps {
   radius?: number;
@@ -200,8 +201,26 @@ function NamedStarMarker({ star, position }: { star: (typeof NAMED_STARS)[number
   return (
     <group
       position={position}
-      onPointerOver={(event) => { event.stopPropagation(); setHovered(true); setHoveredTarget(star.id); document.body.style.cursor = "help"; }}
-      onPointerOut={() => { setHovered(false); clearHoveredTarget(star.id); document.body.style.cursor = "auto"; }}
+      onPointerOver={(event) => {
+        event.stopPropagation();
+        setHovered(true);
+        setHoveredTarget(star.id);
+        document.body.style.cursor = "help";
+        const c = getConstellationByName(star.constellation);
+        globalFamilyRevealController.setHoveredInfo({
+          id: star.id,
+          name: star.name,
+          dist: star.dist,
+          constellation: star.constellation ?? "Star",
+          family: c ? c.familyName : "Milky Way",
+        });
+      }}
+      onPointerOut={() => {
+        setHovered(false);
+        clearHoveredTarget(star.id);
+        document.body.style.cursor = "auto";
+        globalFamilyRevealController.setHoveredInfo(null);
+      }}
     >
       <mesh>
         <sphereGeometry args={[2.2 + star.mag * 0.18, 16, 16]} />
@@ -218,6 +237,7 @@ function NamedStarMarker({ star, position }: { star: (typeof NAMED_STARS)[number
           const c = getConstellationByName(star.constellation);
           if (c) {
             setSelectedConstellation(c.id);
+            globalFamilyRevealController.selectConstellation(c.id);
           }
         }}
       >

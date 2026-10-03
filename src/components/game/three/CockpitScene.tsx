@@ -36,7 +36,10 @@ import { formatEta, formatKm, formatUsd } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import type { HudSnap, TargetInfo } from "./CockpitGauges";
-import { NamedStars3D, StarField3D, ConstellationLines3D } from "./StarField3D";
+import { NamedStars3D, StarField3D } from "./StarField3D";
+import { FamilyShapeOverlay } from "./FamilyShapeOverlay";
+import { FamilyRevealHud } from "../FamilyRevealHud";
+import { globalFamilyRevealController } from "@/game/familyReveal/FamilyRevealController";
 import { ConstellationPanel } from "../ConstellationPanel";
 import { CelestialBody, OrbitPaths } from "./CelestialBody";
 import { GalaxySprites } from "./GalaxySprite";
@@ -475,8 +478,8 @@ function SceneContent({
       <StarField3D radius={2500} />
       {/* Named stars have larger pick targets and hover information in FPV. */}
       <NamedStars3D radius={2350} />
-      {/* 88 Constellations with roam gaze detection & sequential family myth animation */}
-      <ConstellationLines3D radius={2340} />
+      {/* 88 Constellations & Menzel Family Shape Overlay with LineBatch & Fresnel Hull */}
+      <FamilyShapeOverlay radius={2340} />
 
       {/* Planets — reuse existing CelestialBody */}
       {BODIES.filter(b => b.orbit && !b.parent).map(body => (
@@ -821,12 +824,13 @@ export function CockpitScene({ destination }: { destination: DestinationId }) {
         gl={{ antialias: true, powerPreference: "high-performance" }}
         camera={{ fov: 62, near: 0.01, far: 10000, position: [0, 0, 0] }}
         onPointerMissed={() => {
-          /* click empty space — keep free cursor */
+          globalFamilyRevealController.reset();
         }}
       >
         <SceneContent ship={shipRef} simTRef={simTRef} destination={destination} />
       </Canvas>
       <CockpitHudOverlay destination={destination} />
+      <FamilyRevealHud />
       <ConstellationPanel />
     </div>
   );
