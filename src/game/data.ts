@@ -12,7 +12,8 @@ export type Screen =
   | "explore"
   | "explore-mars"
   | "habitat"
-  | "debrief";
+  | "debrief"
+  | "zodiac-lab";
 
 export const STARTING_CREDITS = 2_500_000;
 export const FPV_RATE_PER_SEC = 180;

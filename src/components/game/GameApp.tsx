@@ -13,6 +13,7 @@ import { Debrief } from "./Debrief";
 import { FPVView } from "./FPVView";
 import { MoonExplorer } from "./MoonExplorer";
 import { MarsExplorer } from "./MarsExplorer";
+import { ZodiacLab } from "./ZodiacLab";
 import { warmupPhotos } from "@/game/cosmos";
 
 export function GameApp() {
@@ -77,6 +78,7 @@ export function GameApp() {
         {screen === "explore-mars" && <MarsExplorer />}
         {screen === "habitat" && <Habitat />}
         {screen === "debrief" && <Debrief />}
+        {screen === "zodiac-lab" && <ZodiacLab />}
       </div>
       <LibraryPanel />
       {fpvOpen && mission && <FPVView destination={mission.destination} />}
