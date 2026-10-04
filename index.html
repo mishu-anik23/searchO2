@@ -9832,6 +9832,7 @@ function freshState(){
     plots: plots, achUnlocked: {}, speedFactor: 180, lastSaveReal: Date.now(),
     workers: [], roleCounters: { laborer: 0, farmer: 0, botanist: 0, engineer: 0 }, lastPaidDay: 0, nextTreeId: 1, reports: [], pestHandled: 0, demerits: 0,
     harvestCount: 0, storage: { built:false, building:false, buildHours:0, capacity:0, stored:0, level:0, expanding:false, expandHours:0, warnedFull:false, items:[], assignedLaborerId:null },
+    basicToolsDiscovered: false,
     visitorStats: { totalVisitors:0, totalIncome:0, ratingSum:0, ratingCount:0 },
     quiz: { pending:null, history:[], totalCorrect:0, totalCompleted:0, skipped:0, nextDueHour:18 },
     loan: null,
@@ -9962,8 +9963,8 @@ var CHAPTER_DEFINITIONS = [
     icon: '🌱',
     title: 'Bring the Land to Life',
     fantasy: 'I can grow something.',
-    desc: 'Cultivate your initial soil plot, plant your first botanical sapling, and generate clean atmospheric O2.',
-    keySystems: ['Soil Cultivation', 'Photosynthesis', 'Clean Air O2', 'First Seedling'],
+    desc: 'Establish your Crew Shed & Workshop, discover foundational 3D hand tools, cultivate bedrock soil, and plant your first botanical sapling.',
+    keySystems: ['Crew Bunkhouse', '3D Hand Tools', 'Soil Tillage & Aeration', 'First Photosynthesis'],
     unlockReward: 'Pollinator Discovery & Garden Blueprint',
     isUnlocked: function(s) { return true; },
     isComplete: function(s) {
@@ -9971,8 +9972,14 @@ var CHAPTER_DEFINITIONS = [
     },
     getProgress: function(s) {
       if (this.isComplete(s)) return 100;
-      var hasGrowing = s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.status === 'ready' || p.status === 'preparing'; });
-      return hasGrowing ? 60 : 20;
+      var pts = 0;
+      if (s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built) pts += 25;
+      if (s.basicToolsDiscovered) pts += 25;
+      var hasTilled = s.plots && s.plots.some(function(p){ return p.status === 'ready' || p.status === 'growing' || p.status === 'preparing'; });
+      if (hasTilled) pts += 25;
+      var hasGrowing = s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; });
+      if (hasGrowing) pts += 25;
+      return Math.max(10, pts);
     }
   },
   {
@@ -9980,8 +9987,8 @@ var CHAPTER_DEFINITIONS = [
     icon: '🚜',
     title: 'Build Your Farm',
     fantasy: 'I can operate a farm.',
-    desc: 'Protect harvests from rot with a Storage Granary Barn, pave the arterial highway, and hire workforce.',
-    keySystems: ['Storage Granary', 'Arterial Highway', 'Field Laborers', 'Supply Logistics'],
+    desc: 'Protect harvests from rot with a Storage Granary Barn, pave the arterial highway, and unlock the Equipment Depot.',
+    keySystems: ['Storage Granary', 'Arterial Highway', 'Field Laborers', 'Equipment Depot'],
     unlockReward: 'Equipment Depot & Machinery Leasing',
     isUnlocked: function(s) { return CHAPTER_DEFINITIONS[0].isComplete(s); },
     isComplete: function(s) {
@@ -9993,10 +10000,9 @@ var CHAPTER_DEFINITIONS = [
     getProgress: function(s) {
       if (this.isComplete(s)) return 100;
       var pts = 0;
-      if (s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built) pts += 25;
-      if (s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })) pts += 25;
-      if (s.buildings && s.buildings.road && s.buildings.road.built) pts += 25;
-      if (s.storage && s.storage.built) pts += 25;
+      if (s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })) pts += 33;
+      if (s.buildings && s.buildings.road && s.buildings.road.built) pts += 33;
+      if (s.storage && s.storage.built) pts += 34;
       return pts;
     }
   },
@@ -10167,15 +10173,55 @@ function isObjectUnlockedByChapter(key, s) {
 var CHAPTER_CHALLENGES = {
   1: [
     {
+      id: 'ch1_crew_shed',
+      icon: '🏠',
+      title: 'Establish Crew Bunkhouse & Workshop',
+      shortTitle: 'Crew Shed',
+      subtitle: 'A regenerative estate cannot be managed alone! Build quarters and tool racks to assemble your workforce.',
+      whyTopic: 'crew_shed',
+      whyLabel: 'Why Crew Bunkhouse?',
+      reward: '+10 Knowledge XP · Workforce Depot',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Built</span>';
+        if (s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.building) {
+          var prog = formatTaskProgress(s.buildings.crew_shed.buildHours, (BUILDING_TYPES.crew_shed ? BUILDING_TYPES.crew_shed.buildHours : 2.0), 1.0);
+          return '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'crew_shed\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
+        }
+        var cCost = (typeof BUILDING_TYPES !== 'undefined' && BUILDING_TYPES.crew_shed) ? BUILDING_TYPES.crew_shed.cost : 140;
+        return '<button class="claim-btn active" onclick="startBuildBuilding(\'crew_shed\')" ' + (s.money < cCost ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build (€' + cCost + ')</button>';
+      }
+    },
+    {
+      id: 'ch1_tools',
+      icon: '⛏️',
+      title: 'Discover Basic Digging Equipment',
+      shortTitle: 'Basic Tools',
+      subtitle: 'Discover the traditional hand-forged trenching spade and broadfork. Learn why manual aeration wakes sleeping soil microbes without hardpan destruction.',
+      whyTopic: 'plot',
+      whyLabel: 'Why Hand Tools?',
+      reward: '+10 Knowledge XP · Tool Mastery',
+      isUnlocked: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
+      isComplete: function(s) { return !!s.basicToolsDiscovered; },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Discovered</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(null, \'crew_shed\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Crew Shed</button>';
+        return '<button class="claim-btn active" onclick="closePanel();openBasicEquipmentDiscoveryModal(0);" style="font-size:0.75rem;padding:5px 10px;background:linear-gradient(135deg,#2E7D32,#1B5E20);">⛏️ Discover Tools (+10 XP)</button>';
+      }
+    },
+    {
       id: 'ch1_soil',
       icon: '🌱',
       title: 'Awaken the Bedrock',
-      shortTitle: 'Awaken Soil',
-      subtitle: 'Till and aerate hard bedrock crust so roots can absorb moisture and microbial life can thrive.',
+      shortTitle: 'Till Plot 1',
+      subtitle: 'Till Plot 1 and aerate hard bedrock crust with your hand spade so roots can absorb moisture and microbial life can thrive.',
       whyTopic: 'plot',
       whyLabel: 'Why Aerate Bedrock?',
       reward: '+5 Knowledge XP · Soil Aeration',
-      isUnlocked: function(s) { return true; },
+      isUnlocked: function(s) {
+        return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built && s.basicToolsDiscovered);
+      },
       isComplete: function(s) {
         return !!(s.plots && s.plots.some(function(p){ return p.status === 'ready' || p.status === 'growing' || p.harvestsDone > 0; }));
       },
@@ -10185,7 +10231,9 @@ var CHAPTER_CHALLENGES = {
         }
         var p0 = s.plots && s.plots[0];
         if (p0 && p0.status === 'preparing') {
-          return '<button class="claim-btn" onclick="openModal(\'plot\',0);" style="font-size:0.72rem;padding:4px 8px;">⛏️ Tilling (' + (p0.prepProgress||0) + '%)</button>';
+          var targetDur = (typeof getPlotPrepDurationHours === 'function') ? getPlotPrepDurationHours(s) : 3.5;
+          var prepPct = Math.min(100, Math.round(((p0.taskHours || 0) / targetDur) * 100));
+          return '<button class="claim-btn" onclick="openModal(\'plot\',0);" style="font-size:0.72rem;padding:4px 8px;">⛏️ Tilling (' + prepPct + '%)</button>';
         }
         return '<button class="claim-btn active" data-prep="0" style="font-size:0.75rem;padding:5px 10px;">🌱 Till Plot 1 (€' + LABOR_COST + ')</button>';
       }
@@ -10242,26 +10290,6 @@ var CHAPTER_CHALLENGES = {
     }
   ],
   2: [
-    {
-      id: 'ch2_crew_shed',
-      icon: '🏠',
-      title: 'Living Quarters for Stewards',
-      shortTitle: 'Crew Shed',
-      subtitle: 'A regenerative estate cannot be managed alone! Build quarters and tool racks to assemble your workforce.',
-      whyTopic: 'crew_shed',
-      whyLabel: 'Why Division of Labor?',
-      reward: '+10 Knowledge XP · Workforce Depot',
-      isUnlocked: function(s) { return true; },
-      isComplete: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
-      getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Built</span>';
-        if (s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.building) {
-          var prog = formatTaskProgress(s.buildings.crew_shed.buildHours, BUILDING_TYPES.crew_shed.buildHours, 1.0);
-          return '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'crew_shed\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
-        }
-        return '<button class="claim-btn active" onclick="startBuildBuilding(\'crew_shed\')" ' + (s.money < 150 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build (€150)</button>';
-      }
-    },
     {
       id: 'ch2_laborer',
       icon: '👷',
@@ -17508,7 +17536,8 @@ function advanceGame(dh){
       if (!(w && w.inTransit)){
         var prepMult = (w && w.type==='laborer') ? WORKER_TYPES.laborer.mult : (w ? 1.25 : 1);
         p.taskHours += dh * prepMult;
-        if (p.taskHours >= PREP_DURATION_HOURS){
+        var curPrepDur = (typeof getPlotPrepDurationHours === 'function') ? getPlotPrepDurationHours(state) : PREP_DURATION_HOURS;
+        if (p.taskHours >= curPrepDur){
           p.status='ready'; p.weedHours=0; p.taskHours=0;
           showNotification('🌱','Plot '+(p.id+1)+' is prepared and ready for planting!','plot',p.id);
           if (typeof triggerMotivationalGuide === 'function' && (!state.motivationalEvents || !state.motivationalEvents['soil_prepared'])) {
@@ -17772,19 +17801,214 @@ function hasAvailableLaborer(){
   return hasAvailableFieldWorker();
 }
 
+
+// ================= 3D ISOMETRIC BASIC DIGGING EQUIPMENT & DISCOVERY =================
+function getPlotPrepDurationHours(s){
+  var curState = s || (typeof state !== 'undefined' ? state : null);
+  if (curState && curState.equipment && curState.equipment.owned && (curState.equipment.owned.spade || curState.equipment.owned.rotary_tiller)){
+    return 2.0;
+  }
+  return 3.5;
+}
+
+function drawIsometric3DHandSpadeSvg(){
+  return '<svg width="340" height="210" viewBox="0 0 340 210" xmlns="http://www.w3.org/2000/svg" class="isometric-hand-spade-graphic" style="filter:drop-shadow(0 6px 16px rgba(0,0,0,0.18));max-width:100%;height:auto;">' +
+    '<defs>' +
+      '<linearGradient id="spadeBladeGrad" x1="0%" y1="0%" x2="100%" y2="100%">' +
+        '<stop offset="0%" stop-color="#ECEFF1"/>' +
+        '<stop offset="45%" stop-color="#90A4AE"/>' +
+        '<stop offset="100%" stop-color="#455A64"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="spadeShaftGrad" x1="0%" y1="0%" x2="100%" y2="100%">' +
+        '<stop offset="0%" stop-color="#EFEBE9"/>' +
+        '<stop offset="40%" stop-color="#A1887F"/>' +
+        '<stop offset="100%" stop-color="#5D4037"/>' +
+      '</linearGradient>' +
+      '<filter id="spadeShadowFilter" x="-20%" y="-20%" width="140%" height="140%">' +
+        '<feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#1B5E20" flood-opacity="0.30"/>' +
+      '</filter>' +
+    '</defs>' +
+    '<!-- 1. Isometric Bedrock & Excavation Furrow Base -->' +
+    '<polygon points="50,165 170,202 290,165 170,132" fill="#4E342E" stroke="#3E2723" stroke-width="1.5"/>' +
+    '<polygon points="50,165 170,202 170,214 50,177" fill="#3E2723"/>' +
+    '<polygon points="170,202 290,165 290,177 170,214" fill="#2E1C14"/>' +
+    '<ellipse cx="170" cy="167" rx="72" ry="18" fill="#5D4037"/>' +
+    '<circle cx="132" cy="164" r="4.5" fill="#795548"/>' +
+    '<circle cx="204" cy="169" r="5.5" fill="#8D6E63"/>' +
+    '<circle cx="162" cy="176" r="4" fill="#6D4C41"/>' +
+    '<circle cx="185" cy="162" r="5" fill="#795548"/>' +
+    '<polygon points="120,173 128,168 134,174 125,178" fill="#6D4C41"/>' +
+    '<polygon points="214,170 224,166 228,173 219,177" fill="#5D4037"/>' +
+    '<!-- Subterranean Oxygen Micro-bubbles rising from aerated fissure -->' +
+    '<g class="aeration-bubbles">' +
+      '<circle cx="122" cy="148" r="5" fill="#E0F7FA" opacity="0.9" stroke="#80DEEA" stroke-width="1.2"/>' +
+      '<text x="122" y="150.5" font-size="6.5" font-family="system-ui,sans-serif" font-weight="900" fill="#006064" text-anchor="middle">O₂</text>' +
+      '<circle cx="218" cy="144" r="5.5" fill="#E0F7FA" opacity="0.9" stroke="#80DEEA" stroke-width="1.2"/>' +
+      '<text x="218" y="147" font-size="7" font-family="system-ui,sans-serif" font-weight="900" fill="#006064" text-anchor="middle">O₂</text>' +
+      '<circle cx="146" cy="128" r="4" fill="#E0F7FA" opacity="0.8" stroke="#80DEEA" stroke-width="1"/>' +
+      '<text x="146" y="130" font-size="5.5" font-family="system-ui,sans-serif" font-weight="900" fill="#006064" text-anchor="middle">O₂</text>' +
+    '</g>' +
+    '<!-- Ground Contact Shadow -->' +
+    '<ellipse cx="188" cy="175" rx="42" ry="11" fill="rgba(24,18,12,0.38)" transform="rotate(-8 188 175)"/>' +
+    '<!-- 2. Traditional Hand-Forged Trenching Spade in 3D Isometric Projection -->' +
+    '<g id="isometricHandSpadeSvg" filter="url(#spadeShadowFilter)">' +
+      '<!-- Blade Backing / Shaded Rim -->' +
+      '<polygon points="144,180 186,180 178,143 152,143" fill="#37474F"/>' +
+      '<!-- Blade Main Face (Hardened Carbon Steel) -->' +
+      '<polygon points="148,179 182,179 175,142 155,142" fill="url(#spadeBladeGrad)"/>' +
+      '<!-- Central Reinforcing Rib / Spine -->' +
+      '<line x1="165" y1="142" x2="165" y2="178" stroke="#ECEFF1" stroke-width="1.8" stroke-linecap="round"/>' +
+      '<line x1="166" y1="142" x2="166" y2="178" stroke="#455A64" stroke-width="0.8" stroke-linecap="round"/>' +
+      '<!-- Cutting Edge Bevel (Sharp cutting edge penetrating furrow) -->' +
+      '<line x1="146" y1="180" x2="184" y2="180" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>' +
+      '<!-- Left Foot-Tread Step Flange -->' +
+      '<polygon points="146,144 158,144 156,138 144,138" fill="#78909C" stroke="#37474F" stroke-width="1"/>' +
+      '<!-- Right Foot-Tread Step Flange -->' +
+      '<polygon points="172,144 184,144 186,138 174,138" fill="#90A4AE" stroke="#455A64" stroke-width="1"/>' +
+      '<!-- Heavy-Duty Steel Ferrule Socket -->' +
+      '<polygon points="160,142 170,142 172,125 158,125" fill="#546E7A" stroke="#263238" stroke-width="1.2"/>' +
+      '<circle cx="163" cy="133" r="1.6" fill="#FFD54F" stroke="#B78103" stroke-width="0.5"/>' +
+      '<circle cx="167" cy="133" r="1.6" fill="#FFD54F" stroke="#B78103" stroke-width="0.5"/>' +
+      '<!-- Cylindrical Ash-Wood Shaft (tilted 55° along isometric axis) -->' +
+      '<line x1="167" y1="125" x2="213" y2="35" stroke="#4E342E" stroke-width="8" stroke-linecap="round"/>' +
+      '<line x1="165" y1="125" x2="211" y2="35" stroke="url(#spadeShaftGrad)" stroke-width="7.5" stroke-linecap="round"/>' +
+      '<line x1="163" y1="124" x2="209" y2="34" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" opacity="0.65"/>' +
+      '<!-- Ash D-Grip Collar -->' +
+      '<circle cx="211" cy="35" r="5" fill="#455A64" stroke="#263238" stroke-width="1.2"/>' +
+      '<!-- Ergonomic Iron Yoke Bracket Arms -->' +
+      '<path d="M207,33 C199,27 205,13 216,9 C227,13 233,27 225,33" fill="none" stroke="#263238" stroke-width="4.5" stroke-linecap="round"/>' +
+      '<path d="M207,33 C199,27 205,13 216,9 C227,13 233,27 225,33" fill="none" stroke="#78909C" stroke-width="2" stroke-linecap="round"/>' +
+      '<!-- Polished Ash-Wood Cross-Bar Handle -->' +
+      '<rect x="205" y="13" width="22" height="7" rx="3.5" fill="#D7CCC8" stroke="#5D4037" stroke-width="1.2" transform="rotate(-18 216 16.5)"/>' +
+      '<circle cx="209" cy="16.5" r="1.4" fill="#263238"/>' +
+      '<circle cx="223" cy="16.5" r="1.4" fill="#263238"/>' +
+    '</g>' +
+    '<!-- Interactive Discovery Badge Tag -->' +
+    '<g transform="translate(16, 16)">' +
+      '<rect width="112" height="24" rx="6" fill="#E8F5E9" stroke="#81C784" stroke-width="1"/>' +
+      '<text x="8" y="16" font-size="11" font-family="system-ui,sans-serif" font-weight="800" fill="#1B5E20">⛏️ Basic Hand Tools</text>' +
+    '</g>' +
+    '<g transform="translate(16, 45)">' +
+      '<rect width="104" height="20" rx="5" fill="#FFF8E1" stroke="#FFE082" stroke-width="1"/>' +
+      '<text x="8" y="14" font-size="10" font-family="system-ui,sans-serif" font-weight="700" fill="#E65100">✨ +10 Knowledge XP</text>' +
+    '</g>' +
+  '</svg>';
+}
+
+function openBasicEquipmentDiscoveryModal(plotId){
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+  activeModal = {
+    type: 'basic_equipment_discovery',
+    plotId: (plotId !== undefined && plotId !== null) ? plotId : 0
+  };
+  render();
+}
+
+function basicEquipmentDiscoveryModalHtml(plotId){
+  var pid = (plotId !== undefined && plotId !== null) ? plotId : 0;
+  var isDiscovered = !!state.basicToolsDiscovered;
+  var svg = drawIsometric3DHandSpadeSvg();
+
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:580px;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.32);">' +
+      '<div style="background:linear-gradient(135deg,#1B5E20,#2E7D32);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<span style="font-size:1.5rem;">⛏️</span>' +
+          '<div>' +
+            '<h2 style="margin:0;font-size:1.15rem;color:#fff;font-weight:800;">Traditional Hand-Forged Trenching Spade</h2>' +
+            '<div style="font-size:0.75rem;color:#C8E6C9;">Chapter 1 Foundational Soil Digging Equipment</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:800;">✕</button>' +
+      '</div>' +
+      '<div class="modal-body-scroll" style="padding:16px 20px;max-height:75vh;overflow-y:auto;">' +
+        '<div style="display:flex;justify-content:center;align-items:center;background:linear-gradient(180deg,#F1F8E9,#ECEFF1);border-radius:14px;padding:10px;margin-bottom:14px;border:1px solid rgba(46,125,50,0.2);box-shadow:inset 0 2px 6px rgba(0,0,0,0.06);">' +
+          svg +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">' +
+          '<div style="background:#F9FBE7;border:1px solid #DCE775;border-radius:10px;padding:10px 12px;">' +
+            '<div style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:0.84rem;color:#33691E;margin-bottom:4px;">' +
+              '<span>🔍</span> WHAT IS THIS EQUIPMENT?' +
+            '</div>' +
+            '<div style="font-size:0.78rem;color:#37474F;line-height:1.45;">' +
+              'The <b>Hand-Forged Trenching Spade &amp; Broadfork</b> is the foundational manual tillage implement of regenerative agroecology. Hand-crafted with a dual-step carbon steel blade and seasoned ash-wood leverage shaft, it enables young stewards to slice through stubborn bedrock crust with balanced bodily leverage.' +
+            '</div>' +
+          '</div>' +
+          '<div style="background:#E8F5E9;border:1px solid #A5D6A7;border-radius:10px;padding:10px 12px;">' +
+            '<div style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:0.84rem;color:#1B5E20;margin-bottom:4px;">' +
+              '<span>💡</span> WHY MANUAL AERATION BEFORE PLANTING?' +
+            '</div>' +
+            '<div style="font-size:0.78rem;color:#263238;line-height:1.45;">' +
+              'Untilled ground is compacted like concrete, locking out atmospheric oxygen and rainwater. Hand digging fractures the hardpan crust without pulverizing beneficial soil crumb structures. It welcomes aerobic bacteria and earthworms, creating deep porous pathways for seedling taproots to anchor!' +
+            '</div>' +
+          '</div>' +
+          '<div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:10px;padding:10px 12px;">' +
+            '<div style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:0.84rem;color:#E65100;margin-bottom:4px;">' +
+              '<span>⏳</span> TILLAGE EFFORT &amp; TIME MECHANICS' +
+            '</div>' +
+            '<div style="font-size:0.78rem;color:#4E342E;line-height:1.45;">' +
+              'Because basic hand tools rely on manual human labor, digging Plot 1 takes <b>3.5 game-hours</b>. Advanced mechanized implements (rotary tillers and tractors in the Chapter 2 Depot) will accelerate this process up to 3x faster once your estate expands.' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:10px;align-items:center;border-top:1px solid #ECEFF1;padding-top:12px;">' +
+          (isDiscovered ?
+            '<button class="primary" onclick="closeModal();startPrep(' + pid + ');" style="padding:9px 18px;font-size:0.88rem;background:#2E7D32;font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">🌱 Till Soil with Hand Spade (3.5h)</button>' :
+            '<button class="primary" onclick="discoverBasicToolsAction(' + pid + ');" style="padding:10px 20px;font-size:0.92rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);box-shadow:0 4px 12px rgba(27,94,32,0.35);font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">⛏️ Discover &amp; Equip Hand Spade (+10 XP)</button>'
+          ) +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  return html;
+}
+
+function discoverBasicToolsAction(plotId){
+  state.basicToolsDiscovered = true;
+  if (typeof addKnowledgeXP === 'function'){
+    addKnowledgeXP(10, 'Discovered Traditional Hand-Forged Digging Spade');
+  } else {
+    state.xp = (state.xp || 0) + 10;
+  }
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achievement');
+  showNotification('⛏️', 'Traditional Hand Spade discovered & equipped! (+10 XP) Soil aeration unlocked.', 'achievement');
+  closeModal();
+  if (plotId !== undefined && plotId !== null){
+    setTimeout(function(){
+      startPrep(plotId);
+    }, 150);
+  } else {
+    render();
+    requestSave();
+  }
+}
+
 function startPrep(plotId){
   var p = state.plots[plotId]; if (p.status!=='barren') return;
-  if (!state.storage || !state.storage.built){
-    showLockedStepPopup(5);
-    showNotification('🔒', 'Construct Storage Granary Barn (Step 4) first before cultivating plots!', 'storage', 'storage');
+  // If storage is already built (Chapter 2+ state or test), crew shed and hand tools are implicitly unlocked
+  var hasCrewShed = !!(state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built) || !!(state.storage && state.storage.built);
+  var hasTools = !!state.basicToolsDiscovered || !!(state.storage && state.storage.built);
+
+  // Prerequisite 1: Crew Shed must be built first
+  if (!hasCrewShed){
+    showLockedStepPopup(null, 'crew_shed');
+    showNotification('🏠', 'Construct Crew Shed & Workshop first before cultivating plots!', 'building', 'crew_shed');
     return;
   }
-  if (!hasAvailableFieldWorker()){
-    showNotification('👷', 'Recruit a Farmer or Laborer from the Crew Shed to dig and till barren land!', 'building', 'crew_shed');
+  // Prerequisite 2: Basic Hand Tools must be discovered
+  if (!hasTools){
+    openBasicEquipmentDiscoveryModal(plotId);
     return;
   }
-  if (state.money < LABOR_COST) return;
+  if (state.money < LABOR_COST){
+    showNotification('💰', 'Need €' + LABOR_COST + ' to till and aerate soil bed!', 'economy');
+    return;
+  }
   state.money -= LABOR_COST; p.status='preparing'; p.taskHours=0;
+  // Smoothly auto-close plot modal so player can observe 3D isometric soil preparation on canvas
+  if (typeof activeModal !== 'undefined' && activeModal && (activeModal.type==='plot' || activeModal.type==='basic_equipment_discovery')) {
+    activeModal = null;
+  }
   if (typeof triggerMotivationalGuide === 'function') triggerMotivationalGuide('soil_prep_start');
   var avail = state.workers.find(function(w){
     return (w.type==='laborer' || w.type==='farmer') && w.assignedPlot===null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId!==w.id);
@@ -20046,10 +20270,11 @@ function openModal(type, plotId){
 
   // Enforce progression locks on game object clicks
   if (type === 'plot'){
-    if (!state.storage || !state.storage.built){
-      showLockedStepPopup(null, 'plot');
-      showNotification('🔒', 'Plot Cultivation Locked: Prepare Granary Barn (Chapter 2) first to store harvests!', 'storage', 'storage');
-      pushReport('🔒 Plots Locked: Field plots require a constructed Storage Barn to store harvests.');
+    var hasCrewShedForPlot = !!(state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built) || !!(state.storage && state.storage.built);
+    if (!hasCrewShedForPlot){
+      showLockedStepPopup(null, 'crew_shed');
+      showNotification('🏠', 'Plot Cultivation Locked: Construct Crew Shed & Quarters (Chapter 1) first to store digging tools!', 'building', 'crew_shed');
+      pushReport('🔒 Plots Locked: Field plots require a constructed Crew Shed to house tools and workers.');
       return;
     }
   }
@@ -21777,10 +22002,10 @@ function showLockedStepPopup(stepNum, optKey){
     var prereqs = {
       gate: '1. Recruit Field Laborer in Crew Shed ➔ 2. Clear Boulders with Trenching Spade ➔ 3. Build Grand Entrance Gate',
       road: '1. Clear Boulders from corridor ➔ 2. Construct Grand Entrance Gate ➔ 3. Pave Main Arterial Road',
-      storage: '1. Construct Grand Gate & Main Road ➔ 2. Build Storage Granary Barn ➔ 3. Safe Harvests from Rot',
-      plot: '1. Build Granary Storage ➔ 2. Till Bedrock Soil on Plot ➔ 3. Plant First Botanical Flora',
+      storage: '1. Chapter 2 Unlocked ➔ 2. Pave Main Arterial Road ➔ 3. Build Storage Granary Barn to Prevent Rot',
+      plot: '1. Build Crew Shed Quarters ➔ 2. Discover Basic Hand Spade ➔ 3. Till Bedrock Soil & Aerate ➔ 4. Plant First Crop',
       laborer: '1. Build Crew Shed & Depot Quarters ➔ 2. Recruit Field Laborer ➔ 3. Begin Road Infrastructure',
-      crew_shed: '1. Available at Game Start ➔ 2. Build Crew Shed Quarters (€150) ➔ 3. Recruit Personnel',
+      crew_shed: '1. Available at Game Start ➔ 2. Build Crew Shed Quarters (€140) ➔ 3. Unlock Basic Tools & Labor',
       engineer: '1. Advance Farm Revenue ➔ 2. Open Crew Shed Quarters ➔ 3. Recruit Certified Engineer (€180/d)',
       wind_turbine: '1. Recruit Certified Engineer ➔ 2. Construct 4-Corner Turbines ➔ 3. Commission Clean Grid',
       energy_storage: '1. Commission 4-Corner Wind Turbines ➔ 2. Build BESS Substation ➔ 3. Store Surplus Power'
@@ -21899,6 +22124,55 @@ function getFarmProgressionGuide(){
 
   var shortBadge = activeChTask ? ('Ch.' + curChNum + ' · ' + activeChTask.shortTitle) : (stepDef ? ('Ch.' + curChNum + ' · Step ' + stepDef.step) : 'Self-Sufficient!');
 
+  // Compact label and specific action routing for HUD active task capsule
+  var compactLabel = '';
+  var actionType = 'open_modal';
+  var targetType = 'building';
+  var targetId = 'crew_shed';
+  var icon = '🏠';
+
+  if (curChNum === 1){
+    if (!state.buildings || !state.buildings.crew_shed || !state.buildings.crew_shed.built){
+      compactLabel = 'Build Crew Shed';
+      icon = '🏠';
+      actionType = 'open_modal';
+      targetType = 'building';
+      targetId = 'crew_shed';
+    } else if (!state.basicToolsDiscovered){
+      compactLabel = 'Discover Tools';
+      icon = '⛏️';
+      actionType = 'discover_tools';
+      targetType = 'tool';
+      targetId = 'spade';
+    } else if (!state.plots || !state.plots.some(function(p){ return p.status === 'ready' || p.status === 'growing' || p.harvestsDone > 0; })){
+      compactLabel = 'Dig Soil';
+      icon = '🌱';
+      actionType = 'open_plot';
+      targetType = 'plot';
+      targetId = 0;
+    } else if (!state.plots || !state.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; })){
+      compactLabel = 'Plant Crop';
+      icon = '🍎';
+      actionType = 'open_plot';
+      targetType = 'plot';
+      targetId = 0;
+    } else {
+      compactLabel = 'Nurture Flora';
+      icon = '💧';
+      actionType = 'open_plot';
+      targetType = 'plot';
+      targetId = 0;
+    }
+  } else {
+    compactLabel = activeChTask ? activeChTask.shortTitle : (stepDef ? stepDef.title : 'Progressing');
+    icon = activeChTask ? activeChTask.icon : (stepDef ? stepDef.icon : '🌱');
+    if (stepDef){
+      actionType = stepDef.actionType;
+      targetType = stepDef.targetType;
+      targetId = stepDef.targetId;
+    }
+  }
+
   if (stepDef){
     return {
       step: stepDef.step,
@@ -21906,14 +22180,15 @@ function getFarmProgressionGuide(){
       chapter: curChNum,
       chapterTask: activeChTask,
       key: stepDef.key,
-      icon: activeChTask ? activeChTask.icon : stepDef.icon,
+      icon: icon,
+      compactLabel: compactLabel,
       title: activeChTask ? activeChTask.title : stepDef.title,
       subtitle: activeChTask ? activeChTask.subtitle : stepDef.subtitle,
       badgeText: shortBadge,
       cost: stepDef.cost,
-      targetType: stepDef.targetType,
-      targetId: stepDef.targetId,
-      actionType: stepDef.actionType
+      targetType: targetType,
+      targetId: targetId,
+      actionType: actionType
     };
   }
 
@@ -21923,14 +22198,15 @@ function getFarmProgressionGuide(){
     chapter: curChNum,
     chapterTask: activeChTask,
     key: 'master',
-    icon: activeChTask ? activeChTask.icon : '⚡',
+    icon: icon,
+    compactLabel: compactLabel || 'Self-Sufficient',
     title: activeChTask ? activeChTask.title : 'Self-Sufficient Farm Master',
     subtitle: activeChTask ? activeChTask.subtitle : 'Zero grid bills, 4-corner redundant wind power active, trading clean energy!',
     badgeText: shortBadge,
     cost: 0,
-    targetType: 'building',
-    targetId: 'energy_storage',
-    actionType: 'open_modal'
+    targetType: targetType,
+    targetId: targetId,
+    actionType: actionType
   };
 }
 
@@ -21940,6 +22216,10 @@ function handleStartingTaskGuideClick(){
   if (!guide) return;
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
 
+  if (guide.actionType === 'discover_tools'){
+    openBasicEquipmentDiscoveryModal(0);
+    return;
+  }
   // Open corresponding task modal
   if (guide.actionType === 'build_storage'){
     openModal('storage', null);
@@ -31318,6 +31598,62 @@ function openSettingsModal(){
 }
 
 function equipmentStoreModalHtml(){
+  if (state.currentChapter < 2){
+    var isDiscovered = !!state.basicToolsDiscovered;
+    return '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+      '<div class="modal" style="max-width:580px;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.32);">' +
+        '<div style="background:linear-gradient(135deg,#37474F,#263238);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<span style="font-size:1.5rem;">🚜</span>' +
+            '<div>' +
+              '<h2 style="margin:0;font-size:1.12rem;color:#fff;font-weight:800;">Farm Machinery &amp; Equipment Depot</h2>' +
+              '<div style="font-size:0.75rem;color:#B0BEC5;">🔒 Locked · Unlocks in Chapter 2 (Build Your Farm)</div>' +
+            '</div>' +
+          '</div>' +
+          '<button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window" style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:800;">✕</button>' +
+        '</div>' +
+        '<div class="modal-body-scroll" style="padding:16px 20px;">' +
+          '<div style="background:#FFF3E0;border:1px solid #FFE082;border-radius:12px;padding:12px 14px;margin-bottom:14px;">' +
+            '<div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:0.86rem;color:#E65100;margin-bottom:4px;">' +
+              '<span>🔒</span> CHAPTER 1 FOCUS: FOUNDATIONAL HAND TOOLS' +
+            '</div>' +
+            '<div style="font-size:0.78rem;color:#4E342E;line-height:1.45;">' +
+              'In <b>Chapter 1: Bring the Land to Life</b>, students and young stewards work directly with traditional hand-forged tools. Learning how manual aeration prevents soil compaction and preserves delicate microbial fungal networks is foundational before advancing to heavy machinery!' +
+            '</div>' +
+          '</div>' +
+          '<div style="background:#F1F8E9;border:1px solid #C8E6C9;border-radius:12px;padding:12px 14px;margin-bottom:14px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+              '<div style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:0.84rem;color:#1B5E20;">' +
+                '<span>⛏️</span> Traditional Hand Trenching Spade &amp; Broadfork' +
+              '</div>' +
+              '<span style="font-size:0.72rem;background:' + (isDiscovered ? '#C8E6C9;color:#1B5E20;' : '#FFF9C4;color:#F57F17;') + 'padding:2px 8px;border-radius:6px;font-weight:700;">' +
+                (isDiscovered ? '✓ Discovered' : 'Awaiting Discovery') +
+              '</span>' +
+            '</div>' +
+            '<div style="font-size:0.76rem;color:#37474F;line-height:1.4;">' +
+              'Hand-crafted carbon steel blade &amp; ash-wood leverage shaft. Aerates hardpan crust and cultivates Plot 1 in 3.5 game-hours.' +
+            '</div>' +
+            '<div style="margin-top:8px;">' +
+              '<button class="primary mini-btn" onclick="openBasicEquipmentDiscoveryModal(0);" style="padding:6px 12px;font-size:0.78rem;font-weight:800;border-radius:8px;background:#2E7D32;">' +
+                (isDiscovered ? '🔍 Inspect Hand Spade 3D Model' : '⛏️ Discover Basic Hand Tools (+10 XP)') +
+              '</button>' +
+            '</div>' +
+          '</div>' +
+          '<div style="background:#ECEFF1;border-radius:12px;padding:12px 14px;font-size:0.76rem;color:#455A64;line-height:1.4;">' +
+            '<b>Upcoming Machinery in Chapter 2:</b><br>' +
+            '• Heavy Utility Tractor &amp; Rotary Tiller (till soil in 1.0h)<br>' +
+            '• Solar-Powered Irrigation Water Pump (+35% water efficiency)<br>' +
+            '• Precision Soil NIR Spectrometer (+50% botanical diagnosis)<br>' +
+            '• Electric Autonomous Mower &amp; Orchard Harvester' +
+          '</div>' +
+          '<div style="margin-top:16px;display:flex;justify-content:flex-end;">' +
+            '<button class="modal-bottom-close" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" style="padding:8px 16px;border-radius:10px;">✕ Close Depot</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
     '<div class="modal" style="max-width:620px;">' +
       '<h2><span>🚜 Farm Machinery &amp; Equipment Depot</span><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>' +
@@ -31665,6 +32001,7 @@ function modalHtml(){
     if (activeModal.type==='region_preview' || activeModal.type==='region-preview') return regionPreviewModalHtml(activeModal.plotId);
     if (activeModal.type==='settings') return settingsModalHtml();
     if (activeModal.type==='levels') return levelsModalHtml();
+    if (activeModal.type==='basic_equipment_discovery') return basicEquipmentDiscoveryModalHtml(activeModal.plotId);
     if (activeModal.type==='equipment_store' || activeModal.type==='equipment') return equipmentStoreModalHtml();
     if (activeModal.type==='task_prep') return taskPrepModalHtml(activeModal.task);
     if (activeModal.type==='irrigation_select') return irrigationSelectModalHtml(activeModal.plotId);
@@ -31704,7 +32041,7 @@ function modalHtml(){
       '<div class="sub" style="margin-top:6px;margin-bottom:10px;">Dig the soil to prepare the plot for planting trees or vegetables. Weeds slowly accumulate if left idle.</div>'+
       '<div class="row" style="margin-bottom:4px;"><span>Weed accumulation</span><span class="v" style="color:'+(weedPct>=70?'#E8785A':'var(--pine)')+';font-weight:800;">'+weedPct+'%</span></div>'+
       '<div class="healthbar" style="margin-bottom:12px;"><div class="fill" style="width:'+weedPct+'%;background:'+(weedPct>=70?'#E8785A':'#8D6E63')+';"></div></div>'+
-      '<button class="primary plot-main-action-btn" data-prep="'+p.id+'" '+(state.money<LABOR_COST?'disabled':'')+'>⛏️ Begin Digging Land (€'+LABOR_COST+' · 3h)</button>'+
+      '<button class="primary plot-main-action-btn" data-prep="'+p.id+'" '+(state.money<LABOR_COST?'disabled':'')+'>⛏️ Begin Digging Land (€'+LABOR_COST+' · '+(typeof getPlotPrepDurationHours==='function'?getPlotPrepDurationHours(state):3.5)+'h)</button>'+
     '</div>';
   } else if (p.status==='overgrown'){
     html += '<div class="plot-action-card overgrown">'+
@@ -33342,6 +33679,12 @@ window.prepareClearRocksTask = prepareClearRocksTask;
 window.startClearRocks = startClearRocks;
 window.startMowLawn = startMowLawn;
 window.startPrep = startPrep;
+window.getPlotPrepDurationHours = getPlotPrepDurationHours;
+window.updateChapterProgression = updateChapterProgression;
+window.drawIsometric3DHandSpadeSvg = drawIsometric3DHandSpadeSvg;
+window.openBasicEquipmentDiscoveryModal = openBasicEquipmentDiscoveryModal;
+window.basicEquipmentDiscoveryModalHtml = basicEquipmentDiscoveryModalHtml;
+window.discoverBasicToolsAction = discoverBasicToolsAction;
 window.startClear = startClear;
 window.startRemoveTree = startRemoveTree;
 window.cutDownGrowingTree = cutDownGrowingTree;
@@ -33665,6 +34008,12 @@ globalThis.isObjectUnlockedByChapter = isObjectUnlockedByChapter;
   globalThis.startClearRocks = startClearRocks;
   globalThis.startMowLawn = startMowLawn;
   globalThis.startPrep = startPrep;
+globalThis.getPlotPrepDurationHours = getPlotPrepDurationHours;
+globalThis.updateChapterProgression = updateChapterProgression;
+globalThis.drawIsometric3DHandSpadeSvg = drawIsometric3DHandSpadeSvg;
+globalThis.openBasicEquipmentDiscoveryModal = openBasicEquipmentDiscoveryModal;
+globalThis.basicEquipmentDiscoveryModalHtml = basicEquipmentDiscoveryModalHtml;
+globalThis.discoverBasicToolsAction = discoverBasicToolsAction;
   globalThis.startClear = startClear;
   globalThis.startRemoveTree = startRemoveTree;
   globalThis.cutDownGrowingTree = cutDownGrowingTree;
@@ -33921,10 +34270,9 @@ function renderCornersUI(){
   if (gCap && guide){
     if (gIcon) gIcon.textContent = guide.icon;
     var chNum = (state && state.currentChapter) ? state.currentChapter : 1;
-    var chShort = 'Ch.' + chNum;
-    var shortTitle = guide.badgeText ? (chShort + ' · ' + guide.badgeText.replace(/Step \d+:\s*/i, '')) : (chShort + ' · Step ' + guide.step);
-    if (gText) gText.innerHTML = '<b>' + shortTitle + '</b>';
-    gCap.setAttribute('title', 'Chapter ' + chNum + ' · Task ' + guide.step + '/' + guide.totalSteps + ': ' + guide.title + ' — ' + guide.subtitle);
+    var compactText = guide.compactLabel || (guide.chapterTask ? guide.chapterTask.shortTitle : (guide.badgeText ? guide.badgeText.replace(/^Ch\.\s*\d+:\s*/i, '') : guide.title));
+    if (gText) gText.innerHTML = '<b>' + compactText + '</b>';
+    gCap.setAttribute('title', 'Chapter ' + chNum + ' · ' + guide.title + ' — ' + guide.subtitle);
   }
 
   updateViewInterchangeButton();
