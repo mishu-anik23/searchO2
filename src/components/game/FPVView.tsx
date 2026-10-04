@@ -450,6 +450,13 @@ export type TargetInfo = {
   missionDetail?: string;
   status?: string;
   launched?: string;
+  flag?: string;
+  operatorCountry?: string;
+  bodyColor?: string;
+  arrayColor?: string;
+  craftType?: string;
+  libraryId?: string;
+  hasSolarArrays?: boolean;
 };
 
 type FrameInfo = {
@@ -801,31 +808,17 @@ function paint(
   for (const s of satDrawn) {
     const ag = AGENCY_STYLE[s.sat.agency];
     const rg = REGIME_STYLE[s.sat.regime];
-    // outer agency ring
-    ctx.beginPath();
-    ctx.arc(s.pr.x, s.pr.y, s.rad + 2.5, 0, Math.PI * 2);
-    ctx.strokeStyle = ag.color;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    // core regime fill
-    ctx.beginPath();
-    ctx.arc(s.pr.x, s.pr.y, s.rad, 0, Math.PI * 2);
-    ctx.fillStyle = rg.color;
-    ctx.globalAlpha = 0.9;
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    // agency tick
-    ctx.fillStyle = ag.color;
-    ctx.fillRect(s.pr.x + s.rad + 1, s.pr.y - 2, 8, 4);
-    if (s.rad > 4 || s.dist < 40) {
+    drawSatelliteCraft(ctx, s.pr.x, s.pr.y, Math.max(s.rad, 5), s.sat);
+    if (s.rad > 4 || s.dist < 45) {
       ctx.font = `600 ${Math.max(10, w / 120)}px Outfit, sans-serif`;
       ctx.fillStyle = "rgba(232,237,244,0.95)";
-      ctx.fillText(s.sat.name, s.pr.x + s.rad + 12, s.pr.y - 2);
+      const labelX = s.pr.x + s.rad + 14;
+      ctx.fillText(`${s.sat.flag} ${s.sat.name}`, labelX, s.pr.y - 2);
       ctx.font = `400 ${Math.max(9, w / 140)}px Atkinson Hyperlegible, sans-serif`;
       ctx.fillStyle = rg.color;
       ctx.fillText(
         `${ag.short} · ${rg.label} · ~${s.sat.altitudeKm.toLocaleString()} km`,
-        s.pr.x + s.rad + 12,
+        labelX,
         s.pr.y + 12,
       );
     }
@@ -883,6 +876,13 @@ function paint(
       missionDetail: s.sat.missionDetail,
       status: s.sat.status,
       launched: s.sat.launched,
+      flag: s.sat.flag,
+      operatorCountry: s.sat.operatorCountry,
+      bodyColor: s.sat.bodyColor,
+      arrayColor: s.sat.arrayColor,
+      craftType: s.sat.craftType,
+      libraryId: s.sat.libraryId,
+      hasSolarArrays: s.sat.hasSolarArrays,
       score,
       x: s.pr.x,
       y: s.pr.y,
@@ -1094,6 +1094,13 @@ function paint(
           missionDetail: target.missionDetail,
           status: target.status,
           launched: target.launched,
+          flag: target.flag,
+          operatorCountry: target.operatorCountry,
+          bodyColor: target.bodyColor,
+          arrayColor: target.arrayColor,
+          craftType: target.craftType,
+          libraryId: target.libraryId,
+          hasSolarArrays: target.hasSolarArrays,
         }
       : null,
     lesson,
@@ -1374,6 +1381,79 @@ function drawPip(
 }
 
 
+/** Draw a compact bus + solar arrays + flag mark (2D stand-in for 3D craft). */
+function drawSatelliteCraft(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  scale: number,
+  sat: SatelliteEntry,
+) {
+  const s = Math.max(4, scale);
+  const bodyW = sat.craftType === "station" ? s * 1.8 : sat.craftType === "telescope" ? s * 1.1 : s * 1.2;
+  const bodyH = sat.craftType === "station" ? s * 0.7 : s * 0.85;
+  const wingW = sat.hasSolarArrays ? s * (sat.craftType === "constellation" ? 1.4 : 2.2) : 0;
+  const wingH = s * 0.35;
+  // soft glow by regime
+  const rg = REGIME_STYLE[sat.regime];
+  ctx.beginPath();
+  ctx.arc(x, y, s * 1.8, 0, Math.PI * 2);
+  ctx.fillStyle = rg.glow;
+  ctx.fill();
+  // solar wings
+  if (sat.hasSolarArrays) {
+    ctx.fillStyle = sat.arrayColor;
+    ctx.fillRect(x - bodyW / 2 - wingW, y - wingH / 2, wingW, wingH);
+    ctx.fillRect(x + bodyW / 2, y - wingH / 2, wingW, wingH);
+    // cell lines
+    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.lineWidth = 0.6;
+    for (let i = 1; i < 3; i++) {
+      const lx = x - bodyW / 2 - (wingW * i) / 3;
+      const rx = x + bodyW / 2 + (wingW * i) / 3;
+      ctx.beginPath();
+      ctx.moveTo(lx, y - wingH / 2);
+      ctx.lineTo(lx, y + wingH / 2);
+      ctx.moveTo(rx, y - wingH / 2);
+      ctx.lineTo(rx, y + wingH / 2);
+      ctx.stroke();
+    }
+  }
+  // bus body
+  ctx.fillStyle = sat.bodyColor;
+  if (sat.craftType === "telescope") {
+    ctx.beginPath();
+    ctx.ellipse(x, y, bodyW * 0.55, bodyH * 0.65, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#7eb8c9";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(x + bodyW * 0.15, y, bodyH * 0.45, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (sat.craftType === "station") {
+    ctx.fillRect(x - bodyW / 2, y - bodyH / 2, bodyW, bodyH);
+    ctx.fillStyle = sat.arrayColor;
+    ctx.fillRect(x - bodyW * 0.15, y - bodyH * 1.1, bodyW * 0.3, bodyH * 0.45);
+  } else {
+    ctx.beginPath();
+    roundRect(ctx, x - bodyW / 2, y - bodyH / 2, bodyW, bodyH, 2);
+    ctx.fill();
+  }
+  // agency rim
+  ctx.strokeStyle = AGENCY_STYLE[sat.agency].color;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(x, y, s * 1.35, 0, Math.PI * 2);
+  ctx.stroke();
+  // flag chip
+  ctx.font = `${Math.max(9, s * 1.1)}px serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(sat.flag, x, y - s * 1.55);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+}
+
 function drawSatellitePip(
   ctx: CanvasRenderingContext2D,
   w: number,
@@ -1407,7 +1487,7 @@ function drawSatellitePip(
   ctx.fillText(style.label, x + 82, y + 23);
   ctx.fillStyle = "#e8edf4";
   ctx.font = "600 13px Outfit, sans-serif";
-  ctx.fillText(target.name, x + 12, y + 48);
+  ctx.fillText(`${target.flag ? target.flag + " " : ""}${target.name}`, x + 12, y + 48);
   ctx.fillStyle = "#8b97a8";
   ctx.font = "400 11px Atkinson Hyperlegible, sans-serif";
   ctx.fillText(target.catalog || "", x + 12, y + 66);
@@ -1646,11 +1726,27 @@ function Hud({ destination }: { destination: DestinationId }) {
                         : "Special high / L2-class orbit beyond classic LEO shells."}
                 </p>
               )}
+              {hud.target.operatorCountry && (
+                <p className="mt-1 font-mono text-[11px] text-fg">
+                  {hud.target.flag} {hud.target.operatorCountry}
+                  {hud.target.craftType ? ` · ${hud.target.craftType}` : ""}
+                  {hud.target.hasSolarArrays ? " · solar arrays" : ""}
+                </p>
+              )}
+              {hud.target.libraryId && (
+                <button
+                  type="button"
+                  className="pointer-events-auto mt-2 text-left font-mono text-[11px] text-accent underline-offset-2 hover:underline"
+                  onClick={() => openLibrary(hud.target!.libraryId!)}
+                >
+                  Read more in library →
+                </button>
+              )}
               {Boolean(hud.target.agency || hud.target.regime) && (
                 <div className="mt-2.5 pt-2 border-t border-white/10 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="pointer-events-auto rounded bg-cyan-500/20 border border-cyan-400 px-2 py-1 font-mono text-[10px] font-bold text-cyan-200 hover:bg-cyan-500/30 transition-colors shadow-sm"
+                    className="pointer-events-auto rounded bg-surface/90 border border-accent/40 px-2 py-1 font-mono text-[10px] font-bold text-accent hover:bg-raised transition-colors shadow-sm"
                     onClick={() => setSatModalTarget(hud.target)}
                   >
                     🎓 Open Orbital Mechanics Tutorial
@@ -1661,7 +1757,7 @@ function Hud({ destination }: { destination: DestinationId }) {
                 <div className="mt-2.5 pt-2 border-t border-white/10 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="pointer-events-auto rounded bg-amber-500/20 border border-amber-400 px-2 py-1 font-mono text-[10px] font-bold text-amber-200 hover:bg-amber-500/30 transition-colors shadow-sm"
+                    className="pointer-events-auto rounded bg-surface/90 border border-warn/40 px-2 py-1 font-mono text-[10px] font-bold text-warn hover:bg-raised transition-colors shadow-sm"
                     onClick={() => {
                       const c = getConstellationByName(hud.target!.constellation!);
                       if (c) setSelectedConstellation(c.id);
@@ -1875,7 +1971,7 @@ function SatelliteTutorialModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-xl border border-cyan-500/40 bg-slate-950/95 p-5 shadow-2xl text-slate-100 flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-lg rounded-xl border border-border bg-slate-950/95 p-5 shadow-2xl text-slate-100 flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between border-b border-white/10 pb-3">
@@ -1888,7 +1984,7 @@ function SatelliteTutorialModal({
                 {style.label} · {style.bandKm}
               </span>
               {target.agency && (
-                <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-[10px] text-cyan-200">
+                <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-[10px] text-accent">
                   {target.agency}
                 </span>
               )}
@@ -1911,7 +2007,7 @@ function SatelliteTutorialModal({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-xs">
           <div className="rounded bg-slate-900 p-2 border border-white/5">
             <span className="text-[10px] text-muted block uppercase">Altitude</span>
-            <span className="text-cyan-300 font-bold">~{(target.altitudeKm ?? 0).toLocaleString()} km</span>
+            <span className="text-accent font-bold">~{(target.altitudeKm ?? 0).toLocaleString()} km</span>
           </div>
           <div className="rounded bg-slate-900 p-2 border border-white/5">
             <span className="text-[10px] text-muted block uppercase">Period</span>
@@ -1928,13 +2024,13 @@ function SatelliteTutorialModal({
         </div>
 
         {/* Educational Tutorial & Lesson */}
-        <div className="rounded-lg border border-cyan-500/20 bg-cyan-950/20 p-3.5 space-y-2">
-          <div className="flex items-center gap-1.5 text-cyan-300 font-bold text-xs uppercase tracking-wide">
+        <div className="rounded-lg border border-accent/30 bg-accent/10 p-3.5 space-y-2">
+          <div className="flex items-center gap-1.5 text-accent font-bold text-xs uppercase tracking-wide">
             <span>🎓</span>
             <span>Orbital Mechanics Classroom Lesson: {style.label} ({style.bandKm})</span>
           </div>
           <p className="text-xs leading-relaxed text-slate-200 whitespace-pre-line">{lesson}</p>
-          <div className="rounded bg-slate-900/80 p-2 font-mono text-[11px] text-cyan-200 border border-cyan-500/10">
+          <div className="rounded bg-slate-900/80 p-2 font-mono text-[11px] text-accent border border-border">
             💡 Takeaway: {regime === "LEO" ? "Requires ~7.8 km/s orbital velocity to balance gravity; encounters atmospheric drag below 1,000 km." : regime === "MEO" ? "Optimal compromise between coverage area and signal path delay for global navigation constellations." : regime === "GEO" ? "Orbital period matches 23h 56m 4s sidereal rotation at 35,786 km altitude." : "Used for specialized observation geometry and stable gravitational equilibrium."}
           </div>
         </div>

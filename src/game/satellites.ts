@@ -29,6 +29,19 @@ export type SatelliteEntry = {
   fact: string;
   /** Public mission highlight */
   missionDetail: string;
+  /** Operating / leading country or union for flag display */
+  operatorCountry: string;
+  /** Emoji flag for HUD / 2D marker */
+  flag: string;
+  /** Bus body color (metal / insulation) */
+  bodyColor: string;
+  /** Gold / blue solar array tone */
+  arrayColor: string;
+  hasSolarArrays: boolean;
+  /** Spacecraft class for drawing */
+  craftType: "station" | "telescope" | "bus" | "constellation" | "probe";
+  /** Library article for Read more */
+  libraryId: string;
 };
 
 /** Regime colorimetry — consistent HUD / marker palette */
@@ -106,6 +119,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     fact: "A football-field-scale station. Nations share modules, crews, and science. Continuous human presence since 2000.",
     missionDetail:
       "Joint NASA, Roscosmos, ESA, JAXA, and CSA program. Microgravity research, Earth observation, and a stepping stone for deep-space techniques.",
+    operatorCountry: "International (NASA, Roscosmos, ESA, JAXA, CSA)",
+    flag: "🌍",
+    bodyColor: "#d8dee8",
+    arrayColor: "#2a4a8a",
+    hasSolarArrays: true,
+    craftType: "station" as const,
+    libraryId: "orbits",
   },
   {
     id: "css-tiangong",
@@ -125,6 +145,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     fact: "Tianhe core with Wentian and Mengtian labs. Crewed by Shenzhou; cargo by Tianzhou.",
     missionDetail:
       "CNSA’s permanent LEO outpost for life sciences, materials, and technology demonstrations under national human spaceflight plans.",
+    operatorCountry: "China",
+    flag: "🇨🇳",
+    bodyColor: "#e8e0d8",
+    arrayColor: "#1a3a6a",
+    hasSolarArrays: true,
+    craftType: "station" as const,
+    libraryId: "orbits",
   },
   {
     id: "hubble",
@@ -144,6 +171,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     fact: "Above the atmosphere for sharp UV/optical images. Serviced by astronauts; still producing science decades later.",
     missionDetail:
       "NASA flagship with ESA partnership. Famous for deep fields, exoplanet atmospheres, and tracking solar-system targets.",
+    operatorCountry: "United States",
+    flag: "🇺🇸",
+    bodyColor: "#c0c8d4",
+    arrayColor: "#3a5a9a",
+    hasSolarArrays: true,
+    craftType: "telescope" as const,
+    libraryId: "orbits",
   },
   {
     id: "sentinel1",
@@ -163,6 +197,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     fact: "C-band SAR sees through clouds — ice, floods, ships, and ground motion for the Copernicus program.",
     missionDetail:
       "Part of EU Copernicus. Provides free open data for climate, disaster response, and maritime awareness.",
+    operatorCountry: "European Union / ESA states",
+    flag: "🇪🇺",
+    bodyColor: "#b8c0cc",
+    arrayColor: "#1a4a7a",
+    hasSolarArrays: true,
+    craftType: "bus" as const,
+    libraryId: "orbits",
   },
   {
     id: "starlink-cluster",
@@ -182,6 +223,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     fact: "Thousands of small sats in shells around ~500–600 km. Represents modern commercial mega-constellations.",
     missionDetail:
       "SpaceX commercial broadband. Shown as a representative shell marker — not individual vehicles.",
+    operatorCountry: "United States (SpaceX)",
+    flag: "🇺🇸",
+    bodyColor: "#a8b0bc",
+    arrayColor: "#2a5080",
+    hasSolarArrays: true,
+    craftType: "constellation" as const,
+    libraryId: "orbits",
   },
   {
     id: "terra",
@@ -200,6 +248,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     blurb: "NASA Earth Observing System flagship",
     fact: "Sun-synchronous polar orbit. MODIS and other instruments track climate, vegetation, and fires.",
     missionDetail: "Long-running NASA Earth science mission in the A-Train era of coordinated polar orbiters.",
+    operatorCountry: "United States",
+    flag: "🇺🇸",
+    bodyColor: "#c8d0dc",
+    arrayColor: "#2a5a9a",
+    hasSolarArrays: true,
+    craftType: "bus" as const,
+    libraryId: "orbits",
   },
   // —— MEO ——
   {
@@ -220,6 +275,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     fact: "About 12-hour orbits. Timing signals enable navigation worldwide. Operated by the U.S. Space Force.",
     missionDetail:
       "Representative GPS plane marker. Civil signals are free; precise timing underpins science and logistics.",
+    operatorCountry: "United States",
+    flag: "🇺🇸",
+    bodyColor: "#bcc4d0",
+    arrayColor: "#3a6aaa",
+    hasSolarArrays: true,
+    craftType: "bus" as const,
+    libraryId: "orbits",
   },
   {
     id: "galileo",
@@ -238,6 +300,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     blurb: "ESA/EU civilian navigation system",
     fact: "Independent European GNSS in MEO with high-accuracy civil services.",
     missionDetail: "Operated for the EU. Complements GPS/GLONASS/BeiDou for resilient PNT.",
+    operatorCountry: "European Union / ESA states",
+    flag: "🇪🇺",
+    bodyColor: "#b0b8c8",
+    arrayColor: "#1a5080",
+    hasSolarArrays: true,
+    craftType: "bus" as const,
+    libraryId: "orbits",
   },
   {
     id: "glonass",
@@ -256,6 +325,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     blurb: "Russian global navigation constellation",
     fact: "MEO planes with higher inclination — strong high-latitude coverage.",
     missionDetail: "Roscosmos-operated GNSS. Dual-use civil/military timing and navigation.",
+    operatorCountry: "Russia",
+    flag: "🇷🇺",
+    bodyColor: "#c4b8a8",
+    arrayColor: "#4a6090",
+    hasSolarArrays: true,
+    craftType: "bus" as const,
+    libraryId: "orbits",
   },
   {
     id: "beidou",
@@ -274,6 +350,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     blurb: "Chinese GNSS (MEO + GEO/IGSO mix)",
     fact: "Global service uses MEO craft; regional coverage also uses GEO/IGSO satellites.",
     missionDetail: "CNSA system with global PNT and messaging services — shown here on a MEO ring.",
+    operatorCountry: "China",
+    flag: "🇨🇳",
+    bodyColor: "#d0c4b8",
+    arrayColor: "#8a3030",
+    hasSolarArrays: true,
+    craftType: "bus" as const,
+    libraryId: "orbits",
   },
   // —— GEO ——
   {
@@ -293,6 +376,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     blurb: "NOAA weather satellite (NASA launch partnership)",
     fact: "Geostationary — appears fixed over the Americas. Watches storms and space weather continuously.",
     missionDetail: "NOAA operational weather bird; NASA supported development/launch of GOES-R class.",
+    operatorCountry: "United States",
+    flag: "🇺🇸",
+    bodyColor: "#d0d8e0",
+    arrayColor: "#2a6090",
+    hasSolarArrays: true,
+    craftType: "bus" as const,
+    libraryId: "orbits",
   },
   {
     id: "mtg",
@@ -311,6 +401,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     blurb: "European geostationary weather watch",
     fact: "Fixed over Africa/Europe longitude. Foundation of European severe-weather monitoring.",
     missionDetail: "EUMETSAT operates; ESA develops next-gen MTG imagers and sounders.",
+    operatorCountry: "European Union / ESA states",
+    flag: "🇪🇺",
+    bodyColor: "#c8d0e0",
+    arrayColor: "#1a4880",
+    hasSolarArrays: true,
+    craftType: "bus" as const,
+    libraryId: "orbits",
   },
   {
     id: "elektro-l",
@@ -329,6 +426,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     blurb: "Roscosmos geostationary weather series",
     fact: "Views the full Earth disk for hydrometeorology and space weather from GEO.",
     missionDetail: "Russian Federal Space Agency weather program in the GEO belt.",
+    operatorCountry: "Russia",
+    flag: "🇷🇺",
+    bodyColor: "#d4c8b8",
+    arrayColor: "#506080",
+    hasSolarArrays: true,
+    craftType: "bus" as const,
+    libraryId: "orbits",
   },
   {
     id: "fy4",
@@ -347,6 +451,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     blurb: "CNSA/CMA geostationary meteorology",
     fact: "High-cadence full-disk imaging for Asia-Pacific weather.",
     missionDetail: "China Meteorological Administration operates; CNSA launch heritage.",
+    operatorCountry: "China",
+    flag: "🇨🇳",
+    bodyColor: "#e0d4c8",
+    arrayColor: "#903030",
+    hasSolarArrays: true,
+    craftType: "bus" as const,
+    libraryId: "orbits",
   },
   {
     id: "jwst",
@@ -366,6 +477,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     fact: "Not LEO — about 1.5 million km from Earth at L2. NASA/ESA/CSA partnership.",
     missionDetail:
       "Shown near Earth for navigation context; true station is Sun–Earth L2 halo, not a closed LEO ring.",
+    operatorCountry: "United States",
+    flag: "🇺🇸",
+    bodyColor: "#e8dcc8",
+    arrayColor: "#c9a86f",
+    hasSolarArrays: true,
+    craftType: "telescope" as const,
+    libraryId: "distance",
   },
   // —— Mars sample markers ——
   {
@@ -385,6 +503,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     blurb: "NASA high-resolution Mars orbiter",
     fact: "HiRISE camera maps landing sites and climate. Relay for surface rovers.",
     missionDetail: "Critical infrastructure for Perseverance/Curiosity data relay and site certification.",
+    operatorCountry: "United States",
+    flag: "🇺🇸",
+    bodyColor: "#c4896a",
+    arrayColor: "#2a5080",
+    hasSolarArrays: true,
+    craftType: "probe" as const,
+    libraryId: "moxie",
   },
   {
     id: "tgo",
@@ -403,6 +528,13 @@ export const PUBLIC_SATELLITES: SatelliteEntry[] = [
     blurb: "ESA–Roscosmos Mars atmosphere orbiter",
     fact: "Hunts trace gases (including methane) and relays lander data.",
     missionDetail: "ExoMars program partnership; aerobraked into science orbit.",
+    operatorCountry: "European Union / ESA states",
+    flag: "🇪🇺",
+    bodyColor: "#b07050",
+    arrayColor: "#1a4880",
+    hasSolarArrays: true,
+    craftType: "probe" as const,
+    libraryId: "moxie",
   },
 ];
 

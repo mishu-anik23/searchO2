@@ -9,7 +9,11 @@ import {
   type MenzelFamilyId,
 } from "@/game/constellations";
 import { NAMED_STARS } from "@/game/cosmos";
-import { setSelectedConstellation } from "./three/constellationFocus";
+import {
+  setSelectedConstellation,
+  playFamilyAnimation,
+  stopFamilyAnimation,
+} from "./three/constellationFocus";
 import { Search, Stars, ChevronDown, ChevronRight, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -109,7 +113,15 @@ export function ConstellationMenu({
             <p className="font-mono text-[10px] text-muted">88 constellations · named stars</p>
           </div>
         </div>
-        <button type="button" aria-label="Close sky atlas" className="rounded p-1 text-slate-400 hover:text-white" onClick={onClose}>
+        <button
+          type="button"
+          aria-label="Close sky atlas"
+          className="rounded p-1 text-slate-400 hover:text-white"
+          onClick={() => {
+            stopFamilyAnimation();
+            onClose();
+          }}
+        >
           <X size={16} />
         </button>
       </div>
@@ -169,15 +181,27 @@ export function ConstellationMenu({
           const isOpen = expanded[id] ?? false;
           return (
             <div key={id} className="mb-1.5">
-              <button
-                type="button"
-                className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left hover:bg-white/5"
-                onClick={() => setExpanded((e) => ({ ...e, [id]: !isOpen }))}
-              >
-                {isOpen ? <ChevronDown className="size-3.5 text-slate-400" /> : <ChevronRight className="size-3.5 text-slate-400" />}
-                <span className="flex-1 text-xs font-semibold text-fg">{family.name}</span>
-                <Badge className="font-mono text-[9px]">{items.length}</Badge>
-              </button>
+              <div className="flex w-full items-center gap-1 rounded-md px-1 py-1 hover:bg-white/5">
+                <button
+                  type="button"
+                  className="flex flex-1 items-center gap-1.5 rounded-md px-1 py-1 text-left"
+                  onClick={() => setExpanded((e) => ({ ...e, [id]: !isOpen }))}
+                >
+                  {isOpen ? <ChevronDown className="size-3.5 text-slate-400" /> : <ChevronRight className="size-3.5 text-slate-400" />}
+                  <span className="flex-1 text-xs font-semibold text-fg">{family.name}</span>
+                  <Badge className="font-mono text-[9px]">{items.length}</Badge>
+                </button>
+                <button
+                  type="button"
+                  className="shrink-0 rounded border border-amber-300/30 bg-amber-400/10 px-1.5 py-0.5 font-mono text-[9px] text-amber-100 hover:bg-amber-400/20"
+                  title="Play family sky animation"
+                  onClick={() => {
+                    playFamilyAnimation(id);
+                  }}
+                >
+                  ▶ Sky
+                </button>
+              </div>
               {isOpen && (
                 <ul className="ml-2 space-y-0.5 border-l border-white/10 pl-2">
                   {items.map((c) => (

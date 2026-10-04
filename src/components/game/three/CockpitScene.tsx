@@ -37,11 +37,9 @@ import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import type { HudSnap, TargetInfo } from "./CockpitGauges";
 import { NamedStars3D, StarField3D } from "./StarField3D";
-import { FamilyShapeOverlay } from "./FamilyShapeOverlay";
-import { FamilyRevealHud } from "../FamilyRevealHud";
-import { globalFamilyRevealController } from "@/game/familyReveal/FamilyRevealController";
-import { ConstellationPanel } from "../ConstellationPanel";
+import { Satellites3D } from "./Satellites3D";
 import { ConstellationMenu, ConstellationMenuToggle } from "../ConstellationMenu";
+import { ConstellationPanel } from "../ConstellationPanel";
 import { CelestialBody, OrbitPaths } from "./CelestialBody";
 import { GalaxySprites } from "./GalaxySprite";
 import { getTargetFocus, resetTargetFocus } from "./targetFocus";
@@ -477,10 +475,9 @@ function SceneContent({
 
       {/* Star field — reuse existing StarField3D */}
       <StarField3D radius={2500} />
+      <Satellites3D simT={0} />
       {/* Named stars have larger pick targets and hover information in FPV. */}
       <NamedStars3D radius={2350} />
-      {/* 88 Constellations & Menzel Family Shape Overlay with LineBatch & Fresnel Hull */}
-      <FamilyShapeOverlay radius={2340} />
 
       {/* Planets — reuse existing CelestialBody */}
       {BODIES.filter(b => b.orbit && !b.parent).map(body => (
@@ -659,13 +656,13 @@ function CockpitHudOverlay({ destination }: { destination: DestinationId }) {
           </p>
         </div>
         <p className="font-mono text-[10px] leading-relaxed text-white/70">
-          <span className="text-accent">Drag</span> roam sky & constellations ·{" "}
-          <span className="text-amber-300">Click star</span> family myth animation ·{" "}
+          <span className="text-accent">Drag</span> to look ·{" "}
+          <span className="text-accent">click planet</span> to lock ·{" "}
           <span className="text-accent">X</span> brake ·{" "}
-          <span className="text-accent">V</span> observe on/off · W/S thrust · A/D yaw
+          <span className="text-accent">V</span> observe on/off · W/S thrust · A/D yaw · Z level
         </p>
-        <p className="font-mono text-[9px] text-cyan-200/60">
-          88 IAU Constellations · 8 Menzel Sky Path Families · Drag to scan horizon · Click any star to animate family bonds
+        <p className="font-mono text-[9px] text-white/45">
+          Blue crosshair = aim. Cursor stays free for hover. Middle-click = FPS mouse lock (optional).
         </p>
       </div>
       {hud.target && (
@@ -822,20 +819,19 @@ export function CockpitScene({ destination }: { destination: DestinationId }) {
       }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <Canvas
+            <ConstellationMenuToggle open={atlasOpen} onToggle={() => setAtlasOpen((v) => !v)} />
+      <ConstellationMenu open={atlasOpen} onClose={() => setAtlasOpen(false)} />
+      <ConstellationPanel />
+<Canvas
         gl={{ antialias: true, powerPreference: "high-performance" }}
         camera={{ fov: 62, near: 0.01, far: 10000, position: [0, 0, 0] }}
         onPointerMissed={() => {
-          globalFamilyRevealController.reset();
+          /* click empty space — keep free cursor */
         }}
       >
         <SceneContent ship={shipRef} simTRef={simTRef} destination={destination} />
       </Canvas>
-      <ConstellationMenuToggle open={atlasOpen} onToggle={() => setAtlasOpen((v) => !v)} />
-      <ConstellationMenu open={atlasOpen} onClose={() => setAtlasOpen(false)} />
       <CockpitHudOverlay destination={destination} />
-      <FamilyRevealHud />
-      <ConstellationPanel />
     </div>
   );
 }

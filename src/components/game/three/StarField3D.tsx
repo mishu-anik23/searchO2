@@ -1,194 +1,110 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useMemo, useState } from "react";
+import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
-import { FIELD, MILKY, NAMED_STARS, CONSTELLATIONS, raDecToDir } from "@/game/cosmos";
+import { FIELD, MILKY, NAMED_STARS, CONSTELLATIONS, type ConstellationFigure } from "@/game/cosmos";
 import { clearHoveredTarget, setHoveredTarget, toggleLockedTarget } from "./targetFocus";
 import {
-  CONSTELLATIONS_88,
-  getConstellationById,
+  setSelectedConstellation,
+  subscribeFamilyAnimation,
+  subscribeConstellation,
+  stopFamilyAnimation,
+  type FamilyAnimState,
+} from "./constellationFocus";
+import {
   getConstellationByName,
+  getConstellationById,
   getFamily,
   getFamilyMembers,
-  type ConstellationEntry,
 } from "@/game/constellations";
-import {
-  getConstellationFocusState,
-  setRoamHighlight,
-  setSelectedConstellation,
-  subscribeConstellationFocus,
-  type ConstellationFocusState,
-} from "./constellationFocus";
-import { globalFamilyRevealController } from "@/game/familyReveal/FamilyRevealController";
 
-interface StarField3DProps {
-  radius?: number;
-  reduced?: boolean;
+function dirToPos(dir: { x: number; y: number; z: number }, radius: number): [number, number, number] {
+  const len = Math.hypot(dir.x, dir.y, dir.z) || 1;
+  return [(dir.x / len) * radius, (dir.y / len) * radius, (dir.z / len) * radius];
 }
 
-/** R3F star field using the FIELD (3600) + MILKY (1800) arrays from cosmos.ts. */
-export function StarField3D({ radius = 300, reduced = false }: StarField3DProps) {
-  const pointsRef = useRef<THREE.Points>(null);
-  const raycaster = useThree((state) => state.raycaster);
+/** Dense background catalog stars. */
+export function StarField3D({ radius = 500, reduced = false }: { radius?: number; reduced?: boolean }) {
   const [hoveredStar, setHoveredStar] = useState<{ index: number; position: [number, number, number] } | null>(null);
-  const [selectedStar, setSelectedStar] = useState<{ index: number; position: [number, number, number] } | null>(null);
-
-  useEffect(() => {
-    const previousThreshold = raycaster.params.Points.threshold;
-    raycaster.params.Points.threshold = 3.5;
-    return () => { raycaster.params.Points.threshold = previousThreshold; };
-  }, [raycaster]);
-
-  const { positions, colors, sizes } = useMemo(() => {
-    const catalog = [...FIELD, ...MILKY];
-    const total = catalog.length;
-    const posArr = new Float32Array(total * 3);
-    const colArr = new Float32Array(total * 3);
-    const sizeArr = new Float32Array(total);
-
-    let idx = 0;
-    for (const st of catalog) {
-      const len = Math.hypot(st.x, st.y, st.z) || 1;
-      posArr[idx * 3] = (st.x / len) * radius;
-      posArr[idx * 3 + 1] = (st.y / len) * radius;
-      posArr[idx * 3 + 2] = (st.z / len) * radius;
-      const visibility = 0.62 + Math.sqrt(st.b) * 0.55;
-      colArr[idx * 3] = (st.cr / 255) * visibility;
-      colArr[idx * 3 + 1] = (st.cg / 255) * visibility;
-      colArr[idx * 3 + 2] = (st.cb / 255) * visibility;
-      sizeArr[idx] = st.s * (reduced ? 0.7 : 1);
-      idx++;
-    }
-    return { positions: posArr, colors: colArr, sizes: sizeArr };
-  }, [radius, reduced]);
-
-  const material = useMemo(
-    () => new THREE.ShaderMaterial({
-      uniforms: { uOpacity: { value: 0.92 } },
-      vertexShader: `
-        attribute float size;
-        varying vec3 vColor;
-        void main() {
-          vColor = color;
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_Position = projectionMatrix * mvPosition;
-          gl_PointSize = clamp(size * 4.0, 2.2, 13.0);
-        }
-      `,
-      fragmentShader: `
-        uniform float uOpacity;
-        varying vec3 vColor;
-        void main() {
-          float r = length(gl_PointCoord - vec2(0.5));
-          float halo = exp(-r * 8.5) * 0.52;
-          float core = 1.0 - smoothstep(0.04, 0.2, r);
-          float alpha = max(halo, core);
-          vec3 color = mix(vColor * 0.78, min(vColor * 1.35 + vec3(0.12), vec3(1.0)), core);
-          gl_FragColor = vec4(color, alpha * uOpacity);
-          #include <tonemapping_fragment>
-          #include <colorspace_fragment>
-        }
-      `,
-      vertexColors: true,
-      transparent: true,
-      depthWrite: false,
-      depthTest: true,
-      blending: THREE.AdditiveBlending,
-    }),
-    [],
-  );
 
   const geometry = useMemo(() => {
+    const stars = reduced ? FIELD.slice(0, Math.min(1200, FIELD.length)) : FIELD;
+    const positions = new Float32Array(stars.length * 3);
+    const colors = new Float32Array(stars.length * 3);
+    const sizes = new Float32Array(stars.length);
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+      const len = Math.hypot(s.x, s.y, s.z) || 1;
+      const r = radius * (0.85 + ((s.mag ?? 3) % 1) * 0.2);
+      positions[i * 3] = (s.x / len) * r;
+      positions[i * 3 + 1] = (s.y / len) * r;
+      positions[i * 3 + 2] = (s.z / len) * r;
+      colors[i * 3] = (s.cr ?? 230) / 255;
+      colors[i * 3 + 1] = (s.cg ?? 220) / 255;
+      colors[i * 3 + 2] = (s.cb ?? 200) / 255;
+      sizes[i] = 1.2 + (s.mag ?? 3) * 0.35;
+    }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     geo.setAttribute("size", new THREE.BufferAttribute(sizes, 1));
     return geo;
-  }, [positions, colors, sizes]);
+  }, [radius, reduced]);
 
-  useFrame(({ clock }) => {
-    if (pointsRef.current && !reduced) {
-      const mat = pointsRef.current.material as THREE.ShaderMaterial;
-      mat.uniforms.uOpacity.value = 0.84 + Math.sin(clock.elapsedTime * 0.5) * 0.08;
+  const milkyGeo = useMemo(() => {
+    if (reduced) return null;
+    const positions = new Float32Array(MILKY.length * 3);
+    for (let i = 0; i < MILKY.length; i++) {
+      const s = MILKY[i];
+      const len = Math.hypot(s.x, s.y, s.z) || 1;
+      const r = radius * 0.92;
+      positions[i * 3] = (s.x / len) * r;
+      positions[i * 3 + 1] = (s.y / len) * r;
+      positions[i * 3 + 2] = (s.z / len) * r;
     }
-  });
-
-  const onPointMove = (event: { index?: number; point: THREE.Vector3; stopPropagation: () => void }) => {
-    const index = event.index;
-    if (index == null) return;
-    event.stopPropagation();
-    const source = index < FIELD.length ? FIELD[index] : MILKY[index - FIELD.length];
-    if (!source) return;
-    setHoveredTarget(index < FIELD.length ? `catalog-star:${index}` : `milky-star:${index - FIELD.length}`);
-    const len = Math.hypot(source.x, source.y, source.z) || 1;
-    setHoveredStar((previous) => previous?.index === index ? previous : {
-      index,
-      position: [(source.x / len) * radius, (source.y / len) * radius, (source.z / len) * radius],
-    });
-  };
-
-  const onPointClick = (event: { index?: number; point: THREE.Vector3; stopPropagation: () => void }) => {
-    onPointMove(event);
-    const index = event.index;
-    if (index == null) return;
-    const source = index < FIELD.length ? FIELD[index] : MILKY[index - FIELD.length];
-    if (!source) return;
-    toggleLockedTarget(index < FIELD.length ? `catalog-star:${index}` : `milky-star:${index - FIELD.length}`);
-    const len = Math.hypot(source.x, source.y, source.z) || 1;
-    setSelectedStar((previous) => previous?.index === index ? null : {
-      index,
-      position: [(source.x / len) * radius, (source.y / len) * radius, (source.z / len) * radius],
-    });
-  };
-
-  const activeStar = hoveredStar ?? selectedStar;
-
-  return (
-    <>
-      <points
-        ref={pointsRef}
-        geometry={geometry}
-        material={material}
-        frustumCulled={false}
-        onPointerMove={onPointMove}
-        onPointerOut={() => {
-          setHoveredStar(null);
-          document.body.style.cursor = "auto";
-        }}
-        onClick={onPointClick}
-      />
-      {activeStar && (() => {
-        const source = activeStar.index < FIELD.length
-          ? FIELD[activeStar.index]
-          : MILKY[activeStar.index - FIELD.length];
-        if (!source) return null;
-        return (
-          <Html center position={activeStar.position} distanceFactor={24} zIndexRange={[100, 0]} style={{ pointerEvents: "none" }}>
-            <div className="w-52 rounded-lg border border-cyan-200/50 bg-slate-950/95 p-2.5 text-slate-100 shadow-[0_0_24px_rgba(90,190,255,0.22)] backdrop-blur">
-              <div className="font-semibold">{activeStar.index < FIELD.length ? "Catalog star" : "Milky Way star"} · {activeStar.index + 1}</div>
-              <div className="mt-1 font-mono text-[10px] text-cyan-200">Procedural sky object · visual class {source.spectral ?? "G"}</div>
-            </div>
-          </Html>
-        );
-      })()}
-    </>
-  );
-}
-
-/** Named bright stars — clickable targets that trigger Menzel constellation family animations. */
-export function NamedStars3D({ radius = 280, visible = true }: { radius?: number; visible?: boolean }) {
-  if (!visible) return null;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    return geo;
+  }, [radius, reduced]);
 
   return (
     <group>
+      <points geometry={geometry}>
+        <pointsMaterial
+          size={2.2}
+          sizeAttenuation
+          vertexColors
+          transparent
+          opacity={0.9}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </points>
+      {milkyGeo && (
+        <points geometry={milkyGeo}>
+          <pointsMaterial
+            size={1.4}
+            sizeAttenuation
+            color="#c8d0e8"
+            transparent
+            opacity={0.35}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </points>
+      )}
+    </group>
+  );
+}
+
+/** Named bright stars — visible glow cores with forgiving hover/click targets. */
+export function NamedStars3D({ radius = 450, visible = true }: { radius?: number; visible?: boolean }) {
+  if (!visible) return null;
+  return (
+    <group>
       {NAMED_STARS.map((star) => {
-        const len = Math.hypot(star.dir.x, star.dir.y, star.dir.z) || 1;
-        const pos: [number, number, number] = [
-          (star.dir.x / len) * radius,
-          (star.dir.y / len) * radius,
-          (star.dir.z / len) * radius,
-        ];
-        return <NamedStarMarker key={star.id} star={star} position={pos} />;
+        const position = dirToPos(star.dir, radius);
+        return <NamedStarMarker key={star.id} star={star} position={position} />;
       })}
     </group>
   );
@@ -197,7 +113,6 @@ export function NamedStars3D({ radius = 280, visible = true }: { radius?: number
 function NamedStarMarker({ star, position }: { star: (typeof NAMED_STARS)[number]; position: [number, number, number] }) {
   const [hovered, setHovered] = useState(false);
   const [selected, setSelected] = useState(false);
-
   return (
     <group
       position={position}
@@ -206,53 +121,47 @@ function NamedStarMarker({ star, position }: { star: (typeof NAMED_STARS)[number
         setHovered(true);
         setHoveredTarget(star.id);
         document.body.style.cursor = "help";
-        const c = getConstellationByName(star.constellation);
-        globalFamilyRevealController.setHoveredInfo({
-          id: star.id,
-          name: star.name,
-          dist: star.dist,
-          constellation: star.constellation ?? "Star",
-          family: c ? c.familyName : "Milky Way",
-        });
       }}
       onPointerOut={() => {
         setHovered(false);
         clearHoveredTarget(star.id);
         document.body.style.cursor = "auto";
-        globalFamilyRevealController.setHoveredInfo(null);
       }}
     >
       <mesh>
-        <sphereGeometry args={[2.2 + star.mag * 0.18, 16, 16]} />
+        <sphereGeometry args={[2.0 + star.mag * 0.15, 12, 12]} />
         <meshBasicMaterial color={star.color} toneMapped={false} />
       </mesh>
       <mesh
-        onPointerOver={(event) => { event.stopPropagation(); setHovered(true); document.body.style.cursor = "help"; }}
-        onPointerOut={() => { setHovered(false); document.body.style.cursor = "auto"; }}
+        onPointerOver={(event) => {
+          event.stopPropagation();
+          setHovered(true);
+          document.body.style.cursor = "help";
+        }}
+        onPointerOut={() => {
+          setHovered(false);
+          document.body.style.cursor = "auto";
+        }}
         onClick={(event) => {
           event.stopPropagation();
           setSelected((value) => !value);
           toggleLockedTarget(star.id);
-          // Find constellation and trigger sequential family grouping animation
           const c = getConstellationByName(star.constellation);
-          if (c) {
-            setSelectedConstellation(c.id);
-            globalFamilyRevealController.selectConstellation(c.id);
-          }
+          if (c) setSelectedConstellation(c.id);
         }}
       >
-        <sphereGeometry args={[Math.max(5, 3.2 + star.mag * 0.45), 12, 12]} />
+        <sphereGeometry args={[Math.max(4.5, 2.8 + star.mag * 0.4), 10, 10]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
       </mesh>
       {(hovered || selected) && (
-        <Html center position={[0, 4.5, 0]} distanceFactor={22} zIndexRange={[100, 0]} style={{ pointerEvents: "none" }}>
-          <div className="w-60 rounded-lg border border-cyan-400/50 bg-slate-950/95 p-3 text-slate-100 shadow-[0_0_24px_rgba(0,229,255,0.3)] backdrop-blur">
-            <div className="font-semibold text-white">{star.name}</div>
-            <div className="mt-1 font-mono text-[11px] text-cyan-300">
+        <Html center position={[0, 4.2, 0]} distanceFactor={24} zIndexRange={[100, 0]} style={{ pointerEvents: "none" }}>
+          <div className="w-56 rounded-lg border border-cyan-200/50 bg-slate-950/95 p-2.5 text-slate-100 shadow-[0_0_20px_rgba(90,190,255,0.2)] backdrop-blur">
+            <div className="font-semibold text-sm">{star.name}</div>
+            <div className="mt-0.5 font-mono text-[10px] text-cyan-200">
               {star.constellation ?? "Star"} · {star.dist}
             </div>
-            <div className="mt-1 text-xs text-slate-300">{star.blurb}</div>
-            <div className="mt-1 text-[10px] text-cyan-200/80">Click star to illuminate {star.constellation} family myth ↗</div>
+            <div className="mt-1 text-[11px] text-slate-300">{star.blurb}</div>
+            <div className="mt-1 text-[10px] text-slate-400">{star.fact}</div>
           </div>
         </Html>
       )}
@@ -260,230 +169,238 @@ function NamedStarMarker({ star, position }: { star: (typeof NAMED_STARS)[number
   );
 }
 
-function SimpleLine({
-  geometry,
-  color,
-  opacity,
-  linewidth = 1,
-}: {
-  geometry: THREE.BufferGeometry;
-  color: string;
-  opacity: number;
-  linewidth?: number;
-}) {
-  const lineObj = useMemo(() => {
-    const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity, linewidth });
-    return new THREE.Line(geometry, mat);
-  }, [geometry, color, opacity, linewidth]);
-  return <primitive object={lineObj} />;
-}
 
 /**
- * Enhanced 88-Constellation Engine:
- * - Roam / Drag Auto-Visualization: Automatically visualizes constellations entering the camera forward gaze.
- * - Sequential Group Family Myth Visual Animation: When a star or constellation is clicked,
- *   illuminates all sibling constellations in its Menzel family sequentially one after another!
+ * Constellation figures on the deep sky.
+ * Default: quiet (no clutter of empty edges).
+ * Family select: progressive glow links between member centroids, then each stick figure draws in.
+ * Only one family animation at a time.
  */
 export function ConstellationLines3D({ radius = 280, visible = true }: { radius?: number; visible?: boolean }) {
-  const [focusState, setFocusState] = useState<ConstellationFocusState>(getConstellationFocusState());
-  const cameraDir = useRef(new THREE.Vector3());
-  const lastRoamCheck = useRef(0);
+  const [familyAnim, setFamilyAnim] = useState<FamilyAnimState | null>(null);
+  const [tick, setTick] = useState(0);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const [solo, setSolo] = useState<string | null>(null);
 
-  useEffect(() => {
-    return subscribeConstellationFocus((s) => setFocusState(s));
-  }, []);
+  useEffect(() => subscribeFamilyAnimation(setFamilyAnim), []);
+  useEffect(
+    () =>
+      subscribeConstellation((id) => {
+        if (!id) {
+          setSolo(null);
+          return;
+        }
+        const byId = getConstellationById(id);
+        if (byId) {
+          setSolo(byId.name);
+          return;
+        }
+        const byName = getConstellationByName(id);
+        setSolo(byName ? byName.name : id);
+      }),
+    [],
+  );
 
-  // Pre-calculate 3D center positions for all 88 constellations
-  const constellationCenters = useMemo(() => {
-    return CONSTELLATIONS_88.map((c) => {
-      const dir = raDecToDir(c.centerRa, c.centerDec);
-      const len = Math.hypot(dir.x, dir.y, dir.z) || 1;
-      return {
-        id: c.id,
-        name: c.name,
-        familyName: c.familyName,
-        familyId: c.familyId,
-        vec: new THREE.Vector3(dir.x / len, dir.y / len, dir.z / len),
-        pos: new THREE.Vector3((dir.x / len) * radius, (dir.y / len) * radius, (dir.z / len) * radius),
-      };
-    });
-  }, [radius]);
-
-  // Frame loop: Detect when camera is pointing toward a constellation during drag / roam
-  useFrame(({ camera, clock }) => {
-    const now = clock.elapsedTime;
-    if (now - lastRoamCheck.current < 0.1) return;
-    lastRoamCheck.current = now;
-
-    // If the user already locked a specific constellation, preserve it
-    if (focusState.selectedId) return;
-
-    camera.getWorldDirection(cameraDir.current);
-
-    let bestId: string | null = null;
-    let maxDot = 0.925; // ~22 degrees forward cone
-
-    for (const c of constellationCenters) {
-      const dot = cameraDir.current.dot(c.vec);
-      if (dot > maxDot) {
-        maxDot = dot;
-        bestId = c.id;
-      }
-    }
-
-    if (bestId !== focusState.roamHighlightedId) {
-      setRoamHighlight(bestId);
-    }
+  // Drive progressive animation
+  useFrame(() => {
+    if (familyAnim?.holding) setTick((t) => t + 1);
   });
+
+  const figures = useMemo(() => {
+    if (!visible) return [] as FigBuilt[];
+    const built: FigBuilt[] = [];
+    for (const fig of CONSTELLATIONS) {
+      const points: THREE.Vector3[] = [];
+      for (const id of fig.ids) {
+        const star = NAMED_STARS.find((s) => s.id === id);
+        if (!star) continue;
+        const [x, y, z] = dirToPos(star.dir, radius);
+        points.push(new THREE.Vector3(x, y, z));
+      }
+      if (points.length === 0) continue;
+      const centroid = points
+        .reduce((a, p) => a.add(p.clone()), new THREE.Vector3())
+        .multiplyScalar(1 / points.length);
+      built.push({ fig, points, centroid });
+    }
+    return built;
+  }, [radius, visible]);
+
+  // Unique constellation -> primary figure (prefer multi-star)
+  const byName = useMemo(() => {
+    const map = new Map<string, FigBuilt>();
+    for (const f of figures) {
+      const prev = map.get(f.fig.constellation);
+      if (!prev || f.points.length > prev.points.length) map.set(f.fig.constellation, f);
+    }
+    return map;
+  }, [figures]);
 
   if (!visible) return null;
 
-  const activeId = focusState.selectedId || focusState.roamHighlightedId;
-  const activeConstellation = activeId ? getConstellationById(activeId) : null;
-  const revealedIds = focusState.revealedConstellations;
+  const elapsed = familyAnim ? (performance.now() - familyAnim.startedAt) / 1000 : 0;
+
+  // Family member order
+  const familyMembers: string[] = familyAnim
+    ? getFamilyMembers(familyAnim.familyId).map((m) => m.name)
+    : [];
+
+  // Phase 1: connect member centroids (0.35s each)
+  const linkDuration = 0.4;
+  const linksDone = familyAnim ? Math.min(familyMembers.length, Math.floor(elapsed / linkDuration) + 1) : 0;
+  const linkPhaseDone = familyAnim ? elapsed >= familyMembers.length * linkDuration : false;
+
+  // Phase 2: reveal stick figures one by one
+  const figDuration = 0.55;
+  const figStart = familyMembers.length * linkDuration;
+  const figsRevealed = familyAnim && linkPhaseDone
+    ? Math.min(familyMembers.length, Math.floor((elapsed - figStart) / figDuration) + 1)
+    : 0;
+
+  const openFig = (constellationName: string) => {
+    setSolo(constellationName);
+    const c = getConstellationByName(constellationName);
+    if (c) setSelectedConstellation(c.id);
+  };
+
+  // Build family link polylines among centroids in order
+  const linkPts: THREE.Vector3[] = [];
+  if (familyAnim && linksDone > 0) {
+    for (let i = 0; i < linksDone; i++) {
+      const f = byName.get(familyMembers[i]);
+      if (f) linkPts.push(f.centroid.clone());
+    }
+  }
+
+  const showFigure = (name: string) => {
+    if (solo === name) return true;
+    if (!familyAnim) return false;
+    const idx = familyMembers.indexOf(name);
+    if (idx < 0) return false;
+    return figsRevealed > idx;
+  };
+
+  const familyTitle = familyAnim ? getFamily(familyAnim.familyId).name : null;
 
   return (
     <group>
-      {/* 1. Base Major Sky Asterisms (Orion Belt, Summer Triangle, etc.) */}
-      {CONSTELLATIONS.map((c, i) => {
-        const pts: THREE.Vector3[] = [];
-        for (const id of c.ids) {
-          const star = NAMED_STARS.find((s) => s.id === id);
-          if (!star) continue;
-          const len = Math.hypot(star.dir.x, star.dir.y, star.dir.z) || 1;
-          pts.push(new THREE.Vector3((star.dir.x / len) * radius, (star.dir.y / len) * radius, (star.dir.z / len) * radius));
-        }
-        if (pts.length < 2) return null;
-        const geo = new THREE.BufferGeometry().setFromPoints(pts);
-        return (
-          <SimpleLine key={`base-${i}`} geometry={geo} color="#38bdf8" opacity={0.18} />
-        );
-      })}
-
-      {/* 2. Roam-Highlighted Constellation (Gaze Detection while dragging) */}
-      {!focusState.selectedId && activeConstellation && (
-        <ConstellationFigure3D
-          constellation={activeConstellation}
-          radius={radius}
-          color="#00E5FF"
-          opacity={0.65}
-          showBadge={true}
-        />
-      )}
-
-      {/* 3. Sequential Group Family Myth Visual Animation */}
-      {focusState.activeFamilyId && revealedIds.map((cid, seqIdx) => {
-        const c = getConstellationById(cid);
-        if (!c) return null;
-        const isAnchor = cid === focusState.selectedId;
-        return (
-          <ConstellationFigure3D
-            key={`seq-${cid}-${seqIdx}`}
-            constellation={c}
-            radius={radius}
-            color={isAnchor ? "#00E5FF" : "#38BDF8"}
-            opacity={isAnchor ? 0.95 : 0.75}
-            showBadge={isAnchor}
-            pulse={true}
-          />
-        );
-      })}
-
-      {/* 4. Family Celestial Bridge Lines: Connecting Key Stars of Revealed Siblings */}
-      {focusState.activeFamilyId && revealedIds.length > 1 && (
-        <FamilyMythBonds3D
-          revealedIds={revealedIds}
-          radius={radius}
-        />
-      )}
-    </group>
-  );
-}
-
-/** Draws the 3D stick-figure line segments and star nodes of a specific constellation. */
-function ConstellationFigure3D({
-  constellation,
-  radius,
-  color,
-  opacity,
-  showBadge,
-  pulse = false,
-}: {
-  constellation: ConstellationEntry;
-  radius: number;
-  color: string;
-  opacity: number;
-  showBadge?: boolean;
-  pulse?: boolean;
-}) {
-  const { linesGeos, starPositions, centerPos } = useMemo(() => {
-    const starPosList: THREE.Vector3[] = [];
-    for (const st of constellation.stars) {
-      const dir = raDecToDir(st.ra, st.dec);
-      const len = Math.hypot(dir.x, dir.y, dir.z) || 1;
-      starPosList.push(new THREE.Vector3((dir.x / len) * radius, (dir.y / len) * radius, (dir.z / len) * radius));
-    }
-
-    const cDir = raDecToDir(constellation.centerRa, constellation.centerDec);
-    const cLen = Math.hypot(cDir.x, cDir.y, cDir.z) || 1;
-    const center = new THREE.Vector3((cDir.x / cLen) * radius, (cDir.y / cLen) * radius, (cDir.z / cLen) * radius);
-
-    const segments: THREE.BufferGeometry[] = [];
-    for (const [i1, i2] of constellation.lines) {
-      if (starPosList[i1] && starPosList[i2]) {
-        const geo = new THREE.BufferGeometry().setFromPoints([starPosList[i1], starPosList[i2]]);
-        segments.push(geo);
-      }
-    }
-
-    return { linesGeos: segments, starPositions: starPosList, centerPos: center };
-  }, [constellation, radius]);
-
-  return (
-    <group>
-      {/* Stick-figure Line Segments */}
-      {linesGeos.map((geo, idx) => (
-        <SimpleLine key={`fig-line-${idx}`} geometry={geo} color={color} opacity={opacity} linewidth={2} />
-      ))}
-
-      {/* Glowing Star Vertex Nodes */}
-      {starPositions.map((pos, sidx) => (
-        <mesh key={`node-${sidx}`} position={pos}>
-          <sphereGeometry args={[pulse ? 1.6 : 1.2, 8, 8]} />
-          <meshBasicMaterial color={color} toneMapped={false} />
-        </mesh>
-      ))}
-
-      {/* In-Space 3D Hover/Gaze Badge */}
-      {showBadge && (
-        <Html center position={centerPos} distanceFactor={28} zIndexRange={[90, 0]} style={{ pointerEvents: "none" }}>
-          <div className="rounded-full border border-cyan-400/60 bg-slate-950/90 px-3 py-1 text-center font-mono text-[10px] font-semibold text-cyan-200 shadow-[0_0_20px_rgba(0,229,255,0.4)] backdrop-blur">
-            ⟡ {constellation.name.toUpperCase()} · {constellation.familyName}
+      {/* Family tour HUD chip */}
+      {familyAnim && familyTitle && linkPts[0] && (
+        <Html position={linkPts[0].toArray()} center distanceFactor={60} style={{ pointerEvents: "auto" }}>
+          <div className="flex items-center gap-2 rounded-lg border border-amber-300/40 bg-slate-950/90 px-2.5 py-1.5 shadow-lg">
+            <span className="font-mono text-[10px] uppercase tracking-wide text-amber-100">{familyTitle}</span>
+            <span className="font-mono text-[9px] text-slate-400">
+              {Math.min(figsRevealed, familyMembers.length)}/{familyMembers.length}
+            </span>
+            <button
+              type="button"
+              className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[9px] text-slate-200 hover:bg-white/20"
+              onClick={() => stopFamilyAnimation()}
+            >
+              Close
+            </button>
           </div>
         </Html>
       )}
+
+      {/* Progressive family connector (glowed) */}
+      {linkPts.length >= 2 && (
+        <FamilyLinkLine points={linkPts} pulse={tick} />
+      )}
+      {linkPts.map((p, i) => (
+        <mesh key={`link-node-${i}`} position={p}>
+          <sphereGeometry args={[3.8, 12, 12]} />
+          <meshBasicMaterial color="#e8c070" transparent opacity={0.95} />
+        </mesh>
+      ))}
+
+      {/* Stick figures — only active solo or revealed family members */}
+      {figures.map(({ fig, points, centroid }) => {
+        if (!showFigure(fig.constellation)) return null;
+        const isHot = hovered === fig.constellation || solo === fig.constellation;
+        const lineObj = points.length >= 2 ? makeLine(points, isHot) : null;
+        return (
+          <group key={`${fig.name}-${fig.ids.join("-")}`}>
+            {lineObj && <primitive object={lineObj} />}
+            {points.map((p, i) => (
+              <mesh
+                key={i}
+                position={p}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openFig(fig.constellation);
+                }}
+                onPointerOver={(e) => {
+                  e.stopPropagation();
+                  setHovered(fig.constellation);
+                  document.body.style.cursor = "pointer";
+                }}
+                onPointerOut={() => {
+                  setHovered(null);
+                  document.body.style.cursor = "auto";
+                }}
+              >
+                <sphereGeometry args={[isHot ? 3.6 : 2.6, 8, 8]} />
+                <meshBasicMaterial
+                  color={isHot ? "#f0e6c0" : "#9fd0e8"}
+                  transparent
+                  opacity={isHot ? 1 : 0.75}
+                />
+              </mesh>
+            ))}
+            <Html position={centroid.toArray()} center distanceFactor={52} style={{ pointerEvents: "auto" }}>
+              <button
+                type="button"
+                onClick={() => openFig(fig.constellation)}
+                onMouseEnter={() => setHovered(fig.constellation)}
+                onMouseLeave={() => setHovered(null)}
+                className={`whitespace-nowrap rounded border px-1.5 py-0.5 font-mono text-[9px] tracking-wide ${
+                  isHot
+                    ? "border-amber-300/60 bg-slate-950/95 text-amber-50"
+                    : "border-cyan-200/30 bg-slate-950/80 text-cyan-50"
+                }`}
+              >
+                {fig.constellation}
+              </button>
+            </Html>
+          </group>
+        );
+      })}
     </group>
   );
 }
 
-/** Draws glowing inter-constellation mythic bond lines between sibling key stars in the active family. */
-function FamilyMythBonds3D({ revealedIds, radius }: { revealedIds: string[]; radius: number }) {
-  const bondGeos = useMemo(() => {
-    const pts: THREE.Vector3[] = [];
-    for (const id of revealedIds) {
-      const c = getConstellationById(id);
-      if (!c) continue;
-      const dir = raDecToDir(c.centerRa, c.centerDec);
-      const len = Math.hypot(dir.x, dir.y, dir.z) || 1;
-      pts.push(new THREE.Vector3((dir.x / len) * radius, (dir.y / len) * radius, (dir.z / len) * radius));
-    }
-    if (pts.length < 2) return null;
-    return new THREE.BufferGeometry().setFromPoints(pts);
-  }, [revealedIds, radius]);
+type FigBuilt = {
+  fig: ConstellationFigure;
+  points: THREE.Vector3[];
+  centroid: THREE.Vector3;
+};
 
-  if (!bondGeos) return null;
+function makeLine(points: THREE.Vector3[], hot: boolean) {
+  const geo = new THREE.BufferGeometry().setFromPoints(points);
+  const mat = new THREE.LineBasicMaterial({
+    color: hot ? 0xf0d78c : 0x9fd0e8,
+    transparent: true,
+    opacity: hot ? 0.95 : 0.7,
+  });
+  return new THREE.Line(geo, mat);
+}
 
-  return (
-    <SimpleLine geometry={bondGeos} color="#f59e0b" opacity={0.45} linewidth={1.5} />
-  );
+function FamilyLinkLine({ points, pulse }: { points: THREE.Vector3[]; pulse: number }) {
+  const line = useMemo(() => {
+    const geo = new THREE.BufferGeometry().setFromPoints(points);
+    const mat = new THREE.LineBasicMaterial({
+      color: 0xe8c070,
+      transparent: true,
+      opacity: 0.85,
+    });
+    return new THREE.Line(geo, mat);
+  }, [points.map((p) => `${p.x},${p.y},${p.z}`).join("|")]);
+
+  useFrame(() => {
+    const mat = line.material as THREE.LineBasicMaterial;
+    mat.opacity = 0.55 + Math.sin(pulse * 0.15) * 0.25;
+  });
+
+  return <primitive object={line} />;
 }

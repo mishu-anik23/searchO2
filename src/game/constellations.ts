@@ -6016,6 +6016,18 @@ export function listFamiliesOrdered(): MenzelFamilyId[] {
   return ["ursa_major", "zodiac", "perseus", "hercules", "orion", "heavenly_waters", "bayer", "lacaille"];
 }
 
+export const BIRTH_CHART_GUIDE = {
+  description: "A birth chart (natal chart) is a map of the sky at the exact moment and location of a person's birth. It is calculated using the date, time, and geographic coordinates of the birthplace.",
+  classroomNote: "A birth chart is a cultural map of the sky at a birth time and place. In OxyForge it is presented as astronomy literacy: the Sun’s path (ecliptic) crosses the zodiac constellations, while modern IAU constellation boundaries are scientific sky regions — not the same as sun-sign dates, which use the tropical zodiac fixed to seasons. Myths are human stories projected onto star patterns.",
+  components: [
+    { component: "Date of Birth", function: "Determines the Sun's position (Sun sign) and the positions of the planets along the ecliptic." },
+    { component: "Time of Birth", function: "Determines the Rising Sign (Ascendant) and the placement of the 12 astrological houses." },
+    { component: "Location of Birth", function: "Provides the geographic coordinates (latitude and longitude) needed to calculate the local horizon and the precise positions of celestial bodies." }
+  ],
+  patternsDescription: "Astrologers analyze the geometric angles (aspects) between planets and the zodiac signs/houses they occupy to interpret personality traits, life themes, and potential future trends.",
+  commonPatterns: ["Conjunctions", "Oppositions", "Trines", "Squares", "Sextiles", "Stelliums", "T-Squares", "Grand Trines"],
+} as const;
+
 /**
  * Maps a birth month and day (1-12, 1-31) to active birth constellation,
  * tropical zodiac sign, and harmonic natal sky patterns.

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ArrowRight, BookOpen, Home, Rocket, Wind, Moon, Users, Check } from "lucide-react";
+import { ArrowRight, BookOpen, Home, Rocket, Wind, Moon, Users, Check, Sparkles } from "lucide-react";
 import { STARTING_CREDITS } from "@/game/data";
 import { CREW_ROSTER, CREW_SEAT_LIMIT, roleLabel, type CrewMember } from "@/game/crew";
 import { useGame } from "@/game/store";
@@ -37,8 +37,23 @@ export function HQ() {
       <div className="mt-8 grid gap-3 sm:grid-cols-3">
         <Stat label="Program funds" value={formatUsd(credits)} icon={<Wind className="size-4" />} />
         <Stat label="Oxygen stored" value={formatKg(oxygenKg)} icon={<Wind className="size-4" />} />
-        <Stat label="Habitats / flights" value={`${habitats} / ${missionsDone}`} icon={<Home className="size-4" />} />
       </div>
+
+      <section className="mt-6 rounded-xl border border-cyan-200/20 bg-gradient-to-br from-slate-950 to-slate-900/80 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <Badge tone="accent">Sky lab</Badge>
+            <h2 className="mt-2 font-display text-xl font-semibold">Tropical zodiac & natal workspace</h2>
+            <p className="mt-2 max-w-xl text-sm text-muted">
+              12 equal 30° ecliptic sectors, on-demand birth chart math, and an honest prediction sandbox.
+              Geometry and symbolic tradition stay visually separated.
+            </p>
+          </div>
+          <Button onClick={() => go("zodiac-lab")}>
+            <Sparkles className="size-4" /> Open sky lab <ArrowRight className="size-4" />
+          </Button>
+        </div>
+      </section>
 
       {/* Flight crew avatars */}
       <section className="mt-8 rounded-xl border border-border bg-surface p-5 sm:p-6">

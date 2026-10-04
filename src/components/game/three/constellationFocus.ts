@@ -122,3 +122,40 @@ export function subscribeConstellation(listener: (id: string | null) => void): (
     listeners.delete(handler);
   };
 }
+
+export type FamilyAnimState = {
+  familyId: MenzelFamilyId;
+  /** Wall-clock start for progressive draw */
+  startedAt: number;
+  /** When true, animation stays visible until closed */
+  holding: boolean;
+};
+
+type FamilyListener = (state: FamilyAnimState | null) => void;
+
+let familyAnim: FamilyAnimState | null = null;
+const familyListeners = new Set<FamilyListener>();
+
+export function getFamilyAnimation(): FamilyAnimState | null {
+  return familyAnim;
+}
+
+/** Start family tour animation — cancels any previous family anim. */
+export function playFamilyAnimation(familyId: MenzelFamilyId) {
+  familyAnim = { familyId, startedAt: performance.now(), holding: true };
+  familyListeners.forEach((l) => l(familyAnim));
+}
+
+export function stopFamilyAnimation() {
+  familyAnim = null;
+  familyListeners.forEach((l) => l(null));
+}
+
+export function subscribeFamilyAnimation(listener: FamilyListener): () => void {
+  familyListeners.add(listener);
+  listener(familyAnim);
+  return () => {
+    familyListeners.delete(listener);
+  };
+}
+
