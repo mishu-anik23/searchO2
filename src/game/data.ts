@@ -18,7 +18,7 @@ export type Screen =
 export const STARTING_CREDITS = 2_500_000;
 export const FPV_RATE_PER_SEC = 180;
 export const OXYGEN_PRICE_PER_KG = 40;
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 3;
 export const SAVE_KEY = "oxyforge-save-v1";
 
 export interface Rocket {
@@ -586,7 +586,13 @@ export interface HabitatStep {
   id: string;
   title: string;
   body: string;
+  why?: string;
+  math?: string;
   libraryId?: string;
+  powerKw?: number;
+  waterKgDay?: number;
+  o2KgDay?: number;
+  ch4Kg?: number;
 }
 
 export const HABITAT_STEPS: HabitatStep[] = [
@@ -620,6 +626,119 @@ export const HABITAT_STEPS: HabitatStep[] = [
     libraryId: "habitat",
   },
 ];
+
+export const MARS_CIV_STEPS: HabitatStep[] = [
+  {
+    id: "survey",
+    title: "Survey the ellipse",
+    body: "Walk the landing site with radar, a shovel, and a slope map. Rocks bigger than a wheel, slopes over ~15°, and dust pits are vetoes. Geography is the building code, not the postcard.",
+    why: "Perseverance proved cameras can match craters to a map in the last kilometres. A town still has to pick a pad by hand: ice depth, sun, and a place a second lander can aim at.",
+    math: "Safe ellipse: slope ≲ 15°, rocks ≳ 0.5 m rarer than ~1%, elevation as low as you can get (more air for the next cargo).",
+    libraryId: "sites",
+  },
+  {
+    id: "power",
+    title: "Plant the power farm",
+    body: "Solar on high ground, dusted weekly — or a small reactor if you picked the pole. No watts, no heat, no oxygen, no town. Civilization is measured in kilowatts per person.",
+    why: "Mars gets about 43% of Earth’s sunlight, then dust steals more. Polar night lasts months. Power is the first wall you build, even before the hall.",
+    math: "Solar constant at Mars ≈ 590 W/m². A dusty 30% efficient array yields ~80–150 W/m² at noon. Three crew + plant ≈ 40 kW class.",
+    libraryId: "habitat",
+    powerKw: 40,
+  },
+  {
+    id: "ice",
+    title: "Open the ice mine",
+    body: "At Utopia or Arcadia you dig a few metres to dirty ice. At Jezero or Oxia you heat clay. At the pole you scoop the cap. Water is drink, air (split it), and later rocket fuel.",
+    why: "Shipping water from Earth is shipping hydrogen you already have in the ground. SHARAD radar and Phoenix 2008 proved the ice is real — just usually under a dry lag.",
+    math: "2 H₂O → 2 H₂ + O₂. 18 g water → 16 g oxygen. A tonne of dirty ice is a breathable bank plus hydrogen for Sabatier.",
+    libraryId: "electrolysis",
+    waterKgDay: 40,
+    powerKw: 12,
+  },
+  {
+    id: "air",
+    title: "Scale the oxygen plant",
+    body: "MOXIE-class ceramic cells split the thin CO₂ air. Electrolysis of meltwater adds a second stream. A crew of three needs ~2.4 kg of O₂ a day — plus leaks, EVA, and a buffer tank.",
+    why: "NASA’s MOXIE made grams per hour in 2021. That was the exam question. A town answers it with stacks and kilowatts, not a lab demo.",
+    math: "2 CO₂ → 2 CO + O₂ at ~800 °C. Three crew ≈ 2.4 kg O₂/day. Add ~50% for leaks and EVA. That is ~3.6 kg/day, every day.",
+    libraryId: "moxie",
+    o2KgDay: 3.6,
+    powerKw: 18,
+  },
+  {
+    id: "pressure",
+    title: "Pressurize the first hall",
+    body: "Inflatable shell, hard airlock, mix of O₂ with argon and nitrogen sieved from Mars air. 30 kPa oxygen-rich mix can work; 101 kPa Earth-air wastes mass and needs a fatter hull.",
+    why: "The hall is a balloon you live in. Fire is the enemy of pure oxygen. Dilute it. Keep a second, smaller refuge you can seal in minutes.",
+    math: "Mars air ≈ 95% CO₂, 3% N₂, 2% Ar. Sieve the N₂/Ar; dump CO₂ or feed it to Sabatier. Target: Earth-like O₂ partial pressure, lower total P.",
+    libraryId: "why-oxygen",
+    o2KgDay: 0.4,
+  },
+  {
+    id: "shield",
+    title: "Bury the hall",
+    body: "Two metres of local dirt cuts galactic cosmic rays and micrometeoroids. Free mass. Robots pile it. Windows are a luxury you cover at night and during a solar storm.",
+    why: "Mars has no magnetic umbrella and a whisper of air. Dose adds up over months. Dirt is the cheapest hospital you will ever build.",
+    math: "≈2 m of ~1.5 g/cm³ regolith ≈ 300 g/cm² — enough to knock solar-particle events down and take the edge off GCR.",
+    libraryId: "habitat",
+  },
+  {
+    id: "green",
+    title: "Grow the first calories",
+    body: "A greenhouse eats CO₂, gives back O₂, and makes salad. It does not replace the mechanical plant, but it teaches the loop: light in, food out, water reused. Crew morale is a life-support number.",
+    why: "Plants fail slow, machines fail fast. You want both. The greenhouse is a classroom: carbon in, sugar out, oxygen as the receipt.",
+    math: "Photosynthesis: 6 CO₂ + 6 H₂O → C₆H₁₂O₆ + 6 O₂. A small salad bay might return 0.3 kg O₂/day — a bonus, not the plant.",
+    libraryId: "habitat",
+    o2KgDay: 0.3,
+    powerKw: 10,
+  },
+  {
+    id: "loop",
+    title: "Close water and waste",
+    body: "Every cup is treasure. Condensate, wash water, urine — filtered, not dumped. A town that dumps water is still a picnic that will run out between cargo windows.",
+    why: "Launch windows to Mars open about every 26 months. If your water loop leaks 10%, you are planning a drought, not a city.",
+    math: "ISS recovers >80% of wastewater. A Mars town should beat that. 3 crew × ~4 L/day use ≈ 12 L if the loop is closed; tonnes if it is not.",
+    libraryId: "habitat",
+    waterKgDay: 12,
+  },
+  {
+    id: "brick",
+    title: "Bake bricks and metal",
+    body: "Sulfur concrete, sintered regolith, or clay ceramics from Oxia and Jezero. Iron from dust. The second hall should not wait for a hull from Earth — the next lander should dock to a wall you already made.",
+    why: "Mass from Earth is the tax. Local rock is free. A civilization starts the day the second building is not a crate.",
+    math: "Sintering: heat regolith toward melting (~1,000–1,200 °C) so grains stick. Sulfur concrete: melt S, mix with dirt, cool. No water required.",
+    libraryId: "sites",
+    powerKw: 15,
+  },
+  {
+    id: "fuel",
+    title: "Make methane for the ride home",
+    body: "Sabatier: CO₂ + 4 H₂ → CH₄ + 2 H₂O at ~400 °C with a nickel catalyst. Hydrogen from ice, carbon from the air. A cargo lander that can refuel is a civilization, not a one-way crate.",
+    why: "This is the trick SpaceX, NASA, and every serious Mars plan agree on. You do not ship the return propellant if the planet will cook it for you.",
+    math: "CO₂ + 4 H₂ → CH₄ + 2 H₂O. Recycle the water through electrolysis to recover H₂ and bank more O₂. Methane + oxygen is a clean, storable pair.",
+    libraryId: "civ",
+    ch4Kg: 24,
+    o2KgDay: 1.2,
+    powerKw: 20,
+  },
+];
+
+
+export function habitatSteps(dest: DestinationId): HabitatStep[] {
+  return dest === "mars" ? MARS_CIV_STEPS : HABITAT_STEPS;
+}
+
+export function civLedger(steps: HabitatStep[], completed: number) {
+  const slice = steps.slice(0, Math.max(0, completed));
+  return {
+    powerKw: slice.reduce((a, s) => a + (s.powerKw ?? 0), 0),
+    waterKgDay: slice.reduce((a, s) => a + (s.waterKgDay ?? 0), 0),
+    o2KgDay: slice.reduce((a, s) => a + (s.o2KgDay ?? 0), 0),
+    ch4Kg: slice.reduce((a, s) => a + (s.ch4Kg ?? 0), 0),
+  };
+}
+
+
 
 export interface LibraryArticle {
   id: string;

@@ -54,13 +54,15 @@ function PadChecklist() {
             <CheckRow key={item.id} item={item} index={i} />
           ))}
         </ol>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="sticky bottom-0 z-20 -mx-1 mt-4 flex flex-wrap items-center gap-2 border-t border-border bg-bg/95 px-1 py-3 backdrop-blur-sm">
           <Button
             size="lg"
+            className="min-h-12 flex-1 sm:flex-none"
             disabled={!allGo}
             onClick={() => {
               unlockAudio();
               beginLaunch();
+              requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
             }}
           >
             Start countdown

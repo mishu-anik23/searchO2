@@ -36,6 +36,14 @@ export function Debrief() {
           <dd className="mt-1 font-mono text-xl tabular-nums">{formatUsd(debrief.spentFpv)}</dd>
         </div>
       </dl>
+      {(debrief.researchXp ?? 0) > 0 && (
+        <div className="mt-6 rounded-xl border border-accent/30 bg-surface p-5">
+          <p className="text-xs uppercase tracking-wide text-accent">Science report card</p>
+          <p className="mt-2 font-display text-2xl font-semibold">{debrief.researchXp} RXP</p>
+          <p className="mt-1 text-sm text-muted">From why-cards, library tickets, and field tasks on the Mars civ path.</p>
+        </div>
+      )}
+
       <p className="mt-6 text-sm text-muted">
         Takeaway: {dest.id === "moon"
           ? "Ice is mostly oxygen by mass. Electricity is the key that unlocks it."
@@ -43,6 +51,7 @@ export function Debrief() {
       </p>
       <div className="mt-8 flex flex-wrap gap-2">
         <Button onClick={() => go("hq")}>
+          PLACEHOLDER_RXP
           Return to HQ <ArrowRight className="size-4" />
         </Button>
         <Button variant="secondary" onClick={() => openLibrary(dest.id === "moon" ? "electrolysis" : "moxie")}>

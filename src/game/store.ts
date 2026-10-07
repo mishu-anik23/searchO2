@@ -4,12 +4,12 @@ import {
   CHECKLIST,
   CONTRACT_PAY,
   FPV_RATE_PER_SEC,
-  HABITAT_STEPS,
   LAUNCH_PRICE,
   OXYGEN_PRICE_PER_KG,
   SAVE_KEY,
   SAVE_VERSION,
   STARTING_CREDITS,
+  habitatSteps,
   plantOxygenTotal,
   plantSteps,
   landingSteps,
@@ -18,6 +18,8 @@ import {
   type Screen,
 } from "./data";
 import { CREW_ROSTER, CREW_SEAT_LIMIT } from "./crew";
+import { layerV2ForStep, type CivPhase } from "./civ-v2";
+import type { MarsSiteId } from "./mars";
 
 export interface Mission {
   rocket: RocketId;
@@ -26,6 +28,28 @@ export interface Mission {
 }
 
 type ChecklistState = Record<string, boolean>;
+
+export type TopicStamp = "unread" | "opened" | "stamped";
+
+export interface LayerProgress {
+  phase: CivPhase;
+  whyCorrectFirst: boolean;
+  whyAttempts: number;
+  libraryDone: boolean;
+  fieldDone: boolean;
+  rxpEarned: number;
+}
+
+function freshLayer(): LayerProgress {
+  return {
+    phase: "why",
+    whyCorrectFirst: false,
+    whyAttempts: 0,
+    libraryDone: false,
+    fieldDone: false,
+    rxpEarned: 0,
+  };
+}
 
 function emptyChecklist(): ChecklistState {
   return Object.fromEntries(CHECKLIST.map((c) => [c.id, false]));
@@ -39,6 +63,10 @@ export interface GameState {
   habitats: number;
   missionsDone: number;
   unlockedTopics: string[];
+  topicStamps: Record<string, TopicStamp>;
+  researchXp: number;
+  layerProgress: LayerProgress;
+  libraryGateActive: boolean;
   reducedMotion: boolean;
   hasLaunchedOnce: boolean;
   screen: Screen;
@@ -51,11 +79,12 @@ export interface GameState {
   plantStep: number;
   habitatStep: number;
   landingStep: number;
+  landingSite: MarsSiteId | null;
   fpvOpen: boolean;
   fpvSpent: number;
   libraryOpen: boolean;
   libraryId: string | null;
-  debrief: { pay: number; oxygen: number; spentFpv: number } | null;
+  debrief: { pay: number; oxygen: number; spentFpv: number; researchXp?: number; stamps?: { id: string; status: TopicStamp }[] } | null;
   hydrated: boolean;
   orbitalSpeed: number;
   cameraDepth: "surface" | "orbital" | "deep";
@@ -73,6 +102,11 @@ export interface GameState {
   openLibrary: (id?: string) => void;
   closeLibrary: () => void;
   markTopic: (id: string) => void;
+  stampTopic: (id: string) => void;
+  answerWhy: (correct: boolean) => void;
+  completeLibraryGate: () => void;
+  completeFieldTask: () => void;
+  buildLayer: () => void;
   hireCrew: (id: string) => boolean;
   toggleCrewSeat: (id: string) => void;
   selectMission: (rocket: RocketId, destination: DestinationId) => boolean;
@@ -87,6 +121,7 @@ export interface GameState {
   closeFpv: () => void;
   billFpv: (dt: number) => void;
   beginLanding: () => void;
+  selectLandingSite: (id: MarsSiteId) => void;
   advanceLanding: () => void;
   advancePlant: () => void;
   advanceHabitat: () => void;
@@ -135,6 +170,10 @@ export const useGame = create<GameState>()(
       habitats: 0,
       missionsDone: 0,
       unlockedTopics: [],
+      topicStamps: {},
+      researchXp: 0,
+      layerProgress: freshLayer(),
+      libraryGateActive: false,
       reducedMotion: false,
       hasLaunchedOnce: false,
       screen: "briefing",
@@ -147,6 +186,7 @@ export const useGame = create<GameState>()(
       plantStep: 0,
       habitatStep: 0,
       landingStep: 0,
+      landingSite: null,
       fpvOpen: false,
       fpvSpent: 0,
       libraryOpen: false,
@@ -214,7 +254,78 @@ export const useGame = create<GameState>()(
       closeLibrary: () => set({ libraryOpen: false }),
       markTopic: (id) => {
         const have = get().unlockedTopics;
-        if (!have.includes(id)) set({ unlockedTopics: [...have, id] });
+        const stamps = { ...get().topicStamps };
+        if (!have.includes(id)) {
+          stamps[id] = stamps[id] ?? "opened";
+          set({ unlockedTopics: [...have, id], topicStamps: stamps });
+        } else if (!stamps[id] || stamps[id] === "unread") {
+          stamps[id] = "opened";
+          set({ topicStamps: stamps });
+        }
+      },
+      stampTopic: (id) => {
+        const have = get().unlockedTopics;
+        const stamps = { ...get().topicStamps, [id]: "stamped" as TopicStamp };
+        const unlocked = have.includes(id) ? have : [...have, id];
+        set({ topicStamps: stamps, unlockedTopics: unlocked });
+      },
+      answerWhy: (correct) => {
+        const lp = get().layerProgress ?? freshLayer();
+        const attempts = lp.whyAttempts + 1;
+        if (!correct) {
+          set({ layerProgress: { ...lp, whyAttempts: attempts, whyCorrectFirst: false } });
+          return;
+        }
+        set({
+          layerProgress: {
+            ...lp,
+            whyAttempts: attempts,
+            whyCorrectFirst: attempts === 1,
+            phase: "library",
+          },
+        });
+      },
+      completeLibraryGate: () => {
+        const m = get().mission;
+        const steps = habitatSteps(m?.destination ?? "moon");
+        const step = steps[get().habitatStep];
+        if (step?.libraryId) get().stampTopic(step.libraryId);
+        const lp = get().layerProgress ?? freshLayer();
+        set({
+          layerProgress: { ...lp, libraryDone: true, phase: "field" },
+          libraryOpen: false,
+          libraryGateActive: false,
+        });
+      },
+      completeFieldTask: () => {
+        const lp = get().layerProgress ?? freshLayer();
+        set({ layerProgress: { ...lp, fieldDone: true, phase: "ready" } });
+      },
+      buildLayer: () => {
+        const m = get().mission;
+        if (!m) return;
+        const steps = habitatSteps(m.destination);
+        const idx = get().habitatStep;
+        const step = steps[idx];
+        const lp = get().layerProgress ?? freshLayer();
+        const v2 = step ? layerV2ForStep(step.id) : undefined;
+        let gained = 0;
+        if (v2) {
+          if (lp.whyCorrectFirst) gained += v2.rxp.whyFirstTry;
+          if (lp.libraryDone) gained += v2.rxp.library;
+          if (lp.fieldDone) gained += v2.rxp.field;
+          if (v2.rxp.siteBonus) gained += v2.rxp.siteBonus;
+        } else {
+          gained = 20;
+        }
+        if (step?.libraryId) get().markTopic(step.libraryId);
+        const next = Math.min(steps.length, idx + 1);
+        set({
+          habitatStep: next,
+          researchXp: (get().researchXp ?? 0) + gained,
+          layerProgress: next >= steps.length ? { ...freshLayer(), phase: "done" } : freshLayer(),
+        });
+        if (next >= steps.length) get().completeMission();
       },
       selectMission: (rocket, destination) => {
         const price = LAUNCH_PRICE[rocket][destination];
@@ -230,6 +341,8 @@ export const useGame = create<GameState>()(
           plantStep: 0,
           habitatStep: 0,
           landingStep: 0,
+          layerProgress: freshLayer(),
+          libraryGateActive: false,
           fpvSpent: 0,
           debrief: null,
           screen: "pad",
@@ -291,7 +404,8 @@ export const useGame = create<GameState>()(
         }
         set({ credits, fpvSpent: get().fpvSpent + cost });
       },
-      beginLanding: () => set({ fpvOpen: false, screen: "landing", landingStep: 0 }),
+      beginLanding: () => set({ fpvOpen: false, screen: "landing", landingStep: 0, landingSite: null }),
+      selectLandingSite: (id) => set({ landingSite: id }),
       advanceLanding: () => {
         const m = get().mission;
         if (!m) return;
@@ -320,11 +434,13 @@ export const useGame = create<GameState>()(
         }
       },
       advanceHabitat: () => {
-        const next = Math.min(HABITAT_STEPS.length, get().habitatStep + 1);
-        const step = HABITAT_STEPS[get().habitatStep];
+        const m = get().mission;
+        const steps = habitatSteps(m?.destination ?? "moon");
+        const next = Math.min(steps.length, get().habitatStep + 1);
+        const step = steps[get().habitatStep];
         if (step?.libraryId) get().markTopic(step.libraryId);
-        set({ habitatStep: next });
-        if (next >= HABITAT_STEPS.length) get().completeMission();
+        set({ habitatStep: next, layerProgress: freshLayer() });
+        if (next >= steps.length) get().completeMission();
       },
       completeMission: () => {
         const m = get().mission;
@@ -337,7 +453,13 @@ export const useGame = create<GameState>()(
           credits: get().credits + pay,
           habitats,
           missionsDone: get().missionsDone + 1,
-          debrief: { pay, oxygen, spentFpv: Math.round(get().fpvSpent) },
+          debrief: {
+            pay,
+            oxygen,
+            spentFpv: Math.round(get().fpvSpent),
+            researchXp: get().researchXp ?? 0,
+            stamps: Object.entries(get().topicStamps ?? {}).map(([id, status]) => ({ id, status })),
+          },
           screen: "debrief",
           fpvOpen: false,
           mission: m,
@@ -388,6 +510,8 @@ export const useGame = create<GameState>()(
           plantStep: 0,
           habitatStep: 0,
           landingStep: 0,
+          layerProgress: freshLayer(),
+          libraryGateActive: false,
           fpvOpen: false,
           fpvSpent: 0,
           debrief: null,

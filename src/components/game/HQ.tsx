@@ -37,7 +37,9 @@ export function HQ() {
       <div className="mt-8 grid gap-3 sm:grid-cols-3">
         <Stat label="Program funds" value={formatUsd(credits)} icon={<Wind className="size-4" />} />
         <Stat label="Oxygen stored" value={formatKg(oxygenKg)} icon={<Wind className="size-4" />} />
+        <Stat label="Habitats / flights" value={`${habitats} / ${missionsDone}`} icon={<Home className="size-4" />} />
       </div>
+
 
       <section className="mt-6 rounded-xl border border-cyan-200/20 bg-gradient-to-br from-slate-950 to-slate-900/80 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -50,8 +52,35 @@ export function HQ() {
             </p>
           </div>
           <Button onClick={() => go("zodiac-lab")}>
-            <Sparkles className="size-4" /> Open sky lab <ArrowRight className="size-4" />
+            <Sparkles className="size-4" /> Open sky lab
           </Button>
+        </div>
+        <p className="mt-3 text-xs text-muted">
+          Same design language as FPV sky: cyan labels, hover pointers. Engineer depth + children summary inside the lab.
+        </p>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-border bg-surface p-5">
+        <Badge tone="accent">Why · sequential missions</Badge>
+        <h2 className="mt-2 font-display text-xl font-semibold">Moon, then Mars</h2>
+        <p className="mt-2 max-w-2xl text-sm text-muted">
+          Interest path: look → ask why → fly → land → make O₂. Reuses the live 3D pad, FPV deep sky (constellations + named stars), and surface scenes already in this build.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-lg border border-border bg-raised p-4">
+            <p className="text-xs uppercase tracking-wide text-accent">1 · Moon</p>
+            <h3 className="mt-1 font-display text-lg font-semibold">Lunar oxygen path</h3>
+            <p className="mt-2 text-sm text-muted">~3-day transfer class story. Polar ice / ilmenite → O₂. Plan → pad → launch → FPV cruise → 3D landing → plant.</p>
+            <Button className="mt-3 w-full" onClick={() => go("plan")}><Moon className="size-4" /> Plan Moon</Button>
+            <Button variant="secondary" className="mt-2 w-full" onClick={() => go("explore")}>Lunar explorer</Button>
+          </div>
+          <div className="rounded-lg border border-border bg-raised p-4">
+            <p className="text-xs uppercase tracking-wide text-accent">2 · Mars</p>
+            <h3 className="mt-1 font-display text-lg font-semibold">Mars civ field trip</h3>
+            <p className="mt-2 text-sm text-muted">~26-month window story. EDL → MOXIE plant → ten-layer town (why cards, library ticket, field task, RXP).</p>
+            <Button className="mt-3 w-full" onClick={() => go("plan")}><Rocket className="size-4" /> Plan Mars</Button>
+            <Button variant="secondary" className="mt-2 w-full" onClick={() => go("explore-mars")}>Mars explorer</Button>
+          </div>
         </div>
       </section>
 
