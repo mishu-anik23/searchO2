@@ -1579,6 +1579,9 @@
   }
 
   .plot-spot{ position:absolute; pointer-events:auto; cursor:pointer; z-index:6; }
+  .plot-spot.is-plot-locked{ opacity:0.72; filter:grayscale(0.35); }
+  .plot-spot.is-plot-locked .plot-label.is-locked{ cursor:not-allowed; }
+  .plot-spot.is-plot-locked .plot-label-icon{ opacity:0.85; }
   .plot-spot svg{ width:100%; height:100%; overflow:visible; }
   /* Upgraded Compact Icon Badge System (Universal: Laptop/Desktop & Mobile) */
   .plot-label {
@@ -9768,9 +9771,9 @@ var STEWARDSHIP_TASKS = {
     hours: 2.0,
     xp: 15,
     rep: 5,
-    stat: 'Crushed Rock Ballast',
+    stat: 'Road Material (Crushed Rock Ballast)',
     why: 'Extracts massive glacial granite boulders from transport avenues and crushes them into angular stone ballast for macadam road basecourses.',
-    roadmap: 'Chapter 2 milestone: Mandatory clearing required before paving the Main Arterial Road.'
+    roadmap: 'Chapter 2 milestone: Produces crushed rock ballast material required to pave the Main Arterial Road.'
   },
   drip_flush: {
     key: 'drip_flush',
@@ -9928,7 +9931,12 @@ function freshState(){
     introSeen: false,
     firstStartCompleted: false,
     motivationalEvents: {},
-    activeMotivationalSpeech: null
+    activeMotivationalSpeech: null,
+    flags: {
+      firstHarvest: false,
+      firstO2: false,
+      energySurplusDetected: false
+    }
   };
   if (state && typeof state === 'object'){
     for (var k in state){
@@ -9961,25 +9969,27 @@ var CHAPTER_DEFINITIONS = [
   {
     chapter: 1,
     icon: '🌱',
-    title: 'Bring the Land to Life',
-    fantasy: 'I can grow something.',
-    desc: 'Establish your Crew Shed & Workshop, discover foundational 3D hand tools, cultivate bedrock soil, and plant your first botanical sapling.',
-    keySystems: ['Crew Bunkhouse', '3D Hand Tools', 'Soil Tillage & Aeration', 'First Photosynthesis'],
-    unlockReward: 'Pollinator Discovery & Garden Blueprint',
+    title: 'Bring the Land to Life · Start Your Farm',
+    fantasy: 'I have land, a small team and some money. Can I produce my first harvest? (I can grow something)',
+    desc: 'Crew Shed → Labourer → tools → till Plot 1 → Farmer → plant → water → first harvest. Only Plot 1 is open.',
+    keySystems: ['Crew Shed', 'Labourer', 'Basic Tools', 'Farmer', 'Plot 1', 'First Harvest'],
+    unlockReward: 'Storage Barn need unlocked · Chapter 2 infrastructure',
     isUnlocked: function(s) { return true; },
     isComplete: function(s) {
-      return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0 || (p.o2Produced && p.o2Produced > 0); }));
+      // First harvest is the gate to Chapter 2 (creates storage problem)
+      return !!(s.plots && s.plots.some(function(p){ return (p.harvestsDone || 0) > 0; }));
     },
     getProgress: function(s) {
       if (this.isComplete(s)) return 100;
       var pts = 0;
-      if (s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built) pts += 25;
-      if (s.basicToolsDiscovered) pts += 25;
-      var hasTilled = s.plots && s.plots.some(function(p){ return p.status === 'ready' || p.status === 'growing' || p.status === 'preparing'; });
-      if (hasTilled) pts += 25;
-      var hasGrowing = s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; });
-      if (hasGrowing) pts += 25;
-      return Math.max(10, pts);
+      if (s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built) pts += 12;
+      if (s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })) pts += 12;
+      if (s.basicToolsDiscovered) pts += 12;
+      if (s.plots && s.plots[0] && (s.plots[0].status === 'ready' || s.plots[0].status === 'growing' || s.plots[0].status === 'preparing')) pts += 12;
+      if (s.workers && s.workers.some(function(w){ return w.type === 'farmer'; })) pts += 12;
+      if (s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.treeType; })) pts += 20;
+      if (s.plots && s.plots.some(function(p){ return (p.harvestsDone || 0) > 0; })) pts += 20;
+      return Math.max(5, pts);
     }
   },
   {
@@ -9994,15 +10004,15 @@ var CHAPTER_DEFINITIONS = [
     isComplete: function(s) {
       var roadBuilt = !!(s.buildings && s.buildings.road && s.buildings.road.built);
       var storageBuilt = !!(s.storage && s.storage.built);
-      var hasLaborer = !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; }));
-      return roadBuilt && storageBuilt && hasLaborer;
+      var garageBuilt = !!(s.buildings && s.buildings.garage && s.buildings.garage.built);
+      return roadBuilt && storageBuilt && garageBuilt;
     },
     getProgress: function(s) {
       if (this.isComplete(s)) return 100;
       var pts = 0;
-      if (s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })) pts += 33;
-      if (s.buildings && s.buildings.road && s.buildings.road.built) pts += 33;
       if (s.storage && s.storage.built) pts += 34;
+      if (s.buildings && s.buildings.road && s.buildings.road.built) pts += 33;
+      if (s.buildings && s.buildings.garage && s.buildings.garage.built) pts += 33;
       return pts;
     }
   },
@@ -10137,7 +10147,8 @@ var OBJECT_CHAPTER_UNLOCKS = {
   plot: { chapter: 1, name: 'Plot Cultivation', icon: '🌱', desc: 'Cultivate bedrock into fertile soil beds for botanical planting.' },
   gate: { chapter: 2, name: 'Grand Farm Entrance Gate', icon: '⛩️', desc: 'Ashlar stone and timber perimeter gate establishing farm biosecurity and welcoming visitors.' },
   crew_shed: { chapter: 1, name: 'Crew Shed & Depot', icon: '🏠', desc: 'Living quarters and tool equipment racks to recruit farm workers.' },
-  laborer: { chapter: 2, name: 'Field Laborer Crew', icon: '👷', desc: 'Skilled workforce to clear bedrock boulders and pave roads.' },
+  laborer: { chapter: 1, name: 'Field Laborer Crew', icon: '👷', desc: 'General farm and construction worker — prepare soil, carry materials, assist builds and harvests.' },
+  farmer: { chapter: 1, name: 'Farmer', icon: '👨‍🌾', desc: 'Trained agricultural operator — plant, water, fertilize, maintain crops, harvest.' },
   road: { chapter: 2, name: 'Main Arterial Road', icon: '⛩️', desc: 'Central paved thoroughfare connecting the entrance gate to the granary.' },
   subway: { chapter: 2, name: 'Feeder Subways & Footpaths', icon: '🛤️', desc: 'Stone paths connecting plots, storage, and fields to the arterial road.' },
   storage: { chapter: 2, name: 'Storage Granary Barn', icon: '🏚️', desc: 'Ventilated storage and cold cellar preventing harvest spoilage.' },
@@ -10161,12 +10172,387 @@ function getObjectChapterInfo(key) {
   return OBJECT_CHAPTER_UNLOCKS[key] || { chapter: 1, name: key, icon: '🌾', desc: '' };
 }
 
+var ProgressionEvaluator = (function() {
+  // Mission-gated objects: chapter open is not enough; contextual need must exist
+  var MISSION_GATES = {
+    storage: function(s) {
+      // After first harvest (Ch1 complete signal) storage is the next necessity
+      return hasAnyHarvest(s) || !!(s.flags && s.flags.firstHarvest) || ((s.currentChapter || 1) >= 2);
+    },
+    garage: function(s) {
+      // End of Ch2: after storage + road
+      return !!(s.buildings && s.buildings.road && s.buildings.road.built) && !!(s.storage && s.storage.built);
+    },
+    energy_storage: function(s) {
+      // BESS becomes relevant after renewable generation / surplus signal
+      if (s.flags && s.flags.energySurplusDetected) return true;
+      if (s.capturedEnergyKWh > 0 || s.curtailedEnergyKWh > 0) return true;
+      var wt = s.buildings && s.buildings.wind_turbines;
+      if (wt && (wt.wt_nw && (wt.wt_nw.built || wt.wt_nw.commissioned))) return true;
+      return (s.currentChapter || 1) >= 5;
+    },
+    juice_bar: function(s) {
+      return (s.currentChapter || 1) >= 6 && ((s.reputation || 0) >= 20 || (s.visitorsToday || 0) > 0 || true);
+    },
+    coffee_shop: function(s) {
+      return (s.currentChapter || 1) >= 6;
+    }
+  };
+
+  function hasAnyHarvest(s) {
+    if (!s.plots) return false;
+    return s.plots.some(function(p) { return (p.harvestsDone || 0) > 0; });
+  }
+
+  function getActiveMission(s) {
+    var ch = s.currentChapter || 1;
+    var list = (typeof CHAPTER_CHALLENGES !== 'undefined' && CHAPTER_CHALLENGES[ch]) ? CHAPTER_CHALLENGES[ch] : [];
+    for (var i = 0; i < list.length; i++) {
+      if (!list[i].isComplete(s) && list[i].isUnlocked(s)) return list[i];
+    }
+    return null;
+  }
+
+  function getChapterMissions(s, chapterNum) {
+    var list = (typeof CHAPTER_CHALLENGES !== 'undefined' && CHAPTER_CHALLENGES[chapterNum]) ? CHAPTER_CHALLENGES[chapterNum] : [];
+    return list.map(function(m) {
+      return {
+        id: m.id,
+        title: m.title,
+        shortTitle: m.shortTitle,
+        complete: m.isComplete(s),
+        unlocked: m.isUnlocked(s),
+        icon: m.icon
+      };
+    });
+  }
+
+  function isObjectAvailable(key, s) {
+    if (isObjectAlreadyBuilt(key, s)) return true;
+    var info = getObjectChapterInfo(key);
+    if ((s.currentChapter || 1) < info.chapter) return false;
+    var gate = MISSION_GATES[key];
+    if (gate) return !!gate(s);
+    return true;
+  }
+
+  function canBuild(key, s) {
+    s = s || state;
+    if (!s) return { ok: false, reason: 'no_state' };
+    if (isObjectAlreadyBuilt(key, s)) return { ok: false, reason: 'already_built' };
+    if (!isObjectAvailable(key, s)) {
+      var info = getObjectChapterInfo(key);
+      return { ok: false, reason: 'chapter_locked', chapter: info.chapter, name: info.name };
+    }
+    var def = (typeof BUILDING_TYPES !== 'undefined') ? BUILDING_TYPES[key] : null;
+    if (def && def.requiresEngineer) {
+      var hasEng = s.workers && s.workers.some(function(w) { return w.type === 'engineer'; });
+      if (!hasEng) return { ok: false, reason: 'needs_engineer' };
+    }
+    if (def && def.requiresRoad && !(s.buildings && s.buildings.road && s.buildings.road.built)) {
+      return { ok: false, reason: 'needs_road' };
+    }
+    if (def && typeof s.money === 'number' && s.money < def.cost) {
+      return { ok: false, reason: 'needs_money', cost: def.cost };
+    }
+    return { ok: true };
+  }
+
+  function evaluate(s) {
+    s = s || state;
+    if (!s) return null;
+    if (!s.flags) s.flags = {};
+    // Derive contextual flags from world (no duplicate simulation)
+    if (hasAnyHarvest(s)) s.flags.firstHarvest = true;
+    var gen = 0;
+    if (s.buildings && s.buildings.wind_turbines) {
+      Object.keys(s.buildings.wind_turbines).forEach(function(k) {
+        var t = s.buildings.wind_turbines[k];
+        if (t && (t.commissioned || t.built)) gen += (t.totalGeneratedKWh || 0);
+      });
+    }
+    if (gen > 5 || (s.curtailedEnergyKWh || 0) > 0.5) s.flags.energySurplusDetected = true;
+    if (typeof updateChapterProgression === 'function') updateChapterProgression();
+    var active = getActiveMission(s);
+    return {
+      currentChapter: s.currentChapter || 1,
+      activeMission: active ? { id: active.id, title: active.title, shortTitle: active.shortTitle } : null,
+      missions: getChapterMissions(s, s.currentChapter || 1),
+      flags: s.flags
+    };
+  }
+
+  function onWorldEvent(eventName, payload) {
+    if (!state) return;
+    if (!state.flags) state.flags = {};
+    if (eventName === 'FIRST_HARVEST' || eventName === 'HARVEST_COMPLETED') {
+      state.flags.firstHarvest = true;
+    }
+    if (eventName === 'ENERGY_SURPLUS_DETECTED' || eventName === 'RENEWABLE_ENERGY_GENERATED') {
+      state.flags.energySurplusDetected = true;
+    }
+    if (eventName === 'FIRST_O2_GENERATED') {
+      state.flags.firstO2 = true;
+      if (typeof triggerDiscoveryCard === 'function') {
+        try { triggerDiscoveryCard('photosynthesis'); } catch (e) {}
+      }
+    }
+    if (eventName === 'STORAGE_BUILT' || eventName === 'BESS_BUILT' || eventName === 'ROAD_BUILT') {
+      // completion derived from world; just re-evaluate chapter
+    }
+    evaluate(state);
+    if (typeof render === 'function') render();
+  }
+
+  return {
+    MISSION_GATES: MISSION_GATES,
+    isMissionGated: true,
+    isObjectAvailable: isObjectAvailable,
+    canBuild: canBuild,
+    evaluate: evaluate,
+    getActiveMission: getActiveMission,
+    getChapterMissions: getChapterMissions,
+    onWorldEvent: onWorldEvent
+  };
+})();
+
+// ================= FARM MISSION ADAPTER (strict chapter/mission locks) =================
+var FarmMissionAdapter = (function() {
+  // Chapter intro WHY messages — must acknowledge (+5 XP) before missions in that chapter unlock
+  var CHAPTER_INTROS = {
+    1: {
+      title: '🌱 Start Your Farm',
+      body: 'You have land, a small team budget, and one plot. Dream path: Farm → World → Space → Moon → Mars.\n\nYou cannot build a farm alone. First establish a Crew Shed, hire a Labourer, get basic tools, till Plot 1, hire a Farmer, plant, water, and harvest.\n\nOnly Plot 1 is open in Chapter 1. Pond, Garden, Garage, and Wind Turbines stay locked until later chapters.'
+    },
+    2: {
+      title: '🚜 Build the Farm',
+      body: 'Your first harvest created a new problem: where will you keep produce?\n\nChapter 2 is infrastructure — Storage Barn, Road (Labourer already known), Equipment Garage, then expand Plots 2–6.\n\nCrushed rock is a material for the road, not a random reward.'
+    },
+    3: {
+      title: '🌳 Build an Ecosystem',
+      body: 'Production works. Now invite nature: trees, flower habitats, pollinators, biodiversity, and balanced pest care. Garden unlocks here — not in Chapter 1.'
+    },
+    4: {
+      title: '♻️ Close the Loop',
+      body: 'Nothing needs to become waste. Livestock, pond (Living Waters), manure, compost, and circular nutrients unlock here — after the grazing cycle story, not at game start.'
+    },
+    5: {
+      title: '⚡ Power the Farm',
+      body: 'Hire an Engineer, then wind/solar and BESS. Wind turbines only run while an Engineer is assigned. Automation follows renewable power.'
+    },
+    6: {
+      title: '🏘️ Build an Eco-Village',
+      body: 'People want what you created. Visitors, Juice Bar, Café, contracts, and reputation open after energy foundations.'
+    },
+    7: {
+      title: '🌍 Master Sustainability',
+      body: 'Hold the whole system under pressure: food, water, energy, biodiversity, economy. No major new toys — integrate and endure.'
+    },
+    8: {
+      title: '🚀 Beyond Earth',
+      body: 'Everything you learned must keep life alive beyond Earth: science, spaceport, orbit, Moon, then Mars. Progress with Money + O₂ + Knowledge together.'
+    }
+  };
+
+  function ensureFlags(s) {
+    if (!s.flags) s.flags = {};
+    if (!s.missionAcks) s.missionAcks = {};
+    if (!s.chapterIntroAcks) s.chapterIntroAcks = {};
+    return s;
+  }
+
+  function isChapterIntroAcked(ch, s) {
+    s = ensureFlags(s || state);
+    if (ch <= 1) return true;
+    return !!(s.chapterIntroAcks && s.chapterIntroAcks[ch]);
+  }
+
+  function ackChapterIntro(ch) {
+    if (!state) return;
+    ensureFlags(state);
+    if (state.chapterIntroAcks[ch]) return;
+    state.chapterIntroAcks[ch] = true;
+    state.knowledgeXP = (state.knowledgeXP || 0) + 5;
+    if (typeof pushReport === 'function') pushReport('📖 Chapter ' + ch + ' briefing acknowledged (+5 Knowledge XP).');
+    if (typeof showNotification === 'function') showNotification('📖', 'Chapter ' + ch + ' understood · +5 Knowledge XP', 'task');
+    if (typeof render === 'function') render();
+    if (typeof requestSave === 'function') requestSave();
+  }
+
+  function showChapterIntroIfNeeded(ch) {
+    s = ensureFlags(state);
+    if (isChapterIntroAcked(ch, state)) return false;
+    var intro = CHAPTER_INTROS[ch];
+    if (!intro) { ackChapterIntro(ch); return false; }
+    activeModal = {
+      type: 'chapter_intro',
+      chapter: ch,
+      title: intro.title,
+      body: intro.body
+    };
+    if (typeof render === 'function') render();
+    return true;
+  }
+
+  function lockReasonForTask(taskId, s) {
+    s = ensureFlags(s || state);
+    if (taskId === 'ch1_soil' || taskId === 'ch1_till') {
+      if (!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built)) return 'Needs Crew Shed';
+      if (!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; }))) return 'Needs Labourer';
+      if (!s.basicToolsDiscovered) return 'Needs Digging Equipment';
+      return null;
+    }
+    if (taskId === 'ch1_plant') {
+      if (!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; }))) return 'Needs Farmer';
+      var p0 = s.plots && s.plots[0];
+      if (!p0 || (p0.status !== 'ready' && p0.status !== 'growing')) return 'Needs soil prepared on Plot 1';
+      return null;
+    }
+    return null;
+  }
+
+  return {
+    CHAPTER_INTROS: CHAPTER_INTROS,
+    isChapterIntroAcked: isChapterIntroAcked,
+    ackChapterIntro: ackChapterIntro,
+    showChapterIntroIfNeeded: showChapterIntroIfNeeded,
+    lockReasonForTask: lockReasonForTask,
+    ensureFlags: ensureFlags
+  };
+})();
+
+window.FarmMissionAdapter = FarmMissionAdapter;
+window.ackChapterIntro = function(ch) {
+  if (FarmMissionAdapter) FarmMissionAdapter.ackChapterIntro(ch);
+  if (typeof closeModal === 'function') closeModal();
+};
+
+
 function isObjectUnlockedByChapter(key, s) {
   var currentState = s || (typeof state !== 'undefined' ? state : null);
   if (!currentState) return false;
-  var info = getObjectChapterInfo(key);
+  if (typeof isObjectAlreadyBuilt === 'function' && isObjectAlreadyBuilt(key, currentState)) return true;
+
   var currentCh = currentState.currentChapter || 1;
-  return currentCh >= info.chapter;
+  var info = (typeof getObjectChapterInfo === 'function') ? getObjectChapterInfo(key) : { chapter: 1 };
+  var needCh = info.chapter || 1;
+
+  // existence ≠ availability: chapter objects locked until chapter is active
+  if (currentCh < needCh) return false;
+
+  // Garage only after storage + road (end of Ch2 infrastructure spine)
+  if (key === 'garage') {
+    var roadOk = !!(currentState.buildings && currentState.buildings.road && currentState.buildings.road.built);
+    var storageOk = !!(currentState.storage && currentState.storage.built);
+    if (!roadOk || !storageOk) return false;
+  }
+
+  // Pond / cattle strictly after circularity chapter is active
+  if ((key === 'pond' || key === 'cattle_farm') && currentCh < 4) return false;
+
+  // Garden / crop field / garden walk strictly Ch3+
+  if ((key === 'garden' || key === 'crop_field' || key === 'garden_walk') && currentCh < 3) return false;
+
+  // Wind / BESS / engineer objects Ch5+
+  if ((key === 'wind_turbine' || key === 'energy_storage' || key === 'engineer' || (key && String(key).indexOf('wt_') === 0)) && currentCh < 5) return false;
+
+  // Café / juice / promenade after Ch5 complete or Ch6 active
+  if (key === 'coffee_shop' || key === 'juice_bar' || key === 'market_promenade') {
+    if (currentCh < 6) return false;
+    if (typeof CHAPTER_DEFINITIONS !== 'undefined') {
+      var ch5 = CHAPTER_DEFINITIONS.find(function(c){ return c.chapter === 5; });
+      if (ch5 && !ch5.isComplete(currentState) && currentCh < 6) return false;
+    }
+  }
+
+  // Mission acknowledgment gate: chapter intro must be acknowledged
+  if (typeof FarmMissionAdapter !== 'undefined' && FarmMissionAdapter.isChapterIntroAcked) {
+    if (!FarmMissionAdapter.isChapterIntroAcked(needCh, currentState) && needCh > 1) {
+      // Ch1 always available; later chapters need prior intro ack when chapter becomes current
+    }
+  }
+
+  if (typeof ProgressionEvaluator !== 'undefined' && ProgressionEvaluator.isMissionGated) {
+    return ProgressionEvaluator.isObjectAvailable(key, currentState);
+  }
+  return true;
+}
+
+function isObjectAlreadyBuilt(key, s) {
+  s = s || state;
+  if (!s || !s.buildings) return false;
+  if (key === 'wind_turbine') {
+    var wt = s.buildings.wind_turbines;
+    if (!wt) return !!(s.buildings.wind_turbine && s.buildings.wind_turbine.built);
+    return Object.keys(wt).some(function(k) { return wt[k] && (wt[k].built || wt[k].commissioned); });
+  }
+  if (key === 'storage') return !!(s.storage && s.storage.built) || !!(s.buildings.storage && s.buildings.storage.built);
+  if (key === 'laborer' || key === 'engineer') {
+    return !!(s.workers && s.workers.some(function(w) {
+      return key === 'engineer' ? w.type === 'engineer' : true;
+    }));
+  }
+  var b = s.buildings[key];
+  return !!(b && (b.built || b.commissioned));
+}
+
+
+
+// ============================================================================
+// CHAPTER 1 PLOT PROGRESSION: only Plot 1 (index 0) open at start.
+// Each planted plot unlocks the next plot index. Storage becomes relevant
+// when the first plant is in the ground (Chapter 1 complete → Ch.2 objects).
+// ============================================================================
+function plotHasLife(p) {
+  if (!p) return false;
+  if (p.treeType) return true;
+  if (p.status === 'growing' || p.status === 'ready') return true;
+  if ((p.harvestsDone || 0) > 0) return true;
+  if ((p.o2Produced || 0) > 0) return true;
+  return false;
+}
+
+function isPlotUnlocked(plotId, s) {
+  s = s || (typeof state !== 'undefined' ? state : null);
+  if (!s || !s.plots) return plotId === 0;
+  var id = parseInt(plotId, 10);
+  if (isNaN(id) || id < 0) return false;
+
+  // Migration: keep already-living plots unlocked
+  if (s.plots[id] && (s.plots[id].treeType || s.plots[id].status === 'growing' || (s.plots[id].harvestsDone || 0) > 0)) {
+    return true;
+  }
+
+  // Chapter 1: ONLY Plot 1 (index 0)
+  var ch = s.currentChapter || 1;
+  if (ch < 2) {
+    return id === 0;
+  }
+
+  // Chapter 2+: sequential unlock — previous plot must have life
+  if (id === 0) return true;
+  var prev = s.plots[id - 1];
+  return !!(prev && (prev.treeType || prev.status === 'growing' || (prev.harvestsDone || 0) > 0 || prev.status === 'ready'));
+}
+
+function getHighestUnlockedPlotIndex(s) {
+  s = s || state;
+  if (!s || !s.plots) return 0;
+  var max = 0;
+  for (var i = 0; i < s.plots.length; i++) {
+    if (isPlotUnlocked(i, s)) max = i;
+  }
+  return max;
+}
+
+function notifyPlotUnlocked(plotId) {
+  var n = (parseInt(plotId, 10) || 0) + 1;
+  if (typeof showNotification === 'function') {
+    showNotification('🌱', 'Plot ' + n + ' is now open! Expand life across the farm.', 'plot', plotId);
+  }
+  if (typeof pushReport === 'function') {
+    pushReport('🔓 Plot ' + n + ' unlocked after life took root on the previous bed.');
+  }
 }
 
 // ================= CHAPTER-BASED CHALLENGES & ACTIVITIES (CHAPTERS 1 → 8) =================
@@ -10211,6 +10597,23 @@ var CHAPTER_CHALLENGES = {
       }
     },
     {
+      id: 'ch1_laborer',
+      icon: '👷',
+      title: 'Hire Your First Labourer',
+      shortTitle: 'Hire Labourer',
+      subtitle: 'You cannot build a farm alone. Hire a general worker for soil, materials, and basic builds.',
+      whyTopic: 'crew_shed',
+      whyLabel: 'Why Labour?',
+      reward: '+5 Knowledge XP · First Crew',
+      isUnlocked: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
+      isComplete: function(s) { return !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Hired</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Crew Shed</button>';
+        return '<button class="claim-btn active" onclick="hireWorker(\'laborer\')" style="font-size:0.75rem;padding:5px 10px;">Hire Labourer</button>';
+      }
+    },
+    {
       id: 'ch1_soil',
       icon: '🌱',
       title: 'Awaken the Bedrock',
@@ -10220,7 +10623,9 @@ var CHAPTER_CHALLENGES = {
       whyLabel: 'Why Aerate Bedrock?',
       reward: '+5 Knowledge XP · Soil Aeration',
       isUnlocked: function(s) {
-        return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built && s.basicToolsDiscovered);
+        var hasShed = !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built);
+        var hasLaborer = !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; }));
+        return hasShed && hasLaborer && !!s.basicToolsDiscovered;
       },
       isComplete: function(s) {
         return !!(s.plots && s.plots.some(function(p){ return p.status === 'ready' || p.status === 'growing' || p.harvestsDone > 0; }));
@@ -10229,6 +10634,14 @@ var CHAPTER_CHALLENGES = {
         if (this.isComplete(s)) {
           return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Tilled</span>';
         }
+        
+        if (!this.isUnlocked(s)) {
+          var reason = 'Needs Digging Equipment';
+          if (!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built)) reason = 'Needs Crew Shed';
+          else if (!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; }))) reason = 'Needs Labourer';
+          else if (!s.basicToolsDiscovered) reason = 'Needs Digging Equipment';
+          return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;opacity:0.9;">🔒 ' + reason + '</button>';
+        }
         var p0 = s.plots && s.plots[0];
         if (p0 && p0.status === 'preparing') {
           var targetDur = (typeof getPlotPrepDurationHours === 'function') ? getPlotPrepDurationHours(s) : 3.5;
@@ -10236,6 +10649,26 @@ var CHAPTER_CHALLENGES = {
           return '<button class="claim-btn" onclick="openModal(\'plot\',0);" style="font-size:0.72rem;padding:4px 8px;">⛏️ Tilling (' + prepPct + '%)</button>';
         }
         return '<button class="claim-btn active" data-prep="0" style="font-size:0.75rem;padding:5px 10px;">🌱 Till Plot 1 (€' + LABOR_COST + ')</button>';
+      }
+    },
+    {
+      id: 'ch1_farmer',
+      icon: '👨‍🌾',
+      title: 'Hire a Farmer',
+      shortTitle: 'Hire Farmer',
+      subtitle: 'Soil is ready. A farmer plants and tends crops with better yield and care.',
+      whyTopic: 'crew_shed',
+      whyLabel: 'Why a Farmer?',
+      reward: '+5 Knowledge XP · Farm Operator',
+      isUnlocked: function(s) {
+        var p0 = s.plots && s.plots[0];
+        return !!(p0 && (p0.status === 'ready' || p0.status === 'growing' || (p0.harvestsDone || 0) > 0));
+      },
+      isComplete: function(s) { return !!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; })); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Hired</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Plot 1 prepared</button>';
+        return '<button class="claim-btn active" onclick="hireWorker(\'farmer\')" style="font-size:0.75rem;padding:5px 10px;">Hire Farmer</button>';
       }
     },
     {
@@ -10248,7 +10681,9 @@ var CHAPTER_CHALLENGES = {
       whyLabel: 'Why Photosynthesis?',
       reward: '+10 Knowledge XP · First Seedling',
       isUnlocked: function(s) {
-        return !!(s.plots && s.plots.some(function(p){ return p.status === 'ready' || p.status === 'growing' || p.harvestsDone > 0; }));
+        var soilReady = !!(s.plots && s.plots[0] && (s.plots[0].status === 'ready' || s.plots[0].status === 'growing'));
+        var hasFarmer = !!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; }));
+        return soilReady && hasFarmer;
       },
       isComplete: function(s) {
         return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; }));
@@ -10392,6 +10827,53 @@ var CHAPTER_CHALLENGES = {
           return '<button class="claim-btn" onclick="closePanel();openModal(\'storage\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
         }
         return '<button class="claim-btn active" data-buildstorage="1" ' + (s.money < 250 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build (€250)</button>';
+      }
+    },
+    {
+      id: 'ch2_expand_plots',
+      icon: '🌾',
+      title: 'Expand the Farm Beds',
+      shortTitle: 'Plots 2–6',
+      subtitle: 'Plot 1 proved life can grow. Unlock and plant Plots 2 through 6 sequentially — each living bed opens the next. Hire hands and accelerate with 60× / 180× when you are ready.',
+      whyTopic: 'plot',
+      whyLabel: 'Why Expand Plots?',
+      reward: '+15 Knowledge XP · Farm Expansion',
+      isUnlocked: function(s) {
+        return !!(s.plots && s.plots[0] && (s.plots[0].treeType || s.plots[0].status === 'growing' || (s.treesPlanted || 0) > 0));
+      },
+      isComplete: function(s) {
+        if (!s.plots) return false;
+        var living = 0;
+        for (var i = 0; i < s.plots.length; i++) {
+          if (s.plots[i] && (s.plots[i].treeType || s.plots[i].status === 'growing' || (s.plots[i].harvestsDone || 0) > 0)) living++;
+        }
+        return living >= 6;
+      },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ All 6 plots alive</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Plant Plot 1 first (Chapter 1).\',\'plot\',0)" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Plot 1</button>';
+        var living = 0;
+        for (var i = 0; i < (s.plots || []).length; i++) {
+          if (s.plots[i] && (s.plots[i].treeType || s.plots[i].status === 'growing')) living++;
+        }
+        var next = Math.min(5, living);
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',' + next + ')" style="font-size:0.75rem;padding:5px 10px;">Open Plot ' + (next + 1) + ' (' + living + '/6)</button>';
+      }
+    },
+    {
+      id: 'ch2_hire_farmer',
+      icon: '🧑‍🌾',
+      title: 'Hire a Farmer',
+      shortTitle: 'Hire Farmer',
+      subtitle: 'A farmer waters, weeds, and harvests while you plan the next bed. Pair with 60× or 180× speed to watch the farm breathe.',
+      whyTopic: 'crew_shed',
+      whyLabel: 'Why Hire Farmers?',
+      reward: '+10 Knowledge XP · Workforce',
+      isUnlocked: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
+      isComplete: function(s) { return !!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; })); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Farmer hired</span>';
+        return '<button class="claim-btn active" onclick="hireWorker(\'farmer\')" style="font-size:0.75rem;padding:5px 10px;">Recruit Farmer</button>';
       }
     }
   ],
@@ -11187,13 +11669,43 @@ function checkKnowledgeUnlocks() {
   }
 }
 
+
+function selectChapterTab(ch) {
+  if (!state) return;
+  // preserve horizontal scroll of chapter strip across re-render
+  var strip = document.getElementById('chapterTabsStrip');
+  var savedLeft = strip ? strip.scrollLeft : 0;
+  state.selectedChapterTab = ch;
+  if (typeof render === 'function') render();
+  requestAnimationFrame(function() {
+    var s2 = document.getElementById('chapterTabsStrip');
+    if (!s2) return;
+    s2.scrollLeft = savedLeft;
+    var btn = s2.querySelector('[data-chapter-tab="' + ch + '"]');
+    if (btn && btn.scrollIntoView) {
+      try { btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } catch (e) {
+        btn.scrollIntoView(false);
+      }
+    }
+  });
+}
+
 function updateChapterProgression() {
   if (!state) return;
+  if (!state.flags) state.flags = { firstHarvest: false, firstO2: false, energySurplusDetected: false };
   for (var i = CHAPTER_DEFINITIONS.length - 1; i >= 0; i--) {
     if (CHAPTER_DEFINITIONS[i].isUnlocked(state)) {
       state.currentChapter = CHAPTER_DEFINITIONS[i].chapter;
       break;
     }
+  }
+  // Derive contextual flags from existing world (migration-friendly)
+  if (state.plots && state.plots.some(function(p){ return (p.harvestsDone||0) > 0 || (state.harvestCount||0) > 0; })) {
+    state.flags.firstHarvest = true;
+  }
+  if ((state.totalO2AllTime || 0) > 0) state.flags.firstO2 = true;
+  if ((state.curtailedEnergyKWh || 0) > 0.5 || (state.capturedEnergyKWh || 0) > 0) {
+    state.flags.energySurplusDetected = true;
   }
   calculateSustainabilityScore();
 }
@@ -17233,9 +17745,16 @@ function advanceGame(dh){
   ensureWindTurbinesState();
   var totalTurbineGenKWh = 0;
   if (state.buildings && state.buildings.wind_turbines){
+    var hasEngineerOnDuty = !!(state.workers && state.workers.some(function(w){ return w.type === 'engineer'; }));
     Object.keys(state.buildings.wind_turbines).forEach(function(k){
       var t = state.buildings.wind_turbines[k];
       if (t.built && t.commissioned){
+        // Turbines only generate while an Engineer is on staff (Ch5 assignment rule)
+        if (!hasEngineerOnDuty) {
+          t.idleReason = 'needs_engineer';
+          return;
+        }
+        t.idleReason = null;
         // Each commissioned turbine generates 3 kWh/h clean power (total 12 kWh/h with all 4 active)
         var tGen = 3 * dh;
         t.totalGeneratedKWh = (t.totalGeneratedKWh || 0) + tGen;
@@ -17268,9 +17787,10 @@ function advanceGame(dh){
     }
   }
 
-  // Physical Visitor Spawning along Manhattan Road Network
+  // Physical Visitor Spawning — only after Main Arterial Road is built
+  var roadOpen = !!(state.buildings && state.buildings.road && state.buildings.road.built);
   var curMaxVisitors = Math.min(6, 3 + Math.floor(farmReputation() / 20));
-  if (farmReputation() >= (typeof VISITOR_MIN_REPUTATION !== 'undefined' ? VISITOR_MIN_REPUTATION : 10) && activeVisitorCount < curMaxVisitors){
+  if (roadOpen && farmReputation() >= (typeof VISITOR_MIN_REPUTATION !== 'undefined' ? VISITOR_MIN_REPUTATION : 10) && activeVisitorCount < curMaxVisitors){
     if (Math.random() < (typeof VISITOR_SPAWN_RATE !== 'undefined' ? VISITOR_SPAWN_RATE : 0.18)){
       var dests = visitorEligibleDestinations();
       if (dests.length > 0){
@@ -17625,6 +18145,9 @@ function advanceGame(dh){
         var o2Gain = o2Rate * dh * fertO2Mult * healthMult;
         if (!Number.isFinite(o2Gain) || o2Gain < 0) o2Gain = 0;
         state.totalO2 += o2Gain; state.totalO2AllTime += o2Gain; p.o2Produced += o2Gain;
+        if (o2Gain > 0 && state.totalO2AllTime - o2Gain <= 0 && typeof ProgressionEvaluator !== 'undefined') {
+          ProgressionEvaluator.onWorldEvent('FIRST_O2_GENERATED', { o2: o2Gain });
+        }
         var o2Rev = o2Gain * (typeof O2_RATE !== 'undefined' ? O2_RATE : 0.05) * totalMult;
         if (Number.isFinite(o2Rev) && o2Rev > 0) adjustMoney(o2Rev, 'o2_income');
         var isFinalStage = stageIdx === def.stages.length-1;
@@ -17984,7 +18507,12 @@ function discoverBasicToolsAction(plotId){
 }
 
 function startPrep(plotId){
-  var p = state.plots[plotId]; if (p.status!=='barren') return;
+  var p = state.plots[plotId]; if (!p || p.status!=='barren') return;
+  if (typeof isPlotUnlocked === 'function' && !isPlotUnlocked(plotId, state)) {
+    var needPrev = (parseInt(plotId, 10) || 0);
+    showNotification('🔒', 'Plot ' + (needPrev + 1) + ' locked — plant Plot ' + needPrev + ' first.', 'plot', Math.max(0, needPrev - 1));
+    return;
+  }
   // If storage is already built (Chapter 2+ state or test), crew shed and hand tools are implicitly unlocked
   var hasCrewShed = !!(state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built) || !!(state.storage && state.storage.built);
   var hasTools = !!state.basicToolsDiscovered || !!(state.storage && state.storage.built);
@@ -18103,16 +18631,47 @@ function cutDownGrowingTree(plotId){
 }
 function plantTree(plotId, type){
   var p = state.plots[plotId]; var def = TREE_TYPES[type];
+  if (!p || !def) return;
+  if (typeof isPlotUnlocked === 'function' && !isPlotUnlocked(plotId, state)) {
+    showNotification('🔒', 'This plot is still locked. Bring life to earlier plots first.', 'plot', 0);
+    return;
+  }
   if (p.status!=='ready' || state.money<def.cost) return;
   state.money -= def.cost; p.status='growing'; p.treeType=type; p.treeId = state.nextTreeId++;
   p.growHours=0; p.health=100; p.o2Produced=0; p.ageHours=0; p.downtimeHours=0; p.pendingHarvest=0;
   state.treesPlanted += 1;
+  if (!state.flags) state.flags = {};
+  state.flags.firstPlant = true;
+  if ((plotId === 0 || state.treesPlanted === 1)) state.flags.firstPlantOnPlot1 = true;
+
+  // Sequential plot unlock: planting on plot N opens plot N+1
+  var nextId = (parseInt(plotId, 10) || 0) + 1;
+  if (state.plots[nextId] && typeof isPlotUnlocked === 'function' && isPlotUnlocked(nextId, state)) {
+    if (typeof notifyPlotUnlocked === 'function') notifyPlotUnlocked(nextId);
+  }
+
+  // First life on Plot 1 → Chapter 1 effectively complete → storage becomes the next necessity
+  if (state.treesPlanted === 1 || plotId === 0) {
+    if (typeof ProgressionEvaluator !== 'undefined') {
+      ProgressionEvaluator.onWorldEvent('FIRST_PLANT_GROWN', { plotId: plotId, type: type });
+      ProgressionEvaluator.onWorldEvent('HARVEST_COMPLETED', { plotId: plotId }); // storage context flag
+    }
+    if (typeof updateChapterProgression === 'function') updateChapterProgression();
+    if (typeof showNotification === 'function') {
+      showNotification('🏚️', 'Life has begun on Plot 1! Chapter 1 is complete — Storage Barn will protect your harvests next.', 'storage', null);
+    }
+    if (typeof pushReport === 'function') {
+      pushReport('🌱 First plant on Plot 1. Chapter 1 complete. Open Storage when you are ready to protect harvests (Chapter 2 path).');
+    }
+  }
+
   checkAchievements(); closeModal(); requestSave();
   // Section 7 First Planting Discovery & Motivational Words
   if (state.treesPlanted === 1) {
     if (typeof triggerDiscoveryCard === 'function') triggerDiscoveryCard('photosynthesis');
     if (typeof triggerMotivationalGuide === 'function') triggerMotivationalGuide('first_planted');
   }
+  if (typeof render === 'function') render();
 }
 function setSpeed(factor){ state.speedFactor = factor; requestSave(); render(); }
 
@@ -19934,6 +20493,25 @@ function startBuildBuilding(key){
   }
   var b = state.buildings[key]; var def = BUILDING_TYPES[key];
   if (!b || b.built || b.building) return;
+  // Progression orchestrator: chapter + mission + existing requirements
+  if (typeof ProgressionEvaluator !== 'undefined') {
+    var gate = ProgressionEvaluator.canBuild(key, state);
+    if (!gate.ok) {
+      if (gate.reason === 'chapter_locked') {
+        showLockedStepPopup(null, key);
+        showNotification('🔒', (gate.name || key) + ' unlocks in Chapter ' + gate.chapter + '. Complete the current journey first.', 'building', key);
+      } else if (gate.reason === 'needs_engineer') {
+        showLockedStepPopup(6);
+        showNotification('👷', 'Engineer Required: Hire an Engineer at the Crew Shed before installing this equipment!', 'building', 'crew_shed');
+      } else if (gate.reason === 'needs_road') {
+        showLockedStepPopup(null, key);
+        showNotification('⛩️', 'Pave the Main Arterial Road first!', 'building', 'road');
+      } else if (gate.reason === 'needs_money') {
+        showNotification('💰', 'Need €' + gate.cost + ' to build.', 'bank', null);
+      }
+      return;
+    }
+  }
   if (def.requiresEngineer){
     var hasEng = state.workers && state.workers.some(function(w){ return w.type === 'engineer'; });
     if (!hasEng){
@@ -20277,9 +20855,23 @@ function openModal(type, plotId){
       pushReport('🔒 Plots Locked: Field plots require a constructed Crew Shed to house tools and workers.');
       return;
     }
+    // Chapter 1: only Plot 1 open; each planted plot unlocks the next
+    if (typeof isPlotUnlocked === 'function' && !isPlotUnlocked(plotId, state)) {
+      var needPrev = (parseInt(plotId, 10) || 0);
+      showNotification('🔒', 'Plot ' + (needPrev + 1) + ' is locked. Bring life to Plot ' + needPrev + ' first (till + plant), then this bed opens.', 'plot', Math.max(0, needPrev - 1));
+      pushReport('🔒 Plot ' + (needPrev + 1) + ' locked until Plot ' + needPrev + ' has a living plant.');
+      return;
+    }
   }
 
   if (type === 'storage'){
+    var hasHarvest = !!(state.plots && state.plots.some(function(p){ return (p.harvestsDone || 0) > 0; })) || !!(state.flags && state.flags.firstHarvest) || ((state.currentChapter || 1) >= 2);
+    if (!state.storage.built && !hasHarvest){
+      showLockedStepPopup(null, 'storage');
+      showNotification('🔒', 'Storage Granary Barn Locked: Produce your first harvest in Chapter 1 first!', 'building', 'storage');
+      pushReport('🔒 Storage Locked: Harvest produce first, then Storage Granary Barn unlocks to prevent spoilage.');
+      return;
+    }
     if (!state.storage.built && (!state.buildings.road || !state.buildings.road.built)){
       showLockedStepPopup(null, 'storage');
       showNotification('🔒', 'Storage Granary Barn Locked: Pave the Main Arterial Road (Chapter 2) first!', 'building', 'road');
@@ -20311,7 +20903,34 @@ function openModal(type, plotId){
         }
         return;
       }
+    } else if (plotId === 'pond' || plotId === 'cattle_farm'){
+      if (typeof isObjectUnlockedByChapter === 'function' && !isObjectUnlockedByChapter(plotId, state)){
+        showLockedStepPopup(null, 'pond');
+        showNotification('🏞️', 'Pond & Living Waters Locked: Unlocks in Chapter 4 (Close the Loop) after the circular grazing cycle is established!', 'building', 'pond');
+        pushReport('🔒 Living Waters Locked: Aquatic pond and retention ecosystem unlock in Chapter 4.');
+        return;
+      }
+    } else if (plotId === 'garage'){
+      if (typeof isObjectUnlockedByChapter === 'function' && !isObjectUnlockedByChapter('garage', state)){
+        showLockedStepPopup(null, 'garage');
+        showNotification('🚜', 'Farm Garage Locked: Unlocks at the end of Chapter 2 after Main Road and Storage Granary Barn are completed!', 'building', 'garage');
+        pushReport('🔒 Farm Garage Locked: Mechanization depot unlocks at the end of Chapter 2.');
+        return;
+      }
+    } else if (plotId === 'garden' || plotId === 'crop_field' || plotId === 'garden_walk'){
+      if (typeof isObjectUnlockedByChapter === 'function' && !isObjectUnlockedByChapter(plotId, state)){
+        showLockedStepPopup(null, 'garden');
+        showNotification('🌷', 'Botanical Garden Locked: Unlocks in Chapter 3 (Build an Ecosystem) to invite pollinators!', 'building', 'garden');
+        pushReport('🔒 Botanical Garden Locked: Unlocks in Chapter 3 to invite pollinators.');
+        return;
+      }
     } else if (plotId === 'wind_turbine' || (plotId && plotId.indexOf('wt_') === 0)){
+      if (typeof isObjectUnlockedByChapter === 'function' && !isObjectUnlockedByChapter('wind_turbine', state)){
+        showLockedStepPopup(null, 'wind_turbine');
+        showNotification('💨', 'Wind Turbines Locked: Unlocks in Chapter 5 (Power the Farm)!', 'building', 'wind_turbine');
+        pushReport('🔒 Wind Turbines Locked: Renewable microgrid unlocks in Chapter 5.');
+        return;
+      }
       var hasEng = state.workers && state.workers.some(function(w){ return w.type === 'engineer'; });
       if (!hasEng){
         showLockedStepPopup(null, 'engineer');
@@ -20320,6 +20939,12 @@ function openModal(type, plotId){
         return;
       }
     } else if (plotId === 'energy_storage'){
+      if (typeof isObjectUnlockedByChapter === 'function' && !isObjectUnlockedByChapter('energy_storage', state)){
+        showLockedStepPopup(null, 'energy_storage');
+        showNotification('🔋', 'BESS Battery Substation Locked: Unlocks in Chapter 5 (Power the Farm)!', 'building', 'energy_storage');
+        pushReport('🔒 BESS Locked: Battery energy storage substation unlocks in Chapter 5.');
+        return;
+      }
       ensureWindTurbinesState();
       var wts = state.buildings && state.buildings.wind_turbines;
       var wtCommissioned = wts && wts.wt_nw.commissioned && wts.wt_ne.commissioned;
@@ -20464,6 +21089,7 @@ function processHarvests(){
           adjustMoney(wholesaleNet, 'wholesale_harvest');
         }
         state.harvestCount = (state.harvestCount||0)+1;
+        if (typeof ProgressionEvaluator !== 'undefined') { ProgressionEvaluator.onWorldEvent('HARVEST_COMPLETED', { plotId: p.id }); }
         pushReport('🪙 Wholesale Freight dispatched €' + amt.toFixed(2) + ' of ' + (treeDef ? treeDef.label : 'produce') + ' to regional market for €' + wholesaleNet.toFixed(2) + ' net cash.');
         showNotification('🪙', 'Wholesale Freight sold for €' + wholesaleNet.toFixed(2) + '!', 'plot', p.id);
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
@@ -20480,6 +21106,7 @@ function processHarvests(){
           qty: Math.max(1, Math.round(amt / 6))
         });
         state.harvestCount = (state.harvestCount||0)+1;
+        if (typeof ProgressionEvaluator !== 'undefined') { ProgressionEvaluator.onWorldEvent('HARVEST_COMPLETED', { plotId: p.id }); }
         pushReport('🧺 Stocked Curbside Farm Stand with ' + (treeDef ? treeDef.label : 'produce') + ' (Retail value: €' + retailVal.toFixed(2) + ' at +25% markup).');
         showNotification('🧺', 'Stocked Curbside Farm Stand!', 'plot', p.id);
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('coin');
@@ -20489,6 +21116,7 @@ function processHarvests(){
         var lost = amt - accepted;
         state.storage.stored += accepted;
         state.harvestCount = (state.harvestCount||0)+1;
+        if (typeof ProgressionEvaluator !== 'undefined') { ProgressionEvaluator.onWorldEvent('HARVEST_COMPLETED', { plotId: p.id }); }
         if (!state.storage.items) state.storage.items = [];
         state.storage.items.push({
           id: 'crop_' + Date.now() + '_' + Math.floor(Math.random()*10000),
@@ -20525,6 +21153,7 @@ function processHarvests(){
     var plost = pamt - paccepted;
     state.storage.stored += paccepted;
     state.harvestCount = (state.harvestCount||0)+1;
+        if (typeof ProgressionEvaluator !== 'undefined') { ProgressionEvaluator.onWorldEvent('HARVEST_COMPLETED', { plotId: p.id }); }
     var pondLabel = POND_SPECIALIZATIONS[pondB.specialization].label;
     if (!state.storage.items) state.storage.items = [];
     state.storage.items.push({
@@ -21575,6 +22204,9 @@ function computePowerGridState(dh){
     } else if (dh > 0) {
       // Consequence-based learning (Section 22): renewable electricity curtailed without storage
       state.curtailedEnergyKWh = (state.curtailedEnergyKWh || 0) + netKWh;
+      if (typeof ProgressionEvaluator !== 'undefined') {
+        ProgressionEvaluator.onWorldEvent('ENERGY_SURPLUS_DETECTED', { kWh: netKWh });
+      }
     }
   } else {
     var deficit = -netKWh;
@@ -21743,7 +22375,7 @@ var FARM_PROGRESSION_STEPS = [
     actionType: 'open_modal',
     prereqStep: 6,
     prereqTitle: 'Recruit Certified Engineer',
-    unlockedWhen: function(s){ return !!(s.workers && s.workers.some(function(w){ return w.type === 'engineer'; })); },
+    unlockedWhen: function(s){ return (s.currentChapter || 1) >= 5 && !!(s.workers && s.workers.some(function(w){ return w.type === 'engineer'; })); },
     isComplete: function(s){
       ensureWindTurbinesState(s);
       var wts = s && s.buildings && s.buildings.wind_turbines;
@@ -21967,6 +22599,7 @@ function showLockedStepPopup(stepNum, optKey){
     crew_shed: 'Establishes tool workshop benches, equipment racks, and bunkhouse rest facilities. Essential division of labor allowing you to recruit specialized Field Laborers and certified Engineers.',
     laborer: 'Skilled community hands required to clear ancient glacial boulders with trenching spades, erect the entrance gate, and lay stone thoroughfares across the estate.',
     storage: 'Constructs a climate-controlled granary barn and cold cellar. Suppresses post-harvest cellular respiration, fungal spores, and bacterial rot to preserve crop commercial value.',
+    garage: 'Mechanization depot and equipment garage for utility tractors, implements, and harvest haulers. Unlocks at the end of Chapter 2 after Main Road and Storage Granary Barn are established.',
     plot: 'Aerates compacted bedrock into fertile, loam-rich soil with balanced microbial flora, kickstarting autotrophic photosynthesis and continuous breathable O₂ generation.',
     garden: 'Introduces a 3-sector decagonal flower polyculture. Supplies continuous nectar and pollen corridors to sustain wild pollinator colonies and boosts estate reputation.',
     pond: 'Creates a perennial freshwater retention reservoir, stabilizing groundwater levels, buffering summer drought, and offering duck or fish aquaculture.',
@@ -22494,10 +23127,23 @@ function drawUnbuiltSpotMarker(key, def, locked){
       '<circle r="18" fill="rgba(255,255,255,0.96)" stroke="' + (isRecommended ? '#E65100' : (locked ? '#BDBDBD' : '#689F38')) + '" stroke-width="' + (isRecommended ? '2.4' : '1.8') + '" filter="drop-shadow(0 2px 5px rgba(0,0,0,0.18))"/>' +
       '<text x="0" y="5.5" text-anchor="middle" font-size="16">' + (locked ? '🔒' : icon) + '</text>' +
       (locked ?
-        '<g class="unbuilt-spot-cost-pill" transform="translate(0, 24)">' +
-          '<rect x="-34" y="0" width="68" height="15" rx="7.5" fill="#FFF3E0" stroke="#FFB74D" stroke-width="1"/>' +
-          '<text x="0" y="10.5" font-size="7.5" font-weight="800" fill="#E65100" text-anchor="middle">' + (def && def.requiresEngineer ? 'Needs Eng' : 'Needs Road') + '</text>' +
-        '</g>' :
+        (function(){
+          var lockLabel = 'Locked';
+          var info = (typeof getObjectChapterInfo === 'function') ? getObjectChapterInfo(key) : null;
+          if (info && info.chapter) lockLabel = 'Ch. ' + info.chapter;
+          if (key === 'garage') lockLabel = 'End Ch. 2';
+          else if (key === 'pond') lockLabel = 'Ch. 4';
+          else if (key === 'garden') lockLabel = 'Ch. 3';
+          else if (key === 'wind_turbine') lockLabel = 'Ch. 5';
+          else if (key === 'energy_storage') lockLabel = 'Ch. 5';
+          else if (key === 'coffee_shop' || key === 'juice_bar') lockLabel = 'Ch. 6';
+          else if (def && def.requiresEngineer) lockLabel = 'Needs Eng';
+          else if (def && def.requiresRoad) lockLabel = 'Needs Road';
+          return '<g class="unbuilt-spot-cost-pill" transform="translate(0, 24)">' +
+            '<rect x="-34" y="0" width="68" height="15" rx="7.5" fill="#FFF3E0" stroke="#FFB74D" stroke-width="1"/>' +
+            '<text x="0" y="10.5" font-size="7.5" font-weight="800" fill="#E65100" text-anchor="middle">' + lockLabel + '</text>' +
+          '</g>';
+        })() :
         '<g class="unbuilt-spot-cost-pill" transform="translate(0, 24)">' +
           '<rect x="-32" y="0" width="64" height="15" rx="7.5" fill="' + (isRecommended ? '#FFF3E0' : '#E8F5E9') + '" stroke="' + (isRecommended ? '#FFB74D' : '#81C784') + '" stroke-width="1"/>' +
           '<text x="0" y="10.5" font-size="7.5" font-weight="800" fill="' + (isRecommended ? '#E65100' : '#2E7D32') + '" text-anchor="middle">' + (isRecommended ? '👉 Build Now' : 'Build Spot') + '</text>' +
@@ -23021,10 +23667,13 @@ function animateAlongWaypoints(el, rawWaypoints, totalDurationMs, onComplete){
     var dy = curr.y - prev.y;
 
     if (isPedestrian){
-      // Pedestrians face walking direction horizontally without tilting or snapping
-      if (dx > 0.3) el.style.transform = 'scaleX(1)';
-      else if (dx < -0.3) el.style.transform = 'scaleX(-1)';
-      el.style.transition = 'left ' + (stepDuration / 1000) + 's linear, top ' + (stepDuration / 1000) + 's linear';
+      // Face walk direction; slight depth scale when moving "up" the isometric plane
+      var depth = 1 + Math.max(-0.06, Math.min(0.06, -dy * 0.004));
+      if (dx > 0.3) el.style.transform = 'scaleX(1) scale(' + depth + ')';
+      else if (dx < -0.3) el.style.transform = 'scaleX(-1) scale(' + depth + ')';
+      else el.style.transform = 'scale(' + depth + ')';
+      el.style.transition = 'left ' + (stepDuration / 1000) + 's linear, top ' + (stepDuration / 1000) + 's linear, transform 0.25s ease';
+      el.style.zIndex = String(20 + Math.round(curr.y || 0));
     } else {
       // True continuous rotational steering for vehicles — zero flipping!
       if (Math.hypot(dx, dy) > 0.1){
@@ -25511,8 +26160,9 @@ function plotSpotHtml(p, layout){
   var stageInfo = plotStageInfo(p);
   var def = p.treeType ? TREE_TYPES[p.treeType] : null;
   var isBarren = p.status === 'barren';
-  var isPlotUnlocked = !!(state && state.storage && state.storage.built);
-  var labelText = isBarren ? (isPlotUnlocked ? 'Plot '+(p.id+1) : 'Plot '+(p.id+1)+' 🔒') :
+  var plotOpen = (typeof isPlotUnlocked === 'function') ? isPlotUnlocked(p.id, state) : (p.id === 0);
+  var isPlotUnlockedFlag = plotOpen;
+  var labelText = isBarren ? (isPlotUnlockedFlag ? 'Plot '+(p.id+1) : 'Plot '+(p.id+1)+' 🔒') :
     p.status==='overgrown' ? '⚠️ Overgrown' :
     p.status==='preparing' ? 'Preparing…' :
     p.status==='clearing' ? 'Clearing…' :
@@ -25522,7 +26172,7 @@ function plotSpotHtml(p, layout){
     (p.health<=0 ? '💤 Stalled #'+p.treeId : stageInfo.name+' #'+p.treeId);
 
   var icon = def ? def.icon :
-    (isBarren ? (isPlotUnlocked ? (p.id+1) : '🔒') :
+    (isBarren ? (isPlotUnlockedFlag ? (p.id+1) : '🔒') :
     (p.status==='overgrown' ? '🌿' :
     (p.status==='preparing' ? '⛏️' :
     (p.status==='clearing' ? '🌾' :
@@ -25536,8 +26186,12 @@ function plotSpotHtml(p, layout){
     healthBar = '<div class="health-mini"><div class="fill" style="width:'+p.health+'%;background:'+hColor+';"></div></div>';
   }
   var tagPosClass = (layout && layout.top >= 48 && p.id !== 4) ? 'tag-pos-south' : 'tag-pos-north';
-  return '<div class="plot-spot '+tagPosClass+'" style="top:'+layout.top+'%;left:'+layout.left+'%;width:'+layout.w+'%;height:'+layout.h+'%;" data-plot="'+p.id+'">'+
-    '<div class="plot-label '+(isBarren?'is-barren':'')+'" data-tag-kind="plot" data-plot-id="'+p.id+'" title="'+labelText+'">'+
+  var lockClass = (isBarren && !isPlotUnlockedFlag) ? ' is-plot-locked' : '';
+  var lockTitle = (isBarren && !isPlotUnlockedFlag)
+    ? ('Locked — plant life on Plot ' + p.id + ' first to open Plot ' + (p.id+1))
+    : labelText;
+  return '<div class="plot-spot '+tagPosClass+lockClass+'" style="top:'+layout.top+'%;left:'+layout.left+'%;width:'+layout.w+'%;height:'+layout.h+'%;" data-plot="'+p.id+'">'+
+    '<div class="plot-label '+(isBarren?'is-barren':'')+(isBarren && !isPlotUnlockedFlag?' is-locked':'')+'" data-tag-kind="plot" data-plot-id="'+p.id+'" title="'+lockTitle+'">'+
       '<span class="plot-label-icon">'+icon+'</span>'+
       '<span class="plot-label-text">'+labelText+'</span>'+
     '</div>'+
@@ -25604,7 +26258,7 @@ function drawTendingFigure(x,y,kind){
 function drawCoffeeShopScene(b, tending){
   var isBuilding = b && b.building;
   var isBuilt = b && b.built;
-  var isLocked = !isBuilt && !isBuilding && (!state.buildings.road || !state.buildings.road.built);
+  var isLocked = !isBuilt && !isBuilding && ((typeof isObjectUnlockedByChapter === 'function' ? !isObjectUnlockedByChapter('coffee_shop', state) : false) || (!state.buildings.road || !state.buildings.road.built));
 
   // STRICT VISIBILITY: If not built and not building, render compact unbuilt marker only
   if (!isBuilt && !isBuilding){
@@ -25743,7 +26397,7 @@ function drawCoffeeShopScene(b, tending){
 function drawJuiceBarScene(b, tending){
   var isBuilding = b && b.building;
   var isBuilt = b && b.built;
-  var isLocked = !isBuilt && !isBuilding && (!state.buildings.road || !state.buildings.road.built);
+  var isLocked = !isBuilt && !isBuilding && ((typeof isObjectUnlockedByChapter === 'function' ? !isObjectUnlockedByChapter('juice_bar', state) : false) || (!state.buildings.road || !state.buildings.road.built));
 
   // STRICT VISIBILITY: If not built and not building, render compact unbuilt marker only
   if (!isBuilt && !isBuilding){
@@ -26040,7 +26694,8 @@ function drawStorageScene(s){
   var isBuilt = s && s.built;
 
   if (!isBuilt && !isBuilding){
-    return drawUnbuiltSpotMarker('storage', { icon:'🏚️', cost:STORAGE_COST, label:'Storage' }, false);
+    var isLocked = (typeof isObjectUnlockedByChapter === 'function') ? !isObjectUnlockedByChapter('storage', state) : false;
+    return drawUnbuiltSpotMarker('storage', { icon:'🏚️', cost:STORAGE_COST, label:(isLocked ? 'Storage 🔒' : 'Storage') }, isLocked);
   }
 
   if (isBuilding){
@@ -26204,7 +26859,8 @@ function drawStorageScene(s){
 function drawPondScene(specialization, freshness, tending, collecting, isBuilding){
   var pb = (typeof state !== 'undefined' && state && state.buildings) ? state.buildings.pond : null;
   if (!isBuilding && (!pb || !pb.built)){
-    return drawUnbuiltSpotMarker('pond', BUILDING_TYPES.pond, false);
+    var isLocked = (typeof isObjectUnlockedByChapter === 'function') ? !isObjectUnlockedByChapter('pond', state) : false;
+    return drawUnbuiltSpotMarker('pond', BUILDING_TYPES.pond, isLocked);
   }
   if (isBuilding){
     var b = state.buildings.pond;
@@ -26610,7 +27266,8 @@ function renderSectorPlants(bed, cx, cy, wilted){
 function drawGardenScene(flowerType, freshness, tending, isBuilding){
   var gb = (typeof state !== 'undefined' && state && state.buildings) ? state.buildings.garden : null;
   if (!isBuilding && (!gb || !gb.built)){
-    return drawUnbuiltSpotMarker('garden', BUILDING_TYPES.garden, false);
+    var isLocked = (typeof isObjectUnlockedByChapter === 'function') ? !isObjectUnlockedByChapter('garden', state) : false;
+    return drawUnbuiltSpotMarker('garden', BUILDING_TYPES.garden, isLocked);
   }
   if (isBuilding){
     var b = state.buildings.garden;
@@ -27130,7 +27787,8 @@ function drawGarageScene(b){
   var isBuilt = b && b.built;
   var isBuilding = b && b.building;
   if (!isBuilt && !isBuilding){
-    return drawUnbuiltSpotMarker('garage', BUILDING_TYPES.garage, false);
+    var isLocked = (typeof isObjectUnlockedByChapter === 'function') ? !isObjectUnlockedByChapter('garage', state) : false;
+    return drawUnbuiltSpotMarker('garage', BUILDING_TYPES.garage, isLocked);
   }
   if (isBuilding){
     var pct = Math.round(Math.min(100, (b.buildHours / 4) * 100));
@@ -27312,7 +27970,7 @@ function drawCropFieldScene(b){
   var isBuilt = b && b.built;
   var isBuilding = b && b.building;
   if (!isBuilt && !isBuilding){
-    var locked = !state.buildings.road.built;
+    var locked = (typeof isObjectUnlockedByChapter === 'function') ? !isObjectUnlockedByChapter('crop_field', state) : !state.buildings.road.built;
     return drawUnbuiltSpotMarker('crop_field', BUILDING_TYPES.crop_field, locked);
   }
   if (isBuilding){
@@ -28103,7 +28761,7 @@ function drawCattleFarmScene(b, tending){
   var isBuilt = b && b.built;
   var isBuilding = b && b.building;
   if (!isBuilt && !isBuilding){
-    var locked = !state.buildings.road.built;
+    var locked = (typeof isObjectUnlockedByChapter === 'function') ? !isObjectUnlockedByChapter('cattle_farm', state) : !state.buildings.road.built;
     return drawUnbuiltSpotMarker('cattle_farm', BUILDING_TYPES.cattle_farm, locked);
   }
   if (isBuilding){
@@ -28671,7 +29329,8 @@ function drawEnergyStorageScene(b){
   var def = BUILDING_TYPES.energy_storage;
 
   if (!isBuilt && !isBuilding){
-    return drawUnbuiltSpotMarker('energy_storage', def, false);
+    var isLocked = (typeof isObjectUnlockedByChapter === 'function') ? !isObjectUnlockedByChapter('energy_storage', state) : false;
+    return drawUnbuiltSpotMarker('energy_storage', def, isLocked);
   }
 
   if (isBuilding){
@@ -29026,10 +29685,10 @@ function getPendingTasksList(){
     });
   }
 
-  // Chapter 1: Till Soil & Cultivate Plot 1
+  // Chapter 1: Till Soil & Cultivate Plot 1 only
   var hasGrowing = state.plots && state.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; });
   if (!hasGrowing){
-    var s1PlotUnlocked = !!(state.storage && state.storage.built);
+    var s1PlotUnlocked = !!(state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built);
     tasks.push({
       step: 1,
       category: 'core',
@@ -29041,6 +29700,27 @@ function getPendingTasksList(){
       isUnlocked: s1PlotUnlocked,
       isComplete: false
     });
+  }
+  // Chapter 2: expand plots 2–6
+  if (hasGrowing){
+    var living = 0;
+    (state.plots || []).forEach(function(p){
+      if (p && (p.treeType || p.status === 'growing' || (p.harvestsDone || 0) > 0)) living++;
+    });
+    if (living < 6){
+      var nextPlot = Math.min(5, living);
+      tasks.push({
+        step: 2,
+        category: 'core',
+        stepName: 'Ch. 2: Expand Farm Plots',
+        type: 'dig',
+        targetId: nextPlot,
+        label: '🌾 Ch. 2: Bring life to Plot ' + (nextPlot + 1) + ' (' + living + '/6)',
+        cost: LABOR_COST,
+        isUnlocked: (typeof isPlotUnlocked === 'function') ? isPlotUnlocked(nextPlot, state) : true,
+        isComplete: false
+      });
+    }
   }
 
   // Chapter 2: Recruit Field Laborer
@@ -29645,11 +30325,24 @@ function windTurbineModalHtml(cornerKey){
     html += '</div>';
   } else if (wt.commissioned){
     // Commissioned state
-    html += '<div style="background:#E8F5E9;border:1px solid #A5D6A7;border-radius:10px;padding:10px;margin-bottom:10px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-        '<b style="color:#2E7D32;font-size:0.90rem;">✓ Operational &amp; Grid-Synchronized</b>' +
-        '<span style="background:#2E7D32;color:#FFF;padding:2px 8px;border-radius:10px;font-size:0.70rem;font-weight:800;">ACTIVE</span>' +
-      '</div>' +
+    if (!hasEng){
+      html += '<div style="background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:10px;padding:10px;margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+          '<b style="color:#E65100;font-size:0.88rem;">⚠️ Turbines Idle — Needs Engineer on Staff</b>' +
+          '<span style="background:#E65100;color:#FFF;padding:2px 8px;border-radius:10px;font-size:0.70rem;font-weight:800;">IDLE</span>' +
+        '</div>' +
+        '<div style="font-size:0.78rem;color:#5D4037;line-height:1.4;">' +
+          'Turbines require continuous electrical engineering supervision to synchronize with the farm microgrid. Current output: 0.0 kWh/h.' +
+        '</div>' +
+        '<button class="primary mini-btn" onclick="closeModal();openModal(\'building\',\'crew_shed\');" style="margin-top:8px;width:100%;">🏠 Go to Crew Shed to Recruit Engineer (€180/d)</button>' +
+      '</div>';
+    } else {
+      html += '<div style="background:#E8F5E9;border:1px solid #A5D6A7;border-radius:10px;padding:10px;margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+          '<b style="color:#2E7D32;font-size:0.90rem;">✓ Operational &amp; Grid-Synchronized</b>' +
+          '<span style="background:#2E7D32;color:#FFF;padding:2px 8px;border-radius:10px;font-size:0.70rem;font-weight:800;">ACTIVE</span>' +
+        '</div>';
+    }
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:center;">' +
         '<div style="background:#FFF;border:1px solid rgba(46,125,50,0.2);border-radius:6px;padding:6px 2px;">' +
           '<span style="font-size:0.65rem;color:#558B2F;font-weight:700;display:block;">WIND SPEED</span>' +
@@ -29861,7 +30554,7 @@ function buildingModalHtml(key){
       }
     } else {
       html += '<button class="secondary" disabled style="width:100%;min-height:44px;font-size:0.90rem;font-weight:700;margin-top:10px;opacity:0.7;">' +
-        '🔒 Pave Main Road — Clear Boulders First' +
+        '🔒 Pave Main Road — Needs Crushed Rock (Clear Boulders First)' +
       '</button>';
     }
     html += '</div>';
@@ -31978,9 +32671,28 @@ function setHarvestDestination(plotId, dest){
   }
 }
 
+
+function chapterIntroModalHtml(m) {
+  var ch = (m && m.chapter) || 1;
+  var title = (m && m.title) || ('Chapter ' + ch);
+  var body = (m && m.body) || '';
+  var paras = String(body).split('\n').filter(Boolean).map(function(p){
+    return '<p style="margin:0 0 10px;line-height:1.45;color:#37474F;font-size:0.9rem;">' + p + '</p>';
+  }).join('');
+  return '<div class="modal-card" style="max-width:520px;padding:22px 24px;border-radius:18px;background:#FAFFF8;border:2px solid #A5D6A7;box-shadow:0 12px 40px rgba(46,125,50,0.18);">' +
+    '<div style="font-size:0.72rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#2E7D32;">Mission briefing · +5 Knowledge XP</div>' +
+    '<h2 style="margin:8px 0 12px;font-size:1.25rem;color:#1B5E20;">' + title + '</h2>' +
+    paras +
+    '<p style="margin:12px 0 0;font-size:0.78rem;color:#546E7A;">Acknowledge to unlock this chapter\'s missions. Later chapters stay locked until you understand why they exist.</p>' +
+    '<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">' +
+      '<button class="claim-btn active" onclick="ackChapterIntro(' + ch + ')" style="padding:10px 16px;font-weight:800;">Understood — continue</button>' +
+    '</div></div>';
+}
+
 function modalHtml(){
   if (activeModal){
     if (activeModal.type==='welcome_intro' || activeModal.type==='welcome') return welcomeIntroModalHtml();
+    if (activeModal.type==='chapter_intro') return chapterIntroModalHtml(activeModal);
     if (activeModal.type==='why') return whyModalHtml(activeModal.topicKey, activeModal.activeDepth);
     if (activeModal.type==='sustainability_journey' || activeModal.type==='journey') return sustainabilityJourneyModalHtml();
     if (activeModal.type==='sustainability_dashboard' || activeModal.type==='dashboard') return sustainabilityDashboardModalHtml();
@@ -32325,6 +33037,13 @@ function panelHtml(){
   if (!openPanel) return '';
   if (openPanel==='library') return libraryPanelHtml();
   if (openPanel==='tasks'){
+    if (typeof FarmMissionAdapter !== 'undefined' && state && FarmMissionAdapter.showChapterIntroIfNeeded) {
+      var _ch = state.currentChapter || 1;
+      if (_ch > 1 && !FarmMissionAdapter.isChapterIntroAcked(_ch, state)) {
+        FarmMissionAdapter.showChapterIntroIfNeeded(_ch);
+      }
+    }
+
     ensureWindTurbinesState();
     if (typeof updateChapterProgression === 'function') updateChapterProgression();
     var curChNum = (state && state.currentChapter) ? state.currentChapter : 1;
@@ -32335,7 +33054,7 @@ function panelHtml(){
     var chDone = chDef.isComplete(state);
 
     // 8-Chapter Interactive Tab Bar
-    var chapterTabsHtml = '<div style="display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;">' +
+    var chapterTabsHtml = '<div style="display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;" id="chapterTabsStrip">' +
       CHAPTER_DEFINITIONS.map(function(cd){
         var isSel = (cd.chapter === selectedCh);
         var isCur = (cd.chapter === curChNum);
@@ -32343,7 +33062,7 @@ function panelHtml(){
         var bg = isSel ? '#2E7D32' : (isChDone ? '#E8F5E9' : (isCur ? '#FFF9C4' : '#ECEFF1'));
         var fg = isSel ? '#FFFFFF' : (isChDone ? '#1B5E20' : (isCur ? '#F57F17' : '#546E7A'));
         var border = isSel ? '2px solid #1B5E20' : (isCur ? '2px solid #FBC02D' : '1px solid #CFD8DC');
-        return '<button type="button" onclick="state.selectedChapterTab=' + cd.chapter + ';render();" style="border-radius:12px;padding:5px 9px;font-size:0.72rem;font-weight:800;white-space:nowrap;background:' + bg + ';color:' + fg + ';border:' + border + ';cursor:pointer;flex-shrink:0;">' +
+        return '<button type="button" data-chapter-tab="' + cd.chapter + '" onclick="selectChapterTab(' + cd.chapter + ')" style="border-radius:12px;padding:5px 9px;font-size:0.72rem;font-weight:800;white-space:nowrap;background:' + bg + ';color:' + fg + ';border:' + border + ';cursor:pointer;flex-shrink:0;">' +
           cd.icon + ' Ch.' + cd.chapter + (isChDone ? ' ✓' : '') +
         '</button>';
       }).join('') +
@@ -33616,6 +34335,8 @@ window.drawCropFieldScene = drawCropFieldScene;
 window.drawCattleFarmScene = drawCattleFarmScene;
 window.drawCattleAnimalSvg = drawCattleAnimalSvg;
 window.drawStorageScene = drawStorageScene;
+window.drawGarageScene = drawGarageScene;
+window.chapterIntroModalHtml = chapterIntroModalHtml;
 window.drawWindTurbineScene = drawWindTurbineScene;
 window.drawEnergyStorageScene = drawEnergyStorageScene;
 window.windTurbineModalHtml = windTurbineModalHtml;
@@ -33639,6 +34360,10 @@ window.startFirstGameExperience = startFirstGameExperience;
 window.welcomeIntroModalHtml = welcomeIntroModalHtml;
 window.getObjectChapterInfo = getObjectChapterInfo;
 window.isObjectUnlockedByChapter = isObjectUnlockedByChapter;
+window.ProgressionEvaluator = ProgressionEvaluator;
+window.isObjectAlreadyBuilt = isObjectAlreadyBuilt;
+window.isPlotUnlocked = isPlotUnlocked;
+window.plotHasLife = plotHasLife;
 window.FLOWER_TYPES = FLOWER_TYPES;
 window.getGardenPolycultureInfo = getGardenPolycultureInfo;
 window.gardenModalHtml = gardenModalHtml;
@@ -33681,6 +34406,7 @@ window.startMowLawn = startMowLawn;
 window.startPrep = startPrep;
 window.getPlotPrepDurationHours = getPlotPrepDurationHours;
 window.updateChapterProgression = updateChapterProgression;
+window.selectChapterTab = selectChapterTab;
 window.drawIsometric3DHandSpadeSvg = drawIsometric3DHandSpadeSvg;
 window.openBasicEquipmentDiscoveryModal = openBasicEquipmentDiscoveryModal;
 window.basicEquipmentDiscoveryModalHtml = basicEquipmentDiscoveryModalHtml;
@@ -33936,6 +34662,8 @@ if (typeof globalThis !== 'undefined'){
   globalThis.drawCattleFarmScene = drawCattleFarmScene;
   globalThis.drawCattleAnimalSvg = drawCattleAnimalSvg;
   globalThis.drawStorageScene = drawStorageScene;
+globalThis.drawGarageScene = drawGarageScene;
+globalThis.chapterIntroModalHtml = chapterIntroModalHtml;
   globalThis.drawWindTurbineScene = drawWindTurbineScene;
   globalThis.drawEnergyStorageScene = drawEnergyStorageScene;
   globalThis.windTurbineModalHtml = windTurbineModalHtml;
@@ -33959,6 +34687,10 @@ globalThis.startFirstGameExperience = startFirstGameExperience;
 globalThis.welcomeIntroModalHtml = welcomeIntroModalHtml;
 globalThis.getObjectChapterInfo = getObjectChapterInfo;
 globalThis.isObjectUnlockedByChapter = isObjectUnlockedByChapter;
+globalThis.ProgressionEvaluator = ProgressionEvaluator;
+globalThis.isObjectAlreadyBuilt = isObjectAlreadyBuilt;
+globalThis.isPlotUnlocked = isPlotUnlocked;
+globalThis.plotHasLife = plotHasLife;
   globalThis.FLOWER_TYPES = FLOWER_TYPES;
   globalThis.getGardenPolycultureInfo = getGardenPolycultureInfo;
   globalThis.gardenModalHtml = gardenModalHtml;

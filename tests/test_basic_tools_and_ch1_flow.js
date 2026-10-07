@@ -159,9 +159,10 @@ const path = require('path');
       const hasHandToolCard = ch1DepotHtml.includes('Traditional Hand Trenching Spade &amp; Broadfork');
       closeModal();
 
-      // Advance to Chapter 2 (plant crop on Plot 0 so Chapter 1 is complete)
+      // Advance to Chapter 2 (harvest on Plot 0 so Chapter 1 is complete)
       state.plots[0].status = 'growing';
       state.plots[0].treeType = 'apple';
+      state.plots[0].harvestsDone = 1;
       updateChapterProgression();
       openEquipmentStoreModal();
       const ch2DepotHtml = modalHtml();
@@ -170,6 +171,7 @@ const path = require('path');
 
       // Reset
       state.currentChapter = 1;
+      state.plots[0].harvestsDone = 0;
 
       if (hasLockedTitle && hasFoundationalFocus && hasHandToolCard && hasTractorStore) {
         report.test4_equipmentDepotCh1Lock.passed = true;
