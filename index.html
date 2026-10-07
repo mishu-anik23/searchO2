@@ -9976,8 +9976,12 @@ var CHAPTER_DEFINITIONS = [
     unlockReward: 'Storage Barn need unlocked · Chapter 2 infrastructure',
     isUnlocked: function(s) { return true; },
     isComplete: function(s) {
-      // First harvest is the gate to Chapter 2 (creates storage problem)
-      return !!(s.plots && s.plots.some(function(p){ return (p.harvestsDone || 0) > 0; }));
+      // Completed upon first harvest OR when first crop is actively growing with irrigation/watering/O2 active
+      if (!s.plots) return false;
+      return s.plots.some(function(p){
+        return (p.harvestsDone || 0) > 0 ||
+               (p.status === 'growing' && ((p.waterHours || 0) > 0 || (p.accessories && p.accessories.irrigation) || (p.o2Produced || 0) > 0 || (s.totalO2AllTime || 0) > 0));
+      });
     },
     getProgress: function(s) {
       if (this.isComplete(s)) return 100;
@@ -10175,6 +10179,9 @@ function getObjectChapterInfo(key) {
 var ProgressionEvaluator = (function() {
   // Mission-gated objects: chapter open is not enough; contextual need must exist
   var MISSION_GATES = {
+    road: function(s) {
+      return !!s.rocksCleared && !!(s.buildings && s.buildings.gate && s.buildings.gate.built);
+    },
     storage: function(s) {
       // After first harvest (Ch1 complete signal) storage is the next necessity
       return hasAnyHarvest(s) || !!(s.flags && s.flags.firstHarvest) || ((s.currentChapter || 1) >= 2);
@@ -10248,6 +10255,10 @@ var ProgressionEvaluator = (function() {
     if (def && def.requiresEngineer) {
       var hasEng = s.workers && s.workers.some(function(w) { return w.type === 'engineer'; });
       if (!hasEng) return { ok: false, reason: 'needs_engineer' };
+    }
+    if (key === 'road') {
+      var gBuilt = !!(s.buildings && s.buildings.gate && s.buildings.gate.built);
+      if (!gBuilt) return { ok: false, reason: 'needs_gate', name: 'Grand Farm Entrance Gate', chapter: 2 };
     }
     if (def && def.requiresRoad && !(s.buildings && s.buildings.road && s.buildings.road.built)) {
       return { ok: false, reason: 'needs_road' };
@@ -10380,8 +10391,9 @@ var FarmMissionAdapter = (function() {
   }
 
   function showChapterIntroIfNeeded(ch) {
-    s = ensureFlags(state);
-    if (isChapterIntroAcked(ch, state)) return false;
+    if (activeModal && activeModal.type === 'chapter_intro') return false;
+    var s = ensureFlags(state);
+    if (isChapterIntroAcked(ch, s)) return false;
     var intro = CHAPTER_INTROS[ch];
     if (!intro) { ackChapterIntro(ch); return false; }
     activeModal = {
@@ -10390,7 +10402,6 @@ var FarmMissionAdapter = (function() {
       title: intro.title,
       body: intro.body
     };
-    if (typeof render === 'function') render();
     return true;
   }
 
@@ -20108,7 +20119,8 @@ function startBuildRoadSegment(segmentKey){
       }
       return;
     }
-    if (state.buildings && state.buildings.gate && !state.buildings.gate.built){
+    var gateBuilt = !!(state.buildings && state.buildings.gate && state.buildings.gate.built);
+    if (!gateBuilt){
       showNotification('⛩️', 'Grand Farm Entrance Gate must be constructed before paving the Main Arterial Road! Secure estate biosecurity first.', 'building', 'gate');
       pushReport('⚠️ Main Road paving blocked: Grand Farm Entrance Gate must be constructed first.');
       return;
@@ -20528,6 +20540,12 @@ function startBuildBuilding(key){
     return;
   }
   if (key === 'road'){
+    var gateBuilt = !!(state.buildings && state.buildings.gate && state.buildings.gate.built);
+    if (!gateBuilt){
+      showLockedStepPopup(null, 'gate');
+      showNotification('⛩️', 'Grand Farm Entrance Gate must be constructed before paving the Main Arterial Road! Secure estate biosecurity first.', 'building', 'gate');
+      return;
+    }
     startBuildRoadSegment('main');
     return;
   }

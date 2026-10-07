@@ -160,20 +160,25 @@ const path = require('path');
       openModal('plot', 1);
       const clickPlot1Blocked = (activeModal === null);
 
-      state.currentChapter = 2;
+      // Verify active watering/irrigation completes Chapter 1 and unlocks Chapter 2 + Plot 2
+      state.currentChapter = 1;
       state.plots[0].status = 'growing';
       state.plots[0].treeType = 'apple';
+      state.plots[0].waterHours = 2.0;
+      updateChapterProgression();
+      const ch2UnlockedFromWatering = (state.currentChapter === 2);
       const plot1OpenInCh2 = isPlotUnlocked(1, state);
 
       state.plots[0].status = 'barren';
       state.plots[0].treeType = null;
+      state.plots[0].waterHours = 0;
       state.currentChapter = 1;
 
-      if (plot0Open && plot1Locked && plot2Locked && clickPlot1Blocked && plot1OpenInCh2) {
+      if (plot0Open && plot1Locked && plot2Locked && clickPlot1Blocked && ch2UnlockedFromWatering && plot1OpenInCh2) {
         report.test4_plot1OnlyInCh1.passed = true;
-        report.test4_plot1OnlyInCh1.details.push('Chapter 1 strictly limits interaction to Plot 1; Plots 2-6 are click-locked until sequential Chapter 2 progress.');
+        report.test4_plot1OnlyInCh1.details.push('Chapter 1 limits interaction to Plot 1; active irrigation/watering completes Chapter 1 and unlocks Chapter 2 + Plot 2.');
       } else {
-        report.test4_plot1OnlyInCh1.details.push('Failed: plot0Open=' + plot0Open + ', plot1Locked=' + plot1Locked + ', clickPlot1Blocked=' + clickPlot1Blocked + ', plot1OpenInCh2=' + plot1OpenInCh2);
+        report.test4_plot1OnlyInCh1.details.push('Failed: plot0Open=' + plot0Open + ', plot1Locked=' + plot1Locked + ', ch2UnlockedFromWatering=' + ch2UnlockedFromWatering + ', plot1OpenInCh2=' + plot1OpenInCh2);
       }
     } catch (e) {
       report.test4_plot1OnlyInCh1.details.push('Error: ' + e.message);
@@ -196,7 +201,13 @@ const path = require('path');
       startBuildRoadSegment('main');
       const blockedWithoutRockMaterial = (!state.buildings.road.built && !state.buildings.road.building);
 
+      // Sequence check: rocksCleared -> gateBuilt -> roadBuilt
       state.rocksCleared = true;
+      state.buildings.gate.built = false;
+      startBuildRoadSegment('main');
+      const blockedWithoutGate = (!state.buildings.road.built && !state.buildings.road.building);
+
+      state.buildings.gate.built = true;
       startBuildRoadSegment('main');
       const startedPavingWithMaterial = (state.buildings.road.building === true);
 
@@ -204,11 +215,11 @@ const path = require('path');
       state.buildings.road.building = false;
       state.rocksCleared = false;
 
-      if (blockedWithoutRockMaterial && startedPavingWithMaterial) {
+      if (blockedWithoutRockMaterial && blockedWithoutGate && startedPavingWithMaterial) {
         report.test5_crushedRockRoadMaterial.passed = true;
-        report.test5_crushedRockRoadMaterial.details.push('Crushed rock material requirement enforced: Road construction blocked until boulders are cleared.');
+        report.test5_crushedRockRoadMaterial.details.push('Strict sequence verified: Road paving blocked without crushed rock ballast AND blocked until Grand Entrance Gate is built.');
       } else {
-        report.test5_crushedRockRoadMaterial.details.push('Failed: blockedWithoutRockMaterial=' + blockedWithoutRockMaterial + ', startedPavingWithMaterial=' + startedPavingWithMaterial);
+        report.test5_crushedRockRoadMaterial.details.push('Failed: blockedWithoutRockMaterial=' + blockedWithoutRockMaterial + ', blockedWithoutGate=' + blockedWithoutGate + ', startedPavingWithMaterial=' + startedPavingWithMaterial);
       }
     } catch (e) {
       report.test5_crushedRockRoadMaterial.details.push('Error: ' + e.message);
