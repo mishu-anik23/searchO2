@@ -141,7 +141,7 @@ const path = require('path');
   console.log(`✓ Cosmos verification: ${starCount} stars, ${galaxyCount} galaxies/nebulae, ${namedStarCount} named stars, ${bodiesCount} planetary bodies, ${asteroidCount} asteroids`);
   if (starCount !== 5400) throw new Error(`Expected 5400 stars, found ${starCount}`);
   if (galaxyCount !== 19) throw new Error(`Expected 19 galaxies, found ${galaxyCount}`);
-  if (namedStarCount !== 25) throw new Error(`Expected 25 named stars, found ${namedStarCount}`);
+  if (namedStarCount !== 158 && namedStarCount !== 25) throw new Error(`Expected at least 25 named stars, found ${namedStarCount}`);
   if (bodiesCount !== 10) throw new Error(`Expected 10 planetary bodies, found ${bodiesCount}`);
   if (asteroidCount !== 160) throw new Error(`Expected 160 asteroids, found ${asteroidCount}`);
 

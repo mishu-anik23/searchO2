@@ -56,7 +56,7 @@ const path = require('path');
       const hasFloatPanel = !!fpEl;
       const htmlContent = fpEl ? fpEl.innerHTML : '';
 
-      const hasChapterHeader = htmlContent.includes('Chapter 1: Bring the Land to Life') || htmlContent.includes('Bring the Land to Life');
+      const hasChapterHeader = htmlContent.includes('Look, I Can Grow Something') || htmlContent.includes('Bring the Land to Life');
       const hasFantasyQuote = htmlContent.includes('I can grow something');
       const hasChapterTabs = htmlContent.includes('Ch.1') && htmlContent.includes('Ch.8');
 
@@ -116,14 +116,18 @@ const path = require('path');
       const testState = freshState();
       testState.currentChapter = 1;
 
-      // Chapter 1: plot and crew_shed should be unlocked
+      // Chapter 1: plot is unlocked, crew_shed is locked (unlocks strictly in Chapter 2)
       const plotCh1 = isObjectUnlockedByChapter('plot', testState);
-      const crewCh1 = isObjectUnlockedByChapter('crew_shed', testState);
+      const crewCh1Locked = !isObjectUnlockedByChapter('crew_shed', testState);
       // Chapter 3/4/5 objects should be locked in Chapter 1
       const gardenCh1 = isObjectUnlockedByChapter('garden', testState);
       const cattleCh1 = isObjectUnlockedByChapter('cattle_farm', testState);
       const turbineCh1 = isObjectUnlockedByChapter('wind_turbine', testState);
       const juiceCh1 = isObjectUnlockedByChapter('juice_bar', testState);
+
+      // Advance to Chapter 2 -> crew_shed unlocks
+      testState.currentChapter = 2;
+      const crewCh2 = isObjectUnlockedByChapter('crew_shed', testState);
 
       // Advance to Chapter 3 -> garden should now be unlocked
       testState.currentChapter = 3;
@@ -140,11 +144,11 @@ const path = require('path');
       const gardenSpotLockedHtml = buildingSpotHtml('garden', testState);
       const hasLockBadge = gardenSpotLockedHtml.includes('🔒 Ch. 3') || gardenSpotLockedHtml.includes('🔒');
 
-      if (plotCh1 && crewCh1 && !gardenCh1 && !cattleCh1 && !turbineCh1 && !juiceCh1 && gardenCh3 && !cattleCh3 && turbineCh5 && bessCh5 && hasLockBadge) {
+      if (plotCh1 && crewCh1Locked && crewCh2 && !gardenCh1 && !cattleCh1 && !turbineCh1 && !juiceCh1 && gardenCh3 && !cattleCh3 && turbineCh5 && bessCh5 && hasLockBadge) {
         report.test2_objectUnlocksByChapter.passed = true;
-        report.test2_objectUnlocksByChapter.details.push('Chapter-based object unlocks verified: Ch.1 allows soil/shed, Ch.3 unlocks gardens, Ch.5 unlocks microgrids, and unearned canvas spots render lock badges.');
+        report.test2_objectUnlocksByChapter.details.push('Chapter-based object unlocks verified: Ch.1 locks facilities for solo founder, Ch.2 unlocks crew shed, Ch.3 unlocks gardens, Ch.5 unlocks microgrids, and unearned canvas spots render lock badges.');
       } else {
-        report.test2_objectUnlocksByChapter.details.push(`Failed: plotCh1=${plotCh1}, crewCh1=${crewCh1}, gardenCh1=${gardenCh1}, cattleCh1=${cattleCh1}, turbineCh1=${turbineCh1}, gardenCh3=${gardenCh3}, cattleCh3=${cattleCh3}, turbineCh5=${turbineCh5}, hasLockBadge=${hasLockBadge}`);
+        report.test2_objectUnlocksByChapter.details.push(`Failed: plotCh1=${plotCh1}, crewCh1Locked=${crewCh1Locked}, crewCh2=${crewCh2}, gardenCh1=${gardenCh1}, cattleCh1=${cattleCh1}, turbineCh1=${turbineCh1}, gardenCh3=${gardenCh3}, cattleCh3=${cattleCh3}, turbineCh5=${turbineCh5}, hasLockBadge=${hasLockBadge}`);
       }
     } catch (e) {
       report.test2_objectUnlocksByChapter.details.push('Error: ' + e.message);

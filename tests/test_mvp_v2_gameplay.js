@@ -200,7 +200,7 @@ const path = require('path');
       const modalOpen = (activeModal && activeModal.type === 'sustainability_journey');
       const html = sustainabilityJourneyModalHtml();
 
-      const hasCh1 = html.includes('Chapter 1: Bring the Land to Life');
+      const hasCh1 = html.includes('Look, I Can Grow Something') || html.includes('Chapter 1: Bring the Land to Life');
       const hasCh2 = html.includes('Chapter 2: Build Your Farm');
       const hasCh3 = html.includes('Chapter 3: Build an Ecosystem');
       const hasCh4 = html.includes('Chapter 4: Close the Loop');
@@ -376,6 +376,8 @@ const path = require('path');
     // TEST 11: Smooth Modal Auto-Closing on Visual Graphic Activities
     // -------------------------------------------------------------------------
     try {
+      state.currentChapter = 2;
+      state.basicToolsDiscovered = true;
       state.storage = { built: true };
       state.money = 50000;
       state.workers = [{ id: 1, type: 'laborer', assignedPlot: null, assignedBuilding: null }];

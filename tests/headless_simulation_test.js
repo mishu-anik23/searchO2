@@ -71,6 +71,7 @@ const path = require('path');
     // TEST 1: Worker Fatigue, Energy & DisplayName
     // =========================================================================
     try {
+      state.currentChapter = 2;
       state.buildings.crew_shed = { built: true, level: 1 };
       state.workers = [];
       state.roleCounters = { laborer: 0, farmer: 0, botanist: 0, engineer: 0 };
@@ -601,7 +602,7 @@ const path = require('path');
       // Clicking Main Road -> must be blocked when crew shed unbuilt
       activeModal = null;
       openModal('building', 'road');
-      const roadLockedStep1Ok = (activeModal === null);
+      const roadLockedStep1Ok = (activeModal === null || (activeModal && activeModal.type === 'chapter_roadmap'));
 
       // 2. Build Crew Shed -> Unlocks Step 2
       state.buildings.crew_shed = { built: true, level: 1 };
@@ -611,7 +612,7 @@ const path = require('path');
       // Clicking Main Road -> blocked because laborer not yet recruited
       activeModal = null;
       openModal('building', 'road');
-      const roadLockedStep2Ok = (activeModal === null);
+      const roadLockedStep2Ok = (activeModal === null || (activeModal && activeModal.type === 'chapter_roadmap'));
 
       // Attempting to pave road before hiring laborer -> blocked
       const roadPavedPrematurely = startBuildRoadSegment('main');

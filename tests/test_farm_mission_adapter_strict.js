@@ -54,7 +54,7 @@ const path = require('path');
       const lockedCh1 = !isObjectUnlockedByChapter('pond', state);
       activeModal = null;
       openModal('building', 'pond');
-      const modalBlockedCh1 = (activeModal === null);
+      const modalBlockedCh1 = (activeModal === null || (activeModal && activeModal.type === 'chapter_roadmap'));
 
       state.currentChapter = 3;
       const lockedCh3 = !isObjectUnlockedByChapter('pond', state);
@@ -84,7 +84,7 @@ const path = require('path');
       const lockedCh1 = !isObjectUnlockedByChapter('garage', state);
       activeModal = null;
       openModal('building', 'garage');
-      const modalBlockedCh1 = (activeModal === null);
+      const modalBlockedCh1 = (activeModal === null || (activeModal && activeModal.type === 'chapter_roadmap'));
 
       state.currentChapter = 2;
       state.storage.built = false;
@@ -121,7 +121,7 @@ const path = require('path');
       const lockedCh1 = !isObjectUnlockedByChapter('garden', state);
       activeModal = null;
       openModal('building', 'garden');
-      const modalBlockedCh1 = (activeModal === null);
+      const modalBlockedCh1 = (activeModal === null || (activeModal && activeModal.type === 'chapter_roadmap'));
 
       state.currentChapter = 2;
       const lockedCh2 = !isObjectUnlockedByChapter('garden', state);
@@ -231,7 +231,7 @@ const path = require('path');
       const lockedCh1 = !isObjectUnlockedByChapter('wind_turbine', state);
       activeModal = null;
       openModal('building', 'wind_turbine');
-      const modalBlockedCh1 = (activeModal === null);
+      const modalBlockedCh1 = (activeModal === null || (activeModal && activeModal.type === 'chapter_roadmap'));
 
       state.currentChapter = 4;
       const lockedCh4 = !isObjectUnlockedByChapter('wind_turbine', state);
@@ -307,43 +307,45 @@ const path = require('path');
       report.test8_chapterIntroBriefingAnd5XP.details.push('Error: ' + e.message);
     }
 
-    // 9. Chapter 1 Task UI Contextual Locks
+    // 9. Chapter 1 Task UI Contextual Locks & Chapter 2 Crew Locks
     try {
       state.currentChapter = 1;
       state.plots[0].status = 'barren';
       state.plots[0].treeType = null;
       state.plots[0].harvestsDone = 0;
-      state.buildings.crew_shed.built = false;
       state.workers = [];
       state.basicToolsDiscovered = false;
 
-      const soilTask = CHAPTER_CHALLENGES[1].find(t => t.id === 'ch1_soil');
+      // In Chapter 1, worker hiring is strictly prohibited for solo founder
+      var hireRes = hireWorker('laborer');
+      var soloFounderProtected = (state.workers.length === 0);
 
-      const html1 = soilTask.getActionHtml(state);
-      const lockShed = html1.includes('Needs Crew Shed');
-
-      state.buildings.crew_shed.built = true;
-      const html2 = soilTask.getActionHtml(state);
-      const lockLaborer = html2.includes('Needs Labourer');
-
-      state.workers.push({ id: 10, type: 'laborer', name: 'Laborer #1' });
-      const html3 = soilTask.getActionHtml(state);
-      const lockTools = html3.includes('Needs Digging Equipment');
+      // Chapter 1 soil challenge requires uncovering tools from jute tarp cache
+      var soilTask = CHAPTER_CHALLENGES[1].find(function(t){ return t.id === 'ch1_soil'; });
+      var htmlTools = soilTask.getActionHtml(state);
+      var lockTools = htmlTools.includes('Needs Digging Equipment') || htmlTools.includes('Explore all 8');
 
       state.basicToolsDiscovered = true;
-      const html4 = soilTask.getActionHtml(state);
-      const unlockedTill = html4.includes('Till Plot 1');
+      var htmlTilled = soilTask.getActionHtml(state);
+      var unlockedTill = htmlTilled.includes('Till Plot 1');
 
-      const farmerTask = CHAPTER_CHALLENGES[1].find(t => t.id === 'ch1_farmer');
-      const farmerLockedUntilTilled = farmerTask && !farmerTask.isUnlocked(state);
-      state.plots[0].status = 'ready';
-      const farmerUnlockedAfterTilled = farmerTask && farmerTask.isUnlocked(state);
+      // Chapter 2 crew and plot unlock mechanics:
+      state.currentChapter = 2;
+      state.plots[1].status = 'ready'; // Plot 2 prepared
+      var plot2Unlocked = isPlotUnlocked(1, state); // Plot 2 is auto-unlocked in Chapter 2
+      var plot3LockedWithoutTeam = !isPlotUnlocked(2, state); // Plot 3 locked without Labourer + Farmer
 
-      if (lockShed && lockLaborer && lockTools && unlockedTill && farmerLockedUntilTilled && farmerUnlockedAfterTilled) {
+      state.workers.push({ id: 10, type: 'laborer', name: 'Laborer #1' });
+      var plot3StillLockedWithLaborerOnly = !isPlotUnlocked(2, state);
+
+      state.workers.push({ id: 11, type: 'farmer', name: 'Farmer #1' });
+      var plot3UnlockedWithTeam = isPlotUnlocked(2, state); // Plot 3 unlocked with both Labourer + Farmer
+
+      if (soloFounderProtected && lockTools && unlockedTill && plot2Unlocked && plot3LockedWithoutTeam && plot3StillLockedWithLaborerOnly && plot3UnlockedWithTeam) {
         report.test9_chapter1TaskContextualLocks.passed = true;
-        report.test9_chapter1TaskContextualLocks.details.push('Awaken the Bedrock contextual locks verified: Needs Crew Shed -> Needs Labourer -> Needs Digging Equipment -> Till Plot 1; Farmer unlocks after tillage.');
+        report.test9_chapter1TaskContextualLocks.details.push('Chapter 1 Solo Founder protection and Chapter 2 Crew/Plot unlock rules verified: Hiring blocked in Ch. 1, Plot 1 soil requires uncovered tools, Ch. 2 Plot 2 auto-unlocked, Plot 3 requires both Labourer and Farmer.');
       } else {
-        report.test9_chapter1TaskContextualLocks.details.push('Failed: lockShed=' + lockShed + ', lockLaborer=' + lockLaborer + ', lockTools=' + lockTools + ', unlockedTill=' + unlockedTill);
+        report.test9_chapter1TaskContextualLocks.details.push('Failed: soloFounderProtected=' + soloFounderProtected + ', lockTools=' + lockTools + ', unlockedTill=' + unlockedTill + ', plot2Unlocked=' + plot2Unlocked + ', plot3UnlockedWithTeam=' + plot3UnlockedWithTeam);
       }
     } catch (e) {
       report.test9_chapter1TaskContextualLocks.details.push('Error: ' + e.message);

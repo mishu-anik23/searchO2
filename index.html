@@ -490,9 +490,50 @@
     box-shadow: 0 4px 14px rgba(245, 127, 23, 0.18);
   }
   .masterplan-step-card.is-done {
-    border-color: #A5D6A7;
-    background: #F1F8E9;
-    opacity: 0.88;
+    border-color: #B0BEC5;
+    background: #ECEFF1;
+    color: #78909C;
+    opacity: 0.85;
+  }
+  .masterplan-step-card.is-done .masterplan-step-num {
+    background: #90A4AE;
+    color: #ECEFF1;
+  }
+
+  /* Animated Pointing Hand Badge on Locked Chapter Facilities */
+  @keyframes bounceHandPointer {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-7px) scale(1.12); }
+  }
+  .chapter-explore-hand {
+    position: absolute;
+    top: -12px;
+    right: -10px;
+    z-index: 28;
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+    animation: bounceHandPointer 1.4s ease-in-out infinite;
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.45));
+    background: rgba(255, 255, 255, 0.95);
+    border: 1.8px solid #2E7D32;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    transition: transform 0.15s ease;
+  }
+  .chapter-explore-hand:hover {
+    transform: scale(1.28) translateY(-2px);
+    background: #FFF;
+    border-color: #F57F17;
+  }
+  .jute-tarp-spot-card.is-ready-uncover {
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.65);
+    border-color: #FFB300 !important;
   }
   .masterplan-step-num {
     width: 26px;
@@ -6216,7 +6257,7 @@ var CLEAR_COST = 35;
 var OVERGROWN_THRESHOLD = 130; // game-hours of neglect (barren OR unplanted-ready) before a plot needs clearing
 var LABOR_COST = 25;
 var STORAGE_COST = 550;
-var STORAGE_BUILD_HOURS = 10;
+var STORAGE_BUILD_HOURS = 3;
 var STORAGE_BASE_CAPACITY = 200;
 var STORAGE_EXPAND_CAPACITY = 150;
 var STORAGE_EXPAND_BASE_COST = 500;
@@ -6242,7 +6283,7 @@ var STORAGE_SPOT   = { top: 5, left: 45.5, w: 14, h: 18 };
 var WIND_TURBINE_SPOTS = {
   wt_nw: { top: 2.0, left: 19.5, w: 9.0, h: 21.0, corner: 'NW', label: 'NW Ridge Turbine', role: 'Primary', cost: 275 },
   wt_ne: { top: 2.0, left: 74.5, w: 9.0, h: 21.0, corner: 'NE', label: 'NE Hilltop Turbine', role: 'Primary', cost: 275 },
-  wt_sw: { top: 73.0, left: 7.5, w: 9.0, h: 20.0, corner: 'SW', label: 'SW Meadow Turbine', role: 'Hot-Standby Redundant', cost: 275 },
+  wt_sw: { top: 73.0, left: 1.2, w: 6.8, h: 20.0, corner: 'SW', label: 'SW Meadow Turbine', role: 'Hot-Standby Redundant', cost: 275 },
   wt_se: { top: 73.0, left: 88.5, w: 9.0, h: 20.0, corner: 'SE', label: 'SE Orchard Turbine', role: 'Hot-Standby Redundant', cost: 275 }
 };
 var WIND_TURBINE_SPOT   = WIND_TURBINE_SPOTS.wt_nw; // legacy backward compatibility alias
@@ -6255,6 +6296,9 @@ var GATE_SPOT      = { top: 35.5, left: 91.5, w: 8.5, h: 23 };
 
 // Crew Shed & Tool Workshop in the West Wing (connecting cleanly to Main Road)
 var CREW_SHED_SPOT = { top: 54, left: 8.5, w: 9.5, h: 18 };
+
+// 3D Isometric Hidden Jute Tarpaulin Tool Cache at bottom corner of Farm Shed
+var JUTE_TARP_SPOT = { top: 72.0, left: 10.5, w: 7.5, h: 13.0 };
 
 // Farm Machinery & 2-Wheel Harvest Cart Garage in dedicated East Mechanization block (clear of NE turbine)
 var GARAGE_SPOT    = { top: 15.0, left: 87.5, w: 11, h: 20 };
@@ -6305,6 +6349,7 @@ var VILLAGE_LAYOUT = {
   gate:           GATE_SPOT,
   road:           GATE_SPOT,
   crew_shed:      CREW_SHED_SPOT,                      // South West block (top:66, left:8, w:9.5, h:20)
+  jute_tarp:      JUTE_TARP_SPOT,                      // Bottom corner of Farm Shed
   energy_storage: ENERGY_STORAGE_SPOT,                 // SW utility yard beside Crew Shed (top:66, left:1.2, w:6.6, h:20)
   wind_turbine:   WIND_TURBINE_SPOTS.wt_nw,            // North West hilltop ridge corner
   pond:           { top: 12, left: 32, w: 12, h: 22 }, // North mid-west block (connected by 320px flagstone walkway)
@@ -9836,6 +9881,13 @@ function freshState(){
     workers: [], roleCounters: { laborer: 0, farmer: 0, botanist: 0, engineer: 0 }, lastPaidDay: 0, nextTreeId: 1, reports: [], pestHandled: 0, demerits: 0,
     harvestCount: 0, storage: { built:false, building:false, buildHours:0, capacity:0, stored:0, level:0, expanding:false, expandHours:0, warnedFull:false, items:[], assignedLaborerId:null },
     basicToolsDiscovered: false,
+    juteTarpUncovered: false,
+    exploredChapterObjects: {},
+    exploredChapters: {},
+    allChaptersExplored: false,
+    ch1CompletedModalShown: false,
+    spoilageWarningShown: false,
+    spoilageWarningActive: false,
     visitorStats: { totalVisitors:0, totalIncome:0, ratingSum:0, ratingCount:0 },
     quiz: { pending:null, history:[], totalCorrect:0, totalCompleted:0, skipped:0, nextDueHour:18 },
     loan: null,
@@ -9969,14 +10021,13 @@ var CHAPTER_DEFINITIONS = [
   {
     chapter: 1,
     icon: '🌱',
-    title: 'Bring the Land to Life · Start Your Farm',
-    fantasy: 'I have land, a small team and some money. Can I produce my first harvest? (I can grow something)',
-    desc: 'Crew Shed → Labourer → tools → till Plot 1 → Farmer → plant → water → first harvest. Only Plot 1 is open.',
-    keySystems: ['Crew Shed', 'Labourer', 'Basic Tools', 'Farmer', 'Plot 1', 'First Harvest'],
-    unlockReward: 'Storage Barn need unlocked · Chapter 2 infrastructure',
+    title: 'Look, I Can Grow Something! · Solo Founder',
+    fantasy: 'I am a solo founder with virgin land. Can I produce my first living plant and release clean oxygen? (I can grow something)',
+    desc: 'Explore all 8 chapters → uncover hidden jute tarp tool cache → till Plot 1 → plant seedling → water → first breath of clean O₂. All buildings and crew hiring are locked.',
+    keySystems: ['Solo Founder', 'Estate Exploration', 'Jute Tarp Cache', 'Hand Spade', 'Plot 1', 'Clean O2'],
+    unlockReward: 'Crew hiring unlocked · Chapter 2 Community Infrastructure',
     isUnlocked: function(s) { return true; },
     isComplete: function(s) {
-      // Completed upon first harvest OR when first crop is actively growing with irrigation/watering/O2 active
       if (!s.plots) return false;
       return s.plots.some(function(p){
         return (p.harvestsDone || 0) > 0 ||
@@ -9986,14 +10037,12 @@ var CHAPTER_DEFINITIONS = [
     getProgress: function(s) {
       if (this.isComplete(s)) return 100;
       var pts = 0;
-      if (s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built) pts += 12;
-      if (s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })) pts += 12;
-      if (s.basicToolsDiscovered) pts += 12;
-      if (s.plots && s.plots[0] && (s.plots[0].status === 'ready' || s.plots[0].status === 'growing' || s.plots[0].status === 'preparing')) pts += 12;
-      if (s.workers && s.workers.some(function(w){ return w.type === 'farmer'; })) pts += 12;
-      if (s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.treeType; })) pts += 20;
-      if (s.plots && s.plots.some(function(p){ return (p.harvestsDone || 0) > 0; })) pts += 20;
-      return Math.max(5, pts);
+      var expCount = (typeof getExploredChaptersCount === 'function') ? getExploredChaptersCount(s) : 0;
+      pts += Math.min(30, expCount * 3.75);
+      if (s.basicToolsDiscovered) pts += 25;
+      if (s.plots && s.plots[0] && (s.plots[0].status === 'ready' || s.plots[0].status === 'preparing')) pts += 20;
+      if (s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.treeType; })) pts += 25;
+      return Math.min(99, Math.max(5, Math.round(pts)));
     }
   },
   {
@@ -10149,10 +10198,11 @@ var CHAPTER_DEFINITIONS = [
 // ================= CHAPTER-BASED OBJECT UNLOCKS CATALOG =================
 var OBJECT_CHAPTER_UNLOCKS = {
   plot: { chapter: 1, name: 'Plot Cultivation', icon: '🌱', desc: 'Cultivate bedrock into fertile soil beds for botanical planting.' },
+  jute_tarp: { chapter: 1, name: 'Hidden Jute Tarp Tool Cache', icon: '⛏️', desc: 'Mystery cache covered in heavy jute tarpaulin beside farm shed boundary containing foundational hand tools.' },
   gate: { chapter: 2, name: 'Grand Farm Entrance Gate', icon: '⛩️', desc: 'Ashlar stone and timber perimeter gate establishing farm biosecurity and welcoming visitors.' },
-  crew_shed: { chapter: 1, name: 'Crew Shed & Depot', icon: '🏠', desc: 'Living quarters and tool equipment racks to recruit farm workers.' },
-  laborer: { chapter: 1, name: 'Field Laborer Crew', icon: '👷', desc: 'General farm and construction worker — prepare soil, carry materials, assist builds and harvests.' },
-  farmer: { chapter: 1, name: 'Farmer', icon: '👨‍🌾', desc: 'Trained agricultural operator — plant, water, fertilize, maintain crops, harvest.' },
+  crew_shed: { chapter: 2, name: 'Crew Shed & Depot', icon: '🏠', desc: 'Living quarters and tool equipment racks to recruit farm workers.' },
+  laborer: { chapter: 2, name: 'Field Laborer Crew', icon: '👷', desc: 'General farm and construction worker — prepare soil, carry materials, assist builds and harvests.' },
+  farmer: { chapter: 2, name: 'Farmer', icon: '👨‍🌾', desc: 'Trained agricultural operator — plant, water, fertilize, maintain crops, harvest.' },
   road: { chapter: 2, name: 'Main Arterial Road', icon: '⛩️', desc: 'Central paved thoroughfare connecting the entrance gate to the granary.' },
   subway: { chapter: 2, name: 'Feeder Subways & Footpaths', icon: '🛤️', desc: 'Stone paths connecting plots, storage, and fields to the arterial road.' },
   storage: { chapter: 2, name: 'Storage Granary Barn', icon: '🏚️', desc: 'Ventilated storage and cold cellar preventing harvest spoilage.' },
@@ -10332,8 +10382,8 @@ var FarmMissionAdapter = (function() {
   // Chapter intro WHY messages — must acknowledge (+5 XP) before missions in that chapter unlock
   var CHAPTER_INTROS = {
     1: {
-      title: '🌱 Start Your Farm',
-      body: 'You have land, a small team budget, and one plot. Dream path: Farm → World → Space → Moon → Mars.\n\nYou cannot build a farm alone. First establish a Crew Shed, hire a Labourer, get basic tools, till Plot 1, hire a Farmer, plant, water, and harvest.\n\nOnly Plot 1 is open in Chapter 1. Pond, Garden, Garage, and Wind Turbines stay locked until later chapters.'
+      title: '🌱 Look, I Can Grow Something!',
+      body: 'You stand on virgin bedrock as a solo founder. Dream path: Solo Founder → Community Farm → World → Moon → Mars.\n\nAll farm buildings and crew recruitment are strictly locked in Chapter 1. Your foundational task is exploring all 8 farm chapters (marked with animated 👆 hand icons) to survey your estate\'s long-term masterplan (+5 Exploration XP per unique chapter).\n\nOnce all 8 chapters are surveyed, uncover the hidden jute tarpaulin cache beside the farm shed boundary to retrieve your hand-forged spade. Till Plot 1, directly plant your first crop seedling, and water it to begin breathing clean O₂ into the atmosphere!'
     },
     2: {
       title: '🚜 Build the Farm',
@@ -10407,14 +10457,19 @@ var FarmMissionAdapter = (function() {
 
   function lockReasonForTask(taskId, s) {
     s = ensureFlags(s || state);
+    if (taskId === 'ch1_explore_chapters') {
+      return null;
+    }
+    if (taskId === 'ch1_uncover_tools') {
+      var expCnt = (typeof getExploredChaptersCount === 'function') ? getExploredChaptersCount(s) : 0;
+      if (expCnt < 8) return 'Explore all 8 chapters first (' + expCnt + '/8)';
+      return null;
+    }
     if (taskId === 'ch1_soil' || taskId === 'ch1_till') {
-      if (!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built)) return 'Needs Crew Shed';
-      if (!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; }))) return 'Needs Labourer';
       if (!s.basicToolsDiscovered) return 'Needs Digging Equipment';
       return null;
     }
     if (taskId === 'ch1_plant') {
-      if (!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; }))) return 'Needs Farmer';
       var p0 = s.plots && s.plots[0];
       if (!p0 || (p0.status !== 'ready' && p0.status !== 'growing')) return 'Needs soil prepared on Plot 1';
       return null;
@@ -10534,14 +10589,25 @@ function isPlotUnlocked(plotId, s) {
     return true;
   }
 
-  // Chapter 1: ONLY Plot 1 (index 0)
+  // Chapter 1: ONLY Plot 1 (index 0) is interactive
   var ch = s.currentChapter || 1;
   if (ch < 2) {
     return id === 0;
   }
 
-  // Chapter 2+: sequential unlock — previous plot must have life
-  if (id === 0) return true;
+  // Chapter 2+: Plot 1 & Plot 2 (index 1) are unlocked upon starting Chapter 2
+  if (id === 0 || id === 1) return true;
+
+  // Plot 3 (index 2) strictly requires both at least 1 Labourer AND 1 Farmer on staff!
+  if (id === 2) {
+    var hasLab = s.workers && s.workers.some(function(w){ return w.type === 'laborer'; });
+    var hasFar = s.workers && s.workers.some(function(w){ return w.type === 'farmer'; });
+    if (!hasLab || !hasFar) return false;
+    var prev = s.plots[1];
+    return !!(prev && (prev.treeType || prev.status === 'growing' || (prev.harvestsDone || 0) > 0 || prev.status === 'ready'));
+  }
+
+  // Plots 4-6: sequential unlock — previous plot must have life
   var prev = s.plots[id - 1];
   return !!(prev && (prev.treeType || prev.status === 'growing' || (prev.harvestsDone || 0) > 0 || prev.status === 'ready'));
 }
@@ -10566,92 +10632,123 @@ function notifyPlotUnlocked(plotId) {
   }
 }
 
+// ================= ESTATE EXPLORATION & 8-CHAPTER SURVEY SYSTEM =================
+function getExploredChaptersCount(s) {
+  s = s || (typeof state !== 'undefined' ? state : null);
+  if (!s) return 0;
+  if (s.allChaptersExplored) return 8;
+  var expCh = s.exploredChapters || {};
+  var expObj = s.exploredChapterObjects || {};
+  var count = 0;
+  for (var ch = 1; ch <= 8; ch++) {
+    var hasCh = !!expCh[ch];
+    if (!hasCh) {
+      if (ch === 1 && (expObj['plot'] || expObj['jute_tarp'] || s.basicToolsDiscovered || (s.plots && s.plots[0] && s.plots[0].status !== 'barren'))) hasCh = true;
+      else if (ch === 2 && (expObj['crew_shed'] || expObj['road'] || expObj['gate'] || expObj['storage'] || expObj['garage'])) hasCh = true;
+      else if (ch === 3 && (expObj['garden'] || expObj['crop_field'] || expObj['garden_walk'])) hasCh = true;
+      else if (ch === 4 && (expObj['pond'] || expObj['cattle_farm'])) hasCh = true;
+      else if (ch === 5 && (expObj['wind_turbine'] || expObj['energy_storage'] || expObj['engineer'])) hasCh = true;
+      else if (ch === 6 && (expObj['coffee_shop'] || expObj['juice_bar'] || expObj['market_promenade'])) hasCh = true;
+      else if (ch === 7 && expObj['eco_passport']) hasCh = true;
+      else if (ch === 8 && expObj['space_mission']) hasCh = true;
+    }
+    if (hasCh) count++;
+  }
+  return count;
+}
+
+function exploreChapterObject(key) {
+  if (!state) return;
+  var info = getObjectChapterInfo(key);
+  state.exploredChapterObjects = state.exploredChapterObjects || {};
+  state.exploredChapters = state.exploredChapters || {};
+  var ch = info.chapter || 1;
+  var isNewCh = !state.exploredChapters[ch];
+  state.exploredChapterObjects[key] = true;
+  state.exploredChapters[ch] = true;
+
+  if (isNewCh) {
+    if (typeof addKnowledgeXP === 'function') {
+      addKnowledgeXP(5, 'Explored Chapter ' + ch + ' Roadmap: ' + info.name);
+    } else {
+      state.xp = (state.xp || 0) + 5;
+    }
+    if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+    showNotification('🧭', 'Explored Chapter ' + ch + ': ' + info.name + ' (+5 XP)', 'achievement');
+    pushReport('🧭 Explored Chapter ' + ch + ' (' + info.name + ') · +5 Exploration XP');
+  }
+
+  var totalExplored = getExploredChaptersCount(state);
+  if (totalExplored >= 8 && !state.allChaptersExplored) {
+    state.allChaptersExplored = true;
+    showNotification('✨', 'All 8 Farm Chapters Explored! The hidden tool cache beside the farm shed is now ready to uncover!', 'achievement');
+    pushReport('✨ Masterplan Survey Complete! All 8 farm chapters surveyed. Jute tarpaulin tool cache unlocked.');
+  }
+
+  openChapterRoadmapForObject(key);
+  if (typeof render === 'function') render();
+  if (typeof requestSave === 'function') requestSave();
+}
+
 // ================= CHAPTER-BASED CHALLENGES & ACTIVITIES (CHAPTERS 1 → 8) =================
 var CHAPTER_CHALLENGES = {
   1: [
     {
-      id: 'ch1_crew_shed',
-      icon: '🏠',
-      title: 'Establish Crew Bunkhouse & Workshop',
-      shortTitle: 'Crew Shed',
-      subtitle: 'A regenerative estate cannot be managed alone! Build quarters and tool racks to assemble your workforce.',
-      whyTopic: 'crew_shed',
-      whyLabel: 'Why Crew Bunkhouse?',
-      reward: '+10 Knowledge XP · Workforce Depot',
+      id: 'ch1_explore_chapters',
+      icon: '🧭',
+      title: 'Survey Estate Masterplan (Chapters 1–8)',
+      shortTitle: 'Explore Chapters',
+      subtitle: 'Click locked farm facilities marked with animated 👆 hand icons to discover when each unlocks (+5 Exploration XP per unique chapter facility).',
+      whyTopic: 'overview',
+      whyLabel: 'Why Explore First?',
+      reward: '+5 XP per unique chapter (+40 XP total)',
       isUnlocked: function(s) { return true; },
-      isComplete: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
+      isComplete: function(s) { return (typeof getExploredChaptersCount === 'function' ? getExploredChaptersCount(s) : 0) >= 8; },
       getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Built</span>';
-        if (s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.building) {
-          var prog = formatTaskProgress(s.buildings.crew_shed.buildHours, (BUILDING_TYPES.crew_shed ? BUILDING_TYPES.crew_shed.buildHours : 2.0), 1.0);
-          return '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'crew_shed\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
-        }
-        var cCost = (typeof BUILDING_TYPES !== 'undefined' && BUILDING_TYPES.crew_shed) ? BUILDING_TYPES.crew_shed.cost : 140;
-        return '<button class="claim-btn active" onclick="startBuildBuilding(\'crew_shed\')" ' + (s.money < cCost ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build (€' + cCost + ')</button>';
+        var count = (typeof getExploredChaptersCount === 'function' ? getExploredChaptersCount(s) : 0);
+        if (count >= 8) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ 8/8 Explored</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openTaskMasterplanModal();" style="font-size:0.75rem;padding:5px 10px;background:linear-gradient(135deg,#0288D1,#01579B);">🧭 Survey (' + count + '/8)</button>';
       }
     },
     {
-      id: 'ch1_tools',
+      id: 'ch1_uncover_tools',
       icon: '⛏️',
-      title: 'Discover Basic Digging Equipment',
-      shortTitle: 'Basic Tools',
-      subtitle: 'Discover the traditional hand-forged trenching spade and broadfork. Learn why manual aeration wakes sleeping soil microbes without hardpan destruction.',
+      title: 'Uncover Hidden Jute Tarp Tool Cache',
+      shortTitle: 'Uncover Tools',
+      subtitle: 'At the bottom corner of the farm shed site sits a cache covered in heavy jute tarpaulin ("jute tirpal"). Uncover it to obtain your hand trenching spade & broadfork.',
       whyTopic: 'plot',
       whyLabel: 'Why Hand Tools?',
-      reward: '+10 Knowledge XP · Tool Mastery',
-      isUnlocked: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
+      reward: '+10 Knowledge XP · Hand Tillage Tools',
+      isUnlocked: function(s) { return (typeof getExploredChaptersCount === 'function' ? getExploredChaptersCount(s) : 0) >= 8; },
       isComplete: function(s) { return !!s.basicToolsDiscovered; },
       getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Discovered</span>';
-        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(null, \'crew_shed\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Crew Shed</button>';
-        return '<button class="claim-btn active" onclick="closePanel();openBasicEquipmentDiscoveryModal(0);" style="font-size:0.75rem;padding:5px 10px;background:linear-gradient(135deg,#2E7D32,#1B5E20);">⛏️ Discover Tools (+10 XP)</button>';
-      }
-    },
-    {
-      id: 'ch1_laborer',
-      icon: '👷',
-      title: 'Hire Your First Labourer',
-      shortTitle: 'Hire Labourer',
-      subtitle: 'You cannot build a farm alone. Hire a general worker for soil, materials, and basic builds.',
-      whyTopic: 'crew_shed',
-      whyLabel: 'Why Labour?',
-      reward: '+5 Knowledge XP · First Crew',
-      isUnlocked: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
-      isComplete: function(s) { return !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })); },
-      getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Hired</span>';
-        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Crew Shed</button>';
-        return '<button class="claim-btn active" onclick="hireWorker(\'laborer\')" style="font-size:0.75rem;padding:5px 10px;">Hire Labourer</button>';
+        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Uncovered</span>';
+        if (!this.isUnlocked(s)) {
+          var count = (typeof getExploredChaptersCount === 'function' ? getExploredChaptersCount(s) : 0);
+          return '<button class="secondary mini-btn" onclick="openJuteTarpModal()" style="font-size:0.72rem;padding:4px 8px;">🔒 Explore (' + count + '/8)</button>';
+        }
+        return '<button class="claim-btn active" onclick="openJuteTarpModal()" style="font-size:0.75rem;padding:5px 10px;background:linear-gradient(135deg,#2E7D32,#1B5E20);">✨ Uncover Cache (+10 XP)</button>';
       }
     },
     {
       id: 'ch1_soil',
       icon: '🌱',
-      title: 'Awaken the Bedrock',
+      title: 'Awaken the Bedrock · Till Plot 1',
       shortTitle: 'Till Plot 1',
-      subtitle: 'Till Plot 1 and aerate hard bedrock crust with your hand spade so roots can absorb moisture and microbial life can thrive.',
+      subtitle: 'Till Plot 1 and aerate compacted bedrock crust with your hand spade. Manual human aeration wakes sleeping soil microbes without hardpan destruction.',
       whyTopic: 'plot',
       whyLabel: 'Why Aerate Bedrock?',
-      reward: '+5 Knowledge XP · Soil Aeration',
-      isUnlocked: function(s) {
-        var hasShed = !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built);
-        var hasLaborer = !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; }));
-        return hasShed && hasLaborer && !!s.basicToolsDiscovered;
-      },
+      reward: '+10 Knowledge XP · Soil Aeration',
+      isUnlocked: function(s) { return !!s.basicToolsDiscovered; },
       isComplete: function(s) {
-        return !!(s.plots && s.plots.some(function(p){ return p.status === 'ready' || p.status === 'growing' || p.harvestsDone > 0; }));
+        return !!(s.plots && s.plots.some(function(p){ return p.status === 'ready' || p.status === 'growing' || (p.harvestsDone || 0) > 0; }));
       },
       getActionHtml: function(s) {
         if (this.isComplete(s)) {
-          return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Tilled</span>';
+          return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Tilled</span>';
         }
-        
         if (!this.isUnlocked(s)) {
-          var reason = 'Needs Digging Equipment';
-          if (!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built)) reason = 'Needs Crew Shed';
-          else if (!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; }))) reason = 'Needs Labourer';
-          else if (!s.basicToolsDiscovered) reason = 'Needs Digging Equipment';
-          return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;opacity:0.9;">🔒 ' + reason + '</button>';
+          return '<button class="secondary mini-btn" onclick="openJuteTarpModal()" style="font-size:0.72rem;padding:4px 8px;opacity:0.9;">🔒 Needs Digging Equipment</button>';
         }
         var p0 = s.plots && s.plots[0];
         if (p0 && p0.status === 'preparing') {
@@ -10659,49 +10756,27 @@ var CHAPTER_CHALLENGES = {
           var prepPct = Math.min(100, Math.round(((p0.taskHours || 0) / targetDur) * 100));
           return '<button class="claim-btn" onclick="openModal(\'plot\',0);" style="font-size:0.72rem;padding:4px 8px;">⛏️ Tilling (' + prepPct + '%)</button>';
         }
-        return '<button class="claim-btn active" data-prep="0" style="font-size:0.75rem;padding:5px 10px;">🌱 Till Plot 1 (€' + LABOR_COST + ')</button>';
-      }
-    },
-    {
-      id: 'ch1_farmer',
-      icon: '👨‍🌾',
-      title: 'Hire a Farmer',
-      shortTitle: 'Hire Farmer',
-      subtitle: 'Soil is ready. A farmer plants and tends crops with better yield and care.',
-      whyTopic: 'crew_shed',
-      whyLabel: 'Why a Farmer?',
-      reward: '+5 Knowledge XP · Farm Operator',
-      isUnlocked: function(s) {
-        var p0 = s.plots && s.plots[0];
-        return !!(p0 && (p0.status === 'ready' || p0.status === 'growing' || (p0.harvestsDone || 0) > 0));
-      },
-      isComplete: function(s) { return !!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; })); },
-      getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Hired</span>';
-        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Plot 1 prepared</button>';
-        return '<button class="claim-btn active" onclick="hireWorker(\'farmer\')" style="font-size:0.75rem;padding:5px 10px;">Hire Farmer</button>';
+        return '<button class="claim-btn active" data-prep="0" style="font-size:0.75rem;padding:5px 10px;">🌱 Till Plot 1 (3.5h)</button>';
       }
     },
     {
       id: 'ch1_plant',
       icon: '🍎',
-      title: 'First Breath of Life',
-      shortTitle: 'First Breath',
-      subtitle: 'Plant your first botanical seedling to begin photosynthesis and generate clean atmospheric O₂.',
+      title: 'First Breath of Life · Plant Crop',
+      shortTitle: 'Plant Crop',
+      subtitle: 'Plant your first botanical seedling into the prepared bed as a solo founder — no hired farmer required for your first tree.',
       whyTopic: 'overview',
       whyLabel: 'Why Photosynthesis?',
       reward: '+10 Knowledge XP · First Seedling',
       isUnlocked: function(s) {
-        var soilReady = !!(s.plots && s.plots[0] && (s.plots[0].status === 'ready' || s.plots[0].status === 'growing'));
-        var hasFarmer = !!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; }));
-        return soilReady && hasFarmer;
+        return !!(s.plots && s.plots[0] && (s.plots[0].status === 'ready' || s.plots[0].status === 'growing'));
       },
       isComplete: function(s) {
-        return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; }));
+        return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || (p.harvestsDone || 0) > 0; }));
       },
       getActionHtml: function(s) {
         if (this.isComplete(s)) {
-          return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Growing (+O₂)</span>';
+          return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Growing (+O₂)</span>';
         }
         if (!this.isUnlocked(s)) {
           return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Prepare Plot 1 soil first!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Tilled Soil</button>';
@@ -10712,45 +10787,113 @@ var CHAPTER_CHALLENGES = {
     {
       id: 'ch1_vitality',
       icon: '💧',
-      title: 'Vitality & Transpiration',
-      shortTitle: 'Hydration',
-      subtitle: 'Nurture your seedling through hydration and sunlight to release pure breathable oxygen.',
+      title: 'Vitality, Water & Breathable O₂',
+      shortTitle: 'Water & O₂',
+      subtitle: 'Water your seedling to initiate transpiration. Watch clean breathable oxygen bubble into the atmosphere and complete Chapter 1!',
       whyTopic: 'drip_irrigation',
       whyLabel: 'Why Transpiration?',
-      reward: '+5 Knowledge XP · Hydration Cycle',
+      reward: '+25 Chapter Completion XP · Chapter 1 Mastered',
       isUnlocked: function(s) {
-        return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; }));
+        return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || (p.harvestsDone || 0) > 0; }));
       },
       isComplete: function(s) {
-        return (s.totalO2AllTime || 0) > 0 || (s.plots && s.plots.some(function(p){ return (p.o2Produced && p.o2Produced > 0) || p.harvestsDone > 0; }));
+        return (s.totalO2AllTime || 0) > 0 || (s.plots && s.plots.some(function(p){ return (p.o2Produced && p.o2Produced > 0) || (p.waterHours && p.waterHours > 0) || (p.harvestsDone || 0) > 0; }));
       },
       getActionHtml: function(s) {
         if (this.isComplete(s)) {
-          return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active O₂</span>';
+          return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Active O₂</span>';
         }
         if (!this.isUnlocked(s)) {
           return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Plant a seedling first!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Seedling</button>';
         }
-        return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',0);" style="font-size:0.75rem;padding:5px 10px;">💧 Check Moisture</button>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',0);" style="font-size:0.75rem;padding:5px 10px;">💧 Water Plot 1</button>';
       }
     }
   ],
   2: [
     {
-      id: 'ch2_laborer',
-      icon: '👷',
-      title: 'Community Hands',
-      shortTitle: 'Hire Laborer',
-      subtitle: 'Recruit skilled field laborers to clear stubborn bedrock boulders and lay arterial infrastructure.',
+      id: 'ch2_crew_shed',
+      icon: '🏠',
+      title: 'Construct Crew Shed & Depot',
+      shortTitle: 'Crew Shed',
+      subtitle: 'Recruit 1–2 Field Labourers (€80) to construct the Crew Shed (3h with 1 worker, 1.5h with 2 workers; 2x speed) to house farm workers.',
       whyTopic: 'crew_shed',
-      whyLabel: 'Why Field Labor?',
-      reward: '+10 Knowledge XP · Field Laborer',
-      isUnlocked: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
-      isComplete: function(s) { return !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })); },
+      whyLabel: 'Why Crew Bunkhouse?',
+      reward: '+15 Knowledge XP · Workforce Depot',
+      isUnlocked: function(s) { return (s.currentChapter || 1) >= 2; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
       getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Recruited</span>';
-        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(1)" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Crew Shed</button>';
-        return '<button class="claim-btn active" onclick="hireWorker(\'laborer\')" ' + (s.money < 80 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Recruit (€80)</button>';
+        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Built</span>';
+        var b = s.buildings && s.buildings.crew_shed;
+        if (b && b.building) {
+          var assigned = (b.assignedLaborers && b.assignedLaborers.length) ? b.assignedLaborers.length : 1;
+          var prog = formatTaskProgress(b.buildHours, 3.0, assigned);
+          return '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'crew_shed\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + ' (' + assigned + '👷)</button>';
+        }
+        var hasLab = s.workers && s.workers.some(function(w){ return w.type === 'laborer'; });
+        if (!hasLab) {
+          return '<button class="claim-btn active" onclick="hireWorker(\'laborer\')" ' + (s.money < 80 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;background:#E65100;">Recruit Labourer (€80)</button>';
+        }
+        var cCost = (typeof BUILDING_TYPES !== 'undefined' && BUILDING_TYPES.crew_shed) ? BUILDING_TYPES.crew_shed.cost : 200;
+        return '<button class="claim-btn active" onclick="startBuildBuilding(\'crew_shed\')" ' + (s.money < cCost ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Crew Shed (€' + cCost + ')</button>';
+      }
+    },
+    {
+      id: 'ch2_hire_farmer',
+      icon: '👨‍🌾',
+      title: 'Recruit a Dedicated Farmer',
+      shortTitle: 'Hire Farmer',
+      subtitle: 'With Crew Shed built, recruit a trained agricultural specialist to plant and tend multi-plot beds.',
+      whyTopic: 'crew_shed',
+      whyLabel: 'Why Hire Farmers?',
+      reward: '+10 Knowledge XP · Agriculture Specialist',
+      isUnlocked: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
+      isComplete: function(s) { return !!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; })); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Farmer Hired</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Crew Shed</button>';
+        return '<button class="claim-btn active" onclick="hireWorker(\'farmer\')" style="font-size:0.75rem;padding:5px 10px;">Recruit Farmer (€100)</button>';
+      }
+    },
+    {
+      id: 'ch2_plot2',
+      icon: '🌿',
+      title: 'Expand into Plot 2 (Auto-Unlocked)',
+      shortTitle: 'Plot 2 Active',
+      subtitle: 'Plot 2 is automatically unlocked in Chapter 2! Till and sow your second bed to double food output.',
+      whyTopic: 'plot',
+      whyLabel: 'Why Plot Expansion?',
+      reward: '+10 Knowledge XP · Estate Expansion',
+      isUnlocked: function(s) { return (s.currentChapter || 1) >= 2; },
+      isComplete: function(s) {
+        return !!(s.plots && s.plots[1] && (s.plots[1].treeType || s.plots[1].status === 'growing' || (s.plots[1].harvestsDone || 0) > 0));
+      },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Plot 2 Active</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',1);" style="font-size:0.75rem;padding:5px 10px;">Open Plot 2</button>';
+      }
+    },
+    {
+      id: 'ch2_plot3',
+      icon: '🌾',
+      title: 'Cultivate Plot 3 (Requires Labourer & Farmer)',
+      shortTitle: 'Plot 3 (Full Team)',
+      subtitle: 'Plot 3 strictly requires a collaborative crew: recruit at least 1 Field Labourer AND 1 Farmer to unlock and cultivate this bed.',
+      whyTopic: 'plot',
+      whyLabel: 'Why Collaborative Crew?',
+      reward: '+15 Knowledge XP · Crew Synergy',
+      isUnlocked: function(s) {
+        var hasLab = s.workers && s.workers.some(function(w){ return w.type === 'laborer'; });
+        var hasFar = s.workers && s.workers.some(function(w){ return w.type === 'farmer'; });
+        return hasLab && hasFar;
+      },
+      isComplete: function(s) {
+        return !!(s.plots && s.plots[2] && (s.plots[2].treeType || s.plots[2].status === 'growing' || (s.plots[2].harvestsDone || 0) > 0));
+      },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Plot 3 Active</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Plot 3 requires both 1 Labourer and 1 Farmer!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Labourer + Farmer</button>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',2);" style="font-size:0.75rem;padding:5px 10px;">Open Plot 3</button>';
       }
     },
     {
@@ -10758,15 +10901,15 @@ var CHAPTER_CHALLENGES = {
       icon: '🪨',
       title: 'The Great Boulder Heist',
       shortTitle: 'Clear Rocks',
-      subtitle: 'Ancient glacial boulders block transport corridors! Mobilize labor with trenching spades to clear road access.',
+      subtitle: 'Ancient glacial boulders block transport corridors! Mobilize labor with trenching spades to clear road access and produce crushed rock ballast.',
       whyTopic: 'road',
       whyLabel: 'Why Clear Boulders?',
       reward: '+15 Knowledge XP · Route Cleared',
       isUnlocked: function(s) { return !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })); },
       isComplete: function(s) { return !!s.rocksCleared; },
       getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Cleared</span>';
-        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(2)" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Laborer</button>';
+        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Cleared</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Recruit a Field Labourer first!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Labourer</button>';
         if (s.rocksClearing) {
           var prog = formatTaskProgress(s.rocksClearHours, 2.0, 1.0);
           return '<button class="claim-btn" onclick="openModal(\'building\',\'road\');" style="background:#5D4037;font-size:0.72rem;padding:4px 8px;">⛏️ ' + prog.display + '</button>';
@@ -10779,15 +10922,15 @@ var CHAPTER_CHALLENGES = {
       icon: '⛩️',
       title: 'The Biosecurity Gateway',
       shortTitle: 'Construct Gate',
-      subtitle: 'Construct an ashlar stone & timber perimeter gate to secure agroforestry saplings against herbivore intrusion and welcome eco-tourists.',
+      subtitle: 'Construct an ashlar stone & timber perimeter gate (1–2 labourers) to secure agroforestry saplings against herbivore intrusion.',
       whyTopic: 'main_gate',
       whyLabel: 'Why Biosecurity Gate?',
       reward: '+15 Knowledge XP · Farm Biosecurity',
       isUnlocked: function(s) { return !!s.rocksCleared; },
       isComplete: function(s) { return !!(s.buildings && s.buildings.gate && s.buildings.gate.built); },
       getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Built</span>';
-        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(null, \'gate\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Clear Boulders First</button>';
+        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Built</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Clear boulders first!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Clear Boulders First</button>';
         if (s.buildings && s.buildings.gate && s.buildings.gate.building) {
           var gLab = (s.buildings.gate.assignedLaborers && s.buildings.gate.assignedLaborers.length) ? s.buildings.gate.assignedLaborers.length : 1;
           var prog = formatTaskProgress(s.buildings.gate.buildHours, (BUILDING_TYPES.gate ? BUILDING_TYPES.gate.buildHours : 2.0), Math.min(2.0, Math.max(1.0, gLab)));
@@ -10801,16 +10944,16 @@ var CHAPTER_CHALLENGES = {
       icon: '🛣️',
       title: 'Arterial Lifeline',
       shortTitle: 'Arterial Road',
-      subtitle: 'Pave a durable crushed-stone arterial highway connecting the entrance gate directly to the granary.',
+      subtitle: 'Pave a durable crushed-stone arterial highway connecting the entrance gate directly to the granary (requires Gate + 2 Labourers + Crushed Rock Ballast).',
       whyTopic: 'road',
       whyLabel: 'Why Arterial Roads?',
       reward: '+15 Knowledge XP · Road Infrastructure',
-      isUnlocked: function(s) { return !!s.rocksCleared && (!s.buildings || !s.buildings.gate || s.buildings.gate.built); },
+      isUnlocked: function(s) { return !!s.rocksCleared && (!!(s.buildings && s.buildings.gate && s.buildings.gate.built)); },
       isComplete: function(s) { return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
       getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Paved</span>';
-        if (!s.rocksCleared) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(null, \'road\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Clear Rocks First</button>';
-        if (s.buildings && s.buildings.gate && !s.buildings.gate.built) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(null, \'road\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Build Gate First</button>';
+        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Paved</span>';
+        if (!s.rocksCleared) return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Clear rocks first!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Clear Rocks First</button>';
+        if (s.buildings && s.buildings.gate && !s.buildings.gate.built) return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Build Entrance Gate first!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Build Gate First</button>';
         if (s.buildings && s.buildings.road && s.buildings.road.building) {
           var rdLab = (s.buildings.road.assignedLaborers && s.buildings.road.assignedLaborers.length) ? s.buildings.road.assignedLaborers.length : 2;
           var prog = formatTaskProgress(s.buildings.road.buildHours, BUILDING_TYPES.road.buildHours, Math.max(1, rdLab/2));
@@ -10822,69 +10965,44 @@ var CHAPTER_CHALLENGES = {
     {
       id: 'ch2_storage',
       icon: '🏚️',
-      title: 'The Spoilage Crisis',
+      title: 'The Spoilage Crisis · Storage Granary',
       shortTitle: 'Granary Barn',
-      subtitle: 'Perishable harvests rot within hours! Erect a ventilated granary barn and cold cellar to safeguard food from rot.',
+      subtitle: 'Perishable harvests rot without cold ventilation! Build the Storage Granary Barn & Cold Cellar (1–2 labourers; 3h or 1.5h). Timely build awards +25 Bonus XP!',
       whyTopic: 'storage',
       whyLabel: 'Why Granary Storage?',
-      reward: '+20 Knowledge XP · Cold Cellar Preservation',
+      reward: '+20 Knowledge XP (+25 Bonus XP) · Cold Cellar',
       isUnlocked: function(s) { return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
       isComplete: function(s) { return !!(s.storage && s.storage.built); },
       getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active</span>';
-        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(3)" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Main Road</button>';
+        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Active</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Pave Main Road first!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Main Road</button>';
         if (s.storage && s.storage.building) {
-          var prog = formatTaskProgress(s.storage.buildHours, STORAGE_BUILD_HOURS, 1.0);
-          return '<button class="claim-btn" onclick="closePanel();openModal(\'storage\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
+          var sLab = (s.storage.assignedLaborers && s.storage.assignedLaborers.length) ? s.storage.assignedLaborers.length : 1;
+          var prog = formatTaskProgress(s.storage.buildHours, STORAGE_BUILD_HOURS, sLab);
+          return '<button class="claim-btn" onclick="closePanel();openModal(\'storage\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + ' (' + sLab + '👷)</button>';
         }
         return '<button class="claim-btn active" data-buildstorage="1" ' + (s.money < 250 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build (€250)</button>';
       }
     },
     {
-      id: 'ch2_expand_plots',
-      icon: '🌾',
-      title: 'Expand the Farm Beds',
-      shortTitle: 'Plots 2–6',
-      subtitle: 'Plot 1 proved life can grow. Unlock and plant Plots 2 through 6 sequentially — each living bed opens the next. Hire hands and accelerate with 60× / 180× when you are ready.',
-      whyTopic: 'plot',
-      whyLabel: 'Why Expand Plots?',
-      reward: '+15 Knowledge XP · Farm Expansion',
+      id: 'ch2_garage',
+      icon: '🚜',
+      title: 'Equipment Depot & Mechanization',
+      shortTitle: 'Farm Garage',
+      subtitle: 'Unlock and construct the Farm Garage after Storage and Main Road are complete to house tractors and haulers.',
+      whyTopic: 'garage',
+      whyLabel: 'Why Farm Garage?',
+      reward: '+20 Knowledge XP · Mechanized Logistics',
       isUnlocked: function(s) {
-        return !!(s.plots && s.plots[0] && (s.plots[0].treeType || s.plots[0].status === 'growing' || (s.treesPlanted || 0) > 0));
+        var roadOk = !!(s.buildings && s.buildings.road && s.buildings.road.built);
+        var storageOk = !!(s.storage && s.storage.built);
+        return roadOk && storageOk;
       },
-      isComplete: function(s) {
-        if (!s.plots) return false;
-        var living = 0;
-        for (var i = 0; i < s.plots.length; i++) {
-          if (s.plots[i] && (s.plots[i].treeType || s.plots[i].status === 'growing' || (s.plots[i].harvestsDone || 0) > 0)) living++;
-        }
-        return living >= 6;
-      },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.garage && s.buildings.garage.built); },
       getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ All 6 plots alive</span>';
-        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Plant Plot 1 first (Chapter 1).\',\'plot\',0)" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Plot 1</button>';
-        var living = 0;
-        for (var i = 0; i < (s.plots || []).length; i++) {
-          if (s.plots[i] && (s.plots[i].treeType || s.plots[i].status === 'growing')) living++;
-        }
-        var next = Math.min(5, living);
-        return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',' + next + ')" style="font-size:0.75rem;padding:5px 10px;">Open Plot ' + (next + 1) + ' (' + living + '/6)</button>';
-      }
-    },
-    {
-      id: 'ch2_hire_farmer',
-      icon: '🧑‍🌾',
-      title: 'Hire a Farmer',
-      shortTitle: 'Hire Farmer',
-      subtitle: 'A farmer waters, weeds, and harvests while you plan the next bed. Pair with 60× or 180× speed to watch the farm breathe.',
-      whyTopic: 'crew_shed',
-      whyLabel: 'Why Hire Farmers?',
-      reward: '+10 Knowledge XP · Workforce',
-      isUnlocked: function(s) { return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
-      isComplete: function(s) { return !!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; })); },
-      getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Farmer hired</span>';
-        return '<button class="claim-btn active" onclick="hireWorker(\'farmer\')" style="font-size:0.75rem;padding:5px 10px;">Recruit Farmer</button>';
+        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Built</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Road + Storage</button>';
+        return '<button class="claim-btn active" onclick="startBuildBuilding(\'garage\')" ' + (s.money < BUILDING_TYPES.garage.cost ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Garage (€' + BUILDING_TYPES.garage.cost + ')</button>';
       }
     }
   ],
@@ -11704,11 +11822,23 @@ function selectChapterTab(ch) {
 function updateChapterProgression() {
   if (!state) return;
   if (!state.flags) state.flags = { firstHarvest: false, firstO2: false, energySurplusDetected: false };
+  var prevChapter = state.currentChapter || 1;
   for (var i = CHAPTER_DEFINITIONS.length - 1; i >= 0; i--) {
     if (CHAPTER_DEFINITIONS[i].isUnlocked(state)) {
       state.currentChapter = CHAPTER_DEFINITIONS[i].chapter;
       break;
     }
+  }
+  // Detect Chapter 1 completion -> trigger celebration modal +25 XP
+  if (prevChapter === 1 && state.currentChapter >= 2 && !state.ch1CompletedModalShown) {
+    state.ch1CompletedModalShown = true;
+    if (typeof addKnowledgeXP === 'function') {
+      addKnowledgeXP(25, 'Chapter 1 Mastered: Look, I Can Grow Something!');
+    } else {
+      state.xp = (state.xp || 0) + 25;
+    }
+    if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+    openChapter1CompletionModal();
   }
   // Derive contextual flags from existing world (migration-friendly)
   if (state.plots && state.plots.some(function(p){ return (p.harvestsDone||0) > 0 || (state.harvestCount||0) > 0; })) {
@@ -11719,6 +11849,7 @@ function updateChapterProgression() {
     state.flags.energySurplusDetected = true;
   }
   calculateSustainabilityScore();
+  triggerHarvestSpoilageWarningIfNeeded();
 }
 
 function calculateSustainabilityScore() {
@@ -17484,9 +17615,29 @@ function advanceGame(dh){
   }
 
   if (state.storage.building){
-    state.storage.buildHours += dh;
+    var sAssigned = (state.storage.assignedLaborers && state.storage.assignedLaborers.length) ? state.storage.assignedLaborers.length : 1;
+    var sMult = Math.min(2.0, Math.max(1.0, sAssigned)); // 1 worker = 3h, 2 workers = 1.5h
+    state.storage.buildHours += dh * sMult;
     if (state.storage.buildHours >= STORAGE_BUILD_HOURS){
-      state.storage.building=false; state.storage.built=true; state.storage.capacity=STORAGE_BASE_CAPACITY; state.storage.level=1;
+      state.storage.building = false;
+      state.storage.built = true;
+      state.storage.capacity = STORAGE_BASE_CAPACITY;
+      state.storage.level = 1;
+      if (state.storage.assignedLaborers && state.storage.assignedLaborers.length){
+        state.storage.assignedLaborers.forEach(function(wid){
+          var w = state.workers.find(function(wk){ return wk.id === wid; });
+          if (w) w.assignedBuilding = null;
+        });
+        state.storage.assignedLaborers = [];
+      }
+      if (state.spoilageWarningActive || state.currentChapter === 2){
+        if (typeof addKnowledgeXP === 'function'){
+          addKnowledgeXP(25, 'Harvest Quality Preserved: Storage Built Timely');
+        } else {
+          state.xp = (state.xp || 0) + 25;
+        }
+        showNotification('🏚️', 'Storage Granary Barn Built! +25 Bonus XP: Harvest Quality Preserved from Spoilage', 'achievement');
+      }
       pushReport('🏚 Storage Room construction complete! Capacity: €'+state.storage.capacity+' of harvested value.');
     }
   }
@@ -17508,12 +17659,15 @@ function advanceGame(dh){
       } else if (key === 'road'){
         var assignedLab = (b.assignedLaborers && b.assignedLaborers.length) ? b.assignedLaborers.length : 2;
         laborSpeedMult = Math.max(1.0, assignedLab / 2);
+      } else if (key === 'crew_shed'){
+        var assignedLab = (b.assignedLaborers && b.assignedLaborers.length) ? b.assignedLaborers.length : 1;
+        laborSpeedMult = Math.min(2.0, Math.max(1.0, assignedLab)); // 1 laborer = 1x (3h), 2 laborers = 2x (1.5h)
       }
       b.buildHours += dh * laborSpeedMult;
       if (b.buildHours >= def.buildHours){
         if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
         b.building=false; b.built=true;
-        if ((key === 'gate' || key === 'road') && b.assignedLaborers && b.assignedLaborers.length){
+        if ((key === 'gate' || key === 'road' || key === 'crew_shed') && b.assignedLaborers && b.assignedLaborers.length){
           b.assignedLaborers.forEach(function(wid){
             var w = state.workers.find(function(wk){ return wk.id === wid; });
             if (w){
@@ -18345,6 +18499,378 @@ function getPlotPrepDurationHours(s){
   return 3.5;
 }
 
+// ================= 3D ISOMETRIC JUTE TARPAULIN CACHE & MODALS =================
+function drawJuteTarpScene(uncovered, unlocked){
+  if (uncovered){
+    return '<svg viewBox="0 0 100 80" class="jute-tarp-scene-svg" style="width:100%;height:100%;overflow:visible;">' +
+      '<defs>' +
+        '<linearGradient id="openChestWood" x1="0%" y1="0%" x2="100%" y2="100%">' +
+          '<stop offset="0%" stop-color="#8D6E63"/>' +
+          '<stop offset="100%" stop-color="#4E342E"/>' +
+        '</linearGradient>' +
+      '</defs>' +
+      '<!-- Ground footprint -->' +
+      '<ellipse cx="50" cy="58" rx="34" ry="14" fill="rgba(30,20,10,0.28)"/>' +
+      '<!-- Folded burlap tarpaulin on side -->' +
+      '<path d="M18,52 Q22,46 32,50 Q28,58 18,52 Z" fill="#A1887F" stroke="#5D4037" stroke-width="1"/>' +
+      '<path d="M20,54 Q25,49 31,52" stroke="#4E342E" stroke-width="0.8" fill="none"/>' +
+      '<!-- Open wooden chest base -->' +
+      '<polygon points="32,44 68,44 82,56 46,56" fill="url(#openChestWood)" stroke="#3E2723" stroke-width="1.2"/>' +
+      '<polygon points="32,44 46,56 46,68 32,56" fill="#3E2723"/>' +
+      '<polygon points="46,56 82,56 82,68 46,68" fill="#4E342E" stroke="#2D1B13" stroke-width="0.8"/>' +
+      '<!-- Interior bedding (straw) -->' +
+      '<ellipse cx="57" cy="50" rx="14" ry="4.5" fill="#FFE082"/>' +
+      '<!-- Gleaming hand-forged spade & broadfork inside -->' +
+      '<line x1="42" y1="55" x2="72" y2="45" stroke="#90A4AE" stroke-width="2.2" stroke-linecap="round"/>' +
+      '<line x1="68" y1="46" x2="76" y2="43" stroke="#ECEFF1" stroke-width="3" stroke-linecap="round"/>' +
+      '<circle cx="74" cy="44" r="1.5" fill="#FFD54F"/>' +
+      '<!-- Sparkle stars -->' +
+      '<text x="65" y="38" font-size="9" fill="#FFD54F">✨</text>' +
+    '</svg>';
+  }
+
+  // Covered with heavy jute burlap tarpaulin ("jute tirpal")
+  var auraGlow = unlocked ? 'filter:drop-shadow(0 0 10px rgba(255,215,0,0.85));' : '';
+  return '<svg viewBox="0 0 100 80" class="jute-tarp-scene-svg" style="width:100%;height:100%;overflow:visible;' + auraGlow + '">' +
+    '<defs>' +
+      '<linearGradient id="juteBurlapTop" x1="0%" y1="0%" x2="100%" y2="100%">' +
+        '<stop offset="0%" stop-color="#D7CCC8"/>' +
+        '<stop offset="40%" stop-color="#BCAAA4"/>' +
+        '<stop offset="100%" stop-color="#8D6E63"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="juteBurlapSide" x1="0%" y1="0%" x2="100%" y2="100%">' +
+        '<stop offset="0%" stop-color="#8D6E63"/>' +
+        '<stop offset="100%" stop-color="#4E342E"/>' +
+      '</linearGradient>' +
+    '</defs>' +
+    '<!-- Ground footprint shadow -->' +
+    '<ellipse cx="50" cy="62" rx="36" ry="14" fill="rgba(25,15,8,0.32)"/>' +
+    '<!-- Peg stakes pinned into earth -->' +
+    '<circle cx="22" cy="62" r="2.2" fill="#263238"/>' +
+    '<circle cx="78" cy="62" r="2.2" fill="#263238"/>' +
+    '<circle cx="48" cy="71" r="2.2" fill="#263238"/>' +
+    '<circle cx="52" cy="46" r="2.2" fill="#263238"/>' +
+    '<!-- 3D Isometric Drape Geometry: Burlap tarpaulin folded over crate -->' +
+    '<polygon points="26,50 50,34 74,44 50,60" fill="url(#juteBurlapTop)" stroke="#5D4037" stroke-width="1.2"/>' +
+    '<polygon points="26,50 50,60 48,70 24,60" fill="url(#juteBurlapSide)" stroke="#3E2723" stroke-width="1"/>' +
+    '<polygon points="50,60 74,44 76,54 48,70" fill="#4E342E" stroke="#2E1B13" stroke-width="1"/>' +
+    '<!-- Burlap rough fiber weave pattern (horizontal & diagonal folds) -->' +
+    '<path d="M28,52 Q50,40 72,46" stroke="#6D4C41" stroke-width="0.8" fill="none" opacity="0.6"/>' +
+    '<path d="M30,55 Q50,45 70,50" stroke="#5D4037" stroke-width="0.8" fill="none" opacity="0.6"/>' +
+    '<path d="M36,44 L64,52" stroke="#8D6E63" stroke-width="0.8" stroke-dasharray="2,2" fill="none"/>' +
+    '<path d="M40,39 L60,56" stroke="#8D6E63" stroke-width="0.8" stroke-dasharray="2,2" fill="none"/>' +
+    '<!-- Heavy hemp rope cross-ties -->' +
+    '<line x1="26" y1="50" x2="74" y2="44" stroke="#3E2723" stroke-width="1.8" stroke-dasharray="3,1.5"/>' +
+    '<line x1="50" y1="34" x2="48" y2="70" stroke="#3E2723" stroke-width="1.8" stroke-dasharray="3,1.5"/>' +
+    (unlocked ?
+      '<!-- Glowing unlock sparkles -->' +
+      '<circle cx="50" cy="32" r="3" fill="#FFD54F" opacity="0.85"/>' +
+      '<text x="44" y="26" font-size="11" fill="#FFB300">✨</text>' :
+      '<!-- Padlock Badge -->' +
+      '<g transform="translate(42, 42)">' +
+        '<rect width="16" height="13" rx="2" fill="#FFA000" stroke="#E65100" stroke-width="0.8"/>' +
+        '<path d="M4,0 A4,4 0 0,1 12,0 L12,4 L4,4 Z" fill="none" stroke="#37474F" stroke-width="1.8"/>' +
+        '<circle cx="8" cy="6.5" r="1.5" fill="#212121"/>' +
+      '</g>'
+    ) +
+  '</svg>';
+}
+
+function juteTarpSpotHtml(){
+  if (!state) return '';
+  var spot = (typeof JUTE_TARP_SPOT !== 'undefined') ? JUTE_TARP_SPOT : { top: 72.0, left: 10.5, w: 7.5, h: 13.0 };
+  var uncovered = !!state.juteTarpUncovered || !!state.basicToolsDiscovered;
+  var expCount = (typeof getExploredChaptersCount === 'function') ? getExploredChaptersCount(state) : 0;
+  var unlocked = (expCount >= 8) || !!state.allChaptersExplored;
+  var inner = drawJuteTarpScene(uncovered, unlocked);
+
+  var tagText = uncovered ? '⛏️ Hand Tools' : (unlocked ? '✨ Uncover Cache!' : '🔒 Mystery Cache (' + expCount + '/8)');
+  var tagIcon = uncovered ? '⛏️' : (unlocked ? '✨' : '🔒');
+
+  return '<div class="plot-spot village-building-card jute-tarp-spot-card ' + (uncovered ? 'is-uncovered' : (unlocked ? 'is-ready-uncover' : 'is-locked')) + '" ' +
+    'style="top:' + spot.top + '%;left:' + spot.left + '%;width:' + spot.w + '%;height:' + spot.h + '%;cursor:pointer;z-index:22;" ' +
+    'onclick="openJuteTarpModal()" title="' + tagText + '">' +
+    '<div class="plot-label tag-pos-south" title="' + tagText + '">' +
+      '<span class="plot-label-icon">' + tagIcon + '</span>' +
+      '<span class="plot-label-text">' + tagText + '</span>' +
+    '</div>' +
+    inner +
+  '</div>';
+}
+
+function openJuteTarpModal(){
+  if (typeof hideGameTooltip === 'function') hideGameTooltip();
+  var expCount = (typeof getExploredChaptersCount === 'function') ? getExploredChaptersCount(state) : 0;
+  var isUnlocked = (expCount >= 8) || !!state.allChaptersExplored;
+
+  if (state.basicToolsDiscovered || state.juteTarpUncovered){
+    openBasicEquipmentDiscoveryModal(0);
+    return;
+  }
+
+  activeModal = {
+    type: 'jute_tarp',
+    unlocked: isUnlocked,
+    expCount: expCount
+  };
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+  render();
+}
+
+function juteTarpModalHtml(){
+  var expCount = (typeof getExploredChaptersCount === 'function') ? getExploredChaptersCount(state) : 0;
+  var isUnlocked = (expCount >= 8) || !!state.allChaptersExplored;
+  var svg = drawJuteTarpScene(false, isUnlocked);
+
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:560px;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.32);">' +
+      '<div style="background:linear-gradient(135deg,#5D4037,#3E2723);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<span style="font-size:1.5rem;">' + (isUnlocked ? '✨' : '🔒') + '</span>' +
+          '<div>' +
+            '<h2 style="margin:0;font-size:1.15rem;color:#fff;font-weight:800;">' + (isUnlocked ? 'Mystery Cache Unlocked!' : 'Mystery Cache (Jute Tarpaulin)') + '</h2>' +
+            '<div style="font-size:0.75rem;color:#D7CCC8;">Beside Farm Shed Boundary · Hidden Digging Equipment</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:800;">✕</button>' +
+      '</div>' +
+      '<div class="modal-body-scroll" style="padding:16px 20px;max-height:75vh;overflow-y:auto;">' +
+        '<div style="display:flex;justify-content:center;align-items:center;background:linear-gradient(180deg,#EFEBE9,#ECEFF1);border-radius:14px;padding:12px;margin-bottom:14px;border:1px solid rgba(93,64,55,0.25);">' +
+          '<div style="width:180px;height:120px;">' + svg + '</div>' +
+        '</div>' +
+        (isUnlocked ?
+          '<div style="background:#E8F5E9;border:1px solid #A5D6A7;border-radius:10px;padding:12px;margin-bottom:14px;">' +
+            '<div style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:0.86rem;color:#1B5E20;margin-bottom:4px;">' +
+              '<span>✨</span> ALL 8 CHAPTERS SURVEYED!' +
+            '</div>' +
+            '<div style="font-size:0.80rem;color:#263238;line-height:1.45;">' +
+              'You have surveyed all 8 chapters of the regenerative masterplan! You understand where this journey leads — from bedrock aeration to closed-loop space biospheres.<br><br>' +
+              'Pull back the weatherproof hemp ropes and lift the jute tarpaulin to equip your hand-forged trenching spade and broadfork.' +
+            '</div>' +
+          '</div>' :
+          '<div style="background:#FFF3E0;border:1px solid #FFE082;border-radius:10px;padding:12px;margin-bottom:14px;">' +
+            '<div style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:0.86rem;color:#E65100;margin-bottom:4px;">' +
+              '<span>🔒</span> EXPLORE ALL 8 CHAPTERS FIRST' +
+            '</div>' +
+            '<div style="font-size:0.80rem;color:#4E342E;line-height:1.45;">' +
+              'A sturdy weatherproof jute tarpaulin protects something buried beside the farm shed boundary.<br><br>' +
+              'Before you begin digging, explore all 8 farm chapters (marked with animated 👆 hand icons) to understand your estate\'s long-term sustainability masterplan!<br><br>' +
+              '<b>Current Exploration:</b> ' + expCount + ' of 8 chapters surveyed (+5 Exploration XP per unique chapter).' +
+            '</div>' +
+            '<div style="height:8px;background:#E0E0E0;border-radius:4px;overflow:hidden;margin-top:10px;">' +
+              '<div style="height:100%;width:' + Math.round((expCount / 8) * 100) + '%;background:#0288D1;transition:width 0.3s ease;"></div>' +
+            '</div>' +
+          '</div>'
+        ) +
+        '<div style="display:flex;justify-content:flex-end;gap:10px;align-items:center;border-top:1px solid #ECEFF1;padding-top:12px;">' +
+          (isUnlocked ?
+            '<button class="primary" onclick="uncoverJuteTarpAction();" style="padding:10px 20px;font-size:0.92rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);box-shadow:0 4px 12px rgba(27,94,32,0.35);font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">⛏️ Uncover Hand Spade &amp; Broadfork (+10 XP)</button>' :
+            '<button class="primary" onclick="closeModal();openTaskMasterplanModal();" style="padding:9px 18px;font-size:0.88rem;background:#0288D1;font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">🧭 Survey Masterplan Roadmap</button>'
+          ) +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  return html;
+}
+
+function uncoverJuteTarpAction(){
+  if (!state) return;
+  state.juteTarpUncovered = true;
+  state.basicToolsDiscovered = true;
+  if (typeof addKnowledgeXP === 'function'){
+    addKnowledgeXP(10, 'Uncovered Traditional Hand-Forged Spade from Jute Tarp Cache');
+  } else {
+    state.xp = (state.xp || 0) + 10;
+  }
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+  showNotification('⛏️', 'Traditional Hand Spade uncovered & equipped! (+10 XP) Soil aeration unlocked.', 'achievement');
+  pushReport('✨ Jute tarpaulin pulled back! Equipped hand-forged trenching spade & broadfork (+10 Knowledge XP).');
+  openBasicEquipmentDiscoveryModal(0);
+}
+
+function openChapterRoadmapForObject(key){
+  activeModal = {
+    type: 'chapter_roadmap',
+    objectKey: key
+  };
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+  render();
+}
+
+function chapterRoadmapModalHtml(objectKey){
+  var key = objectKey || 'plot';
+  var info = getObjectChapterInfo(key);
+  var expCount = (typeof getExploredChaptersCount === 'function') ? getExploredChaptersCount(state) : 0;
+  var chDef = CHAPTER_DEFINITIONS.find(function(c){ return c.chapter === info.chapter; }) || CHAPTER_DEFINITIONS[0];
+
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:560px;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.32);">' +
+      '<div style="background:linear-gradient(135deg,#0288D1,#01579B);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<span style="font-size:1.6rem;">' + (info.icon || '🌾') + '</span>' +
+          '<div>' +
+            '<h2 style="margin:0;font-size:1.15rem;color:#fff;font-weight:800;">' + info.name + '</h2>' +
+            '<div style="font-size:0.75rem;color:#B3E5FC;">Chapter ' + info.chapter + ' Roadmap · ' + chDef.title + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:800;">✕</button>' +
+      '</div>' +
+      '<div class="modal-body-scroll" style="padding:16px 20px;max-height:75vh;overflow-y:auto;">' +
+        '<div style="background:#E1F5FE;border:1px solid #81D4FA;border-radius:12px;padding:12px;margin-bottom:14px;">' +
+          '<div style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:0.86rem;color:#01579B;margin-bottom:4px;">' +
+            '<span>🧭</span> CHAPTER ' + info.chapter + ' UNLOCK STATUS' +
+          '</div>' +
+          '<div style="font-size:0.80rem;color:#263238;line-height:1.45;">' +
+            info.desc +
+          '</div>' +
+        '</div>' +
+        '<div style="background:#F1F8E9;border:1px solid #C5E1A5;border-radius:12px;padding:12px;margin-bottom:14px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+            '<span style="font-weight:800;font-size:0.82rem;color:#2E7D32;">🗺️ Masterplan Exploration Progress</span>' +
+            '<span style="font-weight:900;font-size:0.82rem;color:#1B5E20;">' + expCount + ' / 8 Chapters</span>' +
+          '</div>' +
+          '<div style="height:8px;background:#E0E0E0;border-radius:4px;overflow:hidden;">' +
+            '<div style="height:100%;width:' + Math.round((expCount / 8) * 100) + '%;background:#4CAF50;transition:width 0.3s ease;"></div>' +
+          '</div>' +
+          '<div style="font-size:0.74rem;color:#558B2F;margin-top:6px;">' +
+            (expCount >= 8 ?
+              '✨ All 8 chapters explored! The jute tarpaulin tool cache beside the farm shed is unlocked!' :
+              'Click other locked facilities marked with 👆 to survey all 8 chapters and unlock the hidden tool cache!') +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid #ECEFF1;padding-top:12px;">' +
+          '<button class="secondary mini-btn" onclick="closeModal();openTaskMasterplanModal();" style="padding:9px 16px;font-size:0.84rem;font-weight:700;">📋 Full Masterplan</button>' +
+          (expCount >= 8 && !state.basicToolsDiscovered ?
+            '<button class="primary" onclick="closeModal();openJuteTarpModal();" style="padding:9px 18px;font-size:0.88rem;background:#2E7D32;font-weight:800;border:none;border-radius:10px;color:#fff;">⛏️ Open Jute Tarp Cache ➔</button>' :
+            '<button class="primary" onclick="closeModal();" style="padding:9px 18px;font-size:0.88rem;background:#0288D1;font-weight:800;border:none;border-radius:10px;color:#fff;">✓ Got It</button>'
+          ) +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  return html;
+}
+
+function openChapter1CompletionModal(){
+  activeModal = {
+    type: 'chapter1_complete'
+  };
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+  render();
+}
+
+function chapter1CompleteModalHtml(){
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:580px;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.35);">' +
+      '<div style="background:linear-gradient(135deg,#1B5E20,#2E7D32);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<span style="font-size:1.8rem;">🎉</span>' +
+          '<div>' +
+            '<h2 style="margin:0;font-size:1.25rem;color:#fff;font-weight:900;">Chapter 1 Complete!</h2>' +
+            '<div style="font-size:0.80rem;color:#C8E6C9;">“Look, I Can Grow Something!” · Solo Founder Mastered</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:800;">✕</button>' +
+      '</div>' +
+      '<div class="modal-body-scroll" style="padding:18px 22px;max-height:75vh;overflow-y:auto;">' +
+        '<div style="background:#E8F5E9;border:1.5px solid #81C784;border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">' +
+          '<div>' +
+            '<div style="font-weight:900;color:#1B5E20;font-size:0.95rem;">🏆 Chapter Award: +25 Knowledge XP</div>' +
+            '<div style="font-size:0.76rem;color:#2E7D32;">Foundational Agroecology &amp; Atmospheric Photosynthesis</div>' +
+          '</div>' +
+          '<span style="font-size:1.8rem;">🌟</span>' +
+        '</div>' +
+        '<div style="font-weight:800;font-size:0.86rem;color:#263238;margin-bottom:8px;">🎓 Learning Outcomes Accomplished:</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>8-Chapter Masterplan Survey:</b> Explored the complete ecological arc from manual soil care to closed-loop space biospheres (+40 Exploration XP).</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>Foundational Hand Tools:</b> Uncovered the traditional hand-forged trenching spade &amp; broadfork from the hidden jute tarp cache (+10 Knowledge XP).</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>Bedrock Aeration:</b> Fractured virgin hardpan crust without destroying delicate crumb structures, allowing aerobic microbes to awaken.</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>First Breath of Life:</b> Sowed and watered your first seedling, triggering transpiration and pumping clean breathable O₂ into the atmosphere!</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:#FFF9C4;border:1px solid #FFF176;border-radius:12px;padding:12px;margin-bottom:16px;font-size:0.78rem;color:#795548;line-height:1.45;">' +
+          '<b>🚜 Chapter 2 Unlocked: "Build the Farm"</b><br>' +
+          'You can now recruit field labor, construct the Crew Shed (1–2 labourers; 3h or 1.5h), automatically cultivate Plot 2, unlock Plot 3 with your team, and build the Storage Barn before harvests spoil!' +
+        '</div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #ECEFF1;padding-top:14px;">' +
+          '<button class="primary" onclick="closeModal();selectChapterTab(2);if(typeof render===\'function\')render();" style="padding:10px 22px;font-size:0.92rem;background:linear-gradient(135deg,#E65100,#EF6C00);box-shadow:0 4px 12px rgba(230,81,0,0.35);font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">🚜 Advance to Chapter 2: Build the Farm ➔</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  return html;
+}
+
+function openHarvestSpoilageWarningModal(){
+  activeModal = {
+    type: 'harvest_spoilage_warning'
+  };
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+  render();
+}
+
+function harvestSpoilageWarningModalHtml(){
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:560px;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.32);">' +
+      '<div style="background:linear-gradient(135deg,#E65100,#D84315);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<span style="font-size:1.6rem;">⚠️</span>' +
+          '<div>' +
+            '<h2 style="margin:0;font-size:1.15rem;color:#fff;font-weight:900;">Where Will You Keep Your Harvest?</h2>' +
+            '<div style="font-size:0.75rem;color:#FFCCBC;">Perishable Crop Spoilage Warning Alert</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:800;">✕</button>' +
+      '</div>' +
+      '<div class="modal-body-scroll" style="padding:16px 20px;max-height:75vh;overflow-y:auto;">' +
+        '<div style="background:#FFF3E0;border:1px solid #FFB74D;border-radius:12px;padding:12px;margin-bottom:14px;">' +
+          '<div style="font-size:0.82rem;color:#4E342E;line-height:1.45;">' +
+            'Your first crops have reached maturity! Without ventilated storage, perishable fruits and vegetables lose cellular moisture, ferment, and spoil rapidly.<br><br>' +
+            'Recruit field labor to pave the road and construct the <b>Storage Granary Barn &amp; Cold Cellar</b> (1–2 labourers; 3h with 1 worker, 1.5h with 2 workers).' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:#E8F5E9;border:1px solid #81C784;border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">' +
+          '<span style="font-size:1.4rem;">🎁</span>' +
+          '<div style="font-size:0.78rem;color:#1B5E20;line-height:1.4;">' +
+            '<b>+25 Bonus Knowledge XP:</b> Construct the Storage Granary Barn timely to prevent crop spoilage and preserve produce quality!' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #ECEFF1;padding-top:12px;">' +
+          '<button class="primary" onclick="closeModal();openModal(\'storage\');" style="padding:10px 20px;font-size:0.90rem;background:#E65100;font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">🏚️ Plan Storage Granary Barn</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  return html;
+}
+
+function triggerHarvestSpoilageWarningIfNeeded(){
+  if (!state) return;
+  if (state.storage && state.storage.built) return;
+  if (state.spoilageWarningShown) return;
+  if ((state.currentChapter || 1) < 2) return;
+  var hasRipeCrop = state.plots && state.plots.some(function(p){
+    return (p.status === 'ready' || (p.harvestsDone || 0) > 0 || (p.growHours >= 3.0 && p.status === 'growing'));
+  });
+  if (hasRipeCrop) {
+    state.spoilageWarningShown = true;
+    state.spoilageWarningActive = true;
+    openHarvestSpoilageWarningModal();
+  }
+}
+
 function drawIsometric3DHandSpadeSvg(){
   return '<svg width="340" height="210" viewBox="0 0 340 210" xmlns="http://www.w3.org/2000/svg" class="isometric-hand-spade-graphic" style="filter:drop-shadow(0 6px 16px rgba(0,0,0,0.18));max-width:100%;height:auto;">' +
     '<defs>' +
@@ -18520,21 +19046,53 @@ function discoverBasicToolsAction(plotId){
 function startPrep(plotId){
   var p = state.plots[plotId]; if (!p || p.status!=='barren') return;
   if (typeof isPlotUnlocked === 'function' && !isPlotUnlocked(plotId, state)) {
+    if (plotId === 2) {
+      showNotification('🔒', 'Plot 3 requires a hired team: Recruit at least 1 Labourer and 1 Farmer from the Crew Shed!', 'plot', 2);
+      pushReport('🔒 Plot 3 requires a hired team: recruit at least 1 Labourer and 1 Farmer from the Crew Shed.');
+      return;
+    }
     var needPrev = (parseInt(plotId, 10) || 0);
     showNotification('🔒', 'Plot ' + (needPrev + 1) + ' locked — plant Plot ' + needPrev + ' first.', 'plot', Math.max(0, needPrev - 1));
     return;
   }
-  // If storage is already built (Chapter 2+ state or test), crew shed and hand tools are implicitly unlocked
+
+  var ch = state.currentChapter || 1;
+  // Chapter 1 Solo Founder flow on Plot 1:
+  if (ch === 1 && plotId === 0) {
+    if (!state.basicToolsDiscovered) {
+      showNotification('🔒', 'Digging tools locked! Explore all 8 farm chapters to uncover the jute tarp cache.', 'task');
+      openJuteTarpModal();
+      return;
+    }
+    // Solo founder tills directly without crew shed or hired labourer
+    p.status = 'preparing';
+    p.taskHours = 0;
+    p.assignedWorker = null; // solo founder
+    if (typeof activeModal !== 'undefined' && activeModal && (activeModal.type==='plot' || activeModal.type==='basic_equipment_discovery')) {
+      activeModal = null;
+    }
+    if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+    pushReport('🌱 Solo Founder started manual soil tillage on Plot 1 with hand-forged spade (3.5h).');
+    showNotification('🌱', 'Started manual soil tillage on Plot 1 (3.5h)!', 'plot', 0);
+    render(); requestSave();
+    return;
+  }
+
+  // Chapter 2+ requirements:
   var hasCrewShed = !!(state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built) || !!(state.storage && state.storage.built);
   var hasTools = !!state.basicToolsDiscovered || !!(state.storage && state.storage.built);
 
-  // Prerequisite 1: Crew Shed must be built first
   if (!hasCrewShed){
     showLockedStepPopup(null, 'crew_shed');
     showNotification('🏠', 'Construct Crew Shed & Workshop first before cultivating plots!', 'building', 'crew_shed');
     return;
   }
-  // Prerequisite 2: Basic Hand Tools must be discovered
+  var hasLaborer = state.workers && state.workers.some(function(w){ return w.type === 'laborer'; });
+  if (!hasLaborer){
+    showLockedStepPopup(null, 'laborer');
+    showNotification('👷', 'Recruit a Field Labourer first!', 'worker');
+    return;
+  }
   if (!hasTools){
     openBasicEquipmentDiscoveryModal(plotId);
     return;
@@ -18984,11 +19542,16 @@ function startMowLawn(){
 }
 
 function hireWorker(type){
-  if (!state.buildings.crew_shed || !state.buildings.crew_shed.built){
-    showNotification('🏠', 'Construct the Crew Shed before hiring farm workers!', 'building', 'crew_shed');
+  if ((state.currentChapter || 1) < 2) {
+    showNotification('🔒', 'Crew hiring unlocks in Chapter 2 ("Build the Farm"). In Chapter 1, work as a solo founder!', 'task');
     return;
   }
-  // Crew Shed is the prerequisite for worker recruitment
+  // In Chapter 2, Field Labourer can be recruited before Crew Shed is built to construct the Crew Shed
+  if (type !== 'laborer' && (!state.buildings.crew_shed || !state.buildings.crew_shed.built)){
+    showNotification('🏠', 'Construct the Crew Shed before hiring ' + (WORKER_TYPES[type] ? WORKER_TYPES[type].label : 'specialist crew') + '!', 'building', 'crew_shed');
+    return;
+  }
+  // Crew recruitment
   state.roleCounters = state.roleCounters || { laborer: 0, farmer: 0, botanist: 0, engineer: 0 };
   state.roleCounters[type] = (state.roleCounters[type] || 0) + 1;
   var roleSeq = state.roleCounters[type];
@@ -19936,9 +20499,21 @@ function startBuildStorage(){
     pushReport('⚠️ Construction halted: Transport wagons cannot reach the estate without the Main Arterial Road.');
     return;
   }
+  var availLaborers = state.workers ? state.workers.filter(function(w){ return w.type === 'laborer' && !w.assignedBuilding; }) : [];
+  if (availLaborers.length === 0){
+    showNotification('👷', 'Assign at least 1 Field Laborer to construct the Storage Granary Barn!', 'worker');
+    return;
+  }
   if (state.money < STORAGE_COST) return;
-  state.money -= STORAGE_COST; state.storage.building = true; state.storage.buildHours = 0;
-  pushReport('🏚️ Commenced construction of Storage Barn & Cold Cellar (€' + STORAGE_COST + ').');
+  state.money -= STORAGE_COST;
+  state.storage.building = true;
+  state.storage.buildHours = 0;
+  var countToAssign = Math.min(2, availLaborers.length);
+  state.storage.assignedLaborers = availLaborers.slice(0, countToAssign).map(function(w){
+    w.assignedBuilding = 'storage';
+    return w.id;
+  });
+  pushReport('🏚️ Commenced construction of Storage Barn & Cold Cellar (€' + STORAGE_COST + ') with ' + countToAssign + ' laborer(s) (' + (countToAssign === 2 ? '1.5h · 2x speed' : '3.0h') + ').');
   if (typeof closeModal === 'function') closeModal();
   render(); requestSave();
 }
@@ -20539,6 +21114,19 @@ function startBuildBuilding(key){
     pushReport('⚠️ Construction halted: Transport wagons cannot reach the estate without the Main Arterial Road.');
     return;
   }
+  if (key === 'crew_shed'){
+    var availLaborers = state.workers ? state.workers.filter(function(w){ return w.type === 'laborer' && !w.assignedBuilding; }) : [];
+    if (availLaborers.length === 0){
+      showNotification('👷', 'Recruit at least 1 Field Labourer (€80) to construct the Crew Shed!', 'worker');
+      return;
+    }
+    var countToAssign = Math.min(2, availLaborers.length);
+    b.assignedLaborers = availLaborers.slice(0, countToAssign).map(function(w){
+      w.assignedBuilding = 'crew_shed';
+      return w.id;
+    });
+    pushReport('🏗️ Commenced Crew Shed construction with ' + countToAssign + ' laborer(s) (' + (countToAssign === 2 ? '1.5h · 2x speed' : '3.0h') + ').');
+  }
   if (key === 'road'){
     var gateBuilt = !!(state.buildings && state.buildings.gate && state.buildings.gate.built);
     if (!gateBuilt){
@@ -20864,17 +21452,43 @@ function openModal(type, plotId){
   if (typeof hideGameTooltip === 'function') hideGameTooltip();
   if (typeof dismissEducationalDiscoveryBubble === 'function') dismissEducationalDiscoveryBubble();
 
+  if (type === 'jute_tarp') {
+    if (typeof openJuteTarpModal === 'function') openJuteTarpModal();
+    return;
+  }
+  if (type === 'chapter_roadmap') {
+    if (typeof openChapterRoadmapForObject === 'function') openChapterRoadmapForObject(plotId);
+    return;
+  }
+  if (type === 'chapter1_complete') {
+    if (typeof openChapter1CompletionModal === 'function') openChapter1CompletionModal();
+    return;
+  }
+  if (type === 'harvest_spoilage_warning') {
+    if (typeof openHarvestSpoilageWarningModal === 'function') openHarvestSpoilageWarningModal();
+    return;
+  }
+
   // Enforce progression locks on game object clicks
   if (type === 'plot'){
-    var hasCrewShedForPlot = !!(state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built) || !!(state.storage && state.storage.built);
-    if (!hasCrewShedForPlot){
-      showLockedStepPopup(null, 'crew_shed');
-      showNotification('🏠', 'Plot Cultivation Locked: Construct Crew Shed & Quarters (Chapter 1) first to store digging tools!', 'building', 'crew_shed');
-      pushReport('🔒 Plots Locked: Field plots require a constructed Crew Shed to house tools and workers.');
-      return;
+    var ch = state.currentChapter || 1;
+    if (ch === 1 && plotId === 0) {
+      // In Chapter 1, solo founder directly accesses Plot 1 without needing Crew Shed
+    } else {
+      var hasCrewShedForPlot = !!(state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built) || !!(state.storage && state.storage.built);
+      if (!hasCrewShedForPlot){
+        showLockedStepPopup(null, 'crew_shed');
+        showNotification('🏠', 'Plot Cultivation Locked: Construct Crew Shed & Quarters first!', 'building', 'crew_shed');
+        pushReport('🔒 Plots Locked: Field plots require a constructed Crew Shed to house tools and workers.');
+        return;
+      }
     }
-    // Chapter 1: only Plot 1 open; each planted plot unlocks the next
     if (typeof isPlotUnlocked === 'function' && !isPlotUnlocked(plotId, state)) {
+      if (plotId === 2) {
+        showNotification('🔒', 'Plot 3 requires a hired team: Recruit at least 1 Labourer and 1 Farmer from the Crew Shed!', 'plot', 2);
+        pushReport('🔒 Plot 3 requires a hired team: recruit at least 1 Labourer and 1 Farmer from the Crew Shed.');
+        return;
+      }
       var needPrev = (parseInt(plotId, 10) || 0);
       showNotification('🔒', 'Plot ' + (needPrev + 1) + ' is locked. Bring life to Plot ' + needPrev + ' first (till + plant), then this bed opens.', 'plot', Math.max(0, needPrev - 1));
       pushReport('🔒 Plot ' + (needPrev + 1) + ' locked until Plot ' + needPrev + ' has a living plant.');
@@ -20883,6 +21497,10 @@ function openModal(type, plotId){
   }
 
   if (type === 'storage'){
+    if (typeof isObjectUnlockedByChapter === 'function' && !isObjectUnlockedByChapter('storage', state)){
+      if (typeof exploreChapterObject === 'function') exploreChapterObject('storage');
+      return;
+    }
     var hasHarvest = !!(state.plots && state.plots.some(function(p){ return (p.harvestsDone || 0) > 0; })) || !!(state.flags && state.flags.firstHarvest) || ((state.currentChapter || 1) >= 2);
     if (!state.storage.built && !hasHarvest){
       showLockedStepPopup(null, 'storage');
@@ -20899,6 +21517,10 @@ function openModal(type, plotId){
   }
 
   if (type === 'building'){
+    if (typeof isObjectUnlockedByChapter === 'function' && !isObjectUnlockedByChapter(plotId, state)){
+      if (typeof exploreChapterObject === 'function') exploreChapterObject(plotId);
+      return;
+    }
     if (plotId === 'road' || plotId === 'gate'){
       if (!state.buildings.crew_shed || !state.buildings.crew_shed.built){
         showLockedStepPopup(null, 'crew_shed');
@@ -22783,32 +23405,33 @@ function getFarmProgressionGuide(){
   var icon = '🏠';
 
   if (curChNum === 1){
-    if (!state.buildings || !state.buildings.crew_shed || !state.buildings.crew_shed.built){
-      compactLabel = 'Build Crew Shed';
-      icon = '🏠';
+    var expCount = (typeof getExploredChaptersCount === 'function') ? getExploredChaptersCount(state) : 0;
+    if (expCount < 8 && !state.allChaptersExplored){
+      compactLabel = 'Explore Chapters';
+      icon = '🧭';
       actionType = 'open_modal';
       targetType = 'building';
       targetId = 'crew_shed';
-    } else if (!state.basicToolsDiscovered){
-      compactLabel = 'Discover Tools';
+    } else if (!state.basicToolsDiscovered && !state.juteTarpUncovered){
+      compactLabel = 'Uncover Tools';
       icon = '⛏️';
-      actionType = 'discover_tools';
-      targetType = 'tool';
-      targetId = 'spade';
-    } else if (!state.plots || !state.plots.some(function(p){ return p.status === 'ready' || p.status === 'growing' || p.harvestsDone > 0; })){
-      compactLabel = 'Dig Soil';
+      actionType = 'open_jute_tarp';
+      targetType = 'building';
+      targetId = 'jute_tarp';
+    } else if (!state.plots || !state.plots[0] || (state.plots[0].status !== 'ready' && state.plots[0].status !== 'growing' && (state.plots[0].harvestsDone || 0) === 0)){
+      compactLabel = 'Till Plot 1';
       icon = '🌱';
       actionType = 'open_plot';
       targetType = 'plot';
       targetId = 0;
-    } else if (!state.plots || !state.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; })){
+    } else if (!state.plots || !state.plots[0] || (state.plots[0].status !== 'growing' && (state.plots[0].harvestsDone || 0) === 0)){
       compactLabel = 'Plant Crop';
       icon = '🍎';
       actionType = 'open_plot';
       targetType = 'plot';
       targetId = 0;
     } else {
-      compactLabel = 'Nurture Flora';
+      compactLabel = 'Water Seedling';
       icon = '💧';
       actionType = 'open_plot';
       targetType = 'plot';
@@ -22952,8 +23575,8 @@ function openTaskMasterplanModal(){
     activeChList.map(function(t, idx){
       var isDone = t.isComplete(state);
       var isTaskUnlocked = t.isUnlocked(state);
-      var borderCol = isDone ? '#2E7D32' : (isTaskUnlocked ? '#F57F17' : '#B0BEC5');
-      return '<div class="task-row" style="border-left:4px solid ' + borderCol + ';' + (isDone ? 'opacity:0.9;background:#F9FBE7;' : '') + 'margin-bottom:6px;">' +
+      var borderCol = isDone ? '#B0BEC5' : (isTaskUnlocked ? '#F57F17' : '#CFD8DC');
+      return '<div class="task-row' + (isDone ? ' is-done' : (isTaskUnlocked ? ' is-active' : ' is-locked')) + '" style="border-left:4px solid ' + borderCol + ';' + (isDone ? 'opacity:0.85;background:#ECEFF1;color:#78909C;' : '') + 'margin-bottom:6px;">' +
         '<div class="task-info">' +
           '<div class="name" style="font-weight:800;font-size:0.86rem;color:' + (isDone ? '#1B5E20' : '#263238') + ';">' +
             t.icon + ' ' + t.title + (isDone ? ' <span style="font-size:0.70rem;color:#2E7D32;font-weight:800;">✓ Done</span>' : '') +
@@ -29542,6 +30165,7 @@ function buildingSpotHtml(key){
       '<span class="plot-label-text">'+label+'</span>'+
     '</div>'+
     inner + freshBar + sub +
+    (locked && !b.built && !b.building ? '<div class="chapter-explore-hand" onclick="event.stopPropagation();exploreChapterObject(\'' + key + '\')" title="Tap to inspect Chapter ' + chInfo.chapter + ' Roadmap">👆</div>' : '') +
   '</div>';
 }
 
@@ -29678,7 +30302,7 @@ function windTurbinesHtml(){
 
 function villageSpotsHtml(){
   ensureWindTurbinesState();
-  return roadPromenadeHtml() + BUILDING_ORDER.map(buildingSpotHtml).join('') + windTurbinesHtml();
+  return roadPromenadeHtml() + BUILDING_ORDER.map(buildingSpotHtml).join('') + windTurbinesHtml() + (typeof juteTarpSpotHtml === 'function' ? juteTarpSpotHtml() : '');
 }
 
 // ================= MODAL CONTENT =================
@@ -29688,34 +30312,84 @@ function getPendingTasksList(){
   var tasks = [];
   if (!state) return tasks;
 
-  // Chapter 1: Crew Shed & Depot
-  if (state.buildings && state.buildings.crew_shed && !state.buildings.crew_shed.built && !state.buildings.crew_shed.building){
+  var curCh = state.currentChapter || 1;
+  var expCount = (typeof getExploredChaptersCount === 'function') ? getExploredChaptersCount(state) : 0;
+
+  // Chapter 1: Masterplan Survey (Explore all 8 chapters)
+  if (curCh === 1 && expCount < 8 && !state.allChaptersExplored){
     tasks.push({
       step: 1,
       category: 'core',
-      stepName: 'Ch. 1: Crew Shed & Depot',
-      type: 'building',
-      targetId: 'crew_shed',
-      label: '🏠 Ch. 1: Construct Crew Shed (€' + BUILDING_TYPES.crew_shed.cost + ')',
-      cost: BUILDING_TYPES.crew_shed.cost,
+      stepName: 'Ch. 1: Survey Estate Masterplan (1–8)',
+      type: 'explore_chapters',
+      targetId: 'jute_tarp',
+      label: '🧭 Ch. 1: Survey 8 Chapters (' + expCount + '/8)',
+      cost: 0,
       isUnlocked: true,
       isComplete: false
     });
   }
 
-  // Chapter 1: Till Soil & Cultivate Plot 1 only
-  var hasGrowing = state.plots && state.plots.some(function(p){ return p.status === 'growing' || p.harvestsDone > 0; });
-  if (!hasGrowing){
-    var s1PlotUnlocked = !!(state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built);
+  // Chapter 1: Uncover Jute Tarp Tool Cache
+  if (curCh === 1 && !state.juteTarpUncovered && !state.basicToolsDiscovered){
+    var tarpUnlocked = expCount >= 8 || !!state.allChaptersExplored;
     tasks.push({
       step: 1,
       category: 'core',
-      stepName: 'Ch. 1: Till Soil & Cultivate',
-      type: 'dig',
-      targetId: 0,
-      label: '🌱 Ch. 1: Dig Soil & Cultivate Plot 1 (€' + LABOR_COST + ')',
-      cost: LABOR_COST,
-      isUnlocked: s1PlotUnlocked,
+      stepName: 'Ch. 1: Uncover Hidden Hand Tools',
+      type: 'uncover_tools',
+      targetId: 'jute_tarp',
+      label: '⛏️ Ch. 1: Uncover Jute Tarp Tool Cache',
+      cost: 0,
+      isUnlocked: tarpUnlocked,
+      isComplete: false
+    });
+  }
+
+  // Chapter 1: Solo Founder Till Soil on Plot 1
+  var hasGrowing = state.plots && state.plots.some(function(p){ return p.status === 'growing' || (p.harvestsDone || 0) > 0; });
+  if (curCh === 1 && !hasGrowing){
+    var p0 = state.plots && state.plots[0];
+    var p0Tilled = p0 && (p0.status === 'ready' || p0.status === 'growing' || (p0.harvestsDone || 0) > 0);
+    if (!p0Tilled){
+      tasks.push({
+        step: 1,
+        category: 'core',
+        stepName: 'Ch. 1: Till Soil on Plot 1',
+        type: 'dig',
+        targetId: 0,
+        label: '🌱 Ch. 1: Till Soil on Plot 1 with Hand Spade',
+        cost: 0,
+        isUnlocked: !!state.basicToolsDiscovered,
+        isComplete: false
+      });
+    } else {
+      tasks.push({
+        step: 1,
+        category: 'core',
+        stepName: 'Ch. 1: Plant & Water First Seedling',
+        type: 'plant',
+        targetId: 0,
+        label: '🍎 Ch. 1: Plant Seedling on Plot 1',
+        cost: 15,
+        isUnlocked: true,
+        isComplete: false
+      });
+    }
+  }
+
+  // Chapter 2: Construct Crew Shed (Requires 1-2 Labourers)
+  if (curCh >= 2 && state.buildings && state.buildings.crew_shed && !state.buildings.crew_shed.built && !state.buildings.crew_shed.building){
+    var hasLabForShed = state.workers && state.workers.some(function(w){ return w.type === 'laborer'; });
+    tasks.push({
+      step: 2,
+      category: 'core',
+      stepName: 'Ch. 2: Crew Shed & Depot',
+      type: 'building',
+      targetId: 'crew_shed',
+      label: '🏠 Ch. 2: Construct Crew Shed (1–2 Labourers · €' + BUILDING_TYPES.crew_shed.cost + ')',
+      cost: BUILDING_TYPES.crew_shed.cost,
+      isUnlocked: true,
       isComplete: false
     });
   }
@@ -32709,6 +33383,10 @@ function chapterIntroModalHtml(m) {
 
 function modalHtml(){
   if (activeModal){
+    if (activeModal.type==='jute_tarp') return juteTarpModalHtml();
+    if (activeModal.type==='chapter_roadmap') return chapterRoadmapModalHtml(activeModal.objectKey);
+    if (activeModal.type==='chapter1_complete') return chapter1CompleteModalHtml();
+    if (activeModal.type==='harvest_spoilage_warning') return harvestSpoilageWarningModalHtml();
     if (activeModal.type==='welcome_intro' || activeModal.type==='welcome') return welcomeIntroModalHtml();
     if (activeModal.type==='chapter_intro') return chapterIntroModalHtml(activeModal);
     if (activeModal.type==='why') return whyModalHtml(activeModal.topicKey, activeModal.activeDepth);
@@ -33140,12 +33818,12 @@ function panelHtml(){
       chChallenges.map(function(t){
         var isDone = t.isComplete(state);
         var isTaskUnlocked = t.isUnlocked(state);
-        var borderCol = isDone ? '#2E7D32' : (isTaskUnlocked ? '#F57F17' : '#B0BEC5');
+        var borderCol = isDone ? '#B0BEC5' : (isTaskUnlocked ? '#F57F17' : '#CFD8DC');
         var actionBtn = t.getActionHtml(state);
 
-        return '<div class="task-row" style="border-left:4px solid ' + borderCol + ';' + (isDone ? 'opacity:0.9;background:#F9FBE7;' : '') + '">' +
+        return '<div class="task-row' + (isDone ? ' is-done' : (isTaskUnlocked ? ' is-active' : ' is-locked')) + '" style="border-left:4px solid ' + borderCol + ';' + (isDone ? 'opacity:0.85;background:#ECEFF1;color:#78909C;' : '') + '">' +
           '<div class="task-info">' +
-            '<div class="name" style="font-weight:800;font-size:0.86rem;color:' + (isDone ? '#1B5E20' : '#263238') + ';">' +
+            '<div class="name" style="font-weight:800;font-size:0.86rem;color:' + (isDone ? '#78909C' : '#263238') + ';">' +
               t.icon + ' ' + t.title + (isDone ? ' <span style="font-size:0.70rem;color:#2E7D32;font-weight:800;">✓ Done</span>' : '') +
             '</div>' +
             '<div class="meta" style="font-size:0.74rem;color:#455A64;line-height:1.35;margin-top:2px;">' + t.subtitle + '</div>' +
@@ -33698,6 +34376,12 @@ function topbarStatsHtml(){
       '<span class="kid-stat-icon">' + (getKnowledgeLevelInfo(state.knowledgeXP).icon) + '</span>' +
       '<span class="kid-stat-val">' + (state.knowledgeXP || 0) + ' XP</span>' +
       '<span class="kid-stat-lbl">' + (getKnowledgeLevelInfo(state.knowledgeXP).title) + '</span>' +
+    '</div>',
+
+    '<div class="kid-stat-card kid-card-action" onclick="openChapterRoadmapForObject(\'plot\')" style="cursor:pointer;" title="Survey of all 8 Farm Chapters (Tap to inspect roadmap)">' +
+      '<span class="kid-stat-icon">🧭</span>' +
+      '<span class="kid-stat-val">' + ((typeof getExploredChaptersCount === 'function' ? getExploredChaptersCount(state) : 0) + '/8') + '</span>' +
+      '<span class="kid-stat-lbl">Explored</span>' +
     '</div>',
 
     '<div class="kid-stat-card kid-card-action" onclick="openSustainabilityJourneyModal()" style="cursor:pointer;" title="My Sustainability Journey (Chapters 1–8)">' +
@@ -34455,6 +35139,20 @@ window.formatRemainingTime = formatRemainingTime;
 window.formatTaskProgress = formatTaskProgress;
 window.getIdleLaborers = getIdleLaborers;
 window.modalHtml = modalHtml;
+window.exploreChapterObject = (typeof exploreChapterObject !== 'undefined') ? exploreChapterObject : null;
+window.getExploredChaptersCount = (typeof getExploredChaptersCount !== 'undefined') ? getExploredChaptersCount : null;
+window.openJuteTarpModal = (typeof openJuteTarpModal !== 'undefined') ? openJuteTarpModal : null;
+window.uncoverJuteTarpAction = (typeof uncoverJuteTarpAction !== 'undefined') ? uncoverJuteTarpAction : null;
+window.openChapterRoadmapForObject = (typeof openChapterRoadmapForObject !== 'undefined') ? openChapterRoadmapForObject : null;
+window.openChapter1CompletionModal = (typeof openChapter1CompletionModal !== 'undefined') ? openChapter1CompletionModal : null;
+window.openHarvestSpoilageWarningModal = (typeof openHarvestSpoilageWarningModal !== 'undefined') ? openHarvestSpoilageWarningModal : null;
+window.triggerHarvestSpoilageWarningIfNeeded = (typeof triggerHarvestSpoilageWarningIfNeeded !== 'undefined') ? triggerHarvestSpoilageWarningIfNeeded : null;
+window.juteTarpSpotHtml = (typeof juteTarpSpotHtml !== 'undefined') ? juteTarpSpotHtml : null;
+window.chapterRoadmapModalHtml = (typeof chapterRoadmapModalHtml !== 'undefined') ? chapterRoadmapModalHtml : null;
+window.chapter1CompleteModalHtml = (typeof chapter1CompleteModalHtml !== 'undefined') ? chapter1CompleteModalHtml : null;
+window.harvestSpoilageWarningModalHtml = (typeof harvestSpoilageWarningModalHtml !== 'undefined') ? harvestSpoilageWarningModalHtml : null;
+window.JUTE_TARP_SPOT = (typeof JUTE_TARP_SPOT !== 'undefined') ? JUTE_TARP_SPOT : null;
+window.drawJuteTarpScene = (typeof drawJuteTarpScene !== 'undefined') ? drawJuteTarpScene : null;
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.hireWorker = hireWorker;
@@ -34696,6 +35394,20 @@ globalThis.chapterIntroModalHtml = chapterIntroModalHtml;
   globalThis.openTaskMasterplanModal = openTaskMasterplanModal;
 globalThis.buildingSpotHtml = buildingSpotHtml;
 globalThis.OBJECT_CHAPTER_UNLOCKS = OBJECT_CHAPTER_UNLOCKS;
+globalThis.exploreChapterObject = (typeof exploreChapterObject !== 'undefined') ? exploreChapterObject : null;
+globalThis.getExploredChaptersCount = (typeof getExploredChaptersCount !== 'undefined') ? getExploredChaptersCount : null;
+globalThis.openJuteTarpModal = (typeof openJuteTarpModal !== 'undefined') ? openJuteTarpModal : null;
+globalThis.uncoverJuteTarpAction = (typeof uncoverJuteTarpAction !== 'undefined') ? uncoverJuteTarpAction : null;
+globalThis.openChapterRoadmapForObject = (typeof openChapterRoadmapForObject !== 'undefined') ? openChapterRoadmapForObject : null;
+globalThis.openChapter1CompletionModal = (typeof openChapter1CompletionModal !== 'undefined') ? openChapter1CompletionModal : null;
+globalThis.openHarvestSpoilageWarningModal = (typeof openHarvestSpoilageWarningModal !== 'undefined') ? openHarvestSpoilageWarningModal : null;
+globalThis.triggerHarvestSpoilageWarningIfNeeded = (typeof triggerHarvestSpoilageWarningIfNeeded !== 'undefined') ? triggerHarvestSpoilageWarningIfNeeded : null;
+globalThis.juteTarpSpotHtml = (typeof juteTarpSpotHtml !== 'undefined') ? juteTarpSpotHtml : null;
+globalThis.chapterRoadmapModalHtml = (typeof chapterRoadmapModalHtml !== 'undefined') ? chapterRoadmapModalHtml : null;
+globalThis.chapter1CompleteModalHtml = (typeof chapter1CompleteModalHtml !== 'undefined') ? chapter1CompleteModalHtml : null;
+globalThis.harvestSpoilageWarningModalHtml = (typeof harvestSpoilageWarningModalHtml !== 'undefined') ? harvestSpoilageWarningModalHtml : null;
+globalThis.JUTE_TARP_SPOT = (typeof JUTE_TARP_SPOT !== 'undefined') ? JUTE_TARP_SPOT : null;
+globalThis.drawJuteTarpScene = (typeof drawJuteTarpScene !== 'undefined') ? drawJuteTarpScene : null;
 globalThis.CHAPTER_CHALLENGES = CHAPTER_CHALLENGES;
 globalThis.MOTIVATIONAL_SPEECHES = MOTIVATIONAL_SPEECHES;
 globalThis.triggerMotivationalGuide = triggerMotivationalGuide;

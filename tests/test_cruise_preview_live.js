@@ -10,7 +10,7 @@ const assert = require('assert');
   const browser = await chromium.launch({
     executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--allow-file-access-from-files']
   });
 
   const page = await browser.newPage();

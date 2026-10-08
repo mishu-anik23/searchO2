@@ -51,8 +51,14 @@ const { chromium } = require('playwright');
     }
   }
 
-  // TEST 1: Initial Auth Card Rendering & Input Typing Stability
   console.log('\n--- Running Test 1: Typing Clobber & Focus Protection ---');
+  await page.evaluate(() => {
+    if (typeof closeModal === 'function') closeModal();
+    activeModal = null;
+    render();
+  });
+  await new Promise(r => setTimeout(r, 400));
+
   // Wait for initial auth card
   const authCard = await page.$('#initialAuthCard');
   assert(authCard !== null, 'Initial Auth Card', 'Found #initialAuthCard element');

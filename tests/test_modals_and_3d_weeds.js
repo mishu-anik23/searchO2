@@ -99,6 +99,7 @@ async function runTests() {
     console.log('\n--- TEST 2: Worker Command Hub Overhaul ---');
     await page.evaluate(() => {
       // Ensure we have workers hired
+      state.currentChapter = 2;
       if (!state.workers || state.workers.length === 0) {
         state.buildings.crew_shed.built = true;
         hireWorker('laborer');
