@@ -509,7 +509,7 @@
     position: absolute;
     top: -12px;
     right: -10px;
-    z-index: 28;
+    z-index: 35;
     font-size: 1.35rem;
     line-height: 1;
     cursor: pointer;
@@ -530,6 +530,33 @@
     transform: scale(1.28) translateY(-2px);
     background: #FFF;
     border-color: #F57F17;
+  }
+  /* Fixed (non-animating) right tick badge for surveyed chapters */
+  .chapter-explore-tick {
+    position: absolute;
+    top: -10px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #43A047, #2E7D32);
+    color: #FFF;
+    font-size: 13px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+    border: 1.5px solid #FFFFFF;
+    z-index: 35;
+    pointer-events: auto;
+    cursor: pointer;
+    line-height: 1;
+    transition: transform 0.15s ease;
+  }
+  .chapter-explore-tick:hover {
+    transform: scale(1.18);
+    background: linear-gradient(135deg, #4CAF50, #1B5E20);
   }
   .jute-tarp-spot-card.is-ready-uncover {
     box-shadow: 0 0 16px rgba(255, 215, 0, 0.65);
@@ -10633,26 +10660,118 @@ function notifyPlotUnlocked(plotId) {
 }
 
 // ================= ESTATE EXPLORATION & 8-CHAPTER SURVEY SYSTEM =================
+var CHAPTER_PRIMARY_OBJECTS = {
+  1: 'plot',
+  2: 'crew_shed',
+  3: 'garden',
+  4: 'pond',
+  5: 'wind_turbine',
+  6: 'juice_bar',
+  7: 'eco_passport',
+  8: 'space_mission'
+};
+
+var OBJECT_TO_CHAPTER = {
+  plot: 1,
+  jute_tarp: 1,
+  crew_shed: 2,
+  road: 2,
+  gate: 2,
+  storage: 2,
+  garage: 2,
+  garden: 3,
+  crop_field: 3,
+  garden_walk: 3,
+  pond: 4,
+  cattle_farm: 4,
+  wind_turbine: 5,
+  energy_storage: 5,
+  engineer: 5,
+  juice_bar: 6,
+  coffee_shop: 6,
+  market_promenade: 6,
+  eco_passport: 7,
+  space_mission: 8
+};
+
+function isChapterExplored(ch, s) {
+  s = s || (typeof state !== 'undefined' ? state : null);
+  if (!s) return false;
+  if (s.allChaptersExplored) return true;
+  if (s.exploredChapters && s.exploredChapters[ch]) return true;
+  var expObj = s.exploredChapterObjects || {};
+  if (ch === 1 && (expObj['plot'] || expObj['jute_tarp'] || s.basicToolsDiscovered || (s.plots && s.plots[0] && s.plots[0].status !== 'barren'))) return true;
+  if (ch === 2 && (expObj['crew_shed'] || expObj['road'] || expObj['gate'] || expObj['storage'] || expObj['garage'])) return true;
+  if (ch === 3 && (expObj['garden'] || expObj['crop_field'] || expObj['garden_walk'])) return true;
+  if (ch === 4 && (expObj['pond'] || expObj['cattle_farm'])) return true;
+  if (ch === 5 && (expObj['wind_turbine'] || expObj['energy_storage'] || expObj['engineer'])) return true;
+  if (ch === 6 && (expObj['coffee_shop'] || expObj['juice_bar'] || expObj['market_promenade'])) return true;
+  if (ch === 7 && expObj['eco_passport']) return true;
+  if (ch === 8 && expObj['space_mission']) return true;
+  return false;
+}
+
+function getCurrentExplorationChapter(s) {
+  s = s || (typeof state !== 'undefined' ? state : null);
+  if (!s) return 1;
+  var curCh = s.currentChapter || 1;
+  // Rule: When Chapter 1 finishes (curCh >= 2 or modal shown), all exploration badges vanish
+  if (curCh >= 2 || s.ch1CompletedModalShown) return 9;
+
+  for (var ch = 1; ch <= 8; ch++) {
+    if (!isChapterExplored(ch, s)) {
+      return ch;
+    }
+  }
+  return 9; // All 8 chapters explored
+}
+
+function getChapterExploreBadgeHtml(key, s) {
+  s = s || (typeof state !== 'undefined' ? state : null);
+  if (!s) return '';
+  var curCh = s.currentChapter || 1;
+  // Strict Rule: When chapter 1 finishes, all explored fixed ticks (and hands) vanish completely
+  if (curCh >= 2 || s.ch1CompletedModalShown) {
+    return '';
+  }
+
+  var objCh = OBJECT_TO_CHAPTER[key];
+  if (!objCh) {
+    var info = (typeof getObjectChapterInfo === 'function') ? getObjectChapterInfo(key) : null;
+    objCh = info ? (info.chapter || 1) : 1;
+  }
+
+  // Canonical primary object constraint: only one representative object per chapter displays the badge on canvas
+  var primaryKey = CHAPTER_PRIMARY_OBJECTS[objCh];
+  if (primaryKey && primaryKey !== key) {
+    return '';
+  }
+
+  var targetCh = getCurrentExplorationChapter(s);
+  var explored = isChapterExplored(objCh, s);
+
+  if (explored) {
+    // Fixed right tick icon
+    return '<div class="chapter-explore-tick" onclick="event.stopPropagation();openChapterRoadmapForObject(\'' + key + '\')" title="Chapter ' + objCh + ' Explored · Click for Roadmap">✓</div>';
+  }
+
+  if (objCh === targetCh) {
+    // Only the single active chapter object animates with pointing hand
+    var chDef = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[objCh - 1]) ? CHAPTER_DEFINITIONS[objCh - 1] : null;
+    var chTitle = chDef ? chDef.title : ('Chapter ' + objCh);
+    return '<div class="chapter-explore-hand" onclick="event.stopPropagation();exploreChapterObject(\'' + key + '\')" title="Explore Chapter ' + objCh + ': ' + chTitle + ' (Tap to survey +5 XP)">👆</div>';
+  }
+
+  return '';
+}
+
 function getExploredChaptersCount(s) {
   s = s || (typeof state !== 'undefined' ? state : null);
   if (!s) return 0;
   if (s.allChaptersExplored) return 8;
-  var expCh = s.exploredChapters || {};
-  var expObj = s.exploredChapterObjects || {};
   var count = 0;
   for (var ch = 1; ch <= 8; ch++) {
-    var hasCh = !!expCh[ch];
-    if (!hasCh) {
-      if (ch === 1 && (expObj['plot'] || expObj['jute_tarp'] || s.basicToolsDiscovered || (s.plots && s.plots[0] && s.plots[0].status !== 'barren'))) hasCh = true;
-      else if (ch === 2 && (expObj['crew_shed'] || expObj['road'] || expObj['gate'] || expObj['storage'] || expObj['garage'])) hasCh = true;
-      else if (ch === 3 && (expObj['garden'] || expObj['crop_field'] || expObj['garden_walk'])) hasCh = true;
-      else if (ch === 4 && (expObj['pond'] || expObj['cattle_farm'])) hasCh = true;
-      else if (ch === 5 && (expObj['wind_turbine'] || expObj['energy_storage'] || expObj['engineer'])) hasCh = true;
-      else if (ch === 6 && (expObj['coffee_shop'] || expObj['juice_bar'] || expObj['market_promenade'])) hasCh = true;
-      else if (ch === 7 && expObj['eco_passport']) hasCh = true;
-      else if (ch === 8 && expObj['space_mission']) hasCh = true;
-    }
-    if (hasCh) count++;
+    if (isChapterExplored(ch, s)) count++;
   }
   return count;
 }
@@ -26838,6 +26957,7 @@ function plotSpotHtml(p, layout){
     '</div>'+
     plotSvg(p) + healthBar +
     '<div class="plot-sub">'+ (p.assignedWorker!==null?'👷':'') + ((p.accessories&&(p.accessories.irrigation||p.accessories.fertilizer))?'🧰':'') + (p.pendingHarvest>0.5?'🧺':'') +'</div>'+
+    (p.id === 0 && typeof getChapterExploreBadgeHtml === 'function' ? getChapterExploreBadgeHtml('plot') : '') +
   '</div>';
 }
 function storageSpotHtml(){
@@ -30165,7 +30285,7 @@ function buildingSpotHtml(key){
       '<span class="plot-label-text">'+label+'</span>'+
     '</div>'+
     inner + freshBar + sub +
-    (locked && !b.built && !b.building ? '<div class="chapter-explore-hand" onclick="event.stopPropagation();exploreChapterObject(\'' + key + '\')" title="Tap to inspect Chapter ' + chInfo.chapter + ' Roadmap">👆</div>' : '') +
+    (locked && !b.built && !b.building && typeof getChapterExploreBadgeHtml === 'function' ? getChapterExploreBadgeHtml(key) : '') +
   '</div>';
 }
 
@@ -30286,6 +30406,7 @@ function windTurbinesHtml(){
     }
 
     var tagPosClass = spot.top >= 48 ? 'tag-pos-south' : 'tag-pos-north';
+    var exploreBadge = (k === 'wt_nw' && locked && typeof getChapterExploreBadgeHtml === 'function') ? getChapterExploreBadgeHtml('wind_turbine') : '';
 
     return '<div class="plot-spot village-building-card wind-turbine-corner-card ' + tagPosClass + ' ' +
       (locked ? 'is-locked ' : '') + (isBuilt ? 'is-built ' : '') + (isBuilding ? 'is-building ' : '') + '" ' +
@@ -30295,14 +30416,65 @@ function windTurbinesHtml(){
         '<span class="plot-label-icon">' + (locked ? '🔒' : '💨') + '</span>' +
         '<span class="plot-label-text">' + spot.corner + ' · ' + (isBuilt ? (spot.role==='Primary'?'Primary':'Standby') : spot.label) + '</span>' +
       '</div>' +
-      inner + sub +
+      inner + sub + exploreBadge +
     '</div>';
   }).join('');
 }
 
+function ecoPassportSpotHtml(){
+  if (!state) return '';
+  var curCh = state.currentChapter || 1;
+  if (curCh !== 1 && curCh < 7) return '';
+  var badge = (typeof getChapterExploreBadgeHtml === 'function') ? getChapterExploreBadgeHtml('eco_passport') : '';
+  if (curCh > 1 && !badge) return '';
+
+  var spot = { top: 12, left: 77.5, w: 10.5, h: 22 };
+  var explored = (typeof isChapterExplored === 'function') && isChapterExplored(7, state);
+  var tagText = explored ? '🌍 Biome Travel (Ch. 7)' : '🔒 Ch. 7 · Global Biomes';
+
+  return '<div class="plot-spot village-building-card tag-pos-north is-locked" ' +
+    'style="top:' + spot.top + '%;left:' + spot.left + '%;width:' + spot.w + '%;height:' + spot.h + '%;cursor:pointer;z-index:18;" ' +
+    'onclick="exploreChapterObject(\'eco_passport\')" title="' + tagText + '">' +
+    '<div class="plot-label" data-tag-kind="building" data-building-key="eco_passport" title="' + tagText + '">' +
+      '<span class="plot-label-icon">' + (explored ? '🌍' : '🔒') + '</span>' +
+      '<span class="plot-label-text">' + tagText + '</span>' +
+    '</div>' +
+    (typeof drawUnbuiltSpotMarker === 'function' ? drawUnbuiltSpotMarker('eco_passport', { icon: '🌍', label: 'Global Biomes', cost: 0 }, true) : '') +
+    badge +
+  '</div>';
+}
+
+function spaceMissionSpotHtml(){
+  if (!state) return '';
+  var curCh = state.currentChapter || 1;
+  if (curCh !== 1 && curCh < 8) return '';
+  var badge = (typeof getChapterExploreBadgeHtml === 'function') ? getChapterExploreBadgeHtml('space_mission') : '';
+  if (curCh > 1 && !badge) return '';
+
+  var spot = { top: 66, left: 77.5, w: 10.5, h: 22 };
+  var explored = (typeof isChapterExplored === 'function') && isChapterExplored(8, state);
+  var tagText = explored ? '🚀 Artemis Space (Ch. 8)' : '🔒 Ch. 8 · Artemis Space';
+
+  return '<div class="plot-spot village-building-card tag-pos-south is-locked" ' +
+    'style="top:' + spot.top + '%;left:' + spot.left + '%;width:' + spot.w + '%;height:' + spot.h + '%;cursor:pointer;z-index:18;" ' +
+    'onclick="exploreChapterObject(\'space_mission\')" title="' + tagText + '">' +
+    '<div class="plot-label" data-tag-kind="building" data-building-key="space_mission" title="' + tagText + '">' +
+      '<span class="plot-label-icon">' + (explored ? '🚀' : '🔒') + '</span>' +
+      '<span class="plot-label-text">' + tagText + '</span>' +
+    '</div>' +
+    (typeof drawUnbuiltSpotMarker === 'function' ? drawUnbuiltSpotMarker('space_mission', { icon: '🚀', label: 'Artemis Space', cost: 0 }, true) : '') +
+    badge +
+  '</div>';
+}
+
 function villageSpotsHtml(){
   ensureWindTurbinesState();
-  return roadPromenadeHtml() + BUILDING_ORDER.map(buildingSpotHtml).join('') + windTurbinesHtml() + (typeof juteTarpSpotHtml === 'function' ? juteTarpSpotHtml() : '');
+  return roadPromenadeHtml() +
+    BUILDING_ORDER.map(buildingSpotHtml).join('') +
+    windTurbinesHtml() +
+    (typeof juteTarpSpotHtml === 'function' ? juteTarpSpotHtml() : '') +
+    (typeof ecoPassportSpotHtml === 'function' ? ecoPassportSpotHtml() : '') +
+    (typeof spaceMissionSpotHtml === 'function' ? spaceMissionSpotHtml() : '');
 }
 
 // ================= MODAL CONTENT =================
@@ -35047,6 +35219,12 @@ window.performEngineerCommissioning = performEngineerCommissioning;
 window.sellEnergyStorageKWh = sellEnergyStorageKWh;
 window.toggleAutoSellEnergy = toggleAutoSellEnergy;
 window.LIVESTOCK_TYPES = LIVESTOCK_TYPES;
+window.CHAPTER_PRIMARY_OBJECTS = CHAPTER_PRIMARY_OBJECTS;
+window.isChapterExplored = isChapterExplored;
+window.getCurrentExplorationChapter = getCurrentExplorationChapter;
+window.getChapterExploreBadgeHtml = getChapterExploreBadgeHtml;
+window.ecoPassportSpotHtml = ecoPassportSpotHtml;
+window.spaceMissionSpotHtml = spaceMissionSpotHtml;
 window.drawUnbuiltSpotMarker = drawUnbuiltSpotMarker;
 window.getFarmProgressionGuide = getFarmProgressionGuide;
 window.handleStartingTaskGuideClick = handleStartingTaskGuideClick;
@@ -35396,6 +35574,12 @@ globalThis.buildingSpotHtml = buildingSpotHtml;
 globalThis.OBJECT_CHAPTER_UNLOCKS = OBJECT_CHAPTER_UNLOCKS;
 globalThis.exploreChapterObject = (typeof exploreChapterObject !== 'undefined') ? exploreChapterObject : null;
 globalThis.getExploredChaptersCount = (typeof getExploredChaptersCount !== 'undefined') ? getExploredChaptersCount : null;
+globalThis.CHAPTER_PRIMARY_OBJECTS = (typeof CHAPTER_PRIMARY_OBJECTS !== 'undefined') ? CHAPTER_PRIMARY_OBJECTS : null;
+globalThis.isChapterExplored = (typeof isChapterExplored !== 'undefined') ? isChapterExplored : null;
+globalThis.getCurrentExplorationChapter = (typeof getCurrentExplorationChapter !== 'undefined') ? getCurrentExplorationChapter : null;
+globalThis.getChapterExploreBadgeHtml = (typeof getChapterExploreBadgeHtml !== 'undefined') ? getChapterExploreBadgeHtml : null;
+globalThis.ecoPassportSpotHtml = (typeof ecoPassportSpotHtml !== 'undefined') ? ecoPassportSpotHtml : null;
+globalThis.spaceMissionSpotHtml = (typeof spaceMissionSpotHtml !== 'undefined') ? spaceMissionSpotHtml : null;
 globalThis.openJuteTarpModal = (typeof openJuteTarpModal !== 'undefined') ? openJuteTarpModal : null;
 globalThis.uncoverJuteTarpAction = (typeof uncoverJuteTarpAction !== 'undefined') ? uncoverJuteTarpAction : null;
 globalThis.openChapterRoadmapForObject = (typeof openChapterRoadmapForObject !== 'undefined') ? openChapterRoadmapForObject : null;
