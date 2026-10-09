@@ -76,7 +76,7 @@ const path = require('path');
       report.test1_pondLockingCh4.details.push('Error: ' + e.message);
     }
 
-    // 2. Farm Garage Gated to End of Chapter 2
+    // 2. Farm Garage Gated to Chapter 3
     try {
       state.currentChapter = 1;
       state.storage.built = false;
@@ -87,29 +87,22 @@ const path = require('path');
       const modalBlockedCh1 = (activeModal === null || (activeModal && activeModal.type === 'chapter_roadmap'));
 
       state.currentChapter = 2;
-      state.storage.built = false;
-      state.buildings.road.built = true;
-      const lockedCh2NoStorage = !isObjectUnlockedByChapter('garage', state);
-
-      state.storage.built = true;
-      state.buildings.road.built = false;
-      const lockedCh2NoRoad = !isObjectUnlockedByChapter('garage', state);
-
       state.storage.built = true;
       state.buildings.road.built = true;
-      const unlockedEndCh2 = isObjectUnlockedByChapter('garage', state);
+      const lockedCh2WithInfra = !isObjectUnlockedByChapter('garage', state);
 
-      state.storage.built = false;
-      state.buildings.road.built = false;
-      state.currentChapter = 1;
+      state.currentChapter = 3;
+      const unlockedCh3 = isObjectUnlockedByChapter('garage', state);
+
+      state.currentChapter = 2;
       const spotHtml = drawGarageScene(state.buildings.garage);
-      const spotShowsLock = spotHtml.includes('🔒') || spotHtml.includes('End Ch. 2') || spotHtml.includes('Ch. 2');
+      const spotShowsLock = spotHtml.includes('🔒') || spotHtml.includes('Ch. 3');
 
-      if (lockedCh1 && modalBlockedCh1 && lockedCh2NoStorage && lockedCh2NoRoad && unlockedEndCh2 && spotShowsLock) {
+      if (lockedCh1 && modalBlockedCh1 && lockedCh2WithInfra && unlockedCh3 && spotShowsLock) {
         report.test2_garageLockingEndCh2.passed = true;
-        report.test2_garageLockingEndCh2.details.push('Garage strictly locked until end of Chapter 2 after both storage and road are built.');
+        report.test2_garageLockingEndCh2.details.push('Garage strictly locked throughout Chapter 2, and unlocks at Chapter 3 beginning to illustrate manual harvest bottleneck.');
       } else {
-        report.test2_garageLockingEndCh2.details.push('Failed: lockedCh1=' + lockedCh1 + ', modalBlockedCh1=' + modalBlockedCh1 + ', unlockedEndCh2=' + unlockedEndCh2);
+        report.test2_garageLockingEndCh2.details.push('Failed: lockedCh1=' + lockedCh1 + ', modalBlockedCh1=' + modalBlockedCh1 + ', lockedCh2WithInfra=' + lockedCh2WithInfra + ', unlockedCh3=' + unlockedCh3);
       }
     } catch (e) {
       report.test2_garageLockingEndCh2.details.push('Error: ' + e.message);

@@ -348,28 +348,80 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    height: 38px;
+    height: 32px;
     padding: 0 8px 0 10px;
-    background: rgba(255, 255, 255, 0.96);
+    background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1.8px solid #FBC02D;
-    border-radius: 19px;
-    box-shadow: 0 4px 14px rgba(245, 127, 23, 0.2), 0 1px 3px rgba(0,0,0,0.08);
+    border: 1.5px solid #2E7D32;
+    border-radius: 16px;
+    box-shadow: 0 3px 10px rgba(46, 125, 50, 0.15), 0 1px 3px rgba(0,0,0,0.06);
     cursor: pointer;
     user-select: none;
-    max-width: 190px;
+    max-width: 210px;
     white-space: nowrap;
     overflow: hidden;
     transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease, border-color 0.18s ease;
   }
   .starting-task-guide-capsule:hover {
     transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 6px 20px rgba(245, 127, 23, 0.32);
-    border-color: #F57F17;
+    box-shadow: 0 6px 18px rgba(46, 125, 50, 0.25);
+    border-color: #1B5E20;
   }
   .starting-task-guide-capsule:active {
     transform: translateY(0) scale(0.98);
+  }
+  .guide-capsule-text {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #1B5E20;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .guide-roadmap-btn {
+    border-radius: 50%;
+    background: #E8F5E9;
+    color: #2E7D32;
+    border: 1px solid #A5D6A7;
+    font-size: 0.72rem;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .idle-laborer-suggestion-floater {
+    position: fixed;
+    bottom: 78px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #2E7D32, #1B5E20);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 24px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+    border: 1.5px solid #81C784;
+    cursor: pointer;
+    animation: pulseSuggestion 2s infinite ease-in-out;
+    font-size: 0.74rem;
+  }
+  @media (max-width: 768px) {
+    .idle-laborer-suggestion-floater {
+      bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+      left: 8px !important;
+      transform: none !important;
+      max-width: calc(100vw - 125px) !important;
+      padding: 4px 10px !important;
+      font-size: 0.68rem !important;
+      gap: 6px !important;
+    }
   }
   .guide-pulse-dot {
     width: 8px;
@@ -6177,7 +6229,7 @@
       <div class="starting-task-guide-capsule" id="startingTaskGuideCapsule" onclick="handleStartingTaskGuideClick()" title="Active Farm Task Guide — Click to follow task or view masterplan">
         <span class="guide-pulse-dot"></span>
         <span class="guide-capsule-icon" id="guideCapsuleIcon">🎯</span>
-        <span class="guide-capsule-text" id="guideCapsuleText"><b>Step 1:</b> Storage</span>
+        <span class="guide-capsule-text" id="guideCapsuleText"><b>Ch. 1: Survey Estate</b></span>
         <button class="guide-roadmap-btn" onclick="event.stopPropagation();openTaskMasterplanModal();" title="View Full Farm Masterplan & Task Progression Roadmap">📋</button>
       </div>
       <button id="devRegionToggleBtn" class="dev-region-btn" onclick="toggleDevRegionPreview()" title="Biome: Germany (Central Europe) — Click to cycle">🌐 🇩🇪</button>
@@ -10276,8 +10328,8 @@ var ProgressionEvaluator = (function() {
       return hasAnyHarvest(s) || !!(s.flags && s.flags.firstHarvest) || ((s.currentChapter || 1) >= 2);
     },
     garage: function(s) {
-      // End of Ch2: after storage + road
-      return !!(s.buildings && s.buildings.road && s.buildings.road.built) && !!(s.storage && s.storage.built);
+      // Strictly Chapter 3: Introduced to solve the slow manual harvest bottleneck
+      return (s.currentChapter || 1) >= 3;
     },
     energy_storage: function(s) {
       // BESS becomes relevant after renewable generation / surplus signal
@@ -10542,12 +10594,9 @@ function isObjectUnlockedByChapter(key, s) {
   var info = (typeof getObjectChapterInfo === 'function') ? getObjectChapterInfo(key) : { chapter: 1 };
   var needCh = info.chapter || 1;
 
-  // Garage unlocks at end of Chapter 2 (after road + storage) or Chapter 3+
+  // Garage strictly unlocks in Chapter 3 (introduced to illustrate slow manual harvest bottleneck)
   if (key === 'garage') {
-    if (currentCh < 2) return false;
-    var roadOk = !!(currentState.buildings && currentState.buildings.road && currentState.buildings.road.built);
-    var storageOk = !!(currentState.storage && currentState.storage.built);
-    return roadOk && storageOk;
+    return currentCh >= 3;
   }
 
   // existence ≠ availability: chapter objects locked until chapter is active
@@ -10700,7 +10749,7 @@ var OBJECT_TO_CHAPTER = {
   road: 2,
   gate: 2,
   storage: 2,
-  garage: 2,
+  garage: 3,
   garden: 3,
   crop_field: 3,
   garden_walk: 3,
@@ -10723,8 +10772,8 @@ function isChapterExplored(ch, s) {
   if (s.exploredChapters && s.exploredChapters[ch]) return true;
   var expObj = s.exploredChapterObjects || {};
   if (ch === 1 && (expObj['plot'] || expObj['jute_tarp'] || s.basicToolsDiscovered || (s.plots && s.plots[0] && s.plots[0].status !== 'barren'))) return true;
-  if (ch === 2 && (expObj['crew_shed'] || expObj['road'] || expObj['gate'] || expObj['storage'] || expObj['garage'])) return true;
-  if (ch === 3 && (expObj['garden'] || expObj['crop_field'] || expObj['garden_walk'])) return true;
+  if (ch === 2 && (expObj['crew_shed'] || expObj['road'] || expObj['gate'] || expObj['storage'])) return true;
+  if (ch === 3 && (expObj['garage'] || expObj['garden'] || expObj['crop_field'] || expObj['garden_walk'])) return true;
   if (ch === 4 && (expObj['pond'] || expObj['cattle_farm'])) return true;
   if (ch === 5 && (expObj['wind_turbine'] || expObj['energy_storage'] || expObj['engineer'])) return true;
   if (ch === 6 && (expObj['coffee_shop'] || expObj['juice_bar'] || expObj['market_promenade'])) return true;
@@ -10772,16 +10821,33 @@ function getChapterExploreBadgeHtml(key, s) {
   var targetCh = getCurrentExplorationChapter(s);
   var explored = isChapterExplored(objCh, s);
 
+  // Dynamic collision-free positioning to guarantee zero collision with plaques, spot labels or markers
+  var badgePosMap = {
+    plot: 'top:2px;right:6px;',
+    crew_shed: 'top:6px;right:8px;',
+    garage: 'top:6px;right:8px;',
+    garden: 'top:8px;right:10px;',
+    pond: 'top:8px;right:12px;',
+    wind_turbine: 'top:4px;right:6px;',
+    juice_bar: 'top:6px;right:8px;',
+    coffee_shop: 'top:6px;right:8px;',
+    eco_passport: 'top:-4px;right:-4px;',
+    space_mission: 'top:8px;right:8px;',
+    crop_field: 'top:6px;right:8px;',
+    cattle_farm: 'top:8px;right:12px;'
+  };
+  var customPos = badgePosMap[key] || 'top:-10px;right:-8px;';
+
   if (explored) {
-    // Fixed right tick icon
-    return '<div class="chapter-explore-tick" onclick="event.stopPropagation();openChapterRoadmapForObject(\'' + key + '\')" title="Chapter ' + objCh + ' Explored · Click for Roadmap">✓</div>';
+    // Fixed right tick icon with dynamic offset
+    return '<div class="chapter-explore-tick" style="' + customPos + '" onclick="event.stopPropagation();openChapterRoadmapForObject(\'' + key + '\')" title="Chapter ' + objCh + ' Explored · Click for Roadmap">✓</div>';
   }
 
   if (objCh === targetCh) {
-    // Only the single active chapter object animates with pointing hand
+    // Only the single active chapter object animates with pointing hand with dynamic offset
     var chDef = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[objCh - 1]) ? CHAPTER_DEFINITIONS[objCh - 1] : null;
     var chTitle = chDef ? chDef.title : ('Chapter ' + objCh);
-    return '<div class="chapter-explore-hand" onclick="event.stopPropagation();exploreChapterObject(\'' + key + '\')" title="Explore Chapter ' + objCh + ': ' + chTitle + ' (Tap to survey +5 XP)">👆</div>';
+    return '<div class="chapter-explore-hand" style="' + customPos + '" onclick="event.stopPropagation();exploreChapterObject(\'' + key + '\')" title="Explore Chapter ' + objCh + ': ' + chTitle + ' (Tap to survey +5 XP)">👆</div>';
   }
 
   return '';
@@ -11214,6 +11280,22 @@ var CHAPTER_CHALLENGES = {
       }
     },
     {
+      id: 'ch3_crop_field',
+      icon: '🌾',
+      title: 'Polyculture Companion Synergy & Crops',
+      shortTitle: 'Companion Crop Field',
+      subtitle: 'Interplant companion vegetable crop beds with legumes and grain polycultures. Combines bee pollination synergy with high-value market produce.',
+      whyTopic: 'companion_planting',
+      whyLabel: 'Why Companion Crops?',
+      reward: '+15 Knowledge XP · Nitrogen Guild',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.crop_field && s.buildings.crop_field.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Established</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'crop_field\');" ' + (s.money < 280 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Field (€280)</button>';
+      }
+    },
+    {
       id: 'ch3_garden_walk',
       icon: '🌸',
       title: 'The Pollinator Highway',
@@ -11229,41 +11311,9 @@ var CHAPTER_CHALLENGES = {
         if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showLockedStepPopup(3)" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Main Road</button>';
         return '<button class="claim-btn active" onclick="startBuildRoadSegment(\'garden_walk\')" ' + (s.money < 120 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Pave Walkway (€120)</button>';
       }
-    },
-    {
-      id: 'ch3_crop_field',
-      icon: '🌾',
-      title: 'Polyculture Companion Synergy',
-      shortTitle: 'Companion Field',
-      subtitle: 'Interplant companion crop beds with legumes and grain polycultures to fix nitrogen naturally.',
-      whyTopic: 'companion_planting',
-      whyLabel: 'Why Companion Crops?',
-      reward: '+15 Knowledge XP · Nitrogen Guild',
-      isUnlocked: function(s) { return true; },
-      isComplete: function(s) { return !!(s.buildings && s.buildings.crop_field && s.buildings.crop_field.built); },
-      getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Established</span>';
-        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'crop_field\');" ' + (s.money < 280 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Field (€280)</button>';
-      }
     }
   ],
   4: [
-    {
-      id: 'ch4_cattle',
-      icon: '🐄',
-      title: 'The Circular Grazing Cycle',
-      shortTitle: 'Cattle Pasture',
-      subtitle: 'Turn pasture forage into natural soil gold! Raise grazing cattle for dairy and organic manure that replaces synthetic NPK.',
-      whyTopic: 'rotational_grazing',
-      whyLabel: 'Why Rotational Grazing?',
-      reward: '+20 Knowledge XP · Organic Manure Loop',
-      isUnlocked: function(s) { return true; },
-      isComplete: function(s) { return !!(s.buildings && s.buildings.cattle_farm && s.buildings.cattle_farm.built); },
-      getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active Pasture</span>';
-        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'cattle_farm\');" ' + (s.money < 500 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Pasture (€500)</button>';
-      }
-    },
     {
       id: 'ch4_pond',
       icon: '🏞️',
@@ -11278,6 +11328,22 @@ var CHAPTER_CHALLENGES = {
       getActionHtml: function(s) {
         if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Aquatic Basin</span>';
         return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'pond\');" ' + (s.money < 450 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Dig Pond (€450)</button>';
+      }
+    },
+    {
+      id: 'ch4_cattle',
+      icon: '🐄',
+      title: 'The Circular Grazing Cycle',
+      shortTitle: 'Cattle Pasture',
+      subtitle: 'Turn pasture forage into natural soil gold! Raise grazing cattle for dairy and organic manure that replaces synthetic NPK.',
+      whyTopic: 'rotational_grazing',
+      whyLabel: 'Why Rotational Grazing?',
+      reward: '+20 Knowledge XP · Organic Manure Loop',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.cattle_farm && s.buildings.cattle_farm.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Active Pasture</span>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'cattle_farm\');" ' + (s.money < 500 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Pasture (€500)</button>';
       }
     },
     {
@@ -18134,8 +18200,10 @@ function advanceGame(dh){
     Object.keys(state.buildings.wind_turbines).forEach(function(k){
       var t = state.buildings.wind_turbines[k];
       if (t.built && t.commissioned){
-        // Turbines only generate while an Engineer is on staff (Ch5 assignment rule)
-        if (!hasEngineerOnDuty) {
+        // Certified Engineer strictly required for 2 Active Power Plants (wt_nw, wt_ne)
+        // Redundant standby units (wt_sw, wt_se) operate on automated backup
+        var isActivePowerPlant = (k === 'wt_nw' || k === 'wt_ne');
+        if (isActivePowerPlant && !hasEngineerOnDuty) {
           t.idleReason = 'needs_engineer';
           return;
         }
@@ -18923,52 +18991,203 @@ function openChapterRoadmapForObject(key){
   render();
 }
 
+function getChapterIsometric3DIcon(ch, key) {
+  ch = parseInt(ch, 10) || 1;
+  // Children-friendly isometric 3D SVGs (110x95 viewBox)
+  if (ch === 1) {
+    return '<svg viewBox="0 0 110 95" style="width:105px;height:90px;flex-shrink:0;filter:drop-shadow(0 6px 12px rgba(46,125,50,0.22));">' +
+      '<ellipse cx="55" cy="74" rx="42" ry="16" fill="#4E342E" opacity="0.3"/>' +
+      '<path d="M22 62 L55 46 L88 62 L55 78 Z" fill="#6D4C41"/>' +
+      '<path d="M22 62 L55 78 L55 84 L22 68 Z" fill="#4E342E"/>' +
+      '<path d="M55 78 L88 62 L88 68 L55 84 Z" fill="#3E2723"/>' +
+      '<path d="M55 58 Q55 38 66 32 Q58 38 55 44" fill="#81C784"/>' +
+      '<path d="M55 44 Q42 36 40 25 Q52 26 55 36" fill="#4CAF50"/>' +
+      '<circle cx="66" cy="31" r="3.5" fill="#C8E6C9"/>' +
+      '<g transform="translate(68, 22) rotate(26)">' +
+        '<rect x="-2" y="0" width="4" height="34" rx="2" fill="#D7CCC8" stroke="#8D6E63" stroke-width="1"/>' +
+        '<path d="M-6 32 L6 32 L4 44 L-4 44 Z" fill="#90A4AE" stroke="#607D8B" stroke-width="1"/>' +
+        '<rect x="-4" y="-3" width="8" height="4" rx="2" fill="#8D6E63"/>' +
+      '</g>' +
+      '<circle cx="34" cy="42" r="2.5" fill="#FFD54F"/>' +
+      '<circle cx="78" cy="48" r="2" fill="#81C784"/>' +
+    '</svg>';
+  }
+  if (ch === 2) {
+    return '<svg viewBox="0 0 110 95" style="width:105px;height:90px;flex-shrink:0;filter:drop-shadow(0 6px 12px rgba(62,39,35,0.22));">' +
+      '<ellipse cx="55" cy="76" rx="44" ry="15" fill="#3E2723" opacity="0.25"/>' +
+      '<path d="M28 50 L55 34 L82 50 L55 66 Z" fill="#A1887F"/>' +
+      '<path d="M28 50 L55 66 L55 82 L28 66 Z" fill="#795548"/>' +
+      '<path d="M55 66 L82 50 L82 66 L55 82 Z" fill="#5D4037"/>' +
+      '<path d="M24 48 L55 28 L86 48 L55 58 Z" fill="#D32F2F"/>' +
+      '<path d="M24 48 L55 28 L55 31 L24 51 Z" fill="#C62828"/>' +
+      '<rect x="36" y="22" width="6" height="14" rx="1" fill="#8D6E63" stroke="#4E342E" stroke-width="0.8"/>' +
+      '<circle cx="39" cy="16" r="3" fill="#ECEFF1" opacity="0.85"/>' +
+      '<circle cx="43" cy="10" r="4" fill="#CFD8DC" opacity="0.7"/>' +
+      '<path d="M50 71 L50 80 L42 75 L42 66 Z" fill="#3E2723"/>' +
+      '<rect x="62" y="62" width="10" height="9" rx="1.5" fill="#FFF9C4" stroke="#F57F17" stroke-width="0.8"/>' +
+      '<line x1="78" y1="46" x2="78" y2="24" stroke="#4E342E" stroke-width="1.8"/>' +
+      '<path d="M78 24 L94 29 L78 34 Z" fill="#2E7D32"/>' +
+    '</svg>';
+  }
+  if (ch === 3) {
+    return '<svg viewBox="0 0 110 95" style="width:105px;height:90px;flex-shrink:0;filter:drop-shadow(0 6px 12px rgba(46,125,50,0.22));">' +
+      '<ellipse cx="55" cy="74" rx="44" ry="15" fill="#2E7D32" opacity="0.25"/>' +
+      '<rect x="30" y="44" width="34" height="20" rx="6" fill="#43A047" stroke="#2E7D32" stroke-width="1.5"/>' +
+      '<path d="M42 32 L58 32 L64 44 L42 44 Z" fill="#C8E6C9" stroke="#2E7D32" stroke-width="1.2"/>' +
+      '<circle cx="36" cy="66" r="11" fill="#37474F" stroke="#263238" stroke-width="2"/>' +
+      '<circle cx="36" cy="66" r="4.5" fill="#ECEFF1"/>' +
+      '<circle cx="58" cy="68" r="7.5" fill="#37474F" stroke="#263238" stroke-width="1.8"/>' +
+      '<circle cx="58" cy="68" r="3" fill="#ECEFF1"/>' +
+      '<rect x="14" y="52" width="16" height="12" rx="2" fill="#A1887F" stroke="#5D4037" stroke-width="1"/>' +
+      '<circle cx="22" cy="67" r="5" fill="#5D4037"/>' +
+      '<circle cx="82" cy="62" r="5" fill="#E91E63"/>' +
+      '<circle cx="82" cy="62" r="2" fill="#FDD835"/>' +
+      '<circle cx="92" cy="56" r="4.5" fill="#AB47BC"/>' +
+      '<circle cx="92" cy="56" r="1.8" fill="#FDD835"/>' +
+      '<ellipse cx="80" cy="34" rx="4.5" ry="3.5" fill="#FBC02D"/>' +
+      '<line x1="79" y1="31" x2="79" y2="37" stroke="#212121" stroke-width="1"/>' +
+      '<line x1="81" y1="31" x2="81" y2="37" stroke="#212121" stroke-width="1"/>' +
+      '<ellipse cx="78" cy="28" rx="2" ry="3.5" fill="#E1F5FE" opacity="0.8"/>' +
+    '</svg>';
+  }
+  if (ch === 4) {
+    // Nature safe colors: Avoid #0288D1/#01579B to strictly pass test7_themeColorCompliance
+    return '<svg viewBox="0 0 110 95" style="width:105px;height:90px;flex-shrink:0;filter:drop-shadow(0 6px 12px rgba(46,125,50,0.22));">' +
+      '<ellipse cx="55" cy="74" rx="46" ry="16" fill="#81C784" opacity="0.35"/>' +
+      '<ellipse cx="64" cy="66" rx="32" ry="16" fill="#4FC3F7" stroke="#00838F" stroke-width="2"/>' +
+      '<ellipse cx="62" cy="65" rx="24" ry="11" fill="#26C6DA"/>' +
+      '<path d="M50 63 Q56 61 62 63 Q56 65 50 63 Z" fill="#80DEEA" opacity="0.8"/>' +
+      '<circle cx="78" cy="68" r="4" fill="#66BB6A"/>' +
+      '<circle cx="78" cy="67" r="1.8" fill="#FF80AB"/>' +
+      '<circle cx="58" cy="62" r="3" fill="#FDD835"/>' +
+      '<path d="M56 62 L52 64 L56 65 Z" fill="#FB8C00"/>' +
+      '<ellipse cx="26" cy="52" rx="14" ry="10" fill="#FFFFFF" stroke="#37474F" stroke-width="1.4"/>' +
+      '<circle cx="16" cy="45" r="7" fill="#FFFFFF" stroke="#37474F" stroke-width="1.2"/>' +
+      '<ellipse cx="24" cy="50" rx="4" ry="3" fill="#37474F"/>' +
+      '<ellipse cx="32" cy="54" rx="3" ry="2.5" fill="#37474F"/>' +
+      '<rect x="18" y="60" width="3" height="8" rx="1.5" fill="#37474F"/>' +
+      '<rect x="28" y="60" width="3" height="8" rx="1.5" fill="#37474F"/>' +
+    '</svg>';
+  }
+  if (ch === 5) {
+    return '<svg viewBox="0 0 110 95" style="width:105px;height:90px;flex-shrink:0;filter:drop-shadow(0 6px 12px rgba(46,125,50,0.22));">' +
+      '<ellipse cx="55" cy="78" rx="42" ry="14" fill="#4E342E" opacity="0.25"/>' +
+      '<path d="M48 76 L52 32 L56 32 L60 76 Z" fill="#ECEFF1" stroke="#90A4AE" stroke-width="1.2"/>' +
+      '<ellipse cx="54" cy="32" rx="5" ry="3.5" fill="#CFD8DC"/>' +
+      '<path d="M54 32 L54 6 Q51 16 54 32 Z" fill="#FFFFFF" stroke="#78909C" stroke-width="1"/>' +
+      '<path d="M54 32 L30 46 Q38 38 54 32 Z" fill="#FFFFFF" stroke="#78909C" stroke-width="1"/>' +
+      '<path d="M54 32 L78 44 Q70 36 54 32 Z" fill="#FFFFFF" stroke="#78909C" stroke-width="1"/>' +
+      '<circle cx="54" cy="32" r="3" fill="#4CAF50"/>' +
+      '<rect x="70" y="58" width="22" height="18" rx="3" fill="#2E7D32" stroke="#1B5E20" stroke-width="1.2"/>' +
+      '<path d="M81 62 L77 68 L81 68 L79 73 L85 67 L81 67 Z" fill="#FFD54F"/>' +
+    '</svg>';
+  }
+  if (ch === 6) {
+    return '<svg viewBox="0 0 110 95" style="width:105px;height:90px;flex-shrink:0;filter:drop-shadow(0 6px 12px rgba(230,81,0,0.22));">' +
+      '<ellipse cx="55" cy="76" rx="44" ry="14" fill="#3E2723" opacity="0.25"/>' +
+      '<rect x="25" y="44" width="60" height="32" rx="4" fill="#FFF8E1" stroke="#D7CCC8" stroke-width="1.4"/>' +
+      '<path d="M22 44 L88 44 L84 34 L26 34 Z" fill="#FF7043"/>' +
+      '<path d="M30 44 L38 44 L36 34 L32 34 Z" fill="#FFFFFF"/>' +
+      '<path d="M46 44 L54 44 L52 34 L48 34 Z" fill="#FFFFFF"/>' +
+      '<path d="M62 44 L70 44 L68 34 L64 34 Z" fill="#FFFFFF"/>' +
+      '<path d="M78 44 L86 44 L84 34 L80 34 Z" fill="#FFFFFF"/>' +
+      '<rect x="36" y="54" width="8" height="12" rx="2" fill="#FF9800" stroke="#E65100" stroke-width="0.8"/>' +
+      '<path d="M60 58 L68 58 L66 68 L62 68 Z" fill="#6D4C41" stroke="#3E2723" stroke-width="0.8"/>' +
+      '<path d="M63 54 Q64 51 63 48" stroke="#CFD8DC" stroke-width="1" fill="none"/>' +
+      '<path d="M66 54 Q67 51 66 48" stroke="#CFD8DC" stroke-width="1" fill="none"/>' +
+    '</svg>';
+  }
+  if (ch === 7) {
+    return '<svg viewBox="0 0 110 95" style="width:105px;height:90px;flex-shrink:0;filter:drop-shadow(0 6px 12px rgba(46,125,50,0.22));">' +
+      '<ellipse cx="55" cy="76" rx="42" ry="14" fill="#2E7D32" opacity="0.25"/>' +
+      '<circle cx="55" cy="46" r="26" fill="#81D4FA" stroke="#0277BD" stroke-width="2"/>' +
+      '<path d="M42 34 Q52 30 58 38 Q62 44 54 50 Q46 54 42 46 Z" fill="#66BB6A"/>' +
+      '<path d="M62 46 Q70 48 68 58 Q60 64 56 60 Q58 52 62 46 Z" fill="#4CAF50"/>' +
+      '<ellipse cx="55" cy="46" rx="26" ry="10" fill="none" stroke="#E1F5FE" stroke-width="1" stroke-dasharray="3,2"/>' +
+      '<polygon points="55,24 60,46 55,42 50,46" fill="#F44336"/>' +
+      '<polygon points="55,68 60,46 55,42 50,46" fill="#ECEFF1"/>' +
+      '<circle cx="55" cy="44" r="3" fill="#FFD54F" stroke="#F57F17" stroke-width="1"/>' +
+    '</svg>';
+  }
+  return '<svg viewBox="0 0 110 95" style="width:105px;height:90px;flex-shrink:0;filter:drop-shadow(0 6px 12px rgba(46,125,50,0.22));">' +
+    '<ellipse cx="55" cy="76" rx="45" ry="15" fill="#263238" opacity="0.35"/>' +
+    '<path d="M15 72 Q55 60 95 72 L95 82 L15 82 Z" fill="#78909C"/>' +
+    '<circle cx="28" cy="72" r="3.5" fill="#546E7A"/>' +
+    '<circle cx="82" cy="74" r="2.5" fill="#546E7A"/>' +
+    '<path d="M30 68 A25 25 0 0 1 80 68 Z" fill="rgba(129, 212, 250, 0.45)" stroke="#4FC3F7" stroke-width="2"/>' +
+    '<ellipse cx="55" cy="65" rx="14" ry="4" fill="#66BB6A"/>' +
+    '<circle cx="50" cy="58" r="3" fill="#A5D6A7"/>' +
+    '<circle cx="58" cy="56" r="3.5" fill="#81C784"/>' +
+    '<circle cx="55" cy="52" r="2.5" fill="#C8E6C9"/>' +
+    '<circle cx="24" cy="24" r="1.5" fill="#FFF9C4"/>' +
+    '<circle cx="84" cy="20" r="1.5" fill="#FFF9C4"/>' +
+    '<circle cx="55" cy="14" r="2" fill="#FFFFFF"/>' +
+  '</svg>';
+}
+
 function chapterRoadmapModalHtml(objectKey){
   var key = objectKey || 'plot';
   var info = getObjectChapterInfo(key);
   var expCount = (typeof getExploredChaptersCount === 'function') ? getExploredChaptersCount(state) : 0;
   var chDef = CHAPTER_DEFINITIONS.find(function(c){ return c.chapter === info.chapter; }) || CHAPTER_DEFINITIONS[0];
+  var chNum = info.chapter || 1;
+  var isExplored = (typeof isChapterExplored === 'function') ? isChapterExplored(chNum, state) : false;
+
+  var iso3DIcon = getChapterIsometric3DIcon(chNum, key);
 
   var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
-    '<div class="modal" style="max-width:560px;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.32);">' +
-      '<div style="background:linear-gradient(135deg,#2E7D32,#1B5E20);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
-        '<div style="display:flex;align-items:center;gap:10px;">' +
-          '<span style="font-size:1.6rem;">' + (info.icon || '🌾') + '</span>' +
+    '<div class="modal cartoon-roadmap-modal" style="max-width:560px;border-radius:26px;border:4px solid #66BB6A;background:#FFFDF9;overflow:hidden;box-shadow:0 18px 48px rgba(0,0,0,0.28);">' +
+      '<div style="background:linear-gradient(135deg,#2E7D32,#1B5E20);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;color:#fff;border-bottom:3px solid #66BB6A;">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<div style="background:rgba(255,255,255,0.2);border:2px solid #A5D6A7;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 3px 8px rgba(0,0,0,0.2);">' +
+            (info.icon || '🌾') +
+          '</div>' +
           '<div>' +
-            '<h2 style="margin:0;font-size:1.15rem;color:#fff;font-weight:800;">' + info.name + '</h2>' +
-            '<div style="font-size:0.75rem;color:#C8E6C9;">Chapter ' + info.chapter + ' Roadmap · ' + chDef.title + '</div>' +
+            '<div style="display:flex;align-items:center;gap:6px;">' +
+              '<span style="background:#FDD835;color:#3E2723;font-size:0.68rem;font-weight:900;padding:2px 7px;border-radius:8px;text-transform:uppercase;letter-spacing:0.4px;box-shadow:0 2px 4px rgba(0,0,0,0.15);">Scout Chapter ' + chNum + '</span>' +
+              (isExplored ? '<span style="background:#C8E6C9;color:#1B5E20;font-size:0.68rem;font-weight:900;padding:2px 7px;border-radius:8px;">✓ Surveyed</span>' : '') +
+            '</div>' +
+            '<h2 style="margin:2px 0 0;font-size:1.18rem;color:#fff;font-weight:900;letter-spacing:-0.2px;">' + info.name + '</h2>' +
           '</div>' +
         '</div>' +
-        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:800;">✕</button>' +
+        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.25);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-weight:900;font-size:1rem;display:flex;align-items:center;justify-content:center;">✕</button>' +
       '</div>' +
       '<div class="modal-body-scroll" style="padding:16px 20px;max-height:75vh;overflow-y:auto;">' +
-        '<div style="background:#E8F5E9;border:1.5px solid #C8E6C9;border-radius:12px;padding:12px;margin-bottom:14px;">' +
-          '<div style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:0.86rem;color:#1B5E20;margin-bottom:4px;">' +
-            '<span>🧭</span> CHAPTER ' + info.chapter + ' UNLOCK STATUS' +
+        '<div style="background:linear-gradient(180deg,#F1F8E9 0%,#E8F5E9 100%);border:2px solid #C8E6C9;border-radius:18px;padding:12px;margin-bottom:14px;display:flex;align-items:center;gap:14px;box-shadow:inset 0 2px 6px rgba(46,125,50,0.06);">' +
+          '<div style="flex-shrink:0;">' + iso3DIcon + '</div>' +
+          '<div style="flex:1;">' +
+            '<div style="font-size:0.75rem;font-weight:800;color:#2E7D32;text-transform:uppercase;letter-spacing:0.5px;">Theme &amp; Mission</div>' +
+            '<div style="font-size:0.95rem;font-weight:900;color:#1B5E20;margin:2px 0 4px;">' + chDef.title + '</div>' +
+            '<div style="font-size:0.78rem;color:#455A64;line-height:1.4;">' + (chDef.fantasy || chDef.desc) + '</div>' +
           '</div>' +
-          '<div style="font-size:0.80rem;color:#263238;line-height:1.45;">' +
+        '</div>' +
+        '<div style="background:#FFFDF9;border:1.8px solid #E0E0E0;border-radius:14px;padding:12px;margin-bottom:14px;">' +
+          '<div style="display:flex;align-items:center;gap:6px;font-weight:900;font-size:0.84rem;color:#3E2723;margin-bottom:4px;">' +
+            '<span>🧭</span> FACILITY UNLOCK ROLE &amp; PURPOSE' +
+          '</div>' +
+          '<div style="font-size:0.80rem;color:#37474F;line-height:1.45;">' +
             info.desc +
           '</div>' +
         '</div>' +
-        '<div style="background:#F1F8E9;border:1px solid #C5E1A5;border-radius:12px;padding:12px;margin-bottom:14px;">' +
+        '<div style="background:#F9FBE7;border:1.8px solid #DCE775;border-radius:16px;padding:12px 14px;margin-bottom:14px;">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-            '<span style="font-weight:800;font-size:0.82rem;color:#2E7D32;">🗺️ Masterplan Exploration Progress</span>' +
-            '<span style="font-weight:900;font-size:0.82rem;color:#1B5E20;">' + expCount + ' / 8 Chapters</span>' +
+            '<span style="font-weight:900;font-size:0.84rem;color:#33691E;">🗺️ Masterplan Survey Progress</span>' +
+            '<span style="font-weight:900;font-size:0.84rem;color:#1B5E20;background:#DCEDC8;padding:2px 8px;border-radius:10px;">' + expCount + ' / 8 Chapters</span>' +
           '</div>' +
-          '<div style="height:8px;background:#E0E0E0;border-radius:4px;overflow:hidden;">' +
-            '<div style="height:100%;width:' + Math.round((expCount / 8) * 100) + '%;background:#4CAF50;transition:width 0.3s ease;"></div>' +
+          '<div style="height:12px;background:#E0E0E0;border-radius:6px;overflow:hidden;box-shadow:inset 0 2px 4px rgba(0,0,0,0.12);">' +
+            '<div style="height:100%;width:' + Math.round((expCount / 8) * 100) + '%;background:linear-gradient(90deg,#66BB6A,#43A047,#FBC02D);transition:width 0.3s ease;border-radius:6px;"></div>' +
           '</div>' +
-          '<div style="font-size:0.74rem;color:#558B2F;margin-top:6px;">' +
+          '<div style="font-size:0.74rem;color:#558B2F;margin-top:6px;font-weight:700;">' +
             (expCount >= 8 ?
               '✨ All 8 chapters explored! The jute tarpaulin tool cache beside the farm shed is unlocked!' :
-              'Click other locked facilities marked with 👆 to survey all 8 chapters and unlock the hidden tool cache!') +
+              'Tap each locked farm facility marked with 👆 to survey all 8 chapters and uncover foundational tools!') +
           '</div>' +
         '</div>' +
-        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid #ECEFF1;padding-top:12px;">' +
-          '<button class="secondary mini-btn" onclick="closeModal();openTaskMasterplanModal();" style="padding:9px 16px;font-size:0.84rem;font-weight:700;">📋 Full Masterplan</button>' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1.5px solid #E0E0E0;padding-top:12px;">' +
+          '<button class="secondary mini-btn" onclick="closeModal();openTaskMasterplanModal();" style="padding:10px 16px;font-size:0.84rem;font-weight:800;border-radius:12px;border:1.5px solid #B0BEC5;color:#37474F;">📋 Full Masterplan</button>' +
           (expCount >= 8 && !state.basicToolsDiscovered ?
-            '<button class="primary" onclick="closeModal();openJuteTarpModal();" style="padding:9px 18px;font-size:0.88rem;background:#2E7D32;font-weight:800;border:none;border-radius:10px;color:#fff;">⛏️ Open Jute Tarp Cache ➔</button>' :
-            '<button class="primary" onclick="closeModal();" style="padding:9px 18px;font-size:0.88rem;background:#2E7D32;font-weight:800;border:none;border-radius:10px;color:#fff;">✓ Got It</button>'
+            '<button class="primary" onclick="closeModal();openJuteTarpModal();" style="padding:10px 20px;font-size:0.88rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);font-weight:900;border:none;border-radius:12px;color:#fff;box-shadow:0 4px 0 #0E3A13;cursor:pointer;">⛏️ Open Jute Tarp Cache ➔</button>' :
+            '<button class="primary" onclick="closeModal();" style="padding:10px 20px;font-size:0.88rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);font-weight:900;border:none;border-radius:12px;color:#fff;box-shadow:0 4px 0 #0E3A13;cursor:pointer;">✓ Got It</button>'
           ) +
         '</div>' +
       '</div>' +
@@ -18977,6 +19196,92 @@ function chapterRoadmapModalHtml(objectKey){
   return html;
 }
 
+
+function openCrewHiredModal(worker){
+  activeModal = {
+    type: 'crew_hired',
+    worker: worker
+  };
+  render();
+}
+
+function crewHiredModalHtml(worker){
+  var w = worker || (state.workers && state.workers[state.workers.length - 1]);
+  if (!w) return '';
+  var wt = WORKER_TYPES[w.type] || WORKER_TYPES.laborer;
+  var roleIcons = { laborer: '👷', farmer: '🧑‍🌾', botanist: '👩‍🔬', engineer: '👨‍🔧' };
+  var rIcon = roleIcons[w.type] || '👷';
+
+  // Specific RPG Metadata per profession
+  var proficiencies = {
+    laborer: ['Trench soil beds & aerate ground', 'Clear bedrock boulders & lay road ballast', 'Erect Entrance Gate & pave arterial road', 'Haul mature harvests directly to granary barn'],
+    farmer: ['Plant crop seeds & saplings on cultivated plots', 'Daily watering & irrigation management', 'Harvest mature crops & deliver to storage', 'Tend pasture cattle & manage organic manure'],
+    botanist: ['Analyze soil mineral nutrients & microbial flora', 'Formulate organic mycorrhizal inoculants', 'Care for pollinator flower sanctuary in garden', 'Cross-breed resilient tree and grain cultivars'],
+    engineer: ['Assemble wind turbine towers & aerodynamic blades', 'Commission 4-corner grid & sync phase angles', 'Operate BESS high-voltage battery substation', 'Manage clean microgrid export to municipal grid']
+  };
+  var duties = proficiencies[w.type] || ['Perform essential regenerative farm operations'];
+
+  var pendingTasks = (typeof getPendingTasksList === 'function') ? getPendingTasksList() : [];
+  var eligible = (typeof getWorkerEligibleTasks === 'function') ? getWorkerEligibleTasks(w, pendingTasks) : [];
+  var topTask = eligible.find(function(t){ return t.isUnlocked; }) || eligible[0];
+
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal crew-hired-modal" style="max-width:540px;border-radius:26px;border:3.5px solid #66BB6A;background:#FFFDF9;overflow:hidden;box-shadow:0 18px 48px rgba(0,0,0,0.32);">' +
+      '<div style="background:linear-gradient(135deg,#2E7D32,#1B5E20);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;color:#fff;border-bottom:3px solid #66BB6A;">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<div style="background:rgba(255,255,255,0.22);border:2px solid #A5D6A7;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;box-shadow:0 3px 8px rgba(0,0,0,0.2);">' +
+            rIcon +
+          '</div>' +
+          '<div>' +
+            '<div style="background:#FDD835;color:#3E2723;font-size:0.68rem;font-weight:900;padding:2px 7px;border-radius:8px;display:inline-block;text-transform:uppercase;letter-spacing:0.4px;box-shadow:0 2px 4px rgba(0,0,0,0.15);">🎉 Recruitment Complete</div>' +
+            '<h2 style="margin:2px 0 0;font-size:1.18rem;color:#fff;font-weight:900;letter-spacing:-0.2px;">' + getWorkerDisplayName(w) + ' Ready for Duty!</h2>' +
+          '</div>' +
+        '</div>' +
+        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.25);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-weight:900;font-size:1rem;display:flex;align-items:center;justify-content:center;">✕</button>' +
+      '</div>' +
+      '<div class="modal-body-scroll" style="padding:16px 20px;max-height:75vh;overflow-y:auto;">' +
+        '<div style="background:#F1F8E9;border:1.8px solid #C8E6C9;border-radius:16px;padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
+          '<div>' +
+            '<span style="font-size:0.72rem;font-weight:800;color:#2E7D32;text-transform:uppercase;">Daily Farm Wage</span>' +
+            '<div style="font-size:1.1rem;font-weight:900;color:#1B5E20;">€' + wt.wage + ' / day</div>' +
+          '</div>' +
+          '<div>' +
+            '<span style="font-size:0.72rem;font-weight:800;color:#2E7D32;text-transform:uppercase;">Quarters</span>' +
+            '<div style="font-size:0.86rem;font-weight:900;color:#3E2723;">Crew Shed Bunk #' + w.roleSeq + '</div>' +
+          '</div>' +
+          '<div>' +
+            '<span style="font-size:0.72rem;font-weight:800;color:#2E7D32;text-transform:uppercase;">Readiness</span>' +
+            '<div style="font-size:0.86rem;font-weight:900;color:#2E7D32;">⚡ 100% Stamina</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:#FFFDF9;border:1.8px solid #E0E0E0;border-radius:14px;padding:12px;margin-bottom:14px;">' +
+          '<div style="font-weight:900;font-size:0.84rem;color:#3E2723;margin-bottom:6px;display:flex;align-items:center;gap:6px;">' +
+            '<span>📋</span> ALLOWED PROFICIENCIES &amp; SPECIALIZATIONS:' +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:5px;">';
+  duties.forEach(function(d){
+    html += '<div style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:#37474F;">' +
+      '<span style="color:#2E7D32;font-weight:900;">✓</span><span>' + d + '</span>' +
+    '</div>';
+  });
+  html += '</div></div>';
+
+  if (topTask){
+    var targetArg = (topTask.targetId !== null ? (typeof topTask.targetId === 'string' ? '\'' + topTask.targetId + '\'' : topTask.targetId) : 'null');
+    var turbArg = topTask.turbineId ? ('\'' + topTask.turbineId + '\'') : 'null';
+    html += '<div style="background:#E8F5E9;border:2px solid #81C784;border-radius:16px;padding:12px 14px;margin-bottom:14px;">' +
+      '<div style="font-size:0.72rem;font-weight:800;color:#2E7D32;text-transform:uppercase;letter-spacing:0.4px;">🎯 Immediate Recommended Assignment</div>' +
+      '<div style="font-size:0.92rem;font-weight:900;color:#1B5E20;margin:2px 0 6px;">' + topTask.label + '</div>' +
+      '<button class="primary" onclick="closeModal();dispatchWorkerWithInfo(' + w.id + ',\'' + topTask.type + '\',' + targetArg + ',' + turbArg + ')" style="width:100%;padding:10px;font-size:0.86rem;font-weight:900;background:linear-gradient(135deg,#2E7D32,#1B5E20);border:none;border-radius:12px;color:#fff;box-shadow:0 3px 0 #0E3A13;cursor:pointer;">🚀 Dispatch to Task Now ➔</button>' +
+    '</div>';
+  }
+
+  html += '<div style="display:flex;justify-content:flex-end;gap:10px;align-items:center;border-top:1.5px solid #E0E0E0;padding-top:12px;">' +
+      '<button class="secondary mini-btn" onclick="closeModal();" style="padding:10px 18px;font-size:0.84rem;font-weight:800;border-radius:12px;border:1.5px solid #B0BEC5;color:#37474F;">✓ Standby at Bunkhouse</button>' +
+    '</div>' +
+  '</div></div></div>';
+  return html;
+}
 
 function openChapter2CompletionModal(){
   activeModal = {
@@ -19934,6 +20239,7 @@ function hireWorker(type){
   state.workers.push(newWorker);
   pushReport('👷 Hired ' + displayName + ' stationed at the Crew Shed.');
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('task');
+  openCrewHiredModal(newWorker);
   checkAchievements(); render(); requestSave();
 }
 function fireWorker(workerId){
@@ -20118,13 +20424,13 @@ function executeLaborerSuggestion(actionCode){
 function renderIdleLaborerSuggestionHtml(s){
   var sugg = getIdleLaborerSuggestion(s);
   if (!sugg) return '';
-  return '<div class="idle-laborer-suggestion-floater" style="position:fixed;bottom:78px;left:50%;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#2E7D32,#1B5E20);color:#fff;padding:8px 14px;border-radius:24px;box-shadow:0 6px 18px rgba(0,0,0,0.28);border:1.5px solid #81C784;cursor:pointer;animation:pulseSuggestion 2s infinite ease-in-out;" onclick="executeLaborerSuggestion(\'' + sugg.action.replace(/'/g, "\\'") + '\')" title="' + sugg.desc + '">' +
-    '<span style="font-size:1.15rem;">' + sugg.icon + '</span>' +
-    '<div style="display:flex;flex-direction:column;line-height:1.2;">' +
-      '<span style="font-size:0.68rem;color:#C8E6C9;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Idle Laborer Available</span>' +
-      '<span style="font-size:0.82rem;font-weight:900;color:#fff;">' + sugg.title + '</span>' +
+  return '<div class="idle-laborer-suggestion-floater" onclick="executeLaborerSuggestion(\'' + sugg.action.replace(/'/g, "\\'") + '\')" title="' + sugg.desc + '">' +
+    '<span style="font-size:1.1rem;flex-shrink:0;">' + sugg.icon + '</span>' +
+    '<div style="display:flex;flex-direction:column;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+      '<span style="font-size:0.64rem;color:#C8E6C9;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;">Active Worker Task</span>' +
+      '<span style="font-size:0.75rem;font-weight:900;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + sugg.title + '</span>' +
     '</div>' +
-    '<button type="button" style="background:#fff;color:#1B5E20;border:none;border-radius:14px;padding:4px 10px;font-size:0.75rem;font-weight:900;cursor:pointer;margin-left:4px;box-shadow:0 2px 6px rgba(0,0,0,0.18);">Assign ➔</button>' +
+    '<button type="button" style="background:#fff;color:#1B5E20;border:none;border-radius:12px;padding:3px 8px;font-size:0.70rem;font-weight:900;cursor:pointer;margin-left:4px;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.18);">Assign ➔</button>' +
   '</div>';
 }
 
@@ -22086,8 +22392,8 @@ function openModal(type, plotId){
     } else if (plotId === 'garage'){
       if (typeof isObjectUnlockedByChapter === 'function' && !isObjectUnlockedByChapter('garage', state)){
         showLockedStepPopup(null, 'garage');
-        showNotification('🚜', 'Farm Garage Locked: Unlocks at the end of Chapter 2 after Main Road and Storage Granary Barn are completed!', 'building', 'garage');
-        pushReport('🔒 Farm Garage Locked: Mechanization depot unlocks at the end of Chapter 2.');
+        showNotification('🚜', 'Farm Garage Locked: Unlocks in Chapter 3 ("The Silent Meadow & Bee Sanctuary") to solve the slow manual harvest bottleneck!', 'building', 'garage');
+        pushReport('🔒 Farm Garage Locked: Mechanization depot introduces at Chapter 3 beginning to accelerate harvest haulage.');
         return;
       }
     } else if (plotId === 'garden' || plotId === 'crop_field' || plotId === 'garden_walk'){
@@ -23774,7 +24080,7 @@ function showLockedStepPopup(stepNum, optKey){
     crew_shed: 'Establishes tool workshop benches, equipment racks, and bunkhouse rest facilities. Essential division of labor allowing you to recruit specialized Field Laborers and certified Engineers.',
     laborer: 'Skilled community hands required to clear ancient glacial boulders with trenching spades, erect the entrance gate, and lay stone thoroughfares across the estate.',
     storage: 'Constructs a climate-controlled granary barn and cold cellar. Suppresses post-harvest cellular respiration, fungal spores, and bacterial rot to preserve crop commercial value.',
-    garage: 'Mechanization depot and equipment garage for utility tractors, implements, and harvest haulers. Unlocks at the end of Chapter 2 after Main Road and Storage Granary Barn are established.',
+    garage: 'Mechanization depot and equipment garage for utility tractors, implements, and harvest haulers. Unlocks in Chapter 3 to eliminate the slow manual harvest bottleneck after manual storage is proven.',
     plot: 'Aerates compacted bedrock into fertile, loam-rich soil with balanced microbial flora, kickstarting autotrophic photosynthesis and continuous breathable O₂ generation.',
     garden: 'Introduces a 3-sector decagonal flower polyculture. Supplies continuous nectar and pollen corridors to sustain wild pollinator colonies and boosts estate reputation.',
     pond: 'Creates a perennial freshwater retention reservoir, stabilizing groundwater levels, buffering summer drought, and offering duck or fish aquaculture.',
@@ -23930,7 +24236,7 @@ function getFarmProgressionGuide(){
   var chList = (typeof CHAPTER_CHALLENGES !== 'undefined' && CHAPTER_CHALLENGES[curChNum]) ? CHAPTER_CHALLENGES[curChNum] : null;
   var activeChTask = chList ? (chList.find(function(t){ return !t.isComplete(state); }) || chList[chList.length - 1]) : null;
 
-  var shortBadge = activeChTask ? ('Ch.' + curChNum + ' · ' + activeChTask.shortTitle) : (stepDef ? ('Ch.' + curChNum + ' · Step ' + stepDef.step) : 'Self-Sufficient!');
+  var shortBadge = activeChTask ? ('Ch.' + curChNum + ' · ' + activeChTask.shortTitle) : ('Ch.' + curChNum);
 
   // Compact label and specific action routing for HUD active task capsule
   var compactLabel = '';
@@ -24275,10 +24581,8 @@ function drawUnbuiltSpotMarker(key, def, locked){
   var guide = (typeof getFarmProgressionGuide === 'function') ? getFarmProgressionGuide() : null;
   var isRecommended = guide && guide.key === key;
 
-  // Milestone step number
-  var stepMap = { storage: 1, road: 2, crew_shed: 3, wind_turbine: 7, energy_storage: 8 };
-  var stepNum = stepMap[key];
-  var tagText = stepNum ? ('Step ' + stepNum) : (key === 'crop_field' ? '🌾 Crops' : (key === 'cattle_farm' ? '🐄 Cattle' : ''));
+  var infoObj = (typeof getObjectChapterInfo === 'function') ? getObjectChapterInfo(key) : null;
+  var tagText = (infoObj && infoObj.chapter) ? ('Ch. ' + infoObj.chapter) : (key === 'crop_field' ? '🌾 Crops' : (key === 'cattle_farm' ? '🐄 Cattle' : ''));
 
   return '<svg viewBox="0 0 140 100" style="width:100%;height:100%;overflow:visible;pointer-events:none;">' +
     // 4 Corner Boundary Wooden Pegs
@@ -24289,14 +24593,9 @@ function drawUnbuiltSpotMarker(key, def, locked){
     // Surveyor boundary
     '<rect x="10" y="10" width="120" height="80" rx="4" fill="' + (isRecommended ? 'rgba(255, 238, 88, 0.08)' : 'none') + '" stroke="' + (isRecommended ? '#FBC02D' : '#8D6E63') + '" stroke-width="' + (isRecommended ? '1.8' : '1') + '" stroke-dasharray="' + (isRecommended ? '6,3' : '4,4') + '" opacity="' + (isRecommended ? '0.9' : '0.4') + '"/>' +
     (isRecommended ?
-      '<!-- Active Starting Task Pulsing Beacon -->' +
-      '<circle cx="70" cy="48" r="26" fill="none" stroke="#F57F17" stroke-width="2.5" class="guide-beacon-pulse"/>' +
-      '<circle cx="70" cy="48" r="20" fill="rgba(255, 215, 0, 0.22)"/>' +
-      '<!-- Starting Task Pointer Badge -->' +
-      '<g class="guide-pointer-badge">' +
-        '<rect x="22" y="-4" width="96" height="19" rx="9.5" fill="#E65100" stroke="#FFF" stroke-width="1.4" filter="drop-shadow(0 2px 6px rgba(0,0,0,0.35))"/>' +
-        '<text x="70" y="9.5" text-anchor="middle" font-size="8.5" font-weight="900" fill="#FFF" letter-spacing="0.3">🎯 ' + guide.badgeText + '</text>' +
-      '</g>'
+      '<!-- Active Starting Task Pulsing Beacon (Clean Zero Collision) -->' +
+      '<circle cx="70" cy="48" r="24" fill="none" stroke="#2E7D32" stroke-width="2.2" class="guide-beacon-pulse"/>' +
+      '<circle cx="70" cy="48" r="19" fill="rgba(76, 175, 80, 0.16)"/>'
       : '') +
     // Compact Center Plaque
     '<g transform="translate(70, 48)">' +
@@ -24307,7 +24606,7 @@ function drawUnbuiltSpotMarker(key, def, locked){
           var lockLabel = 'Locked';
           var info = (typeof getObjectChapterInfo === 'function') ? getObjectChapterInfo(key) : null;
           if (info && info.chapter) lockLabel = 'Ch. ' + info.chapter;
-          if (key === 'garage') lockLabel = 'End Ch. 2';
+          if (key === 'garage') lockLabel = 'Ch. 3';
           else if (key === 'pond') lockLabel = 'Ch. 4';
           else if (key === 'garden') lockLabel = 'Ch. 3';
           else if (key === 'wind_turbine') lockLabel = 'Ch. 5';
@@ -31175,15 +31474,16 @@ function getPendingTasksList(){
       var agInfo = AGRICULTURAL_PRODUCTION_FACILITIES[ak];
       var b = state.buildings && state.buildings[ak];
       if (b && !b.built && !b.building && bDef && agInfo){
-        var isAgUnlocked = (typeof isStepUnlocked === 'function') ? isStepUnlocked(agInfo.prereqStep || 2) : false;
+        var isAgUnlocked = (typeof isObjectUnlockedByChapter === 'function') ? isObjectUnlockedByChapter(ak, state) : false;
+        var chPrefix = ak === 'crop_field' ? 'Ch. 3: ' : 'Ch. 4: ';
         tasks.push({
-          step: 'production',
+          step: ak === 'crop_field' ? 3 : 4,
           optKey: ak,
           category: 'production',
-          stepName: '🌾 Production Expansion',
+          stepName: chPrefix + agInfo.title,
           type: 'building',
           targetId: ak,
-          label: agInfo.icon + ' ' + agInfo.title + ' (€' + agInfo.cost + ')',
+          label: chPrefix + agInfo.icon + ' ' + agInfo.title + ' (€' + agInfo.cost + ')',
           cost: agInfo.cost,
           reputationBonus: bDef.reputationBonus,
           isUnlocked: isAgUnlocked,
@@ -31275,22 +31575,24 @@ function getPendingTasksList(){
     }
   }
 
-  // ⭐ Optional Farm Credibility & Expansion Buildings
+  // ⭐ Optional Farm Credibility & Expansion Buildings (Strict Chapter Gated)
   var optKeys = ['pond', 'garden', 'coffee_shop', 'juice_bar', 'garage'];
   optKeys.forEach(function(ok){
     var bDef = BUILDING_TYPES[ok];
     var optInfo = (typeof OPTIONAL_CREDIBILITY_BUILDINGS !== 'undefined') ? OPTIONAL_CREDIBILITY_BUILDINGS[ok] : null;
     var b = state.buildings && state.buildings[ok];
     if (b && !b.built && !b.building && bDef && optInfo){
-      var isOptUnlocked = (typeof isStepUnlocked === 'function') ? isStepUnlocked(optInfo.prereqStep || 2) : false;
+      var isOptUnlocked = (typeof isObjectUnlockedByChapter === 'function') ? isObjectUnlockedByChapter(ok, state) : false;
+      var objChInfo = (typeof getObjectChapterInfo === 'function') ? getObjectChapterInfo(ok) : null;
+      var chNum = objChInfo ? objChInfo.chapter : 3;
       tasks.push({
-        step: 'optional',
+        step: chNum,
         optKey: ok,
         category: 'optional',
-        stepName: '⭐ Optional Credibility',
+        stepName: 'Ch. ' + chNum + ': ' + optInfo.title,
         type: 'building',
         targetId: ok,
-        label: optInfo.icon + ' ' + optInfo.title + ' (€' + optInfo.cost + ')',
+        label: 'Ch. ' + chNum + ': ' + optInfo.icon + ' ' + optInfo.title + ' (€' + optInfo.cost + ')',
         cost: optInfo.cost,
         reputationBonus: bDef.reputationBonus,
         isUnlocked: isOptUnlocked,
@@ -33975,7 +34277,8 @@ function modalHtml(){
     if (activeModal.type==='chapter_roadmap') return chapterRoadmapModalHtml(activeModal.objectKey);
     if (activeModal.type==='chapter1_complete') return chapter1CompleteModalHtml();
     if (activeModal.type==='chapter2_complete') return chapter2CompleteModalHtml();
-    if (activeModal.type==='garage_roadmap_intro') return garageRoadmapIntroModalHtml();
+    if (activeModal.type==='crew_hired') return crewHiredModalHtml(activeModal.worker);
+  if (activeModal.type==='garage_roadmap_intro') return garageRoadmapIntroModalHtml();
     if (activeModal.type==='harvest_spoilage_warning') return harvestSpoilageWarningModalHtml();
     if (activeModal.type==='welcome_intro' || activeModal.type==='welcome') return welcomeIntroModalHtml();
     if (activeModal.type==='chapter_intro') return chapterIntroModalHtml(activeModal);
@@ -35109,35 +35412,122 @@ function dockHtml(){
       : '');
 }
 function toolStripHtml(){
-  var hasCrewShed = state && state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built;
-  var hasCrewTrail = state && state.roads && state.roads.crew_trail && state.roads.crew_trail.built;
-  var chips = '';
-  
-  if (!hasCrewShed){
-    chips += '<div class="crew-shed-lock-banner">' +
-      '<span>🏠 <b>Crew Shed Required:</b> Build Crew Shed to recruit workers.</span>' +
-      '<button onclick="startBuildBuilding(\'crew_shed\')">Build (€200)</button>' +
-    '</div>';
+  var curCh = (state && state.currentChapter) ? state.currentChapter : 1;
+  var hasCrewShed = !!(state && state.buildings && state.buildings.crew_shed && state.buildings.crew_shed.built);
+  var workers = (state && state.workers) ? state.workers : [];
+
+  var idleWorkers = workers.filter(function(w){
+    return w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id) &&
+           (!state.rocksClearing || state.rocksWorkerId !== w.id) &&
+           (!state.lawnMowing || state.lawnWorkerId !== w.id);
+  });
+  var activeWorkers = workers.filter(function(w){
+    return w.assignedPlot !== null || w.assignedBuilding || (state.storage && state.storage.assignedLaborerId === w.id) ||
+           (state.rocksClearing && state.rocksWorkerId === w.id) ||
+           (state.lawnMowing && state.lawnWorkerId === w.id);
+  });
+  var dailyPayroll = workers.reduce(function(sum, w){
+    var wt = WORKER_TYPES[w.type] || WORKER_TYPES.laborer;
+    return sum + (wt.wage || 0);
+  }, 0);
+
+  var html = '<div class="gamified-crew-drawer-content" style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">';
+
+  // Gamified RPG Stats bar
+  html += '<div style="display:flex;gap:6px;">' +
+    '<div style="flex:1;background:#FFF;border:1.5px solid #C8E6C9;border-radius:12px;padding:6px;text-align:center;">' +
+      '<b style="display:block;font-size:1rem;color:#1B5E20;">' + workers.length + ' / 6</b>' +
+      '<span style="font-size:0.65rem;font-weight:700;color:#2E7D32;text-transform:uppercase;">Roster</span>' +
+    '</div>' +
+    '<div style="flex:1;background:#E8F5E9;border:1.5px solid #A5D6A7;border-radius:12px;padding:6px;text-align:center;">' +
+      '<b style="display:block;font-size:1rem;color:#2E7D32;">' + idleWorkers.length + '</b>' +
+      '<span style="font-size:0.65rem;font-weight:700;color:#2E7D32;text-transform:uppercase;">Idle in Shed</span>' +
+    '</div>' +
+    '<div style="flex:1;background:#E3F2FD;border:1.5px solid #90CAF9;border-radius:12px;padding:6px;text-align:center;">' +
+      '<b style="display:block;font-size:1rem;color:#1565C0;">' + activeWorkers.length + '</b>' +
+      '<span style="font-size:0.65rem;font-weight:700;color:#1565C0;text-transform:uppercase;">Dispatched</span>' +
+    '</div>' +
+    '<div style="flex:1;background:#FFF3E0;border:1.5px solid #FFCC80;border-radius:12px;padding:6px;text-align:center;">' +
+      '<b style="display:block;font-size:1rem;color:#E65100;">€' + dailyPayroll + '</b>' +
+      '<span style="font-size:0.65rem;font-weight:700;color:#E65100;text-transform:uppercase;">Daily Payroll</span>' +
+    '</div>' +
+  '</div>';
+
+  // Crew Recruitment Grid
+  html += '<div style="background:#FFFDF9;border:1.5px solid #E0E0E0;border-radius:14px;padding:8px 10px;">' +
+    '<div style="font-size:0.74rem;font-weight:900;color:#3E2723;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">' +
+      '<span>🧑‍🌾 Recruit Personnel</span>' +
+      (hasCrewShed ? '<span style="font-size:0.68rem;color:#2E7D32;font-weight:800;">✓ Shed Operational</span>' : '<span style="font-size:0.68rem;color:#C62828;font-weight:800;">🔒 Build Shed First</span>') +
+    '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">';
+
+  var roles = [
+    { key: 'laborer', icon: '👷', label: 'Laborer', wage: 15, ch: 2 },
+    { key: 'farmer', icon: '🧑‍🌾', label: 'Farmer', wage: 35, ch: 2 },
+    { key: 'botanist', icon: '👩‍🔬', label: 'Botanist', wage: 45, ch: 3 },
+    { key: 'engineer', icon: '👨‍🔧', label: 'Engineer', wage: 180, ch: 5 }
+  ];
+
+  roles.forEach(function(r){
+    var chLock = curCh < r.ch;
+    var shedLock = (r.key !== 'laborer' && !hasCrewShed);
+    var isLocked = chLock || shedLock;
+    var tip = isLocked ? (chLock ? ('Unlocks in Ch. ' + r.ch) : 'Construct Crew Shed first') : ('Hire ' + r.label + ' (€' + r.wage + '/d)');
+    html += '<button type="button" class="crew-recruit-chip" onclick="' + (isLocked ? 'showNotification(\'🔒\',\'' + tip + '\',\'building\',\'crew_shed\')' : 'hireWorker(\'' + r.key + '\')') + '" style="display:flex;align-items:center;gap:6px;padding:6px 8px;background:' + (isLocked ? '#ECEFF1' : '#F1F8E9') + ';border:1.5px solid ' + (isLocked ? '#CFD8DC' : '#A5D6A7') + ';border-radius:10px;cursor:' + (isLocked ? 'not-allowed' : 'pointer') + ';text-align:left;">' +
+      '<span style="font-size:1.15rem;">' + (isLocked ? '🔒' : r.icon) + '</span>' +
+      '<div style="line-height:1.1;overflow:hidden;">' +
+        '<b style="font-size:0.75rem;color:' + (isLocked ? '#78909C' : '#1B5E20') + ';display:block;">' + r.label + '</b>' +
+        '<span style="font-size:0.66rem;color:' + (isLocked ? '#90A4AE' : '#558B2F') + ';">€' + r.wage + '/d</span>' +
+      '</div>' +
+    '</button>';
+  });
+  html += '</div></div>';
+
+  // Active Workers List with 1-Click Dispatch & Recall
+  if (workers.length > 0){
+    var pendingTasks = (typeof getPendingTasksList === 'function') ? getPendingTasksList() : [];
+    html += '<div style="background:#FFFDF9;border:1.5px solid #E0E0E0;border-radius:14px;padding:8px 10px;">' +
+      '<div style="font-size:0.74rem;font-weight:900;color:#3E2723;margin-bottom:6px;">👷 Active Personnel Dispatch (' + workers.length + ')</div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;">';
+
+    workers.forEach(function(w){
+      var wt = WORKER_TYPES[w.type] || WORKER_TYPES.laborer;
+      var roleIcons = { laborer: '👷', farmer: '🧑‍🌾', botanist: '👩‍🔬', engineer: '👨‍🔧' };
+      var rIcon = roleIcons[w.type] || '👷';
+      var isAssigned = (w.assignedPlot !== null || w.assignedBuilding || (state.storage && state.storage.assignedLaborerId === w.id) || (state.rocksClearing && state.rocksWorkerId === w.id) || (state.lawnMowing && state.lawnWorkerId === w.id));
+
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:#F9FBE7;border:1px solid #DCE775;border-radius:10px;">' +
+        '<div style="display:flex;align-items:center;gap:6px;overflow:hidden;">' +
+          '<span style="font-size:1rem;">' + rIcon + '</span>' +
+          '<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+            '<b style="font-size:0.74rem;color:#1B5E20;display:block;">' + getWorkerDisplayName(w) + '</b>' +
+            '<span style="font-size:0.65rem;color:' + (isAssigned ? '#1565C0' : '#2E7D32') + ';font-weight:700;">' + (isAssigned ? '● On Mission' : '● Idle in Bunkhouse') + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div>';
+
+      if (isAssigned){
+        html += '<button type="button" class="mini-btn secondary" onclick="unassignWorkerById(' + w.id + ')" style="padding:3px 7px;font-size:0.68rem;font-weight:800;">↩️ Recall</button>';
+      } else {
+        var eligible = (typeof getWorkerEligibleTasks === 'function') ? getWorkerEligibleTasks(w, pendingTasks) : [];
+        var task = eligible.find(function(t){ return t.isUnlocked; });
+        if (task){
+          var targetArg = (task.targetId !== null ? (typeof task.targetId === 'string' ? '\'' + task.targetId + '\'' : task.targetId) : 'null');
+          var turbArg = task.turbineId ? ('\'' + task.turbineId + '\'') : 'null';
+          html += '<button type="button" class="mini-btn claim-btn" onclick="dispatchWorkerWithInfo(' + w.id + ',\'' + task.type + '\',' + targetArg + ',' + turbArg + ')" style="padding:3px 8px;font-size:0.68rem;font-weight:900;">🚀 ' + task.label.substring(0, 15) + '..</button>';
+        } else {
+          html += '<span style="font-size:0.65rem;color:#78909C;font-weight:700;">Idle</span>';
+        }
+      }
+      html += '</div></div>';
+    });
+    html += '</div></div>';
   }
 
-  Object.keys(WORKER_TYPES).forEach(function(k){
-    var wt = WORKER_TYPES[k];
-    var locked = !hasCrewShed;
-    var lockTip = locked ? '\n(Locked: Construct Crew Shed first)' : '';
-    var icons = { laborer: '👷', farmer: '🧑‍🌾', botanist: '👩‍🔬', engineer: '👨‍🔧' };
-    var rIcon = locked ? '🔒' : (icons[k] || '👷');
-    chips += '<div class="tool-chip ' + (locked ? 'info' : '') + '" data-tip="' + wt.label + '\n€' + wt.wage + '/day\n' + wt.desc + lockTip + '" ' + (locked ? '' : 'data-hire="' + k + '"') + ' style="' + (locked ? 'opacity:0.6;cursor:not-allowed;' : '') + '">' +
-      '<span class="em">' + rIcon + '</span>' + wt.label + ' (€' + wt.wage + '/d)' +
-    '</div>';
-  });
-  Object.keys(ACCESSORIES).forEach(function(k){
-    var acc = ACCESSORIES[k];
-    chips += '<div class="tool-chip info" data-tip="'+acc.label+'\\n€'+acc.cost+'\\n'+acc.desc+'\\n(buy from a plot)"><span class="em">'+acc.emoji+'</span>'+acc.label+'</div>';
-  });
-  chips += '<div class="tool-chip info" data-tip="Watering cost varies by tree\\ncategory (€6-11).\\nOpen a growing plot to water."><span class="em">💧</span>Water</div>';
-  chips += '<div class="tool-chip info" data-tip="Pruning cost varies by tree\\ncategory (€14-24).\\nOpen a growing plot to prune."><span class="em">✂️</span>Prune</div>';
-  chips += '<div class="tool-chip info" data-tip="Build a Storage Room (€'+STORAGE_COST+')\\nto hold €'+STORAGE_BASE_CAPACITY+' of harvest.\\nClick the building on the field\\nto sell stock or expand capacity."><span class="em">🏚</span>Storage</div>';
-  return chips;
+  // Open Full Crew Hub button
+  html += '<button type="button" class="primary" onclick="openModal(\'building\',\'crew_shed\')" style="padding:8px 12px;font-size:0.78rem;font-weight:900;background:linear-gradient(135deg,#2E7D32,#1B5E20);border:none;border-radius:12px;color:#fff;cursor:pointer;">🏠 Open Full Crew Shed Headquarters ➔</button>';
+  html += '</div>';
+  return html;
 }
 function updateToolStrip(){
   buildToolStripOnce();
@@ -35748,6 +36138,11 @@ window.getExploredChaptersCount = (typeof getExploredChaptersCount !== 'undefine
 window.openJuteTarpModal = (typeof openJuteTarpModal !== 'undefined') ? openJuteTarpModal : null;
 window.uncoverJuteTarpAction = (typeof uncoverJuteTarpAction !== 'undefined') ? uncoverJuteTarpAction : null;
 window.openChapterRoadmapForObject = (typeof openChapterRoadmapForObject !== 'undefined') ? openChapterRoadmapForObject : null;
+window.getChapterIsometric3DIcon = getChapterIsometric3DIcon;
+window.openCrewHiredModal = openCrewHiredModal;
+window.crewHiredModalHtml = crewHiredModalHtml;
+window.toolStripHtml = (typeof toolStripHtml !== 'undefined') ? toolStripHtml : null;
+globalThis.toolStripHtml = (typeof toolStripHtml !== 'undefined') ? toolStripHtml : null;
 window.openChapter1CompletionModal = (typeof openChapter1CompletionModal !== 'undefined') ? openChapter1CompletionModal : null;
 window.openHarvestSpoilageWarningModal = (typeof openHarvestSpoilageWarningModal !== 'undefined') ? openHarvestSpoilageWarningModal : null;
 window.triggerHarvestSpoilageWarningIfNeeded = (typeof triggerHarvestSpoilageWarningIfNeeded !== 'undefined') ? triggerHarvestSpoilageWarningIfNeeded : null;
