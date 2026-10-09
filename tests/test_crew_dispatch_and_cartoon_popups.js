@@ -34,32 +34,45 @@ async function runTests() {
   let passedTests = 0;
   const totalTests = 7;
 
-  // Test 1: Farm Garage strict Chapter 3 gating
+  // Test 1: Farm Garage Chapter 2 infrastructure gating & manual harvest bottleneck
   try {
     const res = await page.evaluate(() => {
       state.currentChapter = 2;
       state.storage.built = true;
       state.buildings.road.built = true;
-      state.plots[0].status = 'growing';
-      state.plots[1].status = 'growing';
-      state.plots[2].status = 'growing';
+      state.plots = [
+        { id: 0, treeType: 'apple', status: 'growing', harvestsDone: 0, manualHarvestsDone: 0 },
+        { id: 1, treeType: 'orange', status: 'growing', harvestsDone: 0, manualHarvestsDone: 0 },
+        { id: 2, treeType: 'lemon', status: 'growing', harvestsDone: 0, manualHarvestsDone: 0 }
+      ];
+      state.manualHarvestCount = 0;
 
-      const garageLockedInCh2 = !isObjectUnlockedByChapter('garage', state);
+      const garageLockedInCh2BeforeHarvests = !isObjectUnlockedByChapter('garage', state);
       const missionGateLockedCh2 = !ProgressionEvaluator.isObjectAvailable('garage', state);
 
-      state.currentChapter = 3;
-      const garageUnlockedInCh3 = isObjectUnlockedByChapter('garage', state);
-      const missionGateUnlockedCh3 = ProgressionEvaluator.isObjectAvailable('garage', state);
+      // Cultivate all 6 plots (3 harvestable + 3 oxygen) and perform 2 manual harvests per crop (6 total)
+      state.plots = [
+        { id: 0, treeType: 'apple', status: 'growing', harvestsDone: 2, manualHarvestsDone: 2 },
+        { id: 1, treeType: 'orange', status: 'growing', harvestsDone: 2, manualHarvestsDone: 2 },
+        { id: 2, treeType: 'lemon', status: 'growing', harvestsDone: 2, manualHarvestsDone: 2 },
+        { id: 3, treeType: 'oak', status: 'growing', harvestsDone: 0, manualHarvestsDone: 0 },
+        { id: 4, treeType: 'pine', status: 'growing', harvestsDone: 0, manualHarvestsDone: 0 },
+        { id: 5, treeType: 'maple', status: 'growing', harvestsDone: 0, manualHarvestsDone: 0 }
+      ];
+      state.manualHarvestCount = 6;
 
-      return { garageLockedInCh2, missionGateLockedCh2, garageUnlockedInCh3, missionGateUnlockedCh3 };
+      const garageUnlockedInCh2WithHarvests = isObjectUnlockedByChapter('garage', state);
+      const missionGateUnlockedCh2 = ProgressionEvaluator.isObjectAvailable('garage', state);
+
+      return { garageLockedInCh2BeforeHarvests, missionGateLockedCh2, garageUnlockedInCh2WithHarvests, missionGateUnlockedCh2 };
     });
 
-    if (res.garageLockedInCh2 && res.missionGateLockedCh2 && res.garageUnlockedInCh3 && res.missionGateUnlockedCh3) {
-      console.log('[✓ PASSED] test1_farmGarageStrictCh3Gating');
-      console.log('    ↳ Farm Garage is strictly locked throughout Chapter 2 despite road+storage+plot 3 built, and unlocks in Chapter 3.');
+    if (res.garageLockedInCh2BeforeHarvests && res.missionGateLockedCh2 && res.garageUnlockedInCh2WithHarvests && res.missionGateUnlockedCh2) {
+      console.log('[✓ PASSED] test1_farmGarageChapter2InfraGating');
+      console.log('    ↳ Farm Garage unlocks in Chapter 2 after all 6 plots planted and 6 manual harvests completed on foot.');
       passedTests++;
     } else {
-      console.error('[✗ FAILED] test1_farmGarageStrictCh3Gating', res);
+      console.error('[✗ FAILED] test1_farmGarageChapter2InfraGating', res);
     }
   } catch (err) {
     console.error('[✗ FAILED] test1_farmGarageStrictCh3Gating with error:', err);

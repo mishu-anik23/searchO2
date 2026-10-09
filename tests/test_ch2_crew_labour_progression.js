@@ -201,13 +201,18 @@ async function runTestSuite() {
       state.storage.built = true;
       state.storage.inventory = { apple: 10 };
       state.storage.capacityUsed = 50;
+      state.workers = [{ id: 1, type: 'farmer' }];
 
-      // Plant all 6 plots
+      // Plant all 6 plots & 6 manual harvests
       for (let i = 0; i < 6; i++) {
         state.plots[i].treeType = 'apple';
         state.plots[i].status = 'growing';
-        state.plots[i].harvestsDone = 1;
+        state.plots[i].harvestsDone = 2;
+        state.plots[i].manualHarvestsDone = 2;
       }
+      state.manualHarvestCount = 6;
+      state.buildings.garage = { built: true };
+      state.mechanizedHarvestDone = true;
 
       // Check Chapter 2 completion
       const ch2Done = CHAPTER_DEFINITIONS[1].isComplete(state);
@@ -219,7 +224,6 @@ async function runTestSuite() {
       state.plots[0].treeType = 'apple';
       state.plots[1].treeType = 'pear';
       state.plots[2].treeType = 'cherry';
-      state.buildings.garage = { built: false };
       state.buildings.garden = { built: false };
       state.buildings.crop_field = { built: false };
 
@@ -227,14 +231,13 @@ async function runTestSuite() {
       const ch3StrictlyIncomplete = ch3PrematureDone === false;
 
       // Complete Ch 3 facilities
-      state.buildings.garage.built = true;
       state.buildings.garden.built = true;
       state.buildings.crop_field.built = true;
       const ch3CompleteWhenBuilt = CHAPTER_DEFINITIONS[2].isComplete(state);
 
       if (ch2Done && ch3Unlocked && ch3StrictlyIncomplete && ch3CompleteWhenBuilt) {
         report.test5_ch2CompletionAndCh3Gating.passed = true;
-        report.test5_ch2CompletionAndCh3Gating.details.push('Chapter 2 completes with all 6 plots + storage; Chapter 3 unlocks with garage start and zero premature leaks.');
+        report.test5_ch2CompletionAndCh3Gating.details.push('Chapter 2 completes with all 6 plots + storage + garage + mechanized harvest; Chapter 3 unlocks with Garden + Crop Field and zero premature leaks.');
       } else {
         report.test5_ch2CompletionAndCh3Gating.details.push('Failed: ch2Done=' + ch2Done + ', ch3Unlocked=' + ch3Unlocked + ', ch3StrictlyIncomplete=' + ch3StrictlyIncomplete + ', ch3CompleteWhenBuilt=' + ch3CompleteWhenBuilt);
       }

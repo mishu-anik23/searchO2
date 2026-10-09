@@ -76,7 +76,7 @@ const path = require('path');
       report.test1_pondLockingCh4.details.push('Error: ' + e.message);
     }
 
-    // 2. Farm Garage Gated to Chapter 3
+    // 2. Farm Garage Gated to Chapter 2 Infrastructure (6 plots planted + 2 manual harvests per crop / 6 total)
     try {
       state.currentChapter = 1;
       state.storage.built = false;
@@ -89,20 +89,34 @@ const path = require('path');
       state.currentChapter = 2;
       state.storage.built = true;
       state.buildings.road.built = true;
-      const lockedCh2WithInfra = !isObjectUnlockedByChapter('garage', state);
+      // In Ch 2 with only 3 plots or 0 manual harvests, garage is strictly locked
+      state.plots = [
+        { id: 0, treeType: 'apple', status: 'growing', harvestsDone: 0, manualHarvestsDone: 0 },
+        { id: 1, treeType: 'orange', status: 'growing', harvestsDone: 0, manualHarvestsDone: 0 },
+        { id: 2, treeType: 'lemon', status: 'growing', harvestsDone: 0, manualHarvestsDone: 0 }
+      ];
+      state.manualHarvestCount = 0;
+      const lockedCh2BeforeBottleneck = !isObjectUnlockedByChapter('garage', state);
 
-      state.currentChapter = 3;
-      const unlockedCh3 = isObjectUnlockedByChapter('garage', state);
+      // Now cultivate all 6 plots (3 harvestable + 3 oxygen) and perform 2 manual harvests on each of the 3 harvestable plots (6 total)
+      state.plots = [
+        { id: 0, treeType: 'apple', status: 'growing', harvestsDone: 2, manualHarvestsDone: 2 },
+        { id: 1, treeType: 'orange', status: 'growing', harvestsDone: 2, manualHarvestsDone: 2 },
+        { id: 2, treeType: 'lemon', status: 'growing', harvestsDone: 2, manualHarvestsDone: 2 },
+        { id: 3, treeType: 'oak', status: 'growing', harvestsDone: 0, manualHarvestsDone: 0 },
+        { id: 4, treeType: 'pine', status: 'growing', harvestsDone: 0, manualHarvestsDone: 0 },
+        { id: 5, treeType: 'maple', status: 'growing', harvestsDone: 0, manualHarvestsDone: 0 }
+      ];
+      state.manualHarvestCount = 6;
+      const unlockedCh2WithHarvests = isObjectUnlockedByChapter('garage', state);
 
-      state.currentChapter = 2;
       const spotHtml = drawGarageScene(state.buildings.garage);
-      const spotShowsLock = spotHtml.includes('🔒') || spotHtml.includes('Ch. 3');
 
-      if (lockedCh1 && modalBlockedCh1 && lockedCh2WithInfra && unlockedCh3 && spotShowsLock) {
+      if (lockedCh1 && modalBlockedCh1 && lockedCh2BeforeBottleneck && unlockedCh2WithHarvests) {
         report.test2_garageLockingEndCh2.passed = true;
-        report.test2_garageLockingEndCh2.details.push('Garage strictly locked throughout Chapter 2, and unlocks at Chapter 3 beginning to illustrate manual harvest bottleneck.');
+        report.test2_garageLockingEndCh2.details.push('Garage strictly locked in Ch 1 & early Ch 2, and unlocks in Chapter 2 after all 6 plots planted and 6 manual harvests completed on foot.');
       } else {
-        report.test2_garageLockingEndCh2.details.push('Failed: lockedCh1=' + lockedCh1 + ', modalBlockedCh1=' + modalBlockedCh1 + ', lockedCh2WithInfra=' + lockedCh2WithInfra + ', unlockedCh3=' + unlockedCh3);
+        report.test2_garageLockingEndCh2.details.push('Failed: lockedCh1=' + lockedCh1 + ', modalBlockedCh1=' + modalBlockedCh1 + ', lockedCh2BeforeBottleneck=' + lockedCh2BeforeBottleneck + ', unlockedCh2WithHarvests=' + unlockedCh2WithHarvests);
       }
     } catch (e) {
       report.test2_garageLockingEndCh2.details.push('Error: ' + e.message);
