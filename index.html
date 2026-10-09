@@ -669,8 +669,8 @@
     overflow-y: auto;
   }
   .step-instruction-lock-banner {
-    background: #FFF8E1;
-    border: 1.5px solid #FFE082;
+    background: #E8F5E9;
+    border: 1.5px solid #A5D6A7;
     border-radius: 12px;
     padding: 9px 12px;
     margin-bottom: 12px;
@@ -679,7 +679,7 @@
     gap: 8px;
     font-size: 0.82rem;
     font-weight: 800;
-    color: #E65100;
+    color: #1B5E20;
   }
   .step-instruction-box {
     background: #FFF;
@@ -10077,59 +10077,71 @@ var CHAPTER_DEFINITIONS = [
     icon: '🚜',
     title: 'Build Your Farm',
     fantasy: 'I can operate a farm.',
-    desc: 'Protect harvests from rot with a Storage Granary Barn, pave the arterial highway, and unlock the Equipment Depot.',
-    keySystems: ['Storage Granary', 'Arterial Highway', 'Field Laborers', 'Equipment Depot'],
-    unlockReward: 'Equipment Depot & Machinery Leasing',
+    desc: 'Mobilize field labor to build the Crew Shed, clear road boulders, erect the entrance gate, pave the arterial highway, construct the ventilated storage granary, recruit a dedicated farmer, and expand cultivation across all 6 plots.',
+    keySystems: ['Crew Shed', 'Boulders Cleared', 'Grand Entrance Gate', 'Main Arterial Road', 'Storage Granary', 'Dedicated Farmer', 'All 6 Plots Active'],
+    unlockReward: 'Farm Equipment Depot & Mechanization Garage (Chapter 3)',
     isUnlocked: function(s) { return CHAPTER_DEFINITIONS[0].isComplete(s); },
     isComplete: function(s) {
+      var rocksCleared = !!s.rocksCleared;
+      var gateBuilt = !!(s.buildings && s.buildings.gate && s.buildings.gate.built);
       var roadBuilt = !!(s.buildings && s.buildings.road && s.buildings.road.built);
       var storageBuilt = !!(s.storage && s.storage.built);
-      var garageBuilt = !!(s.buildings && s.buildings.garage && s.buildings.garage.built);
-      return roadBuilt && storageBuilt && garageBuilt;
+      var farmerHired = !!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; }));
+      var plotsPlanted = !!(s.plots && s.plots.filter(function(p){ return p.treeType || p.status === 'growing' || (p.harvestsDone || 0) > 0; }).length >= 6);
+      var harvestStored = !!(s.storage && ((s.storage.inventory && Object.keys(s.storage.inventory).some(function(k){ return s.storage.inventory[k] > 0; })) || (s.storage.capacityUsed && s.storage.capacityUsed > 0))) || !!(s.plots && s.plots.some(function(p){ return (p.harvestsDone || 0) > 0; }));
+      return rocksCleared && gateBuilt && roadBuilt && storageBuilt && farmerHired && plotsPlanted && harvestStored;
     },
     getProgress: function(s) {
       if (this.isComplete(s)) return 100;
       var pts = 0;
-      if (s.storage && s.storage.built) pts += 34;
-      if (s.buildings && s.buildings.road && s.buildings.road.built) pts += 33;
-      if (s.buildings && s.buildings.garage && s.buildings.garage.built) pts += 33;
-      return pts;
+      if (s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built) pts += 15;
+      if (s.rocksCleared) pts += 15;
+      if (s.buildings && s.buildings.gate && s.buildings.gate.built) pts += 15;
+      if (s.buildings && s.buildings.road && s.buildings.road.built) pts += 15;
+      if (s.storage && s.storage.built) pts += 15;
+      if (s.workers && s.workers.some(function(w){ return w.type === 'farmer'; })) pts += 10;
+      var plantedCount = s.plots ? s.plots.filter(function(p){ return p.treeType || p.status === 'growing' || (p.harvestsDone || 0) > 0; }).length : 0;
+      pts += Math.min(15, Math.round((plantedCount / 6) * 15));
+      return Math.min(99, pts);
     }
   },
   {
     chapter: 3,
     icon: '🌳',
-    title: 'Build an Ecosystem',
+    title: 'The Silent Meadow & Bee Sanctuary',
     fantasy: 'My choices affect nature.',
-    desc: 'Foster biodiversity with botanical garden polycultures, pollinator bee corridors, and diverse tree canopy.',
-    keySystems: ['Botanical Garden', 'Pollinator Corridors', 'Guild Synergies', 'Biodiversity Score'],
-    unlockReward: 'Natural Pest Resilience & +15% Honey Production',
+    desc: 'Construct the Farm Equipment Depot to mechanize cart transport and overcome the manual harvest bottleneck, then plant the botanical bee pollinator garden, companion crop field, and nature walkway.',
+    keySystems: ['Equipment Depot', 'Botanical Garden', 'Bee Sanctuary', 'Companion Crops', 'Nature Walkway'],
+    unlockReward: 'Freshwater Retention & Closed-Loop Circularity (Chapter 4)',
     isUnlocked: function(s) { return CHAPTER_DEFINITIONS[1].isComplete(s); },
     isComplete: function(s) {
+      var garageBuilt = !!(s.buildings && s.buildings.garage && s.buildings.garage.built);
       var gardenBuilt = !!(s.buildings && s.buildings.garden && s.buildings.garden.built);
-      var distinctSpecies = (s.plots ? s.plots.filter(function(p){ return p.treeType; }).map(function(p){ return p.treeType; }) : []);
-      var uniqueCount = new Set(distinctSpecies).size;
-      return gardenBuilt || uniqueCount >= 3;
+      var cropFieldBuilt = !!(s.buildings && s.buildings.crop_field && s.buildings.crop_field.built);
+      return garageBuilt && gardenBuilt && cropFieldBuilt;
     },
     getProgress: function(s) {
       if (this.isComplete(s)) return 100;
-      var gardenBuilt = !!(s.buildings && s.buildings.garden && s.buildings.garden.built);
-      return gardenBuilt ? 80 : 35;
+      var pts = 0;
+      if (s.buildings && s.buildings.garage && s.buildings.garage.built) pts += 35;
+      if (s.buildings && s.buildings.garden && s.buildings.garden.built) pts += 35;
+      if (s.buildings && s.buildings.crop_field && s.buildings.crop_field.built) pts += 30;
+      return pts;
     }
   },
   {
     chapter: 4,
     icon: '♻️',
-    title: 'Close the Loop',
+    title: 'Close the Loop · Living Water & Retention',
     fantasy: 'Nothing should be wasted.',
-    desc: 'Introduce livestock grazing, recycle animal manure into organic compost, and establish a fresh water pond.',
+    desc: 'Introduce livestock grazing, recycle animal manure into organic compost, and establish a fresh water retention pond.',
     keySystems: ['Pasture Livestock', 'Organic Bio-Compost', 'Aquatic Pond', 'Zero-Waste Cycle'],
     unlockReward: 'Bio-Inoculant Fertilizer & Soil Fertility Doubler',
     isUnlocked: function(s) { return CHAPTER_DEFINITIONS[2].isComplete(s); },
     isComplete: function(s) {
       var cattle = !!(s.buildings && s.buildings.cattle_farm && s.buildings.cattle_farm.built);
       var pond = !!(s.buildings && s.buildings.pond && s.buildings.pond.built);
-      return cattle || pond;
+      return cattle && pond;
     },
     getProgress: function(s) {
       if (this.isComplete(s)) return 100;
@@ -10233,7 +10245,7 @@ var OBJECT_CHAPTER_UNLOCKS = {
   road: { chapter: 2, name: 'Main Arterial Road', icon: '⛩️', desc: 'Central paved thoroughfare connecting the entrance gate to the granary.' },
   subway: { chapter: 2, name: 'Feeder Subways & Footpaths', icon: '🛤️', desc: 'Stone paths connecting plots, storage, and fields to the arterial road.' },
   storage: { chapter: 2, name: 'Storage Granary Barn', icon: '🏚️', desc: 'Ventilated storage and cold cellar preventing harvest spoilage.' },
-  garage: { chapter: 2, name: 'Farm Garage & Mechanization Depot', icon: '🚜', desc: 'Mechanization shed for utility tractors and harvest haulers.' },
+  garage: { chapter: 3, name: 'Farm Garage & Mechanization Depot', icon: '🚜', desc: 'Mechanization depot housing 2-wheel wooden harvest carts, timber winches, and tractors to accelerate harvesting 3x and eliminate crop waste.' },
   garden: { chapter: 3, name: 'Botanical Polyculture Garden', icon: '🌷', desc: '3-sector decagonal flower garden attracting bee pollinators.' },
   crop_field: { chapter: 3, name: 'Polyculture Companion Crop Field', icon: '🌾', desc: 'Companion agriculture bed for staple grains and vegetables.' },
   garden_walk: { chapter: 3, name: 'Garden Nature Walkway', icon: '🌸', desc: 'Cobblestone nature promenade linking granary to the flower garden.' },
@@ -10530,15 +10542,16 @@ function isObjectUnlockedByChapter(key, s) {
   var info = (typeof getObjectChapterInfo === 'function') ? getObjectChapterInfo(key) : { chapter: 1 };
   var needCh = info.chapter || 1;
 
-  // existence ≠ availability: chapter objects locked until chapter is active
-  if (currentCh < needCh) return false;
-
-  // Garage only after storage + road (end of Ch2 infrastructure spine)
+  // Garage unlocks at end of Chapter 2 (after road + storage) or Chapter 3+
   if (key === 'garage') {
+    if (currentCh < 2) return false;
     var roadOk = !!(currentState.buildings && currentState.buildings.road && currentState.buildings.road.built);
     var storageOk = !!(currentState.storage && currentState.storage.built);
-    if (!roadOk || !storageOk) return false;
+    return roadOk && storageOk;
   }
+
+  // existence ≠ availability: chapter objects locked until chapter is active
+  if (currentCh < needCh) return false;
 
   // Pond / cattle strictly after circularity chapter is active
   if ((key === 'pond' || key === 'cattle_farm') && currentCh < 4) return false;
@@ -10625,16 +10638,25 @@ function isPlotUnlocked(plotId, s) {
   // Chapter 2+: Plot 1 & Plot 2 (index 1) are unlocked upon starting Chapter 2
   if (id === 0 || id === 1) return true;
 
-  // Plot 3 (index 2) strictly requires both at least 1 Labourer AND 1 Farmer on staff!
-  if (id === 2) {
-    var hasLab = s.workers && s.workers.some(function(w){ return w.type === 'laborer'; });
-    var hasFar = s.workers && s.workers.some(function(w){ return w.type === 'farmer'; });
-    if (!hasLab || !hasFar) return false;
-    var prev = s.plots[1];
-    return !!(prev && (prev.treeType || prev.status === 'growing' || (prev.harvestsDone || 0) > 0 || prev.status === 'ready'));
+  // Plots 3-6 (indices 2 to 5):
+  // Strictly require proper labourer task utilization before unlocking:
+  // 1. Bedrock boulders cleared from road corridor
+  // 2. Grand Entrance Gate erected
+  // 3. Main Arterial Road paved
+  // 4. Storage Granary Barn & Cold Cellar built
+  // 5. Dedicated Farmer recruited
+  // 6. Previous plot cultivated / active
+  var hasFarmer = !!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; }));
+  var hasLaborer = !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; }));
+  var rocksCleared = !!s.rocksCleared;
+  var gateBuilt = !!(s.buildings && s.buildings.gate && s.buildings.gate.built);
+  var roadBuilt = !!(s.buildings && s.buildings.road && s.buildings.road.built);
+  var storageBuilt = !!(s.storage && s.storage.built);
+
+  if (!rocksCleared || !gateBuilt || !roadBuilt || !storageBuilt || !hasFarmer || !hasLaborer) {
+    return false;
   }
 
-  // Plots 4-6: sequential unlock — previous plot must have life
   var prev = s.plots[id - 1];
   return !!(prev && (prev.treeType || prev.status === 'growing' || (prev.harvestsDone || 0) > 0 || prev.status === 'ready'));
 }
@@ -10826,7 +10848,7 @@ var CHAPTER_CHALLENGES = {
       getActionHtml: function(s) {
         var count = (typeof getExploredChaptersCount === 'function' ? getExploredChaptersCount(s) : 0);
         if (count >= 8) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ 8/8 Explored</span>';
-        return '<button class="claim-btn active" onclick="closePanel();openTaskMasterplanModal();" style="font-size:0.75rem;padding:5px 10px;background:linear-gradient(135deg,#0288D1,#01579B);">🧭 Survey (' + count + '/8)</button>';
+        return '<button class="claim-btn active" onclick="closePanel();openTaskMasterplanModal();" style="font-size:0.75rem;padding:5px 10px;background:linear-gradient(135deg,#2E7D32,#1B5E20);">🧭 Survey (' + count + '/8)</button>';
       }
     },
     {
@@ -11104,28 +11126,73 @@ var CHAPTER_CHALLENGES = {
       }
     },
     {
-      id: 'ch2_garage',
-      icon: '🚜',
-      title: 'Equipment Depot & Mechanization',
-      shortTitle: 'Farm Garage',
-      subtitle: 'Unlock and construct the Farm Garage after Storage and Main Road are complete to house tractors and haulers.',
-      whyTopic: 'garage',
-      whyLabel: 'Why Farm Garage?',
-      reward: '+20 Knowledge XP · Mechanized Logistics',
+      id: 'ch2_all_plots',
+      icon: '🌾',
+      title: 'Estate Cultivation: Plant All 6 Plots',
+      shortTitle: 'All 6 Plots Active',
+      subtitle: 'With road and storage operational, unlock and cultivate all 6 field plots to maximize community produce.',
+      whyTopic: 'plot',
+      whyLabel: 'Why 6 Plots?',
+      reward: '+20 Knowledge XP · Full Production',
       isUnlocked: function(s) {
         var roadOk = !!(s.buildings && s.buildings.road && s.buildings.road.built);
         var storageOk = !!(s.storage && s.storage.built);
-        return roadOk && storageOk;
+        var hasFarmer = !!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; }));
+        return roadOk && storageOk && hasFarmer;
       },
-      isComplete: function(s) { return !!(s.buildings && s.buildings.garage && s.buildings.garage.built); },
+      isComplete: function(s) {
+        return !!(s.plots && s.plots.filter(function(p){ return p.treeType || p.status === 'growing' || (p.harvestsDone || 0) > 0; }).length >= 6);
+      },
       getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Built</span>';
-        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Road + Storage</button>';
-        return '<button class="claim-btn active" onclick="startBuildBuilding(\'garage\')" ' + (s.money < BUILDING_TYPES.garage.cost ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Garage (€' + BUILDING_TYPES.garage.cost + ')</button>';
+        var count = s.plots ? s.plots.filter(function(p){ return p.treeType || p.status === 'growing' || (p.harvestsDone || 0) > 0; }).length : 0;
+        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ 6/6 Planted</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Road + Storage + Farmer</button>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',' + Math.min(5, count) + ');" style="font-size:0.75rem;padding:5px 10px;background:#2E7D32;">Plant Plot ' + (count + 1) + ' (' + count + '/6)</button>';
+      }
+    },
+    {
+      id: 'ch2_harvest_bottleneck',
+      icon: '⚠️',
+      title: 'Manual Harvest Bottleneck & Spoilage Risk',
+      shortTitle: 'Harvest Bottleneck',
+      subtitle: '6 mature plots cannot be transported on foot without crop waste! Deliver harvests to granary to complete Chapter 2.',
+      whyTopic: 'storage',
+      whyLabel: 'Why Mechanization?',
+      reward: '+35 Knowledge XP · Chapter 2 Mastered',
+      isUnlocked: function(s) {
+        return !!(s.plots && s.plots.filter(function(p){ return p.treeType || p.status === 'growing' || (p.harvestsDone || 0) > 0; }).length >= 6);
+      },
+      isComplete: function(s) {
+        return !!(s.storage && ((s.storage.inventory && Object.keys(s.storage.inventory).some(function(k){ return s.storage.inventory[k] > 0; })) || (s.storage.capacityUsed && s.storage.capacityUsed > 0))) || !!(s.plots && s.plots.some(function(p){ return (p.harvestsDone || 0) > 0; }));
+      },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Harvest Preserved</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;">🔒 Plant 6 Plots First</button>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'storage\');" style="font-size:0.75rem;padding:5px 10px;background:#2E7D32;">Deliver Harvest</button>';
       }
     }
   ],
   3: [
+    {
+      id: 'ch3_garage',
+      icon: '🚜',
+      title: 'Farm Equipment Depot & Garage',
+      shortTitle: 'Build Farm Garage',
+      subtitle: 'Construct the Farm Equipment Depot to mechanize cart transport, accelerate harvesting 3x, and eliminate crop spoilage waste.',
+      whyTopic: 'garage',
+      whyLabel: 'Why Equipment Depot?',
+      reward: '+20 Knowledge XP · Mechanized Logistics',
+      isUnlocked: function(s) { return true; },
+      isComplete: function(s) { return !!(s.buildings && s.buildings.garage && s.buildings.garage.built); },
+      getActionHtml: function(s) {
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Operational</span>';
+        if (s.buildings && s.buildings.garage && s.buildings.garage.building) {
+          var prog = formatTaskProgress(s.buildings.garage.buildHours, BUILDING_TYPES.garage.buildHours, 1.0);
+          return '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'garage\');" style="font-size:0.72rem;padding:4px 8px;">🏗️ ' + prog.display + '</button>';
+        }
+        return '<button class="claim-btn active" onclick="startBuildBuilding(\'garage\')" ' + (s.money < BUILDING_TYPES.garage.cost ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;background:#2E7D32;">Build Garage (€' + BUILDING_TYPES.garage.cost + ')</button>';
+      }
+    },
     {
       id: 'ch3_garden',
       icon: '🌷',
@@ -11959,6 +12026,17 @@ function updateChapterProgression() {
     if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
     openChapter1CompletionModal();
   }
+  // Detect Chapter 2 completion -> trigger celebration modal +35 XP
+  if (prevChapter === 2 && state.currentChapter >= 3 && !state.ch2CompletedModalShown) {
+    state.ch2CompletedModalShown = true;
+    if (typeof addKnowledgeXP === 'function') {
+      addKnowledgeXP(35, 'Chapter 2 Mastered: Build Your Farm');
+    } else {
+      state.xp = (state.xp || 0) + 35;
+    }
+    if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+    openChapter2CompletionModal();
+  }
   // Derive contextual flags from existing world (migration-friendly)
   if (state.plots && state.plots.some(function(p){ return (p.harvestsDone||0) > 0 || (state.harvestCount||0) > 0; })) {
     state.flags.firstHarvest = true;
@@ -12779,6 +12857,19 @@ var GlobeEngine = (function(){
   }
 
   function render(){
+
+  var suggHost = document.getElementById('idleLaborerSuggestionContainer');
+  if (!suggHost){
+    suggHost = document.createElement('div');
+    suggHost.id = 'idleLaborerSuggestionContainer';
+    document.body.appendChild(suggHost);
+  }
+  if (currentScreen === 'farm' && typeof renderIdleLaborerSuggestionHtml === 'function'){
+    suggHost.innerHTML = renderIdleLaborerSuggestionHtml(state);
+  } else {
+    suggHost.innerHTML = '';
+  }
+
     if (typeof currentScreen !== 'undefined' && currentScreen !== 'region_select'){
       animId = requestAnimationFrame(render);
       return;
@@ -17982,24 +18073,34 @@ function advanceGame(dh){
       });
     }
   }
-  // Rocks / boulder clearing timer
+  // Rocks / boulder clearing timer with speed scaling (1 laborer = 2h, 2 laborers = 1h · 2x speed)
   if (state.rocksClearing){
-    state.rocksClearHours += dh;
+    var rkLaborers = (state.rocksLaborers && state.rocksLaborers.length) ? state.rocksLaborers.length : (state.rocksWorkerId ? 1 : 1);
+    var rkSpeed = Math.min(2.0, Math.max(1.0, rkLaborers));
+    state.rocksClearHours += dh * rkSpeed;
     if (state.rocksClearHours >= 2){
       state.rocksClearing = false;
       state.rocksCleared = true;
       if (typeof addKnowledgeXP === 'function') addKnowledgeXP(15, 'Geological Boulder Extraction & Road Ballast');
       if (state.stewardship) state.stewardship.tasksCompleted = (state.stewardship.tasksCompleted || 0) + 1;
       if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
-      pushReport('🪨 Boulders and rock obstacles successfully cleared from road corridor! Paving unlocked.');
-      showNotification('🪨', 'Boulders cleared! Road corridor is ready for paving.', 'building', 'road');
-      if (state.rocksWorkerId !== undefined){
+      pushReport('🪨 Boulders and rock obstacles successfully cleared from road corridor! Crushed rock ballast acquired for paving.');
+      showNotification('🪨', 'Boulders cleared! Crushed rock ballast acquired for Main Road paving.', 'building', 'road');
+      if (state.rocksLaborers && state.rocksLaborers.length){
+        state.rocksLaborers.forEach(function(wid){
+          var rkW = state.workers.find(function(w){ return w.id === wid; });
+          if (rkW && typeof animateWorkerPathWalk === 'function'){
+            animateWorkerPathWalk(rkW, 'crew_shed', 'rocks');
+          }
+        });
+        delete state.rocksLaborers;
+      } else if (state.rocksWorkerId !== undefined){
         var rkW = state.workers.find(function(w){ return w.id === state.rocksWorkerId; });
         if (rkW && typeof animateWorkerPathWalk === 'function'){
           animateWorkerPathWalk(rkW, 'crew_shed', 'rocks');
         }
-        delete state.rocksWorkerId;
       }
+      delete state.rocksWorkerId;
     }
   }
 
@@ -18697,6 +18798,8 @@ function drawJuteTarpScene(uncovered, unlocked){
 
 function juteTarpSpotHtml(){
   if (!state) return '';
+  // When basic tools are arranged in Crew Shed racks, the primitive outdoor tarp cache is packed away and vanishes!
+  if (state.basicToolsArranged) return '';
   var spot = (typeof JUTE_TARP_SPOT !== 'undefined') ? JUTE_TARP_SPOT : { top: 72.0, left: 10.5, w: 7.5, h: 13.0 };
   var uncovered = !!state.juteTarpUncovered || !!state.basicToolsDiscovered;
   var expCount = (typeof getExploredChaptersCount === 'function') ? getExploredChaptersCount(state) : 0;
@@ -18767,24 +18870,24 @@ function juteTarpModalHtml(){
               'Pull back the weatherproof hemp ropes and lift the jute tarpaulin to equip your hand-forged trenching spade and broadfork.' +
             '</div>' +
           '</div>' :
-          '<div style="background:#FFF3E0;border:1px solid #FFE082;border-radius:10px;padding:12px;margin-bottom:14px;">' +
-            '<div style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:0.86rem;color:#E65100;margin-bottom:4px;">' +
+          '<div style="background:#F5F0EB;border:1px solid #D7CCC8;border-radius:10px;padding:12px;margin-bottom:14px;">' +
+            '<div style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:0.86rem;color:#5D4037;margin-bottom:4px;">' +
               '<span>🔒</span> EXPLORE ALL 8 CHAPTERS FIRST' +
             '</div>' +
-            '<div style="font-size:0.80rem;color:#4E342E;line-height:1.45;">' +
+            '<div style="font-size:0.80rem;color:#3E2723;line-height:1.45;">' +
               'A sturdy weatherproof jute tarpaulin protects something buried beside the farm shed boundary.<br><br>' +
               'Before you begin digging, explore all 8 farm chapters (marked with animated 👆 hand icons) to understand your estate\'s long-term sustainability masterplan!<br><br>' +
               '<b>Current Exploration:</b> ' + expCount + ' of 8 chapters surveyed (+5 Exploration XP per unique chapter).' +
             '</div>' +
             '<div style="height:8px;background:#E0E0E0;border-radius:4px;overflow:hidden;margin-top:10px;">' +
-              '<div style="height:100%;width:' + Math.round((expCount / 8) * 100) + '%;background:#0288D1;transition:width 0.3s ease;"></div>' +
+              '<div style="height:100%;width:' + Math.round((expCount / 8) * 100) + '%;background:#2E7D32;transition:width 0.3s ease;"></div>' +
             '</div>' +
           '</div>'
         ) +
         '<div style="display:flex;justify-content:flex-end;gap:10px;align-items:center;border-top:1px solid #ECEFF1;padding-top:12px;">' +
           (isUnlocked ?
             '<button class="primary" onclick="uncoverJuteTarpAction();" style="padding:10px 20px;font-size:0.92rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);box-shadow:0 4px 12px rgba(27,94,32,0.35);font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">⛏️ Uncover Hand Spade &amp; Broadfork (+10 XP)</button>' :
-            '<button class="primary" onclick="closeModal();openTaskMasterplanModal();" style="padding:9px 18px;font-size:0.88rem;background:#0288D1;font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">🧭 Survey Masterplan Roadmap</button>'
+            '<button class="primary" onclick="closeModal();openTaskMasterplanModal();" style="padding:9px 18px;font-size:0.88rem;background:#2E7D32;font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">🧭 Survey Masterplan Roadmap</button>'
           ) +
         '</div>' +
       '</div>' +
@@ -18797,6 +18900,9 @@ function uncoverJuteTarpAction(){
   if (!state) return;
   state.juteTarpUncovered = true;
   state.basicToolsDiscovered = true;
+  state.equipment = state.equipment || { owned: {}, leased: {} };
+  state.equipment.owned = state.equipment.owned || {};
+  state.equipment.owned['spade'] = true;
   if (typeof addKnowledgeXP === 'function'){
     addKnowledgeXP(10, 'Uncovered Traditional Hand-Forged Spade from Jute Tarp Cache');
   } else {
@@ -18825,19 +18931,19 @@ function chapterRoadmapModalHtml(objectKey){
 
   var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
     '<div class="modal" style="max-width:560px;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.32);">' +
-      '<div style="background:linear-gradient(135deg,#0288D1,#01579B);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
+      '<div style="background:linear-gradient(135deg,#2E7D32,#1B5E20);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
         '<div style="display:flex;align-items:center;gap:10px;">' +
           '<span style="font-size:1.6rem;">' + (info.icon || '🌾') + '</span>' +
           '<div>' +
             '<h2 style="margin:0;font-size:1.15rem;color:#fff;font-weight:800;">' + info.name + '</h2>' +
-            '<div style="font-size:0.75rem;color:#B3E5FC;">Chapter ' + info.chapter + ' Roadmap · ' + chDef.title + '</div>' +
+            '<div style="font-size:0.75rem;color:#C8E6C9;">Chapter ' + info.chapter + ' Roadmap · ' + chDef.title + '</div>' +
           '</div>' +
         '</div>' +
         '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:800;">✕</button>' +
       '</div>' +
       '<div class="modal-body-scroll" style="padding:16px 20px;max-height:75vh;overflow-y:auto;">' +
-        '<div style="background:#E1F5FE;border:1px solid #81D4FA;border-radius:12px;padding:12px;margin-bottom:14px;">' +
-          '<div style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:0.86rem;color:#01579B;margin-bottom:4px;">' +
+        '<div style="background:#E8F5E9;border:1.5px solid #C8E6C9;border-radius:12px;padding:12px;margin-bottom:14px;">' +
+          '<div style="display:flex;align-items:center;gap:6px;font-weight:800;font-size:0.86rem;color:#1B5E20;margin-bottom:4px;">' +
             '<span>🧭</span> CHAPTER ' + info.chapter + ' UNLOCK STATUS' +
           '</div>' +
           '<div style="font-size:0.80rem;color:#263238;line-height:1.45;">' +
@@ -18862,13 +18968,78 @@ function chapterRoadmapModalHtml(objectKey){
           '<button class="secondary mini-btn" onclick="closeModal();openTaskMasterplanModal();" style="padding:9px 16px;font-size:0.84rem;font-weight:700;">📋 Full Masterplan</button>' +
           (expCount >= 8 && !state.basicToolsDiscovered ?
             '<button class="primary" onclick="closeModal();openJuteTarpModal();" style="padding:9px 18px;font-size:0.88rem;background:#2E7D32;font-weight:800;border:none;border-radius:10px;color:#fff;">⛏️ Open Jute Tarp Cache ➔</button>' :
-            '<button class="primary" onclick="closeModal();" style="padding:9px 18px;font-size:0.88rem;background:#0288D1;font-weight:800;border:none;border-radius:10px;color:#fff;">✓ Got It</button>'
+            '<button class="primary" onclick="closeModal();" style="padding:9px 18px;font-size:0.88rem;background:#2E7D32;font-weight:800;border:none;border-radius:10px;color:#fff;">✓ Got It</button>'
           ) +
         '</div>' +
       '</div>' +
     '</div>' +
   '</div>';
   return html;
+}
+
+
+function openChapter2CompletionModal(){
+  activeModal = {
+    type: 'chapter2_complete'
+  };
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+  render();
+}
+
+function chapter2CompleteModalHtml(){
+  return '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:580px;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.35);">' +
+      '<div style="background:linear-gradient(135deg,#1B5E20,#2E7D32);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<span style="font-size:1.8rem;">🎉</span>' +
+          '<div>' +
+            '<h2 style="margin:0;font-size:1.25rem;color:#fff;font-weight:900;">Chapter 2 Complete!</h2>' +
+            '<div style="font-size:0.80rem;color:#C8E6C9;">“Build Your Farm” · Civil Infrastructure &amp; 6 Plots Mastered</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:800;">✕</button>' +
+      '</div>' +
+      '<div class="modal-body-scroll" style="padding:18px 22px;max-height:75vh;overflow-y:auto;">' +
+        '<div style="background:#E8F5E9;border:1.5px solid #81C784;border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">' +
+          '<div>' +
+            '<div style="font-weight:900;color:#1B5E20;font-size:0.95rem;">🏆 Chapter Award: +35 Knowledge XP</div>' +
+            '<div style="font-size:0.76rem;color:#2E7D32;">Civil Agro-Engineering, Granary Storage &amp; Team Synergies</div>' +
+          '</div>' +
+          '<span style="font-size:1.8rem;">🌟</span>' +
+        '</div>' +
+        '<div style="font-weight:800;font-size:0.86rem;color:#263238;margin-bottom:8px;">🎓 Chapter 2 Milestones Accomplished:</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>Field Labor &amp; Crew Shed:</b> Recruited laborers and constructed quarters with dynamic 2x speed scaling.</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>Geological Road Clearance:</b> Excavated glacial boulders from the road corridor, producing crushed rock ballast (+15 XP).</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>Grand Entrance Gate &amp; Main Road:</b> Erected ashlar stone gate and paved the central highway corridor.</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>Storage Granary Barn &amp; Cold Cellar:</b> Built ventilated crop storage, successfully protecting harvests from rot (+25 Bonus XP).</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>Estate Multi-Plot Expansion:</b> Recruited a dedicated Farmer and planted all 6 plots for full estate production!</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:#EFEBE9;border:1.5px solid #8D6E63;border-radius:12px;padding:12px;margin-bottom:16px;font-size:0.78rem;color:#4E342E;line-height:1.45;">' +
+          '<b style="color:#3E2723;">⚠️ The Manual Harvest Bottleneck:</b><br>' +
+          'All 6 plots are now bearing fruit! But carrying harvests manually by hand on foot causes severe delays and crop spoilage risk. Hand-harvesting cannot scale without mechanization.' +
+        '</div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #ECEFF1;padding-top:14px;">' +
+          '<button class="primary" onclick="closeModal();selectChapterTab(3);if(typeof render===\'function\')render();" style="padding:10px 22px;font-size:0.92rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);box-shadow:0 4px 12px rgba(46,125,50,0.35);font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">🚜 Advance to Chapter 3: Farm Garage &amp; Bee Sanctuary ➔</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
 }
 
 function openChapter1CompletionModal(){
@@ -18924,7 +19095,7 @@ function chapter1CompleteModalHtml(){
           'You can now recruit field labor, construct the Crew Shed (1–2 labourers; 3h or 1.5h), automatically cultivate Plot 2, unlock Plot 3 with your team, and build the Storage Barn before harvests spoil!' +
         '</div>' +
         '<div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #ECEFF1;padding-top:14px;">' +
-          '<button class="primary" onclick="closeModal();selectChapterTab(2);if(typeof render===\'function\')render();" style="padding:10px 22px;font-size:0.92rem;background:linear-gradient(135deg,#E65100,#EF6C00);box-shadow:0 4px 12px rgba(230,81,0,0.35);font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">🚜 Advance to Chapter 2: Build the Farm ➔</button>' +
+          '<button class="primary" onclick="closeModal();selectChapterTab(2);if(typeof render===\'function\')render();" style="padding:10px 22px;font-size:0.92rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);box-shadow:0 4px 12px rgba(46,125,50,0.35);font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">🚜 Advance to Chapter 2: Build the Farm ➔</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -18943,7 +19114,7 @@ function openHarvestSpoilageWarningModal(){
 function harvestSpoilageWarningModalHtml(){
   var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
     '<div class="modal" style="max-width:560px;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.32);">' +
-      '<div style="background:linear-gradient(135deg,#E65100,#D84315);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
+      '<div style="background:linear-gradient(135deg,#5D4037,#3E2723);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
         '<div style="display:flex;align-items:center;gap:10px;">' +
           '<span style="font-size:1.6rem;">⚠️</span>' +
           '<div>' +
@@ -19072,6 +19243,78 @@ function drawIsometric3DHandSpadeSvg(){
       '<text x="8" y="14" font-size="10" font-family="system-ui,sans-serif" font-weight="700" fill="#E65100">✨ +10 Knowledge XP</text>' +
     '</g>' +
   '</svg>';
+}
+
+
+function arrangeBasicToolsInCrewShedAction(){
+  if (!state) return;
+  if (!state.buildings.crew_shed || !state.buildings.crew_shed.built){
+    showNotification('🏠', 'Construct the Crew Shed first before arranging equipment racks!', 'building', 'crew_shed');
+    return;
+  }
+  if (state.basicToolsArranged){
+    showNotification('🧰', 'Basic tools are already neatly racked in the Crew Shed.', 'building', 'crew_shed');
+    return;
+  }
+  state.basicToolsArranged = true;
+  state.equipment = state.equipment || { owned: {}, leased: {} };
+  state.equipment.owned = state.equipment.owned || {};
+  state.equipment.owned['spade'] = true;
+  if (typeof addKnowledgeXP === 'function'){
+    addKnowledgeXP(10, 'Arranged Foundational Hand Tools in Crew Shed Equipment Racks');
+  } else {
+    state.xp = (state.xp || 0) + 10;
+  }
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+  showNotification('🧰', 'Basic tool box is arranged in Crew Shed racks (+10 XP)! Outdoor jute tarp cache packed away.', 'building', 'crew_shed');
+  pushReport('✨ Transferred foundational hand spade, broadfork & hand tools into Crew Shed racks (+10 Knowledge XP). Outdoor jute tarp removed.');
+  openGarageRoadmapModal();
+  render(); requestSave();
+}
+
+function openGarageRoadmapModal(){
+  activeModal = {
+    type: 'garage_roadmap_intro'
+  };
+  render();
+}
+
+function garageRoadmapIntroModalHtml(){
+  return '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:540px;border-radius:18px;overflow:hidden;box-shadow:0 12px 36px rgba(0,0,0,0.35);">' +
+      '<div style="background:linear-gradient(135deg,#2E7D32,#1B5E20);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<span style="font-size:1.6rem;">🚜</span>' +
+          '<div>' +
+            '<h2 style="margin:0;font-size:1.15rem;color:#fff;font-weight:900;">Equipment Racks Ready &amp; Garage Roadmap</h2>' +
+            '<div style="font-size:0.75rem;color:#C8E6C9;">Foundational Tools Arranged · Chapter 3 Mechanization Preview</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:800;">✕</button>' +
+      '</div>' +
+      '<div class="modal-body-scroll" style="padding:16px 20px;max-height:75vh;overflow-y:auto;">' +
+        '<div style="background:#E8F5E9;border:1.5px solid #A5D6A7;border-radius:12px;padding:12px;margin-bottom:12px;">' +
+          '<div style="font-weight:900;color:#1B5E20;font-size:0.92rem;display:flex;align-items:center;gap:6px;">' +
+            '<span>✓</span> Basic Hand Tools Safely Stored in Crew Shed' +
+          '</div>' +
+          '<div style="font-size:0.78rem;color:#2E7D32;line-height:1.4;margin-top:4px;">' +
+            'The trenching spade and broadfork are now organized on tool racks. The primitive outdoor jute tarp has been safely stowed away. Field laborers can now access spades directly for ground clearing.' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:#EFEBE9;border:1.5px solid #BCAAA4;border-radius:12px;padding:12px;margin-bottom:14px;">' +
+          '<div style="font-weight:800;color:#4E342E;font-size:0.88rem;margin-bottom:6px;">' +
+            '🚜 Looking Forward: Farm Garage &amp; Mechanized Logistics (Chapter 3)' +
+          '</div>' +
+          '<div style="font-size:0.77rem;color:#5D4037;line-height:1.45;">' +
+            'Hand tools suffice for early plots, but when all 6 plots mature, manual basket haulage creates a severe harvest bottleneck! In Chapter 3, construct the <b>Farm Garage &amp; Mechanization Depot</b> to deploy 2-wheel wooden carts and utility tractors (3x faster harvest delivery).' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #ECEFF1;padding-top:12px;">' +
+          '<button class="primary" onclick="closeModal();" style="padding:9px 20px;font-size:0.88rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);font-weight:800;border:none;border-radius:10px;color:#fff;cursor:pointer;">✓ Got It</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
 }
 
 function openBasicEquipmentDiscoveryModal(plotId){
@@ -19424,18 +19667,22 @@ function startClearRocks(dispatchedFromPrep, specificWorkerId){
   }
   state.rocksClearing = true;
   state.rocksClearHours = 0;
-  var worker = null;
+
+  var availLaborers = state.workers ? state.workers.filter(function(w){
+    return w.type === 'laborer' && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
+  }) : [];
+
+  var assigned = [];
   if (specificWorkerId !== undefined && specificWorkerId !== null){
-    worker = state.workers.find(function(w){ return w.id === specificWorkerId && w.type === 'laborer'; });
+    var specW = state.workers.find(function(w){ return w.id === specificWorkerId && w.type === 'laborer'; });
+    if (specW) assigned.push(specW.id);
+  } else {
+    var countToAssign = Math.min(2, Math.max(1, availLaborers.length));
+    assigned = availLaborers.slice(0, countToAssign).map(function(w){ return w.id; });
   }
-  if (!worker){
-    worker = state.workers.find(function(w){
-      return w.type === 'laborer' && w.assignedPlot === null && !w.assignedBuilding && (!state.storage || state.storage.assignedLaborerId !== w.id);
-    }) || state.workers.find(function(w){ return w.type === 'laborer'; });
-  }
-  if (worker){
-    state.rocksWorkerId = worker.id;
-  }
+  if (assigned.length === 0 && availLaborers.length > 0) assigned.push(availLaborers[0].id);
+  state.rocksLaborers = assigned;
+  state.rocksWorkerId = assigned.length > 0 ? assigned[0] : null;
 
   // Automatically close all instruction popups, dialogs, and panels so 3D isometric simulation is visible
   if (typeof closeLockedStepPopup === 'function') closeLockedStepPopup();
@@ -19449,6 +19696,7 @@ function startClearRocks(dispatchedFromPrep, specificWorkerId){
   var bgEl = document.getElementById('fieldBg');
   if (bgEl) bgEl.dataset.bgKey = '';
 
+  var worker = state.workers ? state.workers.find(function(w){ return w.id === state.rocksWorkerId; }) : null;
   if (worker && typeof animateWorkerPathWalk === 'function'){
     animateWorkerPathWalk(worker, 'rocks');
   }
@@ -19670,6 +19918,12 @@ function hireWorker(type){
     showNotification('🏠', 'Construct the Crew Shed before hiring ' + (WORKER_TYPES[type] ? WORKER_TYPES[type].label : 'specialist crew') + '!', 'building', 'crew_shed');
     return;
   }
+  // Dedicated Farmer recruitment is strictly locked until Storage Granary Barn is built to prevent crop spoilage
+  if (type === 'farmer' && (!state.storage || !state.storage.built)){
+    showNotification('🏚️', 'Farmer recruitment locked! Construct the Storage Granary Barn first so harvested crops do not spoil!', 'building', 'storage');
+    pushReport('🔒 Farmer recruitment locked: Construct Storage Granary Barn first before hiring a dedicated Farmer.');
+    return;
+  }
   // Crew recruitment
   state.roleCounters = state.roleCounters || { laborer: 0, farmer: 0, botanist: 0, engineer: 0 };
   state.roleCounters[type] = (state.roleCounters[type] || 0) + 1;
@@ -19735,6 +19989,143 @@ function isTaskAllowedForWorker(workerType, taskType, targetId, turbineId){
     return false;
   }
   return true;
+}
+
+
+function getIdleLaborerSuggestion(s){
+  s = s || state;
+  if (!s || !s.workers) return null;
+  var idleLaborers = s.workers.filter(function(w){
+    var onGate = !!(s.buildings && s.buildings.gate && s.buildings.gate.building && s.buildings.gate.assignedLaborers && s.buildings.gate.assignedLaborers.indexOf(w.id) !== -1);
+    var onRoad = false;
+    if (s.roads){
+      Object.keys(ROAD_SEGMENTS).forEach(function(rk){
+        var rSeg = s.roads[rk];
+        if (rSeg && rSeg.building && rSeg.assignedLaborers && rSeg.assignedLaborers.indexOf(w.id) !== -1) onRoad = true;
+      });
+    }
+    return w.type === 'laborer' && w.assignedPlot === null && !w.assignedBuilding &&
+           (!s.storage || s.storage.assignedLaborerId !== w.id) &&
+           (!s.rocksClearing || (s.rocksWorkerId !== w.id && (!s.rocksLaborers || s.rocksLaborers.indexOf(w.id) === -1))) &&
+           (!s.lawnMowing || s.lawnWorkerId !== w.id) &&
+           !onGate && !onRoad;
+  });
+  if (idleLaborers.length === 0) return null;
+
+  var curCh = s.currentChapter || 1;
+  if (curCh < 2) return null;
+
+  // 1. Crew Shed
+  if (!s.buildings.crew_shed || (!s.buildings.crew_shed.built && !s.buildings.crew_shed.building)){
+    return {
+      id: 'build_crew_shed',
+      title: 'Construct Crew Shed',
+      icon: '🏠',
+      action: 'startBuildBuilding(\'crew_shed\')',
+      desc: 'Assign idle laborer to build worker quarters.'
+    };
+  }
+
+  // 2. Arrange basic tools
+  if (s.buildings.crew_shed.built && !s.basicToolsArranged){
+    return {
+      id: 'arrange_tools',
+      title: 'Arrange Tools in Crew Shed',
+      icon: '🧰',
+      action: 'arrangeBasicToolsInCrewShedAction()',
+      desc: 'Stock tool racks from jute tarp cache (+10 XP).'
+    };
+  }
+
+  // 3. Clear Boulders
+  if (!s.rocksCleared && !s.rocksClearing){
+    return {
+      id: 'clear_rocks',
+      title: 'Clear Road Boulders',
+      icon: '🪨',
+      action: 'startClearRocks(true)',
+      desc: 'Excavate bedrock boulders to extract crushed ballast (+15 XP).'
+    };
+  }
+
+  // 4. Grand Entrance Gate
+  if (s.rocksCleared && s.buildings.gate && !s.buildings.gate.built && !s.buildings.gate.building){
+    return {
+      id: 'build_gate',
+      title: 'Erect Entrance Gate',
+      icon: '⛩️',
+      action: 'startBuildGate()',
+      desc: 'Erect stone & timber biosecurity gateway.'
+    };
+  }
+
+  // 5. Main Arterial Road
+  if (s.buildings.gate && s.buildings.gate.built && s.buildings.road && !s.buildings.road.built && !s.buildings.road.building){
+    return {
+      id: 'build_road',
+      title: 'Pave Main Arterial Road',
+      icon: '🛤️',
+      action: 'startBuildRoadSegment(\'main\')',
+      desc: 'Pave road using crushed rock ballast.'
+    };
+  }
+
+  // 6. Storage Granary Barn
+  if (s.buildings.road && s.buildings.road.built && s.storage && !s.storage.built && !s.storage.building){
+    return {
+      id: 'build_storage',
+      title: 'Build Storage Granary Barn',
+      icon: '🏚️',
+      action: 'startBuildStorage()',
+      desc: 'Build cold ventilated barn to prevent harvest rot.'
+    };
+  }
+
+  // 7. Cultivate Plots 2-6
+  for (var pIdx = 1; pIdx < 6; pIdx++){
+    if (isPlotUnlocked(pIdx, s)){
+      var p = s.plots[pIdx];
+      if (p && (!p.treeType && p.status === 'barren')){
+        return {
+          id: 'till_plot_' + pIdx,
+          title: 'Till Plot ' + (pIdx + 1),
+          icon: '🌱',
+          action: 'openModal(\'plot\',' + pIdx + ')',
+          desc: 'Aerate soil on Plot ' + (pIdx + 1) + ' for crop planting.'
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function executeLaborerSuggestion(actionCode){
+  if (typeof closeLockedStepPopup === 'function') closeLockedStepPopup();
+  if (typeof closeModal === 'function') closeModal();
+  if (typeof closePanel === 'function') closePanel();
+  activeModal = null;
+  openPanel = null;
+  try {
+    var fn = new Function(actionCode);
+    fn();
+  } catch(e) {
+    console.error('Error executing suggestion:', e);
+  }
+  render();
+}
+
+function renderIdleLaborerSuggestionHtml(s){
+  var sugg = getIdleLaborerSuggestion(s);
+  if (!sugg) return '';
+  return '<div class="idle-laborer-suggestion-floater" style="position:fixed;bottom:78px;left:50%;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#2E7D32,#1B5E20);color:#fff;padding:8px 14px;border-radius:24px;box-shadow:0 6px 18px rgba(0,0,0,0.28);border:1.5px solid #81C784;cursor:pointer;animation:pulseSuggestion 2s infinite ease-in-out;" onclick="executeLaborerSuggestion(\'' + sugg.action.replace(/'/g, "\\'") + '\')" title="' + sugg.desc + '">' +
+    '<span style="font-size:1.15rem;">' + sugg.icon + '</span>' +
+    '<div style="display:flex;flex-direction:column;line-height:1.2;">' +
+      '<span style="font-size:0.68rem;color:#C8E6C9;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Idle Laborer Available</span>' +
+      '<span style="font-size:0.82rem;font-weight:900;color:#fff;">' + sugg.title + '</span>' +
+    '</div>' +
+    '<button type="button" style="background:#fff;color:#1B5E20;border:none;border-radius:14px;padding:4px 10px;font-size:0.75rem;font-weight:900;cursor:pointer;margin-left:4px;box-shadow:0 2px 6px rgba(0,0,0,0.18);">Assign ➔</button>' +
+  '</div>';
 }
 
 function getWorkerEligibleTasks(worker, allTasks){
@@ -21603,10 +21994,33 @@ function openModal(type, plotId){
       }
     }
     if (typeof isPlotUnlocked === 'function' && !isPlotUnlocked(plotId, state)) {
-      if (plotId === 2) {
-        showNotification('🔒', 'Plot 3 requires a hired team: Recruit at least 1 Labourer and 1 Farmer from the Crew Shed!', 'plot', 2);
-        pushReport('🔒 Plot 3 requires a hired team: recruit at least 1 Labourer and 1 Farmer from the Crew Shed.');
-        return;
+      if (plotId >= 2) {
+        if (!state.rocksCleared) {
+          showNotification('🪨', 'Plot ' + (plotId + 1) + ' locked: Clear bedrock boulders from the road corridor first!', 'building', 'road');
+          pushReport('🔒 Plot ' + (plotId + 1) + ' locked: Clear bedrock boulders from the road corridor first.');
+          return;
+        }
+        if (!state.buildings || !state.buildings.gate || !state.buildings.gate.built) {
+          showNotification('⛩️', 'Plot ' + (plotId + 1) + ' locked: Erect the Grand Entrance Gate first!', 'building', 'gate');
+          pushReport('🔒 Plot ' + (plotId + 1) + ' locked: Erect the Grand Entrance Gate first.');
+          return;
+        }
+        if (!state.buildings || !state.buildings.road || !state.buildings.road.built) {
+          showNotification('🛤️', 'Plot ' + (plotId + 1) + ' locked: Pave the Main Arterial Road first!', 'building', 'road');
+          pushReport('🔒 Plot ' + (plotId + 1) + ' locked: Pave the Main Arterial Road first.');
+          return;
+        }
+        if (!state.storage || !state.storage.built) {
+          showNotification('🏚️', 'Plot ' + (plotId + 1) + ' locked: Build the Storage Granary Barn & Cold Cellar first to prevent crop spoilage!', 'building', 'storage');
+          pushReport('🔒 Plot ' + (plotId + 1) + ' locked: Build Storage Granary Barn first.');
+          return;
+        }
+        var hasFarmer = state.workers && state.workers.some(function(w){ return w.type === 'farmer'; });
+        if (!hasFarmer) {
+          showNotification('👨‍🌾', 'Plot ' + (plotId + 1) + ' locked: Recruit a dedicated Farmer from the Crew Shed!', 'building', 'crew_shed');
+          pushReport('🔒 Plot ' + (plotId + 1) + ' locked: Recruit a dedicated Farmer from the Crew Shed.');
+          return;
+        }
       }
       var needPrev = (parseInt(plotId, 10) || 0);
       showNotification('🔒', 'Plot ' + (needPrev + 1) + ' is locked. Bring life to Plot ' + needPrev + ' first (till + plant), then this bed opens.', 'plot', Math.max(0, needPrev - 1));
@@ -22649,7 +23063,9 @@ var FARM_EQUIPMENT_CATALOG = {
 };
 
 function hasEquipment(eqKey){
-  if (!state || !state.equipment) return false;
+  if (!state) return false;
+  if ((eqKey === 'spade' || eqKey === 'basic_tools') && (state.basicToolsDiscovered || state.basicToolsArranged)) return true;
+  if (!state.equipment) return false;
   return !!(state.equipment.owned && state.equipment.owned[eqKey]) ||
          !!(state.equipment.leased && state.equipment.leased[eqKey]);
 }
@@ -23427,7 +23843,7 @@ function showLockedStepPopup(stepNum, optKey){
         '<button class="step-instruction-popup-close" onclick="closeLockedStepPopup()" title="Close Details">✕</button>' +
       '</div>' +
       '<div class="step-instruction-popup-body">' +
-        '<div class="step-instruction-lock-banner" style="background:#FFF3E0;color:#E65100;border:1px solid #FFE082;">' +
+        '<div class="step-instruction-lock-banner" style="background:#E8F5E9;color:#1B5E20;border:1.5px solid #A5D6A7;">' +
           '<span>🔒</span>' +
           '<span>Chapter ' + targetCh + ' Milestone · ' + chDef.title + (costLabel ? ' · ' + costLabel : '') + '</span>' +
         '</div>' +
@@ -33558,6 +33974,8 @@ function modalHtml(){
     if (activeModal.type==='jute_tarp') return juteTarpModalHtml();
     if (activeModal.type==='chapter_roadmap') return chapterRoadmapModalHtml(activeModal.objectKey);
     if (activeModal.type==='chapter1_complete') return chapter1CompleteModalHtml();
+    if (activeModal.type==='chapter2_complete') return chapter2CompleteModalHtml();
+    if (activeModal.type==='garage_roadmap_intro') return garageRoadmapIntroModalHtml();
     if (activeModal.type==='harvest_spoilage_warning') return harvestSpoilageWarningModalHtml();
     if (activeModal.type==='welcome_intro' || activeModal.type==='welcome') return welcomeIntroModalHtml();
     if (activeModal.type==='chapter_intro') return chapterIntroModalHtml(activeModal);
@@ -35282,6 +35700,14 @@ window.hasTractor = hasTractor;
 window.acquireTractor = acquireTractor;
 window.prepareClearRocksTask = prepareClearRocksTask;
 window.startClearRocks = startClearRocks;
+window.arrangeBasicToolsInCrewShedAction = arrangeBasicToolsInCrewShedAction;
+window.openChapter2CompletionModal = openChapter2CompletionModal;
+window.chapter2CompleteModalHtml = chapter2CompleteModalHtml;
+window.openGarageRoadmapModal = openGarageRoadmapModal;
+window.garageRoadmapIntroModalHtml = garageRoadmapIntroModalHtml;
+window.getIdleLaborerSuggestion = getIdleLaborerSuggestion;
+window.executeLaborerSuggestion = executeLaborerSuggestion;
+window.renderIdleLaborerSuggestionHtml = renderIdleLaborerSuggestionHtml;
 window.startMowLawn = startMowLawn;
 window.startPrep = startPrep;
 window.getPlotPrepDurationHours = getPlotPrepDurationHours;
@@ -35998,6 +36424,19 @@ function renderMarketplaceTray(){
 
 // ================= RENDER =================
 function render(){
+
+  var suggHost = document.getElementById('idleLaborerSuggestionContainer');
+  if (!suggHost){
+    suggHost = document.createElement('div');
+    suggHost.id = 'idleLaborerSuggestionContainer';
+    document.body.appendChild(suggHost);
+  }
+  if (currentScreen === 'farm' && typeof renderIdleLaborerSuggestionHtml === 'function'){
+    suggHost.innerHTML = renderIdleLaborerSuggestionHtml(state);
+  } else {
+    suggHost.innerHTML = '';
+  }
+
   if (!state) return;
   updateAuthUIState();
 

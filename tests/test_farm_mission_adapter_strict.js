@@ -339,7 +339,12 @@ const path = require('path');
       var plot3StillLockedWithLaborerOnly = !isPlotUnlocked(2, state);
 
       state.workers.push({ id: 11, type: 'farmer', name: 'Farmer #1' });
-      var plot3UnlockedWithTeam = isPlotUnlocked(2, state); // Plot 3 unlocked with both Labourer + Farmer
+      // Plot 3 strictly requires proper infrastructure utilization (boulders cleared, gate, road, storage)
+      state.rocksCleared = true;
+      state.buildings.gate = { built: true };
+      state.buildings.road = { built: true };
+      state.storage = { built: true };
+      var plot3UnlockedWithTeam = isPlotUnlocked(2, state); // Plot 3 unlocked with both Labourer + Farmer & infrastructure
 
       if (soloFounderProtected && lockTools && unlockedTill && plot2Unlocked && plot3LockedWithoutTeam && plot3StillLockedWithLaborerOnly && plot3UnlockedWithTeam) {
         report.test9_chapter1TaskContextualLocks.passed = true;
