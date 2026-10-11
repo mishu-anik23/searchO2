@@ -1789,6 +1789,7 @@ function startDive(){
 /* ================= 14. 2D / 3D ISLAND MAP RENDERING ENGINE ================= */
 const IslandMap={
   canvas:null,ctx:null,scaleX:1,scaleY:1,time:0,W:1920,H:1080,
+  hasBg:false,bg:null,
 
   init(c){
     this.canvas=c;this.ctx=c.getContext('2d');
@@ -1797,6 +1798,15 @@ const IslandMap={
     addEventListener('resize',()=>this.resize());
     c.onclick=(e)=>this.onClick(e);
     window.islandApi=this;window.IslandMap=this;
+
+    // Load fixed background image for Saint Martin Island
+    this.bg=new Image();
+    this.bg.onload=()=>{this.hasBg=true;};
+    this.bg.src='bg-island.jpg';
+    this.bg.onerror=()=>{
+      this.bg.src='../public/saint-martin/bg-island.jpg';
+    };
+
     const loop=(ts)=>{
       this.time=ts*0.001;
       this.render();
@@ -1816,43 +1826,17 @@ const IslandMap={
     const dpr=Math.min(devicePixelRatio||1,2);
     ctx.setTransform(dpr*this.scaleX,0,0,dpr*this.scaleY,0,0);
 
-    // Deep ocean base
-    const sea=ctx.createLinearGradient(0,0,0,1080);
-    sea.addColorStop(0,'#00182E');sea.addColorStop(0.4,'#023047');sea.addColorStop(0.8,'#004D6E');sea.addColorStop(1,'#002138');
-    ctx.fillStyle=sea;ctx.fillRect(0,0,1920,1080);
+    // 1. Draw Fixed Background Image (Saint Martin Fixed Island Base)
+    if(this.hasBg){
+      ctx.drawImage(this.bg,0,0,1920,1080);
+    }else{
+      // Fallback deep ocean base while image loads
+      const sea=ctx.createLinearGradient(0,0,0,1080);
+      sea.addColorStop(0,'#00182E');sea.addColorStop(0.4,'#023047');sea.addColorStop(0.8,'#004D6E');sea.addColorStop(1,'#002138');
+      ctx.fillStyle=sea;ctx.fillRect(0,0,1920,1080);
+    }
 
-    // Central Island Landmass
-    ctx.fillStyle='#EAD5A5';
-    ctx.beginPath();
-    ctx.moveTo(180,680);
-    ctx.bezierCurveTo(130,520, 180,380, 280,320);
-    ctx.bezierCurveTo(440,240, 680,210, 920,200);
-    ctx.bezierCurveTo(1220,190, 1480,230, 1620,320);
-    ctx.bezierCurveTo(1700,380, 1680,520, 1520,620);
-    ctx.bezierCurveTo(1380,720, 1100,750, 820,740);
-    ctx.bezierCurveTo(480,730, 240,760, 180,680);
-    ctx.closePath();ctx.fill();
-
-    // Inner Green Agro Plateau
-    ctx.fillStyle='rgba(165, 214, 167, 0.45)';
-    ctx.beginPath();
-    ctx.moveTo(240,640);
-    ctx.bezierCurveTo(200,500, 240,380, 340,330);
-    ctx.bezierCurveTo(500,260, 740,230, 940,220);
-    ctx.bezierCurveTo(1200,210, 1420,250, 1540,340);
-    ctx.bezierCurveTo(1600,400, 1580,500, 1440,580);
-    ctx.bezierCurveTo(1320,660, 1060,680, 820,670);
-    ctx.bezierCurveTo(520,660, 300,680, 240,640);
-    ctx.closePath();ctx.fill();
-
-    // Central Freshwater Lake
-    ctx.fillStyle='rgba(0, 176, 255, 0.45)';
-    ctx.strokeStyle='#00E5FF';ctx.lineWidth=3;
-    ctx.beginPath();ctx.ellipse(980,540,140,80,0,0,Math.PI*2);ctx.fill();ctx.stroke();
-
-    // Far Away Island Gas Platform (1728, 108)
-    ctx.fillStyle='#C2B280';
-    ctx.beginPath();ctx.ellipse(1728,110,120,45,0,0,Math.PI*2);ctx.fill();
+    // 2. Far Away Island Gas Platform (1728, 108) on Top of Background
     drawGasPlatformIso(ctx,1728,105,0.7,this.time);
 
     // ENLARGED DECAGON 1 (West Saline / Mangrove: Center 380, 480, Radius 210)
