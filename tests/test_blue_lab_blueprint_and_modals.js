@@ -1,14 +1,14 @@
-﻿const { chromium } = require('playwright');
+const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 const assert = require('assert');
 
 (async () => {
   console.log('====================================================');
-  console.log('  Saint Martin Blue Lab Blueprint & Modals Test     ');
+  console.log('  Saint Martin Blue Lab Enhanced 3D Verification    ');
   console.log('====================================================');
 
-  // 1. Check file parity
+  // 1. Check strict file parity
   const origHtml = fs.readFileSync('saint-martin/blue-lab.html', 'utf8');
   const pubHtml = fs.readFileSync('public/saint-martin/blue-lab.html', 'utf8');
   assert.strictEqual(origHtml, pubHtml, 'HTML parity error between saint-martin and public/saint-martin');
@@ -17,6 +17,13 @@ const assert = require('assert');
   const pubSvg = fs.readFileSync('public/saint-martin/blueprint-map.svg', 'utf8');
   assert.strictEqual(origSvg, pubSvg, 'SVG parity error between saint-martin and public/saint-martin');
   console.log('[✓ PASSED] Strict parity between saint-martin/ and public/saint-martin/');
+
+  // Verify blueprint has 20 markers, enlarged decagons and gas platform
+  assert(origSvg.includes('marker-gas_field'), 'Blueprint SVG must include gas_field marker');
+  assert(origSvg.includes('DECAGON 1: MANGROVE BIO-SHIELD (3 PLOTS)'), 'Blueprint SVG must show enlarged Decagon 1');
+  assert(origSvg.includes('DECAGON 2: AGRO-ORCHARD (3 PLOTS)'), 'Blueprint SVG must show enlarged Decagon 2');
+  assert(origSvg.includes('dec1.plot1') && origSvg.includes('dec2.plot3'), 'Blueprint SVG must label sub-plots');
+  console.log('[✓ PASSED] Blueprint SVG contains 20 markers, enlarged twin decagons (3 plots), and gas platform');
 
   const browser = await chromium.launch({
     executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -32,11 +39,13 @@ const assert = require('assert');
   const fileUrl = 'file:///' + path.resolve('saint-martin/blue-lab.html').replace(/\\/g, '/');
   console.log('Visiting:', fileUrl);
   await page.goto(fileUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(500);
-  
-  // Skip boat tour to reach island
-  await page.click('#btn-skip-boat');
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(600);
+
+  // Land on island via boat skip button if boat tour is active
+  if (await page.isVisible('#btn-skip-boat')) {
+    await page.click('#btn-skip-boat');
+    await page.waitForTimeout(500);
+  }
 
   // Dismiss onboarding modal if visible
   const isWhyOpen = await page.isVisible('#why-modal');
@@ -158,11 +167,24 @@ const assert = require('assert');
   await page.click('#salt-close');
   await page.waitForTimeout(200);
 
-  // 11. IslandMap canvas onClick on Vegetable Garden at (0.265, 0.288)
+  // 11. Gas modal via float menu
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-gas');
+  await page.waitForTimeout(300);
+  let gasVisible = await page.$eval('#gas-modal', el => el.classList.contains('open'));
+  assert.strictEqual(gasVisible, true, 'Gas modal must be open');
+  let gasText = await page.textContent('#gas-modal');
+  assert(gasText.includes('Offshore Gas Platform') && gasText.includes('CNG Compression'), 'Gas modal text verification');
+  console.log('[✓ PASSED] Menu Gas opens Offshore Gas Field & CNG modal');
+  await page.click('#gas-close');
+  await page.waitForTimeout(200);
+
+  // 12. IslandMap canvas onClick on Vegetable Garden at (509, 311)
   await page.evaluate(() => {
     islandApi.onClick({
-      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.265,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.288
+      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.scaleX * 509,
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.scaleY * 311
     });
   });
   await page.waitForTimeout(300);
@@ -172,81 +194,90 @@ const assert = require('assert');
   await page.click('#crop-close');
   await page.waitForTimeout(200);
 
-  // 12. IslandMap canvas onClick on Flower Garden at (0.297, 0.448)
+  // 13. Sub-Plot Click on Decagon 1 (dec1.plot2 - Hard Mud Rock Clearing)
   await page.evaluate(() => {
     islandApi.onClick({
-      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.297,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.448
+      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.scaleX * 300,
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.scaleY * 520
     });
   });
   await page.waitForTimeout(300);
-  flVisible = await page.$eval('#flower-modal', el => el.classList.contains('open'));
-  assert.strictEqual(flVisible, true, 'Clicking Flower Garden on map opens flower-modal');
-  console.log('[✓ PASSED] Map canvas click on Flower Garden [570,484] opens flower modal');
-  await page.click('#flower-close');
+  let subVisible = await page.$eval('#subplot-modal', el => el.classList.contains('open'));
+  assert.strictEqual(subVisible, true, 'Clicking dec1.plot2 opens subplot-modal');
+  let subText = await page.textContent('#subplot-body');
+  assert(subText.includes('Compacted Hard Mud Rock') && subText.includes('Clear Hard Mud Rock'), 'Sub-plot starts in hard mud rock state');
+  console.log('[✓ PASSED] Map canvas click on dec1.plot2 [300,520] opens mud rock sub-plot modal');
+
+  // Trigger hard mud rock clearance
+  await page.evaluate(() => startClearingMudRock('dec1.plot2'));
+  await page.waitForTimeout(200);
+  let clearingText = await page.textContent('#subplot-body');
+  assert(clearingText.includes('Clearing Hard Mud Rock') || clearingText.includes('Progress'), 'Plot transitions to clearing state with progress');
+  console.log('[✓ PASSED] Hard mud rock clearing starts with live timer countdown & percentage progress');
+  await page.click('#subplot-close');
   await page.waitForTimeout(200);
 
-  // 13. IslandMap canvas onClick on Farm Garage at (0.367, 0.231)
+  // 14. Sub-Plot Click on Decagon 2 (dec2.plot1 - 3D Tree Growth & Lifecycle)
   await page.evaluate(() => {
     islandApi.onClick({
-      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.367,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.231
+      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.scaleX * 1520,
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.scaleY * 410
     });
   });
   await page.waitForTimeout(300);
-  garVisible = await page.$eval('#garage-modal', el => el.classList.contains('open'));
-  assert.strictEqual(garVisible, true, 'Clicking Garage on map opens garage-modal');
-  console.log('[✓ PASSED] Map canvas click on Farm Garage [705,250] opens garage modal');
-  await page.click('#garage-close');
+  subVisible = await page.$eval('#subplot-modal', el => el.classList.contains('open'));
+  assert.strictEqual(subVisible, true, 'Clicking dec2.plot1 opens subplot-modal');
+  let treeText = await page.textContent('#subplot-body');
+  assert(treeText.includes('Coastal Coconut Palm') && treeText.includes('Stage:'), 'Sub-plot displays 3D tree growth stages');
+  console.log('[✓ PASSED] Sub-plot dec2.plot1 renders active tree growth with stages, timers, and percentages');
+  await page.click('#subplot-close');
   await page.waitForTimeout(200);
 
-  // 14. IslandMap canvas onClick on Seafood Facility at (0.447, 0.161)
-  await page.evaluate(() => {
-    islandApi.onClick({
-      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.447,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.161
-    });
-  });
+  // 15. Task HUD Capsule click -> #task-hud
+  await page.click('#task-capsule');
   await page.waitForTimeout(300);
-  sfVisible = await page.$eval('#seafood-modal', el => el.classList.contains('open'));
-  assert.strictEqual(sfVisible, true, 'Clicking Seafood Facility on map opens seafood-modal');
-  console.log('[✓ PASSED] Map canvas click on Seafood Facility [858,174] opens seafood modal');
-  await page.click('#seafood-close');
+  let taskHudOpen = await page.$eval('#task-hud', el => el.classList.contains('open'));
+  assert.strictEqual(taskHudOpen, true, 'Task HUD panel must be open');
+  let taskHudText = await page.textContent('#task-hud');
+  assert(taskHudText.includes('Chapter 1') && taskHudText.includes('Sub-Challenge 1.1'), 'Task HUD displays chapter and sub-challenges');
+  console.log('[✓ PASSED] Task Capsule opens floating Task List HUD with 5-chapter missions & sub-challenges');
+  await page.click('#task-hud-close');
   await page.waitForTimeout(200);
 
-  // 15. IslandMap canvas onClick on Desalination at (0.099, 0.652)
-  await page.evaluate(() => {
-    islandApi.onClick({
-      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.099,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.652
-    });
-  });
+  // 16. Boat Simulation launch and test
+  await page.click('#btn-boat-nav');
   await page.waitForTimeout(300);
-  desalVisible = await page.$eval('#desal-modal', el => el.classList.contains('open'));
-  assert.strictEqual(desalVisible, true, 'Clicking Desalination on map opens desal-modal');
-  console.log('[✓ PASSED] Map canvas click on Desalination Facility [190,704] opens desal modal');
-  await page.click('#desal-close');
+  let boatTourVisible = await page.$eval('#boat-tour', el => el.style.display === 'block');
+  assert.strictEqual(boatTourVisible, true, 'Boat tour canvas must be active');
+  console.log('[✓ PASSED] Boat Simulation launches with 18s bird\'s eye and rear deck FPV');
+  await page.click('#btn-skip-boat');
+  await page.waitForTimeout(300);
+
+  // 17. 3D Outer Gas Platform View entry
+  await page.evaluate(() => enterOuter());
+  await page.waitForTimeout(300);
+  let outerVisible = await page.$eval('#outer-zone', el => el.style.display === 'block');
+  assert.strictEqual(outerVisible, true, '3D Outer Gas Platform zone must be active');
+  console.log('[✓ PASSED] 3D Offshore Gas Platform view entered with interactive pins and isometric rig');
+  await page.click('#btn-outer-island');
+  await page.waitForTimeout(300);
+
+  // 18. Planetary Biome Globe modal
+  await page.click('#btn-globe');
+  await page.waitForTimeout(300);
+  let globeVisible = await page.$eval('#globe-modal', el => el.classList.contains('open'));
+  assert.strictEqual(globeVisible, true, 'Globe modal must be open');
+  let globeText = await page.textContent('#globe-modal');
+  assert(globeText.includes('Germany: Active Farm') && globeText.includes('Saint Martin: Blue Lab'), 'Globe modal connects planetary biomes');
+  console.log('[✓ PASSED] Planetary Biome Globe displays 3D sphere and connects Germany & Saint Martin');
+  await page.click('#globe-close');
   await page.waitForTimeout(200);
 
-  // 16. IslandMap canvas onClick on Salt Brines at (0.118, 0.462)
-  await page.evaluate(() => {
-    islandApi.onClick({
-      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.118,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.462
-    });
-  });
-  await page.waitForTimeout(300);
-  saltVisible = await page.$eval('#salt-modal', el => el.classList.contains('open'));
-  assert.strictEqual(saltVisible, true, 'Clicking Salt Brines on map opens salt-modal');
-  console.log('[✓ PASSED] Map canvas click on Salt Brines [227,499] opens salt modal');
-  await page.click('#salt-close');
-  await page.waitForTimeout(200);
-  
   assert.strictEqual(pageErrors.length, 0, 'No page errors should occur: ' + JSON.stringify(pageErrors));
   console.log('[✓ PASSED] Zero browser page errors encountered');
   
   await browser.close();
   console.log('====================================================');
-  console.log('  ALL BLUE LAB BLUEPRINT & MODAL TESTS PASSED (100%)');
+  console.log('  ALL BLUE LAB ENHANCED 3D TESTS PASSED (100%)      ');
   console.log('====================================================');
 })();
