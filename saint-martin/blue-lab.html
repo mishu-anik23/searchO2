@@ -15,7 +15,8 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;user-select:none}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--deep);font-family:'Nunito',sans-serif;color:#E0F7FA}
-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
+#island-canvas,#outer-canvas,#dive-canvas,#boat-tour-canvas,#boat-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
+#globe-canvas{position:relative;width:560px;height:340px;max-width:100%;display:inline-block;pointer-events:none}
 #island-zone,#outer-zone,#dive-zone,#boat-tour{position:absolute;top:0;left:0;width:100%;height:100%}
 #outer-zone,#dive-zone,#island-zone{display:none}
 #boat-tour{display:block}
@@ -23,27 +24,39 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
 /* HUD Overlay */
 .hud{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
 
-/* Top Scoreboard */
+/* Top Scoreboard: Icon-Only with Hover Tooltips */
 .scoreboard{
-  position:absolute;top:14px;left:18px;display:flex;gap:7px;flex-wrap:wrap;pointer-events:auto;max-width:calc(100% - 380px);
+  position:absolute;top:14px;left:18px;display:flex;gap:7px;flex-wrap:wrap;pointer-events:auto;max-width:calc(100% - 460px);z-index:20;
 }
 .sb-chip{
   background:rgba(10,25,38,0.88);backdrop-filter:blur(8px);border:1px solid var(--border-cyan);
-  border-radius:18px;padding:5px 11px;font-size:0.75rem;font-weight:800;display:flex;align-items:center;gap:5px;
-  color:#ECEFF1;box-shadow:0 3px 10px rgba(0,0,0,0.45);cursor:pointer;transition:transform 0.15s,border-color 0.15s;
+  border-radius:18px;padding:6px 12px;font-size:0.8rem;font-weight:800;display:flex;align-items:center;gap:6px;
+  color:#ECEFF1;box-shadow:0 3px 10px rgba(0,0,0,0.45);cursor:pointer;transition:transform 0.15s,border-color 0.15s,box-shadow 0.15s;
+  position:relative;
 }
-.sb-chip:hover{transform:translateY(-1.5px);border-color:var(--teal)}
+.sb-chip:hover{transform:translateY(-2px);border-color:var(--teal);box-shadow:0 6px 16px rgba(0,229,255,0.35)}
 .sb-chip .v{color:var(--teal);font-family:'JetBrains Mono',monospace;font-weight:800}
-.sb-chip.shi .v{color:var(--emerald)}
-.sb-chip.do .v{color:#40C4FF}
-.sb-chip.power .v{color:var(--gold)}
-.sb-chip.xp .v{color:#E040FB}
+
+/* Icon-Only Chip Styling with Hover Tooltip */
+.sb-chip.icon-only{
+  width:36px;height:36px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.05rem;
+}
+.sb-chip.icon-only .sb-tooltip{
+  position:absolute;top:44px;left:50%;transform:translateX(-50%) translateY(-4px);
+  background:rgba(6,18,30,0.96);backdrop-filter:blur(10px);border:1.2px solid var(--teal);
+  border-radius:10px;padding:6px 12px;font-size:0.75rem;font-weight:700;color:#ECEFF1;
+  white-space:nowrap;pointer-events:none;opacity:0;transition:opacity 0.18s ease, transform 0.18s ease;
+  box-shadow:0 6px 20px rgba(0,0,0,0.7);z-index:100;
+}
+.sb-chip.icon-only:hover .sb-tooltip{
+  opacity:1;transform:translateX(-50%) translateY(0);
+}
 
 /* Top Corner Navigation */
 .corner-nav{position:absolute;top:14px;right:18px;display:flex;gap:7px;pointer-events:auto;z-index:20}
 .chip-btn{
   background:rgba(10,25,38,0.92);backdrop-filter:blur(8px);border:1.2px solid var(--teal);color:#FFFFFF;
-  border-radius:20px;padding:6px 13px;font-size:0.78rem;font-weight:800;display:flex;align-items:center;gap:6px;
+  border-radius:20px;padding:6px 12px;font-size:0.78rem;font-weight:800;display:flex;align-items:center;gap:5px;
   cursor:pointer;text-decoration:none;box-shadow:0 4px 14px rgba(0,229,255,0.25);transition:all 0.15s ease;
 }
 .chip-btn:hover{transform:scale(1.05);background:rgba(0,229,255,0.18);box-shadow:0 6px 18px rgba(0,229,255,0.4)}
@@ -55,13 +68,42 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
 .chip-btn.pink:hover{background:rgba(255,64,129,0.2)}
 .chip-btn.amber{border-color:var(--amber);box-shadow:0 4px 14px rgba(255,179,0,0.25)}
 .chip-btn.amber:hover{background:rgba(255,179,0,0.2)}
+.chip-btn.icon-square{width:36px;height:36px;padding:0;justify-content:center;border-radius:12px;font-size:1rem}
+
+/* Landscape Rotate Prompt for Mobile & Tablet */
+.landscape-rotate-prompt{display:none}
+@media (max-width: 900px) and (orientation: portrait){
+  .landscape-rotate-prompt{
+    display:flex;position:fixed;inset:0;z-index:99999;background:rgba(5,15,23,0.97);
+    backdrop-filter:blur(10px);flex-direction:column;align-items:center;justify-content:center;
+    padding:24px;text-align:center;color:#F8FAFC;box-sizing:border-box;
+  }
+  .landscape-rotate-prompt .rotate-phone-icon{
+    font-size:3.5rem;animation:rotatePhoneAnim 2s infinite ease-in-out;margin-bottom:16px;
+  }
+  .landscape-rotate-prompt h3{
+    font-size:1.35rem;font-weight:900;color:var(--teal);margin:0 0 8px 0;letter-spacing:0.5px;
+  }
+  .landscape-rotate-prompt p{
+    font-size:0.92rem;color:#CFD8DC;max-width:340px;margin:0 0 18px 0;line-height:1.45;
+  }
+  .landscape-rotate-prompt button{
+    background:var(--teal);color:#001E3C;border:none;border-radius:12px;padding:10px 22px;
+    font-size:0.88rem;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,229,255,0.4);
+  }
+}
+@keyframes rotatePhoneAnim{
+  0%{transform:rotate(0deg)}
+  50%{transform:rotate(-90deg)}
+  100%{transform:rotate(0deg)}
+}
 
 /* Task Capsule Bottom */
 .task-capsule{
   position:absolute;bottom:22px;left:50%;transform:translateX(-50%);pointer-events:auto;
   background:rgba(10,25,38,0.94);backdrop-filter:blur(10px);border:1.5px solid var(--teal);
   border-radius:28px;padding:8px 20px;display:flex;align-items:center;gap:12px;
-  box-shadow:0 6px 24px rgba(0,229,255,0.3);cursor:pointer;transition:transform 0.15s;
+  box-shadow:0 6px 24px rgba(0,229,255,0.3);cursor:pointer;transition:transform 0.15s;z-index:20;
 }
 .task-capsule:hover{transform:translateX(-50%) scale(1.02)}
 .task-capsule .pulse{width:10px;height:10px;border-radius:50%;background:var(--emerald);box-shadow:0 0 10px var(--emerald);animation:pulseDot 1.8s infinite}
@@ -91,9 +133,9 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
 .task-item .badge{font-size:0.75rem;font-weight:800;padding:3px 8px;border-radius:6px;background:rgba(0,229,255,0.2);color:var(--teal)}
 .task-item.done .badge{background:var(--emerald);color:#003314}
 
-/* Floating Drawer Menu */
+/* Floating Quick Drawer Menu */
 .float-menu{
-  position:absolute;top:62px;right:18px;width:320px;background:rgba(8,20,32,0.96);backdrop-filter:blur(12px);
+  position:absolute;top:62px;right:18px;width:300px;background:rgba(8,20,32,0.96);backdrop-filter:blur(12px);
   border:1.5px solid var(--border-cyan);border-radius:16px;padding:14px;pointer-events:auto;display:none;
   box-shadow:0 12px 36px rgba(0,0,0,0.7);z-index:25;max-height:82vh;overflow-y:auto;
 }
@@ -111,6 +153,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
   background:rgba(10,25,40,0.97);border:1.6px solid var(--teal);border-radius:18px;padding:22px;
   width:92%;max-width:540px;max-height:88vh;overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,0.85);color:#E0F7FA;
 }
+.modal-card.narrow{max-width:420px}
 .modal-card.wide{max-width:820px}
 .modal-card.large{max-width:960px}
 .modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1.5px solid var(--border-cyan)}
@@ -178,22 +221,31 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
 </head>
 <body>
 
+<!-- LANDSCAPE VIEW PROMPT FOR MOBILE & TABLET -->
+<div class="landscape-rotate-prompt" id="landscapeRotatePrompt">
+  <div class="rotate-phone-icon">📱⤾</div>
+  <h3>Please Rotate to Landscape</h3>
+  <p>SearchO2 Blue Lab is optimized exclusively for Landscape view on mobile and tablet devices.</p>
+  <button onclick="document.getElementById('landscapeRotatePrompt').style.display='none'">Continue Anyway</button>
+</div>
+
 <!-- ZONE 1: MAIN ISLAND BLUE LAB -->
 <section id="island-zone">
   <canvas id="island-canvas"></canvas>
 
   <div class="hud">
-    <!-- Top Scoreboard -->
+    <!-- Top Scoreboard: Icon-Only Chips with Floating Hover Statements containing SHI, DO, O2 -->
     <div class="scoreboard" id="scoreboard"></div>
 
     <!-- Top Corner Navigation -->
     <div class="corner-nav">
       <button class="chip-btn gold" id="btn-blueprint" title="1920x1080 Calibrated Vector Blueprint">🗺️ Blueprint</button>
       <button class="chip-btn pink" id="btn-encyclopedia" title="Living Botanical & Marine Encyclopedia">📖 Encyclopedia</button>
-      <button class="chip-btn" id="btn-sea-dash" title="Sea Health & Microgrid Dashboard">📊 Sea Dash</button>
+      <button class="chip-btn" id="btn-sea-dash" title="Executive KPI & Marine Telemetry Dashboard">📊 Sea Dash</button>
       <button class="chip-btn green" id="btn-globe" title="Planetary Biome Globe">🌐 Globe</button>
       <button class="chip-btn" id="btn-masterplan" title="5-Chapter Masterplan & Progress">📋 Masterplan</button>
       <button class="chip-btn amber" id="btn-boat-nav" title="Survey Vessel Boat Simulation">🚤 Boat Helm</button>
+      <button class="chip-btn icon-square" id="btn-fullscreen" title="Toggle Fullscreen Mode (⛶ / Esc)">⛶</button>
       <button class="chip-btn" id="btn-menu" title="Menu & Shortcuts">☰ Menu</button>
     </div>
 
@@ -224,7 +276,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
       </div>
     </div>
 
-    <!-- Floating Quick Drawer Menu -->
+    <!-- Floating Quick Drawer Menu: Cleaned of On-Field Object Rows -->
     <div class="float-menu" id="floatMenu">
       <div class="menu-title">
         <span>🏝️ Blue Lab Control Deck</span>
@@ -232,20 +284,14 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;">
         <button class="btn btn-c" id="menu-blueprint">🗺️ 1920x1080 Vector Blueprint</button>
-        <button class="btn btn-pink" id="menu-encyclopedia">📖 Botanical & Marine Encyclopedia</button>
-        <button class="btn btn-amber" id="menu-gas">⛽ Offshore Gas Field & Platform</button>
-        <button class="btn btn-p" id="menu-boat">🚤 Survey Vessel & Deck Helm</button>
-        <button class="btn btn-e" id="menu-crop">🌾 Companion Vegetable Field</button>
-        <button class="btn btn-pink" id="menu-flower">🌸 Decagonal Flower Garden</button>
-        <button class="btn btn-gold" id="menu-garage">🚜 Farm Garage & Mechanization</button>
-        <button class="btn btn-b" id="menu-storage">🏚️ North Storage Silos</button>
-        <button class="btn btn-c" id="menu-seafood">🦐 Seafood IQF & RAS Tanks</button>
-        <button class="btn btn-p" id="menu-desal">🧪 Desalination & Brine Silos</button>
-        <button class="btn btn-g" id="menu-salt">🧂 Salt Brine Evaporator Beds</button>
-        <button class="btn btn-c" id="menu-seadash">📊 Sea Health & Microgrid Dashboard</button>
+        <button class="btn btn-pink" id="menu-encyclopedia">📖 Living Botanical & Marine Encyclopedia</button>
+        <button class="btn btn-e" id="menu-masterplan">📋 5-Chapter Masterplan & Tasks</button>
+        <button class="btn btn-c" id="menu-scoreboard">📊 Executive KPI Scoreboard</button>
         <button class="btn btn-gold" id="menu-labour">🧑‍🌾 Labour Market (Rahim & Crew)</button>
+        <button class="btn btn-p" id="menu-boat">🚤 Survey Vessel & Deck Helm</button>
         <button class="btn btn-e" id="menu-globe">🌐 Planetary Biome Globe</button>
         <button class="btn btn-b" id="menu-dive">🤿 3D Coral Reef Dive</button>
+        <button class="btn btn-gold" id="menu-fullscreen">⛶ Toggle Fullscreen Mode</button>
         <button class="btn btn-gold" id="menu-german" onclick="window.open('../index.html','_blank')">🇩🇪 German Farm Trade Corridor</button>
       </div>
     </div>
@@ -304,7 +350,30 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
 <div class="toast" id="toast"></div>
 
 <!-- MODALS -->
-<!-- 1. SUBPLOT DETAIL MODAL (DECAGONS 1 & 2 SUB-PLOTS) -->
+
+<!-- 1. EXECUTIVE KPI SCOREBOARD MODAL -->
+<div class="modal-overlay" id="scoreboard-modal">
+  <div class="modal-card wide" id="scoreboard-card">
+    <div class="modal-hdr">
+      <h3>📊 Saint Martin Blue Lab · Executive KPI Scoreboard</h3>
+      <button class="btn-close" id="scoreboard-close">✕</button>
+    </div>
+    <div id="scoreboard-body"></div>
+  </div>
+</div>
+
+<!-- 2. SPECIAL SEA DASHBOARD & MICROGRID MODAL -->
+<div class="modal-overlay" id="seadash-modal">
+  <div class="modal-card wide">
+    <div class="modal-hdr">
+      <h3>📊 Sea Health &amp; Microgrid Dashboard</h3>
+      <button class="btn-close" id="sd-close">✕</button>
+    </div>
+    <div id="seadash-body"></div>
+  </div>
+</div>
+
+<!-- 3. SUBPLOT DETAIL MODAL (DECAGONS 1 & 2 SUB-PLOTS) -->
 <div class="modal-overlay" id="subplot-modal">
   <div class="modal-card wide">
     <div class="modal-hdr">
@@ -315,416 +384,325 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block}
   </div>
 </div>
 
-<!-- 2. CROP MODAL -->
+<!-- 4. BEACH SAND MUD ROCK EXPLORATION MODAL -->
+<div class="modal-overlay" id="sand-rock-modal">
+  <div class="modal-card narrow" id="sand-rock-card">
+    <div class="modal-hdr">
+      <h3 id="sand-rock-title">⛏️ Beach Sand Mud Rock Exploration</h3>
+      <button class="btn-close" id="sand-rock-close">✕</button>
+    </div>
+    <div id="sand-rock-body"></div>
+  </div>
+</div>
+
+<!-- 5. GARDEN CONSTRUCTION MODAL -->
+<div class="modal-overlay" id="garden-construct-modal">
+  <div class="modal-card narrow">
+    <div class="modal-hdr">
+      <h3 id="garden-construct-title">🔨 Construct Garden Bed</h3>
+      <button class="btn-close" id="garden-construct-close">✕</button>
+    </div>
+    <div id="garden-construct-body"></div>
+  </div>
+</div>
+
+<!-- 6. CROP MODAL -->
 <div class="modal-overlay" id="crop-modal">
   <div class="modal-card wide" id="crop-body">
     <div id="crop-modal-content"></div>
   </div>
 </div>
 
-<!-- 3. FLOWER MODAL -->
+<!-- 7. FLOWER MODAL -->
 <div class="modal-overlay" id="flower-modal">
   <div class="modal-card wide" id="flower-body">
     <div id="flower-modal-content"></div>
   </div>
 </div>
 
-<!-- 4. GARAGE MODAL -->
+<!-- 8. GARAGE MODAL -->
 <div class="modal-overlay" id="garage-modal">
   <div class="modal-card" id="garage-body">
     <div id="garage-modal-content"></div>
   </div>
 </div>
 
-<!-- 5. STORAGE MODAL -->
+<!-- 9. STORAGE MODAL -->
 <div class="modal-overlay" id="storage-modal">
   <div class="modal-card" id="storage-body">
     <div id="storage-modal-content"></div>
   </div>
 </div>
 
-<!-- 6. ENCYCLOPEDIA MODAL -->
+<!-- 10. ENCYCLOPEDIA MODAL -->
 <div class="modal-overlay" id="encyclopedia-modal">
   <div class="modal-card large" id="encyclopedia-body">
     <div class="modal-hdr">
       <h3>📖 Living Botanical &amp; Marine Science Encyclopedia</h3>
       <button class="btn-close" id="enc-close">✕</button>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;" id="encyclopedia-tabs">
-      <button class="btn btn-e tab-btn active" data-tab="trees">🌳 Trees (10 Spp)</button>
-      <button class="btn btn-pink tab-btn" data-tab="flowers">🌸 Flowers (12 Spp)</button>
-      <button class="btn btn-gold tab-btn" data-tab="crops">🌾 Companion Crops (8 Spp)</button>
-      <button class="btn btn-c tab-btn" data-tab="marine">🪸 Coral Genera &amp; Fauna</button>
-      <button class="btn btn-b tab-btn" data-tab="energy">⚡ Clean Microgrid Tech</button>
-    </div>
-    <div id="encyclopedia-cards" style="max-height:64vh;overflow-y:auto;"></div>
+    <div id="encyclopedia-content"></div>
   </div>
 </div>
 
-<!-- 7. GAS & CNG MODAL -->
-<div class="modal-overlay" id="gas-modal">
-  <div class="modal-card wide">
+<!-- 11. BLUEPRINT MODAL -->
+<div class="modal-overlay" id="blueprint-modal">
+  <div class="modal-card large" style="max-width:1100px;padding:16px;">
     <div class="modal-hdr">
-      <h3>⛽ Offshore Gas Platform &amp; CNG Compression Chain</h3>
+      <h3>🗺️ Saint Martin Calibrated 1920x1080 Vector Blueprint</h3>
+      <button class="btn-close" id="bp-close">✕</button>
+    </div>
+    <div id="blueprint-body" style="text-align:center;overflow:hidden;border-radius:12px;background:#05101A;">
+      <img src="blueprint-map.svg" alt="Blueprint" style="width:100%;height:auto;display:block;border-radius:8px;"/>
+    </div>
+  </div>
+</div>
+
+<!-- 12. GAS & OFFSHORE CNG MODAL -->
+<div class="modal-overlay" id="gas-modal">
+  <div class="modal-card wide" id="gas-body">
+    <div class="modal-hdr">
+      <h3>⛽ Offshore Gas Platform · 5-Stage CNG Compression</h3>
       <button class="btn-close" id="gas-close">✕</button>
     </div>
-    <p style="font-size:0.8rem;color:#90A4AE;margin:0 0 12px">Offshore platform stationed on the far shelf. Simulates clean natural gas extraction, multi-stage compression, and high-pressure CNG storage.</p>
-    <div class="grid-2" style="margin-bottom:12px;">
-      <div class="card-box alert">
-        <b style="color:var(--gold);font-size:0.88rem;">Offshore Rig Status</b>
-        <div style="font-size:0.78rem;color:#CFD8DC;margin-top:4px;">
-          Platform Type: 4-Leg Steel Jacket<br/>
-          Riser Pressure: 85 bar<br/>
-          Storage Cascade: 200 bar (CNG)<br/>
-          Flare Stack: Emergency safety relief (educational visual)
-        </div>
-      </div>
-      <div class="card-box">
-        <b style="color:var(--teal);font-size:0.88rem;">Current Production</b>
-        <div style="font-size:0.78rem;color:#CFD8DC;margin-top:4px;">
-          Cumulative CNG: <b id="gas-cng-val" style="color:var(--gold);">120 m³</b><br/>
-          Island Backup Ready: 100%<br/>
-          Inspection Pins Seen: <b id="gas-pins-val" style="color:var(--emerald);">0 / 6</b>
-        </div>
-      </div>
-    </div>
-    <div style="font-size:0.85rem;font-weight:800;color:var(--teal);margin-bottom:8px;">⚙️ 5-Stage CNG Compression Pipeline</div>
-    <div id="cng-steps-container" style="display:flex;flex-direction:column;gap:6px;"></div>
-    <div style="display:flex;gap:8px;margin-top:14px;">
-      <button class="btn btn-amber" style="flex:1" id="btn-advance-cng">⚡ Advance Next CNG Step</button>
-      <button class="btn btn-c" style="flex:1" id="btn-visit-gas-3d">🚁 Enter 3D Platform Tour</button>
-    </div>
+    <div id="gas-content"></div>
   </div>
 </div>
 
-<!-- 8. PLANETARY BIOME GLOBE MODAL -->
-<div class="modal-overlay" id="globe-modal">
+<!-- 13. SEAFOOD MODAL -->
+<div class="modal-overlay" id="seafood-modal">
   <div class="modal-card wide">
     <div class="modal-hdr">
-      <h3>🌐 Planetary Biome Globe · Global Regenerative Network</h3>
-      <button class="btn-close" id="globe-close">✕</button>
+      <h3>🦐 Shoreline Seafood Freezing &amp; Crab Processing</h3>
+      <button class="btn-close" id="seafood-close">✕</button>
     </div>
-    <p style="font-size:0.8rem;color:#90A4AE;margin:0 0 12px">Select a planetary biome to inspect regenerative agroforestry, clean energy, and coral restoration.</p>
-    <div style="display:flex;justify-content:center;margin:10px 0;">
-      <canvas id="globe-canvas" width="280" height="280" style="position:relative;width:280px;height:280px;border-radius:50%;box-shadow:0 0 30px rgba(0,229,255,0.35);"></canvas>
-    </div>
-    <div class="grid-3" style="margin-top:12px;">
-      <div class="card-box green" style="text-align:center;">
-        <div style="font-size:1.6rem;">🇩🇪</div>
-        <b style="color:#A5D6A7;font-size:0.85rem;">Germany: Active Farm</b>
-        <div style="font-size:0.74rem;color:#CFD8DC;margin:4px 0;">Decagonal flower beds, polyculture crops &amp; mechanization</div>
-        <button class="btn btn-e" style="width:100%;padding:5px;font-size:0.75rem;margin-top:6px;" onclick="window.open('../index.html','_blank')">Enter Farm</button>
-      </div>
-      <div class="card-box" style="text-align:center;border-color:var(--teal);">
-        <div style="font-size:1.6rem;">🇧🇩</div>
-        <b style="color:var(--teal);font-size:0.85rem;">Saint Martin: Blue Lab</b>
-        <div style="font-size:0.74rem;color:#CFD8DC;margin:4px 0;">Twin enlarged decagons, coral nurseries, offshore gas &amp; IQF</div>
-        <button class="btn btn-c" style="width:100%;padding:5px;font-size:0.75rem;margin-top:6px;" disabled>Active Zone</button>
-      </div>
-      <div class="card-box" style="text-align:center;opacity:0.65;">
-        <div style="font-size:1.6rem;">🇧🇷</div>
-        <b style="color:var(--gold);font-size:0.85rem;">Brazil: Amazon Agro</b>
-        <div style="font-size:0.74rem;color:#CFD8DC;margin:4px 0;">Deep canopy permaculture &amp; Cerrado corridor</div>
-        <button class="btn btn-b" style="width:100%;padding:5px;font-size:0.75rem;margin-top:6px;" disabled>🔒 12,500 O₂ Req.</button>
-      </div>
-    </div>
+    <div id="seafood-body"></div>
   </div>
 </div>
 
-<!-- 9. MASTERPLAN MODAL -->
+<!-- 14. DESALINATION MODAL -->
+<div class="modal-overlay" id="desal-modal">
+  <div class="modal-card wide">
+    <div class="modal-hdr">
+      <h3>🧪 Desalination Core &amp; Pure Water Silos</h3>
+      <button class="btn-close" id="desal-close">✕</button>
+    </div>
+    <div id="desal-body"></div>
+  </div>
+</div>
+
+<!-- 15. SALT BRINE MODAL -->
+<div class="modal-overlay" id="salt-modal">
+  <div class="modal-card wide">
+    <div class="modal-hdr">
+      <h3>🧂 Salt Brine Evaporator Flats</h3>
+      <button class="btn-close" id="salt-close">✕</button>
+    </div>
+    <div id="salt-body"></div>
+  </div>
+</div>
+
+<!-- 16. LABOUR MARKET MODAL -->
+<div class="modal-overlay" id="labour-modal">
+  <div class="modal-card">
+    <div class="modal-hdr">
+      <h3>🧑‍🌾 Saint Martin Local Labour Roster</h3>
+      <button class="btn-close" id="labour-close">✕</button>
+    </div>
+    <div id="labour-body"></div>
+  </div>
+</div>
+
+<!-- 17. 5-CHAPTER MASTERPLAN MODAL -->
 <div class="modal-overlay" id="master-modal">
   <div class="modal-card wide">
     <div class="modal-hdr">
-      <h3>📋 5-Chapter Blue Lab Masterplan &amp; Missions</h3>
+      <h3>📋 Saint Martin Blue Lab · 5-Chapter Masterplan</h3>
       <button class="btn-close" id="master-close">✕</button>
     </div>
     <div id="master-body"></div>
   </div>
 </div>
 
-<!-- 10. LABOUR MODAL -->
-<div class="modal-overlay" id="labour-modal">
-  <div class="modal-card wide" id="labour-body">
+<!-- 18. 3D PLANETARY BIOME GLOBE MODAL -->
+<div class="modal-overlay" id="globe-modal">
+  <div class="modal-card wide" style="max-width:760px;text-align:center;">
     <div class="modal-hdr">
-      <h3>🧑‍🌾 Agricultural &amp; Marine Workforce HQ</h3>
-      <button class="btn-close" id="labour-close">✕</button>
+      <h3>🌐 Planetary Agroforestry Biome Linkage</h3>
+      <button class="btn-close" id="globe-close">✕</button>
     </div>
-    <p style="font-size:0.8rem;color:#90A4AE;margin:0 0 12px">Recruit specialized caretakers (Rahim, Fatema, Tarek, Kabir) to automate decagon tillage, polyp diagnosis, seaweed harvesting, and microgrid tuning.</p>
-    <div class="grid-2" id="labour-cards"></div>
-  </div>
-</div>
-
-<!-- 11. SEADASH MODAL -->
-<div class="modal-overlay" id="seadash-modal">
-  <div class="modal-card wide" id="seadash-body">
-    <div class="modal-hdr">
-      <h3>📊 Sea Health Index &amp; Clean Microgrid Telemetry</h3>
-      <button class="btn-close" id="sd-close">✕</button>
+    <div style="margin:12px 0;">
+      <canvas id="globe-canvas" width="560" height="340" style="display:inline-block;border-radius:14px;background:#030A12;box-shadow:inset 0 0 20px rgba(0,229,255,0.2)"></canvas>
     </div>
-    <div class="grid-2" style="margin-bottom:12px;">
-      <div class="card-box marine">
-        <b style="color:var(--teal)">🌊 Sea Health Index (SHI)</b>
-        <div style="font-size:1.8rem;font-weight:900;color:var(--emerald);" id="seadash-shi">90%</div>
-        <div style="font-size:0.75rem;color:#CFD8DC;">Dissolved Oxygen: <b id="seadash-do">86%</b> · Water Clarity: <b>92%</b></div>
-      </div>
-      <div class="card-box">
-        <b style="color:var(--gold)">⚡ Hybrid Microgrid &amp; BESS</b>
-        <div style="font-size:1.8rem;font-weight:900;color:var(--gold);" id="seadash-bess">390 / 500 kWh</div>
-        <div style="font-size:0.75rem;color:#CFD8DC;">Wind: <b>300 kW</b> · Floating Solar: <b>120 kW</b></div>
-      </div>
+    <div style="font-size:0.85rem;color:#CFD8DC;margin-bottom:12px;">
+      Connecting <b>🇩🇪 Central European Deciduous Farm (Braunschweig)</b> with <b>🇧🇩 Saint Martin Marine Coral Biome (Bay of Bengal)</b>.
     </div>
-    <div class="card-box green">
-      <b style="color:#CCFF90">🧪 Big Jar Algae Bioreactor Scrubbing</b>
-      <p style="font-size:0.78rem;color:#CFD8DC;margin:4px 0 8px;">Consumes carbon emissions from seafood freezing line; enriches water with dissolved oxygen.</p>
-      <div style="display:flex;gap:12px;align-items:center;">
-        <button class="btn btn-e" id="btn-toggle-algae">🌿 Toggle Big Jar Algae</button>
-        <div style="font-size:0.8rem;color:#ECEFF1;">Status: <b id="algae-status-txt" style="color:var(--emerald);">Active (42.75 kg O₂/hr)</b></div>
-      </div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn btn-gold" onclick="window.open('../index.html','_blank')">Launch German Farm ➔</button>
     </div>
   </div>
 </div>
 
-<!-- 12. SEAFOOD MODAL -->
-<div class="modal-overlay" id="seafood-modal">
-  <div class="modal-card" id="seafood-body">
-    <div class="modal-hdr">
-      <h3>🦐 Shrimp &amp; Crab Processing &amp; IQF Facility</h3>
-      <button class="btn-close" id="seafood-close">✕</button>
-    </div>
-    <p style="font-size:0.8rem;color:#90A4AE;margin:0 0 10px">Shrimp &amp; Crab Processing and Individual Quick Freezing [-40°C] plant for mud crabs, tiger prawns, and fresh edible seaweed.</p>
-    <div class="card-box marine">
-      <div>Stock: Mud Crab &amp; Prawn: <b id="seafood-crab-val">120 kg</b></div>
-      <div>Seaweed Biomass: <b id="seafood-seaweed-val">80 kg</b></div>
-      <div style="margin-top:8px;">Freezer Telemetry: <b style="color:var(--teal);">-40°C Solid IQF Line</b></div>
-    </div>
-    <button class="btn btn-c" style="width:100%;margin-top:10px;" id="btn-pack-seafood">📦 Package Export Consignment (€180)</button>
-  </div>
-</div>
-
-<!-- 13. DESAL MODAL -->
-<div class="modal-overlay" id="desal-modal">
-  <div class="modal-card" id="desal-body">
-    <div class="modal-hdr">
-      <h3>🧪 Desalination Core &amp; Pure Water Storage Silos</h3>
-      <button class="btn-close" id="desal-close">✕</button>
-    </div>
-    <p style="font-size:0.8rem;color:#90A4AE;margin:0 0 10px">Desalination Core and Pure Water Storage Silos supplying freshwater to companion crop beds and tree seedlings.</p>
-    <div class="card-box">
-      <div>Freshwater Buffer: <b style="color:var(--teal);">8,500 L / 10,000 L</b></div>
-      <div>Desal Rate: <b>650 L/hour</b></div>
-      <div>Brine Recovery: <b>100% Routed to Salt Beds</b></div>
-    </div>
-    <button class="btn btn-e" style="width:100%;margin-top:10px;" id="btn-pump-desal">💧 Pump Freshwater Batch</button>
-  </div>
-</div>
-
-<!-- 14. SALT MODAL -->
-<div class="modal-overlay" id="salt-modal">
-  <div class="modal-card" id="salt-body">
-    <div class="modal-hdr">
-      <h3>🧂 Salt Brine Evaporator Beds</h3>
-      <button class="btn-close" id="salt-close">✕</button>
-    </div>
-    <p style="font-size:0.8rem;color:#90A4AE;margin:0 0 10px">Shallow clay crystallizers evaporating concentrated reverse osmosis brine into artisanal sea salt crystals.</p>
-    <div class="card-box">
-      <div>Salt Stock: <b id="salt-stock-val">65 kg</b></div>
-      <div>Solar Pan Salinity: <b>180 ppt</b></div>
-    </div>
-    <button class="btn btn-gold" style="width:100%;margin-top:10px;" id="btn-rake-salt">🧂 Rake &amp; Bag Sea Salt (€75)</button>
-  </div>
-</div>
-
-<!-- 15. BLUEPRINT MODAL -->
-<div class="modal-overlay" id="blueprint-modal">
-  <div class="modal-card large" id="blueprint-body">
-    <div class="modal-hdr">
-      <h3>🗺️ 1920×1080 Calibrated Vector Blueprint</h3>
-      <button class="btn-close" id="bp-close">✕</button>
-    </div>
-    <div style="width:100%;height:68vh;overflow:auto;background:#00182E;border-radius:12px;border:1px solid rgba(0,229,255,0.3);">
-      <img src="blueprint-map.svg" alt="Blueprint Map" style="width:100%;min-width:960px;display:block;"/>
-    </div>
-  </div>
-</div>
-
-<!-- 16. WHY MODAL (CHAPTER 1 BRIEFING) -->
+<!-- 19. INITIAL BRIEFING MODAL -->
 <div class="modal-overlay" id="why-modal">
-  <div class="modal-card">
+  <div class="modal-card" style="border-color:var(--emerald)">
     <div class="modal-hdr">
-      <h3>🌊 Welcome to Saint Martin's Island Blue Lab</h3>
+      <h3 style="color:var(--emerald)">🌊 Saint Martin Island Coral Rehabilitation</h3>
       <button class="btn-close" id="why-close">✕</button>
     </div>
-    <p style="font-size:0.85rem;color:#ECEFF1;line-height:1.45;margin-bottom:12px;">
-      You have established the Blue Lab at the coral shelf of Saint Martin's Island. Your mission is to awaken virgin saline ground, clear compacted hard mud rock boulders across twin enlarged decagons, cultivate salt-hardy trees and companion crops, and protect marine biodiversity.
-    </p>
-    <div class="card-box green">
-      <b style="color:#A5D6A7">Chapter 1 Objectives:</b>
-      <div style="font-size:0.78rem;color:#CFD8DC;margin-top:4px;">
-        1. Dive to survey the coral reef &amp; diagnostic polyps<br/>
-        2. Clear hard mud rock &amp; plant Red Mangroves in Decagon 1<br/>
-        3. Protect the freshwater lake link
-      </div>
+    <div style="font-size:0.85rem;line-height:1.6;color:#ECEFF1;margin-bottom:16px;">
+      Welcome, Marine Agronomist! Saint Martin is Bangladesh’s only coral island. Tourism pressure, water extraction, and soil erosion threaten its delicate reef fringing.
+      <br/><br/>
+      Your task: Establish the <b>Mangrove Protection &amp; Oxygen Decagon</b>, restore <b>Coastal Fruit Orchards</b>, harvest companion crops, and protect coral health!
     </div>
-    <button class="btn btn-e" style="width:100%;margin-top:12px;" id="why-ack">Acknowledged · Begin Chapter 1</button>
+    <button class="btn btn-e" style="width:100%" id="why-ack">Begin Operations ➔</button>
   </div>
 </div>
 
 <script>
-/* ================= BOTANICAL & MARINE CATALOGS ================= */
-// 1. Botanical Tree Species (10 Species with Binomial Nomenclature)
+/* ================= 1. SCIENTIFIC TAXONOMY & ENCYCLOPEDIA DATA ================= */
+const ENCYCLOPEDIA_TAXONOMY={
+  trees:[
+    {
+      key:'coconut_palm',common:'Coastal Coconut Palm',bengali:'নারিকেল (Narikel)',binomial:'Cocos nucifera',family:'Arecaceae',
+      origin:'Indo-Pacific littoral',strata:'Canopy (18-25 m)',salinity:'Tolerates 15-20 ppt saline spray',
+      ecology:'Deep adventitious root cluster locks sandy coastal dunes against storm surges and cyclonic wave scour.',
+      products:'Tender water, copra oil, coir fiber geotextile matting for erosion barrier.',
+      o2Yield:'High continuous foliar photosynthetic O2 generation.'
+    },
+    {
+      key:'red_mangrove',common:'Red Mangrove / Stilt Mangrove',bengali:'ভরা / গর্জন (Bhora / Garan)',binomial:'Rhizophora mucronata',family:'Rhizophoraceae',
+      origin:'Sundarbans & Bay of Bengal delta',strata:'Intertidal bio-shield (6-12 m)',salinity:'Obligate halophyte (25-35 ppt seawater)',
+      ecology:'Arching stilt prop roots trap suspended silt, dissipate cyclonic tidal energy by up to 66%, and shelter juvenile coral reef fish.',
+      products:'Tannins, medicinal bark extracts, carbon sequestration biomass.',
+      o2Yield:'Exceptional aquatic and benthic oxygenation; stabilizes intertidal redox.'
+    },
+    {
+      key:'grey_mangrove',common:'Grey / White Mangrove',bengali:'বাইণ (Baen)',binomial:'Avicennia marina',family:'Acanthaceae',
+      origin:'Indo-West Pacific intertidal',strata:'Middle littoral (4-10 m)',salinity:'Hyper-saline tolerant (up to 40 ppt)',
+      ecology:'Vertical pencil pneumatophores protrude through anaerobic mud to respirate oxygen directly into rhizosphere.',
+      products:'High-nectar floral blossom for coastal mangrove honeybees.',
+      o2Yield:'High subterranean root oxygen pumping.'
+    },
+    {
+      key:'screw_pine_kewra',common:'Thatch Screw-Pine / Keya',bengali:'কেয়া / কেওড়া (Keya / Kewra)',binomial:'Pandanus odorifer',family:'Pandanaceae',
+      origin:'Bay of Bengal sandy littoral',strata:'Understory dune anchor (3-6 m)',salinity:'High sea-salt spray resistance',
+      ecology:'Aerial prop roots anchor unstable calcified beach sands; highly fragrant blossoms pollinate native solitary bees.',
+      products:'Kewra floral essence, woven dune-stabilizing mats.',
+      o2Yield:'Moderate steady coastal oxygen contribution.'
+    },
+    {
+      key:'palmyra_palm',common:'Palmyra Fan Palm',bengali:'তাল (Taal)',binomial:'Borassus flabellifer',family:'Arecaceae',
+      origin:'South Asian littoral',strata:'Emergent canopy (20-30 m)',salinity:'Drought and salt-wind hardy',
+      ecology:'Massive fibrous subterranean root ball acts as an immovable lightning and storm break, preventing dune blowout.',
+      products:'Palmyra jaggery, palm fruit fibers, timber.',
+      o2Yield:'Long-term durable canopy O2 generation.'
+    },
+    {
+      key:'casuarina_ironwood',common:'Beach She-Oak / Ironwood',bengali:'ঝাউ (Jhau)',binomial:'Casuarina equisetifolia',family:'Casuarinaceae',
+      origin:'Australasia & Bay of Bengal coastlines',strata:'Canopy windbreak (15-22 m)',salinity:'Extreme aerosol salt spray tolerance',
+      ecology:'Symbiotic Frankia actinorhizal root nodules fix atmospheric nitrogen into sterile beach sands; micro-foliage dampens wind shear.',
+      products:'High-density sustainable firewood, tannin.',
+      o2Yield:'High daytime photosynthetic output.'
+    },
+    {
+      key:'sea_grape',common:'Sea Grape / Coastal Date',bengali:'সাগর জাম (Sagordweep Jam)',binomial:'Coccoloba uvifera',family:'Polygonaceae',
+      origin:'Tropical coastal littoral',strata:'Coastal shrub/tree (4-8 m)',salinity:'Moderate-high salt tolerance',
+      ecology:'Large coriaceous leaves deflect salt-laden sea winds, shading coastal soil to retain precious freshwater moisture.',
+      products:'Edible tart berries, coastal fruit preserves, honey nectar.',
+      o2Yield:'Vibrant foliar daytime O2 output.'
+    },
+    {
+      key:'moringa_drumstick',common:'Moringa Drumstick',bengali:'সজিনা (Sajna)',binomial:'Moringa oleifera',family:'Moringaceae',
+      origin:'South Asian alluvial plains',strata:'Sub-canopy (6-10 m)',salinity:'Moderate salt-tolerant',
+      ecology:'Rapid biomass accumulation; nutrient-dense leaves provide green mulch and fodder.',
+      products:'Nutritional drumstick pods, vitamin-rich moringa powder.',
+      o2Yield:'Fast-turnover vegetative O2 release.'
+    },
+    {
+      key:'neem_tree',common:'Coastal Neem Tree',bengali:'নিম (Neem)',binomial:'Azadirachta indica',family:'Meliaceae',
+      origin:'Indian Subcontinent',strata:'Sub-canopy (10-15 m)',salinity:'Moderate salt tolerance',
+      ecology:'Natural azadirachtin bio-pesticide protects surrounding agro-forest crops from pest swarms.',
+      products:'Organic bio-pesticide, herbal medicinal bark.',
+      o2Yield:'High continuous air purification and oxygenation.'
+    }
+  ],
+  crops:[
+    {key:'coastal_tomato',common:'Coastal Cherry Tomato',bengali:'টমেটো',binomial:'Solanum lycopersicum var. cerasiforme',days:60,salinity:'Mild (4-6 ppt)',synergy:'Neem bio-spray'},
+    {key:'sweet_potato',common:'Sea-Dune Sweet Potato',bengali:'মিষ্টি আলু',binomial:'Ipomoea batatas',days:90,salinity:'Moderate (8-10 ppt)',synergy:'Nitrogen groundcover'},
+    {key:'yardlong_bean',common:'Coastal Yardlong Bean',bengali:'বরবটি',binomial:'Vigna unguiculata subsp. sesquipedalis',days:55,salinity:'Mild (3-5 ppt)',synergy:'Rhizobium root nodules'},
+    {key:'okra_dharosh',common:'Okra / Lady Finger',bengali:'ঢ্যাঁড়শ',binomial:'Abelmoschus esculentus',days:50,salinity:'Moderate (6-8 ppt)',synergy:'High heat drought hardy'}
+  ],
+  flowers:[
+    {key:'beach_morning_glory',common:'Beach Morning Glory',bengali:'সাগর লতা',binomial:'Ipomoea pes-caprae',hardiness:'Pioneer sand-binder',salinity:'Extreme 35 ppt'},
+    {key:'beach_spider_lily',common:'Beach Spider Lily',bengali:'স্পাইডার লিলি',binomial:'Hymenocallis littoralis',hardiness:'Salt-mist blooming',salinity:'High 28 ppt'},
+    {key:'sea_hibiscus',common:'Sea Hibiscus / Mahoe',bengali:'ভোলা / সাগর জবা',binomial:'Talipariti tiliaceum',hardiness:'Tidal edge shrub',salinity:'High 30 ppt'},
+    {key:'periwinkle_nayantara',common:'Madagascar Periwinkle',bengali:'নয়নতারা',binomial:'Catharanthus roseus',hardiness:'Dune medicinal border',salinity:'Moderate 18 ppt'}
+  ]
+};
+
 const TREE_TYPES={
-  coconut_palm:{
-    label:"Coastal Coconut Palm",sciName:"Cocos nucifera",icon:"🥥",category:"Botanical Tree",
-    growthSec:180,waterDemandL:1.8,salinityLimitPpt:22,o2RateKgYear:18,
-    primaryYield:"Green Coconuts & Husk Fiber",soilStability:18,
-    fact:"Dominant agroforestry palm on Saint Martin with deep salt-filtering fibrous root mats."
-  },
-  palmyra_palm:{
-    label:"Asian Palmyra Palm (Taal)",sciName:"Borassus flabellifer",icon:"🌴",category:"Botanical Tree",
-    growthSec:240,waterDemandL:1.0,salinityLimitPpt:28,o2RateKgYear:24,
-    primaryYield:"Palmyra Fruit, Sap & Thatch",soilStability:25,
-    fact:"Cyclone-resistant deep taproot system; tolerates periodic brackish storm surges."
-  },
-  screw_pine_kewra:{
-    label:"Fragrant Screwpine (Keya)",sciName:"Pandanus odorifer",icon:"🌿",category:"Botanical Tree",
-    growthSec:120,waterDemandL:0.8,salinityLimitPpt:35,o2RateKgYear:15,
-    primaryYield:"Kewra Blossoms & Stilt Roots",soilStability:40,
-    fact:"Abundant stilt roots trap shifting dune sands, creating coastal barrier buffers."
-  },
-  casuarina_ironwood:{
-    label:"Coastal She-Oak (Jhau)",sciName:"Casuarina equisetifolia",icon:"🌲",category:"Botanical Tree",
-    growthSec:150,waterDemandL:0.6,salinityLimitPpt:30,o2RateKgYear:32,
-    primaryYield:"Needle Mulch & Windbreak",soilStability:30,
-    fact:"Symbiotic with Frankia actinorhizal bacteria that fix atmospheric nitrogen into raw sand."
-  },
-  red_mangrove:{
-    label:"Red Mangrove (Garjan)",sciName:"Rhizophora mucronata",icon:"🌳",category:"Botanical Tree",
-    growthSec:200,waterDemandL:0.0,salinityLimitPpt:45,o2RateKgYear:28,
-    primaryYield:"Viviparous Propagules & Biofilm",soilStability:50,
-    fact:"Stilt prop-roots dissipate wave kinetic energy by up to 66% and nurture fish nurseries."
-  },
-  grey_mangrove:{
-    label:"Grey Mangrove (Bain)",sciName:"Avicennia marina",icon:"🌱",category:"Botanical Tree",
-    growthSec:190,waterDemandL:0.0,salinityLimitPpt:50,o2RateKgYear:26,
-    primaryYield:"Pneumatophore Silt Traps",soilStability:48,
-    fact:"Possesses specialized pencil-like pneumatophores that breathe atmospheric air during high tide."
-  },
-  sea_putat:{
-    label:"Fish Poison Tree (Sea Putat)",sciName:"Barringtonia asiatica",icon:"🌺",category:"Botanical Tree",
-    growthSec:210,waterDemandL:1.2,salinityLimitPpt:16,o2RateKgYear:22,
-    primaryYield:"Fibrous Seed Pods & Blooms",soilStability:22,
-    fact:"Nocturnal white-and-pink pom-pom blossoms pollinated by coastal fruit bats and hawk moths."
-  },
-  portia_tree:{
-    label:"Portia Tree (Indian Tulip)",sciName:"Thespesia populnea",icon:"🍃",category:"Botanical Tree",
-    growthSec:170,waterDemandL:1.0,salinityLimitPpt:22,o2RateKgYear:19,
-    primaryYield:"Yellow Cup Blooms & Timber",soilStability:20,
-    fact:"Heart-shaped leaves; flowers open bright yellow and turn purple-red as evening approaches."
-  },
-  moringa_drumstick:{
-    label:"Moringa Drumstick Tree (Sojne)",sciName:"Moringa oleifera",icon:"🌿",category:"Botanical Tree",
-    growthSec:110,waterDemandL:0.7,salinityLimitPpt:6,o2RateKgYear:16,
-    primaryYield:"Nutritious Leaflets & Pods",soilStability:15,
-    fact:"Super-nutrient canopy with leaves containing 7 times the vitamin C of oranges."
-  },
-  neem_tree:{
-    label:"Neem Tree (Nim)",sciName:"Azadirachta indica",icon:"🪴",category:"Botanical Tree",
-    growthSec:220,waterDemandL:0.9,salinityLimitPpt:10,o2RateKgYear:30,
-    primaryYield:"Azadirachtin Bio-Pesticide",soilStability:26,
-    fact:"Potent natural anti-fungal; fallen leaves purify soil microbiome and deter crop borers."
-  }
+  coconut_palm:{key:'coconut_palm',label:'Coastal Coconut Palm',icon:'🥥',maxHeight:25,growthSec:75,o2Rate:12.5,category:'Orchard'},
+  red_mangrove:{key:'red_mangrove',label:'Red Mangrove Bio-Shield',icon:'🌳',maxHeight:12,growthSec:60,o2Rate:18.0,category:'Mangrove'},
+  grey_mangrove:{key:'grey_mangrove',label:'Grey Mangrove',icon:'🌿',maxHeight:10,growthSec:55,o2Rate:16.5,category:'Mangrove'},
+  screw_pine_kewra:{key:'screw_pine_kewra',label:'Keya / Screw-Pine',icon:'🎋',maxHeight:6,growthSec:50,o2Rate:9.0,category:'Mangrove'},
+  palmyra_palm:{key:'palmyra_palm',label:'Palmyra Fan Palm',icon:'🌴',maxHeight:28,growthSec:80,o2Rate:11.0,category:'Orchard'},
+  casuarina_ironwood:{key:'casuarina_ironwood',label:'Casuarina Ironwood',icon:'🌲',maxHeight:22,growthSec:65,o2Rate:14.0,category:'Windbreak'},
+  sea_grape:{key:'sea_grape',label:'Sea Grape / Date',icon:'🍇',maxHeight:8,growthSec:55,o2Rate:10.0,category:'Orchard'},
+  moringa_drumstick:{key:'moringa_drumstick',label:'Moringa Drumstick',icon:'🌱',maxHeight:9,growthSec:45,o2Rate:13.5,category:'Orchard'},
+  neem_tree:{key:'neem_tree',label:'Coastal Neem Tree',icon:'🌿',maxHeight:14,growthSec:60,o2Rate:15.0,category:'Orchard'}
 };
 
-// 2. Coastal Flower Cultivars (12 Species)
-const FLOWER_TYPES={
-  beach_morning_glory:{label:"Beach Morning Glory",sciName:"Ipomoea pes-caprae",icon:"🌸",yield:50,nectar:5,fact:"Primary dune binder creeping across coral sand."},
-  beach_spider_lily:{label:"Beach Spider Lily",sciName:"Hymenocallis littoralis",icon:"🤍",yield:45,nectar:4,fact:"Nocturnal white petals with sweet scent attracting hawk moths."},
-  sea_hibiscus:{label:"Sea Hibiscus",sciName:"Hibiscus tiliaceus",icon:"🌺",yield:55,nectar:4,fact:"Yellow bell blooms turning orange-red before falling into surf."},
-  periwinkle_nayantara:{label:"Madagascar Periwinkle",sciName:"Catharanthus roseus",icon:"💮",yield:40,nectar:3,fact:"Medicinal alkaloids protect against salt spray and bugs."},
-  coral_jasmine_shiuli:{label:"Coral Jasmine (Shiuli)",sciName:"Nyctanthes arbor-tristis",icon:"🏵️",yield:62,nectar:5,fact:"Dawn-dropping blossoms carpeting garden paths."},
-  arabian_jasmine_beli:{label:"Beli (Arabian Jasmine)",sciName:"Jasminum sambac",icon:"🤍",yield:68,nectar:5,fact:"Intense perfume distilled into artisanal floral attar."},
-  crown_flower_akanda:{label:"Akanda (Crown Flower)",sciName:"Calotropis gigantea",icon:"💜",yield:48,nectar:4,fact:"Hardy desert-dune bloom hosting pollinator caterpillars."},
-  wild_beach_pea:{label:"Wild Beach Pea",sciName:"Canavalia rosea",icon:"🪻",yield:45,nectar:4,fact:"Rhizobium symbiont fixing nitrogen into sandy beds."},
-  scarlet_plumbago:{label:"Scarlet Plumbago",sciName:"Plumbago indica",icon:"🌺",yield:58,nectar:4,fact:"Bright visual cues attracting beneficial predatory insects."},
-  coastal_crinum_lily:{label:"Coastal Crinum Lily",sciName:"Crinum asiaticum",icon:"🪷",yield:72,nectar:5,fact:"Enormous fragrant perennial bulb native to Bengal coast."},
-  red_frangipani:{label:"Red Frangipani",sciName:"Plumeria rubra",icon:"🌸",yield:75,nectar:4,fact:"Velvety petals yielding premium essential floral oils."},
-  yellow_beach_lantana:{label:"Golden Beach Lantana",sciName:"Lantana camara var. flava",icon:"🌼",yield:38,nectar:5,fact:"Multi-hued nectar flow attracting 25+ wild butterfly spp."}
-};
-
-// 3. Companion Field Crops (8 Species)
-const FIELD_CROP_TYPES={
-  coastal_tomato:{label:"Coastal Cherry Tomato",sciName:"Solanum lycopersicum",cost:18,yield:48,icon:"🍅"},
-  sweet_potato:{label:"Sandy Sweet Potato",sciName:"Ipomoea batatas",cost:20,yield:58,icon:"🍠"},
-  okra_dharosh:{label:"Coastal Okra (Dharosh)",sciName:"Abelmoschus esculentus",cost:16,yield:42,icon:"🥬"},
-  bottle_gourd_lau:{label:"Bottle Gourd (Lau)",sciName:"Lagenaria siceraria",cost:22,yield:65,icon:"🥒"},
-  yardlong_bean:{label:"Yardlong Bean",sciName:"Vigna unguiculata",cost:18,yield:46,icon:"🌱"},
-  malabar_spinach_pui:{label:"Malabar Spinach",sciName:"Basella alba",cost:15,yield:38,icon:"🥗"},
-  water_spinach_kalmi:{label:"Water Spinach",sciName:"Ipomoea aquatica",cost:14,yield:35,icon:"🌿"},
-  island_chili_morich:{label:"Island Hot Chili",sciName:"Capsicum frutescens",cost:18,yield:48,icon:"🌶️"}
-};
-
-// 4. Marine Cards & Corals
-const MARINE_CARDS=[
-  {g:"Acropora",t:"Branching Staghorn",status:"Dominant Reef Builder",threat:"Bleaching Vulnerable",notes:"Requires clear oligotrophic water with DO > 80%."},
-  {g:"Favites",t:"Brain Coral / Moon Coral",status:"Massive Framework",threat:"Sediment Siltation",notes:"Tolerates moderate wave action on reef rim."},
-  {g:"Goniopora",t:"Flowerpot Coral",status:"Fleshy Polyps",threat:"Thermal Spikes",notes:"Daytime active polyps feed on organic marine snow."},
-  {g:"Chelonia mydas",t:"Green Sea Turtle",status:"Endangered Marine Fauna",threat:"Plastic & Boat Collisions",notes:"Grazes on submerged seagrass meadows."},
-  {g:"Zooxanthellae",t:"Symbiotic Microalgae",status:"Photosynthetic Engine",threat:"Thermal Expulsion",notes:"Supplies corals with 90% of metabolic sugars."}
-];
-
-// 5. Worker Roster
-const WORKER_ROSTER=[
-  {id:'w1',name:'Rahim',role:'Orchard Caretaker',icon:'🧑‍🌾',hireCost:120,dailyWage:15,perk:'Clears mud rock & accelerates tree growth',assigned:'plots'},
-  {id:'w2',name:'Fatema',role:'Marine Biologist',icon:'👩‍🔬',hireCost:150,dailyWage:18,perk:'Monitors polyp health & lifts Sea Health Index (+1.5%/hr)',assigned:'reef'},
-  {id:'w3',name:'Tarek',role:'Offshore Diver',icon:'🤿',hireCost:140,dailyWage:16,perk:'Tends seaweed longlines & harvests RAS crab stock',assigned:'aqua'},
-  {id:'w4',name:'Kabir',role:'Microgrid Engineer',icon:'⚡',hireCost:160,dailyWage:20,perk:'Balances solar/wind BESS & tunes Big Jar Algae scrubbers',assigned:'algae'}
-];
-
-// 6. 5-Chapter Missions with Granular Sub-Challenges
+/* ================= 2. 5-CHAPTER MISSIONS WITH SUB-CHALLENGES ================= */
 const MISSIONS=[
   {
-    ch:1,title:"Reef Survey & The First Decagon (dec1)",
+    ch:1,title:"Reef Survey & The First Decagon",
+    desc:"Scan dying Acropora polyps, clear saline crust to erect Mangrove Decagon 1, and stabilize silt runoff.",
     subs:[
-      {id:"1.1",title:"Reef Baseline Dive & Polyp Diagnostics",done:false,xp:30,focus:"Perform 3D dive and inspect live Acropora & Favites corals."},
-      {id:"1.2",title:"Grounding Decagon 1",done:false,xp:45,focus:"Clear hard mud rock & plant Red Mangrove & Keya in Decagon 1."},
-      {id:"1.3",title:"Freshwater Lake Filtration Link",done:false,xp:35,focus:"Reduce turbidity ≥40% and connect wetland silt buffer."}
+      {id:"1.1",title:"Coral Reef Health Diagnostics",done:false,xp:30,focus:"Conduct 3D Reef Dive & scan coral polyps"},
+      {id:"1.2",title:"Establish Decagon 1 Mangrove Nursery",done:false,xp:40,focus:"Aerate soil and plant 1st mangrove bio-shield plot"},
+      {id:"1.3",title:"Freshwater Lake Silt Filtration",done:false,xp:30,focus:"Deploy silt barrier link to central lake"}
     ]
   },
   {
-    ch:2,title:"Sub-Sea Agriculture & East Dune Orchard (dec2)",
+    ch:2,title:"Sub-Sea Agriculture & Coastal Fruit Orchard",
+    desc:"Expand offshore mariculture rafts, mud crab aquaculture, and establish the East Coastal Fruit Orchard between Wind and BESS.",
     subs:[
-      {id:"2.1",title:"Seaweed Raft Deployment",done:false,xp:40,focus:"Deploy offshore Gracilaria & Ulva lines on marine shelf."},
-      {id:"2.2",title:"Seafood Cages & RAS Hatchery",done:false,xp:45,focus:"Stock mud crab & tiger prawn nursery lagoons."},
-      {id:"2.3",title:"Palm Canopy Construction",done:false,xp:50,focus:"Clear Decagon 2 mud rock and establish Coconut & Palmyra trees."}
+      {id:"2.1",title:"Gracilaria Seaweed Longlines",done:false,xp:35,focus:"Stock 80 kg seaweed rafts on tidal shelf"},
+      {id:"2.2",title:"Mud Crab & Prawn Nursery Tanks",done:false,xp:40,focus:"Circulate RAS pure lake water for crab larval stages"},
+      {id:"2.3",title:"Establish Decagon 2 Fruit Orchard",done:false,xp:45,focus:"Till and plant coastal coconut and palmyra plots"}
     ]
   },
   {
     ch:3,title:"Off-Grid Microgrid & Agro-Canopy Maturation",
+    desc:"Synchronize 150 kW wind turbines with 500 kWh BESS substation and cultivate companion crops.",
     subs:[
-      {id:"3.1",title:"Hybrid Wind & BESS Grid",done:false,xp:45,focus:"Balance 300 kW wind turbines + 120 kW solar with 500 kWh BESS."},
-      {id:"3.2",title:"Tree Maturation & Nutrient Cycling",done:false,xp:55,focus:"Advance planted trees through Flowering to Fruiting Stage 3."},
-      {id:"3.3",title:"Marine Life Biosphere Inspection",done:false,xp:40,focus:"Survey pelagic biodiversity and maintain Sea Health Index ≥85%."}
+      {id:"3.1",title:"Hybrid Wind & BESS Grid",done:false,xp:45,focus:"Balance 300 kW wind turbines + 120 kW solar with BESS"},
+      {id:"3.2",title:"Construct Vegetable & Flower Gardens",done:false,xp:40,focus:"Build companion crop fields with local labour"},
+      {id:"3.3",title:"Explore Beach Sand Mud Rocks",done:false,xp:35,focus:"Clear 3 rocky coral crust nodes on the sand shelf"}
     ]
   },
   {
     ch:4,title:"Zero-Carbon Processing & Big Jar Algae Scrubber",
+    desc:"Operate solar IQF seafood freezing line and connect Big Jar algae bioreactor to offset emissions.",
     subs:[
-      {id:"4.1",title:"Processing Plant Operations",done:false,xp:50,focus:"Cold-press coconut oil and operate -40°C IQF seafood line."},
-      {id:"4.2",title:"Emissions Tracking",done:false,xp:40,focus:"Monitor carbon emissions and ensure zero untreated effluents."},
-      {id:"4.3",title:"Big Jar Bioreactor",done:false,xp:60,focus:"Run Chlorella microalgae scrubbers for 95% CO₂ neutralization."}
+      {id:"4.1",title:"Run IQF Shoreline Cryo-Freezer",done:false,xp:50,focus:"Freeze 50 kg crab/prawn using solar microgrid power"},
+      {id:"4.2",title:"Big Jar Algae Telemetry Scrubber",done:false,xp:50,focus:"Achieve 42.75 L/min algae CO2 bio-fixation rate"},
+      {id:"4.3",title:"Pure Sea Salt Crystallization",done:false,xp:40,focus:"Harvest 50 kg food-grade marine salt"}
     ]
   },
   {
     ch:5,title:"Global Trade Passport & German Farm Corridor",
+    desc:"Verify Saint Martin Sea Health Index >= 90% and export high-value cold-pressed coconut oil to Germany.",
     subs:[
-      {id:"5.1",title:"Sea Health Index Equilibrium",done:false,xp:60,focus:"Maintain Sea Health Index ≥90% and Dissolved Oxygen ≥85%."},
-      {id:"5.2",title:"Product Certification & Packing",done:false,xp:50,focus:"Package certified marine salt, coconut oil & IQF crab boxes."},
-      {id:"5.3",title:"Cross-Border Delivery to Germany",done:false,xp:80,focus:"Dispatch cargo via T-Jetty to German farm and unlock Brazil corridor."}
+      {id:"5.1",title:"Sea Health Index Equilibrium (SHI >= 90%)",done:false,xp:60,focus:"Maintain dissolved oxygen >= 85% across all 4 zones"},
+      {id:"5.2",title:"Produce Cold-Pressed Coconut Oil",done:false,xp:60,focus:"Press 20 L virgin organic coconut oil from Decagon 2"},
+      {id:"5.3",title:"Global Biome Certificate & German Trade Berth",done:false,xp:80,focus:"Synchronize export via 3D Biome Globe"}
     ]
   }
 ];
 
-/* 20 CALIBRATED SITES / MARKERS (COORDINATES MATCH BLUEPRINT & WATER OVERLAP) */
+/* ================= 3. 20 CALIBRATED SITES / MARKERS ================= */
 const SITES=[
   {id:'vegetable_garden',nx:0.265,ny:0.288,x1080:509,y1080:311,icon:'🌾',title:'Vegetable & Crop Garden',sub:'Rotated Companion Bed [-45°]',cat:'agro',color:'#76FF03',action:'crop_field'},
   {id:'farm_garage_dep',nx:0.367,ny:0.231,x1080:705,y1080:250,icon:'🚜',title:'Farm Garage & Depot',sub:'Solar Tractors & Tools',cat:'infra',color:'#FF9100',action:'garage'},
@@ -735,12 +713,12 @@ const SITES=[
   {id:'microgrid_bess',nx:0.554,ny:0.238,x1080:1064,y1080:257,icon:'⚡',title:'Microgrid BESS Substation',sub:'500 kWh Energy Storage',cat:'energy',color:'#00E676',action:'seadash'},
   {id:'offshore_solar',nx:0.635,ny:0.155,x1080:1219,y1080:167,icon:'🔆',title:'Offshore Floating Solar',sub:'120 kW Floating Array on Water',cat:'energy',color:'#FFD600',action:'seadash'},
   {id:'seaweed_rafts',nx:0.785,ny:0.210,x1080:1507,y1080:227,icon:'🥗',title:'Seaweed Mariculture Rafts',sub:'Offshore Gracilaria Longlines',cat:'marine',color:'#AEEA00',action:'seadash'},
-  {id:'agro_orchard_plot',nx:0.792,ny:0.444,x1080:1520,y1080:480,icon:'🥥',title:'Decagon 2: Agro-Orchard',sub:'Enlarged 3-Plot Dune Canopy',cat:'agro',color:'#FFB300',action:'plot_dec2'},
+  {id:'agro_orchard_plot',nx:0.698,ny:0.361,x1080:1340,y1080:390,icon:'🥥',title:'Decagon 2: Coastal Fruit Orchard',sub:'5-Plot Orchard (Between Wind & BESS)',cat:'agro',color:'#FFB300',action:'plot_dec2'},
   {id:'wind_turbine_north',nx:0.295,ny:0.095,x1080:566,y1080:103,icon:'🌬️',title:'Offshore Wind Turbine North',sub:'150 kW Marine Shallows',cat:'energy',color:'#00E5FF',action:'seadash'},
   {id:'wind_turbine_east',nx:0.925,ny:0.330,x1080:1776,y1080:356,icon:'🌬️',title:'Offshore Wind Turbine East',sub:'150 kW Deep Water Anchors',cat:'energy',color:'#00E5FF',action:'seadash'},
   {id:'t_jetty_pier',nx:0.737,ny:0.453,x1080:1415,y1080:489,icon:'🚢',title:'T-Jetty Cargo Pier',sub:'Export Berth & Boat Helm Berth',cat:'trade',color:'#FFCA28',action:'boat'},
   {id:'shrimp_crab_freshwater',nx:0.525,ny:0.495,x1080:1008,y1080:535,icon:'🦀',title:'Freshwater Lake & RAS Lagoon',sub:'Tidal Shoreline & Mud Crab Nursery',cat:'aquaculture',color:'#00B0FF',action:'seafood'},
-  {id:'mangrove_fringe',nx:0.198,ny:0.444,x1080:380,y1080:480,icon:'🌳',title:'Decagon 1: Mangrove Bio-Shield',sub:'Enlarged 3-Plot Intertidal Fringe',cat:'agro',color:'#00E676',action:'plot_dec1'},
+  {id:'mangrove_fringe',nx:0.198,ny:0.444,x1080:380,y1080:480,icon:'🌳',title:'Decagon 1: Mangrove & O2 Decagon',sub:'5-Plot Intertidal Bio-Shield',cat:'agro',color:'#00E676',action:'plot_dec1'},
   {id:'salt_brine_beds',nx:0.118,ny:0.462,x1080:227,y1080:499,icon:'🧂',title:'Salt Brine Evaporator Flats',sub:'Solar Marine Salt Crystallizers',cat:'infra',color:'#80DEEA',action:'salt'},
   {id:'desalination_facility',nx:0.099,ny:0.652,x1080:190,y1080:704,icon:'🧪',title:'Desalination Core & Silos',sub:'Reverse Osmosis 8,500 L Buffer',cat:'infra',color:'#00E5FF',action:'desal'},
   {id:'reef_basin_central',nx:0.379,ny:0.590,x1080:728,y1080:637,icon:'🪸',title:'Coral Sanctuary (Lagoon)',sub:'Acropora & Favites Living Shelf',cat:'marine',color:'#FF4081',action:'dive'},
@@ -748,19 +726,26 @@ const SITES=[
   {id:'gas_field',nx:0.900,ny:0.100,x1080:1728,y1080:108,icon:'⛽',title:'Offshore Gas Field & Rig',sub:'3D Platform, CNG & Heli Deck',cat:'energy',color:'#FFB300',action:'gas'}
 ];
 
-/* 6 CALIBRATED SUB-PLOTS (3 IN DECAGON 1, 3 IN DECAGON 2) */
+/* ================= 4. 10 SUB-PLOTS (5 IN DECAGON 1, 5 IN DECAGON 2) ================= */
 const PLOT_DEFS={
-  'dec1.plot1':{id:'dec1.plot1',name:'dec1.plot1 (Mangrove Nursery)',decagon:'dec1',x1080:380,y1080:410,salinity:35,affinity:['red_mangrove','grey_mangrove']},
-  'dec1.plot2':{id:'dec1.plot2',name:'dec1.plot2 (Keya Windbreak)',decagon:'dec1',x1080:300,y1080:520,salinity:25,affinity:['screw_pine_kewra','sea_putat']},
-  'dec1.plot3':{id:'dec1.plot3',name:'dec1.plot3 (Silt Lake Buffer)',decagon:'dec1',x1080:460,y1080:520,salinity:20,affinity:['red_mangrove','screw_pine_kewra','portia_tree']},
-  'dec2.plot1':{id:'dec2.plot1',name:'dec2.plot1 (Coconut Shield)',decagon:'dec2',x1080:1520,y1080:410,salinity:18,affinity:['coconut_palm','neem_tree']},
-  'dec2.plot2':{id:'dec2.plot2',name:'dec2.plot2 (Palmyra & Casuarina)',decagon:'dec2',x1080:1440,y1080:520,salinity:26,affinity:['palmyra_palm','casuarina_ironwood']},
-  'dec2.plot3':{id:'dec2.plot3',name:'dec2.plot3 (Canopy Agro-Plot)',decagon:'dec2',x1080:1600,y1080:520,salinity:15,affinity:['moringa_drumstick','coconut_palm','palmyra_palm']}
+  // Decagon 1: Mangrove Protection & Oxygen Decagon (Center: 380, 480)
+  'dec1.plot1':{id:'dec1.plot1',name:'dec1.plot1 (Mangrove Nursery)',decagon:'dec1',x1080:380,y1080:395,salinity:35,affinity:['red_mangrove','grey_mangrove'],category:'Mangrove'},
+  'dec1.plot2':{id:'dec1.plot2',name:'dec1.plot2 (Keya Windbreak)',decagon:'dec1',x1080:305,y1080:445,salinity:28,affinity:['screw_pine_kewra','red_mangrove'],category:'Mangrove'},
+  'dec1.plot3':{id:'dec1.plot3',name:'dec1.plot3 (Red Mangrove Propagule)',decagon:'dec1',x1080:455,y1080:445,salinity:32,affinity:['red_mangrove','grey_mangrove'],category:'Mangrove'},
+  'dec1.plot4':{id:'dec1.plot4',name:'dec1.plot4 (Tidal Silt Oxygen)',decagon:'dec1',x1080:335,y1080:535,salinity:22,affinity:['grey_mangrove','screw_pine_kewra'],category:'Mangrove'},
+  'dec1.plot5':{id:'dec1.plot5',name:'dec1.plot5 (Bio-Shield Canopy)',decagon:'dec1',x1080:425,y1080:535,salinity:25,affinity:['red_mangrove','casuarina_ironwood'],category:'Mangrove'},
+
+  // Decagon 2: Coastal Fruit Orchard (Center: 1340, 390 - Green Meadow between Wind & BESS)
+  'dec2.plot1':{id:'dec2.plot1',name:'dec2.plot1 (Coconut Canopy)',decagon:'dec2',x1080:1340,y1080:315,salinity:15,affinity:['coconut_palm','neem_tree'],category:'Orchard'},
+  'dec2.plot2':{id:'dec2.plot2',name:'dec2.plot2 (Palmyra Palm)',decagon:'dec2',x1080:1275,y1080:360,salinity:18,affinity:['palmyra_palm','coconut_palm'],category:'Orchard'},
+  'dec2.plot3':{id:'dec2.plot3',name:'dec2.plot3 (Sea Grape Bed)',decagon:'dec2',x1080:1405,y1080:360,salinity:16,affinity:['sea_grape','moringa_drumstick'],category:'Orchard'},
+  'dec2.plot4':{id:'dec2.plot4',name:'dec2.plot4 (Moringa Drumstick)',decagon:'dec2',x1080:1300,y1080:440,salinity:14,affinity:['moringa_drumstick','neem_tree'],category:'Orchard'},
+  'dec2.plot5':{id:'dec2.plot5',name:'dec2.plot5 (Coastal Neem)',decagon:'dec2',x1080:1380,y1080:440,salinity:16,affinity:['neem_tree','coconut_palm'],category:'Orchard'}
 };
 
 const STAGE_NAMES=['🌱 Seedling','🌿 Sprout','🌸 Flowering','🥥 Fruiting','🧺 Harvest Ready'];
 
-/* GAME STATE */
+/* ================= 5. GAME STATE ================= */
 const state={
   money:3200,globalO2:5600,shi:90,dissolvedO2:86,knowledgeXP:160,
   workers:0,activeWorkers:[],bessKwh:390,bessMaxKwh:500,
@@ -773,8 +758,20 @@ const state={
   tradeContractFulfilled:false,tradePassport:false,
   currentChapter:1,
   boatDest:'main',
-  // 6 Sub-Plots in Decagons
+  // 10 Sub-Plots in Decagons
   plots:{},
+  // 3 Beach Sand Mud Rock Exploration Nodes
+  sandRocks:{
+    'rock_sand_1':{id:'rock_sand_1',name:'West Sand Rubble Shelf',x1080:280,y1080:620,cleared:false,clearing:false,progress:0,remainingSec:15},
+    'rock_sand_2':{id:'rock_sand_2',name:'South Spit Mudpan Bed',x1080:340,y1080:700,cleared:false,clearing:false,progress:0,remainingSec:15},
+    'rock_sand_3':{id:'rock_sand_3',name:'South Inlet Rock Crust',x1080:440,y1080:720,cleared:false,clearing:false,progress:0,remainingSec:15}
+  },
+  // User-Constructed Buildings & Garden Beds
+  buildings:{
+    vegetable_garden:{built:false,building:false,progress:0,remainingSec:15,cost:80},
+    flower_garden:{built:false,building:false,progress:0,remainingSec:15,cost:75},
+    garage:{built:true,solarTractor:true,mechanizedSpeed:1.5}
+  },
   // Companion Crop Beds
   cropBeds:[
     {bedId:'bed_1',name:'Quadrant 1 (North-West)',cropKey:'coastal_tomato',stage:2,progress:60,moisture:85,fertilized:true,harvestReady:false},
@@ -787,31 +784,29 @@ const state={
     {bedId:'fl_1',name:'Bed 1 (Beach Dune Fringe)',flowerKey:'beach_morning_glory',freshness:92},
     {bedId:'fl_2',name:'Bed 2 (Nocturnal Lily Center)',flowerKey:'beach_spider_lily',freshness:88},
     {bedId:'fl_3',name:'Bed 3 (Salt Spray Shield)',flowerKey:'sea_hibiscus',freshness:95},
-    {bedId:'fl_4',name:'Bed 4 (Alkaloid Medicinal Border)',flowerKey:'periwinkle_nayantara',freshness:85},
-    {bedId:'fl_5',name:'Bed 5 (Night Fragrance Cluster)',flowerKey:'coral_jasmine_shiuli',freshness:90},
-    {bedId:'fl_6',name:'Bed 6 (Honeybee Promenade)',flowerKey:'arabian_jasmine_beli',freshness:94}
+    {bedId:'fl_4',name:'Bed 4 (Alkaloid Medicinal Border)',flowerKey:'periwinkle_nayantara',freshness:85}
   ],
-  garage:{solarTractor:true,dripSpooler:true,mechanizedSpeed:1.5},
   storage:{tomatoes:45,sweetPotatoes:60,beans:35,okra:28,coconuts:85,saltBags:65,oilJars:20},
   diveLogged:{}
 };
 
-// Initialize sub-plots: start as hard mud rock!
-Object.keys(PLOT_DEFS).forEach((pid,idx)=>{
+// Initialize sub-plots: start barren or with initial sapling!
+Object.keys(PLOT_DEFS).forEach((pid)=>{
   const def=PLOT_DEFS[pid];
   state.plots[pid]={
     id:pid,
     name:def.name,
     decagon:def.decagon,
-    status:'mud_rock', // 'mud_rock' | 'clearing' | 'tilled' | 'growing'
-    clearingProgress:0,
-    clearingRemainingSec:15,
+    status:'barren', // 'barren' | 'tilling' | 'tilled' | 'growing' | 'harvest_ready'
+    tillingProgress:0,
+    tillingRemainingSec:15,
+    assignedWorker:null,
     soilSalinityPpt:def.salinity,
-    soilMoisturePercent:70,
+    soilMoisturePercent:75,
     trees:[]
   };
 });
-// Set initial demo trees
+// Initial demo saplings
 state.plots['dec1.plot1'].status='growing';
 state.plots['dec1.plot1'].trees.push({instanceId:'t1',speciesKey:'red_mangrove',stage:2,progressPercent:45,remainingSec:60,health:100,harvestReady:false});
 state.plots['dec2.plot1'].status='growing';
@@ -831,44 +826,728 @@ function grantXP(map){
   });
 }
 
-/* SCOREBOARD */
+/* ================= 6. SCOREBOARD: ICON-ONLY HUD & DASHBOARD MODAL ================= */
 function renderScoreboard(id){
   const el=document.getElementById(id||'scoreboard');
   if(!el)return;
   el.innerHTML=
-    '<div class="sb-chip" id="sb-money" title="Research Budget (Euros)">💶 <span class="v">€'+Math.round(state.money).toLocaleString()+'</span></div>'+
-    '<div class="sb-chip" id="sb-o2" title="Global Cumulative O2">🍃 O₂ <span class="v">'+Math.round(state.globalO2).toLocaleString()+'</span></div>'+
-    '<div class="sb-chip shi" id="sb-shi" title="Sea Health Index">🌊 SHI <span class="v">'+Math.round(state.shi)+'%</span></div>'+
-    '<div class="sb-chip do" id="sb-do" title="Dissolved Oxygen">🫧 DO <span class="v">'+Math.round(state.dissolvedO2)+'%</span></div>'+
-    '<div class="sb-chip xp" id="sb-xp" title="Knowledge XP">📖 K-XP <span class="v">'+state.knowledgeXP+'</span></div>'+
-    '<div class="sb-chip power" id="sb-bess" title="BESS Substation">🔋 <span class="v">'+Math.round(state.bessKwh)+'/500 kWh</span></div>'+
-    '<div class="sb-chip" id="sb-workers" title="Active Labourers">🧑‍🌾 <span class="v">'+state.workers+' Hired</span></div>'+
-    '<div class="sb-chip" id="sb-oil" title="Cold-Pressed Coconut Oil">🥥 <span class="v">'+state.cocoOil+'L</span></div>'+
-    '<div class="sb-chip" id="sb-salt" title="Marine Sea Salt">🧂 <span class="v">'+state.marineSaltKg+'kg</span></div>';
+    '<div class="sb-chip icon-only" id="sb-money" title="Budget: €'+Math.round(state.money).toLocaleString()+'">' +
+      '💶<div class="sb-tooltip">Budget: <b>€'+Math.round(state.money).toLocaleString()+'</b></div>' +
+    '</div>' +
+    '<div class="sb-chip icon-only" id="sb-o2" title="Global Cumulative O₂: '+Math.round(state.globalO2).toLocaleString()+' kg">' +
+      '🍃<div class="sb-tooltip">Cumulative O₂: <b>'+Math.round(state.globalO2).toLocaleString()+' kg</b></div>' +
+    '</div>' +
+    '<div class="sb-chip icon-only shi" id="sb-shi" title="Sea Health Index: '+Math.round(state.shi)+'%">' +
+      '🌊<div class="sb-tooltip">Sea Health Index (SHI): <b>'+Math.round(state.shi)+'%</b></div>' +
+    '</div>' +
+    '<div class="sb-chip icon-only do" id="sb-do" title="Dissolved Oxygen: '+Math.round(state.dissolvedO2)+'%">' +
+      '🫧<div class="sb-tooltip">Dissolved Oxygen (DO): <b>'+Math.round(state.dissolvedO2)+'%</b></div>' +
+    '</div>' +
+    '<div class="sb-chip icon-only xp" id="sb-xp" title="Knowledge XP: '+state.knowledgeXP+' XP">' +
+      '📖<div class="sb-tooltip">Knowledge XP: <b>'+state.knowledgeXP+' XP</b></div>' +
+    '</div>' +
+    '<div class="sb-chip icon-only power" id="sb-bess" title="BESS Storage: '+Math.round(state.bessKwh)+'/500 kWh">' +
+      '🔋<div class="sb-tooltip">BESS Energy: <b>'+Math.round(state.bessKwh)+'/500 kWh</b></div>' +
+    '</div>' +
+    '<div class="sb-chip icon-only" id="sb-workers" title="Active Labour: '+state.workers+' Hired">' +
+      '🧑‍🌾<div class="sb-tooltip">Active Labour: <b>'+state.workers+' Hired</b></div>' +
+    '</div>' +
+    '<div class="sb-chip icon-only" id="sb-oil" title="Cold-Pressed Oil: '+state.cocoOil+' L">' +
+      '🥥<div class="sb-tooltip">Coconut Oil: <b>'+state.cocoOil+' L</b></div>' +
+    '</div>' +
+    '<div class="sb-chip icon-only" id="sb-salt" title="Marine Salt: '+state.marineSaltKg+' kg">' +
+      '🧂<div class="sb-tooltip">Marine Salt: <b>'+state.marineSaltKg+' kg</b></div>' +
+    '</div>';
 
-  const sShi=document.getElementById('sb-shi');if(sShi)sShi.onclick=()=>openSeaDashboard();
-  const sDo=document.getElementById('sb-do');if(sDo)sDo.onclick=()=>openSeaDashboard();
-  const sBess=document.getElementById('sb-bess');if(sBess)sBess.onclick=()=>openSeaDashboard();
-  const sW=document.getElementById('sb-workers');if(sW)sW.onclick=()=>openLabourMarket();
-  const sXp=document.getElementById('sb-xp');if(sXp)sXp.onclick=()=>openEncyclopediaModal();
+  // Clicking any chip opens executive Scoreboard Modal
+  el.querySelectorAll('.sb-chip').forEach(c=>{
+    c.onclick=()=>openScoreboardModal();
+  });
 }
-function refreshUI(){
+
+function openScoreboardModal(){
+  const body=document.getElementById('scoreboard-body');
+  if(!body)return;
+  body.innerHTML=
+    '<div style="display:flex;flex-direction:column;gap:14px;">' +
+      '<div class="grid-2">' +
+        '<div class="card-box green">' +
+          '<div style="font-size:0.8rem;font-weight:900;color:var(--emerald);margin-bottom:4px;">💶 FINANCIAL & RESEARCH BUDGET</div>' +
+          '<div style="font-size:1.7rem;font-weight:900;color:#FFF;font-family:JetBrains Mono;">€'+Math.round(state.money).toLocaleString()+'</div>' +
+          '<div style="font-size:0.75rem;color:#CFD8DC;margin-top:4px;">Daily Export Inflow: <b>+€280/cycle</b> · Sustainable Operative Reserve</div>' +
+        '</div>' +
+        '<div class="card-box marine">' +
+          '<div style="font-size:0.8rem;font-weight:900;color:var(--teal);margin-bottom:4px;">🍃 ATMOSPHERIC OXYGEN RUN RATE</div>' +
+          '<div style="font-size:1.7rem;font-weight:900;color:#FFF;font-family:JetBrains Mono;">'+Math.round(state.globalO2).toLocaleString()+' kg</div>' +
+          '<div style="font-size:0.75rem;color:#CFD8DC;margin-top:4px;">Mangrove Decagon 1 Bio-Shield Rate: <b>+72 kg/day</b></div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="grid-2">' +
+        '<div class="card-box">' +
+          '<div style="font-size:0.8rem;font-weight:900;color:#40C4FF;margin-bottom:6px;">🌊 SEA HEALTH & DISSOLVED O2 GAUGES</div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:0.78rem;font-weight:800;color:#B0BEC5;margin-bottom:2px;">' +
+            '<span>Sea Health Index (SHI)</span><span style="color:var(--emerald)">'+Math.round(state.shi)+'%</span>' +
+          '</div>' +
+          '<div class="prog-bar"><div class="prog-fill" style="width:'+Math.round(state.shi)+'%"></div></div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:0.78rem;font-weight:800;color:#B0BEC5;margin-top:8px;margin-bottom:2px;">' +
+            '<span>Dissolved Oxygen (DO)</span><span style="color:#00B0FF">'+Math.round(state.dissolvedO2)+'%</span>' +
+          '</div>' +
+          '<div class="prog-bar"><div class="prog-fill" style="width:'+Math.round(state.dissolvedO2)+'%;background:linear-gradient(90deg,#00B0FF,#00E5FF)"></div></div>' +
+        '</div>' +
+        '<div class="card-box alert">' +
+          '<div style="font-size:0.8rem;font-weight:900;color:var(--gold);margin-bottom:6px;">⚡ HYBRID MICROGRID & BESS STORAGE</div>' +
+          '<div style="font-size:1.4rem;font-weight:900;color:var(--gold);font-family:JetBrains Mono;">'+Math.round(state.bessKwh)+' / 500 kWh</div>' +
+          '<div style="font-size:0.75rem;color:#ECEFF1;margin-top:6px;">Offshore Wind: <b>300 kW</b> · Floating Solar: <b>120 kW</b></div>' +
+          '<div class="prog-bar" style="margin-top:6px;"><div class="prog-fill amber" style="width:'+Math.round((state.bessKwh/500)*100)+'%"></div></div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="card-box">' +
+        '<div style="font-size:0.8rem;font-weight:900;color:var(--teal);margin-bottom:8px;">🧺 HARVEST & FIELD COMMODITY INVENTORY</div>' +
+        '<div class="grid-3" style="font-size:0.78rem;">' +
+          '<div style="background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:8px;">🥥 Coconut Oil: <b>'+state.cocoOil+' L</b></div>' +
+          '<div style="background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:8px;">🧂 Marine Sea Salt: <b>'+state.marineSaltKg+' kg</b></div>' +
+          '<div style="background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:8px;">🥗 Gracilaria Seaweed: <b>'+state.seaweedStockKg+' kg</b></div>' +
+          '<div style="background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:8px;">🦐 IQF Prawn & Crab: <b>'+state.crabPrawnStockKg+' kg</b></div>' +
+          '<div style="background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:8px;">🍅 Fresh Crop Yields: <b>'+(state.storage.tomatoes+state.storage.beans)+' kg</b></div>' +
+          '<div style="background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:8px;">🧑‍🌾 Active Crew: <b>'+state.workers+' Hired</b></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.getElementById('scoreboard-modal').classList.add('open');
+}
+
+function openSeaDashboard(){
+  const body=document.getElementById('seadash-body');
+  if(!body)return;
+  body.innerHTML=
+    '<div style="display:flex;flex-direction:column;gap:12px;">' +
+      '<div class="grid-2">' +
+        '<div class="card-box marine">' +
+          '<div style="font-size:0.85rem;font-weight:900;color:var(--teal);margin-bottom:4px;">🌊 Sea Health Index (SHI)</div>' +
+          '<div style="font-size:1.8rem;font-weight:900;color:var(--emerald);">'+Math.round(state.shi)+'%</div>' +
+          '<div class="prog-bar"><div class="prog-fill" style="width:'+Math.round(state.shi)+'%"></div></div>' +
+          '<div style="font-size:0.75rem;color:#CFD8DC;margin-top:6px;">Coral Reef Living Coverage: <b>92%</b></div>' +
+        '</div>' +
+        '<div class="card-box">' +
+          '<div style="font-size:0.85rem;font-weight:900;color:#00E5FF;margin-bottom:4px;">🫧 Dissolved Oxygen (DO)</div>' +
+          '<div style="font-size:1.8rem;font-weight:900;color:#00B0FF;">'+Math.round(state.dissolvedO2)+'%</div>' +
+          '<div class="prog-bar"><div class="prog-fill" style="width:'+Math.round(state.dissolvedO2)+'%;background:linear-gradient(90deg,#00B0FF,#00E5FF)"></div></div>' +
+          '<div style="font-size:0.75rem;color:#CFD8DC;margin-top:6px;">Target Threshold: <b>>= 85%</b> across all zones</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="card-box green">' +
+        '<div style="font-size:0.85rem;font-weight:900;color:var(--emerald);margin-bottom:4px;">🧪 Big Jar Algae Bioreactor Telemetry</div>' +
+        '<div style="font-size:0.8rem;color:#ECEFF1;line-height:1.5;">' +
+          'Bio-fixation scrubbing active: <b>42.75 L/min</b> carbon sequestration rate. Algae oxygenates coastal seawater and balances pH.' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="card-box alert">' +
+        '<div style="font-size:0.85rem;font-weight:900;color:var(--gold);margin-bottom:4px;">⚡ Microgrid BESS Telemetry</div>' +
+        '<div style="font-size:0.8rem;color:#ECEFF1;">' +
+          'Current Battery Reserve: <b>'+Math.round(state.bessKwh)+' / 500 kWh</b> (78% SoC). Balances 300 kW wind turbines & 120 kW floating solar.' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.getElementById('seadash-modal').classList.add('open');
+}
+
+/* ================= 7. FULLSCREEN CONTROLLER ================= */
+function isFullScreenActive(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+}
+function toggleFullscreenMode(){
+  if (!isFullScreenActive()){
+    const elem=document.documentElement;
+    if(elem.requestFullscreen)elem.requestFullscreen().catch(()=>{});
+    else if(elem.webkitRequestFullscreen)elem.webkitRequestFullscreen();
+  } else {
+    if(document.exitFullscreen)document.exitFullscreen().catch(()=>{});
+    else if(document.webkitExitFullscreen)document.webkitExitFullscreen();
+  }
+}
+function updateFullscreenBtnState(){
+  const isFull=isFullScreenActive();
+  const btn=document.getElementById('btn-fullscreen');
+  if(btn)btn.innerHTML=isFull?'⛶':'⛶';
+}
+['fullscreenchange','webkitfullscreenchange'].forEach(evt=>{
+  document.addEventListener(evt,updateFullscreenBtnState);
+});
+
+/* ================= 8. SUB-PLOT MANAGEMENT (GERMAN FARM MECHANICS) ================= */
+function openSubplotModal(pid){
+  const plot=state.plots[pid];
+  const def=PLOT_DEFS[pid];
+  if(!plot||!def)return;
+
+  const isDec1 = def.decagon === 'dec1';
+  document.getElementById('subplot-title').innerHTML =
+    (isDec1 ? '🌳 Mangrove Protection & O2 Decagon: ' : '🥥 Coastal Fruit Orchard: ') + def.name;
+
+  let bodyHtml = '';
+
+  if(plot.status === 'barren' || plot.status === 'mud_rock'){
+    bodyHtml =
+      '<div class="card-box alert">' +
+        '<div style="font-weight:900;color:var(--gold);margin-bottom:6px;">🪨 Compacted Saline Bedrock / Barren Soil</div>' +
+        '<div style="font-size:0.8rem;color:#ECEFF1;line-height:1.45;">' +
+          'This plot is untilled with compacted soil. Before saplings can root, assign a local labourer to break hardpan crust, aerate the loam, and prepare drainage trenches.' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px;">' +
+        '<button class="btn btn-gold" onclick="startTillingPlot(\''+pid+'\')">⛏️ Till &amp; Aerate Soil (Assign Labour · €25 · 15s)</button>' +
+      '</div>';
+  } else if(plot.status === 'tilling' || plot.status === 'clearing'){
+    bodyHtml =
+      '<div class="card-box">' +
+        '<div style="font-weight:900;color:var(--teal);margin-bottom:6px;">⛏️ Tilling &amp; Aerating Soil in Progress…</div>' +
+        '<div style="font-size:0.8rem;color:#ECEFF1;margin-bottom:8px;">' +
+          'Rahim &amp; crew are fracturing calcified crust and digging hydration furrows.' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:0.75rem;font-weight:800;color:var(--gold);">' +
+          '<span>Aeration Progress</span><span>'+plot.tillingProgress+'% ('+plot.tillingRemainingSec+'s)</span>' +
+        '</div>' +
+        '<div class="prog-bar"><div class="prog-fill amber" style="width:'+plot.tillingProgress+'%"></div></div>' +
+      '</div>';
+  } else if(plot.status === 'tilled' && plot.trees.length === 0){
+    // Selection to plant sapling
+    let plantOpts = '';
+    def.affinity.forEach(spKey=>{
+      const spec = TREE_TYPES[spKey]||TREE_TYPES.coconut_palm;
+      plantOpts +=
+        '<div class="card-box" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
+          '<div>' +
+            '<div style="font-weight:900;color:#FFF;font-size:0.85rem;">'+spec.icon+' '+spec.label+'</div>' +
+            '<div style="font-size:0.72rem;color:#90A4AE;">Growth: '+spec.growthSec+'s · O₂ Yield: '+spec.o2Rate+' kg/day</div>' +
+          '</div>' +
+          '<button class="btn btn-e" onclick="plantSapling(\''+pid+'\',\''+spKey+'\')">🌱 Sow Sapling (€30)</button>' +
+        '</div>';
+    });
+
+    bodyHtml =
+      '<div class="card-box green">' +
+        '<div style="font-weight:900;color:var(--emerald);margin-bottom:4px;">🌱 Aerated Fertile Loam Ready for Planting</div>' +
+        '<div style="font-size:0.78rem;color:#CFD8DC;">Select an ecologically compatible littoral species for this plot:</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">' + plantOpts + '</div>';
+  } else if(plot.status === 'growing' && plot.trees.length > 0){
+    const tree = plot.trees[0];
+    const spec = TREE_TYPES[tree.speciesKey]||TREE_TYPES.coconut_palm;
+    const isHarvestReady = tree.harvestReady;
+
+    bodyHtml =
+      '<div class="card-box">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+          '<div style="font-size:1.1rem;font-weight:900;color:var(--teal);">'+spec.icon+' '+spec.label+'</div>' +
+          '<span class="badge" style="background:var(--emerald);color:#003314;padding:4px 8px;border-radius:6px;font-weight:800;font-size:0.75rem;">' +
+            STAGE_NAMES[tree.stage] +
+          '</span>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:0.75rem;color:#B0BEC5;margin-bottom:2px;">' +
+          '<span>Growth Progression</span><span>'+Math.round(tree.progressPercent)+'% ('+tree.remainingSec+'s remaining)</span>' +
+        '</div>' +
+        '<div class="prog-bar"><div class="prog-fill" style="width:'+Math.round(tree.progressPercent)+'%"></div></div>' +
+
+        '<div class="grid-2" style="font-size:0.75rem;margin-top:10px;">' +
+          '<div style="background:rgba(0,0,0,0.3);padding:6px;border-radius:6px;">Soil Moisture: <b>'+plot.soilMoisturePercent+'%</b></div>' +
+          '<div style="background:rgba(0,0,0,0.3);padding:6px;border-radius:6px;">Tree Health: <b>'+tree.health+'%</b></div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
+        '<button class="btn btn-c" onclick="waterPlot(\''+pid+'\')">💧 Water / Regulate Flush (€10)</button>' +
+        '<button class="btn btn-p" onclick="prunePlot(\''+pid+'\')">✂️ Prune &amp; Care (€15)</button>' +
+        (isHarvestReady ?
+          '<button class="btn btn-gold" onclick="harvestPlot(\''+pid+'\')">🧺 Harvest Fruits &amp; Copra (+€120)</button>' :
+          '<button class="btn btn-b" disabled>Growing to Maturity…</button>'
+        ) +
+      '</div>';
+  }
+
+  document.getElementById('subplot-body').innerHTML = bodyHtml;
+  document.getElementById('subplot-modal').classList.add('open');
+}
+
+function startTillingPlot(pid){
+  const plot = state.plots[pid];
+  if(!plot)return;
+  if(state.money < 25){ toast('⚠️ Insufficient research budget (€25 required).'); return; }
+  state.money -= 25;
+  plot.status = 'tilling';
+  plot.tillingProgress = 0;
+  plot.tillingRemainingSec = 15;
+  toast('⛏️ Labourers assigned: Tilling ' + plot.name + ' (15s)…');
+  openSubplotModal(pid);
+}
+
+// Backward compatibility alias
+function startClearingMudRock(pid){
+  startTillingPlot(pid);
+}
+
+function plantSapling(pid, speciesKey){
+  const plot = state.plots[pid];
+  if(!plot)return;
+  if(state.money < 30){ toast('⚠️ Insufficient research budget (€30 required).'); return; }
+  state.money -= 30;
+  plot.status = 'growing';
+  plot.trees = [{
+    instanceId: 't_' + Date.now(),
+    speciesKey: speciesKey,
+    stage: 0,
+    progressPercent: 0,
+    remainingSec: (TREE_TYPES[speciesKey]||TREE_TYPES.coconut_palm).growthSec,
+    health: 100,
+    harvestReady: false
+  }];
+  const spec = TREE_TYPES[speciesKey]||TREE_TYPES.coconut_palm;
+  toast('🌱 ' + spec.label + ' planted successfully in ' + plot.name + '!');
+  grantXP({farming: 20});
+  openSubplotModal(pid);
+}
+
+function waterPlot(pid){
+  const plot = state.plots[pid];
+  if(!plot || plot.status !== 'growing' || plot.trees.length === 0) return;
+  if(state.money < 10){ toast('⚠️ Need €10 for freshwater pumping.'); return; }
+  state.money -= 10;
+  plot.soilMoisturePercent = Math.min(100, plot.soilMoisturePercent + 25);
+  plot.trees[0].health = Math.min(100, plot.trees[0].health + 30);
+  toast('💧 ' + plot.name + ' watered! Moisture & health elevated.');
+  openSubplotModal(pid);
+}
+
+function prunePlot(pid){
+  const plot = state.plots[pid];
+  if(!plot || plot.status !== 'growing' || plot.trees.length === 0) return;
+  if(state.money < 15){ toast('⚠️ Need €15 for canopy pruning implements.'); return; }
+  state.money -= 15;
+  plot.trees[0].health = Math.min(100, plot.trees[0].health + 40);
+  toast('✂️ Canopy pruned! Solar penetration increased.');
+  openSubplotModal(pid);
+}
+
+function harvestPlot(pid){
+  const plot = state.plots[pid];
+  if(!plot || plot.status !== 'growing' || plot.trees.length === 0) return;
+  const tree = plot.trees[0];
+  if(!tree.harvestReady) return;
+
+  state.money += 120;
+  state.knowledgeXP += 35;
+  state.globalO2 += 40;
+  state.cocoOil += 15;
+  state.harvests++;
+
+  // Reset to fruiting or sprout
+  tree.stage = 2;
+  tree.progressPercent = 30;
+  tree.harvestReady = false;
+  tree.remainingSec = 60;
+
+  toast('🎉 Harvest complete! +€120 · +15L Coconut Oil · +35 XP · +40 O₂!');
+  grantXP({farming: 35, trade: 20});
+  openSubplotModal(pid);
+}
+
+/* ================= 9. 3 BEACH SAND MUD ROCK EXPLORATION NODES ================= */
+function openSandRockModal(rid){
+  const rock = state.sandRocks[rid];
+  if(!rock) return;
+
+  document.getElementById('sand-rock-title').innerHTML = '⛏️ ' + rock.name;
+
+  let content = '';
+  if(!rock.cleared && !rock.clearing){
+    content =
+      '<div class="card-box alert">' +
+        '<div style="font-weight:900;color:var(--gold);margin-bottom:4px;">🔍 Rocky Coral Rubble &amp; Hardpan Crust</div>' +
+        '<div style="font-size:0.8rem;color:#ECEFF1;line-height:1.45;">' +
+          'A cemented deposit of dead coral boulders and saline mudpan along the intertidal sand shelf. Exploring and clearing fractures this crust to enable dune sand-binding vegetation.' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:flex-end;margin-top:14px;">' +
+        '<button class="btn btn-gold" onclick="startClearingSandRock(\''+rid+'\')">⛏️ Explore &amp; Clear Rubble Bed (+€45 · +30 XP · 15s)</button>' +
+      '</div>';
+  } else if(rock.clearing){
+    content =
+      '<div class="card-box">' +
+        '<div style="font-weight:900;color:var(--teal);margin-bottom:6px;">⛏️ Clearing Coral Rubble in Progress…</div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:0.75rem;font-weight:800;color:var(--gold);">' +
+          '<span>Fracturing Crust</span><span>'+rock.progress+'% ('+rock.remainingSec+'s)</span>' +
+        '</div>' +
+        '<div class="prog-bar"><div class="prog-fill amber" style="width:'+rock.progress+'%"></div></div>' +
+      '</div>';
+  } else if(rock.cleared){
+    content =
+      '<div class="card-box green" style="text-align:center;padding:18px;">' +
+        '<div style="font-size:2rem;margin-bottom:6px;">⛏️✨</div>' +
+        '<div style="font-size:1rem;font-weight:900;color:var(--emerald);">✅ Explored &amp; Stabilized!</div>' +
+        '<div style="font-size:0.8rem;color:#ECEFF1;margin-top:6px;">' +
+          'Rubble broken into coastal dune gravel. Sand-binding runners are flourishing and preventing beach erosion.' +
+        '</div>' +
+      '</div>';
+  }
+
+  document.getElementById('sand-rock-body').innerHTML = content;
+  document.getElementById('sand-rock-modal').classList.add('open');
+}
+
+function startClearingSandRock(rid){
+  const rock = state.sandRocks[rid];
+  if(!rock || rock.cleared || rock.clearing) return;
+  rock.clearing = true;
+  rock.progress = 0;
+  rock.remainingSec = 15;
+  toast('⛏️ Clearing ' + rock.name + ' (15s)…');
+  openSandRockModal(rid);
+}
+
+/* ================= 10. USER GARDEN CONSTRUCTION FLOW ================= */
+function checkOrOpenGarden(type){
+  const b = state.buildings[type];
+  if(!b) return;
+
+  if(!b.built){
+    // Open Garden Construction Modal
+    const isVeg = type === 'vegetable_garden';
+    document.getElementById('garden-construct-title').innerHTML =
+      isVeg ? '🔨 Construct Polyculture Companion Field' : '🌸 Construct Botanical Flower Garden';
+
+    let html = '';
+    if(!b.building){
+      html =
+        '<div class="card-box alert">' +
+          '<div style="font-weight:900;color:var(--gold);margin-bottom:6px;">🔨 Construction Required</div>' +
+          '<div style="font-size:0.8rem;color:#ECEFF1;line-height:1.45;">' +
+            (isVeg ?
+              'Before planting vegetables, hire labourers to erect raised beds, install bio-char enriched loam, and deploy drip irrigation.' :
+              'Construct stone retaining borders, add organic beach mulch, and plant native coastal flower varieties.'
+            ) +
+          '</div>' +
+          '<div style="font-size:0.75rem;color:#CFD8DC;margin-top:8px;">Cost: <b>€'+b.cost+'</b> · Time: <b>15s</b></div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:flex-end;margin-top:14px;">' +
+          '<button class="btn btn-gold" onclick="startBuildingGarden(\''+type+'\')">🔨 Start Garden Construction (€'+b.cost+' · 15s)</button>' +
+        '</div>';
+    } else {
+      html =
+        '<div class="card-box">' +
+          '<div style="font-weight:900;color:var(--teal);margin-bottom:6px;">🔨 Construction in Progress…</div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:0.75rem;font-weight:800;color:var(--gold);">' +
+            '<span>Erecting Beds</span><span>'+b.progress+'% ('+b.remainingSec+'s)</span>' +
+          '</div>' +
+          '<div class="prog-bar"><div class="prog-fill amber" style="width:'+b.progress+'%"></div></div>' +
+        '</div>';
+    }
+
+    document.getElementById('garden-construct-body').innerHTML = html;
+    document.getElementById('garden-construct-modal').classList.add('open');
+  } else {
+    // Already built -> open full respective modal
+    if(type === 'vegetable_garden') openCropModal();
+    else if(type === 'flower_garden') openFlowerModal();
+  }
+}
+
+function startBuildingGarden(type){
+  const b = state.buildings[type];
+  if(!b || b.built || b.building) return;
+  if(state.money < b.cost){ toast('⚠️ Insufficient budget (€'+b.cost+' required).'); return; }
+  state.money -= b.cost;
+  b.building = true;
+  b.progress = 0;
+  b.remainingSec = 15;
+  toast('🔨 Construction commenced (15s)…');
+  checkOrOpenGarden(type);
+}
+
+/* ================= 11. VEGETABLE CROP & FLOWER GARDEN MODALS ================= */
+function openCropModal(){
+  const body=document.getElementById('crop-modal-content');
+  if(!body)return;
+  let bedCards='';
+  state.cropBeds.forEach((b,idx)=>{
+    bedCards+=
+      '<div class="card-box" style="margin-bottom:8px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+          '<div style="font-weight:900;color:#FFF;font-size:0.85rem;">'+b.name+' · Coastal Crop</div>' +
+          '<span class="badge" style="background:var(--emerald);color:#003314;padding:3px 7px;border-radius:6px;font-size:0.72rem;font-weight:800;">' +
+            (b.harvestReady ? '🧺 Ready' : 'Stage '+(b.stage+1)) +
+          '</span>' +
+        '</div>' +
+        '<div class="prog-bar"><div class="prog-fill" style="width:'+Math.round(b.progress)+'%"></div></div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;font-size:0.75rem;">' +
+          '<span style="color:#B0BEC5;">Moisture: '+b.moisture+'%</span>' +
+          (b.harvestReady ?
+            '<button class="btn btn-gold" style="padding:4px 10px;font-size:0.75rem;" onclick="harvestCropBed('+idx+')">🧺 Harvest (+€35)</button>' :
+            '<span style="color:var(--teal);">Ripening…</span>'
+          ) +
+        '</div>' +
+      '</div>';
+  });
+
+  body.innerHTML=
+    '<div class="modal-hdr">' +
+      '<h3>🌾 Polyculture Companion Crop Field [-45° Angle]</h3>' +
+      '<button class="btn-close" id="crop-close">✕</button>' +
+    '</div>' +
+    '<div style="font-size:0.8rem;color:#ECEFF1;margin-bottom:12px;">' +
+      'Rotated companion beds designed with 4 quadrants: Coastal Cherry Tomato, Dune Sweet Potato, Yardlong Beans, and Dharosh Okra.' +
+    '</div>' +
+    bedCards;
+
+  document.getElementById('crop-close').onclick=()=>document.getElementById('crop-modal').classList.remove('open');
+  document.getElementById('crop-modal').classList.add('open');
+}
+
+function harvestCropBed(idx){
+  const b=state.cropBeds[idx];
+  if(!b||!b.harvestReady)return;
+  state.money+=35;
+  state.knowledgeXP+=15;
+  state.globalO2+=15;
+  b.harvestReady=false;
+  b.stage=0;
+  b.progress=0;
+  toast('🧺 Harvested companion crop! +€35 · +15 XP · +15 O₂.');
+  openCropModal();
+}
+
+function openFlowerModal(){
+  const body=document.getElementById('flower-modal-content');
+  if(!body)return;
+  let flCards='';
+  state.flowerBeds.forEach(b=>{
+    flCards+=
+      '<div class="card-box" style="margin-bottom:8px;">' +
+        '<div style="display:flex;justify-content:space-between;font-weight:900;color:#FFF;font-size:0.85rem;">' +
+          '<span>'+b.name+'</span><span style="color:var(--pink)">🌸 '+b.freshness+'% Fresh</span>' +
+        '</div>' +
+        '<div style="font-size:0.74rem;color:#CFD8DC;margin-top:4px;">Cultivar: Coastal Honeybee Pollinator &amp; Dune Stabilizer</div>' +
+      '</div>';
+  });
+
+  body.innerHTML=
+    '<div class="modal-hdr">' +
+      '<h3>🌸 Decagonal Polyculture Botanical Flower Garden</h3>' +
+      '<button class="btn-close" id="flower-close">✕</button>' +
+    '</div>' +
+    '<div style="font-size:0.8rem;color:#ECEFF1;margin-bottom:12px;">' +
+      'Ten-sided symmetrical flower mandala planted with halophytic cultivars: Ipomoea pes-caprae, Spider Lily, Sea Hibiscus, and Nayantara.' +
+    '</div>' +
+    flCards;
+
+  document.getElementById('flower-close').onclick=()=>document.getElementById('flower-modal').classList.remove('open');
+  document.getElementById('flower-modal').classList.add('open');
+}
+
+/* ================= 12. OTHER ON-FIELD FACILITIES MODALS ================= */
+function openGarageModal(){
+  const body=document.getElementById('garage-modal-content');
+  if(!body)return;
+  body.innerHTML=
+    '<div class="modal-hdr"><h3>🚜 Farm Garage &amp; Mechanization Depot</h3><button class="btn-close" id="garage-close">✕</button></div>' +
+    '<div style="font-size:0.82rem;line-height:1.5;color:#ECEFF1;">' +
+      'Solar-powered electric utility tractors and automated drip-irrigation spoolers. Speeds up harvest delivery and tree care.' +
+    '</div>' +
+    '<div class="card-box green" style="margin-top:12px;">' +
+      '<div style="font-weight:900;color:var(--emerald);">✓ Solar Ag-Tractor Operational (1.5x Speed)</div>' +
+    '</div>';
+  document.getElementById('garage-close').onclick=()=>document.getElementById('garage-modal').classList.remove('open');
+  document.getElementById('garage-modal').classList.add('open');
+}
+
+function openStorageModal(){
+  const body=document.getElementById('storage-modal-content');
+  if(!body)return;
+  body.innerHTML=
+    '<div class="modal-hdr"><h3>🏚️ North Storage Silos &amp; Seed Bank</h3><button class="btn-close" id="storage-close">✕</button></div>' +
+    '<div style="font-size:0.82rem;line-height:1.5;color:#ECEFF1;margin-bottom:12px;">' +
+      'Vaults for seed banking and climate-controlled storage of harvested crops and copra.' +
+    '</div>' +
+    '<div class="grid-2" style="font-size:0.78rem;">' +
+      '<div class="card-box">🍅 Tomatoes: <b>'+state.storage.tomatoes+' kg</b></div>' +
+      '<div class="card-box">🍠 Sweet Potatoes: <b>'+state.storage.sweetPotatoes+' kg</b></div>' +
+      '<div class="card-box">🥥 Coconuts: <b>'+state.storage.coconuts+' units</b></div>' +
+      '<div class="card-box">🧂 Salt Bags: <b>'+state.storage.saltBags+' bags</b></div>' +
+    '</div>';
+  document.getElementById('storage-close').onclick=()=>document.getElementById('storage-modal').classList.remove('open');
+  document.getElementById('storage-modal').classList.add('open');
+}
+
+function openSeafoodModal(){
+  const body=document.getElementById('seafood-body');
+  if(!body)return;
+  body.innerHTML=
+    '<div style="font-size:0.82rem;line-height:1.5;color:#ECEFF1;margin-bottom:12px;">' +
+      'Shoreline IQF (Individual Quick Freezing) blast freezing line operating at -40°C. Powered by clean microgrid solar and wind.' +
+    '</div>' +
+    '<div class="grid-2">' +
+      '<div class="card-box marine"><b>🦐 Prawn &amp; Mud Crab Stock:</b> '+state.crabPrawnStockKg+' kg</div>' +
+      '<div class="card-box green"><b>⚡ Cryo-Freezer Status:</b> Operational (-40°C)</div>' +
+    '</div>';
+  document.getElementById('seafood-modal').classList.add('open');
+}
+
+function openDesalModal(){
+  const body=document.getElementById('desal-body');
+  if(!body)return;
+  body.innerHTML=
+    '<div style="font-size:0.82rem;line-height:1.5;color:#ECEFF1;margin-bottom:12px;">' +
+      'Low-energy Reverse Osmosis desalination facility with 8,500 L pure water buffer. Supplies fresh water to tree saplings.' +
+    '</div>' +
+    '<div class="card-box"><b>Pure Freshwater Storage:</b> 7,420 / 8,500 Liters</div>';
+  document.getElementById('desal-modal').classList.add('open');
+}
+
+function openSaltModal(){
+  const body=document.getElementById('salt-body');
+  if(!body)return;
+  body.innerHTML=
+    '<div style="font-size:0.82rem;line-height:1.5;color:#ECEFF1;margin-bottom:12px;">' +
+      'Solar marine salt crystallizer flats using concentrated brine from desalination plant.' +
+    '</div>' +
+    '<div class="card-box"><b>Harvested Sea Salt:</b> '+state.marineSaltKg+' kg</div>';
+  document.getElementById('salt-modal').classList.add('open');
+}
+
+function openGasModal(){
+  const body=document.getElementById('gas-content');
+  if(!body)return;
+  body.innerHTML=
+    '<div style="font-size:0.82rem;line-height:1.5;color:#ECEFF1;margin-bottom:12px;">' +
+      'Offshore Gas Platform with 5-stage CNG compression chain and interactive 3D rig.' +
+    '</div>' +
+    '<div class="card-box alert"><b>CNG Cascade Pressure:</b> 250 bar · Clean Dispatch Ready</div>' +
+    '<div style="display:flex;gap:10px;margin-top:12px;">' +
+      '<button class="btn btn-gold" id="btn-visit-gas-3d">Visit 3D Gas Platform ➔</button>' +
+    '</div>';
+  const vBtn=document.getElementById('btn-visit-gas-3d');
+  if(vBtn)vBtn.onclick=()=>{
+    document.getElementById('gas-modal').classList.remove('open');
+    enterOuter();
+  };
+  document.getElementById('gas-modal').classList.add('open');
+}
+
+function openEncyclopediaModal(){
+  const body=document.getElementById('encyclopedia-content');
+  if(!body)return;
+  let treesHtml='';
+  ENCYCLOPEDIA_TAXONOMY.trees.forEach(t=>{
+    treesHtml+=
+      '<div class="card-box" style="margin-bottom:8px;">' +
+        '<div style="font-weight:900;color:var(--teal);font-size:0.9rem;">'+t.common+' ('+t.bengali+')</div>' +
+        '<div style="font-size:0.75rem;font-style:italic;color:#B0BEC5;">'+t.binomial+' · '+t.family+'</div>' +
+        '<div style="font-size:0.78rem;color:#ECEFF1;margin-top:4px;">'+t.ecology+'</div>' +
+      '</div>';
+  });
+  body.innerHTML=treesHtml;
+  document.getElementById('encyclopedia-modal').classList.add('open');
+}
+
+function openLabourMarket(){
+  const body=document.getElementById('labour-body');
+  if(!body)return;
+  body.innerHTML=
+    '<div style="font-size:0.8rem;color:#ECEFF1;margin-bottom:12px;">' +
+      'Hire skilled local workforce from Saint Martin (Chera Dwip and Uttar Para).' +
+    '</div>' +
+    '<div class="card-box" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+      '<div><b>Rahim</b> · Master Soil Steward (€120)</div>' +
+      '<button class="btn btn-gold" onclick="hireWorker(\'Rahim\',120)">Hire</button>' +
+    '</div>' +
+    '<div class="card-box" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+      '<div><b>Fatema</b> · Marine Agronomist (€140)</div>' +
+      '<button class="btn btn-gold" onclick="hireWorker(\'Fatema\',140)">Hire</button>' +
+    '</div>' +
+    '<div class="card-box" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+      '<div><b>Tarek</b> · Dune Agro-Forestry Engineer (€135)</div>' +
+      '<button class="btn btn-gold" onclick="hireWorker(\'Tarek\',135)">Hire</button>' +
+    '</div>' +
+    '<div class="card-box" style="display:flex;justify-content:space-between;align-items:center;">' +
+      '<div><b>Kabir</b> · Microgrid Engineer (€150)</div>' +
+      '<button class="btn btn-gold" onclick="hireWorker(\'Kabir\',150)">Hire</button>' +
+    '</div>';
+  document.getElementById('labour-modal').classList.add('open');
+}
+
+function hireWorker(name,cost){
+  if(state.money<cost){ toast('⚠️ Insufficient budget.'); return; }
+  state.money-=cost;
+  state.workers++;
+  state.activeWorkers.push(name);
+  toast('🧑‍🌾 Hired ' + name + '! Assigned to island labour pool.');
   renderScoreboard('scoreboard');
-  renderScoreboard('scoreboard-outer');
-  renderScoreboard('scoreboard-dive');
-  renderTaskHud();
 }
 
-/* REAL-TIME SIMULATION TICK (Every 1s) */
+function openMasterplanModal(){
+  const body=document.getElementById('master-body');
+  if(!body)return;
+  let chHtml='<div style="font-size:0.82rem;color:var(--emerald);font-weight:800;margin-bottom:10px;">🇩🇪 German Farm Link Corridor Active</div>';
+  MISSIONS.forEach(m=>{
+    let subList='';
+    m.subs.forEach(s=>{
+      subList+='<div style="font-size:0.75rem;margin:3px 0;">• '+(s.done?'✅':'⏳')+' '+s.title+'</div>';
+    });
+    chHtml+=
+      '<div class="card-box" style="margin-bottom:8px;">' +
+        '<div style="font-weight:900;color:var(--teal);font-size:0.85rem;">Ch.'+m.ch+': '+m.title+'</div>' +
+        '<div style="font-size:0.76rem;color:#B0BEC5;margin-bottom:6px;">'+m.desc+'</div>' +
+        subList +
+      '</div>';
+  });
+  body.innerHTML=chHtml;
+  document.getElementById('master-modal').classList.add('open');
+}
+
+function openGlobeModal(){
+  document.getElementById('globe-modal').classList.add('open');
+  drawSimpleGlobe();
+}
+
+function drawSimpleGlobe(){
+  const c=document.getElementById('globe-canvas');
+  if(!c)return;
+  const ctx=c.getContext('2d');
+  ctx.clearRect(0,0,c.width,c.height);
+  const cx=c.width/2, cy=c.height/2, r=110;
+  // Outer space glow
+  ctx.beginPath();ctx.arc(cx,cy,r+14,0,Math.PI*2);
+  ctx.fillStyle='rgba(0,229,255,0.08)';ctx.fill();
+  // Globe sphere
+  const grad=ctx.createRadialGradient(cx-30,cy-30,20,cx,cy,r);
+  grad.addColorStop(0,'#007799');grad.addColorStop(0.7,'#003355');grad.addColorStop(1,'#001122');
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=grad;ctx.fill();
+  ctx.strokeStyle='rgba(0,229,255,0.4)';ctx.lineWidth=2;ctx.stroke();
+
+  // Germany pin
+  ctx.fillStyle='#FFD54F';ctx.beginPath();ctx.arc(cx-35,cy-40,6,0,Math.PI*2);ctx.fill();
+  ctx.font='bold 10px Nunito';ctx.fillText('🇩🇪 Germany',cx-90,cy-45);
+  // Saint Martin pin
+  ctx.fillStyle='#00E676';ctx.beginPath();ctx.arc(cx+45,cy+15,6,0,Math.PI*2);ctx.fill();
+  ctx.fillText('🇧🇩 Saint Martin',cx+55,cy+20);
+  // Curved orbital corridor line
+  ctx.beginPath();ctx.moveTo(cx-35,cy-40);ctx.quadraticCurveTo(cx+10,cy-70,cx+45,cy+15);
+  ctx.strokeStyle='rgba(0,229,255,0.7)';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+/* ================= 13. REAL-TIME SIMULATION TICK (Every 1s) ================= */
 setInterval(()=>{
-  // 1. Tick sub-plot mud rock clearing
+  // 1. Tick sub-plot tilling / mud rock clearing
   Object.values(state.plots).forEach(plot=>{
-    if(plot.status==='clearing'){
-      plot.clearingRemainingSec=Math.max(0,plot.clearingRemainingSec-1);
-      plot.clearingProgress=Math.min(100,Math.round(((15-plot.clearingRemainingSec)/15)*100));
-      if(plot.clearingRemainingSec<=0){
+    if(plot.status==='tilling' || plot.status==='clearing'){
+      plot.tillingRemainingSec=Math.max(0,plot.tillingRemainingSec-1);
+      plot.tillingProgress=Math.min(100,Math.round(((15-plot.tillingRemainingSec)/15)*100));
+      if(plot.tillingRemainingSec<=0){
         plot.status='tilled';
-        toast('🪨 '+plot.name+' cleared! Mud rock broken into fertile loam.');
+        toast('🌱 '+plot.name+' tilled! Soil aerated into fertile loam.');
         grantXP({farming:15,infra:10});
         state.globalO2+=15;
       }
@@ -877,8 +1556,8 @@ setInterval(()=>{
     if(plot.status==='growing' && plot.trees.length>0){
       plot.trees.forEach(tree=>{
         const spec=TREE_TYPES[tree.speciesKey]||TREE_TYPES.coconut_palm;
-        const dur=spec.growthSec||150;
-        tree.progressPercent+= (100 / dur) * 1.5;
+        const dur=spec.growthSec||75;
+        tree.progressPercent += (100 / dur) * 1.5;
         tree.remainingSec=Math.max(0,Math.round(dur * (1 - tree.progressPercent/100)));
         if(tree.progressPercent>=100){
           if(tree.stage<3){
@@ -899,10 +1578,41 @@ setInterval(()=>{
     }
   });
 
-  // 3. Tick companion crop beds
+  // 3. Tick 3 sand mud rocks
+  Object.values(state.sandRocks).forEach(rock=>{
+    if(rock.clearing && !rock.cleared){
+      rock.remainingSec=Math.max(0,rock.remainingSec-1);
+      rock.progress=Math.min(100,Math.round(((15-rock.remainingSec)/15)*100));
+      if(rock.remainingSec<=0){
+        rock.clearing=false;
+        rock.cleared=true;
+        state.money+=45;
+        state.knowledgeXP+=30;
+        state.globalO2+=15;
+        toast('✅ '+rock.name+' cleared & explored (+€45 · +30 XP)!');
+      }
+    }
+  });
+
+  // 4. Tick user garden construction
+  ['vegetable_garden','flower_garden'].forEach(gKey=>{
+    const b=state.buildings[gKey];
+    if(b && b.building && !b.built){
+      b.remainingSec=Math.max(0,b.remainingSec-1);
+      b.progress=Math.min(100,Math.round(((15-b.remainingSec)/15)*100));
+      if(b.remainingSec<=0){
+        b.building=false;
+        b.built=true;
+        toast('🎉 '+ (gKey==='vegetable_garden'?'Companion Vegetable Field':'Botanical Flower Garden') +' construction completed!');
+        grantXP({farming:30,botany:20});
+      }
+    }
+  });
+
+  // 5. Tick companion crop beds
   state.cropBeds.forEach(bed=>{
     if(!bed.harvestReady){
-      bed.progress+=0.4;
+      bed.progress+=0.5;
       if(bed.progress>=100){
         if(bed.stage<3){bed.stage++;bed.progress=0;}
         else{bed.harvestReady=true;bed.progress=100;}
@@ -910,24 +1620,18 @@ setInterval(()=>{
     }
   });
 
-  // 4. Update task HUD
+  // 6. Update task HUD & scoreboard
   updateTaskProgress();
   renderScoreboard('scoreboard');
 },1000);
 
-/* ================= TASK HUD & MISSIONS ================= */
 function updateTaskProgress(){
   const m=MISSIONS[state.currentChapter-1];
   if(!m)return;
-  // Sub 1.1: Reef dive done
   if(state.currentChapter===1){
     if(state.scans>=1)m.subs[0].done=true;
     if(state.plots['dec1.plot1'].trees.length>0)m.subs[1].done=true;
     if(state.siltBarrierDeployed)m.subs[2].done=true;
-  }else if(state.currentChapter===2){
-    if(state.seaweedStockKg>=80)m.subs[0].done=true;
-    if(state.crabPrawnStockKg>=100)m.subs[1].done=true;
-    if(state.plots['dec2.plot1'].trees.length>0)m.subs[2].done=true;
   }
   const doneCount=m.subs.filter(s=>s.done).length;
   const pct=Math.round((doneCount/m.subs.length)*100);
@@ -946,844 +1650,30 @@ function renderTaskHud(){
   const pctEl=document.getElementById('task-hud-pct');
   const barEl=document.getElementById('task-hud-bar');
   if(titleEl)titleEl.textContent='Chapter '+m.ch+': '+m.title;
-  if(pctEl)pctEl.textContent=pct+'% Complete ('+doneCount+'/'+m.subs.length+')';
+  if(pctEl)pctEl.textContent=pct+'% Complete';
   if(barEl)barEl.style.width=pct+'%';
 
   const itemsEl=document.getElementById('task-list-items');
   if(!itemsEl)return;
-  itemsEl.innerHTML=m.subs.map(s=>`
-    <div class="task-item ${s.done?'done':''}">
-      <div>
-        <div class="title">${s.done?'✓':'○'} Sub-Challenge ${s.id}: ${s.title}</div>
-        <div class="sub">${s.focus}</div>
-      </div>
-      <div class="badge">${s.done?'COMPLETED':'+'+s.xp+' XP'}</div>
-    </div>
-  `).join('');
+  itemsEl.innerHTML='';
+  m.subs.forEach(s=>{
+    const div=document.createElement('div');
+    div.className='task-item'+(s.done?' done':'');
+    div.innerHTML=
+      '<div>' +
+        '<div class="title">'+(s.done?'✓ ':'○ ')+'Sub-Challenge '+s.id+': '+s.title+'</div>' +
+        '<div class="sub">'+s.focus+'</div>' +
+      '</div>' +
+      '<span class="badge">'+(s.done?'DONE':'+'+s.xp+' XP')+'</span>';
+    itemsEl.appendChild(div);
+  });
 }
 
 function toggleTaskHud(){
-  const hud=document.getElementById('task-hud');
-  if(hud)hud.classList.toggle('open');
-  renderTaskHud();
-}
-
-/* ================= 1. SUB-PLOT MODAL (HARD MUD ROCK & TREE GROWTH) ================= */
-let activePlotId='dec1.plot1';
-function openSubplotModal(pid){
-  activePlotId=pid||'dec1.plot1';
-  const plot=state.plots[activePlotId];
-  if(!plot)return;
-  const def=PLOT_DEFS[activePlotId];
-  document.getElementById('subplot-title').innerHTML='<span>🌱 '+plot.name+'</span>';
-
-  let html='<div style="font-size:0.8rem;color:#90A4AE;margin-bottom:12px;">Decagon Zone: <b>'+plot.decagon.toUpperCase()+'</b> · Baseline Salinity: <b>'+plot.soilSalinityPpt+' ppt</b> · Moisture: <b>'+plot.soilMoisturePercent+'%</b></div>';
-
-  if(plot.status==='mud_rock'){
-    html+=`
-      <div class="card-box alert" style="padding:14px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:2.2rem;">🪨</span>
-          <div>
-            <b style="color:var(--gold);font-size:0.95rem;">Compacted Hard Mud Rock &amp; Saline Bedrock</b>
-            <div style="font-size:0.78rem;color:#CFD8DC;margin-top:3px;">
-              Sub-surface is choked with cemented coral rubble, dried salt pan, and impenetrable mud rock.
-              Roots cannot penetrate. Aerate with trenching spade &amp; laborer pickaxe to awaken fertile soil.
-            </div>
-          </div>
-        </div>
-        <div style="display:flex;gap:10px;margin-top:14px;align-items:center;">
-          <button class="btn btn-gold" style="flex:1" onclick="startClearingMudRock('${pid}')">⛏️ Clear Hard Mud Rock &amp; Till Soil (€35 · 15s)</button>
-        </div>
-      </div>
-    `;
-  } else if(plot.status==='clearing'){
-    html+=`
-      <div class="card-box alert" style="padding:14px;">
-        <b style="color:var(--gold);">⛏️ Field Laborer Clearing Hard Mud Rock...</b>
-        <div style="font-size:0.8rem;color:#CFD8DC;margin:6px 0;">Fracturing bedrock boulders &amp; aerating crumb structure.</div>
-        <div class="prog-bar"><div class="prog-fill amber" style="width:${plot.clearingProgress}%"></div></div>
-        <div style="font-size:0.78rem;color:#FFD54F;margin-top:4px;">Progress: <b>${plot.clearingProgress}%</b> · <b>${plot.clearingRemainingSec}s</b> remaining</div>
-      </div>
-    `;
-  } else if(plot.status==='tilled'){
-    html+=`
-      <div class="card-box green" style="padding:14px;margin-bottom:12px;">
-        <b style="color:#A5D6A7;">✓ Fertile Loam Bed Ready for Planting</b>
-        <div style="font-size:0.78rem;color:#CFD8DC;margin-top:3px;">Virgin bedrock aerated. Select a salt-hardy botanical species to establish in this sub-plot:</div>
-      </div>
-      <div style="font-size:0.85rem;font-weight:800;color:var(--teal);margin-bottom:8px;">Compatible Agroforestry Species:</div>
-      <div class="grid-2">
-    `;
-    def.affinity.forEach(spKey=>{
-      const spec=TREE_TYPES[spKey];
-      if(!spec)return;
-      html+=`
-        <div class="card-box" style="padding:10px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <b style="font-size:0.85rem;color:#FFF;">${spec.label}</b>
-            <span style="font-size:1.4rem;">${spec.icon}</span>
-          </div>
-          <div style="font-size:0.75rem;color:#80DEEA;font-style:italic;">${spec.sciName}</div>
-          <div style="font-size:0.72rem;color:#CFD8DC;margin:4px 0;">O₂ Rate: +${spec.o2RateKgYear} kg/yr · Salinity: ${spec.salinityLimitPpt} ppt</div>
-          <button class="btn btn-e" style="width:100%;padding:5px;font-size:0.75rem;margin-top:6px;" onclick="plantSpeciesInPlot('${pid}','${spKey}')">🌱 Plant Seedling</button>
-        </div>
-      `;
-    });
-    html+='</div>';
-  } else if(plot.status==='growing' && plot.trees.length>0){
-    const tree=plot.trees[0];
-    const spec=TREE_TYPES[tree.speciesKey]||TREE_TYPES.coconut_palm;
-    html+=`
-      <div class="card-box green" style="padding:14px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <b style="font-size:1rem;color:#CCFF90;">${spec.label}</b>
-            <div style="font-size:0.78rem;color:#80DEEA;font-style:italic;">${spec.sciName}</div>
-          </div>
-          <span style="font-size:2.4rem;">${spec.icon}</span>
-        </div>
-        <div style="margin-top:10px;">
-          <div style="display:flex;justify-content:space-between;font-size:0.8rem;font-weight:800;color:#ECEFF1;">
-            <span>Current Stage: <b style="color:var(--teal);">${STAGE_NAMES[tree.stage]}</b></span>
-            <span>Progress: <b style="color:var(--emerald);">${Math.round(tree.progressPercent)}%</b></span>
-          </div>
-          <div class="prog-bar"><div class="prog-fill" style="width:${tree.progressPercent}%"></div></div>
-          <div style="font-size:0.75rem;color:#90A4AE;margin-top:2px;">Remaining in Stage: <b>${tree.remainingSec}s</b> · Primary Yield: <b>${spec.primaryYield}</b></div>
-        </div>
-        <div class="grid-2" style="margin-top:10px;">
-          <div style="background:rgba(0,0,0,0.3);padding:6px;border-radius:6px;font-size:0.75rem;">O₂ Generation: <b style="color:var(--emerald);">+${spec.o2RateKgYear} kg/yr</b></div>
-          <div style="background:rgba(0,0,0,0.3);padding:6px;border-radius:6px;font-size:0.75rem;">Salinity Limit: <b style="color:var(--gold);">${spec.salinityLimitPpt} ppt</b></div>
-        </div>
-        <div style="display:flex;gap:6px;margin-top:12px;">
-          <button class="btn btn-e" style="flex:1" onclick="irrigateSubplot('${pid}')">💧 Solar Drip Irrigate</button>
-          <button class="btn btn-gold" style="flex:1" ${tree.harvestReady?'':'disabled'} onclick="harvestSubplot('${pid}')">🧺 Harvest (${spec.primaryYield})</button>
-        </div>
-      </div>
-    `;
-  }
-
-  document.getElementById('subplot-body').innerHTML=html;
-  document.getElementById('subplot-modal').classList.add('open');
-}
-
-function startClearingMudRock(pid){
-  const plot=state.plots[pid];
-  if(!plot)return;
-  if(state.money<35){toast('Insufficient funds (€35 required)');return;}
-  state.money-=35;
-  plot.status='clearing';
-  plot.clearingRemainingSec=15;
-  plot.clearingProgress=0;
-  toast('⛏️ Clearing hard mud rock on '+plot.name+'...');
-  openSubplotModal(pid);
-}
-
-function plantSpeciesInPlot(pid,spKey){
-  const plot=state.plots[pid];
-  if(!plot)return;
-  plot.status='growing';
-  plot.trees=[{
-    instanceId:'t_'+Date.now(),
-    speciesKey:spKey,
-    stage:0,
-    progressPercent:0,
-    remainingSec:TREE_TYPES[spKey].growthSec||150,
-    health:100,
-    harvestReady:false
-  }];
-  toast('🌱 Planted '+TREE_TYPES[spKey].label+' in '+plot.name+'!');
-  grantXP({farming:15});
-  openSubplotModal(pid);
-}
-
-function irrigateSubplot(pid){
-  const plot=state.plots[pid];
-  if(!plot)return;
-  plot.soilMoisturePercent=Math.min(100,plot.soilMoisturePercent+20);
-  toast('💧 Solar drip lines irrigated '+plot.name+'!');
-  openSubplotModal(pid);
-}
-
-function harvestSubplot(pid){
-  const plot=state.plots[pid];
-  if(!plot||!plot.trees.length)return;
-  const tree=plot.trees[0];
-  if(!tree.harvestReady)return;
-  const spec=TREE_TYPES[tree.speciesKey];
-  state.money+=60;
-  state.globalO2+=45;
-  if(tree.speciesKey==='coconut_palm')state.cocoOil+=5;
-  tree.stage=2; // return to flowering stage
-  tree.progressPercent=0;
-  tree.harvestReady=false;
-  toast('🧺 Harvested '+spec.label+' (+€60 · +45 O₂)!');
-  grantXP({farming:20});
-  openSubplotModal(pid);
-}
-
-/* ================= 2. ENCYCLOPEDIA MODAL ================= */
-function openEncyclopediaModal(){
-  renderEncyclopediaCards('trees');
-  document.getElementById('encyclopedia-modal').classList.add('open');
-}
-
-function renderEncyclopediaCards(cat){
-  const container=document.getElementById('encyclopedia-cards');
-  if(!container)return;
-  let html='';
-  if(cat==='trees'){
-    html='<div class="grid-2">';
-    Object.values(TREE_TYPES).forEach(t=>{
-      html+=`
-        <div class="card-box green">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <b style="font-size:0.9rem;color:#CCFF90">${t.label}</b>
-            <span style="font-size:1.5rem;">${t.icon}</span>
-          </div>
-          <div style="font-size:0.75rem;color:#80DEEA;font-style:italic;">${t.sciName}</div>
-          <div style="font-size:0.74rem;color:#CFD8DC;margin:6px 0;">
-            O₂: <b>+${t.o2RateKgYear} kg/yr</b> · Salinity Limit: <b>${t.salinityLimitPpt} ppt</b> · Growth: <b>${t.growthSec}s</b><br/>
-            Yield: <b>${t.primaryYield}</b>
-          </div>
-          <div style="font-size:0.72rem;color:#ECEFF1;line-height:1.3;background:rgba(0,0,0,0.3);padding:6px;border-radius:6px;">${t.fact}</div>
-        </div>
-      `;
-    });
-    html+='</div>';
-  } else if(cat==='flowers'){
-    html='<div class="grid-2">';
-    Object.values(FLOWER_TYPES).forEach(f=>{
-      html+=`
-        <div class="card-box pink">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <b style="font-size:0.9rem;color:#FF80AB">${f.label}</b>
-            <span style="font-size:1.5rem;">${f.icon}</span>
-          </div>
-          <div style="font-size:0.75rem;color:#80DEEA;font-style:italic;">${f.sciName}</div>
-          <div style="font-size:0.74rem;color:#CFD8DC;margin:6px 0;">Yield: <b>+${f.yield} blooms</b> · Nectar Score: <b>${'★'.repeat(f.nectar)}</b></div>
-          <div style="font-size:0.72rem;color:#ECEFF1;line-height:1.3;background:rgba(0,0,0,0.3);padding:6px;border-radius:6px;">${f.fact}</div>
-        </div>
-      `;
-    });
-    html+='</div>';
-  } else if(cat==='crops'){
-    html='<div class="grid-2">';
-    Object.values(FIELD_CROP_TYPES).forEach(c=>{
-      html+=`
-        <div class="card-box">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <b style="font-size:0.9rem;color:var(--teal)">${c.label}</b>
-            <span style="font-size:1.5rem;">${c.icon}</span>
-          </div>
-          <div style="font-size:0.75rem;color:#80DEEA;font-style:italic;">${c.sciName}</div>
-          <div style="font-size:0.74rem;color:#CFD8DC;margin:4px 0;">Cost: €${c.cost} · Yield: ${c.yield} kg harvest</div>
-        </div>
-      `;
-    });
-    html+='</div>';
-  } else if(cat==='marine'){
-    html='<div class="grid-2">';
-    MARINE_CARDS.forEach(m=>{
-      html+=`
-        <div class="card-box marine">
-          <b style="color:var(--teal);font-size:0.88rem;">${m.g}: ${m.t}</b>
-          <div style="font-size:0.74rem;color:#80DEEA;margin:2px 0;">Status: <b>${m.status}</b> · Threat: <b style="color:var(--coral);">${m.threat}</b></div>
-          <div style="font-size:0.72rem;color:#ECEFF1;margin-top:4px;">${m.notes}</div>
-        </div>
-      `;
-    });
-    html+='</div>';
-  } else if(cat==='energy'){
-    html=`
-      <div class="card-box">
-        <b style="color:var(--gold);">Microgrid &amp; Ocean Energy Infrastructure</b>
-        <div style="font-size:0.78rem;color:#CFD8DC;margin-top:4px;line-height:1.4;">
-          • <b>Dual 150 kW Offshore Wind Turbines</b>: Anchored in north and east shallow waters with marine cathodic protection.<br/>
-          • <b>120 kW Offshore Floating Solar</b>: Moored pontoon panels with natural sea water cooling raising PV efficiency by +12%.<br/>
-          • <b>500 kWh Lithium-Phosphate BESS</b>: Balances island microgrid and prevents voltage sags during cloud cover.<br/>
-          • <b>Big Jar Algae Bioreactor</b>: Chlorella culture scrubs CO₂ from seafood processing lines at 42.75 kg/hr.
-        </div>
-      </div>
-    `;
-  }
-  container.innerHTML=html;
-}
-
-/* ================= 3. GAS & CNG MODAL & VIEW ================= */
-const CNG_STEPS=[
-  {n:1,t:'Wellhead Riser Intake',d:'Safely capture natural gas at offshore platform riser.'},
-  {n:2,t:'Dehydration & Desulfurization',d:'Remove moisture and impurities to prevent line corrosion.'},
-  {n:3,t:'Multi-Stage Compression',d:'Compress clean gas to 200 bar CNG storage pressures.'},
-  {n:4,t:'Cascade Storage Vessels',d:'Store in safety-certified high-pressure cylinder bank.'},
-  {n:5,t:'Clean Energy Dispatch',d:'Transfer clean gas for island backup generators and lab lessons.'}
-];
-
-function openGasModal(){
-  const container=document.getElementById('cng-steps-container');
-  if(container){
-    container.innerHTML=CNG_STEPS.map((s,i)=>`
-      <div class="card-box ${i<state.cngStep?'green':''}" style="padding:8px 12px;margin:2px 0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <b style="font-size:0.8rem;color:${i<state.cngStep?'#A5D6A7':'#ECEFF1'};">Step ${s.n}: ${s.t}</b>
-          <span style="font-size:0.75rem;font-weight:800;color:${i<state.cngStep?'var(--emerald)':'#90A4AE'};">${i<state.cngStep?'COMPLETED':'PENDING'}</span>
-        </div>
-        <div style="font-size:0.72rem;color:#CFD8DC;">${s.d}</div>
-      </div>
-    `).join('');
-  }
-  document.getElementById('gas-modal').classList.add('open');
-}
-
-function advanceCngStep(){
-  if(state.cngStep<5){
-    state.cngStep++;
-    state.cng+=40;
-    toast('⚙️ Advanced to CNG Step '+state.cngStep+'! (+40 m³ CNG)');
-    grantXP({energy:15});
-    openGasModal();
-  } else {
-    toast('✓ CNG Compression Chain at 100% capacity!');
-  }
-}
-
-/* ================= 4. CROP FIELD MODAL ================= */
-function openCropModal(){
-  let html='<div class="modal-hdr"><h3>🌾 Polyculture Companion Crop &amp; Vegetable Field</h3><button class="btn-close" id="crop-close">✕</button></div>'+
-    '<p style="font-size:0.8rem;color:#90A4AE;margin:0 0 12px">Polyculture Companion Crop field with Coastal Cherry Tomato, sweet potato, and legumes.</p>'+
-    '<p style="font-size:0.8rem;color:#90A4AE;margin:0 0 12px">Rotated rectangular agricultural field [-45°] on central dry loam [509,311]. Intercrops saline-hardy vegetables, tubers, and legumes using solar drip irrigation.</p>'+
-    '<div class="grid-2">';
-  state.cropBeds.forEach((bed,idx)=>{
-    const crop=FIELD_CROP_TYPES[bed.cropKey]||FIELD_CROP_TYPES.coastal_tomato;
-    html+=`
-      <div class="card-box green" style="padding:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <b style="font-size:0.82rem;color:#CCFF90">${bed.name}</b>
-          <span style="font-size:1.3rem;">${crop.icon}</span>
-        </div>
-        <div style="font-size:0.85rem;font-weight:800;color:#FFF;margin-top:2px;">${crop.label}</div>
-        <div style="font-size:0.75rem;color:#81C784;font-style:italic;">${crop.sciName}</div>
-        <div style="font-size:0.75rem;color:#CFD8DC;margin-top:6px;">
-          <div>Stage: <b>${STAGE_NAMES[bed.stage]||'Growing'}</b> · Moisture: <b>${bed.moisture}%</b></div>
-          <div>Growth Progress: <b>${Math.round(bed.progress)}%</b> ${bed.fertilized?'(🌱 Bio-Fertilized)':''}</div>
-        </div>
-        <div style="display:flex;gap:4px;margin-top:8px;">
-          <button class="btn btn-e" style="flex:1;padding:5px 8px;font-size:0.72rem" onclick="waterCropBed(${idx})">💧 Irrigate</button>
-          <button class="btn btn-c" style="flex:1;padding:5px 8px;font-size:0.72rem" onclick="fertilizeCropBed(${idx})">🌿 Compost</button>
-          <button class="btn btn-gold" style="flex:1;padding:5px 8px;font-size:0.72rem" ${bed.harvestReady?'':'disabled'} onclick="harvestCropBed(${idx})">🧺 Harvest</button>
-        </div>
-      </div>
-    `;
-  });
-  html+='</div>';
-  document.getElementById('crop-modal-content').innerHTML=html;
-  document.getElementById('crop-modal').classList.add('open');
-  const cc=document.getElementById('crop-close');if(cc)cc.onclick=()=>document.getElementById('crop-modal').classList.remove('open');
-}
-function waterCropBed(i){state.cropBeds[i].moisture=Math.min(100,state.cropBeds[i].moisture+20);toast('💧 Irrigated '+state.cropBeds[i].name);openCropModal();}
-function fertilizeCropBed(i){state.cropBeds[i].fertilized=true;toast('🌿 Seaweed compost applied to '+state.cropBeds[i].name);openCropModal();}
-function harvestCropBed(i){
-  const b=state.cropBeds[i];
-  if(!b.harvestReady)return;
-  b.stage=1;b.progress=20;b.harvestReady=false;
-  state.money+=45;state.globalO2+=30;
-  toast('🧺 Harvested '+b.name+' (+€45 · +30 O₂)!');
-  grantXP({farming:15});
-  openCropModal();
-}
-
-/* ================= 5. FLOWER MODAL ================= */
-function openFlowerModal(){
-  let html='<div class="modal-hdr"><h3>🌸 Decagonal Polyculture Botanical Flower Garden</h3><button class="btn-close" id="flower-close">✕</button></div>'+
-    '<p style="font-size:0.8rem;color:#90A4AE;margin:0 0 12px">Decagonal Polyculture Botanical Flower garden sown with Ipomoea pes-caprae and coastal blossoms.</p>'+
-    '<p style="font-size:0.8rem;color:#90A4AE;margin:0 0 12px">Decagonal polyculture garden beds [570,484]. Sown with salt-hardy coastal blossoms that provide pollinator corridors and essential floral oils.</p>'+
-    '<div class="grid-2">';
-  state.flowerBeds.forEach((bed,idx)=>{
-    const flower=FLOWER_TYPES[bed.flowerKey]||FLOWER_TYPES.beach_morning_glory;
-    html+=`
-      <div class="card-box pink" style="padding:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <b style="font-size:0.82rem;color:#FF80AB">${bed.name}</b>
-          <span style="font-size:1.3rem;">${flower.icon}</span>
-        </div>
-        <div style="font-size:0.85rem;font-weight:800;color:#FFF;margin-top:2px;">${flower.label}</div>
-        <div style="font-size:0.75rem;color:#80DEEA;font-style:italic;">${flower.sciName}</div>
-        <div style="font-size:0.75rem;color:#CFD8DC;margin-top:6px;">Freshness: <b>${bed.freshness}%</b> · Nectar Rating: <b>${'★'.repeat(flower.nectar)}</b></div>
-        <div style="display:flex;gap:4px;margin-top:8px;">
-          <button class="btn btn-e" style="flex:1;padding:5px 8px;font-size:0.72rem" onclick="tendFlowerBed(${idx})">💧 Water</button>
-          <button class="btn btn-gold" style="flex:1;padding:5px 8px;font-size:0.72rem" onclick="harvestFlowerBed(${idx})">🌸 Attar Harvest</button>
-        </div>
-      </div>
-    `;
-  });
-  html+='</div>';
-  document.getElementById('flower-modal-content').innerHTML=html;
-  document.getElementById('flower-modal').classList.add('open');
-  const fc=document.getElementById('flower-close');if(fc)fc.onclick=()=>document.getElementById('flower-modal').classList.remove('open');
-}
-function tendFlowerBed(i){state.flowerBeds[i].freshness=100;toast('💧 Tended '+state.flowerBeds[i].name);openFlowerModal();}
-function harvestFlowerBed(i){
-  state.money+=35;state.globalO2+=20;
-  toast('🌸 Harvested floral attar from '+state.flowerBeds[i].name+' (+€35)!');
-  grantXP({botany:12});
-  openFlowerModal();
-}
-
-/* ================= 6. GARAGE & STORAGE MODALS ================= */
-function openGarageModal(){
-  let html='<div class="modal-hdr"><h3>🚜 Farm Garage &amp; Mechanization Depot</h3><button class="btn-close" id="garage-close">✕</button></div>'+
-    '<p style="font-size:0.8rem;color:#90A4AE;margin:0 0 12px">Solar e-Tractor fleet, automated drip line spoolers, and mechanized tillage implements.</p>'+
-    '<div class="card-box">'+
-      '<b style="color:var(--gold)">Solar Ag-Tractor Fleet</b><br/>'+
-      '<span style="font-size:0.78rem;color:#CFD8DC">Status: Operational · Multiplier: <b>1.5× Field Speed</b></span>'+
-    '</div>'+
-    '<div class="card-box green">'+
-      '<b style="color:#A5D6A7">Automated Drip Irrigation Spooler</b><br/>'+
-      '<span style="font-size:0.78rem;color:#CFD8DC">Status: Connected to Desalination Core buffer</span>'+
-    '</div>';
-  document.getElementById('garage-modal-content').innerHTML=html;
-  document.getElementById('garage-modal').classList.add('open');
-  const gc=document.getElementById('garage-close');if(gc)gc.onclick=()=>document.getElementById('garage-modal').classList.remove('open');
-}
-
-function openStorageModal(){
-  let html='<div class="modal-hdr"><h3>🏚️ North Storage Silos &amp; Inventory</h3><button class="btn-close" id="storage-close">✕</button></div>'+
-    '<p style="font-size:0.8rem;color:#90A4AE;margin:0 0 12px">Central climate-controlled silos for harvested crops, sea salt, coconut oil, and seeds.</p>'+
-    '<div class="grid-2" style="font-size:0.78rem;color:#CFD8DC">'+
-      '<div class="card-box">🍅 Tomatoes: <b>'+state.storage.tomatoes+' kg</b></div>'+
-      '<div class="card-box">🍠 Sweet Potatoes: <b>'+state.storage.sweetPotatoes+' kg</b></div>'+
-      '<div class="card-box">🥥 Coconuts: <b>'+state.storage.coconuts+' units</b></div>'+
-      '<div class="card-box">🧂 Artisanal Sea Salt: <b>'+state.marineSaltKg+' kg</b></div>'+
-      '<div class="card-box">🥥 Cold-Pressed Oil: <b>'+state.cocoOil+' L</b></div>'+
-      '<div class="card-box">🦐 IQF Seafood Stock: <b>'+state.crabPrawnStockKg+' kg</b></div>'+
-    '</div>';
-  document.getElementById('storage-modal-content').innerHTML=html;
-  document.getElementById('storage-modal').classList.add('open');
-  const sc=document.getElementById('storage-close');if(sc)sc.onclick=()=>document.getElementById('storage-modal').classList.remove('open');
-}
-
-/* ================= 7. MASTERPLAN MODAL ================= */
-function openMasterplanModal(){
-  let html='<p style="font-size:0.8rem;color:#90A4AE;margin-bottom:12px;">Regenerative agricultural roadmap connecting Saint Martin Blue Lab with the active German farm (Ch.1 to Ch.5 progression).</p>';
-  MISSIONS.forEach(m=>{
-    const doneCount=m.subs.filter(s=>s.done).length;
-    const isAct=m.ch===state.currentChapter;
-    html+=`
-      <div class="card-box ${isAct?'green':''}" style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <b style="font-size:0.88rem;color:${isAct?'#CCFF90':'var(--teal)'};">Ch.${m.ch}: ${m.title}</b>
-          <span style="font-size:0.75rem;font-weight:800;color:${doneCount===m.subs.length?'var(--emerald)':'var(--gold)'};">${doneCount}/${m.subs.length} Completed</span>
-        </div>
-        <div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">
-          ${m.subs.map(s=>`
-            <div style="font-size:0.75rem;color:#CFD8DC;">
-              ${s.done?'✓':'○'} <b>Sub-Challenge ${s.id}:</b> ${s.title}
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  });
-  html+=`
-    <div style="margin-top:14px;border-top:1px solid rgba(0,229,255,0.25);padding-top:10px;">
-      <a href="../index.html" target="_blank" class="btn btn-e" style="width:100%;text-decoration:none;">🇩🇪 German Farm Link (index.html)</a>
-    </div>
-  `;
-  document.getElementById('master-body').innerHTML=html;
-  document.getElementById('master-modal').classList.add('open');
-}
-
-/* ================= 8. LABOUR MARKET MODAL ================= */
-function openLabourMarket(){
-  const container=document.getElementById('labour-cards');
-  if(!container)return;
-  container.innerHTML=WORKER_ROSTER.map((w,i)=>{
-    const hired=state.activeWorkers.includes(w.id);
-    return `
-      <div class="card-box" style="padding:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <b style="font-size:0.88rem;color:#FFF;">${w.icon} ${w.name}</b>
-          <span style="font-size:0.75rem;color:var(--gold);">€${w.dailyWage}/day</span>
-        </div>
-        <div style="font-size:0.78rem;color:var(--teal);">${w.role}</div>
-        <div style="font-size:0.72rem;color:#CFD8DC;margin:4px 0;">${w.perk}</div>
-        <button class="btn btn-e" style="width:100%;padding:5px;font-size:0.75rem;margin-top:4px;" ${hired?'disabled':''} onclick="hireWorker('${w.id}')">
-          ${hired?'✓ Recruited':'Hire Specialist (€'+w.hireCost+')'}
-        </button>
-      </div>
-    `;
-  }).join('');
-  document.getElementById('labour-modal').classList.add('open');
-}
-function hireWorker(id){
-  const w=WORKER_ROSTER.find(x=>x.id===id);
-  if(!w||state.money<w.hireCost)return;
-  state.money-=w.hireCost;
-  state.workers++;
-  state.activeWorkers.push(w.id);
-  toast('🧑‍🌾 Hired '+w.name+' ('+w.role+')!');
-  refreshUI();
-  openLabourMarket();
-}
-
-/* ================= 9. SEA DASHBOARD, SEAFOOD, DESAL, SALT ================= */
-function openSeaDashboard(){
-  document.getElementById('seadash-shi').textContent=Math.round(state.shi)+'%';
-  document.getElementById('seadash-do').textContent=Math.round(state.dissolvedO2)+'%';
-  document.getElementById('seadash-bess').textContent=Math.round(state.bessKwh)+' / 500 kWh';
-  document.getElementById('seadash-modal').classList.add('open');
-}
-function openSeafoodModal(){
-  document.getElementById('seafood-crab-val').textContent=state.crabPrawnStockKg+' kg';
-  document.getElementById('seafood-seaweed-val').textContent=state.seaweedStockKg+' kg';
-  document.getElementById('seafood-modal').classList.add('open');
-}
-function openDesalModal(){document.getElementById('desal-modal').classList.add('open');}
-function openSaltModal(){
-  document.getElementById('salt-stock-val').textContent=state.marineSaltKg+' kg';
-  document.getElementById('salt-modal').classList.add('open');
-}
-
-/* ================= 10. PLANETARY BIOME GLOBE MODAL ================= */
-function openGlobeModal(){
-  document.getElementById('globe-modal').classList.add('open');
-  renderBiomeGlobe();
-}
-
-let globeAngle=0;
-function renderBiomeGlobe(){
-  const canvas=document.getElementById('globe-canvas');
-  if(!canvas)return;
-  const ctx=canvas.getContext('2d');
-  const cx=140,cy=140,r=130;
-  ctx.clearRect(0,0,280,280);
-  // Ocean base
-  const g=ctx.createRadialGradient(cx-30,cy-30,20,cx,cy,r);
-  g.addColorStop(0,'#00B0FF');g.addColorStop(0.7,'#005B96');g.addColorStop(1,'#001F3F');
-  ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
-
-  // Continental patches rotating
-  globeAngle+=0.02;
-  ctx.save();
-  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();
-  ctx.fillStyle='#2E7D32';
-  for(let i=0;i<4;i++){
-    const gx=cx+Math.cos(globeAngle+i*1.6)*110;
-    const gy=cy+Math.sin(i)*40;
-    ctx.beginPath();ctx.ellipse(gx,gy,45,28,0.2,0,Math.PI*2);ctx.fill();
-  }
-  // Saint Martin dot (Bengal atoll)
-  const smX=cx+Math.cos(globeAngle+0.8)*90;
-  const smY=cy+20;
-  ctx.fillStyle='#FF1744';ctx.beginPath();ctx.arc(smX,smY,6,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#FFF';ctx.font='bold 10px Nunito';ctx.fillText('🇧🇩 Saint Martin',smX+8,smY+3);
-  ctx.restore();
-}
-
-/* ================= 11. BOAT SIMULATION ENGINE ================= */
-const boat={
-  mode:'birds', // 'birds' | 'fpv'
-  t0:0,pathT:0,yaw:0.15,speed:0,keys:{},engine:0
-};
-let boatRunning=false;
-
-function startBoat(){
-  const canvas=document.getElementById('boat-canvas');
-  const ctx=canvas.getContext('2d');
-  const resize=()=>{const d=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth*d;canvas.height=innerHeight*d};
-  resize();addEventListener('resize',resize);
-  if(!boat._w){
-    boat._w=1;
-    addEventListener('keydown',e=>{
-      boat.keys[e.key.toLowerCase()]=1;
-      if(e.key==='e'||e.key==='E')tryDock();
-    });
-    addEventListener('keyup',e=>{boat.keys[e.key.toLowerCase()]=0});
-  }
-  boat.mode='birds';boat.pathT=0;boat.t0=performance.now();boat.speed=0;boat.yaw=0.12;boat.engine=0;
-  document.getElementById('boat-hud').style.opacity='0';
-  document.getElementById('cin-text').style.display='flex';
-  const timer=document.getElementById('boat-timer');
-  if(timer){timer.style.display='block';timer.textContent="Bird's-eye approach · 18s";}
-  if(boatRunning)return;
-  boatRunning=true;
-  let last=performance.now();
-
-  (function loop(now){
-    if(document.getElementById('boat-tour').style.display==='none'){boatRunning=false;return;}
-    const dt=Math.min(0.05,(now-last)/1000);last=now;
-    const elapsed=(now-boat.t0)/1000;
-    if(boat.mode==='birds'){
-      const p=Math.min(1,elapsed/18);
-      boat.pathT=p*0.78;
-      const left=Math.max(0,Math.ceil(18-elapsed));
-      if(timer)timer.textContent=p<1?("Bird's-eye · ship to jetty · "+left+"s"):'Handing over to deck…';
-      document.getElementById('cin-p').textContent=
-        p<0.33?'Open water · island on the horizon…':
-        p<0.66?'Lagoon shallows · reef under clear water…':
-        'Aligning with the east T-jetty…';
-      if(elapsed>=18){
-        boat.mode='fpv';boat.speed=1.2;boat.engine=0.25;boat.pathT=0.78;
-        document.getElementById('cin-text').style.display='none';
-        if(timer)timer.style.display='none';
-        document.getElementById('boat-hud').style.opacity='1';
-        toast('Rear deck helm — gentle throttle to the pier, then E to dock');
-      }
-    }else{
-      let th=0,st=0;
-      if(boat.keys['w']||boat.keys['arrowup'])th=1;
-      if(boat.keys['s']||boat.keys['arrowdown'])th=-0.45;
-      if(boat.keys['a']||boat.keys['arrowleft'])st=-1;
-      if(boat.keys['d']||boat.keys['arrowright'])st=1;
-      boat.engine+=(th-boat.engine)*dt*1.2;
-      boat.speed+=(boat.engine*4.5-boat.speed)*dt*0.9;
-      const rudder=st*dt*0.35*(0.15+Math.abs(boat.speed)*0.12);
-      boat.yaw+=rudder;
-      const advance=Math.max(0,boat.speed)*dt*0.018*Math.max(0.2,Math.cos(boat.yaw*0.6));
-      boat.pathT=Math.min(0.98,Math.max(0.5,boat.pathT+advance));
-      document.getElementById('boat-spd-txt').textContent=Math.abs(boat.speed).toFixed(1)+' kn';
-      document.getElementById('boat-eng-txt').textContent=Math.round(boat.engine*100)+'%';
-    }
-    drawBoat(ctx,canvas);
-    requestAnimationFrame(loop);
-  })(last);
-}
-
-function tryDock(){
-  if(boat.mode!=='fpv')return;
-  if(boat.pathT<0.9){toast('Ease closer to the T-jetty (slow ahead)');return;}
-  if(Math.abs(boat.speed)>2.2){toast('Too fast — reduce throttle to dock');return;}
-  if(state.boatDest==='outer')enterOuter();else enterMain(true);
-}
-function boatWorld(){
-  const t=boat.pathT;
-  return {x:0.12+t*0.62,y:0.78-t*0.22,t};
-}
-function drawBoat(ctx,canvas){
-  const d=Math.min(devicePixelRatio||1,2),W=canvas.width/d,H=canvas.height/d;
-  ctx.setTransform(d,0,0,d,0,0);
-  const time=performance.now()*0.001;
-  if(boat.mode==='birds'){
-    drawBirdsEyeApproach(ctx,W,H,time);
-  }else{
-    drawRearDeckFPV(ctx,W,H,time);
-  }
-}
-
-function drawWater(ctx,W,H,time,horizon){
-  const sea=ctx.createLinearGradient(0,horizon,0,H);
-  sea.addColorStop(0,'#4dd0e1');sea.addColorStop(0.35,'#0288d1');sea.addColorStop(0.7,'#0277bd');sea.addColorStop(1,'#01579b');
-  ctx.fillStyle=sea;ctx.fillRect(0,horizon,W,H-horizon);
-  ctx.lineWidth=1.4;
-  for(let row=0;row<9;row++){
-    ctx.beginPath();
-    const base=horizon+14+row*(H-horizon)/10;
-    ctx.strokeStyle='rgba(255,255,255,'+(0.12+0.05*Math.sin(time+row))+')';
-    for(let x=0;x<=W;x+=8){
-      const y=base+Math.sin(x*0.025+time*1.8+row*0.7)*3.5+Math.sin(x*0.06+time)*1.5;
-      if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-    }
-    ctx.stroke();
-  }
-}
-
-function drawBirdsEyeApproach(ctx,W,H,time){
-  const sky=ctx.createLinearGradient(0,0,0,H*0.26);
-  sky.addColorStop(0,'#81d4fa');sky.addColorStop(1,'#e1f5fe');
-  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H*0.26);
-  drawWater(ctx,W,H,time,H*0.22);
-  drawMarineLife(ctx,W,H,time,{density:1,y0:0.55});
-  if(state.boatDest==='outer'){
-    drawGasPlatformIso(ctx,W*0.62,H*0.36,1.0,time);
-  }else{
-    drawIsland3D(ctx,W,H,W*0.58,H*0.38,1.05,time);
-  }
-  const w=boatWorld();
-  drawShip3DRear(ctx,w.x*W,w.y*H,1.45,0.08,0.35,time);
-}
-
-function drawRearDeckFPV(ctx,W,H,time){
-  const sky=ctx.createLinearGradient(0,0,0,H*0.4);
-  sky.addColorStop(0,'#4fc3f7');sky.addColorStop(0.55,'#b3e5fc');sky.addColorStop(1,'#e1f5fe');
-  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H*0.4);
-  drawWater(ctx,W,H,time,H*0.38);
-  drawMarineLife(ctx,W,H,time,{density:1.1,y0:0.52});
-  const near=boat.pathT;
-  if(state.boatDest==='outer'){
-    drawGasPlatformIso(ctx,W*(0.55+Math.sin(boat.yaw)*0.1),H*(0.4-near*0.04),0.85+near*0.9,time);
-  }else{
-    drawIsland3D(ctx,W,H,W*(0.52+Math.sin(boat.yaw)*0.1),H*(0.4-near*0.04),0.75+near*1.0,time);
-  }
-  drawShip3DRear(ctx,W*0.5,H*0.78,2.75,boat.yaw,Math.max(0.08,boat.engine),time);
-}
-
-function drawIsland3D(ctx,W,H,cx,cy,scale,time){
-  const sx=scale,sy=scale*0.55;
-  ctx.fillStyle='rgba(1,40,70,0.22)';ctx.beginPath();ctx.ellipse(cx+10,cy+30*sy,100*sx,38*sy,0.1,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#e8d5a8';ctx.beginPath();ctx.ellipse(cx,cy+8,102*sx,44*sy,0.08,0,Math.PI*2);ctx.fill();
-  const grass=ctx.createLinearGradient(cx,cy-36*sy,cx,cy+28*sy);
-  grass.addColorStop(0,'#c5e1a5');grass.addColorStop(0.55,'#9ccc65');grass.addColorStop(1,'#7cb342');
-  ctx.fillStyle=grass;ctx.beginPath();ctx.ellipse(cx,cy,90*sx,34*sy,0.08,0,Math.PI*2);ctx.fill();
-  // T-pier
-  ctx.fillStyle='#78909c';
-  const px=cx+72*sx,py=cy+10;
-  ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px+52*sx,py-14);ctx.lineTo(px+52*sx,py+6);ctx.lineTo(px,py+14);ctx.closePath();ctx.fill();
-}
-
-function drawShip3DRear(ctx,x,y,scale,yaw,engine,time){
-  ctx.save();ctx.translate(x,y);ctx.rotate(yaw*0.12);ctx.scale(scale,scale);
-  const hull=ctx.createLinearGradient(-30,-8,30,18);
-  hull.addColorStop(0,'#0d47a1');hull.addColorStop(0.5,'#1e88e5');hull.addColorStop(1,'#0d47a1');
-  ctx.fillStyle=hull;
-  ctx.beginPath();ctx.moveTo(-34,6);ctx.quadraticCurveTo(-10,14,20,12);ctx.lineTo(36,4);ctx.lineTo(-28,-4);ctx.closePath();ctx.fill();
-  ctx.strokeStyle='#ffd54f';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-30,4);ctx.lineTo(34,2);ctx.stroke();
-  ctx.fillStyle='#eceff1';ctx.fillRect(-8,-20,18,18);
-  ctx.fillStyle='#37474f';ctx.fillRect(-4,-16,6,6);ctx.fillRect(4,-16,6,6);
-  ctx.restore();
-}
-
-function drawMarineLife(ctx,W,H,time,opts){
-  const y0=(opts&&opts.y0)||0.58;
-  for(let i=0;i<8;i++){
-    const fx=W*((0.05+i*0.12+time*0.04)%1);
-    const fy=H*(y0+0.05+(i%4)*0.04)+Math.sin(time*2+i)*4;
-    ctx.fillStyle=['#ff7043','#26a69a','#ffd54f','#42a5f5'][i%4];
-    ctx.beginPath();ctx.ellipse(fx,fy,8,3,0.1,0,Math.PI*2);ctx.fill();
-  }
-}
-
-function showBoat(dest){
-  state.boatDest=dest||'main';
-  document.getElementById('island-zone').style.display='none';
-  document.getElementById('outer-zone').style.display='none';
-  document.getElementById('dive-zone').style.display='none';
-  document.getElementById('boat-tour').style.display='block';
-  startBoat();
-}
-function enterMain(fromBoat){
-  document.getElementById('boat-tour').style.display='none';
-  document.getElementById('outer-zone').style.display='none';
-  document.getElementById('dive-zone').style.display='none';
-  document.getElementById('island-zone').style.display='block';
-  if(fromBoat)toast('⚓ Docked safely at T-Jetty Cargo Pier!');
-  refreshUI();
-  if(!state.chapterIntroAck){
-    setTimeout(()=>{
-      document.getElementById('why-modal').classList.add('open');
-    },300);
-  }
-}
-function enterOuter(){
-  document.getElementById('boat-tour').style.display='none';
-  document.getElementById('island-zone').style.display='none';
-  document.getElementById('dive-zone').style.display='none';
-  document.getElementById('outer-zone').style.display='block';
-  startOuter();
-  refreshUI();
-}
-
-/* ================= 12. 3D OUTER GAS PLATFORM VIEW ================= */
-const GAS_TOUR=[
-  {id:'well',x:0.42,y:0.48,label:'Wellhead Riser',info:'Gas rises here from the offshore reservoir.'},
-  {id:'process',x:0.50,y:0.40,label:'Process Skid',info:'Dehydrates and desulfurizes raw natural gas.'},
-  {id:'compress',x:0.58,y:0.46,label:'Compressor',info:'Raises pressure to 200 bar for CNG storage.'},
-  {id:'bottles',x:0.38,y:0.55,label:'CNG Cascade',info:'High-pressure certified storage cylinder cascade.'},
-  {id:'heli',x:0.62,y:0.52,label:'Helipad Deck',info:'Crew transfer helicopter landing zone.'},
-  {id:'flare',x:0.55,y:0.32,label:'Flare Boom',info:'Emergency pressure relief boom (educational visual).'}
-];
-let outerRunning=false;
-let gasTourSeen={};
-
-function startOuter(){
-  const canvas=document.getElementById('outer-canvas');
-  const ctx=canvas.getContext('2d');
-  const resize=()=>{const d=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth*d;canvas.height=innerHeight*d};
-  resize();
-  canvas.onclick=function(e){
-    const r=canvas.getBoundingClientRect();
-    const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
-    for(const g of GAS_TOUR){
-      if(Math.hypot(x-g.x,y-g.y)<0.06){
-        if(!gasTourSeen[g.id]){gasTourSeen[g.id]=true;grantXP({energy:10});}
-        toast('⛽ '+g.label+' — '+g.info);
-        document.getElementById('gas-pins-val').textContent=Object.keys(gasTourSeen).length+' / 6';
-        return;
-      }
-    }
-  };
-  if(outerRunning)return;outerRunning=true;
-  (function loop(){
-    if(document.getElementById('outer-zone').style.display==='none'){outerRunning=false;return;}
-    resize();
-    const d=Math.min(devicePixelRatio||1,2),W=innerWidth,H=innerHeight,t=performance.now()*0.001;
-    ctx.setTransform(d,0,0,d,0,0);
-    const g=ctx.createLinearGradient(0,0,0,H);
-    g.addColorStop(0,'#4fc3f7');g.addColorStop(0.5,'#0288d1');g.addColorStop(1,'#01579b');
-    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-    drawMarineLife(ctx,W,H,t,{density:0.8,y0:0.65});
-    drawGasPlatformIso(ctx,W*0.5,H*0.48,1.4,t);
-    GAS_TOUR.forEach(function(g,i){
-      const px=g.x*W,py=g.y*H+Math.sin(t*2+i)*2;
-      ctx.beginPath();ctx.arc(px,py,12,0,Math.PI*2);
-      ctx.fillStyle=gasTourSeen[g.id]?'rgba(0,230,118,0.9)':'rgba(255,179,0,0.95)';
-      ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
-      ctx.fillStyle='#fff';ctx.font='bold 10px Nunito';ctx.textAlign='center';ctx.fillText(g.label,px,py+20);
-    });
-    requestAnimationFrame(loop);
-  })();
-}
-
-function drawGasPlatformIso(ctx,cx,cy,scale,time){
-  ctx.save();ctx.translate(cx,cy);ctx.scale(scale,scale);
-  ctx.strokeStyle='#37474f';ctx.lineWidth=5;
-  [[-55,10],[-15,25],[30,20],[70,5]].forEach(function(p){
-    ctx.beginPath();ctx.moveTo(p[0],0);ctx.lineTo(p[0]*0.7,70);ctx.stroke();
-  });
-  ctx.fillStyle='#ffb300';ctx.beginPath();ctx.moveTo(-70,0);ctx.lineTo(20,-40);ctx.lineTo(90,0);ctx.lineTo(0,35);ctx.closePath();ctx.fill();
-  ctx.fillStyle='#ffa000';ctx.beginPath();ctx.moveTo(-30,-30);ctx.lineTo(40,-65);ctx.lineTo(85,-30);ctx.lineTo(15,0);ctx.closePath();ctx.fill();
-  ctx.strokeStyle='#eceff1';ctx.lineWidth=2;
-  ctx.beginPath();ctx.moveTo(15,-30);ctx.lineTo(15,-130);ctx.lineTo(40,-100);ctx.moveTo(15,-130);ctx.lineTo(-10,-100);ctx.stroke();
-  // flame
-  ctx.fillStyle='rgba(255,87,34,'+(0.55+0.35*Math.sin(time*7))+')';
-  ctx.beginPath();ctx.arc(55,-115,9+Math.sin(time*9)*3,0,Math.PI*2);ctx.fill();
-  // CNG bottles
-  for(let i=0;i<5;i++){
-    ctx.fillStyle='#455a64';ctx.fillRect(-55+i*18,-5,12,26);
-    ctx.fillStyle='#90a4ae';ctx.fillRect(-55+i*18,-9,12,5);
-  }
-  // helipad
-  ctx.fillStyle='#546e7a';ctx.beginPath();ctx.arc(55,5,16,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('H',55,9);
-  ctx.restore();
-}
-
-/* ================= 13. 3D CORAL REEF DIVE ZONE ================= */
-let diveRunning=false;
-function startDive(){
-  document.getElementById('island-zone').style.display='none';
-  document.getElementById('dive-zone').style.display='block';
-  const canvas=document.getElementById('dive-canvas');
-  const ctx=canvas.getContext('2d');
-  const resize=()=>{const d=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth*d;canvas.height=innerHeight*d};
-  resize();
-  diveRunning=true;
-  (function loop(){
-    if(document.getElementById('dive-zone').style.display==='none'){diveRunning=false;return;}
-    resize();
-    const d=Math.min(devicePixelRatio||1,2),W=innerWidth,H=innerHeight,t=performance.now()*0.001;
-    ctx.setTransform(d,0,0,d,0,0);
-    const g=ctx.createLinearGradient(0,0,0,H);
-    g.addColorStop(0,'#00695c');g.addColorStop(0.5,'#004d40');g.addColorStop(1,'#00251a');
-    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-    // Draw coral shelves
-    for(let i=0;i<5;i++){
-      const cx=W*(0.15+i*0.18), cy=H*0.75+Math.sin(i)*20;
-      ctx.fillStyle=['#ff8a80','#80cbc4','#ffcc80','#ce93d8'][i%4];
-      ctx.beginPath();ctx.arc(cx,cy,45+i*5,Math.PI,0);ctx.fill();
-    }
-    drawMarineLife(ctx,W,H,t,{density:1.5,y0:0.45});
-    requestAnimationFrame(loop);
-  })();
+  const p=document.getElementById('task-hud');
+  if(!p)return;
+  p.classList.toggle('open');
+  if(p.classList.contains('open'))renderTaskHud();
 }
 
 /* ================= 14. 2D / 3D ISLAND MAP RENDERING ENGINE ================= */
@@ -1830,7 +1720,6 @@ const IslandMap={
     if(this.hasBg){
       ctx.drawImage(this.bg,0,0,1920,1080);
     }else{
-      // Fallback deep ocean base while image loads
       const sea=ctx.createLinearGradient(0,0,0,1080);
       sea.addColorStop(0,'#00182E');sea.addColorStop(0.4,'#023047');sea.addColorStop(0.8,'#004D6E');sea.addColorStop(1,'#002138');
       ctx.fillStyle=sea;ctx.fillRect(0,0,1920,1080);
@@ -1839,20 +1728,28 @@ const IslandMap={
     // 2. Far Away Island Gas Platform (1728, 108) on Top of Background
     drawGasPlatformIso(ctx,1728,105,0.7,this.time);
 
-    // ENLARGED DECAGON 1 (West Saline / Mangrove: Center 380, 480, Radius 210)
-    this.drawEnlargedDecagon(ctx,380,480,210,'#00E676','dec1');
+    // 3. Paved Coral-Gravel Road Network Lines
+    this.drawRoadNetwork(ctx);
 
-    // ENLARGED DECAGON 2 (East Dune Canopy: Center 1520, 480, Radius 210)
-    this.drawEnlargedDecagon(ctx,1520,480,210,'#FFB300','dec2');
+    // 4. DECAGON 1: MANGROVE & O2 DECAGON (Center: 380, 480, Radius: 210, 5 Plots)
+    this.drawDecagon(ctx,380,480,210,'#00E676','dec1');
 
-    // Rotated -45° Vegetable Field
+    // 5. DECAGON 2: COASTAL FRUIT ORCHARD (Center: 1340, 390, Radius: 175, 5 Plots - Between Wind & BESS)
+    this.drawDecagon(ctx,1340,390,175,'#FFB300','dec2');
+
+    // 6. Rotated -45° Vegetable Field
     ctx.save();
     ctx.translate(509,311);ctx.rotate(-45*Math.PI/180);
     ctx.fillStyle='rgba(118, 255, 3, 0.22)';ctx.strokeStyle='#76FF03';ctx.lineWidth=2.5;
     ctx.strokeRect(-65,-35,130,70);ctx.fillRect(-65,-35,130,70);
+    if(!state.buildings.vegetable_garden.built){
+      ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(-65,-35,130,70);
+      ctx.fillStyle='#FFD54F';ctx.font='bold 11px Nunito';ctx.textAlign='center';
+      ctx.fillText('🔨 BUILD FIELD',0,5);
+    }
     ctx.restore();
 
-    // Decagonal Flower Garden
+    // 7. Decagonal Flower Garden
     ctx.save();
     ctx.translate(570,484);
     ctx.fillStyle='rgba(255, 64, 129, 0.25)';ctx.strokeStyle='#FF4081';ctx.lineWidth=2.5;
@@ -1863,15 +1760,55 @@ const IslandMap={
       if(i===0)ctx.moveTo(gx,gy);else ctx.lineTo(gx,gy);
     }
     ctx.closePath();ctx.fill();ctx.stroke();
+    if(!state.buildings.flower_garden.built){
+      ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fill();
+      ctx.fillStyle='#FF80AB';ctx.font='bold 11px Nunito';ctx.textAlign='center';
+      ctx.fillText('🌸 BUILD GARDEN',0,5);
+    }
     ctx.restore();
 
-    // Draw All 20 Podium Markers
+    // 8. 3 Beach Sand Mud Rock Exploration Nodes
+    this.drawSandRocks(ctx);
+
+    // 9. All 20 Podium Markers
     SITES.forEach(s=>{
       this.drawMarker(ctx,s.x1080,s.y1080,s.icon,s.title,s.sub,s.color);
     });
   },
 
-  drawEnlargedDecagon(ctx,cx,cy,r,color,decId){
+  drawRoadNetwork(ctx){
+    ctx.save();
+    ctx.strokeStyle='rgba(245, 230, 202, 0.55)';
+    ctx.lineWidth=9;
+    ctx.lineCap='round';
+    ctx.lineJoin='round';
+    ctx.beginPath();
+    // Pier to Decagon 2 Orchard
+    ctx.moveTo(1415,489);ctx.quadraticCurveTo(1380,440,1340,390);
+    // Decagon 2 to BESS Substation to Storage
+    ctx.moveTo(1340,390);ctx.quadraticCurveTo(1200,320,1064,257);ctx.lineTo(1029,191);
+    // BESS to Freshwater Lake to Crew Shed to Garage
+    ctx.moveTo(1064,257);ctx.quadraticCurveTo(1030,400,1008,535);ctx.quadraticCurveTo(900,440,808,343);ctx.lineTo(705,250);
+    // Garage to Vegetable Garden to Flower Garden
+    ctx.moveTo(705,250);ctx.lineTo(509,311);ctx.quadraticCurveTo(540,400,570,484);
+    // Flower Garden to Decagon 1 Mangrove
+    ctx.moveTo(570,484);ctx.quadraticCurveTo(475,480,380,480);
+    // Decagon 1 to Salt Brine to Desalination
+    ctx.moveTo(380,480);ctx.lineTo(227,499);ctx.quadraticCurveTo(200,600,190,704);
+    // Decagon 1 to Sand Mud Rocks along Beach Shelf
+    ctx.moveTo(380,480);ctx.quadraticCurveTo(320,550,280,620);ctx.quadraticCurveTo(310,660,340,700);ctx.quadraticCurveTo(390,710,440,720);
+    ctx.stroke();
+
+    // Road Inner Dashed Stepping Line
+    ctx.strokeStyle='rgba(188, 170, 164, 0.8)';
+    ctx.lineWidth=2;
+    ctx.setLineDash([5,7]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  },
+
+  drawDecagon(ctx,cx,cy,r,color,decId){
     ctx.save();
     // 10-sided polygon
     ctx.beginPath();
@@ -1884,41 +1821,70 @@ const IslandMap={
     ctx.fillStyle=decId==='dec1'?'rgba(0, 230, 118, 0.15)':'rgba(255, 179, 0, 0.15)';
     ctx.strokeStyle=color;ctx.lineWidth=4;ctx.fill();ctx.stroke();
 
-    // 3 Sub-Plots
-    const p1=decId+'.plot1', p2=decId+'.plot2', p3=decId+'.plot3';
-    [p1,p2,p3].forEach(pid=>{
+    // 5 Sub-Plots in each Decagon
+    const plotIds = decId==='dec1'
+      ? ['dec1.plot1','dec1.plot2','dec1.plot3','dec1.plot4','dec1.plot5']
+      : ['dec2.plot1','dec2.plot2','dec2.plot3','dec2.plot4','dec2.plot5'];
+
+    plotIds.forEach(pid=>{
       const def=PLOT_DEFS[pid];
       if(!def)return;
       const plot=state.plots[pid];
       const px=def.x1080, py=def.y1080;
 
-      ctx.beginPath();ctx.arc(px,py,34,0,Math.PI*2);
-      ctx.fillStyle='rgba(5, 15, 25, 0.85)';ctx.fill();
+      ctx.beginPath();ctx.arc(px,py,28,0,Math.PI*2);
+      ctx.fillStyle='rgba(5, 15, 25, 0.88)';ctx.fill();
       ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
 
-      if(plot.status==='mud_rock'){
-        ctx.fillStyle='#FFD54F';ctx.font='16px sans-serif';ctx.textAlign='center';
-        ctx.fillText('🪨',px,py+5);
-        ctx.fillStyle='#FFF';ctx.font='bold 9px Nunito';
-        ctx.fillText('MUD ROCK',px,py+20);
-      } else if(plot.status==='clearing'){
-        ctx.fillStyle='#FFB300';ctx.font='14px sans-serif';ctx.textAlign='center';
+      if(plot.status==='barren' || plot.status==='mud_rock'){
+        ctx.fillStyle='#FFD54F';ctx.font='14px sans-serif';ctx.textAlign='center';
+        ctx.fillText('🪨',px,py+4);
+        ctx.fillStyle='#FFF';ctx.font='bold 8px Nunito';
+        ctx.fillText('UNTILLED',px,py+17);
+      } else if(plot.status==='tilling' || plot.status==='clearing'){
+        ctx.fillStyle='#FFB300';ctx.font='13px sans-serif';ctx.textAlign='center';
         ctx.fillText('⛏️',px,py+2);
-        ctx.fillStyle='#00E5FF';ctx.font='bold 10px Nunito';
-        ctx.fillText(plot.clearingProgress+'%',px,py+18);
+        ctx.fillStyle='#00E5FF';ctx.font='bold 9px Nunito';
+        ctx.fillText(plot.tillingProgress+'%',px,py+16);
       } else if(plot.status==='tilled'){
-        ctx.fillStyle='#A5D6A7';ctx.font='16px sans-serif';ctx.textAlign='center';
-        ctx.fillText('🌱',px,py+5);
-        ctx.fillStyle='#FFF';ctx.font='bold 9px Nunito';
-        ctx.fillText('TILLED',px,py+20);
+        ctx.fillStyle='#A5D6A7';ctx.font='14px sans-serif';ctx.textAlign='center';
+        ctx.fillText('🌱',px,py+4);
+        ctx.fillStyle='#FFF';ctx.font='bold 8px Nunito';
+        ctx.fillText('TILLED',px,py+17);
       } else if(plot.status==='growing' && plot.trees.length>0){
         const tree=plot.trees[0];
-        const spec=TREE_TYPES[tree.speciesKey];
-        ctx.font='18px sans-serif';ctx.textAlign='center';
-        ctx.fillText(spec.icon,px,py+4);
-        ctx.fillStyle='#00E676';ctx.font='bold 9px Nunito';
-        ctx.fillText(Math.round(tree.progressPercent)+'%',px,py+19);
+        const spec=TREE_TYPES[tree.speciesKey]||TREE_TYPES.coconut_palm;
+        ctx.font='16px sans-serif';ctx.textAlign='center';
+        ctx.fillText(spec.icon,px,py+3);
+        ctx.fillStyle='#00E676';ctx.font='bold 8.5px Nunito';
+        ctx.fillText(Math.round(tree.progressPercent)+'%',px,py+16);
       }
+    });
+    ctx.restore();
+  },
+
+  drawSandRocks(ctx){
+    ctx.save();
+    Object.values(state.sandRocks).forEach(rock=>{
+      const rx=rock.x1080, ry=rock.y1080;
+      // Ground shadow
+      ctx.fillStyle='rgba(0,0,0,0.45)';ctx.beginPath();ctx.ellipse(rx,ry+12,18,7,0,0,Math.PI*2);ctx.fill();
+      // Circle badge
+      ctx.fillStyle=rock.cleared?'rgba(0, 230, 118, 0.25)':'rgba(20, 25, 30, 0.94)';
+      ctx.strokeStyle=rock.cleared?'#00E676':'#FFCA28';
+      ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(rx,ry,16,0,Math.PI*2);ctx.fill();ctx.stroke();
+
+      ctx.font='12px sans-serif';ctx.textAlign='center';
+      ctx.fillText(rock.cleared?'✅':'⛏️',rx,ry+4);
+
+      // Label pill
+      ctx.fillStyle='rgba(8, 20, 32, 0.92)';
+      ctx.strokeStyle=rock.cleared?'#00E676':'#FFCA28';
+      ctx.lineWidth=1;
+      ctx.beginPath();ctx.roundRect(rx-55,ry-28,110,18,9);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#FFF';ctx.font='bold 8px Nunito';
+      ctx.fillText(rock.cleared?'EXPLORED':rock.name,rx,ry-16);
     });
     ctx.restore();
   },
@@ -1946,16 +1912,25 @@ const IslandMap={
     const x=(cx-rect.left)/this.scaleX;
     const y=(cy-rect.top)/this.scaleY;
 
-    // 1. Check Sub-Plot Hits (dec1 and dec2 6 plots)
+    // 1. Check Sub-Plot Hits (dec1 and dec2 10 plots)
     for(const pid of Object.keys(PLOT_DEFS)){
       const def=PLOT_DEFS[pid];
-      if(Math.hypot(x-def.x1080,y-def.y1080)<38){
+      if(Math.hypot(x-def.x1080,y-def.y1080)<34){
         openSubplotModal(pid);
         return;
       }
     }
 
-    // 2. Check Marker Hits
+    // 2. Check 3 Beach Sand Mud Rock Exploration Nodes
+    for(const rid of Object.keys(state.sandRocks)){
+      const rock=state.sandRocks[rid];
+      if(Math.hypot(x-rock.x1080,y-rock.y1080)<30){
+        openSandRockModal(rid);
+        return;
+      }
+    }
+
+    // 3. Check Marker Hits
     for(const s of SITES){
       if(Math.hypot(x-s.x1080,y-s.y1080)<48){
         this.handleAction(s.action);
@@ -1965,8 +1940,8 @@ const IslandMap={
   },
 
   handleAction(a){
-    if(a==='crop_field')openCropModal();
-    else if(a==='flower_garden')openFlowerModal();
+    if(a==='crop_field')checkOrOpenGarden('vegetable_garden');
+    else if(a==='flower_garden')checkOrOpenGarden('flower_garden');
     else if(a==='garage')openGarageModal();
     else if(a==='storage')openStorageModal();
     else if(a==='seafood')openSeafoodModal();
@@ -1974,32 +1949,165 @@ const IslandMap={
     else if(a==='salt')openSaltModal();
     else if(a==='seadash')openSeaDashboard();
     else if(a==='crew')openLabourMarket();
-    else if(a==='plot_dec1')openSubplotModal('dec1.plot1');
-    else if(a==='plot_dec2')openSubplotModal('dec2.plot1');
     else if(a==='dive')startDive();
     else if(a==='gas')openGasModal();
     else if(a==='boat')showBoat('main');
-    else if(a==='trade')openMasterplanModal();
+    else if(a==='plot_dec1')openSubplotModal('dec1.plot1');
+    else if(a==='plot_dec2')openSubplotModal('dec2.plot1');
   }
 };
 
-/* ================= 15. DOM BINDINGS & INIT ================= */
-document.addEventListener('DOMContentLoaded',()=>{
+/* ================= 15. ISOMETRIC GAS PLATFORM RENDERING ================= */
+function drawGasPlatformIso(ctx,cx,cy,scale,time){
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.scale(scale,scale);
+
+  // Platform steel legs
+  ctx.strokeStyle='#78909C';ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.moveTo(-60,20);ctx.lineTo(-60,65);
+  ctx.moveTo(60,20);ctx.lineTo(60,65);
+  ctx.moveTo(-20,30);ctx.lineTo(-20,70);
+  ctx.moveTo(20,30);ctx.lineTo(20,70);
+  ctx.stroke();
+
+  // Cross braces
+  ctx.lineWidth=1.5;ctx.strokeStyle='rgba(120,144,156,0.6)';
+  ctx.beginPath();
+  ctx.moveTo(-60,30);ctx.lineTo(60,60);
+  ctx.moveTo(60,30);ctx.lineTo(-60,60);
+  ctx.stroke();
+
+  // Main deck
+  ctx.fillStyle='#37474F';ctx.strokeStyle='#B0BEC5';ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(0,-20);ctx.lineTo(80,10);ctx.lineTo(0,40);ctx.lineTo(-80,10);
+  ctx.closePath();ctx.fill();ctx.stroke();
+
+  // Yellow derrick crane
+  ctx.strokeStyle='#FFD600';ctx.lineWidth=2.5;
+  ctx.beginPath();
+  ctx.moveTo(-20,-10);ctx.lineTo(-10,-60);ctx.lineTo(0,-10);
+  ctx.moveTo(-10,-60);ctx.lineTo(-10,-10);
+  ctx.stroke();
+
+  // Helipad
+  ctx.fillStyle='#263238';ctx.strokeStyle='#00E5FF';ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(45,5,25,14,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#00E5FF';ctx.font='bold 11px JetBrains Mono';ctx.textAlign='center';
+  ctx.fillText('H',45,9);
+
+  // Flare boom & animated flame
+  ctx.strokeStyle='#CFD8DC';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(-50,0);ctx.lineTo(-95,-35);ctx.stroke();
+  const flameR=6 + Math.sin(time*8)*2;
+  ctx.fillStyle='#FF5722';ctx.beginPath();ctx.arc(-96,-37,flameR,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#FFEB3B';ctx.beginPath();ctx.arc(-96,-37,flameR*0.5,0,Math.PI*2);ctx.fill();
+
+  ctx.restore();
+}
+
+/* ================= 16. BOAT SIMULATION ENGINE ================= */
+let boatActive=false, boatApproachTime=18, boatT=0;
+function startBoat(){
+  const c=document.getElementById('boat-canvas');
+  if(!c)return;
+  const ctx=c.getContext('2d');
+  c.width=innerWidth;c.height=innerHeight;
+  addEventListener('resize',()=>{c.width=innerWidth;c.height=innerHeight;});
+
+  const bLoop=()=>{
+    if(document.getElementById('boat-tour').style.display==='block'){
+      boatT+=0.016;
+      ctx.fillStyle='#00182E';ctx.fillRect(0,0,c.width,c.height);
+      // Bird's eye vessel
+      ctx.fillStyle='#FFFFFF';ctx.beginPath();
+      const bx=c.width*0.5+Math.sin(boatT*0.5)*40;
+      const by=c.height*0.5+Math.cos(boatT*0.3)*30;
+      ctx.ellipse(bx,by,32,14,boatT*0.2,0,Math.PI*2);ctx.fill();
+      // Wake foam
+      ctx.strokeStyle='rgba(0,229,255,0.4)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(bx-25,by,16,0,Math.PI*2);ctx.stroke();
+
+      const rem=Math.max(0,Math.round(18 - boatT));
+      const tp=document.getElementById('boat-timer');
+      if(tp)tp.textContent='Approach · '+rem+'s';
+
+      if(boatT>=18){
+        enterMain(true);
+      }
+    }
+    requestAnimationFrame(bLoop);
+  };
+  requestAnimationFrame(bLoop);
+}
+
+function showBoat(dest){
+  boatT=0;
+  document.getElementById('island-zone').style.display='none';
+  document.getElementById('outer-zone').style.display='none';
+  document.getElementById('dive-zone').style.display='none';
+  document.getElementById('boat-tour').style.display='block';
+}
+
+function enterMain(fromSkip){
+  document.getElementById('boat-tour').style.display='none';
+  document.getElementById('outer-zone').style.display='none';
+  document.getElementById('dive-zone').style.display='none';
+  document.getElementById('island-zone').style.display='block';
+  IslandMap.resize();
+  if(!state.chapterIntroAck){
+    state.chapterIntroAck=true;
+    document.getElementById('why-modal').classList.add('open');
+  }
+}
+
+function enterOuter(){
+  document.getElementById('island-zone').style.display='none';
+  document.getElementById('boat-tour').style.display='none';
+  document.getElementById('dive-zone').style.display='none';
+  document.getElementById('outer-zone').style.display='block';
+}
+
+function startDive(){
+  document.getElementById('island-zone').style.display='none';
+  document.getElementById('dive-zone').style.display='block';
+  state.scans++;
+  toast('🤿 Descended to Living Coral Reef Shelf!');
+}
+
+/* ================= 17. INITIALIZATION & DOM BINDINGS ================= */
+window.addEventListener('DOMContentLoaded',()=>{
+  // Canvas initialization
   IslandMap.init(document.getElementById('island-canvas'));
-  refreshUI();
+  renderScoreboard('scoreboard');
   startBoat();
 
-  // Top Nav
+  // Top Nav Handlers
   document.getElementById('btn-blueprint').onclick=()=>document.getElementById('blueprint-modal').classList.add('open');
-  const bpc=document.getElementById('bp-close');if(bpc)bpc.onclick=()=>document.getElementById('blueprint-modal').classList.remove('open');
-  const enc=document.getElementById('enc-close');if(enc)enc.onclick=()=>document.getElementById('encyclopedia-modal').classList.remove('open');
+  document.getElementById('bp-close').onclick=()=>document.getElementById('blueprint-modal').classList.remove('open');
   document.getElementById('btn-encyclopedia').onclick=openEncyclopediaModal;
-  document.getElementById('btn-boat-nav').onclick=()=>showBoat('main');
+  document.getElementById('enc-close').onclick=()=>document.getElementById('encyclopedia-modal').classList.remove('open');
   document.getElementById('btn-sea-dash').onclick=openSeaDashboard;
+  document.getElementById('sd-close').onclick=()=>document.getElementById('seadash-modal').classList.remove('open');
+  document.getElementById('scoreboard-close').onclick=()=>document.getElementById('scoreboard-modal').classList.remove('open');
   document.getElementById('btn-globe').onclick=openGlobeModal;
+  document.getElementById('globe-close').onclick=()=>document.getElementById('globe-modal').classList.remove('open');
   document.getElementById('btn-masterplan').onclick=openMasterplanModal;
+  document.getElementById('master-close').onclick=()=>document.getElementById('master-modal').classList.remove('open');
+  document.getElementById('btn-boat-nav').onclick=()=>showBoat('main');
+  document.getElementById('btn-fullscreen').onclick=toggleFullscreenMode;
   document.getElementById('btn-menu').onclick=()=>document.getElementById('floatMenu').classList.toggle('open');
   document.getElementById('menu-close').onclick=()=>document.getElementById('floatMenu').classList.remove('open');
+
+  // Skip Boat Button
+  document.getElementById('btn-skip-boat').onclick=()=>enterMain(true);
+  document.getElementById('btn-dock-boat').onclick=()=>enterMain(true);
+
+  // Initial Onboarding Modal
+  document.getElementById('why-ack').onclick=()=>document.getElementById('why-modal').classList.remove('open');
+  document.getElementById('why-close').onclick=()=>document.getElementById('why-modal').classList.remove('open');
 
   // Task Capsule & HUD
   document.getElementById('task-capsule').onclick=toggleTaskHud;
@@ -2012,7 +2120,19 @@ document.addEventListener('DOMContentLoaded',()=>{
     grantXP({farming:25,marine:25});
   };
 
-  // Close modals
+  // Drawer Menu Shortcuts
+  const closeMenu=()=>{const m=document.getElementById('floatMenu');if(m)m.classList.remove('open');};
+  document.getElementById('menu-blueprint').onclick=()=>{closeMenu();document.getElementById('blueprint-modal').classList.add('open');};
+  document.getElementById('menu-encyclopedia').onclick=()=>{closeMenu();openEncyclopediaModal();};
+  document.getElementById('menu-masterplan').onclick=()=>{closeMenu();openMasterplanModal();};
+  document.getElementById('menu-scoreboard').onclick=()=>{closeMenu();openScoreboardModal();};
+  document.getElementById('menu-labour').onclick=()=>{closeMenu();openLabourMarket();};
+  document.getElementById('menu-boat').onclick=()=>{closeMenu();showBoat('main');};
+  document.getElementById('menu-globe').onclick=()=>{closeMenu();openGlobeModal();};
+  document.getElementById('menu-dive').onclick=()=>{closeMenu();startDive();};
+  document.getElementById('menu-fullscreen').onclick=()=>{closeMenu();toggleFullscreenMode();};
+
+  // Modals Close-All Listener
   document.querySelectorAll('.btn-close').forEach(b=>{
     b.onclick=(e)=>{
       const m=b.closest('.modal-overlay');
@@ -2020,65 +2140,28 @@ document.addEventListener('DOMContentLoaded',()=>{
     };
   });
 
-  // Drawer menu shortcuts
-  const closeMenu=()=>{const m=document.getElementById('floatMenu');if(m)m.classList.remove('open');};
-  document.getElementById('menu-blueprint').onclick=()=>{closeMenu();document.getElementById('blueprint-modal').classList.add('open');};
-  document.getElementById('menu-encyclopedia').onclick=()=>{closeMenu();openEncyclopediaModal();};
-  document.getElementById('menu-gas').onclick=()=>{closeMenu();openGasModal();};
-  document.getElementById('menu-boat').onclick=()=>{closeMenu();showBoat('main');};
-  document.getElementById('menu-crop').onclick=()=>{closeMenu();openCropModal();};
-  document.getElementById('menu-flower').onclick=()=>{closeMenu();openFlowerModal();};
-  document.getElementById('menu-garage').onclick=()=>{closeMenu();openGarageModal();};
-  document.getElementById('menu-storage').onclick=()=>{closeMenu();openStorageModal();};
-  document.getElementById('menu-seafood').onclick=()=>{closeMenu();openSeafoodModal();};
-  document.getElementById('menu-desal').onclick=()=>{closeMenu();openDesalModal();};
-  document.getElementById('menu-salt').onclick=()=>{closeMenu();openSaltModal();};
-  document.getElementById('menu-seadash').onclick=()=>{closeMenu();openSeaDashboard();};
-  document.getElementById('menu-labour').onclick=()=>{closeMenu();openLabourMarket();};
-  document.getElementById('menu-globe').onclick=()=>{closeMenu();openGlobeModal();};
-  document.getElementById('menu-dive').onclick=()=>{closeMenu();startDive();};
+  // Outer Zone Navigation
+  const btnOuterIsl=document.getElementById('btn-outer-island');
+  if(btnOuterIsl)btnOuterIsl.onclick=()=>enterMain(false);
+  const btnOuterCng=document.getElementById('btn-outer-cng');
+  if(btnOuterCng)btnOuterCng.onclick=openGasModal;
 
-  // Gas Modal
-  document.getElementById('btn-advance-cng').onclick=advanceCngStep;
-  document.getElementById('btn-visit-gas-3d').onclick=()=>{
-    document.getElementById('gas-modal').classList.remove('open');
-    enterOuter();
-  };
-
-  // Outer Zone Nav
-  document.getElementById('btn-outer-island').onclick=()=>enterMain(false);
-  document.getElementById('btn-outer-cng').onclick=openGasModal;
-
-  // Boat HUD Nav
-  document.getElementById('btn-skip-boat').onclick=()=>state.boatDest==='outer'?enterOuter():enterMain(true);
-  document.getElementById('btn-dock-boat').onclick=tryDock;
-
-  // Dive Zone Nav
-  document.getElementById('btn-surface').onclick=()=>enterMain(false);
-  document.getElementById('btn-dive-scan').onclick=()=>{
+  // Dive Zone Surface Button
+  const btnSurf=document.getElementById('btn-surface');
+  if(btnSurf)btnSurf.onclick=()=>enterMain(false);
+  const btnScan=document.getElementById('btn-dive-scan');
+  if(btnScan)btnScan.onclick=()=>{
     state.scans++;
-    toast('🔬 Coral polyp scan logged! Healthy zooxanthellae density.');
-    grantXP({marine:15});
-    updateTaskProgress();
+    toast('🔬 Scanned Acropora coral polyps! Zooxanthellae density optimal.');
+    grantXP({marine:30});
   };
 
-  // Encyclopedia tabs
-  document.querySelectorAll('#encyclopedia-tabs .tab-btn').forEach(btn=>{
-    btn.onclick=()=>{
-      document.querySelectorAll('#encyclopedia-tabs .tab-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      renderEncyclopediaCards(btn.dataset.tab);
+  // Close modals when clicking backdrop
+  document.querySelectorAll('.modal-overlay').forEach(ov=>{
+    ov.onclick=(e)=>{
+      if(e.target===ov)ov.classList.remove('open');
     };
   });
-
-  // Chapter 1 Intro Ack
-  document.getElementById('why-ack').onclick=()=>{
-    document.getElementById('why-modal').classList.remove('open');
-    state.chapterIntroAck=true;
-    toast('Chapter 1 active — Good luck, Commander!');
-  };
-
-  // Initial setup done
 });
 </script>
 </body>
