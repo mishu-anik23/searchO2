@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>Saint Martin's Blue Lab · searchO2</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800;900&family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --pine:#1b5e20;--forest:#2e7d32;--lime:#81c784;--accent:#00bcd4;
+  --marine:#0277bd;--ocean:#003366;--wood:#5d4037;--earth:#3e2723;
+  --cream:#fbf6ec;--card:#ffffff;--gold:#ffb300;--red:#c62828;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;font-family:Nunito,system-ui,sans-serif;background:#001018;color:#e8f4f2}
+section{position:fixed;inset:0}
+#island-zone,#outer-zone,#dive-zone{display:none}
+canvas{display:block;width:100%;height:100%}
+
+/* HUD & DOCKS */
+.hud{position:absolute;inset:0;pointer-events:none;z-index:10}
+.hud>*{pointer-events:auto}
+
+/* TOP SCOREBOARD CHIPS */
+.scoreboard{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:96vw;z-index:20}
+.sb-chip{background:rgba(251,246,236,0.95);color:var(--pine);border:1.5px solid rgba(46,125,50,0.45);border-radius:12px;padding:5px 9px;font-size:0.72rem;font-weight:800;box-shadow:0 4px 12px rgba(0,0,0,0.22);white-space:nowrap;display:flex;align-items:center;gap:4px;cursor:pointer;transition:transform .15s}
+.sb-chip:hover{transform:translateY(-1px);border-color:var(--forest)}
+.sb-chip .v{color:#1565c0;font-weight:900}
+.sb-chip.shi{border-color:#4fc3f7;background:rgba(224,247,250,0.96)}.sb-chip.shi .v{color:#00796b}
+.sb-chip.do{border-color:#80deea;background:rgba(224,242,241,0.96)}.sb-chip.do .v{color:#00695c}
+.sb-chip.xp{border-color:#ffd54f;background:rgba(255,248,225,0.96)}.sb-chip.xp .v{color:#f57f17}
+.sb-chip.power{border-color:#a5d6a7;background:rgba(232,245,233,0.96)}.sb-chip.power .v{color:#2e7d32}
+
+/* TASK CAPSULE */
+.task-capsule{position:absolute;left:14px;bottom:14px;display:flex;align-items:center;gap:8px;background:rgba(251,246,236,0.96);color:var(--pine);border:1.5px solid rgba(46,125,50,0.5);border-radius:999px;padding:8px 14px 8px 10px;box-shadow:0 6px 20px rgba(0,0,0,0.3);cursor:pointer;z-index:25;max-width:min(440px,72vw);user-select:none;transition:all .18s}
+.task-capsule:hover{background:#ffffff;border-color:var(--forest);transform:scale(1.02)}
+.task-capsule .pulse{width:11px;height:11px;border-radius:50%;background:#43a047;animation:pulseDot 1.6s infinite;flex-shrink:0}
+@keyframes pulseDot{70%{box-shadow:0 0 0 10px rgba(67,160,71,0)}100%{box-shadow:0 0 0 0 rgba(67,160,71,0)}}
+.task-capsule .txt{font-size:0.78rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.roadmap-btn{border:none;background:#e8f5e9;border-radius:10px;padding:5px 7px;cursor:pointer;font-size:0.95rem;margin-left:4px}
+
+/* CORNER NAV BUTTONS */
+.corner-nav{position:absolute;bottom:14px;right:14px;display:flex;gap:8px;z-index:25}
+.chip-btn{width:46px;height:46px;border-radius:50%;border:2px solid #4fc3f7;display:grid;place-items:center;font-size:1.2rem;text-decoration:none;background:radial-gradient(circle at 30% 30%,#4fc3f7,#0d47a1);cursor:pointer;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,0.3);transition:transform .15s}
+.chip-btn:hover{transform:scale(1.08)}
+.chip-btn.green{border-color:#81c784;background:radial-gradient(circle at 30% 30%,#66bb6a,#1b5e20)}
+.chip-btn.brown{border-color:#d7ccc8;background:radial-gradient(circle at 30% 30%,#8d6e63,#3e2723)}
+
+/* FLOATING POPUP MENU */
+.float-menu{position:absolute;top:62px;left:14px;width:min(340px,92vw);max-height:76vh;overflow-y:auto;background:var(--cream);color:var(--earth);border-radius:16px;padding:16px;border:2px solid rgba(46,125,50,0.35);box-shadow:0 16px 40px rgba(0,0,0,0.4);z-index:35;display:none}
+.float-menu.open{display:block}
+.menu-title{margin:0 0 10px;color:var(--pine);font-family:'Baloo 2',sans-serif;font-size:1.15rem;display:flex;align-items:center;justify-content:space-between}
+
+/* BUTTONS */
+.btn{cursor:pointer;border:none;border-radius:10px;padding:9px 12px;font-weight:800;font-family:inherit;font-size:0.8rem;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
+.btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-p{background:linear-gradient(135deg,#2e7d32,#1b5e20);color:#fff;box-shadow:0 3px 10px rgba(46,125,50,0.3)}
+.btn-c{background:linear-gradient(135deg,#00bcd4,#0277bd);color:#fff;box-shadow:0 3px 10px rgba(2,119,189,0.3)}
+.btn-b{background:linear-gradient(135deg,#8d6e63,#5d4037);color:#fff;box-shadow:0 3px 10px rgba(93,64,55,0.3)}
+.btn-g{background:#eceff1;color:#263238}
+.btn-gold{background:linear-gradient(135deg,#ffd54f,#ffa000);color:#3e2723;box-shadow:0 3px 10px rgba(255,160,0,0.3)}
+
+/* MODALS */
+.modal-overlay{position:absolute;inset:0;background:rgba(0,16,24,0.78);display:none;align-items:center;justify-content:center;z-index:50;padding:12px;backdrop-filter:blur(3px)}
+.modal-overlay.open{display:flex}
+.modal-card{width:min(540px,96vw);max-height:88vh;overflow-y:auto;background:var(--cream);color:var(--earth);border-radius:18px;padding:18px;border:2px solid rgba(46,125,50,0.45);box-shadow:0 20px 48px rgba(0,0,0,0.5)}
+.modal-card.wide{width:min(660px,96vw)}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:1.5px solid rgba(46,125,50,0.2);padding-bottom:8px;margin-bottom:12px}
+.modal-hdr h3{margin:0;font-family:'Baloo 2',sans-serif;font-size:1.25rem;color:var(--pine);display:flex;align-items:center;gap:6px}
+.btn-close{border:none;background:transparent;cursor:pointer;font-size:1.3rem;color:#78909c;padding:0 4px}
+.btn-close:hover{color:#d32f2f}
+
+/* CARTOON CARDS & GRIDS */
+.card-box{background:#fff;border-radius:14px;padding:12px;border:1.5px solid rgba(46,125,50,0.2);margin:8px 0;box-shadow:0 3px 8px rgba(0,0,0,0.06)}
+.card-box.alert{background:#fff8e1;border-color:#ffe082;border-left:5px solid #ffb300}
+.card-box.marine{background:#e0f7fa;border-color:#b2ebf2;border-left:5px solid #00bcd4}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+
+/* TOAST */
+.toast{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);background:rgba(27,94,32,0.96);border:1.5px solid #81c784;color:#f1f8e9;padding:9px 18px;border-radius:999px;font-size:0.82rem;font-weight:800;opacity:0;transition:.22s;z-index:60;pointer-events:none;max-width:92vw;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.35)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+
+/* GAUGES IN SEA DASHBOARD */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;background:#fff;border-radius:14px;padding:12px 8px;border:1.5px solid #b2ebf2}
+.gauge-svg{width:90px;height:90px}
+.gauge-val{font-size:1.2rem;font-weight:900;font-family:'Baloo 2',sans-serif;margin-top:2px}
+.gauge-lbl{font-size:0.7rem;font-weight:800;color:#546e7a;text-transform:uppercase}
+
+/* BOAT SCREEN */
+.timer-pill{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,20,40,0.85);border:1px solid #4fc3f7;color:#e0f7fa;padding:7px 16px;border-radius:999px;font-weight:800;z-index:12;font-size:0.85rem}
+.cin-box{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;padding:26px;background:linear-gradient(transparent 50%,rgba(0,10,20,0.7));z-index:6;pointer-events:none}
+.cin-box p{max-width:560px;text-align:center;color:#e0f7fa;font-size:0.92rem;font-weight:700}
+.panel-boat{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:min(280px,42vw);background:rgba(8,32,42,0.94);border:1.5px solid rgba(0,229,255,0.4);border-radius:14px;padding:14px;font-size:0.78rem;color:#cfe;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+
+/* WORKER CARDS */
+.worker-card{display:flex;gap:10px;align-items:center;padding:10px;background:#fff;border-radius:12px;border:1.5px solid rgba(46,125,50,0.2);margin:6px 0}
+.worker-avatar{width:42px;height:42px;border-radius:50%;background:#e8f5e9;display:grid;place-items:center;font-size:1.4rem;flex-shrink:0;border:1px solid #a5d6a7}
+
+/* PROCESS STEPS */
+.step-row{display:flex;gap:10px;align-items:flex-start;padding:10px;margin:6px 0;background:#fff;border-radius:12px;border:1px solid #c8e6c9}
+.step-row.done{background:#f1f8e9;border-color:#81c784}
+.step-num{width:26px;height:26px;border-radius:50%;background:#e8f5e9;color:var(--pine);font-weight:900;display:grid;place-items:center;flex-shrink:0;font-size:0.75rem}
+.step-row.done .step-num{background:#43a047;color:#fff}
+
+@media(max-width:700px){
+  .panel-boat{display:none}
+  .grid-3{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- SECTION 1: 3D BOAT TOUR (APPROACH & REAR HELM) -->
+<section id="boat-tour">
+  <canvas id="boat-canvas"></canvas>
+  <div class="timer-pill" id="boat-timer">Bird's-eye approach · 18s</div>
+  <div class="cin-box" id="cin-text"><p id="cin-p">Bay of Bengal · coastal research vessel steaming toward Saint Martin's Island…</p></div>
+  <div class="hud" id="boat-hud" style="opacity:0;transition:.5s">
+    <div class="panel-boat">
+      <b style="color:#64dfdf;font-size:0.9rem">🚢 Helmsman · FPV Deck</b>
+      <p style="margin:6px 0">W/S throttle · A/D steer rudder · E dock at T-jetty</p>
+      <button class="btn btn-c" id="btn-skip-boat" style="width:100%;margin-top:8px">⚡ Skip Tour · Land Now</button>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 2: MASTER ISLAND ZONE (TWIN DECAGON ORCHARDS & CAMPUS) -->
+<section id="island-zone">
+  <canvas id="island-canvas"></canvas>
+  <div class="hud">
+    <!-- TOP SCOREBOARD -->
+    <div class="scoreboard" id="scoreboard"></div>
+
+    <!-- TASK CAPSULE -->
+    <div class="task-capsule" id="taskCapsule">
+      <span class="pulse"></span>
+      <span class="txt" id="taskCapsuleText"><b>Ch.1:</b> Surveying Island</span>
+      <button class="roadmap-btn" id="btn-masterplan" type="button" title="Masterplan Roadmap">📋</button>
+    </div>
+
+    <!-- CORNER NAV -->
+    <div class="corner-nav">
+      <a class="chip-btn green" href="../index.html" title="Return to 3D World Globe & Farm">🌐</a>
+      <a class="chip-btn" href="../oxyforge.html" title="OxyForge Mission HQ">🚀</a>
+      <button class="chip-btn" id="btn-sea-dash" type="button" title="Open Special Sea Dashboard">🌊</button>
+      <button class="chip-btn brown" id="btn-boat-again" type="button" title="Replay Boat Arrival">🚤</button>
+      <button class="chip-btn green" id="btn-menu" type="button" title="Island Menu">☰</button>
+    </div>
+
+    <!-- FLOATING ISLAND MENU -->
+    <div class="float-menu" id="floatMenu">
+      <div class="menu-title">
+        <span>🏝️ Blue Lab Menu</span>
+        <button class="btn-close" id="menu-close">✕</button>
+      </div>
+      <button class="btn btn-p" id="menu-masterplan" style="width:100%;margin:4px 0">📋 5-Chapter Masterplan</button>
+      <button class="btn btn-c" id="menu-sea-dash" style="width:100%;margin:4px 0">🌊 Special Sea Dashboard</button>
+      <button class="btn btn-c" id="menu-dive" style="width:100%;margin:4px 0">🤿 Coral Reef Dive (3D)</button>
+      <button class="btn btn-b" id="menu-labour" style="width:100%;margin:4px 0">🧑‍🌾 Labour Market & Crew</button>
+      <button class="btn btn-b" id="menu-algae" style="width:100%;margin:4px 0">🧪 Big Jar Algae Scrubbers</button>
+      <button class="btn btn-b" id="menu-trade" style="width:100%;margin:4px 0">📦 German Restaurant Trade</button>
+      <button class="btn btn-g" id="menu-gas" style="width:100%;margin:4px 0">⛽ CNG Offshore Platform</button>
+      <button class="btn btn-g" id="menu-oil" style="width:100%;margin:4px 0">🥥 Cold-Pressed Coconut Oil</button>
+      <button class="btn btn-g" id="menu-tick" style="width:100%;margin:4px 0">⏩ Time Leap (+10s Growth)</button>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+  <div class="modal-overlay" id="why-modal"><div class="modal-card" id="why-body"></div></div>
+  <div class="modal-overlay" id="master-modal"><div class="modal-card wide" id="master-body"></div></div>
+  <div class="modal-overlay" id="plot-modal">
+    <div class="modal-card">
+      <div class="modal-hdr">
+        <h3 id="plot-title">Plot Inspector</h3>
+        <button class="btn-close" id="plot-close">✕</button>
+      </div>
+      <p id="plot-meta" style="font-size:0.78rem;color:#546e7a;margin:0 0 10px"></p>
+      <div id="plot-trees" class="card-box"></div>
+      <b style="font-size:0.8rem;color:var(--pine)">Plant Species:</b>
+      <div class="grid-2" id="species-grid" style="margin:6px 0"></div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn btn-p" id="btn-water" style="flex:1">💧 Freshwater Care</button>
+        <button class="btn btn-c" id="btn-desal" style="flex:1">🧪 Desal Condensate</button>
+        <button class="btn btn-b" id="btn-mulch" style="flex:1">🍂 Apply Mulch</button>
+        <button class="btn btn-gold" id="btn-harvest" style="flex:1">🧺 Harvest</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="process-modal"><div class="modal-card" id="process-body"></div></div>
+  <div class="modal-overlay" id="labour-modal"><div class="modal-card" id="labour-body"></div></div>
+  <div class="modal-overlay" id="seadash-modal"><div class="modal-card wide" id="seadash-body"></div></div>
+  <div class="modal-overlay" id="trade-modal"><div class="modal-card" id="trade-body"></div></div>
+  <div class="modal-overlay" id="algae-modal"><div class="modal-card" id="algae-body"></div></div>
+</section>
+
+<!-- SECTION 3: OUTER CNG PLATFORM -->
+<section id="outer-zone">
+  <canvas id="outer-canvas"></canvas>
+  <div class="hud">
+    <div class="scoreboard" id="scoreboard-outer"></div>
+    <div class="corner-nav">
+      <button class="chip-btn green" id="btn-back-main" type="button" title="Back to Island">🏝️</button>
+      <button class="chip-btn" id="btn-cng-ui" type="button" title="CNG Process Steps">⚙️</button>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 4: 3D REEF DIVE ZONE -->
+<section id="dive-zone">
+  <canvas id="dive-canvas"></canvas>
+  <div class="hud">
+    <div class="scoreboard" id="scoreboard-dive"></div>
+    <div class="corner-nav">
+      <button class="chip-btn" id="btn-surface" type="button" title="Ascend to Surface">↑ Surface</button>
+    </div>
+  </div>
+  <div class="modal-overlay" id="lesson-modal"><div class="modal-card" id="lesson-body-wrap"></div></div>
+</section>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= GAME DATA & SPECIES ENGINE ================= */
+const STAGE_NAMES=['Seedling','Sprout','Sapling','Mature','Ancient'];
+
+const PLANT_CATALOG={
+  tree_coconut:{id:'tree_coconut',name:'Coconut Palm',icon:'🥥',maxSalinity:22,growth:120,o2:35,cost:50,stability:18,yield:'Green Coconuts & Husk'},
+  tree_palmyra:{id:'tree_palmyra',name:'Palmyra Palm',icon:'🌴',maxSalinity:28,growth:150,o2:40,cost:60,stability:25,yield:'Palmyra Fruit & Sap'},
+  tree_kewra:{id:'tree_kewra',name:'Keya (Screw Pine)',icon:'🌿',maxSalinity:35,growth:90,o2:25,cost:35,stability:40,yield:'Kewra Blossoms & Roots'},
+  tree_casuarina:{id:'tree_casuarina',name:'Casuarina (Jhau)',icon:'🌲',maxSalinity:30,growth:100,o2:50,cost:45,stability:30,yield:'Needle Mulch & Timber'},
+  tree_mangrove:{id:'tree_mangrove',name:'Red Mangrove',icon:'🌳',maxSalinity:45,growth:140,o2:45,cost:55,stability:50,yield:'Propagules & Biofilm'},
+  veg_tomato:{id:'veg_tomato',name:'Coastal Tomato',icon:'🍅',maxSalinity:10,growth:60,o2:12,cost:20,stability:5,yield:'Fresh Tomatoes'},
+  veg_greens:{id:'veg_greens',name:'Leafy Greens',icon:'🥬',maxSalinity:12,growth:50,o2:10,cost:16,stability:4,yield:'Greens'}
+};
+
+/* Calibrated Decagonal Plots from SAINT-MARTIN-BG-v1.md & SAINT-MARTIN-SPEC-v1.md */
+const PLOT_DEFS={
+  'dec1.plot1':{id:'dec1.plot1',name:'dec1.plot1: Intertidal Mangrove Fringe',affinity:['tree_mangrove','tree_kewra'],salinity:35,decagon:'dec1',nx:0.23,ny:0.42},
+  'dec1.plot2':{id:'dec1.plot2',name:'dec1.plot2: Primary Keya Windbreak',affinity:['tree_kewra','tree_coconut'],salinity:25,decagon:'dec1',nx:0.19,ny:0.55},
+  'dec1.plot3':{id:'dec1.plot3',name:'dec1.plot3: Lake Silt Buffer',affinity:['tree_mangrove','veg_greens','veg_tomato'],salinity:18,decagon:'dec1',nx:0.27,ny:0.55},
+  'dec2.plot1':{id:'dec2.plot1',name:'dec2.plot1: Dune Shield Coconut Orchard',affinity:['tree_coconut','tree_kewra'],salinity:16,decagon:'dec2',nx:0.77,ny:0.42},
+  'dec2.plot2':{id:'dec2.plot2',name:'dec2.plot2: Palmyra & Casuarina Anchor',affinity:['tree_palmyra','tree_casuarina'],salinity:20,decagon:'dec2',nx:0.73,ny:0.55},
+  'dec2.plot3':{id:'dec2.plot3',name:'dec2.plot3: Interior Drip Agro-Plot',affinity:['tree_coconut','tree_palmyra','veg_tomato'],salinity:8,decagon:'dec2',nx:0.81,ny:0.55}
+};
+
+/* 9 Landmarks from SAINT-MARTIN-BG-v1.md and Blue Lab Concept */
+const SITES=[
+  {id:'coral',nx:0.16,ny:0.24,icon:'🪸',title:'Coral Sanctuary Shelf',cat:'marine',why:'Why protect the reef first?',body:'98 hard-coral species live here. Corals need clear water without sediment.',xp:{marine:15,zoology:8},action:'dive'},
+  {id:'dive',nx:0.28,ny:0.19,icon:'🤿',title:'Sub-Surface Dive Trench',cat:'marine',why:'Why dive and scan?',body:'Learn marine biodiversity through scan-and-observe non-invasive diagnostics.',xp:{marine:12,zoology:6},action:'dive'},
+  {id:'seaweed',nx:0.50,ny:0.21,icon:'🥗',title:'Seaweed Longline Rafts',cat:'marine',why:'Why Gracilaria & Ulva?',body:'Submerged seaweed traps dissolved CO2 and feeds our zero-carbon processing line.',xp:{marine:10,farming:6},action:'seadash'},
+  {id:'lake',nx:0.50,ny:0.52,icon:'💧',title:'Central Freshwater Lake',cat:'infra',why:'Why the freshwater corridor?',body:'Freshwater lake buffers rain runoff and filters brackish water for tree drip irrigation.',xp:{infra:10,farming:5}},
+  {id:'campus',nx:0.35,ny:0.78,icon:'🏭',title:'Solar Processing Facility',cat:'infra',why:'Why onshore solar processing?',body:'120 kW solar refrigeration rapid-freezes crab and prawn with zero grid pollution.',xp:{infra:12,energy:8},action:'seadash'},
+  {id:'algae',nx:0.55,ny:0.78,icon:'🧪',title:'Big Jar Algae Scrubbers',cat:'energy',why:'Why cylindrical algae bioreactors?',body:'3 transparent jars absorb 95% of facility exhaust CO2 and generate +120 O2 credits/hr.',xp:{energy:14,marine:6},action:'algae'},
+  {id:'microgrid',nx:0.68,ny:0.76,icon:'⚡',title:'Wind & BESS Microgrid',cat:'energy',why:'Why battery storage?',body:'500 kWh BESS substation balances variable wind drops, guaranteeing zero night brownouts.',xp:{energy:12,infra:6},action:'seadash'},
+  {id:'pier',nx:0.82,ny:0.48,icon:'⚓',title:'T-Dock Harbor Pier',cat:'infra',why:'Why maintain the pier?',body:'The east T-jetty receives supply ships and exports eco-certified cargo to Germany.',xp:{infra:8}},
+  {id:'gas',nx:0.90,ny:0.12,icon:'⛽',title:'Offshore Gas Platform',cat:'energy',why:'Why study gas offshore?',body:'Explore closed-loop CNG steps safely in an offshore research simulator.',xp:{energy:12},action:'gas'}
+];
+
+/* Marine biodiversity cards (Scan & observe pedagogy) */
+const MARINE_CARDS={
+  a1:{emoji:'🦠✨',title:'Zooxanthellae Symbionts',fun:'Tiny algae roommate living inside coral cells! They cook food from sunlight for the coral.',fact:'High sea surface temperatures cause coral bleaching when zooxanthellae are expelled.',xp:{marine:10,zoology:6}},
+  a2:{emoji:'🪸🏡',title:'Acropora Branching Coral',fun:'Undersea branching trees where clownfish and juvenile prawns seek shelter.',fact:'Acropora framework provides three-dimensional coastal wave attenuation.',xp:{marine:8,zoology:5}},
+  a3:{emoji:'🪨🪸',title:'Favites Boulder Coral',fun:'Round massive brain-shaped fortresses that withstand heavy monsoon swells.',fact:'Favites grows slowly and preserves paleoclimate records within its skeleton.',xp:{marine:8}},
+  a4:{emoji:'🌸🪸',title:'Goniopora Flowerpot Coral',fun:'Corals with flower-like tentacles waving in the ocean currents day and night.',fact:'Goniopora requires low sediment turbidity to keep its polyps open.',xp:{marine:9,zoology:5}},
+  a5:{emoji:'🌿🐠',title:'Seagrass & Seaweed Raft',fun:'Underwater sea meadows where turtles snack and baby fish play!',fact:'Halodule seagrass beds on Saint Martin sequester blue carbon in coastal sediment.',xp:{marine:8,zoology:6}},
+  a6:{emoji:'🐢💚',title:'Olive Ridley Sea Turtle',fun:'Gentle ocean voyagers visiting Saint Martin shores to nest at night.',fact:'Protected under national wildlife conservation acts. Scan and observe only!',xp:{zoology:12,marine:6}},
+  fish_clown:{emoji:'🐠🧡',title:'Reef Damselfish',fun:'Colorful darting guardians grazing on microalgae around coral boulders.',fact:'Reef herbivores keep coral surfaces free of smothering turf algae.',xp:{zoology:8,marine:4}},
+  crab_mud:{emoji:'🦀🌊',title:'Mud Crab (Scylla serrata)',fun:'Strong-clawed coastal crabs raised in zero-discharge RAS nursery tanks.',fact:'RAS bio-sludge separators prevent organic pollution into open coral lagoons.',xp:{zoology:8,infra:6}}
+};
+
+/* Pipeline steps */
+const CNG_STEPS=[
+  {n:1,t:'Wellhead Riser Intake',d:'Safely capture natural gas at offshore platform riser.'},
+  {n:2,t:'Dehydration & Desulfurization',d:'Remove moisture and impurities to prevent line corrosion.'},
+  {n:3,t:'Multi-Stage Compression',d:'Compress clean gas to 200 bar CNG storage pressures.'},
+  {n:4,t:'Cascade Storage Vessels',d:'Store in safety-certified high-pressure cylinder bank.'},
+  {n:5,t:'Clean Energy Dispatch',d:'Transfer clean gas for island backup generators and lab lessons.'}
+];
+
+const OIL_STEPS=[
+  {n:1,t:'Harvest Mature Coconuts',d:'Collect green and brown coconuts from Decagon 2 palms.'},
+  {n:2,t:'Dehusking & Splitting',d:'Strip fibrous husk for mulch; split shell for copra meat.'},
+  {n:3,t:'Solar Dehydration',d:'Dry copra under solar dehydrators to preserve virgin nutrients.'},
+  {n:4,t:'Cold Expeller Pressing',d:'Mechanical screw press squeezes pure cold-pressed coconut oil.'},
+  {n:5,t:'Micro-Filtration & Bottling',d:'Filter into eco-certified glass jars for German restaurant trade.'}
+];
+
+/* Available workers in labour market */
+const WORKER_ROSTER=[
+  {id:'w1',name:'Rahim',role:'Orchard Caretaker',icon:'🧑‍🌾',hireCost:120,dailyWage:15,perk:'Auto-cares plots & +25% tree growth speed',assigned:'plots'},
+  {id:'w2',name:'Fatema',role:'Marine Biologist',icon:'👩‍🔬',hireCost:150,dailyWage:18,perk:'Monitors polyp health & lifts Sea Health Index (+1.5%/hr)',assigned:'reef'},
+  {id:'w3',name:'Tarek',role:'Offshore Diver',icon:'🤿',hireCost:140,dailyWage:16,perk:'Tends seaweed lines & harvests biothallus/RAS stock',assigned:'aqua'},
+  {id:'w4',name:'Kabir',role:'Microgrid Engineer',icon:'⚡',hireCost:160,dailyWage:20,perk:'Balances solar/wind BESS & tunes Big Jar Algae scrubbers',assigned:'algae'}
+];
+
+/* ================= GAME STATE ================= */
+const state={
+  money:2400,globalO2:5230,shi:88,dissolvedO2:84,knowledgeXP:120,
+  workers:0,activeWorkers:[],bessKwh:380,bessMaxKwh:500,
+  catXP:{marine:25,zoology:18,farming:35,energy:22,infra:20},
+  surveyed:{},chapterIntroAck:false,dockedMain:false,dockedOuter:false,
+  scans:0,algaeActive:false,algaeScrubRate:42.75,algaeCO2Input:45,
+  harvests:0,cocoOil:0,copra:0,cng:0,cngStep:0,oilStep:0,
+  siltBarrierDeployed:false,turbidityReduction:42,
+  seaweedStockKg:0,crabPrawnStockKg:0,
+  tradeContractFulfilled:false,tradePassport:false,
+  plots:{},diveLogged:{},boatDest:'main'
+};
+
+// Initialize plots
+Object.keys(PLOT_DEFS).forEach(pid=>{
+  const def=PLOT_DEFS[pid];
+  state.plots[pid]={
+    trees:[],soilSalinityPpt:def.salinity,soilMoisturePercent:60,
+    mulchApplied:false,condensateDrip:false,maxCapacity:5
+  };
+});
+// Seed one coconut and one mangrove tree
+state.plots['dec1.plot1'].trees.push({instanceId:'t_init1',speciesId:'tree_mangrove',stage:1,progressPercent:30,health:100,harvestReady:false});
+state.plots['dec2.plot1'].trees.push({instanceId:'t_init2',speciesId:'tree_coconut',stage:2,progressPercent:50,health:100,harvestReady:false});
+
+/* ================= UI NOTIFICATIONS & SCOREBOARD ================= */
+function toast(m){
+  const el=document.getElementById('toast');
+  el.textContent=m;el.classList.add('show');
+  clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2600);
+}
+
+function grantXP(map){
+  Object.entries(map||{}).forEach(([k,v])=>{
+    state.catXP[k]=(state.catXP[k]||0)+v;
+    state.knowledgeXP+=v;
+  });
+}
+
+function surveyCount(){ return Object.keys(state.surveyed).length; }
+
+function renderScoreboard(id){
+  const el=document.getElementById(id||'scoreboard');
+  if(!el)return;
+  el.innerHTML=
+    '<div class="sb-chip" id="sb-money" title="Research Budget (Euros)">💶 <span class="v">€'+Math.round(state.money).toLocaleString()+'</span></div>'+
+    '<div class="sb-chip" id="sb-o2" title="Global Cumulative O2">🍃 O₂ <span class="v">'+Math.round(state.globalO2).toLocaleString()+'</span></div>'+
+    '<div class="sb-chip shi" id="sb-shi" title="Sea Health Index">🌊 SHI <span class="v">'+Math.round(state.shi)+'%</span></div>'+
+    '<div class="sb-chip do" id="sb-do" title="Dissolved Oxygen in Coastal Lagoon">🫧 DO <span class="v">'+Math.round(state.dissolvedO2)+'%</span></div>'+
+    '<div class="sb-chip xp" id="sb-xp" title="Knowledge XP">📖 K-XP <span class="v">'+state.knowledgeXP+'</span></div>'+
+    '<div class="sb-chip power" id="sb-bess" title="BESS Battery Substation">🔋 <span class="v">'+Math.round(state.bessKwh)+'/500 kWh</span></div>'+
+    '<div class="sb-chip" id="sb-workers" title="Active Labourers">🧑‍🌾 <span class="v">'+state.workers+' Hired</span></div>'+
+    '<div class="sb-chip" id="sb-oil" title="Cold-Pressed Coconut Oil Stock">🥥 <span class="v">'+state.cocoOil+'L</span></div>'+
+    '<div class="sb-chip" id="sb-cng" title="Stored Compressed Natural Gas">⛽ <span class="v">'+state.cng+'m³</span></div>';
+
+  const sShi=document.getElementById('sb-shi');if(sShi)sShi.onclick=()=>openSeaDashboard();
+  const sDo=document.getElementById('sb-do');if(sDo)sDo.onclick=()=>openSeaDashboard();
+  const sBess=document.getElementById('sb-bess');if(sBess)sBess.onclick=()=>openSeaDashboard();
+  const sW=document.getElementById('sb-workers');if(sW)sW.onclick=()=>openLabourMarket();
+}
+
+function currentChapter(){
+  if(!state.chapterIntroAck) return 1;
+  if(surveyCount()<SITES.length || !state.siltBarrierDeployed || state.scans<2) return 1;
+  if(state.seaweedStockKg<50 || !state.plots['dec2.plot1'].trees.length || !state.plots['dec2.plot2'].trees.length) return 2;
+  if(state.harvests<2 || state.bessKwh<300) return 3;
+  if(!state.algaeActive || state.cocoOil<15) return 4;
+  return 5;
+}
+
+function activeTaskText(){
+  const ch=currentChapter();
+  if(ch===1){
+    if(!state.chapterIntroAck) return '<b>Ch.1:</b> Read Blue Lab Briefing';
+    if(surveyCount()<SITES.length) return '<b>Ch.1:</b> Survey 9 Island Pins ('+surveyCount()+'/9)';
+    if(state.scans<2) return '<b>Ch.1:</b> 🤿 Dive & Scan Reef Friends ('+state.scans+'/2)';
+    if(!state.siltBarrierDeployed) return '<b>Ch.1:</b> Deploy Silt Turbidity Barriers';
+    return '<b>Ch.1:</b> Ground Decagon 1 Mangrove Fringe';
+  }
+  if(ch===2){
+    if(state.seaweedStockKg<50) return '<b>Ch.2:</b> Deploy Gracilaria Seaweed Rafts';
+    if(!state.plots['dec2.plot2'].trees.length) return '<b>Ch.2:</b> Plant Decagon 2 Dune Canopy';
+    return '<b>Ch.2:</b> Connect Desal Condensate Line';
+  }
+  if(ch===3){
+    if(state.workers<1) return '<b>Ch.3:</b> Hire Local Crew in Labour Market';
+    if(state.harvests<2) return '<b>Ch.3:</b> Harvest Mature Coconut & Palmyra';
+    return '<b>Ch.3:</b> Apply Husk Mulch to Reduce Evaporation';
+  }
+  if(ch===4){
+    if(!state.algaeActive) return '<b>Ch.4:</b> Activate 3 Big Jar Algae Scrubbers';
+    if(state.cocoOil<15) return '<b>Ch.4:</b> Press Virgin Coconut Oil ('+state.cocoOil+'/15L)';
+    return '<b>Ch.4:</b> Freeze Crab & Prawn with Clean Power';
+  }
+  if(ch===5){
+    if(!state.tradeContractFulfilled) return '<b>Ch.5:</b> Pack Cargo for German Restaurant';
+    if(state.shi<90) return '<b>Ch.5:</b> Maintain SHI >= 90% for Trade Passport';
+    return '<b>Ch.5:</b> Global Trade Passport Verified! Brazil Unlocked 🇧🇷';
+  }
+  return '<b>Blue Lab:</b> Coastal Biosphere Mastered!';
+}
+
+function refreshUI(){
+  const t=document.getElementById('taskCapsuleText');
+  if(t)t.innerHTML=activeTaskText();
+  renderScoreboard('scoreboard');
+  renderScoreboard('scoreboard-outer');
+  renderScoreboard('scoreboard-dive');
+}
+
+/* ================= 5-CHAPTER MASTERPLAN ================= */
+function openMasterplan(){
+  const ch=currentChapter();
+  const chList=[
+    {n:1,t:'Reef Survey & Decagon 1 Grounding',d:'Scan reef organisms, deploy silt barriers, plant Mangrove & Keya in dec1.',ok:ch>1},
+    {n:2,t:'Sub-Sea Agriculture & Decagon 2 Canopy',d:'Deploy seaweed longlines, stock RAS crab/prawn, plant Coconut & Palmyra in dec2.',ok:ch>2},
+    {n:3,t:'Off-Grid Microgrid & Canopy Maturation',d:'Activate 500 kWh BESS, hire crew, tend trees, apply coconut husk mulch.',ok:ch>3},
+    {n:4,t:'Zero-Carbon Processing & Big Jar Algae',d:'Rooftop solar cold chain, press virgin coconut oil, scrub 95% CO2 with Algae.',ok:ch>4},
+    {n:5,t:'Global Trade Passport & German Farm Link',d:'Fulfill German restaurant export cargo, maintain SHI >= 90%, unlock Brazil.',ok:state.tradePassport}
+  ];
+
+  let html='<div class="modal-hdr"><h3>📋 5-Chapter Island Masterplan</h3><button class="btn-close" id="master-close">✕</button></div>'+
+    '<p style="font-size:0.8rem;color:#546e7a;margin:0 0 10px">Saint Martin\'s Blue Lab research journey from coastal fringe planting to international German farm culinary trade export.</p>';
+
+  chList.forEach(c=>{
+    html+='<div class="step-row '+(c.ok?'done':'')+'">'+
+      '<div class="step-num">'+(c.ok?'✓':c.n)+'</div>'+
+      '<div style="flex:1"><b>Ch.'+c.n+': '+c.t+'</b><br/><span style="font-size:0.78rem;color:#455a64">'+c.d+'</span></div>'+
+      '<div><span style="font-size:0.75rem;font-weight:800;color:'+(c.ok?'#2e7d32':'#f57f17')+'">'+(c.ok?'COMPLETE':(ch===c.n?'IN PROGRESS':'LOCKED'))+'</span></div>'+
+    '</div>';
+  });
+
+  html+='<div class="card-box marine" style="margin-top:12px"><b style="color:#00796b">Trade Passport Prerequisite:</b> Cumulative Global O₂ ≥ 12,500 + Trade Passport verified unlocks Brazil on the 3D living Earth globe.</div>'+
+    '<button class="btn btn-p" style="width:100%;margin-top:8px" id="master-ack">Got It · Resume Research</button>';
+
+  document.getElementById('master-body').innerHTML=html;
+  document.getElementById('master-modal').classList.add('open');
+  document.getElementById('master-close').onclick=()=>document.getElementById('master-modal').classList.remove('open');
+  document.getElementById('master-ack').onclick=()=>document.getElementById('master-modal').classList.remove('open');
+}
+
+/* ================= SPECIAL SEA DASHBOARD ================= */
+function openSeaDashboard(){
+  let html='<div class="modal-hdr"><h3>🌊 Special Sea Health & Eco-Campus Dashboard</h3><button class="btn-close" id="sd-close">✕</button></div>'+
+    '<div class="grid-3" style="margin-bottom:12px">'+
+      '<div class="gauge-wrap">'+
+        '<svg class="gauge-svg" viewBox="0 0 36 36">'+
+          '<path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e0f7fa" stroke-width="3.8"/>'+
+          '<path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#00bcd4" stroke-width="3.8" stroke-dasharray="'+state.shi+', 100"/>'+
+        '</svg>'+
+        '<div class="gauge-val" style="color:#00838f">'+Math.round(state.shi)+'%</div>'+
+        '<div class="gauge-lbl">Sea Health Index</div>'+
+      '</div>'+
+      '<div class="gauge-wrap">'+
+        '<svg class="gauge-svg" viewBox="0 0 36 36">'+
+          '<path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e8f5e9" stroke-width="3.8"/>'+
+          '<path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#43a047" stroke-width="3.8" stroke-dasharray="'+state.dissolvedO2+', 100"/>'+
+        '</svg>'+
+        '<div class="gauge-val" style="color:#2e7d32">'+Math.round(state.dissolvedO2)+'%</div>'+
+        '<div class="gauge-lbl">Dissolved O₂</div>'+
+      '</div>'+
+      '<div class="gauge-wrap">'+
+        '<svg class="gauge-svg" viewBox="0 0 36 36">'+
+          '<path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#fff8e1" stroke-width="3.8"/>'+
+          '<path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ffa000" stroke-width="3.8" stroke-dasharray="'+(state.bessKwh/5)+', 100"/>'+
+        '</svg>'+
+        '<div class="gauge-val" style="color:#e65100">'+Math.round(state.bessKwh)+' kWh</div>'+
+        '<div class="gauge-lbl">BESS Battery</div>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="card-box">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div><b>🛡️ Floating Silt Turbidity Barriers</b><br/><span style="font-size:0.78rem;color:#546e7a">Shields inshore corals from river sediment plume</span></div>'+
+        '<button class="btn '+(state.siltBarrierDeployed?'btn-g':'btn-p')+'" id="sd-btn-barrier">'+(state.siltBarrierDeployed?'✓ Active (-42% Turbidity)':'Deploy Barriers')+'</button>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="card-box">'+
+      '<b>🪸 Hard-Coral Biosphere & Bleaching Risk:</b>'+
+      '<p style="font-size:0.78rem;color:#546e7a;margin:4px 0 8px">Habib & Islam (2021) survey: 98 scleractinian coral species across 5 major genera.</p>'+
+      '<div class="grid-2" style="font-size:0.78rem">'+
+        '<div>• Acropora (Branching): <b style="color:#2e7d32">Healthy</b></div>'+
+        '<div>• Favites (Massive Boulder): <b style="color:#2e7d32">Resilient</b></div>'+
+        '<div>• Goniopora (Flowerpot): <b style="color:#0277bd">Active Feeders</b></div>'+
+        '<div>• Montipora (Encrusting): <b style="color:#2e7d32">Stable</b></div>'+
+        '<div>• Turbinaria (Cup / Scroll): <b style="color:#2e7d32">Adapted</b></div>'+
+        '<div>• Bleaching Risk: <b style="color:#2e7d32">LOW (Clean Flow)</b></div>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="card-box">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div><b>🧪 Big Jar Algae Bioreactors (3 x 1,000L)</b><br/><span style="font-size:0.78rem;color:#546e7a">Photosynthetic carbon scrubbing + 120 O₂ credits/hr</span></div>'+
+        '<button class="btn '+(state.algaeActive?'btn-g':'btn-c')+'" id="sd-btn-algae">'+(state.algaeActive?'✓ Active (95% Offset)':'Activate Jars')+'</button>'+
+      '</div>'+
+      '<div style="margin-top:6px;font-size:0.78rem;display:flex;gap:12px">'+
+        '<span>Plant Emission: <b>45.0 kg CO₂/hr</b></span>'+
+        '<span>Captured: <b style="color:#2e7d32">'+(state.algaeActive?'42.75 kg (95%)':'0 kg')+'</b></span>'+
+        '<span>O₂ Bonus: <b style="color:#0277bd">'+(state.algaeActive?'+120 O₂/hr':'0 O₂')+'</b></span>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="card-box">'+
+      '<b>⚡ Island Microgrid & Zero-Carbon Aquaculture:</b>'+
+      '<div style="font-size:0.78rem;color:#455a64;margin-top:4px" class="grid-2">'+
+        '<div>• Solar Rooftop: <b>120 kW (Active)</b></div>'+
+        '<div>• Coastal Wind: <b>3 Turbines (150 kW)</b></div>'+
+        '<div>• Seaweed Rafts: <b>'+state.seaweedStockKg+' kg Biomass</b></div>'+
+        '<div>• Crab/Prawn RAS: <b>'+state.crabPrawnStockKg+' kg Stocked</b></div>'+
+      '</div>'+
+    '</div>'+
+
+    '<button class="btn btn-g" style="width:100%;margin-top:8px" id="sd-close-btn">Close Dashboard</button>';
+
+  document.getElementById('seadash-body').innerHTML=html;
+  document.getElementById('seadash-modal').classList.add('open');
+
+  const closeFn=()=>document.getElementById('seadash-modal').classList.remove('open');
+  document.getElementById('sd-close').onclick=closeFn;
+  document.getElementById('sd-close-btn').onclick=closeFn;
+
+  document.getElementById('sd-btn-barrier').onclick=()=>{
+    if(!state.siltBarrierDeployed){
+      state.siltBarrierDeployed=true;
+      state.shi=Math.min(99,state.shi+3);
+      state.dissolvedO2=Math.min(99,state.dissolvedO2+2);
+      grantXP({marine:10,infra:8});
+      toast('Silt barriers deployed · Turbidity reduced 42%');
+      openSeaDashboard();
+      refreshUI();
+    }
+  };
+
+  document.getElementById('sd-btn-algae').onclick=()=>{
+    if(!state.algaeActive){
+      state.algaeActive=true;
+      state.shi=Math.min(99,state.shi+4);
+      state.dissolvedO2=Math.min(99,state.dissolvedO2+3);
+      state.globalO2+=120;
+      grantXP({energy:15,marine:10});
+      toast('3 Big Jar Algae Scrubbers online · Neutralizing 95% CO₂');
+      openSeaDashboard();
+      refreshUI();
+    }
+  };
+}
+
+/* ================= LABOUR MARKET & CREW SHED ================= */
+function openLabourMarket(){
+  let html='<div class="modal-hdr"><h3>🧑‍🌾 Island Labour Market & Crew Shed</h3><button class="btn-close" id="labour-close">✕</button></div>'+
+    '<p style="font-size:0.8rem;color:#546e7a;margin:0 0 10px">Hire specialized local technicians and field caretakers. Assigned workers automate watering, reef health scanning, microgrid balancing, and algae scrubbing.</p>';
+
+  WORKER_ROSTER.forEach(w=>{
+    const isHired=state.activeWorkers.includes(w.id);
+    html+='<div class="worker-card">'+
+      '<div class="worker-avatar">'+w.icon+'</div>'+
+      '<div style="flex:1">'+
+        '<b>'+w.name+' · '+w.role+'</b><br/>'+
+        '<span style="font-size:0.76rem;color:#455a64">'+w.perk+'</span><br/>'+
+        '<span style="font-size:0.75rem;font-weight:800;color:var(--pine)">Wage: €'+w.dailyWage+'/cycle · Hire: €'+w.hireCost+'</span>'+
+      '</div>'+
+      '<div>'+
+        '<button class="btn '+(isHired?'btn-g':'btn-p')+'" data-hire="'+w.id+'">'+(isHired?'✓ On Duty':'Hire €'+w.hireCost)+'</button>'+
+      '</div>'+
+    '</div>';
+  });
+
+  html+='<div class="card-box marine" style="font-size:0.78rem"><b>Current Crew:</b> '+state.workers+' worker(s) active on Saint Martin. Wage deducted gracefully from harvests.</div>'+
+    '<button class="btn btn-g" style="width:100%;margin-top:8px" id="labour-close-btn">Close</button>';
+
+  document.getElementById('labour-body').innerHTML=html;
+  document.getElementById('labour-modal').classList.add('open');
+
+  const closeFn=()=>document.getElementById('labour-modal').classList.remove('open');
+  document.getElementById('labour-close').onclick=closeFn;
+  document.getElementById('labour-close-btn').onclick=closeFn;
+
+  document.querySelectorAll('[data-hire]').forEach(btn=>{
+    btn.onclick=()=>{
+      const wid=btn.getAttribute('data-hire');
+      if(state.activeWorkers.includes(wid)) return toast('Already on duty');
+      const w=WORKER_ROSTER.find(x=>x.id===wid);
+      if(!w)return;
+      if(state.money<w.hireCost) return toast('Need €'+w.hireCost+' to hire '+w.name);
+      state.money-=w.hireCost;
+      state.workers++;
+      state.activeWorkers.push(w.id);
+      grantXP({infra:6,farming:4});
+      toast('Hired '+w.name+' ('+w.role+')!');
+      openLabourMarket();
+      refreshUI();
+    };
+  });
+}
+
+/* ================= GERMAN RESTAURANT TRADE & GLOBAL PASSPORT ================= */
+function openTradeModal(){
+  const canExport=state.cocoOil>=15 && state.cng>=16 && state.harvests>=2;
+  let html='<div class="modal-hdr"><h3>📦 German Farm Restaurant Trade Pipeline</h3><button class="btn-close" id="trade-close">✕</button></div>'+
+    '<p style="font-size:0.8rem;color:#546e7a;margin:0 0 10px">Export eco-certified coastal blue food to our partner farm restaurant in Baden-Württemberg / Black Forest (Germany).</p>'+
+    '<div class="card-box">'+
+      '<b>International Cargo Manifest:</b>'+
+      '<div style="font-size:0.78rem;color:#455a64;margin:6px 0" class="grid-2">'+
+        '<div>• Cold-Pressed Coconut Oil: <b>'+state.cocoOil+'/15 L</b></div>'+
+        '<div>• Stored CNG Energy: <b>'+state.cng+'/16 m³</b></div>'+
+        '<div>• Seaweed Biothallus Packs: <b>'+state.seaweedStockKg+'/50 kg</b></div>'+
+        '<div>• RAS Mud Crab Crates: <b>'+state.crabPrawnStockKg+'/40 kg</b></div>'+
+      '</div>'+
+      '<div style="margin-top:8px;font-size:0.78rem">'+
+        '<span>Algae Carbon-Neutral Seal: <b style="color:'+(state.algaeActive?'#2e7d32':'#c62828')+'">'+(state.algaeActive?'VALIDATED ✓':'UNVERIFIED ✕')+'</b></span>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="card-box alert">'+
+      '<b>Global Green Trade Passport Reward:</b><br/>'+
+      '<span style="font-size:0.78rem;color:#455a64">Earn +3,500 Eco-Tokens, fulfill the German culinary contract, and reach the 12,500 O₂ milestone to unlock Brazil Amazonia on the 3D globe.</span>'+
+    '</div>'+
+
+    '<button class="btn '+(state.tradeContractFulfilled?'btn-g':(canExport?'btn-gold':'btn-g'))+'" style="width:100%;margin-top:8px" id="btn-exec-trade">'+
+      (state.tradeContractFulfilled?'✓ Contract Delivered · Passport Verified':(canExport?'Dispatch Cargo to Germany ➔':'Cargo Incomplete (Collect 15L Oil & 16m³ CNG)'))+
+    '</button>';
+
+  document.getElementById('trade-body').innerHTML=html;
+  document.getElementById('trade-modal').classList.add('open');
+
+  document.getElementById('trade-close').onclick=()=>document.getElementById('trade-modal').classList.remove('open');
+  document.getElementById('btn-exec-trade').onclick=()=>{
+    if(state.tradeContractFulfilled) return toast('Contract already fulfilled!');
+    if(!canExport) return toast('Gather required oil, CNG, and harvests first');
+    state.tradeContractFulfilled=true;
+    state.tradePassport=true;
+    state.money+=3500;
+    state.globalO2+=1500;
+    state.shi=Math.min(99,state.shi+5);
+    grantXP({marine:30,farming:30,energy:30});
+    toast('🎉 German Trade Contract Delivered! +€3,500 · Passport Verified');
+    openTradeModal();
+    refreshUI();
+  };
+}
+
+/* ================= 3D BOAT VOYAGE ENGINE ================= */
+const boat={mode:'birds',t0:0,pathT:0,yaw:0.12,speed:0,keys:{},engine:0};
+let boatRunning=false;
+
+function startBoat(){
+  const canvas=document.getElementById('boat-canvas');
+  const ctx=canvas.getContext('2d');
+  const resize=()=>{const d=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth*d;canvas.height=innerHeight*d};
+  resize();addEventListener('resize',resize);
+  if(!boat._w){
+    boat._w=1;
+    addEventListener('keydown',e=>{
+      boat.keys[e.key.toLowerCase()]=1;
+      if(e.key==='e'||e.key==='E')tryDock();
+    });
+    addEventListener('keyup',e=>{boat.keys[e.key.toLowerCase()]=0});
+  }
+  boat.mode='birds';boat.pathT=0;boat.t0=performance.now();boat.speed=0;boat.yaw=0.12;boat.engine=0;
+  document.getElementById('boat-hud').style.opacity='0';
+  document.getElementById('cin-text').style.display='flex';
+  const timer=document.getElementById('boat-timer');
+  if(timer){timer.style.display='block';timer.textContent="Bird's-eye approach · 18s"}
+  if(boatRunning)return;
+  boatRunning=true;
+  let last=performance.now();
+  (function loop(now){
+    if(document.getElementById('boat-tour').style.display==='none'){boatRunning=false;return}
+    const dt=Math.min(0.05,(now-last)/1000);last=now;
+    const elapsed=(now-boat.t0)/1000;
+    if(boat.mode==='birds'){
+      const p=Math.min(1,elapsed/18);
+      boat.pathT=p*0.78;
+      const left=Math.max(0,Math.ceil(18-elapsed));
+      if(timer)timer.textContent=p<1?("Bird's-eye · ship to jetty · "+left+"s"):'Handing over to deck helm…';
+      document.getElementById('cin-p').textContent=
+        p<0.33?'Open water · Saint Martin\'s coconut palm line on the horizon…':
+        p<0.66?'Lagoon shallows · hard-coral shelf under crystal clear water…':
+        'Aligning with the east T-jetty landing…';
+      if(elapsed>=18){
+        boat.mode='fpv';boat.speed=1.2;boat.engine=0.25;boat.pathT=0.78;
+        document.getElementById('cin-text').style.display='none';
+        if(timer)timer.style.display='none';
+        document.getElementById('boat-hud').style.opacity='1';
+        toast('Rear deck helm — gentle throttle to the pier, then press E');
+      }
+    }else{
+      let th=0,st=0;
+      if(boat.keys['w']||boat.keys['arrowup'])th=1;
+      if(boat.keys['s']||boat.keys['arrowdown'])th=-0.45;
+      if(boat.keys['a']||boat.keys['arrowleft'])st=-1;
+      if(boat.keys['d']||boat.keys['arrowright'])st=1;
+      boat.engine+=(th-boat.engine)*dt*1.2;
+      boat.speed+=(boat.engine*4.5-boat.speed)*dt*0.9;
+      const rudder=st*dt*0.35*(0.15+Math.abs(boat.speed)*0.12);
+      boat.yaw+=rudder;
+      const advance=Math.max(0,boat.speed)*dt*0.018*Math.max(0.2,Math.cos(boat.yaw*0.6));
+      boat.pathT=Math.min(0.98,Math.max(0.5,boat.pathT+advance));
+    }
+    drawBoat(ctx,canvas);
+    requestAnimationFrame(loop);
+  })(last);
+}
+
+function tryDock(){
+  if(boat.mode!=='fpv')return;
+  if(boat.pathT<0.88){toast('Ease closer to the T-jetty (ahead slow)');return}
+  if(Math.abs(boat.speed)>2.2){toast('Too fast — slow throttle before docking');return}
+  if(state.boatDest==='outer')enterOuter();else enterMain(true);
+}
+
+function drawBoat(ctx,canvas){
+  const d=Math.min(devicePixelRatio||1,2),W=canvas.width/d,H=canvas.height/d;
+  ctx.setTransform(d,0,0,d,0,0);
+  const time=performance.now()*0.001;
+  if(boat.mode==='birds') drawBirdsEyeApproach(ctx,W,H,time);
+  else drawRearDeckFPV(ctx,W,H,time);
+}
+
+function drawWater(ctx,W,H,time,horizon){
+  const sea=ctx.createLinearGradient(0,horizon,0,H);
+  sea.addColorStop(0,'#4dd0e1');sea.addColorStop(0.35,'#0288d1');sea.addColorStop(0.7,'#0277bd');sea.addColorStop(1,'#01579b');
+  ctx.fillStyle=sea;ctx.fillRect(0,horizon,W,H-horizon);
+  ctx.lineWidth=1.4;
+  for(let row=0;row<9;row++){
+    ctx.beginPath();
+    const base=horizon+14+row*(H-horizon)/10;
+    ctx.strokeStyle='rgba(255,255,255,'+(0.12+0.05*Math.sin(time+row))+')';
+    for(let x=0;x<=W;x+=8){
+      const y=base+Math.sin(x*0.025+time*1.8+row*0.7)*3.5+Math.sin(x*0.06+time)*1.5;
+      if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+}
+
+function drawIsland3D(ctx,W,H,cx,cy,scale,time){
+  const sx=scale,sy=scale*0.55;
+  ctx.fillStyle='rgba(1,40,70,0.25)';
+  ctx.beginPath();ctx.ellipse(cx+8,cy+28*sy,95*sx,36*sy,0.1,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#e8d5a8';
+  ctx.beginPath();ctx.ellipse(cx,cy+6,100*sx,42*sy,0.08,0,Math.PI*2);ctx.fill();
+  const grass=ctx.createLinearGradient(cx,cy-40*sy,cx,cy+30*sy);
+  grass.addColorStop(0,'#aed581');grass.addColorStop(0.6,'#7cb342');grass.addColorStop(1,'#558b2f');
+  ctx.fillStyle=grass;
+  ctx.beginPath();ctx.ellipse(cx,cy,88*sx,34*sy,0.08,0,Math.PI*2);ctx.fill();
+  for(let i=0;i<18;i++){
+    const ang=i/18*Math.PI*2;
+    const tx=cx+Math.cos(ang)*55*sx*(0.4+0.5*(i%3)/3);
+    const ty=cy+Math.sin(ang)*20*sy*(0.3+0.5*(i%3)/3)-8;
+    ctx.fillStyle='#5d4037';ctx.fillRect(tx-2,ty,4,12*scale);
+    ctx.fillStyle=i%2?'#2e7d32':'#43a047';
+    ctx.beginPath();ctx.arc(tx,ty-2,7*scale,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='#78909c';
+  const px=cx+70*sx,py=cy+8;
+  ctx.beginPath();
+  ctx.moveTo(px,py);ctx.lineTo(px+50*sx,py-12);ctx.lineTo(px+50*sx,py+6);ctx.lineTo(px,py+14);ctx.closePath();ctx.fill();
+}
+
+function drawShip3DRear(ctx,x,y,scale,yaw,engine,time){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(yaw*0.15);
+  ctx.scale(scale,scale);
+  if(engine>0.05){
+    ctx.globalAlpha=0.35+engine*0.3;
+    ctx.fillStyle='#e0f7fa';
+    for(let i=0;i<5;i++){ctx.beginPath();ctx.ellipse(-28-i*10,(i%2?6:-6)*engine,10+i*3,3,0,0,Math.PI*2);ctx.fill()}
+    ctx.globalAlpha=1;
+  }
+  ctx.fillStyle='#0d47a1';
+  ctx.beginPath();ctx.moveTo(-30,8);ctx.lineTo(32,6);ctx.lineTo(28,16);ctx.lineTo(-26,16);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#1565c0';
+  ctx.beginPath();ctx.moveTo(-30,8);ctx.lineTo(32,6);ctx.lineTo(34,-2);ctx.lineTo(-28,0);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#eceff1';
+  ctx.beginPath();ctx.moveTo(-26,0);ctx.lineTo(30,-2);ctx.lineTo(28,6);ctx.lineTo(-24,8);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#37474f';
+  ctx.fillRect(-6,-18,16,18);
+  ctx.fillStyle='#81d4fa';
+  ctx.fillRect(-3,-14,5,5);ctx.fillRect(4,-14,5,5);
+  ctx.restore();
+}
+
+function drawBirdsEyeApproach(ctx,W,H,time){
+  const sky=ctx.createLinearGradient(0,0,0,H*0.28);
+  sky.addColorStop(0,'#81d4fa');sky.addColorStop(1,'#e1f5fe');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H*0.28);
+  drawWater(ctx,W,H,time,H*0.22);
+  drawIsland3D(ctx,W,H,W*0.58,H*0.40,1.15,time);
+  const wX=0.12+boat.pathT*0.62, wY=0.78-boat.pathT*0.22;
+  drawShip3DRear(ctx,wX*W,wY*H,1.35,0.1,0.4,time);
+}
+
+function drawRearDeckFPV(ctx,W,H,time){
+  const sky=ctx.createLinearGradient(0,0,0,H*0.42);
+  sky.addColorStop(0,'#4fc3f7');sky.addColorStop(0.5,'#b3e5fc');sky.addColorStop(1,'#e1f5fe');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,H*0.42);
+  ctx.fillStyle='#ffe082';ctx.beginPath();ctx.arc(W*0.8,H*0.12,26,0,Math.PI*2);ctx.fill();
+  drawWater(ctx,W,H,time,H*0.40);
+  const iscale=0.7+boat.pathT*1.1;
+  const icx=W*(0.52+Math.sin(boat.yaw)*0.12), icy=H*(0.42-boat.pathT*0.05);
+  drawIsland3D(ctx,W,H,icx,icy,iscale,time);
+  drawShip3DRear(ctx,W*0.5,H*0.78,2.6,boat.yaw,Math.max(0.1,boat.engine),time);
+  ctx.fillStyle='rgba(8,20,32,0.6)';ctx.fillRect(0,H*0.88,W,H*0.12);
+  ctx.fillStyle='#b2ebf2';ctx.font='12px Nunito';ctx.textAlign='center';
+  ctx.fillText('Rear-view helm · engine '+(boat.engine*100|0)+'% · speed '+boat.speed.toFixed(1)+' · dist to pier '+Math.max(0,((0.98-boat.pathT)*400)|0)+' m',W/2,H*0.93);
+  ctx.fillText('W/S throttle · A/D rudder · E dock when slow & close',W/2,H*0.965);
+}
+
+/* ================= MASTER ISLAND INTERACTIVE CANVAS ================= */
+let islandApi=null;
+
+function enterMain(fromBoat){
+  document.getElementById('boat-tour').style.display='none';
+  document.getElementById('outer-zone').style.display='none';
+  document.getElementById('dive-zone').style.display='none';
+  document.getElementById('island-zone').style.display='block';
+  if(fromBoat){state.dockedMain=true;toast('Docked safely at T-Jetty · Welcome to Blue Lab!')}
+  if(!islandApi)islandApi=new IslandMap(document.getElementById('island-canvas'));else islandApi.resize();
+  refreshUI();
+  if(!state.chapterIntroAck)setTimeout(openChapterIntro,350);
+}
+
+function enterOuter(){
+  document.getElementById('boat-tour').style.display='none';
+  document.getElementById('island-zone').style.display='none';
+  document.getElementById('dive-zone').style.display='none';
+  document.getElementById('outer-zone').style.display='block';
+  state.dockedOuter=true;state.surveyed.gas=true;startOuter();refreshUI();
+}
+
+function enterDive(){
+  document.getElementById('island-zone').style.display='none';
+  document.getElementById('dive-zone').style.display='block';
+  state.surveyed.coral=true;diveRunning=false;startDive();refreshUI();
+}
+
+function showBoat(dest){
+  state.boatDest=dest||'main';
+  document.getElementById('island-zone').style.display='none';
+  document.getElementById('outer-zone').style.display='none';
+  document.getElementById('dive-zone').style.display='none';
+  document.getElementById('boat-tour').style.display='block';
+  startBoat();
+}
+
+class IslandMap{
+  constructor(c){
+    this.canvas=c;this.ctx=c.getContext('2d');
+    this.hasBg=false;this.bg=new Image();
+    this.bg.onload=()=>this.hasBg=true;
+    this.bg.src='bg-island.jpg';
+    this.bg.onerror=()=>{this.bg.src='../public/saint-martin/bg-island.jpg'};
+    this.resize();
+    addEventListener('resize',()=>this.resize());
+    c.addEventListener('click',e=>this.onClick(e));
+    const loop=()=>{this.render();requestAnimationFrame(loop)};
+    requestAnimationFrame(loop);
+  }
+  resize(){
+    const d=Math.min(devicePixelRatio||1,2);
+    this.canvas.width=innerWidth*d;this.canvas.height=innerHeight*d;
+    this.W=innerWidth;this.H=innerHeight;
+  }
+  onClick(e){
+    const r=this.canvas.getBoundingClientRect();
+    const x=(e.clientX-r.left)/this.W, y=(e.clientY-r.top)/this.H;
+    for(const [pid,def] of Object.entries(PLOT_DEFS)){
+      if(Math.hypot(x-def.nx,y-def.ny)<0.035){openPlot(pid);return}
+    }
+    for(const s of SITES){
+      if(Math.hypot(x-s.nx,y-s.ny)<0.04){openWhy(s);return}
+    }
+  }
+  render(){
+    const ctx=this.ctx,d=Math.min(devicePixelRatio||1,2),W=this.W,H=this.H;
+    ctx.setTransform(d,0,0,d,0,0);
+    if(this.hasBg){
+      const iw=this.bg.naturalWidth,ih=this.bg.naturalHeight,sc=Math.max(W/iw,H/ih);
+      ctx.drawImage(this.bg,(W-iw*sc)/2,(H-ih*sc)/2,iw*sc,ih*sc);
+    }else{
+      const sea=ctx.createLinearGradient(0,0,0,H);sea.addColorStop(0,'#003366');sea.addColorStop(1,'#20b2aa');
+      ctx.fillStyle=sea;ctx.fillRect(0,0,W,H);
+    }
+
+    // Render Twin Decagonal Orchard Frames
+    this.drawDecagonFrame(ctx,W*0.23,H*0.51,W*0.12,H*0.16,'#2e7d32','Decagon 1 (Wet Coast)');
+    this.drawDecagonFrame(ctx,W*0.77,H*0.51,W*0.12,H*0.16,'#d84315','Decagon 2 (Dune Canopy)');
+
+    // Render 6 Interactive Plots
+    Object.entries(PLOT_DEFS).forEach(([pid,def])=>{
+      const px=def.nx*W, py=def.ny*H;
+      const st=state.plots[pid];
+      const count=st.trees.length;
+      ctx.beginPath();ctx.arc(px,py,15,0,Math.PI*2);
+      ctx.fillStyle=count?'rgba(46,125,50,0.92)':'rgba(255,253,240,0.92)';
+      ctx.fill();ctx.strokeStyle='#1b5e20';ctx.lineWidth=2;ctx.stroke();
+      ctx.fillStyle=count?'#fff':'#1b5e20';ctx.font='bold 9px monospace';ctx.textAlign='center';
+      ctx.fillText(pid.split('.')[1],px,py+3);
+    });
+
+    // Render 9 Landmark Pins
+    const t=performance.now()*0.001;
+    SITES.forEach((s,i)=>{
+      const px=s.nx*W, py=s.ny*H, bob=Math.sin(t*2+i)*3, done=!!state.surveyed[s.id];
+      ctx.beginPath();ctx.arc(px,py-8+bob,16,0,Math.PI*2);
+      ctx.fillStyle=done?'rgba(67,160,71,0.92)':'rgba(255,193,7,0.92)';
+      ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+      ctx.font='15px serif';ctx.textAlign='center';ctx.fillText(s.icon,px,py-3+bob);
+      if(!done){ctx.font='14px serif';ctx.fillText('👆',px+14,py-18+bob)}
+      ctx.fillStyle='rgba(0,20,30,0.65)';ctx.font='bold 10px Nunito';ctx.fillText(s.title,px,py+18);
+    });
+  }
+
+  drawDecagonFrame(ctx,cx,cy,rx,ry,col,lbl){
+    ctx.save();
+    ctx.beginPath();
+    for(let i=0;i<10;i++){
+      const ang=(i*2*Math.PI)/10-Math.PI/2;
+      const x=cx+rx*Math.cos(ang), y=cy+ry*Math.sin(ang);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.fillStyle='rgba(255,255,255,0.12)';ctx.fill();
+    ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle='#ffffff';ctx.font='bold 11px Nunito';ctx.textAlign='center';
+    ctx.fillText(lbl,cx,cy-ry-6);
+    ctx.restore();
+  }
+}
+
+/* ================= PLOT INSPECTOR & CARE ================= */
+let activePlot=null;
+
+function openPlot(pid){
+  activePlot=pid;
+  const def=PLOT_DEFS[pid], st=state.plots[pid];
+  document.getElementById('plot-modal').classList.add('open');
+  document.getElementById('plot-title').textContent=def.name;
+  document.getElementById('plot-meta').textContent=
+    'Soil Salinity: '+st.soilSalinityPpt+' ppt · Moisture: '+st.soilMoisturePercent+'% · Mulch: '+(st.mulchApplied?'Yes (-50% Evap)':'No');
+
+  document.getElementById('plot-trees').innerHTML=st.trees.map(t=>{
+    const c=PLANT_CATALOG[t.speciesId];
+    return '<div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0">'+
+      '<span>'+c.icon+' <b>'+c.name+'</b> · '+STAGE_NAMES[t.stage]+' ('+Math.round(t.progressPercent)+'%)</span>'+
+      '<span style="font-size:0.75rem;color:'+(t.harvestReady?'#2e7d32':'#78909c')+'">'+(t.harvestReady?'Ready to Harvest!':'Growing...')+'</span>'+
+    '</div>';
+  }).join('') || '<div style="font-size:0.8rem;color:#78909c">Barren Sub-Plot · Ready for Planting</div>';
+
+  document.getElementById('species-grid').innerHTML=def.affinity.map(id=>{
+    const c=PLANT_CATALOG[id];
+    return '<button class="btn btn-g" data-plant="'+id+'" style="justify-content:flex-start">'+
+      c.icon+' '+c.name+' · €'+c.cost+
+    '</button>';
+  }).join('');
+
+  document.querySelectorAll('[data-plant]').forEach(b=>{
+    b.onclick=()=>{
+      const sid=b.getAttribute('data-plant'), cat=PLANT_CATALOG[sid];
+      if(st.trees.length>=st.maxCapacity) return toast('Plot at full capacity');
+      if(state.money<cat.cost) return toast('Need €'+cat.cost);
+      state.money-=cat.cost;
+      st.trees.push({instanceId:'t_'+Math.random().toString(36).slice(2,7),speciesId:sid,stage:0,progressPercent:0,health:100,harvestReady:false});
+      state.globalO2+=8;
+      grantXP({farming:6});
+      toast('Planted '+cat.name);
+      openPlot(pid);
+      refreshUI();
+    };
+  });
+}
+
+document.getElementById('btn-water').onclick=()=>{
+  if(!activePlot)return;
+  const st=state.plots[activePlot];
+  st.soilMoisturePercent=Math.min(100,st.soilMoisturePercent+25);
+  st.trees.forEach(t=>{
+    t.progressPercent=Math.min(100,t.progressPercent+18);
+    if(t.progressPercent>=100&&t.stage<4){t.stage++;t.progressPercent=0}
+    if(t.stage>=3)t.harvestReady=true;
+  });
+  grantXP({farming:2});
+  toast('Freshwater applied to '+activePlot);
+  openPlot(activePlot);
+  refreshUI();
+};
+
+document.getElementById('btn-desal').onclick=()=>{
+  if(!activePlot)return;
+  const st=state.plots[activePlot];
+  st.condensateDrip=true;
+  st.soilSalinityPpt=Math.max(5,st.soilSalinityPpt-4);
+  toast('Solar desal condensate connected · Salinity reduced to '+st.soilSalinityPpt+' ppt');
+  openPlot(activePlot);
+  refreshUI();
+};
+
+document.getElementById('btn-mulch').onclick=()=>{
+  if(!activePlot)return;
+  const st=state.plots[activePlot];
+  st.mulchApplied=true;
+  grantXP({farming:4});
+  toast('Coconut husk & casuarina mulch applied (-50% evaporation)');
+  openPlot(activePlot);
+  refreshUI();
+};
+
+document.getElementById('btn-harvest').onclick=()=>{
+  if(!activePlot)return;
+  const st=state.plots[activePlot];
+  let n=0;
+  st.trees.forEach(t=>{
+    if(t.harvestReady){
+      n++;
+      state.money+=35;
+      state.harvests++;
+      if(t.speciesId==='tree_coconut'){state.copra+=3;state.cocoOil+=4}
+      if(t.speciesId==='tree_mangrove'){state.globalO2+=15}
+      t.harvestReady=false;
+      t.progressPercent=20;
+    }
+  });
+  if(n){
+    grantXP({farming:10});
+    toast('Harvested ×'+n+' trees · +€'+(n*35));
+  } else toast('No mature trees ready for harvest');
+  openPlot(activePlot);
+  refreshUI();
+};
+
+document.getElementById('plot-close').onclick=()=>document.getElementById('plot-modal').classList.remove('open');
+
+/* ================= LANDMARKS & WHY MODAL ================= */
+function openWhy(site){
+  const done=!!state.surveyed[site.id];
+  document.getElementById('why-body').innerHTML=
+    '<div class="modal-hdr"><h3>'+site.icon+' '+site.title+'</h3><button class="btn-close" id="why-close">✕</button></div>'+
+    '<div class="card-box alert"><b>'+site.why+'</b><br/>'+site.body+'</div>'+
+    (site.action==='dive'?'<button class="btn btn-c" style="width:100%;margin:4px 0" id="why-go">🤿 Open 3D Coral Dive</button>':'')+
+    (site.action==='gas'?'<button class="btn btn-c" style="width:100%;margin:4px 0" id="why-go">⛽ View Offshore Platform</button>':'')+
+    (site.action==='seadash'?'<button class="btn btn-c" style="width:100%;margin:4px 0" id="why-go">🌊 Open Sea Dashboard</button>':'')+
+    (site.action==='algae'?'<button class="btn btn-c" style="width:100%;margin:4px 0" id="why-go">🧪 Big Jar Algae Scrubbers</button>':'')+
+    '<button class="btn btn-p" style="width:100%;margin-top:6px" id="why-ack">'+(done?'Close':'Acknowledge Landmark · +XP')+'</button>';
+
+  document.getElementById('why-modal').classList.add('open');
+  document.getElementById('why-close').onclick=()=>document.getElementById('why-modal').classList.remove('open');
+  document.getElementById('why-ack').onclick=()=>{
+    if(!state.surveyed[site.id]){state.surveyed[site.id]=true;grantXP(site.xp);toast(site.icon+' '+site.title+' surveyed')}
+    document.getElementById('why-modal').classList.remove('open');
+    refreshUI();
+  };
+  const go=document.getElementById('why-go');
+  if(go)go.onclick=()=>{
+    if(!state.surveyed[site.id]){state.surveyed[site.id]=true;grantXP(site.xp)}
+    document.getElementById('why-modal').classList.remove('open');
+    if(site.action==='dive')enterDive();
+    else if(site.action==='gas')showBoat('outer');
+    else if(site.action==='seadash')openSeaDashboard();
+    else if(site.action==='algae')openAlgaeModal();
+    refreshUI();
+  };
+}
+
+function openChapterIntro(){
+  document.getElementById('why-body').innerHTML=
+    '<div class="modal-hdr"><h3>🌱 Chapter 1: Coastal Biosphere Briefing</h3></div>'+
+    '<div class="card-box alert"><b>Welcome to Saint Martin\'s Blue Lab!</b><br/>'+
+    'As a coastal eco-researcher, explore the 9 landmarks, deploy silt barriers to protect fragile corals, and establish the twin decagonal orchards (dec1 and dec2). All wild marine life is strictly scan-and-observe.</div>'+
+    '<button class="btn btn-p" style="width:100%" id="why-ack">Let\'s Explore · +10 XP</button>';
+  document.getElementById('why-modal').classList.add('open');
+  document.getElementById('why-ack').onclick=()=>{
+    if(!state.chapterIntroAck){state.chapterIntroAck=true;grantXP({farming:5,marine:5})}
+    document.getElementById('why-modal').classList.remove('open');
+    refreshUI();
+  };
+}
+
+/* ================= 3D CORAL DIVE SCENE ================= */
+let diveRunning=false;
+
+function startDive(){
+  const canvas=document.getElementById('dive-canvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const resize=()=>{const d=Math.min(devicePixelRatio||1,2);canvas.width=innerWidth*d;canvas.height=innerHeight*d};
+  resize();addEventListener('resize',resize);
+  diveRunning=true;
+
+  const fishes=[];
+  for(let i=0;i<26;i++){
+    fishes.push({
+      x:Math.random(),y:0.38+Math.random()*0.48,
+      vx:(0.25+Math.random()*0.45)*(Math.random()<0.5?-1:1),
+      sp:0.5+Math.random(),hue:i%5,sz:0.65+Math.random()*0.9
+    });
+  }
+
+  const corals=[
+    {x:0.18,y:0.70,h:95,c0:'#00695c',c1:'#4db6ac'},
+    {x:0.32,y:0.76,h:120,c0:'#e65100',c1:'#ffb74d'},
+    {x:0.48,y:0.72,h:85,c0:'#6a1b9a',c1:'#ce93d8'},
+    {x:0.62,y:0.78,h:110,c0:'#c62828',c1:'#ef9a9a'},
+    {x:0.25,y:0.84,h:70,c0:'#00838f',c1:'#80deea'},
+    {x:0.55,y:0.86,h:75,c0:'#f57f17',c1:'#ffe082'},
+    {x:0.40,y:0.80,h:100,c0:'#2e7d32',c1:'#a5d6a7'},
+    {x:0.70,y:0.74,h:90,c0:'#4527a0',c1:'#b39ddb'}
+  ];
+
+  const marks=[
+    {x:0.20,y:0.62,id:'a1'},{x:0.35,y:0.68,id:'a2'},{x:0.48,y:0.64,id:'a3'},
+    {x:0.60,y:0.70,id:'a4'},{x:0.30,y:0.82,id:'a5'},{x:0.52,y:0.80,id:'a6'},
+    {x:0.42,y:0.52,id:'fish_clown'},{x:0.68,y:0.58,id:'crab_mud'}
+  ];
+
+  canvas.onclick=(e)=>{
+    const r=canvas.getBoundingClientRect();
+    const x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
+    for(const m of marks){
+      if(Math.hypot(x-m.x,y-m.y)<0.06){openKidCard(m.id);return}
+    }
+  };
+
+  (function loop(){
+    if(document.getElementById('dive-zone').style.display==='none'){diveRunning=false;return}
+    const d=Math.min(devicePixelRatio||1,2), W=innerWidth, H=innerHeight, t=performance.now()*0.001;
+    ctx.setTransform(d,0,0,d,0,0);
+
+    const g=ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#0288d1');g.addColorStop(0.4,'#0277bd');g.addColorStop(0.75,'#01579b');g.addColorStop(1,'#002b36');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+    // God rays
+    ctx.save();ctx.globalAlpha=0.1;
+    for(let i=0;i<7;i++){
+      ctx.fillStyle='#e1f5fe';
+      ctx.beginPath();
+      ctx.moveTo(W*0.25+i*55,0);ctx.lineTo(W*0.15+i*60,H);ctx.lineTo(W*0.22+i*60,H);ctx.closePath();ctx.fill();
+    }
+    ctx.restore();
+
+    // Sandy floor
+    ctx.fillStyle='#8d6e63';ctx.fillRect(0,H*0.87,W,H*0.13);
+
+    // Corals
+    corals.forEach((c,i)=>{
+      const x=c.x*W, y=c.y*H, h=c.h+Math.sin(t+i)*6;
+      ctx.fillStyle=c.c0;
+      ctx.beginPath();ctx.moveTo(x,y-h);ctx.lineTo(x+28,y-h+16);ctx.lineTo(x+28,y+12);ctx.lineTo(x,y);ctx.closePath();ctx.fill();
+      ctx.fillStyle=c.c1;
+      ctx.beginPath();ctx.moveTo(x,y-h);ctx.lineTo(x-22,y-h+18);ctx.lineTo(x-22,y+10);ctx.lineTo(x,y);ctx.closePath();ctx.fill();
+    });
+
+    // Fish schools
+    fishes.forEach(f=>{
+      f.x+=f.vx*0.0035*f.sp;
+      if(f.x>1.08)f.x=-0.08;if(f.x<-0.08)f.x=1.08;
+      f.y+=Math.sin(t*f.sp+f.x*12)*0.0009;
+      const px=f.x*W, py=f.y*H, dir=f.vx>=0?1:-1;
+      const cols=['#ff7043','#26a69a','#ffd54f','#42a5f5','#ab47bc'];
+      ctx.fillStyle=cols[f.hue];
+      ctx.beginPath();ctx.ellipse(px,py,14*f.sz,6*f.sz,dir*0.2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.moveTo(px-dir*14*f.sz,py);ctx.lineTo(px-dir*24*f.sz,py-7*f.sz);ctx.lineTo(px-dir*24*f.sz,py+7*f.sz);ctx.fill();
+    });
+
+    // Markers
+    marks.forEach((m,i)=>{
+      const px=m.x*W, py=m.y*H+Math.sin(t*2+i)*4;
+      ctx.beginPath();ctx.arc(px,py,18,0,Math.PI*2);
+      ctx.fillStyle=state.diveLogged[m.id]?'rgba(129,199,132,0.85)':'rgba(0,229,255,0.6)';
+      ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+      const card=MARINE_CARDS[m.id];
+      ctx.font='22px serif';ctx.textAlign='center';
+      ctx.fillText(card?card.emoji.slice(0,2):'?',px,py+8);
+    });
+
+    ctx.fillStyle='rgba(0,0,0,0.45)';ctx.fillRect(W*0.15,10,W*0.7,32);
+    ctx.fillStyle='#e0f7fa';ctx.font='bold 13px Nunito';ctx.textAlign='center';
+    ctx.fillText('🤿 3D Coral Dive · Scan & Observe Marine Biodiversity · Tap markers to learn',W/2,31);
+
+    requestAnimationFrame(loop);
+  })();
+}
+
+function openKidCard(cardId){
+  const C=MARINE_CARDS[cardId];if(!C)return;
+  document.getElementById('lesson-body-wrap').innerHTML=
+    '<div class="modal-hdr"><h3>'+C.title+'</h3><button class="btn-close" id="card-close">✕</button></div>'+
+    '<div class="card-box" style="text-align:center"><span style="font-size:3.5rem">'+C.emoji+'</span><div style="font-size:0.9rem;font-weight:700;color:var(--pine);margin-top:6px">'+C.fun+'</div></div>'+
+    '<div class="card-box marine" style="font-size:0.8rem"><b>Conservation Fact:</b> '+C.fact+'</div>'+
+    '<button class="btn btn-p" style="width:100%" id="lesson-close">Log Diagnostic Badge · +XP</button>';
+
+  document.getElementById('lesson-modal').classList.add('open');
+  document.getElementById('card-close').onclick=()=>document.getElementById('lesson-modal').classList.remove('open');
+  document.getElementById('lesson-close').onclick=()=>{
+    if(!state.diveLogged[cardId]){
+      state.diveLogged[cardId]=true;
+      state.scans++;
+      state.shi=Math.min(99,state.shi+1);
+      state.dissolvedO2=Math.min(99,state.dissolvedO2+1);
+      state.globalO2+=15;
+    }
+    grantXP(C.xp);
+    toast('Badge logged: '+C.title);
+    document.getElementById('lesson-modal').classList.remove('open');
+    refreshUI();
+  };
+}
+
+/* ================= PROCESSING & STEPS ================= */
+function openProcess(kind){
+  const steps=kind==='cng'?CNG_STEPS:OIL_STEPS;
+  const cur=kind==='cng'?state.cngStep:state.oilStep;
+  let html='<div class="modal-hdr"><h3>'+(kind==='cng'?'⛽ CNG Extraction & Cascade Storage':'🥥 Cold-Pressed Coconut Oil Processing')+'</h3><button class="btn-close" id="proc-close">✕</button></div>'+
+    '<p style="font-size:0.8rem;color:#546e7a;margin:0 0 10px">Follow industrial procedure sequentially to ensure safety and eco-certification.</p>';
+
+  steps.forEach(s=>{
+    const done=cur>=s.n;
+    html+='<div class="step-row '+(done?'done':'')+'">'+
+      '<div class="step-num">'+(done?'✓':s.n)+'</div>'+
+      '<div><b>'+s.t+'</b><br/><span style="font-size:0.78rem;color:#455a64">'+s.d+'</span></div>'+
+    '</div>';
+  });
+
+  html+='<button class="btn btn-p" style="width:100%;margin-top:8px" id="proc-next">'+(cur>=steps.length?'All Steps Completed · Close':'Execute Step '+(cur+1)+' · +XP')+'</button>';
+
+  document.getElementById('process-body').innerHTML=html;
+  document.getElementById('process-modal').classList.add('open');
+  document.getElementById('proc-close').onclick=()=>document.getElementById('process-modal').classList.remove('open');
+  document.getElementById('proc-next').onclick=()=>{
+    if(kind==='cng'){
+      if(state.cngStep<CNG_STEPS.length){
+        state.cngStep++;state.cng+=8;state.money+=25;grantXP({energy:8});
+        toast('CNG Step '+state.cngStep+' completed');openProcess('cng');
+      }else document.getElementById('process-modal').classList.remove('open');
+    }else{
+      if(state.oilStep<OIL_STEPS.length){
+        state.oilStep++;
+        if(state.oilStep>=4)state.cocoOil+=6;
+        state.money+=20;grantXP({farming:6,energy:4});
+        toast('Oil Step '+state.oilStep+' completed');openProcess('oil');
+      }else document.getElementById('process-modal').classList.remove('open');
+    }
+    refreshUI();
+  };
+}
+
+function openAlgaeModal(){
+  openSeaDashboard();
+}
+
+/* ================= EVENT WIRING ================= */
+document.getElementById('btn-skip-boat').onclick=()=>state.boatDest==='outer'?enterOuter():enterMain(true);
+document.getElementById('btn-boat-again').onclick=()=>showBoat('main');
+document.getElementById('btn-back-main').onclick=()=>enterMain(false);
+document.getElementById('btn-surface').onclick=()=>enterMain(false);
+document.getElementById('btn-cng-ui').onclick=()=>openProcess('cng');
+document.getElementById('btn-masterplan').onclick=e=>{e.stopPropagation();openMasterplan()};
+document.getElementById('taskCapsule').onclick=()=>{if(!state.chapterIntroAck)openChapterIntro();else openMasterplan()};
+document.getElementById('btn-sea-dash').onclick=()=>openSeaDashboard();
+
+document.getElementById('btn-menu').onclick=()=>document.getElementById('floatMenu').classList.toggle('open');
+document.getElementById('menu-close').onclick=()=>document.getElementById('floatMenu').classList.remove('open');
+document.getElementById('menu-masterplan').onclick=()=>{document.getElementById('floatMenu').classList.remove('open');openMasterplan()};
+document.getElementById('menu-sea-dash').onclick=()=>{document.getElementById('floatMenu').classList.remove('open');openSeaDashboard()};
+document.getElementById('menu-dive').onclick=()=>{document.getElementById('floatMenu').classList.remove('open');enterDive()};
+document.getElementById('menu-labour').onclick=()=>{document.getElementById('floatMenu').classList.remove('open');openLabourMarket()};
+document.getElementById('menu-trade').onclick=()=>{document.getElementById('floatMenu').classList.remove('open');openTradeModal()};
+document.getElementById('menu-algae').onclick=()=>{document.getElementById('floatMenu').classList.remove('open');openSeaDashboard()};
+document.getElementById('menu-gas').onclick=()=>{document.getElementById('floatMenu').classList.remove('open');showBoat('outer')};
+document.getElementById('menu-oil').onclick=()=>{document.getElementById('floatMenu').classList.remove('open');openProcess('oil')};
+
+document.getElementById('menu-tick').onclick=()=>{
+  Object.keys(state.plots).forEach(id=>{
+    const p=state.plots[id];
+    p.trees.forEach(t=>{
+      t.progressPercent=Math.min(100,t.progressPercent+15);
+      if(t.progressPercent>=100&&t.stage<4){t.stage++;t.progressPercent=0}
+      if(t.stage>=3)t.harvestReady=true;
+    });
+    p.soilMoisturePercent=Math.max(15,p.soilMoisturePercent-(p.mulchApplied?2:4));
+  });
+  state.globalO2+=18;
+  if(state.algaeActive) state.globalO2+=12;
+  refreshUI();
+  toast('Time leaped +10s · Trees progressed');
+};
+
+/* Start game */
+startBoat();
+refreshUI();
+</script>
+</body>
+</html>
