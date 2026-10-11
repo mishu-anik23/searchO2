@@ -56,7 +56,70 @@ const assert = require('assert');
   await page.click('#bp-close');
   await page.waitForTimeout(200);
 
-  // 3. Seafood modal via float menu
+  // 3. Living Encyclopedia Modal
+  await page.click('#btn-encyclopedia');
+  await page.waitForTimeout(300);
+  let encVisible = await page.$eval('#encyclopedia-modal', el => el.classList.contains('open'));
+  assert.strictEqual(encVisible, true, 'Encyclopedia modal must be open');
+  let encText = await page.textContent('#encyclopedia-body');
+  assert(encText.includes('Cocos nucifera') && encText.includes('Rhizophora mucronata'), 'Encyclopedia must list tree binomials');
+  console.log('[✓ PASSED] Living Botanical & Marine Encyclopedia opens with scientific binomials');
+  await page.click('#enc-close');
+  await page.waitForTimeout(200);
+
+  // 4. Vegetable Crop Field Modal via Float Menu
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-crop');
+  await page.waitForTimeout(300);
+  let cropVisible = await page.$eval('#crop-modal', el => el.classList.contains('open'));
+  assert.strictEqual(cropVisible, true, 'Crop field modal must be open');
+  let cropText = await page.textContent('#crop-body');
+  assert(cropText.includes('Polyculture Companion Crop') && cropText.includes('Coastal Cherry Tomato'), 'Crop field modal verification');
+  console.log('[✓ PASSED] Menu Crop opens Polyculture Companion Crop Field modal');
+  await page.click('#crop-close');
+  await page.waitForTimeout(200);
+
+  // 5. Polyculture Botanical Flower Garden Modal via Float Menu
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-flower');
+  await page.waitForTimeout(300);
+  let flVisible = await page.$eval('#flower-modal', el => el.classList.contains('open'));
+  assert.strictEqual(flVisible, true, 'Flower garden modal must be open');
+  let flText = await page.textContent('#flower-body');
+  assert(flText.includes('Decagonal Polyculture Botanical Flower') && flText.includes('Ipomoea pes-caprae'), 'Flower modal verification');
+  console.log('[✓ PASSED] Menu Flower opens Botanical Flower Garden modal with coastal cultivars');
+  await page.click('#flower-close');
+  await page.waitForTimeout(200);
+
+  // 6. Farm Garage & Mechanization Depot via Float Menu
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-garage');
+  await page.waitForTimeout(300);
+  let garVisible = await page.$eval('#garage-modal', el => el.classList.contains('open'));
+  assert.strictEqual(garVisible, true, 'Garage modal must be open');
+  let garText = await page.textContent('#garage-body');
+  assert(garText.includes('Farm Garage') && garText.includes('Solar Ag-Tractor'), 'Garage modal verification');
+  console.log('[✓ PASSED] Menu Garage opens Farm Garage & Mechanization Depot modal');
+  await page.click('#garage-close');
+  await page.waitForTimeout(200);
+
+  // 7. North Storage Silos via Float Menu
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-storage');
+  await page.waitForTimeout(300);
+  let storVisible = await page.$eval('#storage-modal', el => el.classList.contains('open'));
+  assert.strictEqual(storVisible, true, 'Storage modal must be open');
+  let storText = await page.textContent('#storage-body');
+  assert(storText.includes('North Storage Silos') && storText.includes('Tomatoes'), 'Storage modal verification');
+  console.log('[✓ PASSED] Menu Storage opens North Storage Silos & Inventory modal');
+  await page.click('#storage-close');
+  await page.waitForTimeout(200);
+
+  // 8. Seafood modal via float menu
   await page.click('#btn-menu');
   await page.waitForTimeout(200);
   await page.click('#menu-seafood');
@@ -69,7 +132,7 @@ const assert = require('assert');
   await page.click('#seafood-close');
   await page.waitForTimeout(200);
 
-  // 4. Desal modal via float menu
+  // 9. Desal modal via float menu
   await page.click('#btn-menu');
   await page.waitForTimeout(200);
   await page.click('#menu-desal');
@@ -82,7 +145,7 @@ const assert = require('assert');
   await page.click('#desal-close');
   await page.waitForTimeout(200);
 
-  // 5. Salt modal via float menu
+  // 10. Salt modal via float menu
   await page.click('#btn-menu');
   await page.waitForTimeout(200);
   await page.click('#menu-salt');
@@ -95,45 +158,87 @@ const assert = require('assert');
   await page.click('#salt-close');
   await page.waitForTimeout(200);
 
-  // 6. IslandMap canvas onClick triggers (simulate click on seafood_hub at 0.625, 0.444)
+  // 11. IslandMap canvas onClick on Vegetable Garden at (0.265, 0.288)
   await page.evaluate(() => {
     islandApi.onClick({
-      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.625,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.444
+      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.265,
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.288
+    });
+  });
+  await page.waitForTimeout(300);
+  cropVisible = await page.$eval('#crop-modal', el => el.classList.contains('open'));
+  assert.strictEqual(cropVisible, true, 'Clicking Vegetable Garden on map opens crop-modal');
+  console.log('[✓ PASSED] Map canvas click on Vegetable Garden [509,311] opens crop modal');
+  await page.click('#crop-close');
+  await page.waitForTimeout(200);
+
+  // 12. IslandMap canvas onClick on Flower Garden at (0.297, 0.448)
+  await page.evaluate(() => {
+    islandApi.onClick({
+      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.297,
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.448
+    });
+  });
+  await page.waitForTimeout(300);
+  flVisible = await page.$eval('#flower-modal', el => el.classList.contains('open'));
+  assert.strictEqual(flVisible, true, 'Clicking Flower Garden on map opens flower-modal');
+  console.log('[✓ PASSED] Map canvas click on Flower Garden [570,484] opens flower modal');
+  await page.click('#flower-close');
+  await page.waitForTimeout(200);
+
+  // 13. IslandMap canvas onClick on Farm Garage at (0.367, 0.231)
+  await page.evaluate(() => {
+    islandApi.onClick({
+      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.367,
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.231
+    });
+  });
+  await page.waitForTimeout(300);
+  garVisible = await page.$eval('#garage-modal', el => el.classList.contains('open'));
+  assert.strictEqual(garVisible, true, 'Clicking Garage on map opens garage-modal');
+  console.log('[✓ PASSED] Map canvas click on Farm Garage [705,250] opens garage modal');
+  await page.click('#garage-close');
+  await page.waitForTimeout(200);
+
+  // 14. IslandMap canvas onClick on Seafood Facility at (0.447, 0.161)
+  await page.evaluate(() => {
+    islandApi.onClick({
+      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.447,
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.161
     });
   });
   await page.waitForTimeout(300);
   sfVisible = await page.$eval('#seafood-modal', el => el.classList.contains('open'));
-  assert.strictEqual(sfVisible, true, 'Clicking Seafood Hub on map opens seafood-modal');
-  console.log('[✓ PASSED] Map canvas click on Seafood Hub [1200,480] opens seafood modal');
+  assert.strictEqual(sfVisible, true, 'Clicking Seafood Facility on map opens seafood-modal');
+  console.log('[✓ PASSED] Map canvas click on Seafood Facility [858,174] opens seafood modal');
   await page.click('#seafood-close');
   await page.waitForTimeout(200);
 
-  // 7. IslandMap canvas onClick on Desal Intake at 0.292, 0.435
+  // 15. IslandMap canvas onClick on Desalination at (0.099, 0.652)
   await page.evaluate(() => {
     islandApi.onClick({
-      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.292,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.435
+      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.099,
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.652
     });
   });
   await page.waitForTimeout(300);
   desalVisible = await page.$eval('#desal-modal', el => el.classList.contains('open'));
-  assert.strictEqual(desalVisible, true, 'Clicking Desal intake on map opens desal-modal');
-  console.log('[✓ PASSED] Map canvas click on Desal Intake [560,470] opens desal modal');
+  assert.strictEqual(desalVisible, true, 'Clicking Desalination on map opens desal-modal');
+  console.log('[✓ PASSED] Map canvas click on Desalination Facility [190,704] opens desal modal');
   await page.click('#desal-close');
   await page.waitForTimeout(200);
 
-  // 8. IslandMap canvas onClick on Salt Brines at 0.104, 0.444
+  // 16. IslandMap canvas onClick on Salt Brines at (0.118, 0.462)
   await page.evaluate(() => {
     islandApi.onClick({
-      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.104,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.444
+      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.W * 0.118,
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.H * 0.462
     });
   });
   await page.waitForTimeout(300);
   saltVisible = await page.$eval('#salt-modal', el => el.classList.contains('open'));
   assert.strictEqual(saltVisible, true, 'Clicking Salt Brines on map opens salt-modal');
-  console.log('[✓ PASSED] Map canvas click on Salt Brines [200,480] opens salt modal');
+  console.log('[✓ PASSED] Map canvas click on Salt Brines [227,499] opens salt modal');
   await page.click('#salt-close');
   await page.waitForTimeout(200);
   
