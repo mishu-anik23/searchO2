@@ -124,11 +124,11 @@ const assert = require('assert');
   console.log('[✓ PASSED] Fullscreen button & landscape rotate prompt verified for mobile/PC');
 
   // 7. On-Field Object Canvas Click: User Garden Construction
-  // Click Vegetable Garden at (509, 311) -> Opens Construction Modal
+  // Click Vegetable Garden at (510, 195) -> Opens Construction Modal
   await page.evaluate(() => {
     islandApi.onClick({
-      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.scaleX * 509,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.scaleY * 311
+      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.scaleX * 510,
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.scaleY * 195
     });
   });
   await page.waitForTimeout(300);
@@ -136,7 +136,7 @@ const assert = require('assert');
   assert.strictEqual(gConVisible, true, 'Clicking unbuilt vegetable garden opens garden-construct-modal');
   let gConText = await page.textContent('#garden-construct-body');
   assert(gConText.includes('Construction Required') || gConText.includes('Start Garden Construction'), 'Garden construction prompt displays');
-  console.log('[✓ PASSED] Map canvas click on unbuilt Vegetable Garden [509,311] triggers construction modal');
+  console.log('[✓ PASSED] Map canvas click on unbuilt Vegetable Garden [510,195] triggers construction modal');
   await page.click('#garden-construct-close');
   await page.waitForTimeout(200);
 
