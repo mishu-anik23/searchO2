@@ -56,8 +56,10 @@ const assert = require('assert');
   assert(sbText.includes('SHI') && sbText.includes('DO') && sbText.includes('O₂'), 'Scoreboard must have SHI, DO, O2');
   console.log('[✓ PASSED] Scoreboard rendered with Sea Health Index & Dissolved O2');
 
-  // 4. Test Special Sea Dashboard Modal
-  await page.click('#btn-sea-dash');
+  // 4. Test Special Sea Dashboard Modal via operational menu
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-sea-dash');
   await page.waitForTimeout(400);
   const isSeaDashVisible = await page.isVisible('#seadash-modal');
   assert(isSeaDashVisible, '#seadash-modal must be open');
@@ -80,8 +82,10 @@ const assert = require('assert');
   await page.click('#labour-close');
   await page.waitForTimeout(300);
 
-  // 6. Test 5-Chapter Masterplan
-  await page.click('#btn-masterplan');
+  // 6. Test 5-Chapter Masterplan via operational menu
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-masterplan');
   await page.waitForTimeout(400);
   const isMasterVisible = await page.isVisible('#master-modal');
   assert(isMasterVisible, '#master-modal must be open');

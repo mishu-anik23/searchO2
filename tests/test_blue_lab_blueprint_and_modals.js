@@ -57,19 +57,23 @@ const assert = require('assert');
     await page.waitForTimeout(300);
   }
   
-  // 2. Blueprint button click -> #blueprint-modal
-  await page.click('#btn-blueprint');
+  // 2. Blueprint modal open via menu drawer
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-blueprint');
   await page.waitForTimeout(300);
   let bpVisible = await page.$eval('#blueprint-modal', el => el.classList.contains('open'));
   assert.strictEqual(bpVisible, true, 'Blueprint modal must be open');
   let bpImgSrc = await page.$eval('#blueprint-body img', el => el.getAttribute('src'));
   assert.strictEqual(bpImgSrc, 'blueprint-map.svg', 'Blueprint modal must render blueprint-map.svg');
-  console.log('[✓ PASSED] Top Blueprint button opens modal and displays blueprint-map.svg');
+  console.log('[✓ PASSED] Blueprint modal opens via operational menu and displays blueprint-map.svg');
   await page.click('#bp-close');
   await page.waitForTimeout(200);
 
-  // 3. Living Encyclopedia Modal
-  await page.click('#btn-encyclopedia');
+  // 3. Living Encyclopedia Modal via menu drawer
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-encyclopedia');
   await page.waitForTimeout(300);
   let encVisible = await page.$eval('#encyclopedia-modal', el => el.classList.contains('open'));
   assert.strictEqual(encVisible, true, 'Encyclopedia modal must be open');
@@ -79,21 +83,14 @@ const assert = require('assert');
   await page.click('#enc-close');
   await page.waitForTimeout(200);
 
-  // 4. Icon-Only Scoreboard HUD with Hover Tooltips & Scoreboard Modal
-  const iconChipsCount = await page.$$eval('.sb-chip.icon-only', chips => chips.length);
-  assert(iconChipsCount >= 9, 'Scoreboard must render 9 icon-only chips');
-  const tooltipsCount = await page.$$eval('.sb-chip.icon-only .sb-tooltip', tt => tt.length);
-  assert(tooltipsCount >= 9, 'Each icon-only chip must have an interactive hover tooltip');
-  console.log('[✓ PASSED] Scoreboard HUD renders icon-only badges with hover statement tooltips');
-
-  // Click Scoreboard Chip to open Executive KPI Scoreboard Modal
-  await page.click('#sb-money');
+  // 4. Scoreboard Dashboard packed in top-right icon button with Executive KPI modal
+  await page.click('#btn-scoreboard');
   await page.waitForTimeout(300);
   let scoreVisible = await page.$eval('#scoreboard-modal', el => el.classList.contains('open'));
-  assert.strictEqual(scoreVisible, true, 'Clicking scoreboard chip opens scoreboard-modal');
+  assert.strictEqual(scoreVisible, true, 'Clicking scoreboard icon opens scoreboard-modal');
   let scoreText = await page.textContent('#scoreboard-body');
   assert(scoreText.includes('FINANCIAL & RESEARCH BUDGET') && scoreText.includes('SEA HEALTH'), 'Scoreboard modal contains comprehensive KPI sections');
-  console.log('[✓ PASSED] Scoreboard modal opens with Executive KPI Dashboard');
+  console.log('[✓ PASSED] Top-right Scoreboard icon opens Executive KPI Dashboard with close button');
   await page.click('#scoreboard-close');
   await page.waitForTimeout(200);
 
@@ -163,11 +160,11 @@ const assert = require('assert');
   await page.click('#subplot-close');
   await page.waitForTimeout(200);
 
-  // 9. Decagon 2: Coastal Fruit Orchard (5 Plots) - dec2.plot1 Tree Growth Lifecycle (Stretched North to 1340, 205)
+  // 9. Decagon 2: Coastal Fruit Orchard (5 Plots) - dec2.plot1 Tree Growth Lifecycle (On Green Meadow at 1340, 250)
   await page.evaluate(() => {
     islandApi.onClick({
       clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.scaleX * 1340,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.scaleY * 205
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.scaleY * 250
     });
   });
   await page.waitForTimeout(300);
@@ -175,7 +172,7 @@ const assert = require('assert');
   assert.strictEqual(subVisible, true, 'Clicking dec2.plot1 opens subplot-modal');
   let treeText = await page.textContent('#subplot-body');
   assert(treeText.includes('Coastal Coconut Palm') && (treeText.includes('Water') || treeText.includes('Prune') || treeText.includes('Till') || treeText.includes('Salinity')), 'Decagon 2 orchard plot displays tree care options');
-  console.log('[✓ PASSED] Decagon 2 Fruit Orchard [1340,205] on green meadow renders active tree growth & care implements');
+  console.log('[✓ PASSED] Decagon 2 Fruit Orchard [1340,250] on green meadow renders active tree growth & care implements');
   await page.click('#subplot-close');
   await page.waitForTimeout(200);
 
@@ -207,8 +204,10 @@ const assert = require('assert');
   await page.click('#task-hud-close');
   await page.waitForTimeout(200);
 
-  // 12. Boat Simulation launch and test
-  await page.click('#btn-boat-nav');
+  // 12. Boat Simulation launch and test (via operational menu)
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-boat');
   await page.waitForTimeout(300);
   let boatTourVisible = await page.$eval('#boat-tour', el => el.style.display === 'block');
   assert.strictEqual(boatTourVisible, true, 'Boat simulation tour view must be visible');
@@ -227,8 +226,10 @@ const assert = require('assert');
   await page.click('#btn-outer-island');
   await page.waitForTimeout(300);
 
-  // 14. Planetary Biome Globe modal
-  await page.click('#btn-globe');
+  // 14. Planetary Biome Globe modal (via operational menu)
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-globe');
   await page.waitForTimeout(300);
   let globeVisible = await page.$eval('#globe-modal', el => el.classList.contains('open'));
   assert.strictEqual(globeVisible, true, 'Planetary globe modal must be open');

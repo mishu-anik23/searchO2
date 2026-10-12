@@ -179,16 +179,20 @@ const assert = require('assert');
   assert(sbText.includes('SHI') && sbText.includes('DO') && sbText.includes('O₂'), 'Scoreboard must have SHI, DO, O2');
   console.log('[✓ PASSED] Blue Lab Scoreboard with Sea Health Index & Dissolved O2 active');
 
-  // Open Sea Dashboard
-  await page.click('#btn-sea-dash');
+  // Open Sea Dashboard via operational menu
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-sea-dash');
   await page.waitForTimeout(400);
   assert(await page.isVisible('#seadash-modal'), '#seadash-modal must be open');
   console.log('[✓ PASSED] Special Sea Dashboard verified');
   await page.click('#sd-close');
   await page.waitForTimeout(200);
 
-  // Open Masterplan
-  await page.click('#btn-masterplan');
+  // Open Masterplan via operational menu
+  await page.click('#btn-menu');
+  await page.waitForTimeout(200);
+  await page.click('#menu-masterplan');
   await page.waitForTimeout(400);
   assert(await page.isVisible('#master-modal'), '#master-modal must be open');
   console.log('[✓ PASSED] 5-Chapter Masterplan verified');
