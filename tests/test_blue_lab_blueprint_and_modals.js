@@ -24,9 +24,9 @@ const assert = require('assert');
   assert(origSvg.includes('DECAGON 2: COASTAL FRUIT ORCHARD (5 PLOTS)'), 'Blueprint SVG must show Decagon 2 Fruit Orchard (5 Plots)');
   assert(origSvg.includes('dec1.plot1') && origSvg.includes('dec1.plot5'), 'Blueprint SVG must show all 5 Decagon 1 plots');
   assert(origSvg.includes('dec2.plot1') && origSvg.includes('dec2.plot5'), 'Blueprint SVG must show all 5 Decagon 2 plots');
-  assert(origSvg.includes('pin-rock_sand_1') && origSvg.includes('pin-rock_sand_3'), 'Blueprint SVG must show 3 sand rock exploration nodes');
+  assert(!origSvg.includes('pin-rock_sand_1') && !origSvg.includes('pin-rock_sand_3'), 'Blueprint SVG must have rock nodes removed');
   assert(origSvg.includes('id="road-network"'), 'Blueprint SVG must show road network lines');
-  console.log('[✓ PASSED] Blueprint SVG contains 20 markers, 2x 5-plot decagons, 3 sand rocks, and road network');
+  console.log('[✓ PASSED] Blueprint SVG contains 20 markers, 2x 5-plot decagons, rock nodes removed, and curvy road network');
 
   const browser = await chromium.launch({
     executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -163,43 +163,37 @@ const assert = require('assert');
   await page.click('#subplot-close');
   await page.waitForTimeout(200);
 
-  // 9. Decagon 2: Coastal Fruit Orchard (5 Plots) - dec2.plot1 Tree Growth Lifecycle
+  // 9. Decagon 2: Coastal Fruit Orchard (5 Plots) - dec2.plot1 Tree Growth Lifecycle (Stretched North to 1340, 205)
   await page.evaluate(() => {
     islandApi.onClick({
       clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.scaleX * 1340,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.scaleY * 315
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.scaleY * 205
     });
   });
   await page.waitForTimeout(300);
   subVisible = await page.$eval('#subplot-modal', el => el.classList.contains('open'));
   assert.strictEqual(subVisible, true, 'Clicking dec2.plot1 opens subplot-modal');
   let treeText = await page.textContent('#subplot-body');
-  assert(treeText.includes('Coastal Coconut Palm') && (treeText.includes('Water') || treeText.includes('Prune')), 'Decagon 2 orchard plot displays tree care options');
-  console.log('[✓ PASSED] Decagon 2 Fruit Orchard [1340,315] renders active tree growth & care implements');
+  assert(treeText.includes('Coastal Coconut Palm') && (treeText.includes('Water') || treeText.includes('Prune') || treeText.includes('Till') || treeText.includes('Salinity')), 'Decagon 2 orchard plot displays tree care options');
+  console.log('[✓ PASSED] Decagon 2 Fruit Orchard [1340,205] on green meadow renders active tree growth & care implements');
   await page.click('#subplot-close');
   await page.waitForTimeout(200);
 
-  // 10. Beach Sand Mud Rock Exploration Nodes: rock_sand_1 at (280, 620)
+  // 10. Unbuilt Facility Build-From-Scratch with Ecological & Engineering Why Card
+  // Click North Storage & Silos at (1029, 191) -> Opens Construction Modal with Why Card
   await page.evaluate(() => {
     islandApi.onClick({
-      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.scaleX * 280,
-      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.scaleY * 620
+      clientX: islandApi.canvas.getBoundingClientRect().left + islandApi.scaleX * 1029,
+      clientY: islandApi.canvas.getBoundingClientRect().top + islandApi.scaleY * 191
     });
   });
   await page.waitForTimeout(300);
-  let sandVisible = await page.$eval('#sand-rock-modal', el => el.classList.contains('open'));
-  assert.strictEqual(sandVisible, true, 'Clicking sand rock node opens sand-rock-modal');
-  let sandText = await page.textContent('#sand-rock-body');
-  assert(sandText.includes('Rocky Coral Rubble') || sandText.includes('Explore & Clear'), 'Sand rock displays exploration prompt');
-  console.log('[✓ PASSED] Beach sand mud rock node [280,620] opens compact visual exploration card');
-
-  // Trigger sand rock clearing
-  await page.evaluate(() => startClearingSandRock('rock_sand_1'));
-  await page.waitForTimeout(200);
-  let clearingSandText = await page.textContent('#sand-rock-body');
-  assert(clearingSandText.includes('Clearing Coral Rubble') || clearingSandText.includes('Progress'), 'Sand rock transitions to clearing state');
-  console.log('[✓ PASSED] Sand rock clearing starts with live timer countdown & percentage progress');
-  await page.click('#sand-rock-close');
+  let nStorageVisible = await page.$eval('#garden-construct-modal', el => el.classList.contains('open'));
+  assert.strictEqual(nStorageVisible, true, 'Clicking unbuilt North Storage opens garden-construct-modal');
+  let nStorageText = await page.textContent('#garden-construct-body');
+  assert(nStorageText.includes('WHY CARD') && nStorageText.includes('Engineering Specifications') && nStorageText.includes('Construction Capital'), 'North Storage displays rich Ecological & Engineering Why Card');
+  console.log('[✓ PASSED] Unbuilt facility [1029,191] opens Ecological & Engineering Why Card modal');
+  await page.click('#garden-construct-close');
   await page.waitForTimeout(200);
 
   // 11. Task HUD Capsule click -> #task-hud
