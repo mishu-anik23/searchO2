@@ -2184,10 +2184,15 @@ const IslandMap={
         ctx.fillText('🌱 TILLED',px,py+4);
       }
       else if(plot.status==='growing' || plot.status==='harvest_ready'){
-        const t=plot.trees[0]||{};
-        draw3DIsometricTree(ctx,px,py+4,t.speciesKey||'red_mangrove',t.stage||1);
-        ctx.fillStyle='#FFF';ctx.font='bold 10px JetBrains Mono';ctx.textAlign='center';
-        ctx.fillText((t.progressPercent||0)+'%',px,py+28);
+        try {
+          const t=(plot.trees && plot.trees[0]) ? plot.trees[0] : {};
+          const stage = (t.stage !== undefined && t.stage !== null) ? t.stage : 1;
+          draw3DIsometricTree(ctx, px, py + 4, t.speciesKey || 'red_mangrove', stage);
+          ctx.fillStyle='#FFF';ctx.font='bold 10px JetBrains Mono';ctx.textAlign='center';
+          ctx.fillText((t.progressPercent||0)+'%',px,py+28);
+        } catch (err) {
+          console.error('Error drawing tree in plot', pid, err);
+        }
       }
 
       ctx.fillStyle='#CFD8DC';ctx.font='600 9px Nunito';ctx.textAlign='center';
@@ -2512,6 +2517,55 @@ const IslandMap={
 
 /* ================= 15. VR-COMPATIBLE 3D ISOMETRIC ARTWORK GENERATORS ================= */
 /* ================= 15. SPECIES-UNIQUE 3D ISOMETRIC VR FLORA ENGINE ================= */
+function draw3DIsometricTree(ctx, x, y, speciesKey, stage) {
+  const st = (stage !== undefined && stage !== null) ? stage : 1;
+  switch (speciesKey) {
+    case 'coconut_palm':
+      draw3DCoconutPalm(ctx, x, y, st);
+      break;
+    case 'palmyra_palm':
+      draw3DPalmyraPalm(ctx, x, y, st);
+      break;
+    case 'sea_grape':
+      draw3DSeaGrape(ctx, x, y, st);
+      break;
+    case 'moringa_drumstick':
+      draw3DMoringa(ctx, x, y, st);
+      break;
+    case 'neem_tree':
+      draw3DCoastalNeem(ctx, x, y, st);
+      break;
+    case 'screw_pine_kewra':
+      draw3DKeyaPandanus(ctx, x, y, st);
+      break;
+    case 'red_mangrove':
+    case 'grey_mangrove':
+    case 'spurred_mangrove':
+    case 'mangrove_apple':
+    case 'black_mangrove':
+      draw3DRedMangrove(ctx, x, y, st);
+      break;
+    case 'casuarina_ironwood':
+      draw3DCoastalNeem(ctx, x, y, st);
+      break;
+    case 'coastal_tomato':
+      draw3DCoastalTomato(ctx, x, y, st);
+      break;
+    case 'sweet_potato':
+      draw3DSweetPotato(ctx, x, y, st);
+      break;
+    case 'yardlong_bean':
+      draw3DYardlongBean(ctx, x, y, st);
+      break;
+    case 'okra_dharosh':
+      draw3DOkra(ctx, x, y, st);
+      break;
+    default:
+      draw3DRedMangrove(ctx, x, y, st);
+      break;
+  }
+}
+
 function draw3DCoconutPalm(ctx, x, y, stage) {
   ctx.save();
   ctx.translate(x, y);
@@ -4458,56 +4512,724 @@ function initGlobe3D(){
 }
 
 /* ================= 18. BOAT SIMULATION & 3D HELM ================= */
-let boatActive=false, boatApproachTime=18, boatT=0;
+const boatState = {
+  active: false,
+  mode: 'birds',
+  startTime: 0,
+  duration: 18,
+  speed: 1.2,
+  engine: 0.25,
+  yaw: 0.12,
+  pathT: 0,
+  keys: {},
+  inputBound: false
+};
 
-function showBoat(dest){
-  state.boatDest=dest||'main';
-  const c=document.getElementById('boat-canvas');
-  if(!c)return;
-  const ctx=c.getContext('2d');
-  c.width=innerWidth;c.height=innerHeight;
-  boatT=0;
+function showBoat(dest) {
+  state.boatDest = dest || 'main';
+  const c = document.getElementById('boat-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
 
-  function boatLoop(){
-    if(document.getElementById('boat-tour').style.display==='block'){
-      boatT+=0.016;
-      ctx.clearRect(0,0,c.width,c.height);
-      ctx.fillStyle='#002B49';ctx.fillRect(0,0,c.width,c.height);
+  function resizeBoat() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    c.width = innerWidth * dpr;
+    c.height = innerHeight * dpr;
+  }
+  resizeBoat();
+  window.addEventListener('resize', resizeBoat);
 
-      const bx=c.width*0.5+Math.sin(boatT*0.5)*40;
-      const by=c.height*0.5+Math.cos(boatT*0.3)*30;
-      ctx.fillStyle='#0288D1';ctx.beginPath();
-      ctx.ellipse(bx,by,32,14,boatT*0.2,0,Math.PI*2);ctx.fill();
+  if (!boatState.inputBound) {
+    boatState.inputBound = true;
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      boatState.keys[k] = 1;
+      if (k === 'e' || k === ' ') tryDock();
+    });
+    window.addEventListener('keyup', (e) => {
+      boatState.keys[e.key.toLowerCase()] = 0;
+    });
+  }
 
-      const rem=Math.max(0,Math.round(18 - boatT));
-      const tp=document.getElementById('boat-timer');
-      if(tp)tp.textContent="Bird's-eye approach · "+rem+"s";
+  boatState.active = true;
+  boatState.mode = 'birds';
+  boatState.pathT = 0;
+  boatState.startTime = performance.now();
+  boatState.speed = 1.2;
+  boatState.engine = 0.25;
+  boatState.yaw = 0.08;
 
-      if(boatT>=18){
-        enterMain(true);
-      }else{
-        requestAnimationFrame(boatLoop);
+  const timerEl = document.getElementById('boat-timer');
+  if (timerEl) {
+    timerEl.style.display = 'block';
+    timerEl.textContent = "🧭 Helmsman Approach · 18s";
+  }
+  const cinText = document.getElementById('cin-text');
+  if (cinText) cinText.style.display = 'flex';
+  const boatHud = document.getElementById('boat-hud');
+  if (boatHud) boatHud.style.opacity = '0';
+
+  document.getElementById('island-zone').style.display = 'none';
+  document.getElementById('outer-zone').style.display = 'none';
+  document.getElementById('dive-zone').style.display = 'none';
+  document.getElementById('boat-tour').style.display = 'block';
+
+  let lastTime = performance.now();
+
+  function boatLoop(now) {
+    const tourEl = document.getElementById('boat-tour');
+    if (!tourEl || tourEl.style.display !== 'block' || !boatState.active) {
+      boatState.active = false;
+      return;
+    }
+
+    const dt = Math.min(0.05, (now - lastTime) / 1000);
+    lastTime = now;
+    const elapsed = (now - boatState.startTime) / 1000;
+    const rem = Math.max(0, Math.ceil(18 - elapsed));
+
+    // Phase 1 (18s to 10s): High-angle Bird's-eye approach
+    // Phase 2 (9s to 0s): Helmsman 3D FPV Rear Deck Chase view
+    if (elapsed < 9) {
+      boatState.mode = 'birds';
+      const p = elapsed / 9.0;
+      boatState.pathT = p * 0.55;
+      if (timerEl) timerEl.textContent = "🧭 Helmsman Approach · " + rem + "s";
+      const cinP = document.getElementById('cin-p');
+      if (cinP) {
+        cinP.textContent = elapsed < 4
+          ? "Open ocean · approaching Saint Martin reef shelf…"
+          : "Crystal waters · navigating coral barrier shallows…";
       }
+    } else {
+      boatState.mode = 'fpv';
+      if (cinText) cinText.style.display = 'none';
+      if (boatHud) boatHud.style.opacity = '1';
+      if (timerEl) timerEl.textContent = "🚤 Helmsman Deck FPV · " + rem + "s · Press E to Dock";
+
+      // Tactical Helmsman Steering & Throttle
+      let throttle = 0, steer = 0;
+      if (boatState.keys['w'] || boatState.keys['arrowup']) throttle = 1.0;
+      if (boatState.keys['s'] || boatState.keys['arrowdown']) throttle = -0.5;
+      if (boatState.keys['a'] || boatState.keys['arrowleft']) steer = -1.0;
+      if (boatState.keys['d'] || boatState.keys['arrowright']) steer = 1.0;
+
+      boatState.engine += (throttle - boatState.engine) * dt * 2.0;
+      boatState.speed += (boatState.engine * 4.8 - boatState.speed) * dt * 1.5;
+      const rudderEffect = steer * dt * 0.45 * (0.2 + Math.abs(boatState.speed) * 0.15);
+      boatState.yaw += rudderEffect;
+      boatState.yaw = Math.max(-0.45, Math.min(0.45, boatState.yaw));
+
+      const spdEl = document.getElementById('boat-spd-txt');
+      if (spdEl) spdEl.textContent = Math.abs(boatState.speed).toFixed(1) + ' kn';
+      const engEl = document.getElementById('boat-eng-txt');
+      if (engEl) engEl.textContent = Math.round(Math.abs(boatState.engine) * 100) + '%';
+    }
+
+    // Render the complete 3D Volumetric Scene
+    renderBoatScene(ctx, c, now * 0.001, elapsed);
+
+    if (elapsed >= 18) {
+      toast('⚓ Survey Vessel docked at Saint Martin T-Jetty! Welcome to Blue Lab.');
+      enterMain(true);
+    } else {
+      requestAnimationFrame(boatLoop);
     }
   }
 
-  document.getElementById('island-zone').style.display='none';
-  document.getElementById('outer-zone').style.display='none';
-  document.getElementById('dive-zone').style.display='none';
-  document.getElementById('boat-tour').style.display='block';
-  boatLoop();
+  requestAnimationFrame(boatLoop);
 }
 
-function enterMain(force){
-  document.getElementById('boat-tour').style.display='none';
-  document.getElementById('outer-zone').style.display='none';
-  document.getElementById('dive-zone').style.display='none';
-  document.getElementById('island-zone').style.display='block';
-  if(!state.chapterIntroAck){
-    document.getElementById('why-modal').classList.add('open');
+function tryDock() {
+  toast('⚓ Survey Vessel secured to mooring cleats at East T-Jetty.');
+  enterMain(true);
+}
+
+function enterMain(force) {
+  boatState.active = false;
+  document.getElementById('boat-tour').style.display = 'none';
+  document.getElementById('outer-zone').style.display = 'none';
+  document.getElementById('dive-zone').style.display = 'none';
+  document.getElementById('island-zone').style.display = 'block';
+  if (!state.chapterIntroAck) {
+    const whyModal = document.getElementById('why-modal');
+    if (whyModal) whyModal.classList.add('open');
   }
 }
 
+// =============================================================================
+// 3D VOLUMETRIC SCENE: SEAWATER, CORALS, MARINE LIFE & HELMSMAN VESSEL
+// =============================================================================
+function renderBoatScene(ctx, canvas, time, elapsed) {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const W = canvas.width / dpr;
+  const H = canvas.height / dpr;
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const horizonY = boatState.mode === 'birds' ? H * 0.22 : H * 0.35;
+
+  // 1. Tropical Sky & Horizon
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+  skyGrad.addColorStop(0, '#0288D1');
+  skyGrad.addColorStop(0.6, '#4FC3F7');
+  skyGrad.addColorStop(1, '#E1F5FE');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, horizonY);
+
+  // Distant Tropical Sun Flare
+  ctx.fillStyle = 'rgba(255, 253, 231, 0.75)';
+  ctx.beginPath();
+  ctx.arc(W * 0.75, horizonY * 0.5, 38, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255, 238, 88, 0.25)';
+  ctx.beginPath();
+  ctx.arc(W * 0.75, horizonY * 0.5, 75, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 2. Crystal Seawater Depth Gradient
+  const seaGrad = ctx.createLinearGradient(0, horizonY, 0, H);
+  seaGrad.addColorStop(0, '#26C6DA');     // Shallows turquoise
+  seaGrad.addColorStop(0.25, '#00ACC1');  // Barrier reef azure
+  seaGrad.addColorStop(0.65, '#0288D1');  // Deep lagoon blue
+  seaGrad.addColorStop(1, '#01579B');     // Oceanic trench sapphire
+  ctx.fillStyle = seaGrad;
+  ctx.fillRect(0, horizonY, W, H - horizonY);
+
+  // 3. Volumetric 3D Surrounding Coral Reef Formations on Seabed
+  draw3DVolumetricCorals(ctx, W, H, horizonY, time);
+
+  // 4. Volumetric 3D Underwater Marine Life (Fish Schools, Turtle, Manta Ray, O2 Bubbles)
+  draw3DMarineLifeVR(ctx, W, H, horizonY, time);
+
+  // 5. Saint Martin Island & East T-Jetty on the Horizon
+  draw3DHorizonIsland(ctx, W, H, horizonY, time);
+
+  // 6. Translucent Wave Swells & Caustic Sunlight Sheen
+  drawTropicalWaveCaustics(ctx, W, H, horizonY, time);
+
+  // 7. The Volumetric 3D Helmsman Ship with "searchO2-BlueLab" Livery on BOTH SIDES
+  if (boatState.mode === 'birds') {
+    // High-angle bird's eye isometric approach
+    const bx = W * (0.28 + boatState.pathT * 0.48) + Math.sin(time * 0.8) * 8;
+    const by = H * (0.75 - boatState.pathT * 0.32) + Math.cos(time * 0.6) * 6;
+    draw3DHelmsmanShip(ctx, bx, by, 1.4, -0.45 + boatState.yaw, boatState.engine, time, 'birds');
+  } else {
+    // Rear Deck Helm FPV Chase view
+    const bx = W * 0.5 + Math.sin(boatState.yaw * 2.0) * 45;
+    const by = H * 0.76;
+    draw3DHelmsmanShip(ctx, bx, by, 2.65, boatState.yaw, Math.max(0.15, boatState.engine), time, 'fpv');
+  }
+
+  ctx.restore();
+}
+
+// -----------------------------------------------------------------------------
+// A. VOLUMETRIC 3D CORAL REEF FORMATIONS
+// -----------------------------------------------------------------------------
+function draw3DVolumetricCorals(ctx, W, H, horizonY, time) {
+  const reefY0 = horizonY + (H - horizonY) * 0.45;
+
+  // Sandy / Silt Seabed Shelf Shimmer
+  ctx.fillStyle = 'rgba(255, 248, 225, 0.12)';
+  ctx.beginPath();
+  ctx.ellipse(W * 0.35, reefY0 + 60, W * 0.4, 80, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Coral Formations distributed across the shallows
+  const coralMounds = [
+    {x: W * 0.15, y: reefY0 + 20, type: 'staghorn', col: '#FF4081', tip: '#FF80AB'},
+    {x: W * 0.24, y: reefY0 + 80, type: 'brain',    col: '#FFA000', tip: '#FFD54F'},
+    {x: W * 0.32, y: reefY0 + 35, type: 'table',    col: '#00BFA5', tip: '#64FFDA'},
+    {x: W * 0.72, y: reefY0 + 65, type: 'staghorn', col: '#F50057', tip: '#FF4081'},
+    {x: W * 0.82, y: reefY0 + 15, type: 'table',    col: '#26A69A', tip: '#80CBC4'},
+    {x: W * 0.88, y: reefY0 + 90, type: 'brain',    col: '#FFB300', tip: '#FFE082'}
+  ];
+
+  coralMounds.forEach((c) => {
+    ctx.save();
+    ctx.translate(c.x, c.y);
+
+    if (c.type === 'staghorn') {
+      // 3D Branching Staghorn Corals (Acropora) with fluorescent tips
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.beginPath(); ctx.ellipse(0, 12, 28, 10, 0, 0, Math.PI * 2); ctx.fill();
+
+      [-18, -9, 0, 10, 20].forEach((bx, idx) => {
+        const h = 26 + (idx % 3) * 8;
+        const sway = Math.sin(time * 1.5 + bx) * 2;
+        ctx.strokeStyle = c.col;
+        ctx.lineWidth = 4.5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(bx, 10);
+        ctx.quadraticCurveTo(bx + sway, 10 - h * 0.6, bx + sway * 1.5, 10 - h);
+        ctx.stroke();
+
+        // Secondary sub-branch
+        ctx.lineWidth = 2.8;
+        ctx.beginPath();
+        ctx.moveTo(bx + sway * 0.5, 10 - h * 0.5);
+        ctx.lineTo(bx + sway * 0.5 + (idx % 2 === 0 ? 8 : -8), 10 - h * 0.8);
+        ctx.stroke();
+
+        // Fluorescent polyp tip
+        ctx.fillStyle = c.tip;
+        ctx.beginPath();
+        ctx.arc(bx + sway * 1.5, 10 - h, 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    } else if (c.type === 'brain') {
+      // 3D Volumetric Brain Corals (Diploria) with labyrinthine ridges
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.beginPath(); ctx.ellipse(0, 8, 30, 14, 0, 0, Math.PI * 2); ctx.fill();
+
+      // Hemisphere dome
+      const bGrad = ctx.createRadialGradient(-4, -6, 4, 0, 0, 26);
+      bGrad.addColorStop(0, c.tip);
+      bGrad.addColorStop(0.7, c.col);
+      bGrad.addColorStop(1, '#E65100');
+      ctx.fillStyle = bGrad;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 26, 18, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Labyrinthine convolution ridges
+      ctx.strokeStyle = 'rgba(62, 39, 35, 0.45)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(-8, -4, 8, 0.2, Math.PI);
+      ctx.arc(8, -2, 9, 0.5, Math.PI * 1.2);
+      ctx.arc(0, 4, 12, 0, Math.PI);
+      ctx.stroke();
+    } else {
+      // 3D Volumetric Table Corals (Acropora cytherea) with layered plates
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      ctx.beginPath(); ctx.ellipse(0, 14, 34, 12, 0, 0, Math.PI * 2); ctx.fill();
+
+      // Pedestal stalk
+      ctx.fillStyle = '#004D40';
+      ctx.fillRect(-4, 0, 8, 14);
+
+      // Horizontal tiered disk plates
+      [10, 4, -4].forEach((py, idx) => {
+        const radX = 32 - idx * 7;
+        const radY = 12 - idx * 3;
+        const tGrad = ctx.createLinearGradient(-radX, py, radX, py);
+        tGrad.addColorStop(0, c.col);
+        tGrad.addColorStop(0.5, c.tip);
+        tGrad.addColorStop(1, '#004D40');
+        ctx.fillStyle = tGrad;
+        ctx.beginPath();
+        ctx.ellipse(idx * 2, py, radX, radY, 0.05, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      });
+    }
+
+    ctx.restore();
+  });
+}
+
+// -----------------------------------------------------------------------------
+// B. UNDERWATER MARINE LIFE (FISH SCHOOLS, TURTLE, MANTA RAY, O2 BUBBLES)
+// -----------------------------------------------------------------------------
+function draw3DMarineLifeVR(ctx, W, H, horizonY, time) {
+  const seaH = H - horizonY;
+
+  // 1. Schools of Swimming Tropical Reef Fish
+  const fishTypes = [
+    {color: '#0288D1', tail: '#FFEB3B', size: 9},   // Blue Tang
+    {color: '#FF6D00', tail: '#FFF59D', size: 8},   // Clownfish
+    {color: '#FFD54F', tail: '#212121', size: 10}   // Golden Butterflyfish
+  ];
+
+  for (let s = 0; s < 12; s++) {
+    const f = fishTypes[s % 3];
+    const fx = ((W * 0.08 + s * (W * 0.09) + time * 32) % (W + 60)) - 30;
+    const fy = horizonY + seaH * 0.32 + Math.sin(time * 2.2 + s) * 16 + (s % 4) * 22;
+    const tailAngle = Math.sin(time * 12 + s) * 0.45;
+
+    ctx.save();
+    ctx.translate(fx, fy);
+
+    // Fish Body
+    ctx.fillStyle = f.color;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, f.size, f.size * 0.52, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.arc(f.size * 0.55, -1, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#000000';
+    ctx.beginPath(); ctx.arc(f.size * 0.6, -1, 0.8, 0, Math.PI * 2); ctx.fill();
+
+    // Animated Fluttering Tail Fin
+    ctx.fillStyle = f.tail;
+    ctx.save();
+    ctx.translate(-f.size * 0.8, 0);
+    ctx.rotate(tailAngle);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-f.size * 0.7, -f.size * 0.45);
+    ctx.lineTo(-f.size * 0.7, f.size * 0.45);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  // 2. Volumetric 3D Sea Turtle (Chelonia mydas)
+  const turtleX = ((W * 0.65 - time * 24) % (W + 120)) - 60;
+  const turtleY = horizonY + seaH * 0.52 + Math.sin(time * 1.2) * 12;
+  const flipperAngle = Math.sin(time * 3.5) * 0.35;
+
+  ctx.save();
+  ctx.translate(turtleX, turtleY);
+  ctx.scale(1.2, 1.2);
+
+  // Turtle Shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+  ctx.beginPath(); ctx.ellipse(0, 22, 24, 12, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Carapace Shell (Domed green scutes)
+  const shellGrad = ctx.createRadialGradient(-3, -2, 2, 0, 0, 18);
+  shellGrad.addColorStop(0, '#7CB342');
+  shellGrad.addColorStop(0.7, '#33691E');
+  shellGrad.addColorStop(1, '#1B5E20');
+  ctx.fillStyle = shellGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 18, 13, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#558B2F'; ctx.lineWidth = 1.2; ctx.stroke();
+
+  // Head
+  ctx.fillStyle = '#689F38';
+  ctx.beginPath(); ctx.ellipse(19, 0, 6, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Front Paddling Flippers
+  ctx.save(); ctx.translate(10, -8); ctx.rotate(flipperAngle);
+  ctx.beginPath(); ctx.ellipse(0, -9, 4, 12, 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  ctx.save(); ctx.translate(10, 8); ctx.rotate(-flipperAngle);
+  ctx.beginPath(); ctx.ellipse(0, 9, 4, 12, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // Rear Flippers
+  ctx.beginPath(); ctx.ellipse(-14, -7, 3, 6, 0.7, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-14, 7, 3, 6, -0.7, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // 3. Volumetric 3D Manta Ray gliding along deep waters
+  const mantaX = ((W * 0.15 + time * 38) % (W + 200)) - 100;
+  const mantaY = horizonY + seaH * 0.68 + Math.cos(time * 0.9) * 10;
+  const wingSway = Math.sin(time * 2.8) * 6;
+
+  ctx.save();
+  ctx.translate(mantaX, mantaY);
+  ctx.scale(1.1, 1.1);
+
+  ctx.fillStyle = '#263238';
+  ctx.beginPath();
+  ctx.moveTo(22, 0);                        // Cephalic head
+  ctx.quadraticCurveTo(0, -22 - wingSway, -18, -32 - wingSway); // Left wingtip
+  ctx.quadraticCurveTo(-10, -8, -14, 0);     // Left body
+  ctx.quadraticCurveTo(-10, 8, -18, 32 + wingSway);   // Right wingtip
+  ctx.quadraticCurveTo(0, 22 + wingSway, 22, 0);      // Return to head
+  ctx.closePath();
+  ctx.fill();
+
+  // White underside rim highlights
+  ctx.strokeStyle = '#ECEFF1'; ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // Whip-like tail
+  ctx.strokeStyle = '#102027'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(-38, 0); ctx.stroke();
+  ctx.restore();
+
+  // 4. Photosynthetic Oxygen Micro-Bubbles rising to surface
+  for (let b = 0; b < 16; b++) {
+    const bx = W * (0.1 + ((b * 0.065 + time * 0.02) % 0.85));
+    const by = horizonY + ((seaH * 0.9 - (time * 45 + b * 22) % (seaH * 0.85)));
+    const bRad = 1.5 + (b % 3) * 1.2;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.beginPath(); ctx.arc(bx, by, bRad, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// -----------------------------------------------------------------------------
+// C. SAINT MARTIN ISLAND & T-JETTY HORIZON
+// -----------------------------------------------------------------------------
+function draw3DHorizonIsland(ctx, W, H, horizonY, time) {
+  const ix = W * 0.52;
+  const iy = horizonY + 8;
+
+  // Distant Island Landmass
+  ctx.fillStyle = '#2E7D32';
+  ctx.beginPath();
+  ctx.moveTo(ix - 120, iy);
+  ctx.quadraticCurveTo(ix - 60, iy - 16, ix, iy - 22);
+  ctx.quadraticCurveTo(ix + 70, iy - 18, ix + 130, iy);
+  ctx.closePath();
+  ctx.fill();
+
+  // Sandy Beach Shoreline
+  ctx.fillStyle = '#FFE082';
+  ctx.fillRect(ix - 125, iy - 2, 260, 5);
+
+  // Silhouetted Coconut Palms
+  [-60, -30, 10, 45, 80].forEach((px) => {
+    ctx.strokeStyle = '#1B5E20';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ix + px, iy - 2);
+    ctx.lineTo(ix + px + 2, iy - 28);
+    ctx.stroke();
+
+    ctx.fillStyle = '#2E7D32';
+    ctx.beginPath();
+    ctx.arc(ix + px + 2, iy - 30, 6, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // East T-Jetty Wooden Pier extending into the sea
+  ctx.fillStyle = '#5D4037';
+  ctx.fillRect(ix + 90, iy, 12, 32);     // Pier stem
+  ctx.fillRect(ix + 74, iy + 28, 44, 8); // T-head berth
+  ctx.strokeStyle = '#8D6E63';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(ix + 74, iy + 28, 44, 8);
+}
+
+// -----------------------------------------------------------------------------
+// D. TRANSLUCENT WAVE SWELLS & CAUSTIC SHEEN
+// -----------------------------------------------------------------------------
+function drawTropicalWaveCaustics(ctx, W, H, horizonY, time) {
+  const seaH = H - horizonY;
+  for (let r = 0; r < 8; r++) {
+    const wy = horizonY + (r + 1) * (seaH / 9.5);
+    const alpha = 0.12 + r * 0.035;
+    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+    ctx.lineWidth = 1.4 + r * 0.35;
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 12) {
+      const y = wy + Math.sin(x * 0.015 + time * 2.0 + r * 0.8) * (3 + r * 0.8);
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+}
+
+// -----------------------------------------------------------------------------
+// E. VOLUMETRIC 3D HELMSMAN VESSEL WITH ARTISTIC "searchO2-BlueLab" LIVERY ON BOTH SIDES
+// -----------------------------------------------------------------------------
+function draw3DHelmsmanShip(ctx, cx, cy, scale, yaw, engine, time, viewMode) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(yaw * 0.25);
+  ctx.scale(scale, scale);
+
+  // 1. Churning Hydrodynamic Propeller Wake Foam Trails
+  const wakeLen = 65 + engine * 50;
+  const wakeSpread = 22 + engine * 16;
+  const wakeGrad = ctx.createLinearGradient(0, 20, 0, 20 + wakeLen);
+  wakeGrad.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+  wakeGrad.addColorStop(0.5, 'rgba(224, 247, 250, 0.45)');
+  wakeGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+
+  // Twin Wake Trails from dual outboard engines
+  [-12, 12].forEach((tx) => {
+    ctx.fillStyle = wakeGrad;
+    ctx.beginPath();
+    ctx.moveTo(tx - 4, 18);
+    ctx.lineTo(tx - wakeSpread, 18 + wakeLen);
+    ctx.lineTo(tx + wakeSpread, 18 + wakeLen);
+    ctx.lineTo(tx + 4, 18);
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  // 2. Hull Shadow in clear water
+  ctx.fillStyle = 'rgba(0, 20, 40, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(0, 10, 36, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 3. Volumetric Deep-V Naval Hull
+  // Port Side (Left Face)
+  const portHull = ctx.createLinearGradient(-32, -20, 0, 20);
+  portHull.addColorStop(0, '#0D47A1');
+  portHull.addColorStop(0.5, '#1565C0');
+  portHull.addColorStop(1, '#0A2540');
+  ctx.fillStyle = portHull;
+  ctx.beginPath();
+  ctx.moveTo(0, -38);         // Bow tip
+  ctx.lineTo(-24, 16);        // Port stern corner
+  ctx.lineTo(0, 22);          // Stern centerline keel
+  ctx.lineTo(0, -38);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#00E5FF'; ctx.lineWidth = 1.2; ctx.stroke();
+
+  // Starboard Side (Right Face)
+  const stbdHull = ctx.createLinearGradient(0, -20, 32, 20);
+  stbdHull.addColorStop(0, '#1976D2');
+  stbdHull.addColorStop(0.5, '#1E88E5');
+  stbdHull.addColorStop(1, '#0D47A1');
+  ctx.fillStyle = stbdHull;
+  ctx.beginPath();
+  ctx.moveTo(0, -38);         // Bow tip
+  ctx.lineTo(24, 16);         // Starboard stern corner
+  ctx.lineTo(0, 22);          // Stern centerline keel
+  ctx.lineTo(0, -38);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#00E5FF'; ctx.lineWidth = 1.2; ctx.stroke();
+
+  // Transom Stern Plate
+  ctx.fillStyle = '#0A192F';
+  ctx.beginPath();
+  ctx.moveTo(-24, 16); ctx.lineTo(24, 16);
+  ctx.lineTo(0, 22); ctx.closePath();
+  ctx.fill();
+
+  // =========================================================================
+  // ARTISTIC "searchO2-BlueLab" LIVERY LOGO VISIBLE ON BOTH SIDES OF SHIP
+  // =========================================================================
+  // --- Port Side Hull (Left) ---
+  ctx.save();
+  ctx.translate(-13, -6);
+  ctx.rotate(-0.95); // Aligned along port sheer line
+
+  // Neon Cyan / Gold Livery Decal Banner
+  const portBadge = ctx.createLinearGradient(-18, 0, 18, 0);
+  portBadge.addColorStop(0, '#00E5FF');
+  portBadge.addColorStop(0.5, '#FFD54F');
+  portBadge.addColorStop(1, '#00E5FF');
+  ctx.fillStyle = 'rgba(4, 16, 30, 0.88)';
+  ctx.fillRect(-22, -4, 44, 8);
+  ctx.strokeStyle = portBadge;
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(-22, -4, 44, 8);
+
+  // Artistic "searchO2-BlueLab" Text
+  ctx.fillStyle = '#00E5FF';
+  ctx.font = 'bold 5.2px "Nunito", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('searchO2-BlueLab', 0, 0);
+  ctx.restore();
+
+  // --- Starboard Side Hull (Right) ---
+  ctx.save();
+  ctx.translate(13, -6);
+  ctx.rotate(0.95); // Aligned along starboard sheer line
+
+  // Neon Cyan / Gold Livery Decal Banner
+  const stbdBadge = ctx.createLinearGradient(-18, 0, 18, 0);
+  stbdBadge.addColorStop(0, '#FFD54F');
+  stbdBadge.addColorStop(0.5, '#00E5FF');
+  stbdBadge.addColorStop(1, '#FFD54F');
+  ctx.fillStyle = 'rgba(4, 16, 30, 0.88)';
+  ctx.fillRect(-22, -4, 44, 8);
+  ctx.strokeStyle = stbdBadge;
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(-22, -4, 44, 8);
+
+  // Artistic "searchO2-BlueLab" Text
+  ctx.fillStyle = '#00E5FF';
+  ctx.font = 'bold 5.2px "Nunito", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('searchO2-BlueLab', 0, 0);
+  ctx.restore();
+
+  // 4. Teak Deck Flooring
+  ctx.fillStyle = '#8D6E63';
+  ctx.beginPath();
+  ctx.moveTo(0, -34);
+  ctx.lineTo(-20, 14);
+  ctx.lineTo(20, 14);
+  ctx.closePath();
+  ctx.fill();
+
+  // Fine Teak Deck Planks
+  ctx.strokeStyle = '#6D4C41'; ctx.lineWidth = 0.8;
+  for (let px = -14; px <= 14; px += 4) {
+    ctx.beginPath();
+    ctx.moveTo(px, 13);
+    ctx.lineTo(px * 0.35, -24);
+    ctx.stroke();
+  }
+
+  // 5. White Wheelhouse / Bridge Cabin Superstructure
+  ctx.fillStyle = '#ECEFF1';
+  ctx.beginPath();
+  ctx.moveTo(0, -18);
+  ctx.lineTo(-12, 6);
+  ctx.lineTo(12, 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#B0BEC5'; ctx.lineWidth = 1.2; ctx.stroke();
+
+  // Panoramic Observation Bridge Windows
+  ctx.fillStyle = 'rgba(0, 229, 255, 0.65)';
+  ctx.beginPath();
+  ctx.moveTo(0, -15);
+  ctx.lineTo(-8, 2);
+  ctx.lineTo(8, 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#37474F'; ctx.lineWidth = 0.8; ctx.stroke();
+
+  // 6. Solar Panel Canopy on Wheelhouse Roof
+  ctx.fillStyle = '#0D47A1';
+  ctx.fillRect(-6, -8, 12, 10);
+  ctx.strokeStyle = '#90A4AE'; ctx.lineWidth = 0.7;
+  ctx.strokeRect(-6, -8, 12, 10);
+
+  // 7. Communication Mast & Rotating Radar Scanner
+  ctx.strokeStyle = '#CFD8DC'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(0, -22); ctx.stroke();
+
+  // Rotating Radar Antenna Bar
+  const radAngle = time * 4.5;
+  ctx.save();
+  ctx.translate(0, -22);
+  ctx.rotate(radAngle);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(-5, -1.2, 10, 2.4);
+  ctx.restore();
+
+  // 8. Navigation Lights
+  // Port Red
+  ctx.fillStyle = '#FF1744'; ctx.beginPath(); ctx.arc(-11, -8, 1.8, 0, Math.PI * 2); ctx.fill();
+  // Starboard Green
+  ctx.fillStyle = '#00E676'; ctx.beginPath(); ctx.arc(11, -8, 1.8, 0, Math.PI * 2); ctx.fill();
+  // Masthead White 360° Light
+  ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(0, -23, 1.6, 0, Math.PI * 2); ctx.fill();
+
+  // 9. Dual Marine Outboard Engines
+  [-8, 8].forEach((ox) => {
+    ctx.fillStyle = '#263238';
+    ctx.fillRect(ox - 3, 14, 6, 8);
+    ctx.fillStyle = '#37474F';
+    ctx.fillRect(ox - 2.5, 15, 5, 4);
+    // Outboard cowlings
+    ctx.strokeStyle = '#FFD54F'; ctx.lineWidth = 0.8;
+    ctx.strokeRect(ox - 3, 14, 6, 8);
+  });
+
+  ctx.restore();
+}
 function enterOuter(){
   const why=document.getElementById('why-modal');if(why)why.classList.remove('open');
   document.getElementById('island-zone').style.display='none';
