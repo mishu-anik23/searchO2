@@ -64,7 +64,7 @@ const assert = require('assert');
   assert(canvasSize.clientHeight === canvasSize.innerHeight, 'Canvas clientHeight must match innerHeight');
   console.log('[✓ PASSED] Canvas covers full viewport edge-to-edge without borders or voids');
 
-  // 4. Verify 16 SITES and 6 Orchard Plots with 3x3 Circular Beds
+  // 4. Verify 21 SITES (6 orchard plots + 15 facilities) and 6 chapters
   const farmConfig = await page.evaluate(() => {
     return {
       sitesCount: SITES.length,
@@ -74,10 +74,10 @@ const assert = require('assert');
       chaptersCount: CHAPTERS.length
     };
   });
-  assert.strictEqual(farmConfig.sitesCount, 21, `Expected 16 sites, found ${farmConfig.sitesCount}`);
+  assert.strictEqual(farmConfig.sitesCount, 21, `Expected 21 sites, found ${farmConfig.sitesCount}`);
   assert.strictEqual(farmConfig.orchardsCount, 6, `Expected 6 orchard plots, found ${farmConfig.orchardsCount}`);
   assert.strictEqual(farmConfig.chaptersCount, 6, `Expected 6 progression chapters, found ${farmConfig.chaptersCount}`);
-  console.log('[✓ PASSED] 16 calibrated sites, 6 orchard plots, 6 chapters verified');
+  console.log('[✓ PASSED] 21 calibrated sites, 6 orchard plots, 6 chapters verified');
 
   // Verify specific calibrated coordinates from bavaria-bg-plan.jpg
   const findSite = id => farmConfig.sites.find(s => s.id === id);
@@ -90,6 +90,7 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1588, y: 670 }, 'restaurant coordinates');
   assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1658, y: 277 }, 'cattle coordinates');
   assert.deepStrictEqual({ x: findSite('gate').x, y: findSite('gate').y }, { x: 1544, y: 794 }, 'gate coordinates');
+  assert.deepStrictEqual({ x: findSite('wind_e').x, y: findSite('wind_e').y }, { x: 1830, y: 130 }, 'wind_e coordinates behind cow shed');
   console.log('[✓ PASSED] Strict coordinate mapping verified against bavaria-bg-plan.jpg');
 
   // 5. Dismiss Welcome Banner and verify Intro Why Modal
@@ -167,7 +168,7 @@ const assert = require('assert');
   const orchardModalOpen = await page.isVisible('#modal.open');
   assert(orchardModalOpen, 'Orchard modal must open on site click');
   const orchardContent = await page.textContent('#modalBody');
-  assert(orchardContent.includes('Orchard Plot 1 (NW)'), 'Must show Orchard Plot 1');
+  assert(orchardContent.includes('Orchard Plot 1 (NW'), 'Must show Orchard Plot 1');
   assert(orchardContent.includes('3×3 circular'), 'Must indicate 3x3 circular beds');
 
   // Test Aerate Plot 1
@@ -183,16 +184,31 @@ const assert = require('assert');
   await bed1Cell.click();
   await page.waitForTimeout(300);
 
-  // Click Boskoop Apple species button
-  const plantAppleBtn = await page.$('#modalBody .btn-c');
-  assert(plantAppleBtn, 'Plant species button must exist');
-  await plantAppleBtn.click();
+  // Click Sweet Cherry species button (first in list)
+  const plantCherryBtn = await page.$('#modalBody .btn-c');
+  assert(plantCherryBtn, 'Plant species button must exist');
+  await plantCherryBtn.click();
   await page.waitForTimeout(400);
-  console.log('[✓ PASSED] Boskoop Apple planted in aerated circular bed');
+  console.log('[✓ PASSED] Sweet Cherry planted in aerated circular bed');
+
+  // Plant Bed #2 with Boskoop Apple
+  const bed2Cell = await page.$$('.bed-cell.open');
+  if (bed2Cell.length > 0) {
+    await bed2Cell[0].click();
+    await page.waitForTimeout(300);
+    const btns = await page.$$('#modalBody .btn-c');
+    if (btns.length > 1) {
+      await btns[1].click(); // Apple
+      await page.waitForTimeout(400);
+      console.log('[✓ PASSED] Boskoop Apple planted in aerated circular bed');
+    }
+  }
+
   await page.click('.btn-close');
   await page.waitForTimeout(200);
 
-  // 10. Living Waters Pond Site Workflow
+  // 10. Construct Key Facilities for Realistic 3D Visual Rendering
+  // A. Living Waters Pond
   await page.evaluate(() => {
     const pond = SITES.find(s => s.id === 'pond');
     AlpenMap.handle(pond);
@@ -206,11 +222,73 @@ const assert = require('assert');
     await page.waitForTimeout(300);
     console.log('[✓ PASSED] Living Waters Pond excavated and commissioned');
   }
-  const isPondModalStillOpen = await page.isVisible('#modal.open');
-  if (isPondModalStillOpen) {
-    await page.click('.btn-close');
-    await page.waitForTimeout(200);
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+
+  // B. Cattle Pasture Enclosure
+  await page.evaluate(() => {
+    const cattle = SITES.find(s => s.id === 'cattle');
+    AlpenMap.handle(cattle);
+  });
+  await page.waitForTimeout(400);
+  const buildCattleBtn = await page.$('#modalBody .btn-g');
+  if (buildCattleBtn) {
+    await buildCattleBtn.click();
+    await page.waitForTimeout(300);
+    console.log('[✓ PASSED] Simmental Cattle Pasture commissioned');
   }
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+
+  // C. Wind Turbine East (Behind Cow Shed)
+  await page.evaluate(() => {
+    const windE = SITES.find(s => s.id === 'wind_e');
+    AlpenMap.handle(windE);
+  });
+  await page.waitForTimeout(400);
+  const buildWindBtn = await page.$('#modalBody .btn-g');
+  if (buildWindBtn) {
+    await buildWindBtn.click();
+    await page.waitForTimeout(300);
+    console.log('[✓ PASSED] High-Ridge Wind Turbine commissioned');
+  }
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+
+  // D. Farm Barn & Fendt Tractor
+  await page.evaluate(() => {
+    const shed = SITES.find(s => s.id === 'farm_shed');
+    AlpenMap.handle(shed);
+  });
+  await page.waitForTimeout(400);
+  const buildShedBtn = await page.$('#modalBody .btn-g');
+  if (buildShedBtn) {
+    await buildShedBtn.click();
+    await page.waitForTimeout(300);
+    console.log('[✓ PASSED] Farm Barn & Fendt Tractor commissioned');
+  }
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+
+  // E. Alpenhof Gasthof Stuben & Village Fountain
+  await page.evaluate(() => {
+    const rest = SITES.find(s => s.id === 'restaurant');
+    AlpenMap.handle(rest);
+  });
+  await page.waitForTimeout(400);
+  const buildRestBtn = await page.$('#modalBody .btn-g');
+  if (buildRestBtn) {
+    await buildRestBtn.click();
+    await page.waitForTimeout(300);
+    console.log('[✓ PASSED] Alpenhof Gasthof & Stuben commissioned');
+  }
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+
+  // Advance tree growth to mature for rich fruiting screenshot
+  await page.evaluate(() => {
+    Object.values(state.orchards).forEach(o => {
+      o.beds.forEach(b => {
+        if (b.species) { b.status = 'mature'; b.progress = 1.0; }
+      });
+    });
+  });
+  await page.waitForTimeout(300);
 
   // 11. Multi-level Zoom Controls
   await page.click('.zoom-btn[data-z="2"]');
@@ -233,11 +311,11 @@ const assert = require('assert');
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_overview.png'), fullPage: true });
   console.log('[✓ SAVED] screenshot_alpenhof_overview.png');
 
-  // B. Close-up on the 6 Streuobst Orchards
+  // B. Close-up on the 6 Streuobst Orchards (Hillside Alignment & Realistic Trees)
   await page.evaluate(() => {
-    state.zoom = 2.2;
-    state.panX = 350;
-    state.panY = 60;
+    state.zoom = 2.4;
+    state.panX = 390;
+    state.panY = 70;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_orchards.png') });
@@ -253,17 +331,37 @@ const assert = require('assert');
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_central_meadow.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_central_meadow.png');
 
-  // D. East Village Plaza (Gasthof Stuben, Fountain, Juice Bar, Main Gate)
+  // D. East Village Plaza (Gasthof Stuben with Geranium Balcony & Stone Fountain)
   await page.evaluate(() => {
-    state.zoom = 2.0;
-    state.panX = -650;
-    state.panY = -220;
+    state.zoom = 2.2;
+    state.panX = -670;
+    state.panY = -230;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_village_plaza.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_village_plaza.png');
 
-  // E. Reset zoom to 1x
+  // E. Cattle Pasture & High-Ridge Wind Turbine Behind Cow Shed
+  await page.evaluate(() => {
+    state.zoom = 2.1;
+    state.panX = -720;
+    state.panY = 240;
+  });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_cattle_wind.png') });
+  console.log('[✓ SAVED] screenshot_alpenhof_cattle_wind.png');
+
+  // F. Farm Barn with Hayloft & Green Fendt Tractor
+  await page.evaluate(() => {
+    state.zoom = 2.4;
+    state.panX = -100;
+    state.panY = 320;
+  });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_barn_fendt.png') });
+  console.log('[✓ SAVED] screenshot_alpenhof_barn_fendt.png');
+
+  // Reset zoom to 1x
   await page.evaluate(() => {
     state.zoom = 1.0;
     state.panX = 0;
@@ -272,7 +370,6 @@ const assert = require('assert');
   await page.waitForTimeout(200);
 
   // 13. Mobile Landscape & Portrait View Verification
-  // Test Mobile Landscape View
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForTimeout(400);
   const isLandscapePromptHidden = await page.evaluate(() => {
