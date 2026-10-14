@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<title>Alpenhof Journey · Bavarian Alpine Farm · SearchO2</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --pine:#1B5E20; --pine-soft:#2E7D32; --meadow:#7CB342; --amber:#FFB300;
+  --sky:#4FC3F7; --cream:#FFF8E1; --card:rgba(18,32,22,0.94); --teal:#00E676;
+  --border:rgba(129,199,132,0.45); --gold:#FFD54F; --rose:#EC407A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a1a10;font-family:'Nunito',system-ui,sans-serif;color:#E8F5E9}
+#farm-zone{position:absolute;inset:0}
+#farm-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#farm-canvas.dragging{cursor:grabbing}
+.hud{position:absolute;inset:0;pointer-events:none;z-index:20}
+.hud *{pointer-events:auto}
+.hud-fab{position:absolute;top:12px;left:12px;display:flex;gap:8px;z-index:30}
+.chip-btn{
+  width:46px;height:46px;border-radius:14px;border:1.5px solid var(--border);
+  background:rgba(12,28,18,0.92);color:#E8F5E9;font-size:1.15rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;position:relative;
+  box-shadow:0 4px 14px rgba(0,0,0,0.45);
+}
+.chip-btn:hover{border-color:var(--teal);transform:translateY(-1px)}
+.chip-btn .tip{
+  position:absolute;top:52px;left:50%;transform:translateX(-50%);
+  background:rgba(6,18,12,0.96);border:1px solid var(--teal);border-radius:10px;
+  padding:5px 10px;font-size:0.72rem;font-weight:700;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity .15s;z-index:50;
+}
+.chip-btn:hover .tip{opacity:1}
+.control-grid{
+  display:none;position:absolute;top:66px;left:12px;width:min(300px,92vw);
+  grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;
+  background:var(--card);border:1.5px solid var(--border);border-radius:16px;
+  box-shadow:0 12px 32px rgba(0,0,0,0.55);z-index:28;
+}
+.control-grid.open{display:grid}
+.control-grid .chip-btn{width:100%;height:54px}
+.scoreboard{
+  display:none;position:absolute;top:12px;right:12px;width:min(360px,94vw);
+  grid-template-columns:repeat(4,1fr);gap:8px;padding:10px;
+  background:var(--card);border:1.5px solid var(--border);border-radius:16px;z-index:28;
+}
+.scoreboard.open{display:grid}
+.sb-chip{
+  background:rgba(8,22,14,0.9);border:1px solid var(--border);border-radius:12px;
+  padding:8px 6px;text-align:center;cursor:pointer;font-size:0.78rem;font-weight:800;
+}
+.sb-chip .v{color:var(--teal);font-family:'JetBrains Mono',monospace;font-size:0.72rem;display:block;margin-top:2px}
+.zoom-bar{position:absolute;bottom:16px;right:16px;display:flex;gap:6px;z-index:25}
+.zoom-bar button{
+  width:42px;height:42px;border-radius:12px;border:1.5px solid var(--border);
+  background:rgba(12,28,18,0.92);color:#E8F5E9;font-weight:900;cursor:pointer;
+}
+.zoom-bar button.active{border-color:var(--teal);color:var(--teal)}
+.task-capsule{
+  position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+  max-width:min(520px,92vw);background:var(--card);border:1.5px solid var(--border);
+  border-radius:16px;padding:10px 14px;z-index:22;box-shadow:0 8px 24px rgba(0,0,0,0.5);
+}
+.task-capsule h4{font-family:'Baloo 2',sans-serif;font-size:0.95rem;color:var(--gold);margin-bottom:4px}
+.task-capsule p{font-size:0.78rem;color:#C8E6C9;line-height:1.35}
+.prog-bar{height:6px;background:rgba(255,255,255,0.12);border-radius:4px;margin-top:8px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--meadow),var(--teal));width:20%;border-radius:4px}
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,10,6,0.72);display:none;align-items:center;justify-content:center;
+  z-index:100;padding:16px;
+}
+.modal-overlay.open{display:flex}
+.modal-card{
+  background:linear-gradient(160deg,#122018,#0a1810);border:1.5px solid var(--border);
+  border-radius:18px;padding:18px;max-width:min(520px,96vw);max-height:86vh;overflow:auto;
+  box-shadow:0 20px 50px rgba(0,0,0,0.65);
+}
+.modal-card.wide{max-width:min(720px,96vw)}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.modal-hdr h3{font-family:'Baloo 2',sans-serif;font-size:1.2rem;color:var(--gold)}
+.btn-close{background:transparent;border:none;color:#A5D6A7;font-size:1.2rem;cursor:pointer}
+.btn{
+  border:none;border-radius:12px;padding:10px 14px;font-weight:800;font-size:0.82rem;cursor:pointer;
+  font-family:'Nunito',sans-serif;
+}
+.btn-g{background:linear-gradient(135deg,#43A047,#1B5E20);color:#fff}
+.btn-a{background:linear-gradient(135deg,#FFB300,#F57C00);color:#1a1200}
+.btn-c{background:rgba(0,230,118,0.18);color:var(--teal);border:1px solid var(--teal)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card-box{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:12px;padding:12px}
+.why-card{
+  background:rgba(255,213,79,0.08);border:1px solid rgba(255,213,79,0.35);
+  border-radius:14px;padding:12px;margin-top:10px;
+}
+.why-card b{color:var(--gold)}
+.toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:rgba(6,22,12,0.96);border:1px solid var(--teal);color:#E8F5E9;
+  padding:10px 18px;border-radius:14px;font-weight:800;font-size:0.85rem;
+  opacity:0;transition:all .25s;z-index:200;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.cin-banner{
+  position:absolute;top:18%;left:50%;transform:translateX(-50%);
+  background:rgba(8,20,12,0.9);border:1.5px solid var(--gold);border-radius:18px;
+  padding:16px 22px;text-align:center;z-index:40;max-width:min(480px,92vw);
+  box-shadow:0 16px 40px rgba(0,0,0,0.55);
+}
+.cin-banner h2{font-family:'Baloo 2',sans-serif;color:var(--gold);font-size:1.35rem;margin-bottom:6px}
+.cin-banner p{font-size:0.85rem;color:#C8E6C9;line-height:1.4;margin-bottom:12px}
+@media (max-width:720px){
+  .scoreboard{top:auto;bottom:70px;right:8px;left:8px;width:auto;grid-template-columns:repeat(4,1fr)}
+  .control-grid{top:auto;bottom:70px;left:8px;right:8px;width:auto}
+  .task-capsule{bottom:8px;left:8px;right:8px;transform:none;max-width:none}
+  .zoom-bar{bottom:auto;top:12px;right:12px}
+  .hud-fab{top:12px;left:8px}
+  .grid-2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<section id="farm-zone">
+  <canvas id="farm-canvas"></canvas>
+  <div class="hud">
+    <div class="hud-fab">
+      <button class="chip-btn" id="btn-fs" title="Fullscreen">⛶<span class="tip">Fullscreen</span></button>
+      <button class="chip-btn" id="btn-menu" title="Controls">☰<span class="tip">Controls</span></button>
+      <button class="chip-btn" id="btn-score" title="Scoreboard">📊<span class="tip">Scoreboard</span></button>
+      <button class="chip-btn" id="btn-home" title="Globe">🌐<span class="tip">World Globe</span></button>
+    </div>
+    <div class="control-grid" id="controlGrid">
+      <button class="chip-btn" id="btn-master" title="Journey">📋<span class="tip">Journey</span></button>
+      <button class="chip-btn" id="btn-labour" title="Labour">🧑‍🌾<span class="tip">Labour</span></button>
+      <button class="chip-btn" id="btn-species" title="Species">🌲<span class="tip">Species</span></button>
+      <button class="chip-btn" id="btn-why" title="Why">💡<span class="tip">Why Learn</span></button>
+      <button class="chip-btn" id="btn-plan" title="Plan">🗺️<span class="tip">Site Plan</span></button>
+      <button class="chip-btn" id="btn-shop" title="Build">🏗️<span class="tip">Build</span></button>
+      <button class="chip-btn" id="btn-o2" title="O₂">🫁<span class="tip">Oxygen</span></button>
+      <button class="chip-btn" id="btn-globe2" title="Globe">🌍<span class="tip">Globe</span></button>
+    </div>
+    <div class="scoreboard" id="scoreboard"></div>
+    <div class="zoom-bar" id="zoomBar">
+      <button data-z="1" class="active">1×</button>
+      <button data-z="2">2×</button>
+      <button data-z="5">5×</button>
+    </div>
+    <div class="task-capsule" id="taskCap">
+      <h4 id="taskTitle">🌿 Chapter 1 · Survey the Alpenhof</h4>
+      <p id="taskDesc">Walk the meadow roads. Discover orchard rings, crop fields, and the alpine pond — then open Why-cards to earn Knowledge XP.</p>
+      <div class="prog-bar"><div class="prog-fill" id="taskBar" style="width:12%"></div></div>
+    </div>
+  </div>
+  <div class="cin-banner" id="cinBanner">
+    <h2>🏔️ Alpenhof Journey</h2>
+    <p>Welcome to the Bavarian alpine meadow farmstead. Pure German species, isometric grove assets, and the same labour loop you know from the Central European plains.</p>
+    <button class="btn btn-g" id="btn-start">Begin Explore Journey ➔</button>
+  </div>
+</section>
+
+<div class="modal-overlay" id="modal"><div class="modal-card" id="modalBody"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= SPECIES — pure German / Alpine focus ================= */
+const SPECIES={
+  // Oxygen / canopy
+  beech:{key:'beech',name:'European Beech',de:'Rotbuche',cat:'Oxygen',o2:22,icon:'🍃',color:'#2E7D32',shape:'dome',desc:'Dense canopy · iconic German woodland oxygen engine.'},
+  oak:{key:'oak',name:'English Oak',de:'Stieleiche',cat:'Oxygen',o2:28,icon:'🌳',color:'#1B5E20',shape:'broad',desc:'Longevity and habitat — biodiversity keystone.'},
+  linden:{key:'linden',name:'Small-leaved Linden',de:'Winterlinde',cat:'Oxygen',o2:18,icon:'🌿',color:'#66BB6A',shape:'oval',desc:'Village-square tree · nectar for pollinators.'},
+  spruce:{key:'spruce',name:'Norway Spruce',de:'Fichte',cat:'Biodiversity',o2:16,icon:'🌲',color:'#1B5E20',shape:'cone',desc:'Alpine silhouette · windbreak and winter cover.'},
+  fir:{key:'fir',name:'Silver Fir',de:'Weißtanne',cat:'Biodiversity',o2:15,icon:'🌲',color:'#33691E',shape:'cone',desc:'Montane fir · classic Bavarian forest structure.'},
+  // Fruit
+  apple:{key:'apple',name:'Boskoop Apple',de:'Boskoop',cat:'Fruit',o2:8,icon:'🍎',color:'#C62828',shape:'fruit',desc:'Hardy cider & kitchen apple of German orchards.'},
+  pear:{key:'pear',name:'Williams Pear',de:'Williams Christ',cat:'Fruit',o2:7,icon:'🍐',color:'#F9A825',shape:'fruit',desc:'Classic European dessert pear.'},
+  cherry:{key:'cherry',name:'Sweet Cherry',de:'Süßkirsche',cat:'Fruit',o2:6,icon:'🍒',color:'#AD1457',shape:'fruit',desc:'Spring blossom · summer harvest.'},
+  plum:{key:'plum',name:'German Plum',de:'Zwetschge',cat:'Fruit',o2:6,icon:'🫐',color:'#6A1B9A',shape:'fruit',desc:'Damson-style plum for Kuchen & preserves.'},
+  // Vine
+  riesling:{key:'riesling',name:'Riesling Vine',de:'Riesling',cat:'Fruit',o2:4,icon:'🍇',color:'#7B1FA2',shape:'vine',desc:'Cool-climate grape of German slopes.'},
+  silvaner:{key:'silvaner',name:'Silvaner Vine',de:'Silvaner',cat:'Fruit',o2:4,icon:'🍇',color:'#8E24AA',shape:'vine',desc:'Franconian white — alpine valley friendly.'},
+  // Vegetables
+  potato:{key:'potato',name:'Alpine Potato',de:'Kartoffelsorte',cat:'Vegetable',o2:3,icon:'🥔',color:'#8D6E63',shape:'bed',desc:'Staple root crop of Bavarian kitchens.'},
+  cabbage:{key:'cabbage',name:'White Cabbage',de:'Weißkohl',cat:'Vegetable',o2:3,icon:'🥬',color:'#81C784',shape:'bed',desc:'Sauerkraut heritage crop.'},
+  carrot:{key:'carrot',name:'Nantes Carrot',de:'Möhre',cat:'Vegetable',o2:2,icon:'🥕',color:'#FB8C00',shape:'bed',desc:'Sweet root for markets and kitchen.'},
+  beet:{key:'beet',name:'Red Beet',de:'Rote Bete',cat:'Vegetable',o2:2,icon:'🔴',color:'#C62828',shape:'bed',desc:'Colourful root · soil conditioner companion.'},
+  // Flowers / pollination
+  cornflower:{key:'cornflower',name:'Cornflower',de:'Kornblume',cat:'Flower',o2:1,icon:'🔵',color:'#1976D2',shape:'bloom',desc:'Field edge pollinator magnet.'},
+  alpine_rose:{key:'alpine_rose',name:'Alpine Rose',de:'Alpenrose',cat:'Flower',o2:2,icon:'🌹',color:'#D81B60',shape:'bloom',desc:'Rhododendron of the high meadows.'},
+  sunflower:{key:'sunflower',name:'Sunflower',de:'Sonnenblume',cat:'Flower',o2:2,icon:'🌻',color:'#F9A825',shape:'bloom',desc:'Tall nectar tower for bees.'},
+  wild_rose:{key:'wild_rose',name:'Dog Rose',de:'Hundsrose',cat:'Biodiversity',o2:3,icon:'🌺',color:'#EC407A',shape:'bloom',desc:'Hedgerow hips · wildlife food.'}
+};
+
+/* ================= SITES on bavaria-bg (1920×1080) from plan ================= */
+const SITES=[
+  {id:'wind_w',x:220,y:150,icon:'🌬️',title:'Wind Turbine West',sub:'Alpine ridge turbine',cat:'energy',color:'#00E5FF',action:'wind'},
+  {id:'orchard_nw',x:280,y:280,icon:'🌳',title:'Orchard Field NW',sub:'3×3 circle planting beds',cat:'orchard',color:'#8D6E63',action:'orchard',plot:'o1'},
+  {id:'orchard_ne',x:460,y:280,icon:'🌳',title:'Orchard Field NE',sub:'3×3 circle planting beds',cat:'orchard',color:'#8D6E63',action:'orchard',plot:'o2'},
+  {id:'orchard_sw',x:280,y:460,icon:'🍎',title:'Orchard Field SW',sub:'3×3 circle planting beds',cat:'orchard',color:'#A1887F',action:'orchard',plot:'o3'},
+  {id:'orchard_se',x:460,y:460,icon:'🍐',title:'Orchard Field SE',sub:'3×3 circle planting beds',cat:'orchard',color:'#A1887F',action:'orchard',plot:'o4'},
+  {id:'orchard_top_l',x:280,y:170,icon:'🌲',title:'2×3 Orchard Belt N',sub:'Shelterbelt rows',cat:'orchard',color:'#558B2F',action:'orchard',plot:'o5'},
+  {id:'orchard_top_r',x:460,y:170,icon:'🌲',title:'2×3 Orchard Belt E',sub:'Shelterbelt rows',cat:'orchard',color:'#558B2F',action:'orchard',plot:'o6'},
+  {id:'bess',x:620,y:190,icon:'⚡',title:'Energy Storage Farm',sub:'BESS microgrid pad',cat:'energy',color:'#00E676',action:'bess'},
+  {id:'farm_shed',x:780,y:200,icon:'🏚️',title:'Farm Shed',sub:'Tools & seed bank',cat:'infra',color:'#FFA726',action:'shed'},
+  {id:'veg',x:900,y:300,icon:'🥬',title:'Vegetable Garden',sub:'4 companion parts',cat:'veg',color:'#76FF03',action:'veg'},
+  {id:'crop',x:920,y:430,icon:'🌾',title:'2×2 Crop Field',sub:'Rotational arable',cat:'veg',color:'#C0CA33',action:'crop'},
+  {id:'flower_w',x:760,y:540,icon:'🌸',title:'Flower Garden W',sub:'Pollination meadow',cat:'flower',color:'#FF4081',action:'flower'},
+  {id:'flower_e',x:920,y:560,icon:'🌼',title:'Flower Garden E',sub:'Pollination meadow',cat:'flower',color:'#F48FB1',action:'flower'},
+  {id:'pond',x:720,y:640,icon:'💧',title:'Alpine Pond',sub:'Wildlife & irrigation',cat:'water',color:'#29B6F6',action:'pond'},
+  {id:'crew',x:1120,y:430,icon:'🧑‍🌾',title:'Crew Shed',sub:'Labour HQ',cat:'labour',color:'#FFD54F',action:'crew'},
+  {id:'juice',x:1180,y:510,icon:'🧃',title:'Juice Bar',sub:'Pressed orchard drinks',cat:'trade',color:'#FF7043',action:'juice'},
+  {id:'restaurant',x:1380,y:500,icon:'🍽️',title:'Restaurant',sub:'Farm-to-table stuben',cat:'trade',color:'#EF5350',action:'restaurant'},
+  {id:'cattle',x:1500,y:300,icon:'🐄',title:'Cattle Pasture',sub:'Alpine grazing',cat:'livestock',color:'#8D6E63',action:'cattle'},
+  {id:'vineyard',x:1520,y:430,icon:'🍇',title:'Grape Vineyard',sub:'2×2 Riesling / Silvaner',cat:'fruit',color:'#7B1FA2',action:'vine'},
+  {id:'gate',x:1420,y:680,icon:'🚪',title:'Main Gate',sub:'Alpenhof entrance',cat:'infra',color:'#B0BEC5',action:'gate'},
+  {id:'wind_e',x:1720,y:160,icon:'🌬️',title:'Wind Turbine East',sub:'Ridge turbine',cat:'energy',color:'#00E5FF',action:'wind'}
+];
+
+const state={
+  money:2800, o2:4200, xp:40, workers:0, hired:[],
+  bess:120, chapter:1, surveyed:{}, built:{},
+  plots:{}, // orchard plot plantings
+  catXP:{oxygen:10,fruit:8,biodiversity:6,veg:5,flower:4},
+  labourPool:[
+    {id:'hans',name:'Hans',role:'Orchardist',cost:120,skill:'fruit',icon:'🧑‍🌾'},
+    {id:'greta',name:'Greta',role:'Vegetable Grower',cost:100,skill:'veg',icon:'👩‍🌾'},
+    {id:'lukas',name:'Lukas',role:'Vine Hand',cost:130,skill:'vine',icon:'🧔'},
+    {id:'anna',name:'Anna',role:'Florist',cost:90,skill:'flower',icon:'👩‍🔬'}
+  ]
+};
+
+const CHAPTERS=[
+  {id:1,title:'Survey the Alpenhof',desc:'Explore orchard rings, crop fields, pond and gate. Open Why-cards.',goal:5},
+  {id:2,title:'Plant the First Rings',desc:'Till two orchard fields and plant German fruit trees.',goal:2},
+  {id:3,title:'Pollination Meadow',desc:'Build both flower gardens and hire a florist.',goal:3},
+  {id:4,title:'Alpine Power & Pasture',desc:'Commission a turbine or BESS and open the cattle pad.',goal:2},
+  {id:5,title:'Farm-to-Table',desc:'Staff the juice bar and restaurant with harvest stock.',goal:2}
+];
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+function openModal(html){
+  document.getElementById('modalBody').innerHTML=html;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
+
+function renderScoreboard(){
+  const el=document.getElementById('scoreboard');
+  el.innerHTML=
+    '<div class="sb-chip" title="Money">💶<span class="v">'+state.money+'</span></div>'+
+    '<div class="sb-chip" title="Oxygen">🫁<span class="v">'+state.o2+'</span></div>'+
+    '<div class="sb-chip" title="Knowledge XP">📚<span class="v">'+state.xp+'</span></div>'+
+    '<div class="sb-chip" title="Workers">🧑‍🌾<span class="v">'+state.workers+'</span></div>'+
+    '<div class="sb-chip" title="BESS">⚡<span class="v">'+state.bess+' kWh</span></div>'+
+    '<div class="sb-chip" title="O₂ XP">🍃<span class="v">'+state.catXP.oxygen+'</span></div>'+
+    '<div class="sb-chip" title="Fruit XP">🍎<span class="v">'+state.catXP.fruit+'</span></div>'+
+    '<div class="sb-chip" title="Bio XP">🦋<span class="v">'+state.catXP.biodiversity+'</span></div>';
+}
+function grantXP(map){
+  Object.keys(map||{}).forEach(k=>{
+    state.catXP[k]=(state.catXP[k]||0)+map[k];
+    state.xp+=map[k];
+  });
+  renderScoreboard();
+}
+function markSurvey(id){
+  if(state.surveyed[id]) return;
+  state.surveyed[id]=true;
+  const n=Object.keys(state.surveyed).length;
+  const ch=CHAPTERS[state.chapter-1];
+  const pct=Math.min(100, Math.round(n/Math.max(ch.goal,1)*100));
+  document.getElementById('taskBar').style.width=pct+'%';
+  if(n>=ch.goal && state.chapter<CHAPTERS.length){
+    state.chapter++;
+    const next=CHAPTERS[state.chapter-1];
+    document.getElementById('taskTitle').textContent='🌿 Chapter '+state.chapter+' · '+next.title;
+    document.getElementById('taskDesc').textContent=next.desc;
+    document.getElementById('taskBar').style.width='8%';
+    toast('Chapter complete · '+next.title);
+    grantXP({oxygen:15,biodiversity:10});
+  }
+  renderScoreboard();
+}
+
+/* ================= ISOMETRIC DRAW ================= */
+function isoBox(ctx,x,y,w,d,h,side,top){
+  const sk=0.5;
+  ctx.fillStyle=top;
+  ctx.beginPath();
+  ctx.moveTo(x,y-h); ctx.lineTo(x+w,y-h); ctx.lineTo(x+w+d*sk,y-h+d*0.35); ctx.lineTo(x+d*sk,y-h+d*0.35); ctx.closePath(); ctx.fill();
+  ctx.fillStyle=side;
+  ctx.beginPath();
+  ctx.moveTo(x+w,y-h); ctx.lineTo(x+w+d*sk,y-h+d*0.35); ctx.lineTo(x+w+d*sk,y+d*0.35); ctx.lineTo(x+w,y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle=shade(side,-20);
+  ctx.beginPath();
+  ctx.moveTo(x,y-h); ctx.lineTo(x+w,y-h); ctx.lineTo(x+w,y); ctx.lineTo(x,y); ctx.closePath(); ctx.fill();
+}
+function shade(hex,amt){
+  try{
+    const n=parseInt(String(hex).replace('#',''),16);
+    let r=(n>>16)+amt,g=((n>>8)&255)+amt,b=(n&255)+amt;
+    r=Math.max(0,Math.min(255,r)); g=Math.max(0,Math.min(255,g)); b=Math.max(0,Math.min(255,b));
+    return 'rgb('+r+','+g+','+b+')';
+  }catch(e){ return hex; }
+}
+function drawTreeIso(ctx,x,y,sp,stage){
+  const s=SPECIES[sp]||SPECIES.beech;
+  ctx.save(); ctx.translate(x,y);
+  ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(2,6,16,6,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#5D4037';
+  ctx.beginPath(); ctx.moveTo(-4,4); ctx.lineTo(4,4); ctx.lineTo(2,-22); ctx.lineTo(-2,-22); ctx.fill();
+  const h=14+stage*4;
+  if(s.shape==='cone'){
+    ctx.fillStyle=s.color;
+    ctx.beginPath(); ctx.moveTo(0,-22-h); ctx.lineTo(16,-10); ctx.lineTo(-16,-10); ctx.closePath(); ctx.fill();
+    ctx.fillStyle=shade(s.color,30);
+    ctx.beginPath(); ctx.moveTo(0,-18-h*0.6); ctx.lineTo(12,-6); ctx.lineTo(-12,-6); ctx.closePath(); ctx.fill();
+  } else if(s.shape==='vine'){
+    ctx.strokeStyle=s.color; ctx.lineWidth=2;
+    for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(-12+i*10,4); ctx.quadraticCurveTo(-8+i*10,-20, -4+i*10,-28); ctx.stroke(); }
+    ctx.fillStyle='#7B1FA2'; for(let i=0;i<4;i++){ ctx.beginPath(); ctx.arc(-10+i*7,-18-i%2*4,3,0,Math.PI*2); ctx.fill(); }
+  } else {
+    ctx.fillStyle=shade(s.color,-25);
+    ctx.beginPath(); ctx.ellipse(0,-20,18,14,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=s.color;
+    ctx.beginPath(); ctx.ellipse(-4,-26,12,10,0.2,0,Math.PI*2); ctx.fill();
+    if(s.shape==='fruit' && stage>=2){
+      ctx.fillStyle=s.color;
+      ctx.beginPath(); ctx.arc(6,-18,4,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(-6,-16,3.5,0,Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+function drawSiteMass(ctx,s,t){
+  const built=!!state.built[s.id];
+  ctx.save(); ctx.translate(s.x,s.y); ctx.globalAlpha=built?1:0.5;
+  ctx.fillStyle='rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(2,14,36,12,0,0,Math.PI*2); ctx.fill();
+  if(s.action==='orchard'){
+    // 3×3 circle beds
+    for(let r=0;r<3;r++) for(let c=0;c<3;c++){
+      const px=-36+c*28, py=-24+r*22;
+      ctx.beginPath(); ctx.ellipse(px,py,11,7,0,0,Math.PI*2);
+      ctx.fillStyle=built?'#6D4C41':'#8D6E63'; ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.stroke();
+      if(built && state.plots[s.plot]){
+        const sp=state.plots[s.plot].species||'apple';
+        drawTreeIso(ctx,px,py-4,sp,state.plots[s.plot].stage||1);
+      }
+    }
+  } else if(s.action==='veg' || s.action==='crop'){
+    for(let i=0;i<4;i++){
+      const bx=((i%2)*48)-40, by=(Math.floor(i/2)*30)-20;
+      isoBox(ctx,bx,by,40,16,built?10:5,'#5D4037', built?'#81C784':'#A5D6A7');
+    }
+  } else if(s.action==='flower'){
+    for(let i=0;i<5;i++){
+      const a=i*Math.PI*2/5;
+      isoBox(ctx,Math.cos(a)*22-8,Math.sin(a)*14,16,10,built?12:5,'#6A1B9A', built?'#F48FB1':'#C5E1A5');
+    }
+  } else if(s.action==='wind'){
+    ctx.fillStyle='#90A4AE';
+    ctx.beginPath(); ctx.moveTo(-5,8); ctx.lineTo(5,8); ctx.lineTo(2,-60); ctx.lineTo(-2,-60); ctx.fill();
+    ctx.fillStyle='#ECEFF1'; ctx.beginPath(); ctx.arc(0,-60,6,0,Math.PI*2); ctx.fill();
+    if(built){ const rot=t*2.5; ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.lineCap='round';
+      for(let i=0;i<3;i++){ const a=rot+i*Math.PI*2/3; ctx.beginPath(); ctx.moveTo(0,-60); ctx.lineTo(Math.cos(a)*34,-60+Math.sin(a)*34); ctx.stroke(); }
+    }
+  } else if(s.action==='bess'){
+    isoBox(ctx,-30,-6,60,22,20,'#263238', built?'#00E676':'#78909C');
+  } else if(s.action==='pond'){
+    const g=ctx.createLinearGradient(0,-16,0,16); g.addColorStop(0,'#4FC3F7'); g.addColorStop(1,'#0277BD');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(0,0,48,24,0.1,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#81D4FA'; ctx.stroke();
+  } else if(s.action==='vine'){
+    for(let r=0;r<2;r++) for(let c=0;c<2;c++){
+      drawTreeIso(ctx,-20+c*40,-8+r*28,'riesling',built?2:0);
+    }
+  } else if(s.action==='cattle'){
+    isoBox(ctx,-40,-4,80,28,8,'#6D4C41','#A5D6A7');
+    if(built){ ctx.font='18px sans-serif'; ctx.fillText('🐄',-8,-18); }
+  } else if(s.action==='gate'){
+    ctx.strokeStyle='#B0BEC5'; ctx.lineWidth=4;
+    ctx.strokeRect(-28,-40,56,44); ctx.beginPath(); ctx.arc(0,-40,28,Math.PI,0); ctx.stroke();
+  } else {
+    // default shed
+    isoBox(ctx,-32,-4,64,26,24,'#5D4037', built?s.color:'#90A4AE');
+    ctx.fillStyle=built?s.color:'#78909C';
+    ctx.beginPath(); ctx.moveTo(-34,-28); ctx.lineTo(0,-44); ctx.lineTo(34,-28); ctx.lineTo(32,-4); ctx.lineTo(-32,-4); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawMarkerIcon(ctx,s){
+  // 3D icon only — top-middle of object
+  ctx.save();
+  const y=s.y-48;
+  ctx.beginPath(); ctx.arc(s.x,y,16,0,Math.PI*2);
+  ctx.fillStyle='rgba(8,20,12,0.9)'; ctx.fill();
+  ctx.strokeStyle=s.color; ctx.lineWidth=2.2; ctx.stroke();
+  ctx.font='15px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(s.icon,s.x,y+1);
+  ctx.restore();
+}
+
+/* ================= MAP ENGINE ================= */
+const Map={
+  canvas:null,ctx:null,scaleX:1,scaleY:1,viewZoom:1,panX:960,panY:540,
+  hasBg:false,bg:null,time:0,dragging:false,didDrag:false,lastX:0,lastY:0,hover:null,
+  init(c){
+    this.canvas=c; this.ctx=c.getContext('2d');
+    this.resize();
+    addEventListener('resize',()=>this.resize());
+    c.addEventListener('pointerdown',e=>this.pd(e));
+    c.addEventListener('pointermove',e=>this.pm(e));
+    c.addEventListener('pointerup',e=>this.pu(e));
+    c.addEventListener('pointercancel',e=>this.pu(e));
+    this.bg=new Image();
+    this.bg.onload=()=>{ this.hasBg=true; };
+    this.bg.onerror=()=>{ this.bg.src='../bavaria/bavaria-bg.jpg'; };
+    this.bg.src='bavaria-bg.jpg';
+    const loop=ts=>{ this.time=ts*0.001; this.render(); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  },
+  resize(){
+    const dpr=Math.min(devicePixelRatio||1,2);
+    this.canvas.width=innerWidth*dpr; this.canvas.height=innerHeight*dpr;
+    this.scaleX=innerWidth/1920; this.scaleY=innerHeight/1080;
+  },
+  worldFromEvent(e){
+    const rect=this.canvas.getBoundingClientRect();
+    const z=this.viewZoom||1;
+    const dpr=Math.min(devicePixelRatio||1,2);
+    const ox=(innerWidth/2) - this.panX*this.scaleX*z;
+    const oy=(innerHeight/2) - this.panY*this.scaleY*z;
+    const cx=(e.clientX-rect.left - ox)/(this.scaleX*z);
+    const cy=(e.clientY-rect.top - oy)/(this.scaleY*z);
+    return {cx,cy};
+  },
+  pd(e){
+    if((this.viewZoom||1)>1.01){
+      this.dragging=true; this.didDrag=false; this.lastX=e.clientX; this.lastY=e.clientY;
+      this.canvas.classList.add('dragging');
+      try{ this.canvas.setPointerCapture(e.pointerId); }catch(_){}
+    }
+  },
+  pm(e){
+    const {cx,cy}=this.worldFromEvent(e);
+    let hit=null;
+    for(const s of SITES){ if(Math.hypot(cx-s.x,cy-s.y)<48){ hit=s; break; } }
+    this.hover=hit;
+    if(this.dragging && (this.viewZoom||1)>1.01){
+      const z=this.viewZoom; const dx=e.clientX-this.lastX, dy=e.clientY-this.lastY;
+      if(Math.abs(dx)+Math.abs(dy)>3) this.didDrag=true;
+      this.lastX=e.clientX; this.lastY=e.clientY;
+      this.panX-=dx/(this.scaleX*z); this.panY-=dy/(this.scaleY*z);
+      this.panX=Math.max(200,Math.min(1720,this.panX));
+      this.panY=Math.max(120,Math.min(960,this.panY));
+    }
+  },
+  pu(e){
+    const was=this.didDrag;
+    this.dragging=false; this.canvas.classList.remove('dragging');
+    try{ this.canvas.releasePointerCapture(e.pointerId); }catch(_){}
+    if(!was) this.onClick(e);
+    this.didDrag=false;
+  },
+  onClick(e){
+    const {cx,cy}=this.worldFromEvent(e);
+    for(const s of SITES){
+      if(Math.hypot(cx-s.x,cy-s.y)<52){ this.handle(s); return; }
+    }
+  },
+  handle(s){
+    markSurvey(s.id);
+    openSiteModal(s);
+  },
+  render(){
+    const ctx=this.ctx; const dpr=Math.min(devicePixelRatio||1,2);
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
+    ctx.fillStyle='#0a1a10'; ctx.fillRect(0,0,this.canvas.width,this.canvas.height);
+    const z=this.viewZoom||1;
+    const sx=dpr*this.scaleX*z, sy=dpr*this.scaleY*z;
+    const ox=dpr*((innerWidth/(dpr*2)) - this.panX*this.scaleX*z);
+    const oy=dpr*((innerHeight/(dpr*2)) - this.panY*this.scaleY*z);
+    ctx.setTransform(sx,0,0,sy,ox,oy);
+    if(this.hasBg) ctx.drawImage(this.bg,0,0,1920,1080);
+    else {
+      const g=ctx.createLinearGradient(0,0,0,1080);
+      g.addColorStop(0,'#87CEEB'); g.addColorStop(0.45,'#A5D6A7'); g.addColorStop(1,'#558B2F');
+      ctx.fillStyle=g; ctx.fillRect(0,0,1920,1080);
+    }
+    // soft road hint
+    ctx.strokeStyle='rgba(180,150,100,0.25)'; ctx.lineWidth=8; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(500,500); ctx.quadraticCurveTo(900,520,1400,680); ctx.stroke();
+    SITES.forEach(s=>drawSiteMass(ctx,s,this.time));
+    SITES.forEach(s=>drawMarkerIcon(ctx,s));
+    if(this.hover){
+      const s=this.hover;
+      ctx.save();
+      ctx.fillStyle='rgba(8,20,12,0.92)';
+      const label=s.title;
+      ctx.font='800 13px Nunito';
+      const tw=ctx.measureText(label).width;
+      ctx.fillRect(s.x-tw/2-10,s.y-78,tw+20,22);
+      ctx.strokeStyle=s.color; ctx.strokeRect(s.x-tw/2-10,s.y-78,tw+20,22);
+      ctx.fillStyle='#E8F5E9'; ctx.textAlign='center'; ctx.fillText(label,s.x,s.y-62);
+      ctx.restore();
+    }
+  }
+};
+
+function openSiteModal(s){
+  const built=!!state.built[s.id];
+  let body='<div class="modal-hdr"><h3>'+s.icon+' '+s.title+'</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  body+='<p style="font-size:0.85rem;color:#A5D6A7;margin-bottom:10px">'+s.sub+' · <b style="color:'+s.color+'">'+s.cat+'</b></p>';
+  if(s.action==='orchard'){
+    const p=state.plots[s.plot]||{};
+    body+='<div class="card-box"><b>Orchard ring</b><br/>Species: '+(p.species?SPECIES[p.species].name:'— empty')+'</div>';
+    if(!built){
+      body+='<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">';
+      ['apple','pear','cherry','plum','beech','oak'].forEach(k=>{
+        body+='<button class="btn btn-c" onclick="plantOrchard(\''+s.id+'\',\''+s.plot+'\',\''+k+'\')">'+SPECIES[k].icon+' '+SPECIES[k].name+'</button>';
+      });
+      body+='</div>';
+    } else {
+      body+='<p style="margin-top:10px;color:var(--teal)">Growing · stage '+(p.stage||1)+'</p>';
+    }
+  } else if(['veg','crop','flower','shed','crew','juice','restaurant','cattle','bess','wind','vine','pond','gate'].includes(s.action)){
+    if(!built){
+      const cost={veg:80,crop:90,flower:70,shed:150,crew:100,juice:180,restaurant:220,cattle:160,bess:200,wind:240,vine:140,pond:60,gate:40}[s.action]||100;
+      body+='<p style="margin:10px 0">Build cost: <b style="color:var(--gold)">€'+cost+'</b></p>';
+      body+='<button class="btn btn-g" onclick="buildSite(\''+s.id+'\','+cost+')">🏗️ Build</button>';
+    } else {
+      body+='<p style="color:var(--teal);margin:10px 0">Operational</p>';
+    }
+  }
+  body+='<div class="why-card"><b>Why it matters</b><br/>'+whyText(s)+'</div>';
+  body+='<div style="margin-top:12px"><button class="btn btn-a" onclick="learnWhy(\''+s.id+'\',\''+s.cat+'\')">💡 Learn & +XP</button></div>';
+  openModal(body);
+}
+function whyText(s){
+  const map={
+    orchard:'German Streuobstwiesen mix fruit production with oxygen canopy and nesting habitat.',
+    veg:'Companion beds cut pests and keep Bavarian kitchen crops in continuous rotation.',
+    flower:'Pollination meadows lift fruit set across the Alpenhof — biodiversity is production.',
+    energy:'Ridge wind + BESS keep cold stores and juice presses on clean alpine power.',
+    labour:'Hiring local hands mirrors real village farm economics and speeds build cycles.',
+    trade:'Juice bar and Stuben restaurant close the farm-to-table loop with visitor O₂ tourism.',
+    livestock:'Pasture integrates manure cycles and keeps alpine grassland open.',
+    water:'The pond buffers irrigation and hosts amphibians — a living biodiversity meter.',
+    infra:'Sheds and the main gate orient workers and guests without trampling beds.'
+  };
+  return map[s.cat]||map[s.action]||'Every Alpenhof pad teaches a German alpine farming pattern.';
+}
+function learnWhy(id,cat){
+  const key=({orchard:'fruit',veg:'veg',flower:'flower',energy:'oxygen',fruit:'fruit',livestock:'biodiversity',water:'biodiversity',infra:'oxygen',labour:'oxygen',trade:'fruit'}[cat])||'oxygen';
+  grantXP({[key]:8, biodiversity:4});
+  toast('Why-card complete · +XP');
+  closeModal();
+}
+function plantOrchard(siteId,plotId,spKey){
+  if(state.money<60){ toast('Need €60'); return; }
+  state.money-=60;
+  state.built[siteId]=true;
+  state.plots[plotId]={species:spKey,stage:1};
+  grantXP({fruit:12,oxygen:6});
+  toast('Planted '+SPECIES[spKey].name);
+  closeModal(); renderScoreboard();
+}
+function buildSite(id,cost){
+  if(state.money<cost){ toast('Not enough €'); return; }
+  state.money-=cost; state.built[id]=true;
+  grantXP({oxygen:5,biodiversity:5});
+  toast('Built!'); closeModal(); renderScoreboard();
+}
+
+function openLabour(){
+  let h='<div class="modal-hdr"><h3>🧑‍🌾 Labour Market</h3><button class="btn-close" onclick="closeModal()">✕</button></div><div class="grid-2">';
+  state.labourPool.forEach(w=>{
+    const hired=state.hired.includes(w.id);
+    h+='<div class="card-box">'+w.icon+' <b>'+w.name+'</b><br/><span style="font-size:0.78rem;color:#A5D6A7">'+w.role+' · '+w.skill+'</span><br/>';
+    if(hired) h+='<span style="color:var(--teal)">Hired</span>';
+    else h+='<button class="btn btn-g" style="margin-top:8px" onclick="hireWorker(\''+w.id+'\','+w.cost+')">Hire €'+w.cost+'</button>';
+    h+='</div>';
+  });
+  h+='</div>';
+  openModal(h);
+}
+function hireWorker(id,cost){
+  if(state.hired.includes(id)) return;
+  if(state.money<cost){ toast('Need €'+cost); return; }
+  state.money-=cost; state.hired.push(id); state.workers++;
+  grantXP({oxygen:4}); toast('Worker hired'); closeModal(); openLabour(); renderScoreboard();
+}
+function openSpecies(){
+  let h='<div class="modal-hdr"><h3>🌲 German Species Atlas</h3><button class="btn-close" onclick="closeModal()">✕</button></div><div class="grid-2">';
+  Object.values(SPECIES).forEach(s=>{
+    h+='<div class="card-box"><span style="font-size:1.2rem">'+s.icon+'</span> <b>'+s.name+'</b><br/><span style="color:#81C784;font-size:0.75rem">'+s.de+' · '+s.cat+' · O₂ '+s.o2+'</span><p style="font-size:0.75rem;margin-top:6px;color:#C8E6C9">'+s.desc+'</p></div>';
+  });
+  h+='</div>';
+  openModal(h);
+}
+function openMaster(){
+  let h='<div class="modal-hdr"><h3>📋 Alpenhof Journey</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  CHAPTERS.forEach((c,i)=>{
+    const active=state.chapter===c.id;
+    h+='<div class="card-box" style="margin-bottom:8px;border-color:'+(active?'var(--gold)':'var(--border)')+'"><b>Ch.'+c.id+' '+c.title+'</b><p style="font-size:0.78rem;color:#A5D6A7">'+c.desc+'</p></div>';
+  });
+  openModal(h);
+}
+function openWhyIntro(){
+  openModal('<div class="modal-hdr"><h3>💡 Why Alpenhof?</h3><button class="btn-close" onclick="closeModal()">✕</button></div>'+
+    '<div class="why-card"><b>Alpine farming is a living classroom.</b><br/>German species — beech, oak, Streuobst fruit, Riesling, alpine flowers — teach oxygen, biodiversity, and food together. Each pad is a Why-card: explore, learn, earn XP, then hire hands to build.</div>'+
+    '<p style="margin-top:12px;font-size:0.85rem;color:#C8E6C9">Tap any 3D icon on the meadow. Hover shows the name; click opens build & learn.</p>'+
+    '<button class="btn btn-g" style="margin-top:12px" onclick="closeModal();grantXP({biodiversity:10,oxygen:8});toast(\'Journey started\')">Got it — explore ➔</button>');
+}
+function openPlan(){
+  openModal('<div class="modal-hdr"><h3>🗺️ Site Plan</h3><button class="btn-close" onclick="closeModal()">✕</button></div>'+
+    '<p style="font-size:0.85rem;color:#A5D6A7;margin-bottom:10px">Overlay reference from the Alpenhof master plan. Live build pads match these zones.</p>'+
+    '<img src="bavaria-bg-plan.jpg" alt="plan" style="width:100%;border-radius:12px;border:1px solid var(--border)"/>');
+}
+
+/* ================= UI WIRING ================= */
+document.getElementById('btn-start').onclick=()=>{
+  document.getElementById('cinBanner').style.display='none';
+  openWhyIntro();
+};
+document.getElementById('btn-fs').onclick=()=>{
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen?.();
+};
+document.getElementById('btn-menu').onclick=()=>{
+  document.getElementById('controlGrid').classList.toggle('open');
+  document.getElementById('scoreboard').classList.remove('open');
+};
+document.getElementById('btn-score').onclick=()=>{
+  document.getElementById('scoreboard').classList.toggle('open');
+  document.getElementById('controlGrid').classList.remove('open');
+  renderScoreboard();
+};
+function goGlobe(){ location.href='../index.html'; }
+document.getElementById('btn-home').onclick=goGlobe;
+document.getElementById('btn-globe2').onclick=goGlobe;
+document.getElementById('btn-master').onclick=()=>{ openMaster(); };
+document.getElementById('btn-labour').onclick=()=>{ openLabour(); };
+document.getElementById('btn-species').onclick=()=>{ openSpecies(); };
+document.getElementById('btn-why').onclick=()=>{ openWhyIntro(); };
+document.getElementById('btn-plan').onclick=()=>{ openPlan(); };
+document.getElementById('btn-shop').onclick=()=>{ toast('Tap meadow icons to build pads'); };
+document.getElementById('btn-o2').onclick=()=>{ openModal('<div class="modal-hdr"><h3>🫁 Oxygen Ledger</h3><button class="btn-close" onclick="closeModal()">✕</button></div><p>Farm O₂ stock: <b style="color:var(--teal)">'+state.o2+'</b></p><p style="margin-top:8px;font-size:0.85rem;color:#A5D6A7">Canopy trees (beech, oak, linden) and orchard rings raise the Alpenhof oxygen score.</p>'); };
+
+document.querySelectorAll('#zoomBar button').forEach(btn=>{
+  btn.onclick=()=>{
+    const z=parseFloat(btn.getAttribute('data-z'))||1;
+    Map.viewZoom=z;
+    if(z>=5){ Map.panX=900; Map.panY=420; }
+    else if(z>=2){ Map.panX=960; Map.panY=480; }
+    else { Map.panX=960; Map.panY=540; }
+    document.querySelectorAll('#zoomBar button').forEach(b=>b.classList.toggle('active',b===btn));
+  };
+});
+
+window.addEventListener('DOMContentLoaded',()=>{
+  Map.init(document.getElementById('farm-canvas'));
+  renderScoreboard();
+  // gentle O2 tick from planted canopy
+  setInterval(()=>{
+    let add=0;
+    Object.values(state.plots).forEach(p=>{ const s=SPECIES[p.species]; if(s) add+=s.o2*0.02*(p.stage||1); });
+    if(add>0){ state.o2=Math.round(state.o2+add); renderScoreboard(); }
+  },4000);
+});
+</script>
+</body>
+</html>
