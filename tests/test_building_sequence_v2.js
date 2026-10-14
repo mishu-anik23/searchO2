@@ -70,23 +70,28 @@ const assert = require('assert');
   assert.strictEqual(sunSite.y1080, 205, 'beach_sunbeds y1080 must be 205');
 
   const dec3Site = sites.find(s => s.id === 'mangrove_decagon_3');
-  assert.strictEqual(dec3Site.x1080, 240, 'mangrove_decagon_3 x1080 must be 240');
-  assert.strictEqual(dec3Site.y1080, 355, 'mangrove_decagon_3 y1080 must be 355');
+  assert.strictEqual(dec3Site.x1080, 265, 'mangrove_decagon_3 x1080 must be 265');
+  assert.strictEqual(dec3Site.y1080, 335, 'mangrove_decagon_3 y1080 must be 335');
+
+  const saltSite = sites.find(s => s.id === 'salt_brine_beds');
+  assert.strictEqual(saltSite.x1080, 190, 'salt_brine_beds x1080 must be 190');
+  assert.strictEqual(saltSite.y1080, 505, 'salt_brine_beds y1080 must be 505');
 
   const jettySite = sites.find(s => s.id === 't_jetty_pier');
   assert.strictEqual(jettySite.x1080, 1415, 't_jetty_pier x1080 must be 1415');
   assert.strictEqual(jettySite.y1080, 489, 't_jetty_pier y1080 must be 489');
-  console.log('[✓ PASSED] Calibrated coordinates verified for cottages, sunbeds, decagon 3, and modern jetty');
+  console.log('[✓ PASSED] Calibrated coordinates verified for cottages, sunbeds, decagon 3, salt beds, and modern jetty');
 
   // 4. Verify Decagon 3 PLOT_DEFS Coordinates
   const plotDefs = await page.evaluate(() => PLOT_DEFS);
   assert.strictEqual(plotDefs['dec3.plot1'].y1080, 275);
-  assert.strictEqual(plotDefs['dec3.plot5'].y1080, 435);
-  console.log('[✓ PASSED] Decagon 3 PLOT_DEFS vertically stretched along sand line (275 to 435)');
+  assert.strictEqual(plotDefs['dec3.plot5'].x1080, 350);
+  assert.strictEqual(plotDefs['dec3.plot5'].y1080, 325);
+  console.log('[✓ PASSED] Decagon 3 PLOT_DEFS verified with plot5 relocated to green meadow (350, 325)');
 
-  // 5. Test Building all 5 Facilities in Parallel / Sequential
-  console.log('Testing construction of all 5 facilities...');
-  const testBuildings = ['tourist_cottages', 'beach_sunbeds', 'pearl_farming', 'shrimp_crab_freshwater', 't_jetty_pier'];
+  // 5. Test Building all 6 Facilities in Parallel / Sequential
+  console.log('Testing construction of all 6 facilities...');
+  const testBuildings = ['tourist_cottages', 'beach_sunbeds', 'salt_brine_beds', 'pearl_farming', 'shrimp_crab_freshwater', 't_jetty_pier'];
 
   for (const bKey of testBuildings) {
     await page.evaluate((key) => {
@@ -143,11 +148,11 @@ const assert = require('assert');
   console.log('[✓ PASSED] Modern Jetty modal opens and dispatches cargo (+€350)');
 
   // 8. Capture Screenshots for Visual Verification
-  // Northwest beach area (cottages, sunbeds, palm tree, and decagon 3)
+  // Northwest beach area (L-shaped cottages, sea-facing sunbeds, and lone palm tree)
   await page.evaluate(() => {
-    state.zoom = 1.6;
-    state.panX = 250;
-    state.panY = 100;
+    state.zoom = 1.8;
+    state.panX = 650;
+    state.panY = 350;
   });
   await page.waitForTimeout(600);
   await page.screenshot({ path: 'C:/Users/AM/.gemini/antigravity/brain/d0f09cad-1638-4e2c-b505-333cd232aacf/scratch/screenshot_northwest_beach_cottages_sunbeds.png' });
@@ -155,13 +160,43 @@ const assert = require('assert');
 
   // Eastern basin area (modern jetty and berthed cargo ship)
   await page.evaluate(() => {
-    state.zoom = 1.4;
-    state.panX = -650;
-    state.panY = -200;
+    state.zoom = 1.5;
+    state.panX = -682;
+    state.panY = 76;
   });
   await page.waitForTimeout(600);
   await page.screenshot({ path: 'C:/Users/AM/.gemini/antigravity/brain/d0f09cad-1638-4e2c-b505-333cd232aacf/scratch/screenshot_modern_jetty_cargo_ship.png' });
   console.log('[✓ PASSED] Captured screenshot_modern_jetty_cargo_ship.png');
+
+  // Rotated Salt Beds on Beach Sand (190, 505)
+  await page.evaluate(() => {
+    state.zoom = 1.8;
+    state.panX = 650;
+    state.panY = -150;
+  });
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: 'C:/Users/AM/.gemini/antigravity/brain/d0f09cad-1638-4e2c-b505-333cd232aacf/scratch/screenshot_rotated_salt_beds_sand.png' });
+  console.log('[✓ PASSED] Captured screenshot_rotated_salt_beds_sand.png');
+
+  // Decagon 3 and Meadow Plot 5 (350, 325)
+  await page.evaluate(() => {
+    state.zoom = 1.5;
+    state.panX = 450;
+    state.panY = 100;
+  });
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: 'C:/Users/AM/.gemini/antigravity/brain/d0f09cad-1638-4e2c-b505-333cd232aacf/scratch/screenshot_meadow_plot5_and_dec3.png' });
+  console.log('[✓ PASSED] Captured screenshot_meadow_plot5_and_dec3.png');
+
+  // Full Western Shore & Meadow Overview (1x)
+  await page.evaluate(() => {
+    state.zoom = 1.0;
+    state.panX = 0;
+    state.panY = 0;
+  });
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: 'C:/Users/AM/.gemini/antigravity/brain/d0f09cad-1638-4e2c-b505-333cd232aacf/scratch/screenshot_full_overview_western_shore.png' });
+  console.log('[✓ PASSED] Captured screenshot_full_overview_western_shore.png');
 
   assert.strictEqual(pageErrors.length, 0, 'Zero page errors guaranteed throughout full test lifecycle!');
   console.log('========================================================');

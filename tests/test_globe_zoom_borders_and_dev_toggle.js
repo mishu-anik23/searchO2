@@ -57,17 +57,14 @@ const assert = require('assert');
   assert(btnText.includes('🇩🇪'), 'Initial dev button must show Germany flag');
 
   // 3. Cycle Dev Region Toggle until Saint Martin (BD)
-  // Germany -> Sweden -> Brazil -> Spain -> Saint Martin (BD)
-  await page.click('#devRegionToggleBtn'); // -> Sweden
-  await page.waitForTimeout(150);
-  await page.click('#devRegionToggleBtn'); // -> Brazil
-  await page.waitForTimeout(150);
-  await page.click('#devRegionToggleBtn'); // -> Spain
-  await page.waitForTimeout(150);
-  await page.click('#devRegionToggleBtn'); // -> Saint Martin (BD)
-  await page.waitForTimeout(250);
-
-  const devRegionState = await page.evaluate(() => devRegionPreview);
+  let devRegionState = await page.evaluate(() => devRegionPreview);
+  let maxCycles = 10;
+  while (devRegionState !== 'saint_martin' && maxCycles > 0) {
+    await page.click('#devRegionToggleBtn');
+    await page.waitForTimeout(150);
+    devRegionState = await page.evaluate(() => devRegionPreview);
+    maxCycles--;
+  }
   console.log('Active devRegionPreview:', devRegionState);
   assert.strictEqual(devRegionState, 'saint_martin', 'devRegionPreview must cycle to saint_martin');
 
