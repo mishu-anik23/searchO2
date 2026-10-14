@@ -4,90 +4,146 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
 <title>Alpenhof Journey · Bavarian Alpine Farm · SearchO2</title>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800;900&family=JetBrains+Mono:wght@700;800&display=swap" rel="stylesheet"/>
 <style>
 :root{
-  --pine:#1B5E20; --meadow:#7CB342; --amber:#FFB300; --card:rgba(14,28,18,0.95);
-  --teal:#00E676; --border:rgba(129,199,132,0.5); --gold:#FFD54F;
+  --pine:#1B5E20; --meadow:#7CB342; --amber:#FFB300; --card:rgba(12,24,16,0.95);
+  --teal:#00E676; --cyan:#00E5FF; --border:rgba(129,199,132,0.45); --gold:#FFD54F;
+  --terracotta:#E53935; --wood:#5D4037;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;overflow:hidden;background:#07140c;font-family:'Nunito',system-ui,sans-serif;color:#E8F5E9}
-#farm-zone{position:absolute;inset:0}
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:'Nunito',system-ui,sans-serif;color:#E8F5E9}
+#farm-zone{position:absolute;inset:0;width:100%;height:100%;overflow:hidden}
 #farm-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
 #farm-canvas.dragging{cursor:grabbing}
+
+/* Top Navigation & Controls */
 .hud{position:absolute;inset:0;pointer-events:none;z-index:20}
 .hud *{pointer-events:auto}
-.hud-fab{position:absolute;top:12px;left:12px;display:flex;gap:8px;z-index:30;flex-wrap:wrap}
+.hud-fab{position:absolute;top:14px;left:14px;display:flex;gap:8px;z-index:30}
 .chip-btn{
   width:46px;height:46px;border-radius:14px;border:1.5px solid var(--border);
-  background:rgba(10,24,14,0.94);color:#E8F5E9;font-size:1.15rem;cursor:pointer;
+  background:rgba(8,20,12,0.92);color:#E8F5E9;font-size:1.15rem;cursor:pointer;
   display:flex;align-items:center;justify-content:center;position:relative;
-  box-shadow:0 4px 14px rgba(0,0,0,0.5);
+  box-shadow:0 4px 14px rgba(0,0,0,0.5);backdrop-filter:blur(8px);transition:all 0.15s;
 }
-.chip-btn:hover{border-color:var(--teal)}
+.chip-btn:hover{border-color:var(--teal);transform:translateY(-1px)}
 .chip-btn .tip{
   position:absolute;top:52px;left:50%;transform:translateX(-50%);
-  background:rgba(6,16,10,0.96);border:1px solid var(--teal);border-radius:10px;
+  background:rgba(5,14,8,0.96);border:1px solid var(--teal);border-radius:10px;
   padding:5px 10px;font-size:0.72rem;font-weight:700;white-space:nowrap;
-  opacity:0;pointer-events:none;z-index:50;
+  opacity:0;pointer-events:none;z-index:50;transition:opacity 0.15s;
 }
 .chip-btn:hover .tip{opacity:1}
+
 .control-grid{
-  display:none;position:absolute;top:66px;left:12px;width:min(300px,92vw);
+  display:none;position:absolute;top:68px;left:14px;width:min(320px,92vw);
   grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;
-  background:var(--card);border:1.5px solid var(--border);border-radius:16px;z-index:28;
+  background:var(--card);border:1.5px solid var(--border);border-radius:18px;z-index:28;
+  backdrop-filter:blur(10px);box-shadow:0 12px 30px rgba(0,0,0,0.6);
 }
 .control-grid.open{display:grid}
 .control-grid .chip-btn{width:100%;height:54px}
+
+/* Top-Right Scoreboard */
+.top-right-hud{position:absolute;top:14px;right:14px;display:flex;gap:8px;align-items:center;z-index:30}
 .scoreboard{
-  display:none;position:absolute;top:12px;right:12px;width:min(360px,94vw);
-  grid-template-columns:repeat(4,1fr);gap:8px;padding:10px;
-  background:var(--card);border:1.5px solid var(--border);border-radius:16px;z-index:28;
+  display:none;position:absolute;top:68px;right:14px;width:min(380px,94vw);
+  grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;
+  background:var(--card);border:1.5px solid var(--border);border-radius:18px;z-index:28;
+  backdrop-filter:blur(10px);box-shadow:0 12px 30px rgba(0,0,0,0.6);
 }
 .scoreboard.open{display:grid}
-.sb-chip{background:rgba(8,20,12,0.92);border:1px solid var(--border);border-radius:12px;padding:8px 6px;text-align:center;font-size:0.78rem;font-weight:800}
-.sb-chip .v{color:var(--teal);font-family:'JetBrains Mono',monospace;font-size:0.72rem;display:block;margin-top:2px}
-.zoom-bar{position:absolute;bottom:16px;right:16px;display:flex;gap:6px;z-index:25}
-.zoom-bar button{width:42px;height:42px;border-radius:12px;border:1.5px solid var(--border);background:rgba(10,24,14,0.94);color:#E8F5E9;font-weight:900;cursor:pointer}
-.zoom-bar button.active{border-color:var(--teal);color:var(--teal)}
+.sb-chip{background:rgba(6,16,10,0.92);border:1px solid var(--border);border-radius:12px;padding:8px 6px;text-align:center;font-size:0.78rem;font-weight:800}
+.sb-chip .v{color:var(--teal);font-family:'JetBrains Mono',monospace;font-size:0.75rem;display:block;margin-top:2px}
+
+/* Bottom Zoom & Fullscreen Controls */
+.bottom-right-hud{position:absolute;bottom:16px;right:16px;display:flex;gap:6px;z-index:25;align-items:center}
+.zoom-btn{width:42px;height:42px;border-radius:12px;border:1.5px solid var(--border);background:rgba(8,20,12,0.92);color:#E8F5E9;font-weight:900;cursor:pointer;backdrop-filter:blur(6px);transition:all .15s}
+.zoom-btn.active{border-color:var(--teal);color:var(--teal);background:rgba(0,230,118,0.15)}
+
+/* Task Capsule Bottom Center */
 .task-capsule{
   position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
-  max-width:min(520px,92vw);background:var(--card);border:1.5px solid var(--border);
-  border-radius:16px;padding:10px 14px;z-index:22;
+  width:min(540px,92vw);background:var(--card);border:1.5px solid var(--border);
+  border-radius:18px;padding:10px 16px;z-index:22;backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,0.55);
 }
-.task-capsule h4{font-family:'Baloo 2',sans-serif;font-size:0.95rem;color:var(--gold);margin-bottom:4px}
+.task-capsule h4{font-family:'Baloo 2',sans-serif;font-size:0.95rem;color:var(--gold);margin-bottom:3px;display:flex;align-items:center;gap:6px}
 .task-capsule p{font-size:0.78rem;color:#C8E6C9;line-height:1.35}
+.task-capsule .recall-tag{font-size:0.68rem;background:rgba(255,213,79,0.15);color:var(--gold);padding:2px 8px;border-radius:8px;font-weight:800;border:1px solid rgba(255,213,79,0.35);margin-left:auto}
 .prog-bar{height:6px;background:rgba(255,255,255,0.12);border-radius:4px;margin-top:8px;overflow:hidden}
-.prog-fill{height:100%;background:linear-gradient(90deg,var(--meadow),var(--teal));width:12%;border-radius:4px}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,8,4,0.75);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--meadow),var(--teal));width:12%;border-radius:4px;transition:width 0.3s}
+
+/* Modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,8,4,0.78);display:none;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(6px)}
 .modal-overlay.open{display:flex}
-.modal-card{background:linear-gradient(160deg,#14241a,#0a1610);border:1.5px solid var(--border);border-radius:18px;padding:18px;max-width:min(560px,96vw);max-height:88vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,0.65)}
-.modal-card.wide{max-width:min(760px,96vw)}
+.modal-card{background:linear-gradient(160deg,#14241a,#09140e);border:1.5px solid var(--border);border-radius:20px;padding:20px;max-width:min(580px,96vw);max-height:88vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,0.7)}
+.modal-card.wide{max-width:min(780px,96vw)}
 .modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.modal-hdr h3{font-family:'Baloo 2',sans-serif;font-size:1.15rem;color:var(--gold)}
-.btn-close{background:transparent;border:none;color:#A5D6A7;font-size:1.2rem;cursor:pointer}
-.btn{border:none;border-radius:12px;padding:10px 14px;font-weight:800;font-size:0.82rem;cursor:pointer;font-family:'Nunito',sans-serif}
+.modal-hdr h3{font-family:'Baloo 2',sans-serif;font-size:1.25rem;color:var(--gold)}
+.btn-close{background:transparent;border:none;color:#A5D6A7;font-size:1.3rem;cursor:pointer}
+.btn{border:none;border-radius:12px;padding:10px 16px;font-weight:800;font-size:0.82rem;cursor:pointer;font-family:'Nunito',sans-serif;transition:all .15s}
+.btn:hover{transform:translateY(-1px)}
 .btn-g{background:linear-gradient(135deg,#43A047,#1B5E20);color:#fff}
 .btn-a{background:linear-gradient(135deg,#FFB300,#F57C00);color:#1a1200}
 .btn-c{background:rgba(0,230,118,0.15);color:var(--teal);border:1px solid var(--teal)}
 .btn:disabled{opacity:0.45;cursor:not-allowed}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.card-box{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:12px;padding:12px}
-.bed-cell{text-align:center;padding:10px 6px;border-radius:12px;border:1.5px dashed rgba(255,255,255,0.25);background:rgba(0,0,0,0.25);cursor:pointer;font-size:0.72rem;font-weight:800}
+.card-box{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:14px;padding:12px}
+
+/* Streuobst 3x3 Bed Cell */
+.bed-cell{text-align:center;padding:10px 6px;border-radius:12px;border:1.5px dashed rgba(255,255,255,0.25);background:rgba(0,0,0,0.3);cursor:pointer;font-size:0.75rem;font-weight:800;transition:all .15s}
+.bed-cell:hover{transform:scale(1.03)}
 .bed-cell.open{border-color:var(--gold);background:rgba(255,213,79,0.12)}
-.bed-cell.filled{border-style:solid;border-color:var(--teal)}
-.why-card{background:rgba(255,213,79,0.08);border:1px solid rgba(255,213,79,0.35);border-radius:14px;padding:12px;margin-top:10px}
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(6,18,10,0.96);border:1px solid var(--teal);color:#E8F5E9;padding:10px 18px;border-radius:14px;font-weight:800;font-size:0.85rem;opacity:0;transition:all .25s;z-index:200;pointer-events:none}
+.bed-cell.filled{border-style:solid;border-color:var(--teal);background:rgba(0,230,118,0.10)}
+
+/* 3-Tier Why Cards */
+.why-card{background:rgba(255,213,79,0.08);border:1px solid rgba(255,213,79,0.35);border-radius:14px;padding:14px;margin-top:12px}
+.why-card b{color:var(--gold);font-family:'Baloo 2',sans-serif;font-size:0.98rem}
+.why-card .recall-box{background:rgba(0,229,255,0.08);border-left:3px solid var(--cyan);padding:8px 12px;border-radius:6px;margin:8px 0;font-size:0.78rem;color:#E0F7FA}
+.why-tabs{display:flex;gap:6px;margin:10px 0 6px 0}
+.why-tab{background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:0.72rem;font-weight:800;cursor:pointer;color:#C8E6C9}
+.why-tab.active{background:var(--gold);color:#1A1200;border-color:var(--gold)}
+
+.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(6,18,10,0.96);border:1.2px solid var(--teal);color:#E8F5E9;padding:10px 20px;border-radius:16px;font-weight:800;font-size:0.85rem;opacity:0;transition:all .25s;z-index:200;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,0.6)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.cin-banner{position:absolute;top:16%;left:50%;transform:translateX(-50%);background:rgba(8,18,12,0.92);border:1.5px solid var(--gold);border-radius:18px;padding:16px 22px;text-align:center;z-index:40;max-width:min(480px,92vw)}
-.cin-banner h2{font-family:'Baloo 2',sans-serif;color:var(--gold);font-size:1.35rem;margin-bottom:6px}
-.cin-banner p{font-size:0.85rem;color:#C8E6C9;line-height:1.4;margin-bottom:12px}
-@media (max-width:720px){
-  .scoreboard{top:auto;bottom:70px;right:8px;left:8px;width:auto}
-  .control-grid{top:auto;bottom:70px;left:8px;right:8px;width:auto}
-  .task-capsule{bottom:8px;left:8px;right:8px;transform:none;max-width:none}
-  .zoom-bar{bottom:auto;top:12px;right:12px}
+
+.cin-banner{position:absolute;top:16%;left:50%;transform:translateX(-50%);background:rgba(8,20,12,0.94);border:1.5px solid var(--gold);border-radius:20px;padding:20px 26px;text-align:center;z-index:40;max-width:min(520px,92vw);backdrop-filter:blur(10px);box-shadow:0 16px 40px rgba(0,0,0,0.7)}
+.cin-banner h2{font-family:'Baloo 2',sans-serif;color:var(--gold);font-size:1.45rem;margin-bottom:6px}
+.cin-banner p{font-size:0.85rem;color:#C8E6C9;line-height:1.45;margin-bottom:14px}
+
+/* Mobile Landscape Rotate Prompt */
+.landscape-rotate-prompt{display:none}
+@media (max-width: 900px) and (orientation: portrait){
+  .landscape-rotate-prompt{
+    display:flex;position:fixed;inset:0;z-index:99999;background:rgba(5,15,10,0.97);
+    backdrop-filter:blur(10px);flex-direction:column;align-items:center;justify-content:center;
+    padding:24px;text-align:center;color:#F8FAFC;
+  }
+  .landscape-rotate-prompt .rotate-phone-icon{
+    font-size:3.5rem;animation:rotatePhoneAnim 2s infinite ease-in-out;margin-bottom:16px;
+  }
+  .landscape-rotate-prompt h3{
+    font-size:1.35rem;font-weight:900;color:var(--gold);margin:0 0 8px 0;
+  }
+  .landscape-rotate-prompt p{
+    font-size:0.88rem;color:#CFD8DC;max-width:320px;margin:0 0 18px 0;line-height:1.45;
+  }
+  .landscape-rotate-prompt button{
+    background:var(--gold);color:#1A1200;border:none;border-radius:12px;padding:10px 22px;
+    font-size:0.88rem;font-weight:800;cursor:pointer;
+  }
+}
+@keyframes rotatePhoneAnim{0%{transform:rotate(0deg)}50%{transform:rotate(-90deg)}100%{transform:rotate(0deg)}}
+
+@media (max-width:768px){
+  .task-capsule{bottom:8px;left:8px;right:8px;transform:none;width:auto;padding:8px 12px}
+  .bottom-right-hud{bottom:auto;top:14px;right:68px}
+  .scoreboard{top:auto;bottom:75px;right:8px;left:8px;width:auto}
+  .control-grid{top:auto;bottom:75px;left:8px;right:8px;width:auto}
   .grid-2,.grid-3{grid-template-columns:1fr 1fr}
 }
 </style>
@@ -96,754 +152,1791 @@ html,body{width:100%;height:100%;overflow:hidden;background:#07140c;font-family:
 <section id="farm-zone">
   <canvas id="farm-canvas"></canvas>
   <div class="hud">
+    <!-- Top-Left Floating Action Buttons -->
     <div class="hud-fab">
-      <button class="chip-btn" id="btn-fs">⛶<span class="tip">Fullscreen</span></button>
-      <button class="chip-btn" id="btn-menu">☰<span class="tip">Controls</span></button>
-      <button class="chip-btn" id="btn-score">📊<span class="tip">Scoreboard</span></button>
-      <button class="chip-btn" id="btn-home">🌐<span class="tip">World Globe</span></button>
+      <button class="chip-btn" id="btn-fs" title="Fullscreen (⛶)">⛶<span class="tip">Fullscreen</span></button>
+      <button class="chip-btn" id="btn-menu" title="Menu (☰)">☰<span class="tip">Controls</span></button>
+      <button class="chip-btn" id="btn-score" title="Scoreboard (📊)">📊<span class="tip">Scoreboard</span></button>
+      <button class="chip-btn" id="btn-home" title="Return to World Globe (🌐)">🌐<span class="tip">World Globe</span></button>
     </div>
+
+    <!-- Control Grid Menu -->
     <div class="control-grid" id="controlGrid">
-      <button class="chip-btn" id="btn-master">📋<span class="tip">Journey</span></button>
-      <button class="chip-btn" id="btn-labour">🧑‍🌾<span class="tip">Labour</span></button>
+      <button class="chip-btn" id="btn-master">📋<span class="tip">Masterplan</span></button>
+      <button class="chip-btn" id="btn-labour">🧑‍🌾<span class="tip">Labour HQ</span></button>
       <button class="chip-btn" id="btn-species">🌲<span class="tip">Species</span></button>
-      <button class="chip-btn" id="btn-why">💡<span class="tip">Why</span></button>
-      <button class="chip-btn" id="btn-plan">🗺️<span class="tip">Plan</span></button>
-      <button class="chip-btn" id="btn-shop">🏗️<span class="tip">Build</span></button>
-      <button class="chip-btn" id="btn-o2">🫁<span class="tip">Oxygen</span></button>
-      <button class="chip-btn" id="btn-globe2">🌍<span class="tip">Globe</span></button>
+      <button class="chip-btn" id="btn-why">💡<span class="tip">Why Alpenhof</span></button>
+      <button class="chip-btn" id="btn-plan">🗺️<span class="tip">Blueprint</span></button>
+      <button class="chip-btn" id="btn-birds">🦅<span class="tip">Alpine Birds</span></button>
+      <button class="chip-btn" id="btn-o2">🫁<span class="tip">Oxygen XP</span></button>
+      <button class="chip-btn" id="btn-globe2">🌍<span class="tip">Global Map</span></button>
     </div>
+
+    <!-- Top-Right Scoreboard -->
     <div class="scoreboard" id="scoreboard"></div>
-    <div class="zoom-bar" id="zoomBar">
-      <button data-z="1" class="active">1×</button>
-      <button data-z="2">2×</button>
-      <button data-z="5">5×</button>
+
+    <!-- Bottom-Right Zoom & View Controls -->
+    <div class="bottom-right-hud" id="zoomBar">
+      <button class="zoom-btn active" data-z="1">1×</button>
+      <button class="zoom-btn" data-z="2">2×</button>
+      <button class="zoom-btn" data-z="5">5×</button>
     </div>
-    <div class="task-capsule">
-      <h4 id="taskTitle">🌿 Chapter 1 · Survey the Alpenhof</h4>
-      <p id="taskDesc">Explore the six orchard crusts, dig-pond, cattle fence and alpine pads. Plant trees one bed at a time from the German catalogue.</p>
-      <div class="prog-bar"><div class="prog-fill" id="taskBar" style="width:10%"></div></div>
+
+    <!-- Bottom Task Capsule with Chapter Progression & Basic Farm Recall -->
+    <div class="task-capsule" id="taskCapsule">
+      <h4>
+        <span id="taskIcon">🌿</span>
+        <span id="taskTitle">Chapter 1 · Survey the Alpenhof Estate</span>
+        <span class="recall-tag" id="taskRecall">Recalling Solo Founder Ch. 1</span>
+      </h4>
+      <p id="taskDesc">Walk the 6 Streuobst orchard dirt plots, living waters pond, Simmental cattle fence and alpine pads. Acknowledge Why Cards to unlock tools.</p>
+      <div class="prog-bar"><div class="prog-fill" id="taskBar" style="width:12%"></div></div>
     </div>
   </div>
+
+  <!-- Intro Cinematic Welcome Banner -->
   <div class="cin-banner" id="cinBanner">
-    <h2>🏔️ Alpenhof Journey</h2>
-    <p>Bavarian Eco-Village · six Streuobst plots with 3×3 rings · why/how chapter challenges · German heritage isometric pads.</p>
-    <button class="btn btn-g" id="btn-start">Begin Explore Journey ➔</button>
+    <h2>🏔️ Alpenhof Journey · Bavarian Eco-Village</h2>
+    <p>Step beyond the basic German farm into commercial alpine polyculture: six 3×3 Streuobst orchard fields, Livingston pond, Simmental grazing, and renewable microgrids.</p>
+    <button class="btn btn-g" id="btn-start">Begin Alpine Journey ➔</button>
+  </div>
+
+  <!-- Mobile Landscape View Prompt -->
+  <div class="landscape-rotate-prompt" id="landscapeRotatePrompt">
+    <div class="rotate-phone-icon">📱</div>
+    <h3>Rotate to Landscape</h3>
+    <p>SearchO2 Alpenhof Journey is designed for panoramic landscape view on mobile and tablet devices.</p>
+    <button onclick="document.getElementById('landscapeRotatePrompt').style.display='none'">Continue in Portrait</button>
   </div>
 </section>
+
+<!-- Modals & Toasts -->
 <div class="modal-overlay" id="modal"><div class="modal-card" id="modalBody"></div></div>
 <div class="toast" id="toast"></div>
-<script>
-/* World space matches bg composition (1920×1080 mapped from 2752×1536 plan).
-   Dirt orchard block sits UPPER-LEFT of the meadow photo. */
-const W=1920,H=1080;
 
-const SPECIES={
-  beech:{key:'beech',name:'European Beech',de:'Rotbuche',cat:'Oxygen',o2:22,icon:'🍃',color:'#2E7D32',shape:'dome',desc:'Dense canopy oxygen engine.'},
-  oak:{key:'oak',name:'English Oak',de:'Stieleiche',cat:'Oxygen',o2:28,icon:'🌳',color:'#1B5E20',shape:'broad',desc:'Biodiversity keystone.'},
-  linden:{key:'linden',name:'Small-leaved Linden',de:'Winterlinde',cat:'Oxygen',o2:18,icon:'🌿',color:'#66BB6A',shape:'oval',desc:'Nectar for pollinators.'},
-  spruce:{key:'spruce',name:'Norway Spruce',de:'Fichte',cat:'Biodiversity',o2:16,icon:'🌲',color:'#1B5E20',shape:'cone',desc:'Alpine windbreak.'},
-  fir:{key:'fir',name:'Silver Fir',de:'Weißtanne',cat:'Biodiversity',o2:15,icon:'🌲',color:'#33691E',shape:'cone',desc:'Montane fir structure.'},
-  apple:{key:'apple',name:'Boskoop Apple',de:'Boskoop',cat:'Fruit',o2:8,icon:'🍎',color:'#C62828',shape:'fruit',desc:'Hardy German kitchen apple.'},
-  pear:{key:'pear',name:'Williams Pear',de:'Williams Christ',cat:'Fruit',o2:7,icon:'🍐',color:'#F9A825',shape:'fruit',desc:'Classic dessert pear.'},
-  cherry:{key:'cherry',name:'Sweet Cherry',de:'Süßkirsche',cat:'Fruit',o2:6,icon:'🍒',color:'#AD1457',shape:'fruit',desc:'Spring blossom orchard.'},
-  plum:{key:'plum',name:'German Plum',de:'Zwetschge',cat:'Fruit',o2:6,icon:'🫐',color:'#6A1B9A',shape:'fruit',desc:'Damson for Kuchen.'},
-  riesling:{key:'riesling',name:'Riesling',de:'Riesling',cat:'Fruit',o2:4,icon:'🍇',color:'#7B1FA2',shape:'vine',desc:'Cool-climate vine.'},
-  silvaner:{key:'silvaner',name:'Silvaner',de:'Silvaner',cat:'Fruit',o2:4,icon:'🍇',color:'#8E24AA',shape:'vine',desc:'Franconian white.'},
-  potato:{key:'potato',name:'Alpine Potato',de:'Kartoffel',cat:'Vegetable',o2:3,icon:'🥔',color:'#8D6E63',shape:'bed'},
-  cabbage:{key:'cabbage',name:'White Cabbage',de:'Weißkohl',cat:'Vegetable',o2:3,icon:'🥬',color:'#81C784',shape:'bed'},
-  carrot:{key:'carrot',name:'Nantes Carrot',de:'Möhre',cat:'Vegetable',o2:2,icon:'🥕',color:'#FB8C00',shape:'bed'},
-  beet:{key:'beet',name:'Red Beet',de:'Rote Bete',cat:'Vegetable',o2:2,icon:'🔴',color:'#C62828',shape:'bed'},
-  cornflower:{key:'cornflower',name:'Cornflower',de:'Kornblume',cat:'Flower',o2:1,icon:'🔵',color:'#1976D2',shape:'bloom'},
-  alpine_rose:{key:'alpine_rose',name:'Alpine Rose',de:'Alpenrose',cat:'Flower',o2:2,icon:'🌹',color:'#D81B60',shape:'bloom'},
-  sunflower:{key:'sunflower',name:'Sunflower',de:'Sonnenblume',cat:'Flower',o2:2,icon:'🌻',color:'#F9A825',shape:'bloom'},
-  wild_rose:{key:'wild_rose',name:'Dog Rose',de:'Hundsrose',cat:'Biodiversity',o2:3,icon:'🌺',color:'#EC407A',shape:'bloom'}
+<script>
+/* 1920x1080 Calibrated Coordinate System */
+const W = 1920, H = 1080;
+
+/* HEIRLOOM GERMAN FLORA CATALOGUE */
+const SPECIES = {
+  apple:      {key:'apple',name:'Boskoop Apple',de:'Schöner von Boskoop',cat:'Fruit',o2:8,icon:'🍎',color:'#C62828',shape:'fruit',desc:'Heirloom winter cooking apple with tart flavor and long storage.'},
+  pear:       {key:'pear',name:'Williams Pear',de:'Williams Christbirne',cat:'Fruit',o2:7,icon:'🍐',color:'#F9A825',shape:'fruit',desc:'Fragrant golden dessert pear for fresh fruit & Bavarian schnapps.'},
+  cherry:     {key:'cherry',name:'Sweet Cherry',de:'Süßkirsche (Kordia)',cat:'Fruit',o2:6,icon:'🍒',color:'#AD1457',shape:'fruit',desc:'Spring white blossom display, dark ruby heart cherries.'},
+  plum:       {key:'plum',name:'Bavarian Plum',de:'Fränkische Hauszwetschge',cat:'Fruit',o2:6,icon:'🫐',color:'#6A1B9A',shape:'fruit',desc:'Late ripening damson plum, essential for Bavarian Zwetschgendatschi.'},
+  beech:      {key:'beech',name:'European Beech',de:'Rotbuche',cat:'Oxygen',o2:28,icon:'🍃',color:'#2E7D32',shape:'dome',desc:'Deep roots, dense silver-grey bark, foundational oxygen producer.'},
+  oak:        {key:'oak',name:'English Oak',de:'Stieleiche',cat:'Oxygen',o2:32,icon:'🌳',color:'#1B5E20',shape:'broad',desc:'Supports over 500 insect species; centuries-long ecological keystone.'},
+  linden:     {key:'linden',name:'Small-leaved Linden',de:'Winterlinde',cat:'Oxygen',o2:22,icon:'🌿',color:'#66BB6A',shape:'oval',desc:'Heart-shaped leaves, aromatic nectar flowers for bumblebees and Linden honey.'},
+  spruce:     {key:'spruce',name:'Norway Spruce',de:'Gemeine Fichte',cat:'Biodiversity',o2:18,icon:'🌲',color:'#1B5E20',shape:'cone',desc:'Alpine coniferous windbreak, evergreen thermal protection for wild birds.'},
+  fir:        {key:'fir',name:'Silver Fir',de:'Weißtanne',cat:'Biodiversity',o2:17,icon:'🌲',color:'#33691E',shape:'cone',desc:'Deep taproot, highly wind-firm alpine conifer with silver needles.'},
+  riesling:   {key:'riesling',name:'Riesling Grapevine',de:'Klingelberger Riesling',cat:'Fruit',o2:5,icon:'🍇',color:'#7B1FA2',shape:'vine',desc:'Cool-climate white wine grape thriving on sun-facing slate terraces.'},
+  silvaner:   {key:'silvaner',name:'Silvaner Grapevine',de:'Grüner Silvaner',cat:'Fruit',o2:5,icon:'🍇',color:'#8E24AA',shape:'vine',desc:'Franconian heritage white grape yielding earthy, crisp mineral wines.'},
+  sunflower:  {key:'sunflower',name:'Alpen Sunflower',de:'Sonnenblume',cat:'Flower',o2:3,icon:'🌻',color:'#FBC02D',shape:'bloom',desc:'Heavy seed heads feeding wild alpine finches and pollinators.'},
+  lavender:   {key:'lavender',name:'Alpine Lavender',de:'Berg-Lavendel',cat:'Flower',o2:2,icon:'🪻',color:'#7E57C2',shape:'bloom',desc:'Aromatic companion herb repelling pests and attracting bumblebees.'}
 };
 
-/* 6 orchard fields — centers aligned to brown dirt rectangles on bavaria-bg */
-const ORCHARD_PLOTS=[
-  /* Wider column gap + rows stretched toward plot bottoms on bavaria-bg dirt rectangles */
-  {id:'o1',x:230,y:220,title:'Orchard N-W',sub:'3×3 Streuobst rings · top-left plot'},
-  {id:'o2',x:470,y:220,title:'Orchard N-E',sub:'3×3 Streuobst rings · top-right plot'},
-  {id:'o3',x:230,y:400,title:'Orchard M-W',sub:'3×3 circle planting beds'},
-  {id:'o4',x:470,y:400,title:'Orchard M-E',sub:'3×3 circle planting beds'},
-  {id:'o5',x:230,y:585,title:'Orchard S-W',sub:'3×3 beds stretched to plot bottom'},
-  {id:'o6',x:470,y:585,title:'Orchard S-E',sub:'3×3 beds stretched to plot bottom'}
+/* 6 ORCHARD PLOTS: Calibrated strictly to bavaria-bg-plan.jpg dirt rectangles */
+const ORCHARD_PLOTS = [
+  {id:'o1', x:205, y:328, title:'Orchard Plot 1 (NW)', sub:'3×3 Streuobst circular beds · North-West dirt plot'},
+  {id:'o2', x:458, y:328, title:'Orchard Plot 2 (NE)', sub:'3×3 Streuobst circular beds · North-East dirt plot'},
+  {id:'o3', x:205, y:486, title:'Orchard Plot 3 (MW)', sub:'3×3 Streuobst circular beds · Mid-West dirt plot'},
+  {id:'o4', x:458, y:486, title:'Orchard Plot 4 (ME)', sub:'3×3 Streuobst circular beds · Mid-East dirt plot'},
+  {id:'o5', x:205, y:644, title:'Orchard Plot 5 (SW)', sub:'3×3 Streuobst circular beds · South-West dirt plot'},
+  {id:'o6', x:458, y:644, title:'Orchard Plot 6 (SE)', sub:'3×3 Streuobst circular beds · South-East dirt plot'}
 ];
 
-const SITES=[
-  ...ORCHARD_PLOTS.map(p=>({id:p.id,x:p.x,y:p.y,icon:'🌳',title:p.title,sub:p.sub,cat:'orchard',color:'#8D6E63',action:'orchard',plot:p.id})),
-  {id:'wind_w',x:200,y:130,icon:'🌬️',title:'Wind Turbine West',sub:'Ridge turbine',cat:'energy',color:'#00E5FF',action:'wind'},
-  {id:'bess',x:600,y:185,icon:'⚡',title:'Energy Storage Farm',sub:'BESS pad',cat:'energy',color:'#00E676',action:'bess'},
-  {id:'farm_shed',x:780,y:195,icon:'🏚️',title:'Farm Shed',sub:'Tools & seed',cat:'infra',color:'#FFA726',action:'shed'},
-  {id:'veg',x:880,y:300,icon:'🥬',title:'Vegetable Garden',sub:'4 companion parts',cat:'veg',color:'#76FF03',action:'veg'},
-  {id:'crop',x:900,y:455,icon:'🌾',title:'2×2 Crop Field',sub:'Rotational arable',cat:'veg',color:'#C0CA33',action:'crop'},
-  {id:'flower_w',x:720,y:580,icon:'🌸',title:'Flower Garden W',sub:'Pollination',cat:'flower',color:'#FF4081',action:'flower'},
-  {id:'flower_e',x:900,y:600,icon:'🌼',title:'Flower Garden E',sub:'Pollination',cat:'flower',color:'#F48FB1',action:'flower'},
-  {id:'pond',x:680,y:720,icon:'💧',title:'Alpine Pond',sub:'Road-bounded excavated pond',cat:'water',color:'#29B6F6',action:'pond'},
-  {id:'crew',x:1100,y:450,icon:'🧑‍🌾',title:'Crew Shed',sub:'Labour HQ',cat:'labour',color:'#FFD54F',action:'crew'},
-  {id:'juice',x:1160,y:530,icon:'🧃',title:'Juice Bar',sub:'Orchard press',cat:'trade',color:'#FF7043',action:'juice'},
-  {id:'restaurant',x:1360,y:520,icon:'🍽️',title:'Restaurant',sub:'Farm Stuben',cat:'trade',color:'#EF5350',action:'restaurant'},
-  {id:'cattle',x:1560,y:290,icon:'🐄',title:'Cattle Pasture',sub:'Hill-top to hill-down fence',cat:'livestock',color:'#8D6E63',action:'cattle'},
-  {id:'vineyard',x:1580,y:460,icon:'🍇',title:'Grape Vineyard',sub:'2×2 vine sections',cat:'fruit',color:'#7B1FA2',action:'vine'},
-  {id:'gate',x:1460,y:720,icon:'🚪',title:'Main Gate',sub:'Alpenhof entrance',cat:'infra',color:'#B0BEC5',action:'gate'},
-  {id:'wind_e',x:1760,y:140,icon:'🌬️',title:'Wind Turbine East',sub:'Ridge turbine',cat:'energy',color:'#00E5FF',action:'wind'}
+/* 16 CALIBRATED SITES MATCHING bavaria-bg-plan.jpg */
+const SITES = [
+  ...ORCHARD_PLOTS.map(p => ({
+    id: p.id, x: p.x, y: p.y, icon: '🌳', title: p.title, sub: p.sub,
+    cat: 'orchard', color: '#8D6E63', action: 'orchard', plot: p.id
+  })),
+  {id:'wind_w',    x:316,  y:156, icon:'🌬️', title:'Wind Turbine West',            sub:'High-Ridge Turbine · Forest Clearing',   cat:'energy',    color:'#00E5FF', action:'wind'},
+  {id:'bess',      x:710,  y:216, icon:'⚡', title:'Energy Storage Farm',           sub:'Industrial BESS Pad · Grid Intertie',    cat:'energy',    color:'#00E676', action:'bess'},
+  {id:'farm_shed', x:933,  y:237, icon:'🏚️', title:'Farm Shed & Workshop',         sub:'Timber Barn · Loft & Fendt Tractor',     cat:'infra',     color:'#FFA726', action:'shed'},
+  {id:'veg',       x:973,  y:373, icon:'🥬', title:'Vegetable Garden (4 Parts)',    sub:'Polyculture Companion Vegetable Beds',   cat:'veg',       color:'#76FF03', action:'veg'},
+  {id:'crop',      x:946,  y:558, icon:'🌾', title:'2×2 Crop Field',                sub:'Rotational Arable: Wheat, Kale, Corn',   cat:'crop',      color:'#C0CA33', action:'crop'},
+  {id:'flower_w',  x:810,  y:715, icon:'🌸', title:'Flower Garden West',            sub:'Pollination Bank & Wooden Bee Hotel',    cat:'flower',    color:'#FF4081', action:'flower'},
+  {id:'flower_e',  x:990,  y:735, icon:'🌼', title:'Flower Garden East',            sub:'Pollination Bank & Bavarian Beehives',   cat:'flower',    color:'#F48FB1', action:'flower'},
+  {id:'pond',      x:890,  y:800, icon:'💧', title:'Living Waters Alpine Pond',     sub:'Excavated Spring Pond · Lilies & Ducks', cat:'water',     color:'#29B6F6', action:'pond'},
+  {id:'crew',      x:1282, y:541, icon:'🧑‍🌾', title:'Crew Shed & Labour HQ',        sub:'Alpine Timber Lodge & Labour Board',     cat:'labour',    color:'#FFD54F', action:'crew'},
+  {id:'juice',     x:1306, y:601, icon:'🧃', title:'Hof-Mosterei & Juice Bar',      sub:'Cold-Pressed Cider Press & Terrace',     cat:'trade',     color:'#FF7043', action:'juice'},
+  {id:'restaurant',x:1588, y:670, icon:'🍽️', title:'Alpenhof Gasthof & Stuben',    sub:'Alpine Restaurant & Village Fountain',   cat:'trade',     color:'#EF5350', action:'restaurant'},
+  {id:'gate',      x:1544, y:794, icon:'🚪', title:'Main Entrance Gate',            sub:'Carved Timber Arch · Willkommen',        cat:'infra',     color:'#B0BEC5', action:'gate'},
+  {id:'vineyard',  x:1707, y:420, icon:'🍇', title:'Grape Vineyard (2×2 Sections)', sub:'Sun-Facing Terraces · Riesling & Silvaner',cat:'fruit', color:'#7B1FA2', action:'vine'},
+  {id:'cattle',    x:1658, y:277, icon:'🐄', title:'Cattle Pasture Enclosure',      sub:'Hillside Post-&-Rail · Simmental Dairy', cat:'livestock', color:'#8D6E63', action:'cattle'},
+  {id:'wind_e',    x:1860, y:106, icon:'🌬️', title:'Wind Turbine East',            sub:'Alpine Ridge Turbine · Crest Line',      cat:'energy',    color:'#00E5FF', action:'wind'}
 ];
 
-/* beds: 9 per orchard, sequential. status: crust|aerating|empty|seed|sprout|young|mature */
+/* 3x3 Circular Beds per Orchard Field */
 function makeBeds(){
-  const beds=[];
-  for(let i=0;i<9;i++) beds.push({i,status:'crust',species:null,progress:0});
+  const beds = [];
+  for(let i = 0; i < 9; i++){
+    beds.push({i, status: 'crust', species: null, progress: 0});
+  }
   return beds;
 }
 
-const state={
-  money:2800,o2:4200,xp:40,workers:0,hired:[],bess:120,chapter:1,surveyed:{},built:{},
-  orchards:Object.fromEntries(ORCHARD_PLOTS.map(p=>[p.id,{beds:makeBeds(),aerated:0}])),
-  catXP:{oxygen:10,fruit:8,biodiversity:6,veg:5,flower:4},
-  labourPool:[
-    {id:'hans',name:'Hans',role:'Orchardist',cost:120,skill:'fruit',icon:'🧑‍🌾'},
-    {id:'greta',name:'Greta',role:'Vegetable Grower',cost:100,skill:'veg',icon:'👩‍🌾'},
-    {id:'lukas',name:'Lukas',role:'Vine Hand',cost:130,skill:'vine',icon:'🧔'},
-    {id:'anna',name:'Anna',role:'Florist',cost:90,skill:'flower',icon:'👩‍🔬'}
+/* STATE DEFINITION */
+const state = {
+  money: 3200, o2: 4500, xp: 50, workers: 0, hired: [], bess: 150, chapter: 1,
+  surveyed: {}, built: {}, zoom: 1.0, panX: 0, panY: 0,
+  orchards: Object.fromEntries(ORCHARD_PLOTS.map(p => [p.id, {beds: makeBeds(), aerated: 0}])),
+  catXP: {oxygen: 15, fruit: 10, biodiversity: 8, veg: 6, flower: 5},
+  labourPool: [
+    {id:'hans',  name:'Hans Weber',     role:'Master Orchardist', cost:120, skill:'fruit', icon:'🧑‍🌾'},
+    {id:'greta', name:'Greta Lindner',  role:'Vegetable Grower',  cost:100, skill:'veg',   icon:'👩‍🌾'},
+    {id:'lukas', name:'Lukas Gruber',   role:'Vintner & Cooper',  cost:130, skill:'vine',  icon:'🧔'},
+    {id:'anna',  name:'Anna Schultze',  role:'Florist & Botanist',cost:90,  skill:'flower',icon:'👩‍🔬'},
+    {id:'felix', name:'Felix Brunner',  role:'Clean Energy Tech', cost:150, skill:'energy',icon:'👷'}
   ]
 };
 
-const CHAPTERS=[
-  {id:1,title:'Survey the Eco-Village',desc:'Walk the six Streuobst plots, pond path, cattle hill and main gate. Open Why-cards at each pad.',goal:6},
-  {id:2,title:'How Streuobst Works',desc:'Aerate hard crusts, then plant one German tree per ring — seed → sprout → young → mature.',goal:4},
-  {id:3,title:'Pollination & Kitchen Beds',desc:'Build flower meadows and vegetable/crop pads so orchard fruit can set.',goal:3},
-  {id:4,title:'Alpine Power & Pasture',desc:'Commission turbine or BESS and open the hill-top→hill-down cattle fence.',goal:2},
-  {id:5,title:'Farm-to-Table Stuben',desc:'Open juice bar and restaurant — close the German heritage loop.',goal:2}
+/* 6-CHAPTER MASTERY PROGRESSION RECALLING BASIC GERMAN FARM */
+const CHAPTERS = [
+  {
+    id: 1,
+    title: 'Survey the Alpenhof Estate',
+    recall: 'Recalling Solo Founder Ch. 1',
+    desc: 'Just as in Basic Farm Ch. 1, explore your estate before building. Walk the 6 orchard dirt plots, living waters pond, cattle fence and alpine pads. Acknowledge Why Cards to map the terrain.',
+    goal: 6,
+    badge: '🗺️ Alpine Surveyor'
+  },
+  {
+    id: 2,
+    title: 'Streuobst Soil Mechanics & Crust Aeration',
+    recall: 'Recalling Infrastructure & Tilth Ch. 2',
+    desc: 'Building on Basic Farm Ch. 2 soil tools, aerate the hardened alpine loam crusts across the 6 orchard fields. Plant heirloom German fruit varieties one circular bed at a time.',
+    goal: 4,
+    badge: '⛏️ Master Streuobstler'
+  },
+  {
+    id: 3,
+    title: 'Polyculture Arable & Pollinator Guilds',
+    recall: 'Recalling Ecosystem & Companion Guilds Ch. 3',
+    desc: 'Echoing Basic Farm Ch. 3, establish balanced companion habitats: build the 4-part Vegetable Garden, 2×2 Crop Field (Wheat, Kale, Lavender, Corn), and Twin Flower Terraces with bee hotels.',
+    goal: 3,
+    badge: '🐝 Biodiversity Guardian'
+  },
+  {
+    id: 4,
+    title: 'Closed-Loop Living Waters & Alpine Grazing',
+    recall: 'Recalling Circular Closed-Loop Ecology Ch. 4',
+    desc: 'Applying Basic Farm Ch. 4 circularity, excavate the Living Waters Pond to establish aquatic biology and build the Hillside Cattle Pasture for Simmental cows and sheep.',
+    goal: 2,
+    badge: '🐄 Closed-Loop Steward'
+  },
+  {
+    id: 5,
+    title: 'Mountain Renewable Microgrid & Automation',
+    recall: 'Recalling Microgrid & Clean Power Ch. 5',
+    desc: 'Connecting to Basic Farm Ch. 5 energy systems, commission West & East Wind Turbines and connect the BESS Storage Farm to power automated processing machinery.',
+    goal: 2,
+    badge: '⚡ Alpine Grid Engineer'
+  },
+  {
+    id: 6,
+    title: 'Eco-Village Community & Farm-to-Table Stuben',
+    recall: 'Recalling Eco-Village & Commerce Ch. 6',
+    desc: 'Fulfilling Basic Farm Ch. 6, construct the Crew Lodge, launch the Hof-Mosterei Juice Bar, and open the Alpenhof Gasthof Stuben & Village Fountain to welcome guests.',
+    goal: 2,
+    badge: '🏘️ Eco-Village Founder'
+  }
 ];
 
-function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)}
-function openModal(html,wide){const c=document.getElementById('modalBody');c.className='modal-card'+(wide?' wide':'');c.innerHTML=html;document.getElementById('modal').classList.add('open')}
-function closeModal(){document.getElementById('modal').classList.remove('open')}
-document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function openModal(html, wide){
+  const c = document.getElementById('modalBody');
+  c.className = 'modal-card' + (wide ? ' wide' : '');
+  c.innerHTML = html;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(){
+  document.getElementById('modal').classList.remove('open');
+}
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target.id === 'modal') closeModal();
+});
 
 function renderScoreboard(){
-  document.getElementById('scoreboard').innerHTML=
-    '<div class="sb-chip">💶<span class="v">'+state.money+'</span></div>'+
-    '<div class="sb-chip">🫁<span class="v">'+state.o2+'</span></div>'+
-    '<div class="sb-chip">📚<span class="v">'+state.xp+'</span></div>'+
-    '<div class="sb-chip">🧑‍🌾<span class="v">'+state.workers+'</span></div>'+
-    '<div class="sb-chip">⚡<span class="v">'+state.bess+'</span></div>'+
-    '<div class="sb-chip">🍃<span class="v">'+state.catXP.oxygen+'</span></div>'+
-    '<div class="sb-chip">🍎<span class="v">'+state.catXP.fruit+'</span></div>'+
-    '<div class="sb-chip">🦋<span class="v">'+state.catXP.biodiversity+'</span></div>';
+  document.getElementById('scoreboard').innerHTML =
+    '<div class="sb-chip">💶<span class="v">€' + state.money.toLocaleString() + '</span></div>' +
+    '<div class="sb-chip">🫁<span class="v">' + state.o2.toLocaleString() + ' kg</span></div>' +
+    '<div class="sb-chip">📚<span class="v">' + state.xp + ' XP</span></div>' +
+    '<div class="sb-chip">🧑‍🌾<span class="v">' + state.workers + ' Hired</span></div>' +
+    '<div class="sb-chip">⚡<span class="v">' + state.bess + ' kWh</span></div>' +
+    '<div class="sb-chip">🍃<span class="v">' + state.catXP.oxygen + ' O₂</span></div>' +
+    '<div class="sb-chip">🍎<span class="v">' + state.catXP.fruit + ' Fruit</span></div>' +
+    '<div class="sb-chip">🦋<span class="v">' + state.catXP.biodiversity + ' Bio</span></div>';
 }
-function grantXP(map){Object.keys(map||{}).forEach(k=>{state.catXP[k]=(state.catXP[k]||0)+map[k];state.xp+=map[k]});renderScoreboard()}
+
+function grantXP(map){
+  Object.keys(map || {}).forEach(k => {
+    state.catXP[k] = (state.catXP[k] || 0) + map[k];
+    state.xp += map[k];
+  });
+  renderScoreboard();
+}
+
 function markSurvey(id){
-  if(state.surveyed[id])return;
-  state.surveyed[id]=true;
-  const n=Object.keys(state.surveyed).length,ch=CHAPTERS[state.chapter-1];
-  document.getElementById('taskBar').style.width=Math.min(100,Math.round(n/Math.max(ch.goal,1)*100))+'%';
-  if(n>=ch.goal&&state.chapter<CHAPTERS.length){
-    state.chapter++;const next=CHAPTERS[state.chapter-1];
-    document.getElementById('taskTitle').textContent='🌿 Chapter '+state.chapter+' · '+next.title;
-    document.getElementById('taskDesc').textContent=next.desc;
-    document.getElementById('taskBar').style.width='8%';
-    toast('Chapter · '+next.title);grantXP({oxygen:12,biodiversity:8});
+  if (state.surveyed[id]) return;
+  state.surveyed[id] = true;
+  const n = Object.keys(state.surveyed).length;
+  const ch = CHAPTERS[state.chapter - 1];
+  document.getElementById('taskBar').style.width = Math.min(100, Math.round(n / Math.max(ch.goal, 1) * 100)) + '%';
+  if (n >= ch.goal && state.chapter < CHAPTERS.length){
+    state.chapter++;
+    const next = CHAPTERS[state.chapter - 1];
+    document.getElementById('taskTitle').textContent = 'Chapter ' + state.chapter + ' · ' + next.title;
+    document.getElementById('taskRecall').textContent = next.recall;
+    document.getElementById('taskDesc').textContent = next.desc;
+    document.getElementById('taskBar').style.width = '10%';
+    toast('🎉 Chapter Unlocked: ' + next.title);
+    grantXP({oxygen: 15, biodiversity: 10});
   }
 }
 
-/* ===== ISOMETRIC / VOLUMETRIC DRAW ===== */
-function shade(hex,amt){
-  try{const n=parseInt(String(hex).replace('#',''),16);let r=(n>>16)+amt,g=((n>>8)&255)+amt,b=(n&255)+amt;
-    return 'rgb('+Math.max(0,Math.min(255,r))+','+Math.max(0,Math.min(255,g))+','+Math.max(0,Math.min(255,b))+')'}catch(e){return hex}
-}
-function isoBox(ctx,x,y,w,d,h,side,top){
-  const sk=0.55;
-  ctx.fillStyle=top;ctx.beginPath();
-  ctx.moveTo(x,y-h);ctx.lineTo(x+w,y-h);ctx.lineTo(x+w+d*sk,y-h+d*0.38);ctx.lineTo(x+d*sk,y-h+d*0.38);ctx.closePath();ctx.fill();
-  ctx.fillStyle=side;ctx.beginPath();
-  ctx.moveTo(x+w,y-h);ctx.lineTo(x+w+d*sk,y-h+d*0.38);ctx.lineTo(x+w+d*sk,y+d*0.38);ctx.lineTo(x+w,y);ctx.closePath();ctx.fill();
-  ctx.fillStyle=shade(side,-22);ctx.beginPath();
-  ctx.moveTo(x,y-h);ctx.lineTo(x+w,y-h);ctx.lineTo(x+w,y);ctx.lineTo(x,y);ctx.closePath();ctx.fill();
-}
-function drawTree3D(ctx,x,y,spKey,stage){
-  /* stage 0 seed 1 sprout 2 young 3 mature — volumetric unique shapes */
-  const s=SPECIES[spKey]||SPECIES.beech;
-  ctx.save();ctx.translate(x,y);
-  ctx.fillStyle='rgba(0,0,0,0.32)';ctx.beginPath();ctx.ellipse(2,5,11+stage*3.5,4.5+stage,0,0,Math.PI*2);ctx.fill();
-  if(stage<=0){
-    ctx.fillStyle='#3E2723';ctx.beginPath();ctx.ellipse(0,1,4,2.5,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#6D4C41';ctx.beginPath();ctx.arc(0,-1,2.8,0,Math.PI*2);ctx.fill();
-    ctx.restore();return;
-  }
-  if(stage===1){
-    ctx.fillStyle='#5D4037';ctx.beginPath();ctx.moveTo(-2,3);ctx.lineTo(2,3);ctx.lineTo(1.2,-10);ctx.lineTo(-1.2,-10);ctx.fill();
-    ctx.fillStyle='#81C784';ctx.beginPath();ctx.ellipse(0,-8,7,6,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#A5D6A7';ctx.beginPath();ctx.ellipse(-2,-11,4,3.5,0,0,Math.PI*2);ctx.fill();
-    ctx.restore();return;
-  }
-  const trunkH=14+stage*9;
-  const tg=ctx.createLinearGradient(-4,0,4,0);tg.addColorStop(0,'#3E2723');tg.addColorStop(0.5,'#8D6E63');tg.addColorStop(1,'#4E342E');
-  ctx.fillStyle=tg;
-  ctx.beginPath();ctx.moveTo(-4,4);ctx.lineTo(4,4);ctx.lineTo(2.5,-trunkH);ctx.lineTo(-2.5,-trunkH);ctx.fill();
-  if(s.shape==='cone'){
-    const h=20+stage*11;
-    for(let layer=0;layer<3;layer++){
-      const yy=-trunkH-h*0.15+layer*(h*0.28);
-      const w=16+stage*2-layer*3;
-      ctx.fillStyle=shade(s.color,-30+layer*12);
-      ctx.beginPath();ctx.moveTo(0,yy-h*0.35+layer*4);ctx.lineTo(w,yy+8);ctx.lineTo(-w,yy+8);ctx.closePath();ctx.fill();
-    }
-  } else if(s.shape==='vine'){
-    ctx.strokeStyle='#5D4037';ctx.lineWidth=2;
-    for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(-10+i*10,4);ctx.quadraticCurveTo(-6+i*10,-18,-2+i*10,-28-stage*2);ctx.stroke()}
-    ctx.fillStyle=s.color;
-    for(let i=0;i<5;i++){ctx.beginPath();ctx.ellipse(-8+i*5,-16-i%3*5,4,5,0.2,0,Math.PI*2);ctx.fill()}
-  } else {
-    const R=13+stage*7;
-    ctx.fillStyle=shade(s.color,-40);
-    ctx.beginPath();ctx.ellipse(1,-trunkH,R*1.1,R*0.7,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle=s.color;
-    ctx.beginPath();ctx.ellipse(-4,-trunkH-R*0.4,R*0.75,R*0.58,0.18,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle=shade(s.color,30);
-    ctx.beginPath();ctx.ellipse(6,-trunkH-R*0.25,R*0.5,R*0.4,-0.2,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle=shade(s.color,-10);
-    ctx.beginPath();ctx.ellipse(0,-trunkH-R*0.7,R*0.4,R*0.32,0,0,Math.PI*2);ctx.fill();
-    if(s.shape==='fruit'&&stage>=2){
-      const fruits=[[7,-trunkH-2],[-8,-trunkH],[3,-trunkH+8],[-3,-trunkH-10]];
-      fruits.forEach((p,i)=>{if(stage===2&&i>1)return;ctx.fillStyle=s.color;ctx.beginPath();ctx.arc(p[0],p[1],3.2+stage*0.4,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='rgba(255,255,255,0.25)';ctx.beginPath();ctx.arc(p[0]-1,p[1]-1,1.2,0,Math.PI*2);ctx.fill()});
-    }
-  }
-  ctx.restore();
+/* ================= 3D VOLUMETRIC RENDERING ENGINE ================= */
+function shade(hex, amt){
+  try {
+    const n = parseInt(String(hex).replace('#',''), 16);
+    let r = (n >> 16) + amt, g = ((n >> 8) & 255) + amt, b = (n & 255) + amt;
+    return 'rgb(' + Math.max(0, Math.min(255, r)) + ',' + Math.max(0, Math.min(255, g)) + ',' + Math.max(0, Math.min(255, b)) + ')';
+  } catch(e) { return hex; }
 }
 
-function bedLocalXY(i){
-  /* Equal 3×3 — wider cell pitch, rows stretched downward inside each dirt plot */
-  const col=i%3,row=Math.floor(i/3);
-  return {x:-62+col*62,y:-52+row*54};
+function isoPrism(ctx, x, y, w, d, h, sideColor, topColor){
+  const sk = 0.55;
+  // Top Face
+  ctx.fillStyle = topColor;
+  ctx.beginPath();
+  ctx.moveTo(x, y - h);
+  ctx.lineTo(x + w, y - h);
+  ctx.lineTo(x + w + d * sk, y - h + d * 0.38);
+  ctx.lineTo(x + d * sk, y - h + d * 0.38);
+  ctx.closePath();
+  ctx.fill();
+
+  // Right Side Face
+  ctx.fillStyle = shade(sideColor, -25);
+  ctx.beginPath();
+  ctx.moveTo(x + w, y - h);
+  ctx.lineTo(x + w + d * sk, y - h + d * 0.38);
+  ctx.lineTo(x + w + d * sk, y + d * 0.38);
+  ctx.lineTo(x + w, y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Front Face
+  ctx.fillStyle = sideColor;
+  ctx.beginPath();
+  ctx.moveTo(x, y - h);
+  ctx.lineTo(x + w, y - h);
+  ctx.lineTo(x + w, y);
+  ctx.lineTo(x, y);
+  ctx.closePath();
+  ctx.fill();
 }
 
-function drawOrchardField(ctx,plot,t){
-  /* NO oval / meadow plate — 3×3 circular crusts embedded ON the photo dirt plot only */
-  const o=state.orchards[plot.id];
-  ctx.save();ctx.translate(plot.x,plot.y);
-  o.beds.forEach((bed,i)=>{
-    const p=bedLocalXY(i);
-    const rx=20, ry=13;
-    // recessed ring shadow into dirt (volumetric crater)
-    ctx.fillStyle='rgba(0,0,0,0.4)';
-    ctx.beginPath();ctx.ellipse(p.x+2,p.y+5,rx+1,ry+1,0,0,Math.PI*2);ctx.fill();
-    // stone curb wall (3D lip)
-    ctx.beginPath();ctx.ellipse(p.x,p.y,rx,ry,0,0,Math.PI*2);
-    ctx.fillStyle='#4E342E';ctx.fill();
-    ctx.beginPath();ctx.ellipse(p.x,p.y-2,rx-1.5,ry-1.5,0,0,Math.PI*2);
-    if(bed.status==='crust'){
-      const g=ctx.createRadialGradient(p.x-3,p.y-4,1,p.x,p.y,rx);
-      g.addColorStop(0,'#D7CCC8');g.addColorStop(0.45,'#A1887F');g.addColorStop(1,'#5D4037');
-      ctx.fillStyle=g;ctx.fill();
-      // hard crust cracks
-      ctx.strokeStyle='rgba(62,39,35,0.55)';ctx.lineWidth=1.2;
-      ctx.beginPath();ctx.moveTo(p.x-10,p.y-2);ctx.lineTo(p.x+4,p.y+3);ctx.lineTo(p.x+11,p.y-1);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(p.x-2,p.y-7);ctx.lineTo(p.x+2,p.y+6);ctx.stroke();
-      ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.ellipse(p.x,p.y-2,rx-1.5,ry-1.5,0,0,Math.PI*2);ctx.stroke();
-    } else if(bed.status==='empty'||bed.status==='aerating'){
-      const g=ctx.createRadialGradient(p.x,p.y,2,p.x,p.y,rx);
-      g.addColorStop(0,'#8D6E63');g.addColorStop(1,'#3E2723');
-      ctx.fillStyle=g;ctx.fill();
-      // aerated tilth crumbs
-      ctx.fillStyle='rgba(161,136,127,0.7)';
-      for(let k=0;k<6;k++){ctx.beginPath();ctx.arc(p.x-8+k*3,p.y-2+(k%2),1.6,0,Math.PI*2);ctx.fill()}
-      ctx.strokeStyle='#FFD54F';ctx.lineWidth=1.6;ctx.setLineDash([3,3]);
-      ctx.beginPath();ctx.ellipse(p.x,p.y-2,rx-1.5,ry-1.5,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+/* Dynamic 3D Flying Alpine Birds System */
+const ALPIN_BIRDS = [
+  {x: 150, y: 120, z: 80, vx: 1.8, vy: 0.4, species: 'eagle',   scale: 1.25, wingRate: 1.8, flapOffset: 0},
+  {x: 420, y: 280, z: 50, vx: 2.2, vy: -0.3,species: 'chough',  scale: 0.85, wingRate: 3.5, flapOffset: 1.2},
+  {x: 390, y: 310, z: 45, vx: 2.3, vy: -0.2,species: 'chough',  scale: 0.80, wingRate: 3.6, flapOffset: 2.4},
+  {x: 820, y: 680, z: 35, vx: 2.8, vy: 0.6, species: 'swallow', scale: 0.65, wingRate: 5.5, flapOffset: 0.8},
+  {x: 860, y: 720, z: 30, vx: 2.9, vy: 0.5, species: 'swallow', scale: 0.60, wingRate: 5.8, flapOffset: 2.1}
+];
+
+function drawAlpineBirds(ctx, time){
+  ALPIN_BIRDS.forEach(b => {
+    // Flight trajectory wrapping across the 1920x1080 canvas
+    b.x += b.vx;
+    b.y += b.vy + Math.sin(time * 0.8 + b.flapOffset) * 0.35;
+    if (b.x > W + 60) b.x = -60;
+    if (b.y > H + 60) b.y = -40;
+    if (b.y < -60) b.y = H + 40;
+
+    const flap = Math.sin(time * b.wingRate + b.flapOffset);
+    const shadowY = b.y + b.z * 0.45;
+
+    // 1. Soft Dynamic Ground Drop Shadow
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    ctx.beginPath();
+    ctx.ellipse(b.x, shadowY, 14 * b.scale, 4.5 * b.scale, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 2. Volumetric 3D Flying Bird Body & Wings
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.scale(b.scale, b.scale);
+
+    const angle = Math.atan2(b.vy, b.vx);
+    ctx.rotate(angle);
+
+    if (b.species === 'eagle') {
+      // Golden Eagle (Aquila chrysaetos): broad wingspan with slotted feather tips
+      ctx.fillStyle = '#3E2723';
+      // Far wing
+      ctx.beginPath();
+      ctx.moveTo(-6, -2);
+      ctx.quadraticCurveTo(8, -18 + flap * 14, 28, -26 + flap * 18);
+      ctx.lineTo(22, -18 + flap * 12);
+      ctx.lineTo(4, -4);
+      ctx.closePath();
+      ctx.fill();
+
+      // Near wing
+      ctx.fillStyle = '#4E342E';
+      ctx.beginPath();
+      ctx.moveTo(-6, 2);
+      ctx.quadraticCurveTo(8, 18 - flap * 14, 28, 26 - flap * 18);
+      ctx.lineTo(22, 18 - flap * 12);
+      ctx.lineTo(4, 4);
+      ctx.closePath();
+      ctx.fill();
+
+      // Fuselage / body
+      ctx.fillStyle = '#5D4037';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 16, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Head & golden nape
+      ctx.fillStyle = '#FFB300';
+      ctx.beginPath();
+      ctx.arc(14, 0, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      // Curved beak
+      ctx.fillStyle = '#FFA000';
+      ctx.beginPath();
+      ctx.moveTo(16, -1); ctx.lineTo(21, 0); ctx.lineTo(16, 2); ctx.fill();
+
+      // Fan tail
+      ctx.fillStyle = '#3E2723';
+      ctx.beginPath();
+      ctx.moveTo(-12, -2); ctx.lineTo(-24, -7); ctx.lineTo(-26, 0); ctx.lineTo(-24, 7); ctx.lineTo(-12, 2);
+      ctx.closePath(); ctx.fill();
+
+    } else if (b.species === 'chough') {
+      // Alpine Chough (Pyrrhocorax graculus): glossy black, bright yellow beak
+      ctx.fillStyle = '#212121';
+      // Wings
+      ctx.beginPath();
+      ctx.moveTo(-4, -2); ctx.lineTo(14, -18 + flap * 10); ctx.lineTo(10, -12); ctx.lineTo(2, -3); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-4, 2); ctx.lineTo(14, 18 - flap * 10); ctx.lineTo(10, 12); ctx.lineTo(2, 3); ctx.fill();
+
+      // Body & yellow bill
+      ctx.fillStyle = '#111111';
+      ctx.beginPath(); ctx.ellipse(0, 0, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FFEA00'; // Yellow bill
+      ctx.beginPath(); ctx.moveTo(9, -1); ctx.lineTo(15, 0); ctx.lineTo(9, 1); ctx.fill();
+
     } else {
-      const g=ctx.createRadialGradient(p.x,p.y,2,p.x,p.y,rx);
-      g.addColorStop(0,'#6D4C41');g.addColorStop(1,'#3E2723');
-      ctx.fillStyle=g;ctx.fill();
-      ctx.strokeStyle='rgba(0,230,118,0.35)';ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.ellipse(p.x,p.y-2,rx-1.5,ry-1.5,0,0,Math.PI*2);ctx.stroke();
-      const st=bed.status==='seed'?0:bed.status==='sprout'?1:bed.status==='young'?2:3;
-      drawTree3D(ctx,p.x,p.y-2,bed.species,st);
+      // Barn Swallow (Hirundo rustica): steel-blue back, forked tail
+      ctx.fillStyle = '#1A237E';
+      ctx.beginPath();
+      ctx.moveTo(-2, -1); ctx.lineTo(10, -15 + flap * 9); ctx.lineTo(6, -9); ctx.lineTo(1, -2); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-2, 1); ctx.lineTo(10, 15 - flap * 9); ctx.lineTo(6, 9); ctx.lineTo(1, 2); ctx.fill();
+
+      ctx.fillStyle = '#283593';
+      ctx.beginPath(); ctx.ellipse(0, 0, 8, 3, 0, 0, Math.PI * 2); ctx.fill();
+      // Forked tail
+      ctx.fillStyle = '#0D47A1';
+      ctx.beginPath(); ctx.moveTo(-6, 0); ctx.lineTo(-16, -5); ctx.lineTo(-12, 0); ctx.lineTo(-16, 5); ctx.fill();
     }
+
+    ctx.restore();
   });
-  ctx.restore();
 }
 
-function drawPond3D(ctx,x,y,t){
-  /* Eco-village pond: large irregular spring with lilies, reeds, bank path feel */
-  ctx.save();ctx.translate(x,y);
-  const outline=[
-    [-140,-30],[-90,-62],[-20,-72],[50,-60],[110,-35],[145,5],[130,48],[70,68],
-    [10,72],[-55,60],[-120,35],[-150,0]
+/* Mud Road Network following the background terrain footprint */
+function drawRoadNetwork(ctx){
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const roadCurves = [
+    // 1. Main Entrance Road from bottom right (1850, 920) through Gate (1544, 794) past Restaurant (1588, 670)
+    [[1850, 930], [1700, 860], [1544, 794]],
+    [[1544, 794], [1500, 750], [1480, 680], [1588, 670]],
+
+    // 2. Southern Avenue from Gate curving past Flower Gardens (810, 715) and Pond (890, 800) to Orchard SW
+    [[1544, 794], [1350, 750], [1150, 730], [990, 750], [890, 770], [700, 750], [530, 740], [330, 680]],
+
+    // 3. Central Arterial Road past Juice Bar (1306, 601), Crew Shed (1282, 541), between Veg & Crop to Farm Shed & BESS
+    [[1544, 794], [1420, 680], [1306, 601], [1282, 541], [1200, 480], [1120, 400], [1050, 320], [933, 237], [710, 216]],
+
+    // 4. Cross Connector between Vegetable Garden (973, 373) and 2x2 Crop Field (946, 558) linking to Orchard Avenue
+    [[1200, 480], [1080, 470], [950, 470], [780, 470], [600, 475], [330, 486]],
+
+    // 5. Western Orchard Avenue running vertically between Col 1 (X: 205) and Col 2 (X: 458) at X = 330
+    [[330, 250], [330, 328], [330, 486], [330, 644], [330, 710]],
+
+    // 6. Hillside Spur to Vineyard (1707, 420) and Cattle Pasture (1658, 277)
+    [[1588, 670], [1650, 580], [1707, 420], [1680, 340], [1658, 277]]
   ];
-  function pathPoly(oy){
+
+  // Pass 1: Outer clay / compacted mud embankment
+  ctx.strokeStyle = 'rgba(175, 145, 110, 0.50)';
+  ctx.lineWidth = 17;
+  roadCurves.forEach(pts => {
     ctx.beginPath();
-    outline.forEach((p,i)=>{const px=p[0],py=p[1]+oy; i?ctx.lineTo(px,py):ctx.moveTo(px,py)});
-    ctx.closePath();
-  }
-  ctx.fillStyle='rgba(0,0,0,0.32)';pathPoly(16);ctx.fill();
-  ctx.fillStyle='#4E342E';pathPoly(8);ctx.fill();
-  ctx.fillStyle='#3E2723';pathPoly(4);ctx.fill();
-  const w=ctx.createLinearGradient(0,-60,0,60);
-  w.addColorStop(0,'#81D4FA');w.addColorStop(0.35,'#29B6F6');w.addColorStop(0.75,'#0277BD');w.addColorStop(1,'#01579B');
-  ctx.fillStyle=w;pathPoly(0);ctx.fill();
-  // lily pads
-  const lilies=[[-40,-10],[-10,15],[30,-5],[55,20],[-60,25],[10,35]];
-  lilies.forEach((L,i)=>{
-    ctx.fillStyle='rgba(46,125,50,0.75)';
-    ctx.beginPath();ctx.ellipse(L[0],L[1],12+i%3,8,0.3,0,Math.PI*2);ctx.fill();
-    if(i%2===0){ctx.fillStyle='#F8BBD0';ctx.beginPath();ctx.arc(L[0]+2,L[1]-2,3,0,Math.PI*2);ctx.fill()}
-  });
-  // reed clumps at banks
-  ctx.strokeStyle='#558B2F';ctx.lineWidth=1.6;
-  [[-120,30],[-100,40],[100,35],[120,20]].forEach(r=>{
-    for(let k=0;k<5;k++){ctx.beginPath();ctx.moveTo(r[0]+k*4,r[1]);ctx.lineTo(r[0]+k*4-2,r[1]-18-k*2);ctx.stroke()}
-  });
-  ctx.strokeStyle='rgba(224,247,250,0.4)';ctx.lineWidth=1.3;
-  for(let i=0;i<4;i++){
-    ctx.beginPath();
-    for(let xx=-120;xx<=120;xx+=10){
-      const yy=-20+i*14+Math.sin(xx*0.07+t*2+i)*3;
-      xx===-120?ctx.moveTo(xx,yy):ctx.lineTo(xx,yy);
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for(let i = 1; i < pts.length; i++){
+      ctx.lineTo(pts[i][0], pts[i][1]);
     }
     ctx.stroke();
-  }
-  ctx.fillStyle='rgba(255,255,255,0.18)';ctx.beginPath();ctx.ellipse(-35,-15,40,11,-0.3,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='#5D4037';ctx.lineWidth=4;pathPoly(0);ctx.stroke();
-  // small wooden jetty hint (eco-village bridge edge)
-  ctx.fillStyle='#8D6E63';ctx.fillRect(-130,10,36,6);ctx.fillRect(-128,6,6,14);
-  ctx.restore();
-}
-function drawCattleFence(ctx,x,y,built){
-  /* Plan cattle pasture: large hillside pad — fence runs hill-top → hill-down */
-  ctx.save();ctx.translate(x,y);
-  ctx.globalAlpha=built?1:0.55;
-  // isometric pasture parallelogram (matches plan rectangle on slope)
-  const pad=[
-    [-130,-55], [130,-70], [150,55], [-110,70]
-  ];
-  ctx.fillStyle='rgba(0,0,0,0.28)';
-  ctx.beginPath();ctx.moveTo(pad[0][0]+6,pad[0][1]+14);ctx.lineTo(pad[1][0]+6,pad[1][1]+14);
-  ctx.lineTo(pad[2][0]+6,pad[2][1]+14);ctx.lineTo(pad[3][0]+6,pad[3][1]+14);ctx.closePath();ctx.fill();
-  const g=ctx.createLinearGradient(0,-70,0,70);
-  g.addColorStop(0,'#C5E1A5');g.addColorStop(0.5,'#9CCC65');g.addColorStop(1,'#558B2F');
-  ctx.fillStyle=g;
-  ctx.beginPath();ctx.moveTo(pad[0][0],pad[0][1]);ctx.lineTo(pad[1][0],pad[1][1]);
-  ctx.lineTo(pad[2][0],pad[2][1]);ctx.lineTo(pad[3][0],pad[3][1]);ctx.closePath();ctx.fill();
-  // fence posts along perimeter (dense enough to read as structure)
-  const posts=[];
-  for(let s=0;s<4;s++){
-    const a=pad[s], b=pad[(s+1)%4];
-    const n = s%2===0 ? 6 : 5;
-    for(let i=0;i<n;i++){
-      const t=i/(n-1);
-      posts.push([a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t]);
-    }
-  }
-  posts.forEach(p=>{
-    // 3D post: shadow + body + top
-    ctx.fillStyle='rgba(0,0,0,0.35)';ctx.fillRect(p[0]-2,p[1]+2,7,6);
-    ctx.fillStyle='#4E342E';ctx.fillRect(p[0]-3,p[1]-22,6,26);
-    ctx.fillStyle='#8D6E63';ctx.fillRect(p[0]-4,p[1]-24,8,5);
-    ctx.fillStyle='#A1887F';ctx.fillRect(p[0]-2,p[1]-22,3,20);
   });
-  // double rails
-  ctx.strokeStyle='#6D4C41';ctx.lineWidth=2.4;ctx.lineJoin='round';
-  for(let r=0;r<2;r++){
+
+  // Pass 2: Trampled wagon ruts / darker damp loam
+  ctx.strokeStyle = 'rgba(115, 85, 55, 0.65)';
+  ctx.lineWidth = 8;
+  roadCurves.forEach(pts => {
     ctx.beginPath();
-    posts.forEach((p,i)=>{
-      const yy=p[1]-16+r*8;
-      if(i===0)ctx.moveTo(p[0],yy);else ctx.lineTo(p[0],yy);
-    });
-    ctx.closePath();ctx.stroke();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for(let i = 1; i < pts.length; i++){
+      ctx.lineTo(pts[i][0], pts[i][1]);
+    }
+    ctx.stroke();
+  });
+
+  // Pass 3: Weathered stepping stones & gravel tracks
+  ctx.strokeStyle = 'rgba(235, 220, 195, 0.55)';
+  ctx.lineWidth = 2.0;
+  ctx.setLineDash([5, 8]);
+  roadCurves.forEach(pts => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for(let i = 1; i < pts.length; i++){
+      ctx.lineTo(pts[i][0], pts[i][1]);
+    }
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+
+  ctx.restore();
+}
+
+/* 3D Volumetric Trees in 4 Growth Stages */
+function drawTree3D(ctx, x, y, spKey, stage){
+  const s = SPECIES[spKey] || SPECIES.apple;
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Soft base ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.30)';
+  ctx.beginPath();
+  ctx.ellipse(2, 4, 10 + stage * 3.5, 4.5 + stage, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (stage <= 0) {
+    // Stage 0: Seed with tiny sprout shoot
+    ctx.fillStyle = '#3E2723';
+    ctx.beginPath(); ctx.ellipse(0, 1, 4, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#76FF03';
+    ctx.beginPath(); ctx.arc(0, -2, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore(); return;
   }
-  // cross braces on long sides
-  ctx.strokeStyle='#5D4037';ctx.lineWidth=1.6;
-  [[pad[0],pad[1]],[pad[2],pad[3]]].forEach(seg=>{
-    for(let i=0;i<3;i++){
-      const t=(i+0.5)/3;
-      const x1=seg[0][0]+(seg[1][0]-seg[0][0])*t, y1=seg[0][1]+(seg[1][1]-seg[0][1])*t;
-      ctx.beginPath();ctx.moveTo(x1-8,y1-14);ctx.lineTo(x1+8,y1-6);ctx.stroke();
+
+  if (stage === 1) {
+    // Stage 1: Slender sapling shoot with pale green leaves
+    ctx.fillStyle = '#5D4037';
+    ctx.beginPath(); ctx.moveTo(-1.5, 2); ctx.lineTo(1.5, 2); ctx.lineTo(1, -12); ctx.lineTo(-1, -12); ctx.fill();
+    ctx.fillStyle = '#81C784';
+    ctx.beginPath(); ctx.ellipse(-3, -10, 6, 4, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(3, -12, 6, 4, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore(); return;
+  }
+
+  // Stage 2 (Young) & Stage 3 (Mature)
+  const trunkH = 15 + stage * 8;
+  const tg = ctx.createLinearGradient(-4, 0, 4, 0);
+  tg.addColorStop(0, '#3E2723'); tg.addColorStop(0.5, '#795548'); tg.addColorStop(1, '#4E342E');
+  ctx.fillStyle = tg;
+  ctx.beginPath();
+  ctx.moveTo(-3.5, 3); ctx.lineTo(3.5, 3); ctx.lineTo(2.2, -trunkH); ctx.lineTo(-2.2, -trunkH);
+  ctx.fill();
+
+  if (s.shape === 'cone') {
+    // Coniferous alpine evergreen (Spruce / Fir)
+    const h = 22 + stage * 10;
+    for(let layer = 0; layer < 3; layer++){
+      const yy = -trunkH - h * 0.15 + layer * (h * 0.28);
+      const w = 15 + stage * 2.5 - layer * 3;
+      ctx.fillStyle = shade(s.color, -28 + layer * 12);
+      ctx.beginPath();
+      ctx.moveTo(0, yy - h * 0.35 + layer * 3);
+      ctx.lineTo(w, yy + 7);
+      ctx.lineTo(-w, yy + 7);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (s.shape === 'vine') {
+    // Trellised grapevine
+    ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 2.2;
+    for(let i = -1; i <= 1; i++){
+      ctx.beginPath();
+      ctx.moveTo(i * 10, 3);
+      ctx.quadraticCurveTo(i * 8, -14, i * 4, -26 - stage * 2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = s.color;
+    for(let i = 0; i < 6; i++){
+      ctx.beginPath();
+      ctx.ellipse(-8 + (i % 3) * 8, -14 - Math.floor(i / 3) * 8, 4.5, 5.5, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else {
+    // Broadleaf / Fruit Tree with layered volumetric canopy
+    const R = 13 + stage * 6.5;
+    // Underside / shadow leaf cluster
+    ctx.fillStyle = shade(s.color, -38);
+    ctx.beginPath();
+    ctx.ellipse(0, -trunkH, R * 1.05, R * 0.72, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main canopy
+    ctx.fillStyle = s.color;
+    ctx.beginPath();
+    ctx.ellipse(-3, -trunkH - R * 0.35, R * 0.78, R * 0.60, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Top sunlit highlights
+    ctx.fillStyle = shade(s.color, 26);
+    ctx.beginPath();
+    ctx.ellipse(4, -trunkH - R * 0.22, R * 0.52, R * 0.42, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Fruit hanging on mature trees
+    if (s.shape === 'fruit' && stage >= 2) {
+      const fruits = [[-7, -trunkH - 2], [6, -trunkH + 5], [-2, -trunkH - 12], [8, -trunkH - 6], [-5, -trunkH + 8]];
+      fruits.forEach((p, idx) => {
+        if (stage === 2 && idx > 2) return;
+        ctx.fillStyle = s.color === '#C62828' ? '#D32F2F' : s.color;
+        ctx.beginPath(); ctx.arc(p[0], p[1], 3.2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath(); ctx.arc(p[0] - 1, p[1] - 1, 1.0, 0, Math.PI * 2); ctx.fill();
+      });
+    }
+  }
+
+  ctx.restore();
+}
+
+/* 6 Orchard Plots with 3x3 Circular Beds embedded in background dirt */
+function drawOrchardField(ctx, plot, time){
+  const o = state.orchards[plot.id];
+  ctx.save();
+  ctx.translate(plot.x, plot.y);
+
+  // 3x3 Circular Beds: dx = 66, dy = 44
+  o.beds.forEach((bed, i) => {
+    const col = (i % 3) - 1;
+    const row = Math.floor(i / 3) - 1;
+    const px = col * 66;
+    const py = row * 44;
+    const rx = 24, ry = 14;
+
+    // 1. Recessed volumetric crater shadow into dirt
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.40)';
+    ctx.beginPath();
+    ctx.ellipse(px + 2, py + 5, rx + 1.5, ry + 1.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Stone Curb Wall (3D rim)
+    ctx.beginPath();
+    ctx.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#4E342E';
+    ctx.fill();
+
+    // 3. Inner Planting Well
+    ctx.beginPath();
+    ctx.ellipse(px, py - 2, rx - 1.8, ry - 1.8, 0, 0, Math.PI * 2);
+
+    if (bed.status === 'crust') {
+      // Hard cracked alpine loam crust
+      const g = ctx.createRadialGradient(px - 4, py - 5, 2, px, py, rx);
+      g.addColorStop(0, '#D7CCC8'); g.addColorStop(0.5, '#A1887F'); g.addColorStop(1, '#5D4037');
+      ctx.fillStyle = g; ctx.fill();
+
+      // Jagged fissure cracks
+      ctx.strokeStyle = 'rgba(62, 39, 35, 0.65)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(px - 11, py - 3); ctx.lineTo(px + 3, py + 2); ctx.lineTo(px + 12, py - 2);
+      ctx.moveTo(px - 2, py - 8); ctx.lineTo(px + 2, py + 6);
+      ctx.stroke();
+
+    } else if (bed.status === 'empty' || bed.status === 'aerating') {
+      // Aerated rich tilth crumbs
+      const g = ctx.createRadialGradient(px, py, 2, px, py, rx);
+      g.addColorStop(0, '#8D6E63'); g.addColorStop(1, '#3E2723');
+      ctx.fillStyle = g; ctx.fill();
+
+      // Tilth granules
+      ctx.fillStyle = 'rgba(161, 136, 127, 0.75)';
+      for(let k = 0; k < 7; k++){
+        ctx.beginPath();
+        ctx.arc(px - 10 + k * 3.2, py - 2 + (k % 2), 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.strokeStyle = '#FFD54F'; ctx.lineWidth = 1.6; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.ellipse(px, py - 2, rx - 1.8, ry - 1.8, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+
+    } else {
+      // Planted tree in growth stages
+      const g = ctx.createRadialGradient(px, py, 2, px, py, rx);
+      g.addColorStop(0, '#6D4C41'); g.addColorStop(1, '#3E2723');
+      ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = 'rgba(0, 230, 118, 0.4)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(px, py - 2, rx - 1.8, ry - 1.8, 0, 0, Math.PI * 2); ctx.stroke();
+
+      const st = bed.status === 'seed' ? 0 : bed.status === 'sprout' ? 1 : bed.status === 'young' ? 2 : 3;
+      drawTree3D(ctx, px, py - 2, bed.species, st);
     }
   });
-  if(built){
-    ctx.font='24px sans-serif';ctx.fillText('🐄',-40,0);ctx.fillText('🐄',30,12);ctx.fillText('🐄',-10,28);
-  }
+
   ctx.restore();
 }
 
-function drawWind(ctx,x,y,t,built){
-  ctx.save();ctx.translate(x,y);ctx.globalAlpha=built?1:0.5;
-  ctx.fillStyle='rgba(0,0,0,0.35)';ctx.beginPath();ctx.ellipse(2,12,22,9,0,0,Math.PI*2);ctx.fill();
-  // concrete plinth
-  isoBox(ctx,-14,2,28,16,10,'#78909C','#B0BEC5');
-  // tapered tower with shading
-  const g=ctx.createLinearGradient(-8,0,8,0);g.addColorStop(0,'#546E7A');g.addColorStop(0.45,'#ECEFF1');g.addColorStop(1,'#455A64');
-  ctx.fillStyle=g;
-  ctx.beginPath();ctx.moveTo(-8,4);ctx.lineTo(8,4);ctx.lineTo(3.2,-78);ctx.lineTo(-3.2,-78);ctx.closePath();ctx.fill();
-  // nacelle
-  ctx.fillStyle='#CFD8DC';ctx.beginPath();ctx.ellipse(0,-78,11,7,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#90A4AE';ctx.fillRect(-4,-82,18,8);
-  if(built){
-    const rot=t*2.6;ctx.lineCap='round';
-    for(let i=0;i<3;i++){
-      const a=rot+i*Math.PI*2/3;
-      ctx.strokeStyle='rgba(0,0,0,0.25)';ctx.lineWidth=5;
-      ctx.beginPath();ctx.moveTo(1,-76);ctx.lineTo(Math.cos(a)*46,-76+Math.sin(a)*46);ctx.stroke();
-      ctx.strokeStyle='#FAFAFA';ctx.lineWidth=3.5;
-      ctx.beginPath();ctx.moveTo(0,-78);ctx.lineTo(Math.cos(a)*44,-78+Math.sin(a)*44);ctx.stroke();
-    }
+/* Farm Shed & Agricultural Workshop (933, 237) with Green Fendt Tractor */
+function drawFarmBarn(ctx, x, y, built){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  // Ground shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.beginPath();
+  ctx.ellipse(8, 28, 76, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Stone masonry foundation plinth
+  isoPrism(ctx, -50, 8, 100, 44, 8, '#5D4037', '#795548');
+
+  // Whitewashed timber-framed barn body
+  isoPrism(ctx, -48, -4, 96, 42, 44, built ? '#EFEBE9' : '#90A4AE', built ? '#FFF8E1' : '#B0BEC5');
+
+  // Dark brown oak half-timbering posts and diagonals
+  if (built) {
+    ctx.strokeStyle = '#3E2723';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(-42, -4); ctx.lineTo(-42, 38);
+    ctx.moveTo(42, -4);  ctx.lineTo(42, 38);
+    ctx.moveTo(-10, -4); ctx.lineTo(-10, 38);
+    ctx.moveTo(10, -4);  ctx.lineTo(10, 38);
+    ctx.moveTo(-48, 18); ctx.lineTo(48, 18);
+    // Diagonal braces
+    ctx.moveTo(-42, -4); ctx.lineTo(-10, 18);
+    ctx.moveTo(42, -4);  ctx.lineTo(10, 18);
+    ctx.stroke();
   }
+
+  // Terracotta Bavarian gable roof
+  ctx.fillStyle = built ? '#C62828' : '#78909C';
+  ctx.beginPath();
+  ctx.moveTo(-54, -48); ctx.lineTo(0, -82); ctx.lineTo(54, -48); ctx.lineTo(48, -4); ctx.lineTo(-48, -4);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = built ? '#E53935' : '#90A4AE';
+  ctx.beginPath();
+  ctx.moveTo(-50, -50); ctx.lineTo(0, -78); ctx.lineTo(50, -50);
+  ctx.closePath(); ctx.fill();
+
+  // Hayloft loading door & hoist crane beam
+  ctx.fillStyle = '#3E2723';
+  ctx.fillRect(-10, -38, 20, 24);
+  ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(0, -78); ctx.lineTo(0, -90); ctx.stroke();
+  ctx.strokeStyle = '#FFE082'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, -90); ctx.lineTo(0, -42); ctx.stroke();
+
+  // Green Fendt Tractor parked outside
+  if (built) {
+    ctx.save();
+    ctx.translate(56, 12);
+    // Rear large black tire
+    ctx.fillStyle = '#212121';
+    ctx.beginPath(); ctx.ellipse(-10, 8, 10, 14, 0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(-10, 8, 4, 0, Math.PI * 2); ctx.fill();
+
+    // Front smaller tire
+    ctx.fillStyle = '#212121';
+    ctx.beginPath(); ctx.ellipse(12, 10, 7, 9, 0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(12, 10, 2.5, 0, Math.PI * 2); ctx.fill();
+
+    // Tractor green hood & cab
+    ctx.fillStyle = '#2E7D32'; // Classic Fendt green
+    ctx.fillRect(-12, -4, 28, 12);
+    ctx.fillStyle = '#37474F'; // Cab roof
+    ctx.fillRect(-12, -18, 14, 14);
+    ctx.fillStyle = 'rgba(179,229,252,0.7)'; // Cab window
+    ctx.fillRect(-10, -16, 10, 10);
+    // Exhaust pipe
+    ctx.strokeStyle = '#212121'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(8, -4); ctx.lineTo(8, -18); ctx.stroke();
+    ctx.restore();
+  }
+
   ctx.restore();
 }
 
-function drawShed(ctx,x,y,built,accent){
-  /* Bavarian timber farmhouse massing — white wall + dark wood + terracotta roof */
-  ctx.save();ctx.translate(x,y);ctx.globalAlpha=built?1:0.5;
-  ctx.fillStyle='rgba(0,0,0,0.35)';ctx.beginPath();ctx.ellipse(6,32,70,18,0,0,Math.PI*2);ctx.fill();
-  isoBox(ctx,-48,6,96,40,10,'#5D4037','#8D6E63');
-  // white plaster body
-  isoBox(ctx,-46,-8,92,38,40, built?'#E8E0D0':'#90A4AE', built?'#FFF8E1':'#B0BEC5');
-  // timber cross beams
-  if(built){
-    ctx.strokeStyle='#5D4037';ctx.lineWidth=2.5;
-    ctx.beginPath();ctx.moveTo(-40,-8);ctx.lineTo(-40,30);ctx.moveTo(40,-8);ctx.lineTo(40,30);
-    ctx.moveTo(-40,10);ctx.lineTo(40,10);ctx.moveTo(-20,-8);ctx.lineTo(-20,30);ctx.stroke();
-  }
-  // terracotta roof
-  ctx.fillStyle=built?'#C62828':'#78909C';
-  ctx.beginPath();ctx.moveTo(-52,-48);ctx.lineTo(0,-78);ctx.lineTo(52,-48);ctx.lineTo(46,-8);ctx.lineTo(-46,-8);ctx.closePath();ctx.fill();
-  ctx.fillStyle=built?'#E53935':'#90A4AE';
-  ctx.beginPath();ctx.moveTo(-48,-50);ctx.lineTo(0,-74);ctx.lineTo(48,-50);ctx.closePath();ctx.fill();
-  // door + flower box
-  ctx.fillStyle='#3E2723';ctx.fillRect(-14,2,28,28);
-  ctx.fillStyle=built?'#81C784':'#78909C';ctx.fillRect(-16,0,32,5);
-  ctx.fillStyle='rgba(129,212,250,0.4)';ctx.fillRect(22,-20,16,14);
-  ctx.strokeStyle='#5D4037';ctx.strokeRect(22,-20,16,14);
-  ctx.restore();
-}
+/* Vegetable Garden (4 Parts) at (973, 373) */
+function drawVegGarden4Part(ctx, x, y, built){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = built ? 1 : 0.55;
 
-function drawVegBeds(ctx,x,y,built,kind){
-  ctx.save();ctx.translate(x,y);ctx.globalAlpha=built?1:0.5;
-  ctx.fillStyle='rgba(0,0,0,0.25)';ctx.beginPath();ctx.ellipse(4,36,78,20,0,0,Math.PI*2);ctx.fill();
-  for(let i=0;i<4;i++){
-    const bx=((i%2)*60)-52,by=(Math.floor(i/2)*38)-18;
-    const tops = kind==='crop'
-      ? ['#F9A825','#7CB342','#9CCC65','#C0CA33']
-      : ['#ef5350','#ffb74d','#66bb6a','#8d6e63'];
-    isoBox(ctx,bx,by,52,20,built?14:6,'#5D4037',built?tops[i]:'#A5D6A7');
-    if(built){
-      if(kind==='crop' && i===0){
-        // wheat heads
-        ctx.strokeStyle='#FFD54F';ctx.lineWidth=1.2;
-        for(let k=0;k<8;k++){ctx.beginPath();ctx.moveTo(bx+6+k*5,by);ctx.lineTo(bx+6+k*5,by-16);ctx.stroke()}
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+  ctx.beginPath(); ctx.ellipse(4, 38, 86, 22, 0, 0, Math.PI * 2); ctx.fill();
+
+  const bedOffsets = [
+    {x: -54, y: -20, crop: 'carrot',  color: '#FB8C00'},
+    {x:  18, y: -20, crop: 'cabbage', color: '#81C784'},
+    {x: -54, y:  18, crop: 'potato',  color: '#8D6E63'},
+    {x:  18, y:  18, crop: 'beans',   color: '#43A047'}
+  ];
+
+  bedOffsets.forEach((b, i) => {
+    // Stone raised bed casing
+    isoPrism(ctx, b.x, b.y, 48, 22, built ? 10 : 5, '#4E342E', built ? '#6D4C41' : '#90A4AE');
+
+    if (built) {
+      if (b.crop === 'carrot') {
+        ctx.fillStyle = b.color;
+        for(let k = 0; k < 4; k++){
+          ctx.beginPath(); ctx.arc(b.x + 8 + k * 10, b.y - 4, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#4CAF50';
+          ctx.fillRect(b.x + 7 + k * 10, b.y - 12, 2.5, 8);
+          ctx.fillStyle = b.color;
+        }
+      } else if (b.crop === 'cabbage') {
+        ctx.fillStyle = '#81C784';
+        for(let k = 0; k < 3; k++){
+          ctx.beginPath(); ctx.arc(b.x + 10 + k * 14, b.y - 6, 5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#A5D6A7'; ctx.beginPath(); ctx.arc(b.x + 10 + k * 14, b.y - 7, 2.5, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#81C784';
+        }
+      } else if (b.crop === 'potato') {
+        ctx.fillStyle = '#A1887F';
+        for(let k = 0; k < 3; k++){
+          ctx.beginPath(); ctx.ellipse(b.x + 10 + k * 14, b.y - 5, 6, 4, 0, 0, Math.PI * 2); ctx.fill();
+        }
       } else {
-        ctx.fillStyle=tops[i];
-        for(let k=0;k<3;k++){ctx.beginPath();ctx.arc(bx+12+k*12,by-12,3.4,0,Math.PI*2);ctx.fill()}
+        // Climbing bean tripods
+        ctx.strokeStyle = '#795548'; ctx.lineWidth = 1.8;
+        for(let k = 0; k < 2; k++){
+          const tx = b.x + 14 + k * 20;
+          ctx.beginPath(); ctx.moveTo(tx - 6, b.y); ctx.lineTo(tx, b.y - 18); ctx.lineTo(tx + 6, b.y); ctx.stroke();
+          ctx.fillStyle = '#66BB6A';
+          ctx.beginPath(); ctx.arc(tx, b.y - 10, 4, 0, Math.PI * 2); ctx.fill();
+        }
       }
     }
-  }
-  ctx.restore();
-}
-function drawStuben(ctx,x,y,built,kind){
-  /* Gasthaus / juice kiosk with outdoor terrace (eco-village plaza feel) */
-  ctx.save();ctx.translate(x,y);ctx.globalAlpha=built?1:0.5;
-  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(4,30,70,16,0,0,Math.PI*2);ctx.fill();
-  // terrace paving
-  ctx.fillStyle=built?'#BCAAA4':'#78909C';
-  ctx.beginPath();ctx.ellipse(0,18,65,22,0.1,0,Math.PI*2);ctx.fill();
-  isoBox(ctx,-36,-10,72,30,36, built?'#EFEBE9':'#90A4AE', built?'#FFF8E1':'#B0BEC5');
-  ctx.fillStyle=built?'#C62828':'#78909C';
-  ctx.beginPath();ctx.moveTo(-42,-46);ctx.lineTo(0,-70);ctx.lineTo(42,-46);ctx.lineTo(36,-10);ctx.lineTo(-36,-10);ctx.closePath();ctx.fill();
-  // awning
-  ctx.fillStyle=built?(kind==='juice'?'#43A047':'#FF8A65'):'#90A4AE';
-  ctx.fillRect(-40,-14,80,8);
-  // tables
-  if(built){
-    [[-20,22],[10,24],[30,18]].forEach(p=>{
-      ctx.fillStyle='#6D4C41';ctx.beginPath();ctx.ellipse(p[0],p[1],8,4,0,0,Math.PI*2);ctx.fill();
-    });
-  }
+  });
+
   ctx.restore();
 }
 
-function drawFlower(ctx,x,y,built){
-  ctx.save();ctx.translate(x,y);ctx.globalAlpha=built?1:0.5;
-  ctx.fillStyle='rgba(0,0,0,0.25)';ctx.beginPath();ctx.ellipse(2,24,55,16,0,0,Math.PI*2);ctx.fill();
-  const g=ctx.createLinearGradient(0,-30,0,20);g.addColorStop(0,built?'#f8bbd0':'#c5e1a5');g.addColorStop(1,built?'#ec407a':'#7cb342');
-  ctx.fillStyle=g;ctx.beginPath();
-  for(let i=0;i<10;i++){const a=i*Math.PI/5-Math.PI/2;const gx=Math.cos(a)*48,gy=Math.sin(a)*28;i?ctx.lineTo(gx,gy):ctx.moveTo(gx,gy)}
-  ctx.closePath();ctx.fill();
-  for(let i=0;i<5;i++){
-    const a=i*Math.PI*2/5;const fx=Math.cos(a)*22,fy=Math.sin(a)*14;
-    isoBox(ctx,fx-8,fy,16,10,built?12:5,'#6a1b9a',built?'#f48fb1':'#a5d6a7');
-    if(built){ctx.fillStyle=['#ff80ab','#ea80fc','#ffd54f','#ff8a80','#ce93d8'][i];ctx.beginPath();ctx.arc(fx,fy-14,5,0,Math.PI*2);ctx.fill()}
-  }
-  ctx.restore();
-}
-
-function drawBess(ctx,x,y,built){
-  ctx.save();ctx.translate(x,y);ctx.globalAlpha=built?1:0.45;
-  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(2,18,42,12,0,0,Math.PI*2);ctx.fill();
-  isoBox(ctx,-34,-6,68,24,22,'#263238',built?'#00E676':'#78909C');
-  for(let i=0;i<4;i++){ctx.fillStyle=built?'#00c853':'#607d8b';ctx.fillRect(-26+i*15,-2,11,9)}
-  ctx.restore();
-}
-
-function drawVineyard(ctx,x,y,built){
-  ctx.save();ctx.translate(x,y);ctx.globalAlpha=built?1:0.5;
-  for(let r=0;r<2;r++)for(let c=0;c<2;c++){
-    const px=-36+c*48,py=-10+r*36;
-    isoBox(ctx,px,py,40,16,6,'#5D4037','#6D4C41');
-    if(built) drawTree3D(ctx,px+20,py, 'riesling',2);
-  }
-  ctx.restore();
-}
-
-function drawGate(ctx,x,y,built){
-  ctx.save();ctx.translate(x,y);ctx.globalAlpha=built?1:0.5;
-  ctx.fillStyle='#78909C';
-  ctx.fillRect(-36,-8,12,50);ctx.fillRect(24,-8,12,50);
-  ctx.beginPath();ctx.arc(0,-8,42,Math.PI,0);ctx.lineWidth=8;ctx.strokeStyle='#90A4AE';ctx.stroke();
-  ctx.fillStyle=built?'#FFD54F':'#B0BEC5';ctx.font='bold 11px Nunito';ctx.textAlign='center';ctx.fillText('ALPENHOF',0,-20);
-  ctx.restore();
-}
-
-function drawMarker(ctx,s){
-  const y=s.y-56;
+/* 2x2 Crop Field at (946, 558) */
+function drawCropField2x2(ctx, x, y, built, time){
   ctx.save();
-  ctx.beginPath();ctx.arc(s.x,y,15,0,Math.PI*2);
-  ctx.fillStyle='rgba(8,18,12,0.92)';ctx.fill();
-  ctx.strokeStyle=s.color;ctx.lineWidth=2.4;ctx.stroke();
-  ctx.font='14px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(s.icon,s.x,y+1);
+  ctx.translate(x, y);
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+  ctx.beginPath(); ctx.ellipse(4, 42, 92, 24, 0, 0, Math.PI * 2); ctx.fill();
+
+  const quads = [
+    {x: -60, y: -24, kind: 'wheat',    color: '#FBC02D'},
+    {x:  18, y: -24, kind: 'brassica', color: '#388E3C'},
+    {x: -60, y:  20, kind: 'lavender', color: '#7E57C2'},
+    {x:  18, y:  20, kind: 'corn',     color: '#C0CA33'}
+  ];
+
+  quads.forEach((q, i) => {
+    isoPrism(ctx, q.x, q.y, 54, 24, built ? 12 : 6, '#4E342E', built ? q.color : '#90A4AE');
+
+    if (built) {
+      if (q.kind === 'wheat') {
+        // Golden waving wheat stalks
+        ctx.strokeStyle = '#FFF176'; ctx.lineWidth = 1.2;
+        const wave = Math.sin(time * 2.5 + i) * 2;
+        for(let k = 0; k < 9; k++){
+          ctx.beginPath();
+          ctx.moveTo(q.x + 6 + k * 5, q.y);
+          ctx.lineTo(q.x + 6 + k * 5 + wave, q.y - 16);
+          ctx.stroke();
+        }
+      } else if (q.kind === 'lavender') {
+        // Purple lavender flowers
+        ctx.fillStyle = '#B39DDB';
+        for(let k = 0; k < 8; k++){
+          ctx.beginPath(); ctx.arc(q.x + 6 + k * 5.5, q.y - 10 - (k % 3) * 2, 2.5, 0, Math.PI * 2); ctx.fill();
+        }
+      } else if (q.kind === 'corn') {
+        // Tall corn stalks with tassels
+        ctx.fillStyle = '#689F38';
+        for(let k = 0; k < 4; k++){
+          const cx = q.x + 8 + k * 12;
+          ctx.fillRect(cx - 1.5, q.y - 20, 3, 20);
+          ctx.fillStyle = '#FFEE58';
+          ctx.beginPath(); ctx.arc(cx, q.y - 22, 2, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#689F38';
+        }
+      } else {
+        ctx.fillStyle = '#81C784';
+        for(let k = 0; k < 4; k++){
+          ctx.beginPath(); ctx.arc(q.x + 8 + k * 12, q.y - 8, 4.5, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    }
+  });
+
   ctx.restore();
 }
 
-const Map={
-  canvas:null,ctx:null,scaleX:1,scaleY:1,viewZoom:1,panX:700,panY:480,
-  hasBg:false,bg:null,time:0,dragging:false,didDrag:false,lastX:0,lastY:0,hover:null,
+/* Twin Flower Gardens / Pollination Terraces (810, 715) and (990, 735) */
+function drawFlowerTerraces(ctx, x, y, built, isEast){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.beginPath(); ctx.ellipse(2, 22, 60, 16, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Raised stone terrace
+  isoPrism(ctx, -44, 4, 88, 28, built ? 12 : 6, '#5D4037', built ? (isEast ? '#F48FB1' : '#F8BBD0') : '#90A4AE');
+
+  if (built) {
+    if (isEast) {
+      // Sunflowers and traditional Bavarian beehives
+      ctx.fillStyle = '#FBC02D';
+      for(let k = 0; k < 4; k++){
+        const fx = -28 + k * 18;
+        ctx.beginPath(); ctx.arc(fx, -12, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#5D4037'; ctx.beginPath(); ctx.arc(fx, -12, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FBC02D';
+      }
+      // Bavarian Wooden Beehive Box
+      isoPrism(ctx, 16, 6, 18, 12, 16, '#8D6E63', '#A1887F');
+    } else {
+      // Alpine wild roses and wooden insect hotel
+      ctx.fillStyle = '#E91E63';
+      for(let k = 0; k < 5; k++){
+        const fx = -32 + k * 14;
+        ctx.beginPath(); ctx.arc(fx, -8 - (k % 2) * 5, 4.5, 0, Math.PI * 2); ctx.fill();
+      }
+      // Wooden Bee & Insect Hotel
+      isoPrism(ctx, -38, 6, 16, 10, 20, '#6D4C41', '#8D6E63');
+      ctx.fillStyle = '#FFE082';
+      ctx.fillRect(-35, -12, 10, 8);
+    }
+  }
+
+  ctx.restore();
+}
+
+/* Alpine Living Waters Pond at (890, 800) */
+function drawLivingPond(ctx, x, y, built, time){
+  ctx.save();
+  ctx.translate(x, y);
+
+  const outline = [
+    [-135, -30], [-85, -60], [-15, -70], [55, -58], [115, -32], [148, 6],
+    [130, 48], [70, 68], [12, 72], [-55, 60], [-120, 35], [-145, 0]
+  ];
+
+  function pondPoly(oy){
+    ctx.beginPath();
+    outline.forEach((p, i) => {
+      const px = p[0], py = p[1] + oy;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    });
+    ctx.closePath();
+  }
+
+  // Ground depression shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)'; pondPoly(14); ctx.fill();
+  ctx.fillStyle = '#3E2723'; pondPoly(6); ctx.fill();
+
+  // Water gradient
+  const w = ctx.createLinearGradient(0, -60, 0, 60);
+  w.addColorStop(0, '#81D4FA'); w.addColorStop(0.35, '#29B6F6'); w.addColorStop(0.75, '#0288D1'); w.addColorStop(1, '#01579B');
+  ctx.fillStyle = w; pondPoly(0); ctx.fill();
+
+  // Water lilies & lotus blossoms
+  const lilies = [[-40, -10], [-10, 16], [35, -4], [60, 22], [-65, 26], [12, 38]];
+  lilies.forEach((L, i) => {
+    ctx.fillStyle = 'rgba(46, 125, 50, 0.85)';
+    ctx.beginPath(); ctx.ellipse(L[0], L[1], 11, 7, 0.25, 0, Math.PI * 2); ctx.fill();
+    if (i % 2 === 0) {
+      ctx.fillStyle = '#F8BBD0'; ctx.beginPath(); ctx.arc(L[0] + 1, L[1] - 2, 3.2, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+
+  // Aquatic reeds at water margin
+  ctx.strokeStyle = '#558B2F'; ctx.lineWidth = 1.8;
+  [[-115, 28], [-95, 38], [105, 30], [122, 16]].forEach(r => {
+    for(let k = 0; k < 5; k++){
+      ctx.beginPath(); ctx.moveTo(r[0] + k * 3.5, r[1]); ctx.lineTo(r[0] + k * 3.5 - 2, r[1] - 18 - k * 2); ctx.stroke();
+    }
+  });
+
+  // Animated swimming mallard ducks
+  const duckX = Math.sin(time * 0.7) * 35;
+  const duckY = Math.cos(time * 0.7) * 12;
+  ctx.save();
+  ctx.translate(duckX, duckY);
+  // Mallard body
+  ctx.fillStyle = '#5D4037'; ctx.beginPath(); ctx.ellipse(0, 0, 7, 4, 0.2, 0, Math.PI * 2); ctx.fill();
+  // Green head
+  ctx.fillStyle = '#00796B'; ctx.beginPath(); ctx.arc(6, -2, 3, 0, Math.PI * 2); ctx.fill();
+  // Yellow bill
+  ctx.fillStyle = '#FFD54F'; ctx.fillRect(8, -2, 3, 1.5);
+  ctx.restore();
+
+  // Timber jetty dock
+  ctx.fillStyle = '#6D4C41'; ctx.fillRect(-135, 8, 38, 7);
+  ctx.fillStyle = '#3E2723'; ctx.fillRect(-132, 4, 6, 16); ctx.fillRect(-105, 4, 6, 16);
+
+  ctx.restore();
+}
+
+/* Crew Shed & Labour HQ at (1282, 541) */
+function drawCrewLodge(ctx, x, y, built){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.beginPath(); ctx.ellipse(4, 24, 55, 15, 0, 0, Math.PI * 2); ctx.fill();
+  isoPrism(ctx, -38, 4, 76, 26, 32, built ? '#8D6E63' : '#90A4AE', built ? '#A1887F' : '#B0BEC5');
+
+  // Overhanging shingle roof
+  ctx.fillStyle = built ? '#5D4037' : '#78909C';
+  ctx.beginPath();
+  ctx.moveTo(-42, -28); ctx.lineTo(0, -48); ctx.lineTo(42, -28); ctx.lineTo(38, 4); ctx.lineTo(-38, 4);
+  ctx.closePath(); ctx.fill();
+
+  // Front porch & bench
+  ctx.fillStyle = '#3E2723'; ctx.fillRect(-12, 10, 24, 18);
+  ctx.fillStyle = '#D7CCC8'; ctx.fillRect(16, 12, 14, 10); // Labour notice board
+
+  ctx.restore();
+}
+
+/* Hof-Mosterei & Juice Bar at (1306, 601) */
+function drawJuiceBar(ctx, x, y, built){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(4, 22, 60, 15, 0, 0, Math.PI * 2); ctx.fill();
+  isoPrism(ctx, -42, 2, 84, 24, 26, built ? '#EFEBE9' : '#90A4AE', built ? '#FFF8E1' : '#B0BEC5');
+
+  // Striped green-and-white awning
+  ctx.fillStyle = built ? '#388E3C' : '#78909C';
+  ctx.fillRect(-44, -24, 88, 8);
+  for(let i = 0; i < 4; i++){
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(-38 + i * 22, -24, 10, 8);
+  }
+
+  // Wooden cider barrel press outside
+  if (built) {
+    ctx.fillStyle = '#5D4037';
+    ctx.beginPath(); ctx.ellipse(32, 14, 8, 12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#212121'; ctx.lineWidth = 1.2;
+    ctx.stroke();
+    // Fruit crates
+    ctx.fillStyle = '#FFA000'; ctx.fillRect(-38, 12, 10, 8);
+  }
+
+  ctx.restore();
+}
+
+/* Alpenhof Gasthof Stuben & Village Fountain at (1588, 670) */
+function drawGasthofStuben(ctx, x, y, built){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  // Cobblestone terrace ground
+  ctx.fillStyle = built ? '#D7CCC8' : 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(0, 20, 88, 32, 0, 0, Math.PI * 2); ctx.fill();
+
+  // 2-story Bavarian Gasthof building
+  isoPrism(ctx, -56, -6, 112, 44, 48, built ? '#FAFAFA' : '#90A4AE', built ? '#FFF8E1' : '#B0BEC5');
+
+  // Upper carved wooden flower balconies
+  if (built) {
+    ctx.fillStyle = '#5D4037';
+    ctx.fillRect(-52, -22, 104, 10);
+    // Red geranium flower boxes
+    ctx.fillStyle = '#D32F2F';
+    for(let k = 0; k < 10; k++){
+      ctx.beginPath(); ctx.arc(-46 + k * 10, -22, 3.2, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // Red clay tile hip roof with chimney
+  ctx.fillStyle = built ? '#C62828' : '#78909C';
+  ctx.beginPath();
+  ctx.moveTo(-62, -54); ctx.lineTo(0, -88); ctx.lineTo(62, -54); ctx.lineTo(56, -6); ctx.lineTo(-56, -6);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = built ? '#E53935' : '#90A4AE';
+  ctx.beginPath(); ctx.moveTo(-58, -56); ctx.lineTo(0, -84); ctx.lineTo(58, -56); ctx.closePath(); ctx.fill();
+
+  // Stone Village Fountain in foreground plaza
+  if (built) {
+    ctx.save();
+    ctx.translate(46, 28);
+    // Outer stone basin
+    ctx.fillStyle = '#78909C'; ctx.beginPath(); ctx.ellipse(0, 4, 18, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#00E5FF'; ctx.beginPath(); ctx.ellipse(0, 2, 15, 7.5, 0, 0, Math.PI * 2); ctx.fill();
+    // Center fountain pillar
+    ctx.fillStyle = '#546E7A'; ctx.fillRect(-3, -12, 6, 14);
+    ctx.fillStyle = '#B0BEC5'; ctx.beginPath(); ctx.arc(0, -13, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+/* Main Entrance Gate at (1544, 794) */
+function drawMainGate(ctx, x, y, built){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  // Stone pillars
+  ctx.fillStyle = '#546E7A';
+  ctx.fillRect(-34, -4, 14, 48); ctx.fillRect(20, -4, 14, 48);
+  // Timber arch
+  ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 8;
+  ctx.beginPath(); ctx.arc(0, -4, 40, Math.PI, 0); ctx.stroke();
+
+  // Banner: Willkommen im Alpenhof
+  ctx.fillStyle = built ? '#FFD54F' : '#B0BEC5';
+  ctx.font = '900 11px Nunito';
+  ctx.textAlign = 'center';
+  ctx.fillText('WILLKOMMEN IM ALPENHOF', 0, -22);
+
+  ctx.restore();
+}
+
+/* Grape Vineyard Terraces at (1707, 420) */
+function drawVineyardTerraces(ctx, x, y, built){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  for(let r = 0; r < 2; r++) for(let c = 0; c < 2; c++){
+    const px = -44 + c * 52, py = -14 + r * 38;
+    isoPrism(ctx, px, py, 46, 18, 8, '#5D4037', '#6D4C41');
+    if (built) {
+      drawTree3D(ctx, px + 23, py - 1, 'riesling', 3);
+    }
+  }
+
+  ctx.restore();
+}
+
+/* Cattle Pasture Enclosure at (1658, 277) */
+function drawCattlePasture(ctx, x, y, built){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  const pad = [[-140, -60], [140, -75], [160, 60], [-120, 75]];
+
+  // Pasture grass bed
+  const g = ctx.createLinearGradient(0, -75, 0, 75);
+  g.addColorStop(0, '#C5E1A5'); g.addColorStop(0.5, '#9CCC65'); g.addColorStop(1, '#558B2F');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(pad[0][0], pad[0][1]); ctx.lineTo(pad[1][0], pad[1][1]);
+  ctx.lineTo(pad[2][0], pad[2][1]); ctx.lineTo(pad[3][0], pad[3][1]);
+  ctx.closePath(); ctx.fill();
+
+  // Post-and-rail wooden fence
+  const posts = [];
+  for(let s = 0; s < 4; s++){
+    const a = pad[s], b = pad[(s + 1) % 4];
+    const n = s % 2 === 0 ? 7 : 5;
+    for(let i = 0; i < n; i++){
+      const t = i / (n - 1);
+      posts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+    }
+  }
+
+  posts.forEach(p => {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(p[0] - 2, p[1] + 2, 7, 5);
+    ctx.fillStyle = '#4E342E'; ctx.fillRect(p[0] - 3, p[1] - 24, 6, 26);
+    ctx.fillStyle = '#8D6E63'; ctx.fillRect(p[0] - 4, p[1] - 26, 8, 4);
+  });
+
+  ctx.strokeStyle = '#6D4C41'; ctx.lineWidth = 2.4;
+  for(let r = 0; r < 2; r++){
+    ctx.beginPath();
+    posts.forEach((p, i) => {
+      const yy = p[1] - 18 + r * 9;
+      i === 0 ? ctx.moveTo(p[0], yy) : ctx.lineTo(p[0], yy);
+    });
+    ctx.closePath(); ctx.stroke();
+  }
+
+  // Simmental Cows & Sheep grazing
+  if (built) {
+    ctx.save();
+    // Simmental Cow 1
+    ctx.translate(-45, -5);
+    ctx.fillStyle = '#D7CCC8'; ctx.beginPath(); ctx.ellipse(0, 0, 16, 10, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8D6E63'; ctx.beginPath(); ctx.ellipse(-4, -2, 7, 5, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#D7CCC8'; ctx.beginPath(); ctx.arc(14, -6, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(14, 2, 2.5, 0, Math.PI * 2); ctx.fill(); // Cowbell
+    ctx.restore();
+
+    ctx.save();
+    // Simmental Cow 2
+    ctx.translate(40, 18);
+    ctx.fillStyle = '#D7CCC8'; ctx.beginPath(); ctx.ellipse(0, 0, 15, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8D6E63'; ctx.beginPath(); ctx.ellipse(2, 1, 8, 5, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    // Grazing Sheep
+    ctx.translate(-15, 30);
+    ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.ellipse(0, 0, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.arc(7, -3, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+/* BESS Energy Storage Farm at (710, 216) */
+function drawBessStorage(ctx, x, y, built){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = built ? 1 : 0.50;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.beginPath(); ctx.ellipse(2, 22, 54, 15, 0, 0, Math.PI * 2); ctx.fill();
+  isoPrism(ctx, -42, -4, 84, 28, 24, '#263238', built ? '#00E676' : '#78909C');
+
+  // Battery rack modules
+  for(let i = 0; i < 4; i++){
+    ctx.fillStyle = built ? '#00C853' : '#607D8B';
+    ctx.fillRect(-32 + i * 18, 0, 13, 10);
+  }
+  // Green lightning emblem
+  if (built) {
+    ctx.fillStyle = '#FFEB3B';
+    ctx.beginPath();
+    ctx.moveTo(34, -16); ctx.lineTo(39, -6); ctx.lineTo(35, -6); ctx.lineTo(41, 4); ctx.lineTo(33, -4); ctx.lineTo(37, -4);
+    ctx.closePath(); ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+/* 3D Wind Turbine at (316, 156) or (1860, 106) */
+function drawWindTurbine(ctx, x, y, time, built){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = built ? 1 : 0.50;
+
+  // Foundation shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.beginPath(); ctx.ellipse(2, 12, 24, 9, 0, 0, Math.PI * 2); ctx.fill();
+  isoPrism(ctx, -14, 2, 28, 16, 8, '#78909C', '#B0BEC5');
+
+  // Tapered tower
+  const g = ctx.createLinearGradient(-8, 0, 8, 0);
+  g.addColorStop(0, '#546E7A'); g.addColorStop(0.45, '#ECEFF1'); g.addColorStop(1, '#455A64');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(-7, 4); ctx.lineTo(7, 4); ctx.lineTo(3, -78); ctx.lineTo(-3, -78);
+  ctx.closePath(); ctx.fill();
+
+  // Nacelle
+  ctx.fillStyle = '#CFD8DC'; ctx.beginPath(); ctx.ellipse(0, -78, 11, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#FF5252'; ctx.beginPath(); ctx.arc(0, -85, 2, 0, Math.PI * 2); ctx.fill(); // Beacon
+
+  // Spinning Rotor Blades
+  if (built) {
+    const rot = time * 2.8;
+    ctx.lineCap = 'round';
+    for(let i = 0; i < 3; i++){
+      const a = rot + i * Math.PI * 2 / 3;
+      ctx.strokeStyle = '#FAFAFA'; ctx.lineWidth = 3.6;
+      ctx.beginPath(); ctx.moveTo(0, -78); ctx.lineTo(Math.cos(a) * 46, -78 + Math.sin(a) * 46); ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+/* Marker Plaque */
+function drawMarker(ctx, s){
+  const y = s.y - 58;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(s.x, y, 16, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(8, 20, 12, 0.94)'; ctx.fill();
+  ctx.strokeStyle = s.color; ctx.lineWidth = 2.4; ctx.stroke();
+  ctx.font = '15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(s.icon, s.x, y + 1);
+  ctx.restore();
+}
+
+/* ================= MAP CONTROLLER & INTERACTION ================= */
+const AlpenMap = {
+  canvas: null, ctx: null, scaleX: 1, scaleY: 1,
+  hasBg: false, bg: null, time: 0,
+  isDragging: false, didDrag: false, dragStartX: 0, dragStartY: 0, hover: null,
+
   init(c){
-    this.canvas=c;this.ctx=c.getContext('2d');
-    this.resize();addEventListener('resize',()=>this.resize());
-    c.addEventListener('pointerdown',e=>this.pd(e));
-    c.addEventListener('pointermove',e=>this.pm(e));
-    c.addEventListener('pointerup',e=>this.pu(e));
-    c.addEventListener('pointercancel',e=>this.pu(e));
-    this.bg=new Image();
-    this.bg.onload=()=>{this.hasBg=true};
-    this.bg.onerror=()=>{this.bg.src='../bavaria/bavaria-bg.jpg'};
-    this.bg.src='bavaria-bg.jpg';
-    const loop=ts=>{this.time=ts*0.001;this.tickGrowth();this.render();requestAnimationFrame(loop)};
+    this.canvas = c; this.ctx = c.getContext('2d');
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 150));
+
+    // Pointer events for smooth desktop & mobile drag/click
+    c.addEventListener('pointerdown', e => this.onPointerDown(e));
+    c.addEventListener('pointermove', e => this.onPointerMove(e));
+    c.addEventListener('pointerup', e => this.onPointerUp(e));
+    c.addEventListener('pointercancel', e => this.onPointerUp(e));
+
+    this.bg = new Image();
+    this.bg.onload = () => { this.hasBg = true; };
+    this.bg.onerror = () => {
+      this.bg.src = '../public/bavaria/bavaria-bg.jpg';
+    };
+    this.bg.src = 'bavaria-bg.jpg';
+
+    const loop = (ts) => {
+      this.time = ts * 0.001;
+      this.tickGrowth();
+      this.render();
+      requestAnimationFrame(loop);
+    };
     requestAnimationFrame(loop);
   },
-  resize(){const dpr=Math.min(devicePixelRatio||1,2);this.canvas.width=innerWidth*dpr;this.canvas.height=innerHeight*dpr;this.scaleX=innerWidth/W;this.scaleY=innerHeight/H},
+
+  resize(){
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    this.canvas.width = innerWidth * dpr;
+    this.canvas.height = innerHeight * dpr;
+    this.scaleX = innerWidth / W;
+    this.scaleY = innerHeight / H;
+  },
+
   tickGrowth(){
-    Object.values(state.orchards).forEach(o=>{
-      o.beds.forEach(b=>{
-        if(b.status==='seed'){b.progress=(b.progress||0)+0.004;if(b.progress>=1){b.status='sprout';b.progress=0}}
-        else if(b.status==='sprout'){b.progress=(b.progress||0)+0.003;if(b.progress>=1){b.status='young';b.progress=0}}
-        else if(b.status==='young'){b.progress=(b.progress||0)+0.002;if(b.progress>=1){b.status='mature';b.progress=0}}
+    Object.values(state.orchards).forEach(o => {
+      o.beds.forEach(b => {
+        if (b.status === 'seed') {
+          b.progress = (b.progress || 0) + 0.004;
+          if (b.progress >= 1) { b.status = 'sprout'; b.progress = 0; }
+        } else if (b.status === 'sprout') {
+          b.progress = (b.progress || 0) + 0.003;
+          if (b.progress >= 1) { b.status = 'young'; b.progress = 0; }
+        } else if (b.status === 'young') {
+          b.progress = (b.progress || 0) + 0.002;
+          if (b.progress >= 1) { b.status = 'mature'; b.progress = 0; }
+        }
       });
     });
   },
-  worldFromEvent(e){
-    const rect=this.canvas.getBoundingClientRect();const z=this.viewZoom||1;
-    const ox=(innerWidth/2)-this.panX*this.scaleX*z;const oy=(innerHeight/2)-this.panY*this.scaleY*z;
-    return {cx:(e.clientX-rect.left-ox)/(this.scaleX*z),cy:(e.clientY-rect.top-oy)/(this.scaleY*z)};
-  },
-  pd(e){if((this.viewZoom||1)>1.01){this.dragging=true;this.didDrag=false;this.lastX=e.clientX;this.lastY=e.clientY;this.canvas.classList.add('dragging');try{this.canvas.setPointerCapture(e.pointerId)}catch(_){}}},
-  pm(e){
-    const {cx,cy}=this.worldFromEvent(e);let hit=null;
-    for(const s of SITES){if(Math.hypot(cx-s.x,cy-s.y)<(s.action==='cattle'||s.action==='pond'?90:55)){hit=s;break}}
-    this.hover=hit;
-    if(this.dragging&&(this.viewZoom||1)>1.01){
-      const z=this.viewZoom,dx=e.clientX-this.lastX,dy=e.clientY-this.lastY;
-      if(Math.abs(dx)+Math.abs(dy)>3)this.didDrag=true;
-      this.lastX=e.clientX;this.lastY=e.clientY;
-      this.panX-=dx/(this.scaleX*z);this.panY-=dy/(this.scaleY*z);
-      this.panX=Math.max(250,Math.min(1700,this.panX));this.panY=Math.max(150,Math.min(950,this.panY));
-    }
-  },
-  pu(e){const was=this.didDrag;this.dragging=false;this.canvas.classList.remove('dragging');try{this.canvas.releasePointerCapture(e.pointerId)}catch(_){}
-    if(!was)this.onClick(e);this.didDrag=false},
-  onClick(e){const {cx,cy}=this.worldFromEvent(e);for(const s of SITES){if(Math.hypot(cx-s.x,cy-s.y)<(s.action==='cattle'||s.action==='pond'?95:58)){this.handle(s);return}}},
-  handle(s){markSurvey(s.id);openSiteModal(s)},
-  render(){
-    const ctx=this.ctx,dpr=Math.min(devicePixelRatio||1,2);
-    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
-    ctx.fillStyle='#07140c';ctx.fillRect(0,0,this.canvas.width,this.canvas.height);
-    const z=this.viewZoom||1;
-    const sx=dpr*this.scaleX*z,sy=dpr*this.scaleY*z;
-    const ox=dpr*((innerWidth/(dpr*2))-this.panX*this.scaleX*z);
-    const oy=dpr*((innerHeight/(dpr*2))-this.panY*this.scaleY*z);
-    ctx.setTransform(sx,0,0,sy,ox,oy);
-    if(this.hasBg) ctx.drawImage(this.bg,0,0,W,H);
-    else {const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#87CEEB');g.addColorStop(1,'#558B2F');ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
 
-    // orchards first (left dirt block)
-    ORCHARD_PLOTS.forEach(p=>drawOrchardField(ctx,p,this.time));
-    // facilities
-    SITES.forEach(s=>{
-      if(s.action==='orchard') return;
-      const built=!!state.built[s.id];
-      if(s.action==='pond') drawPond3D(ctx,s.x,s.y,this.time);
-      else if(s.action==='cattle') drawCattleFence(ctx,s.x,s.y,built);
-      else if(s.action==='wind') drawWind(ctx,s.x,s.y,this.time,built);
-      else if(s.action==='bess') drawBess(ctx,s.x,s.y,built);
-      else if(s.action==='veg'||s.action==='crop') drawVegBeds(ctx,s.x,s.y,built,s.action);
-      else if(s.action==='flower') drawFlower(ctx,s.x,s.y,built);
-      else if(s.action==='vine') drawVineyard(ctx,s.x,s.y,built);
-      else if(s.action==='gate') drawGate(ctx,s.x,s.y,built);
-      else if(s.action==='restaurant'||s.action==='juice') drawStuben(ctx,s.x,s.y,built,s.action);
-      else drawShed(ctx,s.x,s.y,built,s.color);
-    });
-    SITES.forEach(s=>drawMarker(ctx,s));
-    if(this.hover){
-      const s=this.hover;ctx.save();
-      ctx.font='800 13px Nunito';const tw=ctx.measureText(s.title).width;
-      ctx.fillStyle='rgba(8,18,12,0.92)';ctx.fillRect(s.x-tw/2-10,s.y-86,tw+20,22);
-      ctx.strokeStyle=s.color;ctx.strokeRect(s.x-tw/2-10,s.y-86,tw+20,22);
-      ctx.fillStyle='#E8F5E9';ctx.textAlign='center';ctx.fillText(s.title,s.x,s.y-70);ctx.restore();
+  worldFromEvent(e){
+    const rect = this.canvas.getBoundingClientRect();
+    const z = state.zoom || 1;
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const wx = ((cx - innerWidth / 2 - (state.panX || 0)) / z + innerWidth / 2) / this.scaleX;
+    const wy = ((cy - innerHeight / 2 - (state.panY || 0)) / z + innerHeight / 2) / this.scaleY;
+    return { cx: wx, cy: wy };
+  },
+
+  onPointerDown(e){
+    if ((state.zoom || 1) > 1.01) {
+      this.isDragging = true;
+      this.didDrag = false;
+      this.dragStartX = e.clientX - (state.panX || 0);
+      this.dragStartY = e.clientY - (state.panY || 0);
+      this.canvas.classList.add('dragging');
+      try { this.canvas.setPointerCapture(e.pointerId); } catch(_) {}
     }
+  },
+
+  onPointerMove(e){
+    const {cx, cy} = this.worldFromEvent(e);
+    let hit = null;
+    for(const s of SITES){
+      const radius = s.action === 'cattle' || s.action === 'pond' ? 95 : 55;
+      if (Math.hypot(cx - s.x, cy - s.y) < radius){
+        hit = s; break;
+      }
+    }
+    this.hover = hit;
+
+    if (this.isDragging && (state.zoom || 1) > 1.01) {
+      const newPanX = e.clientX - this.dragStartX;
+      const newPanY = e.clientY - this.dragStartY;
+      if (Math.hypot(newPanX - (state.panX || 0), newPanY - (state.panY || 0)) > 4) {
+        this.didDrag = true;
+      }
+      state.panX = newPanX;
+      state.panY = newPanY;
+    }
+  },
+
+  onPointerUp(e){
+    const wasDrag = this.didDrag;
+    this.isDragging = false;
+    this.canvas.classList.remove('dragging');
+    try { this.canvas.releasePointerCapture(e.pointerId); } catch(_) {}
+    if (!wasDrag) {
+      this.onClick(e);
+    }
+    this.didDrag = false;
+  },
+
+  onClick(e){
+    const {cx, cy} = this.worldFromEvent(e);
+    for(const s of SITES){
+      const radius = s.action === 'cattle' || s.action === 'pond' ? 98 : 58;
+      if (Math.hypot(cx - s.x, cy - s.y) < radius){
+        this.handle(s);
+        return;
+      }
+    }
+  },
+
+  handle(s){
+    markSurvey(s.id);
+    openSiteModal(s);
+  },
+
+  render(){
+    const ctx = this.ctx;
+    const c = this.canvas;
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, c.width, c.height);
+
+    // Multi-Level Smooth Zoom Transformation centered on viewport
+    ctx.save();
+    ctx.translate(c.width / 2 + (state.panX || 0) * dpr, c.height / 2 + (state.panY || 0) * dpr);
+    ctx.scale(state.zoom || 1, state.zoom || 1);
+    ctx.translate(-c.width / 2, -c.height / 2);
+    ctx.scale(this.scaleX * dpr, this.scaleY * dpr);
+
+    // 1. Fullscreen Background Image
+    if (this.hasBg) {
+      ctx.drawImage(this.bg, 0, 0, W, H);
+    } else {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#87CEEB'); g.addColorStop(0.4, '#B9F6CA'); g.addColorStop(1, '#558B2F');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+
+    // 2. Mud Road Network tracing background footprint
+    drawRoadNetwork(ctx);
+
+    // 3. 6 Orchard Fields with 3x3 Circular Beds on the left dirt grid
+    ORCHARD_PLOTS.forEach(p => drawOrchardField(ctx, p, this.time));
+
+    // 4. Volumetric 3D Farm Facilities
+    SITES.forEach(s => {
+      if (s.action === 'orchard') return;
+      const built = !!state.built[s.id];
+      if (s.action === 'pond') drawLivingPond(ctx, s.x, s.y, built, this.time);
+      else if (s.action === 'cattle') drawCattlePasture(ctx, s.x, s.y, built);
+      else if (s.action === 'wind') drawWindTurbine(ctx, s.x, s.y, this.time, built);
+      else if (s.action === 'bess') drawBessStorage(ctx, s.x, s.y, built);
+      else if (s.action === 'veg') drawVegGarden4Part(ctx, s.x, s.y, built);
+      else if (s.action === 'crop') drawCropField2x2(ctx, s.x, s.y, built, this.time);
+      else if (s.action === 'flower') drawFlowerTerraces(ctx, s.x, s.y, built, s.id === 'flower_e');
+      else if (s.action === 'vine') drawVineyardTerraces(ctx, s.x, s.y, built);
+      else if (s.action === 'gate') drawMainGate(ctx, s.x, s.y, built);
+      else if (s.action === 'restaurant') drawGasthofStuben(ctx, s.x, s.y, built);
+      else if (s.action === 'juice') drawJuiceBar(ctx, s.x, s.y, built);
+      else if (s.action === 'crew') drawCrewLodge(ctx, s.x, s.y, built);
+      else if (s.action === 'shed') drawFarmBarn(ctx, s.x, s.y, built);
+    });
+
+    // 5. Dynamic 3D Flying Alpine Birds System
+    drawAlpineBirds(ctx, this.time);
+
+    // 6. Interactive Facility Markers
+    SITES.forEach(s => drawMarker(ctx, s));
+
+    // 7. Hover Tooltip
+    if (this.hover) {
+      const s = this.hover;
+      ctx.save();
+      ctx.font = '800 13px Nunito';
+      const tw = ctx.measureText(s.title).width;
+      ctx.fillStyle = 'rgba(8, 20, 12, 0.94)';
+      ctx.fillRect(s.x - tw / 2 - 12, s.y - 92, tw + 24, 24);
+      ctx.strokeStyle = s.color; ctx.lineWidth = 1.6;
+      ctx.strokeRect(s.x - tw / 2 - 12, s.y - 92, tw + 24, 24);
+      ctx.fillStyle = '#E8F5E9'; ctx.textAlign = 'center';
+      ctx.fillText(s.title, s.x, s.y - 75);
+      ctx.restore();
+    }
+
+    ctx.restore();
   }
 };
 
-/* ===== MODALS / SEQUENTIAL PLANT ===== */
+/* ================= EDUCATIONAL WHY MODALS & INTERACTION ================= */
 function openSiteModal(s){
-  if(s.action==='orchard'){openOrchardModal(s);return}
-  const built=!!state.built[s.id];
-  let body='<div class="modal-hdr"><h3>'+s.icon+' '+s.title+'</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
-  body+='<p style="font-size:0.85rem;color:#A5D6A7;margin-bottom:10px">'+s.sub+'</p>';
-  if(s.action==='pond'){
-    body+='<div class="card-box">Excavated alpine spring · banks cut into meadow loam · fed by underground seepage. Not a painted puddle — a dug water body.</div>';
-    if(!built){body+='<button class="btn btn-g" style="margin-top:12px" onclick="buildSite(\''+s.id+'\',60)">⛏️ Excavate pond €60</button>'}
-    else body+='<p style="color:var(--teal);margin-top:10px">Pond online · wildlife & irrigation</p>';
-  } else if(s.action==='cattle'){
-    body+='<div class="card-box">Post-and-rail fence layout matches the Alpenhof pasture pad. Build to open grazing.</div>';
-    if(!built) body+='<button class="btn btn-g" style="margin-top:12px" onclick="buildSite(\''+s.id+'\',160)">🪵 Install fence €160</button>';
-    else body+='<p style="color:var(--teal);margin-top:10px">Fenced pasture active</p>';
-  } else if(!built){
-    const cost={veg:80,crop:90,flower:70,shed:150,crew:100,juice:180,restaurant:220,bess:200,wind:240,vine:140,gate:40}[s.action]||100;
-    body+='<p>Build cost <b style="color:var(--gold)">€'+cost+'</b></p>';
-    body+='<button class="btn btn-g" style="margin-top:10px" onclick="buildSite(\''+s.id+'\','+cost+')">🏗️ Build</button>';
-  } else body+='<p style="color:var(--teal)">Operational</p>';
-  body+='<div class="why-card"><b>Why</b><br/>Alpine pads teach German production + oxygen + biodiversity together.</div>';
-  body+='<button class="btn btn-a" style="margin-top:10px" onclick="learnWhy(\''+s.cat+'\')">💡 Learn & +XP</button>';
+  if (s.action === 'orchard') { openOrchardModal(s); return; }
+  const built = !!state.built[s.id];
+
+  const recallInfo = {
+    shed: {ch: 2, title: 'Basic Farm Ch. 2: Farm Infrastructure & Tooling', note: 'Just as your Solo Founder built the storage barn and spade cache, the Alpenhof Farm Shed houses commercial tractor mechanization.'},
+    veg: {ch: 3, title: 'Basic Farm Ch. 3: Companion Guilds & Biodiversity', note: 'Expanding on your small vegetable garden, this 4-part polyculture interplants brassicas, root crops, potatoes, and nitrogen-fixing climbing beans.'},
+    crop: {ch: 3, title: 'Basic Farm Ch. 3: Arable Crop Expansion', note: 'Scaling up from small patch tilling, this 2×2 crop field provides rotational arable acreage for golden wheat, cabbages, lavender, and sweet corn.'},
+    flower: {ch: 3, title: 'Basic Farm Ch. 3: Pollinator Habitat & Honeybees', note: 'Recalling the wild garden beds, these raised alpine stone terraces harbor solitary bee hotels and traditional Bavarian hives.'},
+    pond: {ch: 4, title: 'Basic Farm Ch. 4: Living Waters & Nutrient Cycling', note: 'Refining the closed loop, this spring-fed pond creates aquatic biodiversity with water lilies and mallard ducks, providing irrigation reserves.'},
+    cattle: {ch: 4, title: 'Basic Farm Ch. 4: Livestock & Pasture Grazing', note: 'Scaling from pasture grazing, this hillside enclosure manages Simmental dairy cattle and sheep for rotational pasture regeneration and compost.'},
+    bess: {ch: 5, title: 'Basic Farm Ch. 5: Renewable Microgrids & BESS Storage', note: 'Advancing the clean energy transition, this BESS battery container stabilizes wind power for automated milling and cold storage.'},
+    wind: {ch: 5, title: 'Basic Farm Ch. 5: Wind Energy & Turbine Engineering', note: 'Echoing the 4-corner wind turbines, these high-ridge turbines harness powerful alpine wind currents.'},
+    crew: {ch: 6, title: 'Basic Farm Ch. 6: Labour Organization & Community', note: 'Moving beyond solo founder work, this timber lodge recruits specialized Bavarian orchardists, vintners, and energy techs.'},
+    juice: {ch: 6, title: 'Basic Farm Ch. 6: Value-Added Farm Products', note: 'Expanding from harvest sales, the Hof-Mosterei cold-presses heritage apples into artisanal Bavarian cider and juices.'},
+    restaurant: {ch: 6, title: 'Basic Farm Ch. 6: The Eco-Village Hospitality Stuben', note: 'The ultimate realization of Chapter 6: an alpine Gasthof with outdoor terrace and village fountain serving farm-to-table cuisine.'},
+    gate: {ch: 1, title: 'Basic Farm Ch. 1: Welcome & Estate Perimeter', note: 'Marking the entrance to your Bavarian eco-village, this carved alpine archway welcomes visitors.'},
+    vine: {ch: 3, title: 'Basic Farm Ch. 3: Perennial Hillside Vines', note: 'Steep hillside slate terraces capturing intense solar radiation for world-class Riesling and Silvaner grapes.'}
+  }[s.action] || {ch: 1, title: 'Basic Farm Foundations', note: 'This facility scales foundational eco-agriculture to commercial Bavarian alpine standards.'};
+
+  let body = '<div class="modal-hdr"><h3>' + s.icon + ' ' + s.title + '</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  body += '<p style="font-size:0.85rem;color:#A5D6A7;margin-bottom:12px">' + s.sub + '</p>';
+
+  // Status & Build Actions
+  if (!built) {
+    const cost = {veg:80, crop:100, flower:75, shed:160, crew:110, juice:190, restaurant:240, bess:220, wind:250, vine:150, gate:50, pond:70, cattle:180}[s.action] || 100;
+    body += '<div class="card-box" style="margin-bottom:12px"><b>Construction Investment: <span style="color:var(--gold)">€' + cost + '</span></b><br/><span style="font-size:0.78rem;color:#C8E6C9">Unlocks full 3D volumetric VR model and automated resource XP generation.</span><br/>' +
+            '<button class="btn btn-g" style="margin-top:10px" onclick="buildSite(\'' + s.id + '\',' + cost + ')">🏗️ Construct Facility</button></div>';
+  } else {
+    body += '<div class="card-box" style="margin-bottom:12px;border-color:var(--teal)"><b>Status: <span style="color:var(--teal)">Operational & Generating XP</span></b><br/><span style="font-size:0.78rem;color:#C8E6C9">Full 3D volumetric VR model active.</span></div>';
+  }
+
+  // Educational Why Card with 3 Depths
+  body += '<div class="why-card">' +
+            '<b>💡 Educational Why Card & Basic Farm Recall</b>' +
+            '<div class="recall-box"><b>' + recallInfo.title + '</b><br/>' + recallInfo.note + '</div>' +
+            '<div class="why-tabs">' +
+              '<button class="why-tab active" onclick="switchWhyTab(this, \'quick\')">Quick Summary</button>' +
+              '<button class="why-tab" onclick="switchWhyTab(this, \'bio\')">Ecological Principle</button>' +
+              '<button class="why-tab" onclick="switchWhyTab(this, \'depth\')">Bavarian Heritage</button>' +
+            '</div>' +
+            '<div id="whyContent" style="font-size:0.80rem;color:#E8F5E9;line-height:1.45;margin-top:8px">' +
+              'Combines Bavarian alpine heritage with polyculture agroforestry, generating clean O₂, biodiversity habitats, and farm-to-table economic value.' +
+            '</div>' +
+          '</div>';
+
+  body += '<button class="btn btn-a" style="margin-top:12px;width:100%" onclick="learnWhy(\'' + s.cat + '\')">💡 Master Educational Principle (+12 XP)</button>';
   openModal(body);
 }
 
+window.switchWhyTab = function(btn, mode){
+  document.querySelectorAll('.why-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const box = document.getElementById('whyContent');
+  if (mode === 'quick') {
+    box.innerHTML = 'Combines Bavarian alpine heritage with polyculture agroforestry, generating clean O₂, biodiversity habitats, and farm-to-table economic value.';
+  } else if (mode === 'bio') {
+    box.innerHTML = '<b>Ecosystem Principle:</b> Multi-tiered agroforestry mimics natural alpine woodland succession. Deep roots stabilize mountain slopes, companion flowers sustain pollinator colonies, and circular ponds filter run-off.';
+  } else {
+    box.innerHTML = '<b>Bavarian Heritage & Engineering:</b> Streuobstwiesen (meadow orchards) have been preserved in Bavaria for over 500 years. Combining traditional timber architecture with modern BESS storage unites regional culture with sustainability.';
+  }
+};
+
 function openOrchardModal(s){
-  const o=state.orchards[s.plot];
-  let body='<div class="modal-hdr"><h3>🌳 '+s.title+'</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
-  body+='<p style="font-size:0.82rem;color:#A5D6A7;margin-bottom:8px">3×3 circular hard-rock crusts · aerate → plant <b>one bed at a time</b> from the German catalogue.</p>';
-  body+='<div class="grid-3">';
-  o.beds.forEach((b,i)=>{
-    let label='🪨 Crust',cls='';
-    if(b.status==='empty'||b.status==='aerating'){label='⛏️ Ready';cls='open'}
-    else if(b.species){const sp=SPECIES[b.species];label=sp.icon+' '+b.status;cls='filled'}
-    body+='<div class="bed-cell '+cls+'" onclick="selectBed(\''+s.plot+'\','+i+')">#'+(i+1)+'<br/>'+label+'</div>';
+  const o = state.orchards[s.plot];
+  let body = '<div class="modal-hdr"><h3>🌳 ' + s.title + '</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  body += '<p style="font-size:0.82rem;color:#A5D6A7;margin-bottom:8px">Strict 3×3 circular hard-rock crusts embedded on background dirt. Aerate crusts, then plant <b>one bed at a time</b> from the German species catalogue.</p>';
+
+  body += '<div class="grid-3">';
+  o.beds.forEach((b, i) => {
+    let label = '🪨 Crust', cls = '';
+    if (b.status === 'empty' || b.status === 'aerating') { label = '⛏️ Ready'; cls = 'open'; }
+    else if (b.species) { const sp = SPECIES[b.species]; label = sp.icon + ' ' + b.status; cls = 'filled'; }
+    body += '<div class="bed-cell ' + cls + '" onclick="selectBed(\'' + s.plot + '\',' + i + ')">Bed #' + (i + 1) + '<br/>' + label + '</div>';
   });
-  body+='</div>';
-  const crusts=o.beds.filter(b=>b.status==='crust').length;
-  if(crusts) body+='<button class="btn btn-a" style="margin-top:12px;width:100%" onclick="aeratePlot(\''+s.plot+'\')">⛏️ Aerate all hard crusts (€40)</button>';
-  body+='<div class="why-card"><b>Streuobst pattern</b><br/>Each ring is a single planting decision — choose species, watch seed → sprout → young → mature.</div>';
-  openModal(body,true);
+  body += '</div>';
+
+  const crusts = o.beds.filter(b => b.status === 'crust').length;
+  if (crusts > 0) {
+    body += '<button class="btn btn-a" style="margin-top:12px;width:100%" onclick="aeratePlot(\'' + s.plot + '\')">⛏️ Aerate all 9 hard crusts (€40)</button>';
+  }
+
+  body += '<div class="why-card" style="margin-top:12px">' +
+            '<b>Streuobst Mastery & Basic Farm Ch. 2 Recall</b>' +
+            '<div class="recall-box"><b>Recalling Soil Aeration:</b> Just as you used the hand-forged spade to till Plot 1, breaking hard alpine loam allows root penetration and microbial respiration.</div>' +
+            '<p style="font-size:0.78rem;color:#C8E6C9">Planting one bed at a time lets you observe seed → sprout → young → mature progression.</p>' +
+          '</div>';
+
+  openModal(body, true);
 }
 
-window.selectBed=function(plotId,idx){
-  const bed=state.orchards[plotId].beds[idx];
-  if(bed.status==='crust'){toast('Aerate the crust first');return}
-  if(bed.species){toast(SPECIES[bed.species].name+' · '+bed.status);return}
-  // catalogue — pick one species for THIS bed only
-  let h='<div class="modal-hdr"><h3>🌲 Plant bed #'+(idx+1)+'</h3><button class="btn-close" onclick="openOrchardModal(SITES.find(s=>s.plot===\''+plotId+'\'))">←</button></div>';
-  h+='<p style="font-size:0.8rem;color:#A5D6A7;margin-bottom:8px">Select one German species for this circle only (€55).</p><div class="grid-2">';
-  ['apple','pear','cherry','plum','beech','oak','linden','spruce','fir'].forEach(k=>{
-    const sp=SPECIES[k];
-    h+='<button class="btn btn-c" style="text-align:left" onclick="plantBed(\''+plotId+'\','+idx+',\''+k+'\')">'+sp.icon+' <b>'+sp.name+'</b><br/><span style="font-size:0.7rem;opacity:.85">'+sp.de+' · '+sp.cat+'</span></button>';
+window.selectBed = function(plotId, idx){
+  const bed = state.orchards[plotId].beds[idx];
+  if (bed.status === 'crust') { toast('Aerate the crust first with the spade'); return; }
+  if (bed.species) { toast(SPECIES[bed.species].name + ' · Growth: ' + bed.status); return; }
+
+  let h = '<div class="modal-hdr"><h3>🌲 Plant Circular Bed #' + (idx + 1) + '</h3><button class="btn-close" onclick="openOrchardModal(SITES.find(s=>s.plot===\'' + plotId + '\'))">←</button></div>';
+  h += '<p style="font-size:0.80rem;color:#A5D6A7;margin-bottom:10px">Select one heirloom German species for this circular stone ring (€55).</p><div class="grid-2">';
+
+  ['apple', 'pear', 'cherry', 'plum', 'beech', 'oak', 'linden', 'spruce', 'fir'].forEach(k => {
+    const sp = SPECIES[k];
+    h += '<button class="btn btn-c" style="text-align:left;padding:8px 12px" onclick="plantBed(\'' + plotId + '\',' + idx + ',\'' + k + '\')">' +
+         sp.icon + ' <b>' + sp.name + '</b><br/>' +
+         '<span style="font-size:0.72rem;opacity:.88">' + sp.de + ' · ' + sp.cat + ' (+ ' + sp.o2 + ' O₂)</span></button>';
   });
-  h+='</div>';
-  openModal(h,true);
+  h += '</div>';
+  openModal(h, true);
 };
-window.aeratePlot=function(plotId){
-  if(state.money<40){toast('Need €40');return}
-  state.money-=40;
-  state.orchards[plotId].beds.forEach(b=>{if(b.status==='crust')b.status='empty'});
-  grantXP({oxygen:6});toast('Crusts aerated');renderScoreboard();
-  openOrchardModal(SITES.find(s=>s.plot===plotId));
+
+window.aeratePlot = function(plotId){
+  if (state.money < 40) { toast('Need €40 to aerate plot'); return; }
+  state.money -= 40;
+  state.orchards[plotId].beds.forEach(b => {
+    if (b.status === 'crust') b.status = 'empty';
+  });
+  grantXP({oxygen: 8});
+  toast('Plot aerated! Rich tilth ready for planting');
+  renderScoreboard();
+  openOrchardModal(SITES.find(s => s.plot === plotId));
 };
-window.plantBed=function(plotId,idx,spKey){
-  if(state.money<55){toast('Need €55');return}
-  const bed=state.orchards[plotId].beds[idx];
-  if(bed.species){toast('Bed already planted');return}
-  if(bed.status==='crust'){toast('Aerate first');return}
-  state.money-=55;bed.species=spKey;bed.status='seed';bed.progress=0;
-  grantXP({fruit:10,oxygen:4});toast('Planted '+SPECIES[spKey].name+' in bed #'+(idx+1));
-  renderScoreboard();openOrchardModal(SITES.find(s=>s.plot===plotId));
+
+window.plantBed = function(plotId, idx, spKey){
+  if (state.money < 55) { toast('Need €55 for sapling'); return; }
+  const bed = state.orchards[plotId].beds[idx];
+  if (bed.species) { toast('Bed already planted'); return; }
+  if (bed.status === 'crust') { toast('Aerate crust first'); return; }
+
+  state.money -= 55;
+  bed.species = spKey; bed.status = 'seed'; bed.progress = 0;
+  grantXP({fruit: 10, oxygen: 5});
+  toast('Planted ' + SPECIES[spKey].name + ' in Bed #' + (idx + 1));
+  renderScoreboard();
+  openOrchardModal(SITES.find(s => s.plot === plotId));
 };
-window.buildSite=function(id,cost){
-  if(state.money<cost){toast('Not enough €');return}
-  state.money-=cost;state.built[id]=true;grantXP({oxygen:5,biodiversity:5});toast('Built!');closeModal();renderScoreboard();
+
+window.buildSite = function(id, cost){
+  if (state.money < cost) { toast('Not enough funds (€' + cost + ' required)'); return; }
+  state.money -= cost;
+  state.built[id] = true;
+  grantXP({oxygen: 8, biodiversity: 8});
+  toast('🎉 Construction Complete! 3D Volumetric Model Active');
+  closeModal();
+  renderScoreboard();
 };
-window.learnWhy=function(cat){
-  const key={orchard:'fruit',veg:'veg',flower:'flower',energy:'oxygen',fruit:'fruit',livestock:'biodiversity',water:'biodiversity',infra:'oxygen',labour:'oxygen',trade:'fruit'}[cat]||'oxygen';
-  grantXP({[key]:8,biodiversity:4});toast('Why-card +XP');closeModal();
+
+window.learnWhy = function(cat){
+  const key = {orchard:'fruit', veg:'veg', flower:'flower', energy:'oxygen', fruit:'fruit', livestock:'biodiversity', water:'biodiversity', infra:'oxygen', labour:'oxygen', trade:'fruit'}[cat] || 'oxygen';
+  grantXP({[key]: 10, biodiversity: 5});
+  toast('💡 Educational Mastered! +15 Knowledge XP');
+  closeModal();
 };
 
 function openLabour(){
-  let h='<div class="modal-hdr"><h3>🧑‍🌾 Labour</h3><button class="btn-close" onclick="closeModal()">✕</button></div><div class="grid-2">';
-  state.labourPool.forEach(w=>{
-    const hired=state.hired.includes(w.id);
-    h+='<div class="card-box">'+w.icon+' <b>'+w.name+'</b><br/><span style="font-size:0.75rem;color:#A5D6A7">'+w.role+'</span><br/>';
-    h+=hired?'<span style="color:var(--teal)">Hired</span>':'<button class="btn btn-g" style="margin-top:8px" onclick="hireWorker(\''+w.id+'\','+w.cost+')">Hire €'+w.cost+'</button>';
-    h+='</div>';
+  let h = '<div class="modal-hdr"><h3>🧑‍🌾 Alpine Labour HQ</h3><button class="btn-close" onclick="closeModal()">✕</button></div><div class="grid-2">';
+  state.labourPool.forEach(w => {
+    const hired = state.hired.includes(w.id);
+    h += '<div class="card-box">' + w.icon + ' <b>' + w.name + '</b><br/>' +
+         '<span style="font-size:0.75rem;color:#A5D6A7">' + w.role + ' · Skill: ' + w.skill + '</span><br/>';
+    h += hired ? '<span style="color:var(--teal);font-weight:800">✓ On Active Duty</span>'
+               : '<button class="btn btn-g" style="margin-top:8px" onclick="hireWorker(\'' + w.id + '\',' + w.cost + ')">Hire €' + w.cost + '</button>';
+    h += '</div>';
   });
-  h+='</div>';openModal(h);
-}
-window.hireWorker=function(id,cost){
-  if(state.hired.includes(id))return;if(state.money<cost){toast('Need €'+cost);return}
-  state.money-=cost;state.hired.push(id);state.workers++;grantXP({oxygen:4});toast('Hired');closeModal();openLabour();renderScoreboard();
-};
-function openSpecies(){
-  let h='<div class="modal-hdr"><h3>🌲 German Species</h3><button class="btn-close" onclick="closeModal()">✕</button></div><div class="grid-2">';
-  Object.values(SPECIES).forEach(s=>{h+='<div class="card-box">'+s.icon+' <b>'+s.name+'</b><br/><span style="font-size:0.72rem;color:#81C784">'+s.de+' · '+s.cat+' · O₂ '+s.o2+'</span></div>'});
-  h+='</div>';openModal(h,true);
-}
-function openMaster(){
-  let h='<div class="modal-hdr"><h3>📋 Journey</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
-  CHAPTERS.forEach(c=>{h+='<div class="card-box" style="margin-bottom:8px;border-color:'+(state.chapter===c.id?'var(--gold)':'var(--border)')+'"><b>Ch.'+c.id+' '+c.title+'</b><p style="font-size:0.78rem;color:#A5D6A7">'+c.desc+'</p></div>'});
+  h += '</div>';
   openModal(h);
 }
-function openWhy(){
-  openModal('<div class="modal-hdr"><h3>💡 Why Alpenhof?</h3><button class="btn-close" onclick="closeModal()">✕</button></div><div class="why-card"><b>One bed, one decision.</b><br/>Hard-crust rings must be aerated, then planted species-by-species — the German Streuobst rhythm. Watch seed → sprout → young → mature while oxygen and fruit XP rise.</div><button class="btn btn-g" style="margin-top:12px" onclick="closeModal();grantXP({biodiversity:10});toast(\'Journey on\')">Explore ➔</button>');
+
+window.hireWorker = function(id, cost){
+  if (state.hired.includes(id)) return;
+  if (state.money < cost) { toast('Need €' + cost); return; }
+  state.money -= cost;
+  state.hired.push(id);
+  state.workers++;
+  grantXP({oxygen: 5});
+  toast('Hired ' + id.toUpperCase() + ' for Alpenhof operations');
+  closeModal(); openLabour(); renderScoreboard();
+};
+
+function openSpecies(){
+  let h = '<div class="modal-hdr"><h3>🌲 Heirloom German Flora Catalogue</h3><button class="btn-close" onclick="closeModal()">✕</button></div><div class="grid-2">';
+  Object.values(SPECIES).forEach(s => {
+    h += '<div class="card-box">' + s.icon + ' <b>' + s.name + '</b><br/>' +
+         '<span style="font-size:0.75rem;color:#81C784">' + s.de + ' · ' + s.cat + ' · O₂ +' + s.o2 + ' kg</span><br/>' +
+         '<span style="font-size:0.70rem;color:#CFD8DC">' + s.desc + '</span></div>';
+  });
+  h += '</div>';
+  openModal(h, true);
 }
 
-document.getElementById('btn-start').onclick=()=>{document.getElementById('cinBanner').style.display='none';openWhy()};
-document.getElementById('btn-fs').onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen?.()};
-document.getElementById('btn-menu').onclick=()=>{document.getElementById('controlGrid').classList.toggle('open');document.getElementById('scoreboard').classList.remove('open')};
-document.getElementById('btn-score').onclick=()=>{document.getElementById('scoreboard').classList.toggle('open');document.getElementById('controlGrid').classList.remove('open');renderScoreboard()};
-const go=()=>location.href='../index.html';
-document.getElementById('btn-home').onclick=go;document.getElementById('btn-globe2').onclick=go;
-document.getElementById('btn-master').onclick=openMaster;
-document.getElementById('btn-labour').onclick=openLabour;
-document.getElementById('btn-species').onclick=openSpecies;
-document.getElementById('btn-why').onclick=openWhy;
-document.getElementById('btn-plan').onclick=()=>openModal('<div class="modal-hdr"><h3>🗺️ Plan</h3><button class="btn-close" onclick="closeModal()">✕</button></div><img src="bavaria-bg-plan.jpg" style="width:100%;border-radius:12px;border:1px solid var(--border)"/>',true);
-document.getElementById('btn-shop').onclick=()=>toast('Tap meadow icons to build');
-document.getElementById('btn-o2').onclick=()=>openModal('<div class="modal-hdr"><h3>🫁 Oxygen</h3><button class="btn-close" onclick="closeModal()">✕</button></div><p>Stock <b style="color:var(--teal)">'+state.o2+'</b> O₂</p>');
-document.querySelectorAll('#zoomBar button').forEach(btn=>{
-  btn.onclick=()=>{
-    const z=parseFloat(btn.dataset.z)||1;Map.viewZoom=z;
-    if(z>=5){Map.panX=360;Map.panY=400}else if(z>=2){Map.panX=520;Map.panY=420}else{Map.panX=700;Map.panY=480}
-    document.querySelectorAll('#zoomBar button').forEach(b=>b.classList.toggle('active',b===btn));
+function openMaster(){
+  let h = '<div class="modal-hdr"><h3>📋 6-Chapter Alpine Mastery Journey</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  CHAPTERS.forEach(c => {
+    const isCur = state.chapter === c.id;
+    h += '<div class="card-box" style="margin-bottom:10px;border-color:' + (isCur ? 'var(--gold)' : 'var(--border)') + '">' +
+         '<div style="display:flex;justify-content:space-between;align-items:center">' +
+           '<b>Ch. ' + c.id + ': ' + c.title + '</b>' +
+           '<span class="recall-tag">' + c.recall + '</span>' +
+         '</div>' +
+         '<p style="font-size:0.78rem;color:#A5D6A7;margin-top:4px">' + c.desc + '</p>' +
+         '</div>';
+  });
+  openModal(h, true);
+}
+
+function openWhy(){
+  openModal(
+    '<div class="modal-hdr"><h3>💡 Why Streuobst & Polyculture · Alpenhof Journey</h3><button class="btn-close" onclick="closeModal()">✕</button></div>' +
+    '<div class="why-card">' +
+      '<b>The Advanced Mastery Extension of the Basic German Farm</b>' +
+      '<div class="why-tabs">' +
+        '<button class="why-tab active" onclick="switchGlobalWhyTab(this, \'agronomy\')">🌿 Agronomy & Streuobst</button>' +
+        '<button class="why-tab" onclick="switchGlobalWhyTab(this, \'physics\')">🔬 Carbon & Soil Physics</button>' +
+        '<button class="why-tab" onclick="switchGlobalWhyTab(this, \'recall\')">🇩🇪 German Farm Recall Link</button>' +
+      '</div>' +
+      '<div id="globalWhyBody" style="font-size:0.80rem;color:#E8F5E9;line-height:1.45;margin-top:8px">' +
+        '<p>• <b>Six 3×3 Streuobst Orchards:</b> Preserve 500-year-old Bavarian meadow orchards with heirloom fruit varieties (Boskoop, Williams Christ, Kordia).<br/>' +
+        '• <b>Pure 3D Volumetric VR Assets:</b> Timber barns with Fendt tractor, Gasthof Stuben with village fountain, living waters pond, and Simmental cattle pasture.<br/>' +
+        '• <b>Country Mud Road Footprint:</b> Organic terrain tracks connecting farm operations.<br/>' +
+        '• <b>Alpine Avian Life:</b> Autonomous Golden Eagles, Alpine Choughs, and Barn Swallows soaring overhead.</p>' +
+        '<div class="recall-box"><b>German Farm Recall Link:</b> In basic farm (index.html), you learned solo founder tilling (Ch. 1-2), companion guilds (Ch. 3), closed-loop ecology (Ch. 4), clean microgrids (Ch. 5), and eco-village commerce (Ch. 6). Alpenhof scales these exact 6 foundational steps to commercial Bavarian alpine polyculture.</div>' +
+      '</div>' +
+    '</div>' +
+    '<button class="btn btn-g" style="margin-top:14px;width:100%" onclick="closeModal();grantXP({biodiversity:15});toast(\'Journey Commenced!\')">Begin Alpine Exploration ➔</button>',
+    true
+  );
+}
+
+window.switchGlobalWhyTab = function(btn, mode){
+  document.querySelectorAll('.why-card .why-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const box = document.getElementById('globalWhyBody');
+  if (mode === 'agronomy') {
+    box.innerHTML = '<p>• <b>Six 3×3 Streuobst Orchards:</b> Preserve 500-year-old Bavarian meadow orchards with heirloom fruit varieties.<br/>' +
+                    '• <b>Polyculture Arable:</b> 4-part vegetable companion garden, rotational crop field, and twin flower pollination terraces.<br/>' +
+                    '• <b>Perennial Grazing:</b> Simmental dairy cattle and grazing sheep maintaining alpine meadow tilth.</p>';
+  } else if (mode === 'physics') {
+    box.innerHTML = '<p>• <b>Deep Taproot Carbon Sinks:</b> Rotbuche and Stieleiche sequester up to 32 kg O₂/season while anchoring alpine slopes against mudslides.<br/>' +
+                    '• <b>Microbial Loam Aeration:</b> Breaking compacted alpine clay crusts unlocks mycorrhizal fungal networks and rhizosphere respiration.<br/>' +
+                    '• <b>Living Waters Hydrology:</b> Spring pond captures nutrient run-off to recharge the alpine water table.</p>';
+  } else {
+    box.innerHTML = '<div class="recall-box"><b>German Farm Recall Link:</b> In basic farm (index.html), you learned solo founder tilling (Ch. 1-2), companion guilds (Ch. 3), closed-loop ecology (Ch. 4), clean microgrids (Ch. 5), and eco-village commerce (Ch. 6). Alpenhof scales these exact 6 foundational steps to commercial Bavarian alpine polyculture.</div>';
+  }
+};
+
+/* UI Wiring */
+document.getElementById('btn-start').onclick = () => {
+  document.getElementById('cinBanner').style.display = 'none';
+  openWhy();
+};
+
+document.getElementById('btn-fs').onclick = () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen?.();
+  }
+};
+
+document.getElementById('btn-menu').onclick = () => {
+  document.getElementById('controlGrid').classList.toggle('open');
+  document.getElementById('scoreboard').classList.remove('open');
+};
+
+document.getElementById('btn-score').onclick = () => {
+  document.getElementById('scoreboard').classList.toggle('open');
+  document.getElementById('controlGrid').classList.remove('open');
+  renderScoreboard();
+};
+
+const returnHome = () => location.href = '../index.html';
+document.getElementById('btn-home').onclick = returnHome;
+document.getElementById('btn-globe2').onclick = returnHome;
+
+const closeMenu = () => document.getElementById('controlGrid').classList.remove('open');
+document.getElementById('btn-master').onclick = () => { closeMenu(); openMaster(); };
+document.getElementById('btn-labour').onclick = () => { closeMenu(); openLabour(); };
+document.getElementById('btn-species').onclick = () => { closeMenu(); openSpecies(); };
+document.getElementById('btn-why').onclick = () => { closeMenu(); openWhy(); };
+document.getElementById('btn-plan').onclick = () => {
+  closeMenu();
+  openModal(
+    '<div class="modal-hdr"><h3>🗺️ Calibrated Masterplan Blueprint</h3><button class="btn-close" onclick="closeModal()">✕</button></div>' +
+    '<p style="font-size:0.80rem;color:#A5D6A7;margin-bottom:8px">Blueprint wireframe layout strictly mapped from bavaria-bg-plan.jpg:</p>' +
+    '<img src="bavaria-bg-plan.jpg" style="width:100%;border-radius:12px;border:1px solid var(--border)"/>',
+    true
+  );
+};
+document.getElementById('btn-birds').onclick = () => {
+  closeMenu();
+  toast('🦅 Alpine Birds: Golden Eagles, Choughs, and Swallows gliding overhead');
+};
+document.getElementById('btn-o2').onclick = () => {
+  closeMenu();
+  openModal(
+    '<div class="modal-hdr"><h3>🫁 Cumulative Alpine Oxygen</h3><button class="btn-close" onclick="closeModal()">✕</button></div>' +
+    '<p>Total Oxygen Stock: <b style="color:var(--teal)">' + state.o2.toLocaleString() + ' kg</b></p>' +
+    '<p style="font-size:0.80rem;color:#C8E6C9;margin-top:6px">Generated continuously by your mature Streuobst trees, European Beeches, and English Oaks.</p>'
+  );
+};
+
+/* Zoom Controls */
+document.querySelectorAll('#zoomBar button').forEach(btn => {
+  btn.onclick = () => {
+    const z = parseFloat(btn.dataset.z) || 1;
+    state.zoom = z;
+    if (z >= 5) {
+      state.panX = 360; state.panY = 120;
+    } else if (z >= 2) {
+      state.panX = 180; state.panY = 60;
+    } else {
+      state.panX = 0;   state.panY = 0;
+    }
+    document.querySelectorAll('#zoomBar button').forEach(b => b.classList.toggle('active', b === btn));
   };
 });
-window.addEventListener('DOMContentLoaded',()=>{
-  Map.init(document.getElementById('farm-canvas'));renderScoreboard();
-  setInterval(()=>{
-    let add=0;
-    Object.values(state.orchards).forEach(o=>o.beds.forEach(b=>{
-      if(!b.species)return;const s=SPECIES[b.species];const st=b.status==='mature'?3:b.status==='young'?2:b.status==='sprout'?1:0.3;
-      if(s)add+=s.o2*0.015*st;
+
+window.addEventListener('DOMContentLoaded', () => {
+  AlpenMap.init(document.getElementById('farm-canvas'));
+  renderScoreboard();
+
+  // Continuous O2 production from mature trees
+  setInterval(() => {
+    let add = 0;
+    Object.values(state.orchards).forEach(o => o.beds.forEach(b => {
+      if (!b.species) return;
+      const s = SPECIES[b.species];
+      const st = b.status === 'mature' ? 3 : b.status === 'young' ? 2 : b.status === 'sprout' ? 1 : 0.3;
+      if (s) add += s.o2 * 0.015 * st;
     }));
-    if(add>0){state.o2=Math.round(state.o2+add);renderScoreboard()}
-  },4000);
+    if (add > 0) {
+      state.o2 = Math.round(state.o2 + add);
+      renderScoreboard();
+    }
+  }, 4000);
 });
 </script>
 </body>
