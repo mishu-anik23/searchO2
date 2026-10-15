@@ -92,6 +92,20 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
 .btn:disabled{opacity:0.45;cursor:not-allowed}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.vine-cell{
+  background:rgba(20,35,25,0.75);border:1px solid var(--border);border-radius:8px;
+  padding:7px 3px;text-align:center;font-size:0.73rem;cursor:pointer;transition:all 0.15s;
+}
+.vine-cell:hover{border-color:var(--teal);transform:translateY(-1px)}
+.vine-cell.open{background:rgba(46,125,50,0.22);border-color:var(--teal)}
+.vine-cell.planted{background:rgba(123,31,162,0.28);border-color:#CE93D8}
+.vine-cell.mature{background:rgba(123,31,162,0.45);border-color:var(--gold)}
+.bed-nav-btn{
+  padding:5px 9px;border-radius:8px;border:1px solid var(--border);
+  background:rgba(15,30,20,0.85);color:#E8F5E9;font-size:0.73rem;font-weight:700;cursor:pointer;transition:all 0.15s;white-space:nowrap;
+}
+.bed-nav-btn.active{background:var(--pine);border-color:var(--teal);color:#FFF}
 .card-box{background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:14px;padding:12px}
 
 /* Streuobst 3x3 Bed Cell */
@@ -145,6 +159,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
   .scoreboard{top:auto;bottom:75px;right:8px;left:8px;width:auto}
   .control-grid{top:auto;bottom:75px;left:8px;right:8px;width:auto}
   .grid-2,.grid-3{grid-template-columns:1fr 1fr}
+  .grid-4{grid-template-columns:repeat(2,1fr)}
 }
 </style>
 </head>
@@ -235,15 +250,70 @@ const SPECIES = {
   lavender:   {key:'lavender', name:'Alpine Lavender',     de:'Berg-Lavendel',            cat:'Flower',      o2:2,  icon:'🪻', color:'#7E57C2', fruitColor:null,     desc:'Aromatic companion herb mounds repelling pests with violet spikes.'}
 };
 
-/* 6 ORCHARD PLOTS: Individually Calibrated & Hillside-Stretched */
+/* 6 ORCHARD PLOTS: Precision Brown Soil Hillside Alignment */
 const ORCHARD_PLOTS = [
-  {id:'o1', cx:188, cy:308, dx:62, dy:33, tilt:-0.05, rx:25, ry:13, title:'Orchard Plot 1 (NW Hill)',  sub:'3×3 Streuobst circular beds · North-West hillside terrace'},
-  {id:'o2', cx:448, cy:312, dx:64, dy:33, tilt: 0.00, rx:25, ry:13, title:'Orchard Plot 2 (NE Hill)',  sub:'3×3 Streuobst circular beds · North-East hillside terrace'},
-  {id:'o3', cx:185, cy:460, dx:65, dy:34, tilt:-0.04, rx:28, ry:14.5, title:'Orchard Plot 3 (MW Slope)', sub:'3×3 Streuobst circular beds · Mid-West hillside terrace'},
-  {id:'o4', cx:462, cy:464, dx:66, dy:34, tilt: 0.00, rx:28, ry:14.5, title:'Orchard Plot 4 (ME Slope)', sub:'3×3 Streuobst circular beds · Mid-East hillside terrace'},
-  {id:'o5', cx:186, cy:598, dx:68, dy:36, tilt:-0.02, rx:30, ry:15.5, title:'Orchard Plot 5 (SW Meadow)',sub:'3×3 Streuobst circular beds · South-West meadow terrace'},
-  {id:'o6', cx:472, cy:602, dx:70, dy:36, tilt: 0.00, rx:30, ry:15.5, title:'Orchard Plot 6 (SE Meadow)',sub:'3×3 Streuobst circular beds · South-East meadow terrace'}
+  {id:'o1', cx:190, cy:288, dx:60, dy:30, tilt:-0.04, rx:25, ry:13, title:'Orchard Plot 1 (NW Hill)',  sub:'3×3 Streuobst circular beds · Upper-West hillside loam'},
+  {id:'o2', cx:460, cy:290, dx:64, dy:34, tilt: 0.01, rx:25, ry:13, title:'Orchard Plot 2 (NE Hill)',  sub:'3×3 Streuobst circular beds · Upper-East hillside loam (vertically stretched)'},
+  {id:'o3', cx:184, cy:428, dx:62, dy:32, tilt:-0.03, rx:27, ry:14, title:'Orchard Plot 3 (MW Slope)', sub:'3×3 Streuobst circular beds · Mid-West slope loam'},
+  {id:'o4', cx:488, cy:428, dx:66, dy:32, tilt: 0.01, rx:27, ry:14, title:'Orchard Plot 4 (ME Slope)', sub:'3×3 Streuobst circular beds · Mid-East slope loam (horizontally spaced)'},
+  {id:'o5', cx:184, cy:560, dx:64, dy:32, tilt:-0.02, rx:28, ry:14.5, title:'Orchard Plot 5 (SW Meadow)',sub:'3×3 Streuobst circular beds · Lower-West terrace loam'},
+  {id:'o6', cx:492, cy:560, dx:68, dy:32, tilt: 0.01, rx:28, ry:14.5, title:'Orchard Plot 6 (SE Meadow)',sub:'3×3 Streuobst circular beds · Lower-East terrace loam (horizontally spaced)'}
 ];
+
+/* 3x3 COMMERCIAL GRAPE VINEYARD ORCHARD: 9 Rectangular Beds x 12 Circular Vines = 108 Total Vines */
+const VINEYARD_BEDS = [
+  {id:'v0', cx:1600, cy:315, w:82, h:52, title:'Vineyard Bed #1 (Top-W)', r:0, c:0},
+  {id:'v1', cx:1695, cy:320, w:82, h:52, title:'Vineyard Bed #2 (Top-M)', r:0, c:1},
+  {id:'v2', cx:1790, cy:325, w:82, h:52, title:'Vineyard Bed #3 (Top-E)', r:0, c:2},
+  {id:'v3', cx:1615, cy:380, w:82, h:52, title:'Vineyard Bed #4 (Mid-W)', r:1, c:0},
+  {id:'v4', cx:1710, cy:385, w:82, h:52, title:'Vineyard Bed #5 (Center)', r:1, c:1},
+  {id:'v5', cx:1805, cy:390, w:82, h:52, title:'Vineyard Bed #6 (Mid-E)', r:1, c:2},
+  {id:'v6', cx:1630, cy:445, w:82, h:52, title:'Vineyard Bed #7 (Low-W)', r:2, c:0},
+  {id:'v7', cx:1725, cy:450, w:82, h:52, title:'Vineyard Bed #8 (Low-M)', r:2, c:1},
+  {id:'v8', cx:1820, cy:455, w:82, h:52, title:'Vineyard Bed #9 (Low-E)', r:2, c:2}
+];
+
+function makeVineBeds(){
+  return VINEYARD_BEDS.map(b => ({
+    id: b.id,
+    aerated: false,
+    vines: Array.from({length: 12}, (_, i) => ({ i, status: 'crust', species: null, progress: 0 }))
+  }));
+}
+
+/* 6 BAVARIAN & GERMAN HERITAGE GRAPE SPECIES */
+const GRAPE_SPECIES = {
+  silvaner: {
+    key:'silvaner', name:'Grüner Silvaner', de:'Franken Silvaner (1659)',
+    cost:35, o2:8, xp:15, icon:'🍇', leafColor:'#2E7D32', fruitColor:'#E8F5E9',
+    desc:'Franconian signature white grape since 1659. Deep limestone roots yield mineral, full-bodied white wine and fresh table juice.'
+  },
+  riesling: {
+    key:'riesling', name:'Klingelberger Riesling', de:'Weißer Riesling',
+    cost:40, o2:10, xp:18, icon:'🍇', leafColor:'#1B5E20', fruitColor:'#FFF9C4',
+    desc:'Sun-baked slate terrace classic. Vibrant acidity, delicate white peach and golden citrus notes for vintage Stuben carafes.'
+  },
+  muller: {
+    key:'muller', name:'Müller-Thurgau', de:'Rivaner',
+    cost:30, o2:7, xp:12, icon:'🍇', leafColor:'#388E3C', fruitColor:'#F1F8E9',
+    desc:'Bavarian early-harvest favorite. Floral elderflower and nutmeg bouquet, producing fresh autumn grape must and table wines.'
+  },
+  bacchus: {
+    key:'bacchus', name:'Bacchus', de:'Fränkischer Bacchus',
+    cost:32, o2:8, xp:14, icon:'🍇', leafColor:'#43A047', fruitColor:'#DCEDC8',
+    desc:'Fragrant Franconian specialty grape packed with cassis and vineyard peach aromas. Hardy and sun-responsive.'
+  },
+  spatburgunder: {
+    key:'spatburgunder', name:'Spätburgunder', de:'Pinot Noir',
+    cost:45, o2:12, xp:20, icon:'🍇', leafColor:'#1B5E20', fruitColor:'#880E4F',
+    desc:'The nobility of German red viticulture. Dense ruby-garnet clusters on steep southern slopes, paired with Gasthof roasts.'
+  },
+  dornfelder: {
+    key:'dornfelder', name:'Dornfelder', de:'Dornfelder Rotwein',
+    cost:38, o2:9, xp:16, icon:'🍇', leafColor:'#2E7D32', fruitColor:'#311B92',
+    desc:'Deep velvety midnight-purple clusters. Outstanding frost tolerance, supplying rich dark juice for the Hof-Mosterei.'
+  }
+};
 
 /* 16 CALIBRATED SITES MATCHING bavaria-bg-plan.jpg (with Wind Turbine Behind Cow Shed) */
 const SITES = [
@@ -262,8 +332,8 @@ const SITES = [
   {id:'juice',     x:1306, y:601, icon:'🧃', title:'Hof-Mosterei & Juice Bar',      sub:'Cold-Pressed Cider Press & Terrace',     cat:'trade',     color:'#FF7043', action:'juice'},
   {id:'restaurant',x:1588, y:670, icon:'🍽️', title:'Alpenhof Gasthof & Stuben',    sub:'Alpine Restaurant & Village Fountain',   cat:'trade',     color:'#EF5350', action:'restaurant'},
   {id:'gate',      x:1544, y:794, icon:'🚪', title:'Main Entrance Gate',            sub:'Carved Timber Arch · Willkommen',        cat:'infra',     color:'#B0BEC5', action:'gate'},
-  {id:'vineyard',  x:1707, y:420, icon:'🍇', title:'Grape Vineyard (2×2 Sections)', sub:'Sun-Facing Terraces · Riesling & Silvaner',cat:'fruit', color:'#7B1FA2', action:'vine'},
-  {id:'cattle',    x:1658, y:277, icon:'🐄', title:'Cattle Pasture Enclosure',      sub:'Hillside Post-&-Rail · Simmental Dairy', cat:'livestock', color:'#8D6E63', action:'cattle'},
+  {id:'vineyard',  x:1710, y:385, icon:'🍇', title:'Bavarian Heritage Vineyard',    sub:'3×3 Terraced Beds · 108 Estate Grapevines',cat:'fruit', color:'#7B1FA2', action:'vine'},
+  {id:'cattle',    x:1520, y:260, icon:'🐄', title:'Cattle Pasture Enclosure',      sub:'Hillside Post-&-Rail · Simmental Dairy', cat:'livestock', color:'#8D6E63', action:'cattle'},
   {id:'wind_w',    x:316,  y:156, icon:'🌬️', title:'Wind Turbine West',            sub:'High-Ridge Turbine · Forest Clearing',   cat:'energy',    color:'#00E5FF', action:'wind'},
   {id:'wind_e',    x:1830, y:130, icon:'🌬️', title:'Wind Turbine East',            sub:'Alpine Ridge Turbine Behind Cow Shed',   cat:'energy',    color:'#00E5FF', action:'wind'}
 ];
@@ -282,6 +352,7 @@ const state = {
   money: 3200, o2: 4500, xp: 50, workers: 0, hired: [], bess: 150, chapter: 1,
   surveyed: {}, built: {}, zoom: 1.0, panX: 0, panY: 0,
   orchards: Object.fromEntries(ORCHARD_PLOTS.map(p => [p.id, {beds: makeBeds(), aerated: 0}])),
+  vineyard: { beds: makeVineBeds(), currentBed: 0, harvested: 0 },
   catXP: {oxygen: 15, fruit: 10, biodiversity: 8, veg: 6, flower: 5},
   labourPool: [
     {id:'hans',  name:'Hans Weber',     role:'Master Orchardist', cost:120, skill:'fruit', icon:'🧑‍🌾'},
@@ -805,10 +876,10 @@ function drawRoadNetwork(ctx){
     [[990, 560], [1160, 560], [1282, 550], [1480, 630], [1588, 675]],
     // 4. North Ridge Track: Barn to BESS & West Wind Turbine
     [[933, 270], [820, 240], [710, 226], [480, 190], [316, 170]],
-    // 5. East Mountain Ridge Track: Stuben past Cattle Paddock to East Turbine Behind Cow Shed
-    [[1588, 675], [1660, 480], [1680, 340], [1760, 200], [1830, 140]],
+    // 5. East Mountain Ridge Track: Stuben around Vineyard & Cattle Paddock to East Turbine Behind Cow Shed
+    [[1588, 675], [1680, 520], [1850, 470], [1860, 270], [1830, 140]],
     // 6. Western Orchard Terrace connector
-    [[330, 650], [330, 490], [330, 330]]
+    [[330, 650], [330, 430], [330, 280]]
   ];
 
   roadSegments.forEach(pts => {
@@ -999,132 +1070,185 @@ function drawFarmBarn(ctx, cx, cy, built){
   ctx.restore();
 }
 
-/* 3. Authentic 3D Isometric Simmental Cattle Pasture at (1658, 277) based on index.html */
-function drawCattlePasture(ctx, cx, cy, built){
+/* Helper: Authentic Volumetric Simmental Cattle (Fleckvieh) from index.html */
+function drawSimmentalCow(ctx, cx, cy, scale, hasBell){
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.globalAlpha = built ? 1 : 0.55;
+  ctx.scale(scale, scale);
 
-  const pad = [[-140, -60], [140, -75], [160, 60], [-120, 75]];
+  // Ground shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.24)'; ctx.beginPath(); ctx.ellipse(2, 14, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
+  // Far legs (darker depth)
+  ctx.fillStyle = '#795548';
+  ctx.fillRect(-12, 4, 4, 10); ctx.fillRect(8, 4, 4, 10);
+  ctx.fillStyle = '#212121'; ctx.fillRect(-12, 12, 4, 2.5); ctx.fillRect(8, 12, 4, 2.5); // Cloven hooves
+  // Udder
+  ctx.fillStyle = '#FFCDD2'; ctx.beginPath(); ctx.ellipse(-2, 8, 5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#F48FB1'; ctx.fillRect(-3, 11, 1.4, 2.5); ctx.fillRect(0, 11, 1.4, 2.5);
+  // Volumetric 3D Barrel Torso: Golden-Tan & White Fleckvieh
+  ctx.fillStyle = '#A1887F';
+  ctx.beginPath(); ctx.ellipse(0, 2, 18, 11, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#D7CCC8';
+  ctx.beginPath(); ctx.ellipse(2, 2, 17, 10, 0, 0, Math.PI * 2); ctx.fill();
+  // Characteristic Simmental Red/Tan Patches
+  ctx.fillStyle = '#8D6E63';
+  ctx.beginPath(); ctx.ellipse(-6, 0, 8, 6, 0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(6, 1, 7, 5, -0.2, 0, Math.PI * 2); ctx.fill();
+  // Near legs (lighter)
+  ctx.fillStyle = '#D7CCC8'; ctx.fillRect(-9, 5, 4, 10); ctx.fillRect(11, 5, 4, 10);
+  ctx.fillStyle = '#212121'; ctx.fillRect(-9, 13, 4, 2.5); ctx.fillRect(11, 13, 4, 2.5);
+  // Tail with white tuft
+  ctx.strokeStyle = '#D7CCC8'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(-16, 0); ctx.quadraticCurveTo(-22, 6, -20, 12); ctx.stroke();
+  ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(-20, 12.5, 2, 0, Math.PI * 2); ctx.fill();
 
-  // 1. Lush Mountain Pasture Meadow Base
-  const g = ctx.createLinearGradient(0, -75, 0, 75);
-  g.addColorStop(0, '#C5E1A5'); g.addColorStop(0.5, '#9CCC65'); g.addColorStop(1, '#558B2F');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(pad[0][0], pad[0][1]); ctx.lineTo(pad[1][0], pad[1][1]);
-  ctx.lineTo(pad[2][0], pad[2][1]); ctx.lineTo(pad[3][0], pad[3][1]);
-  ctx.closePath(); ctx.fill();
-
-  // 2. Open Alpine Timber Stall Shed (Almhütte Shelter) at back of paddock
-  isoBox(ctx, -55, -45, 54, 24, 20, '#5D4037', '#4E342E', '#3E2723');
-  isoRoof(ctx, -55, -65, 60, 28, 0, 12, '#6D4C41', '#4E342E', '#5D4037');
-  // Straw Bedding & Feed Manger inside shed
-  ctx.fillStyle = '#FFFDE7'; ctx.fillRect(-70, -42, 30, 8);
-  ctx.fillStyle = '#FFE082'; for(let s = -68; s < -42; s += 4) ctx.fillRect(s, -40, 2, 6);
-  // Hollowed Stone Water Trough
-  ctx.fillStyle = '#78909C'; ctx.beginPath(); ctx.ellipse(-24, -36, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#00E5FF'; ctx.beginPath(); ctx.ellipse(-24, -37, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
-
-  // 3. Post-and-Rail Rustic Wooden Paddock Fence
-  const posts = [];
-  for(let s = 0; s < 4; s++){
-    const a = pad[s], b = pad[(s + 1) % 4];
-    const n = s % 2 === 0 ? 7 : 5;
-    for(let i = 0; i < n; i++){
-      const t = i / (n - 1);
-      posts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
-    }
-  }
-
-  posts.forEach(p => {
-    ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(p[0] - 2, p[1] + 2, 7, 4);
-    ctx.fillStyle = '#4E342E'; ctx.fillRect(p[0] - 3, p[1] - 22, 6, 24);
-    ctx.fillStyle = '#8D6E63'; ctx.fillRect(p[0] - 4, p[1] - 24, 8, 3.5);
-  });
-
-  ctx.strokeStyle = '#6D4C41'; ctx.lineWidth = 2.4;
-  for(let r = 0; r < 2; r++){
-    ctx.beginPath();
-    posts.forEach((p, i) => {
-      const yy = p[1] - 17 + r * 9;
-      i === 0 ? ctx.moveTo(p[0], yy) : ctx.lineTo(p[0], yy);
-    });
-    ctx.closePath(); ctx.stroke();
-  }
-
-  // 4. Authentic 3D Volumetric Simmental Cattle (Fleckvieh) & Sheep from index.html
-  if (built) {
-    // COW 1: Grazing Adult Simmental with Golden Bell
-    ctx.save();
-    ctx.translate(-15, 6);
-    // Ground shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.24)'; ctx.beginPath(); ctx.ellipse(2, 14, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
-    // Far legs (darker depth)
-    ctx.fillStyle = '#795548';
-    ctx.fillRect(-12, 4, 4, 10); ctx.fillRect(8, 4, 4, 10);
-    ctx.fillStyle = '#212121'; ctx.fillRect(-12, 12, 4, 2.5); ctx.fillRect(8, 12, 4, 2.5); // Cloven hooves
-    // Udder
-    ctx.fillStyle = '#FFCDD2'; ctx.beginPath(); ctx.ellipse(-2, 8, 5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#F48FB1'; ctx.fillRect(-3, 11, 1.4, 2.5); ctx.fillRect(0, 11, 1.4, 2.5);
-    // Volumetric 3D Barrel Torso: Golden-Tan & White Fleckvieh
-    ctx.fillStyle = '#A1887F';
-    ctx.beginPath(); ctx.ellipse(0, 2, 18, 11, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#D7CCC8';
-    ctx.beginPath(); ctx.ellipse(2, 2, 17, 10, 0, 0, Math.PI * 2); ctx.fill();
-    // Characteristic Simmental Red/Tan Patches
-    ctx.fillStyle = '#8D6E63';
-    ctx.beginPath(); ctx.ellipse(-6, 0, 8, 6, 0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(6, 1, 7, 5, -0.2, 0, Math.PI * 2); ctx.fill();
-    // Near legs (lighter)
-    ctx.fillStyle = '#D7CCC8'; ctx.fillRect(-9, 5, 4, 10); ctx.fillRect(11, 5, 4, 10);
-    ctx.fillStyle = '#212121'; ctx.fillRect(-9, 13, 4, 2.5); ctx.fillRect(11, 13, 4, 2.5);
-    // Tail with white tuft
-    ctx.strokeStyle = '#D7CCC8'; ctx.lineWidth = 1.8;
-    ctx.beginPath(); ctx.moveTo(-16, 0); ctx.quadraticCurveTo(-22, 6, -20, 12); ctx.stroke();
-    ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(-20, 12.5, 2, 0, Math.PI * 2); ctx.fill();
+  if (hasBell) {
     // Embroidered Leather Collar & Golden Brass Bavarian Cowbell
     ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 2.4;
     ctx.beginPath(); ctx.moveTo(13, 1); ctx.lineTo(15, 8); ctx.stroke();
     ctx.fillStyle = '#FFB300';
     ctx.beginPath(); ctx.moveTo(13, 7); ctx.lineTo(17, 7); ctx.lineTo(18, 12); ctx.lineTo(12, 12); ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#BF360C'; ctx.beginPath(); ctx.arc(15, 12, 1, 0, Math.PI * 2); ctx.fill(); // Clapper
-    // 3D Head: White face, ivory horns, pink muzzle, cud chewing
-    ctx.fillStyle = '#FAFAFA'; ctx.beginPath(); ctx.ellipse(19, 1, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#8D6E63'; ctx.beginPath(); ctx.arc(18, -2, 3.5, 0, Math.PI * 2); ctx.fill();
-    // Horns
-    ctx.strokeStyle = '#FFE082'; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.moveTo(17, -4); ctx.quadraticCurveTo(19, -9, 22, -7); ctx.stroke();
-    // Muzzle & straw sprig
-    ctx.fillStyle = '#FFCDD2'; ctx.beginPath(); ctx.ellipse(24, 3, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#37474F'; ctx.beginPath(); ctx.arc(24, 2.5, 0.7, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // 3D Head: White face, ivory horns, pink muzzle, cud chewing
+  ctx.fillStyle = '#FAFAFA'; ctx.beginPath(); ctx.ellipse(19, 1, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#8D6E63'; ctx.beginPath(); ctx.arc(18, -2, 3.5, 0, Math.PI * 2); ctx.fill();
+  // Horns
+  ctx.strokeStyle = '#FFE082'; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(17, -4); ctx.quadraticCurveTo(19, -9, 22, -7); ctx.stroke();
+  // Muzzle & straw sprig
+  ctx.fillStyle = '#FFCDD2'; ctx.beginPath(); ctx.ellipse(24, 3, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#37474F'; ctx.beginPath(); ctx.arc(24, 2.5, 0.7, 0, Math.PI * 2); ctx.fill();
+  if (hasBell) {
     ctx.strokeStyle = '#FFE082'; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(25, 4); ctx.lineTo(29, 6); ctx.stroke();
-    ctx.restore();
+  }
+  ctx.restore();
+}
 
-    // COW 2: Grazing Young Simmental in Meadow
-    ctx.save();
-    ctx.translate(55, 20);
-    ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(0, 12, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#D7CCC8'; ctx.beginPath(); ctx.ellipse(0, 0, 14, 8, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#8D6E63'; ctx.beginPath(); ctx.ellipse(-2, -1, 7, 5, 0.4, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FAFAFA'; ctx.beginPath(); ctx.arc(13, 2, 5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FFCDD2'; ctx.beginPath(); ctx.arc(17, 3, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#795548'; ctx.fillRect(-8, 3, 3, 9); ctx.fillRect(6, 3, 3, 9);
-    ctx.restore();
+function drawSimmentalCalf(ctx, cx, cy){
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(0, 10, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#D7CCC8'; ctx.beginPath(); ctx.ellipse(0, 0, 11, 6.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#8D6E63'; ctx.beginPath(); ctx.ellipse(-2, -1, 5, 4, 0.4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#FAFAFA'; ctx.beginPath(); ctx.arc(10, 1, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#FFCDD2'; ctx.beginPath(); ctx.arc(13, 2, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#795548'; ctx.fillRect(-6, 2, 2.5, 7); ctx.fillRect(4, 2, 2.5, 7);
+  ctx.restore();
+}
 
-    // SHEEP: Grazing Fluffy Mountain Sheep
-    ctx.save();
-    ctx.translate(-70, 24);
-    ctx.fillStyle = 'rgba(0,0,0,0.20)'; ctx.beginPath(); ctx.ellipse(0, 8, 12, 4.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#E0E0E0'; ctx.beginPath(); ctx.ellipse(0, 0, 11, 7.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FFFFFF';
+function drawPastureSheep(ctx, cx, cy){
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.fillStyle = 'rgba(0,0,0,0.20)'; ctx.beginPath(); ctx.ellipse(0, 8, 12, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#E0E0E0'; ctx.beginPath(); ctx.ellipse(0, 0, 11, 7.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.arc(-5, -2, 5, 0, Math.PI * 2); ctx.arc(2, -3, 6, 0, Math.PI * 2); ctx.arc(6, 0, 5, 0, Math.PI * 2);
+  ctx.arc(-4, 2, 5, 0, Math.PI * 2); ctx.arc(3, 3, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.ellipse(10, 0, 4, 3, 0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#212121'; ctx.fillRect(-6, 3, 2, 6); ctx.fillRect(4, 3, 2, 6);
+  ctx.restore();
+}
+
+/* 3. Hillside-Stretched Simmental Cattle Pasture: Curve + 4 Straight Edges */
+function drawCattlePasture(ctx, cx, cy, built){
+  ctx.save();
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  // Generate upper hillside curve from (1840, 160) to (1150, 230)
+  const curvePts = [];
+  for(let t = 0; t <= 1; t += 0.05){
+    const p0x = 1840, p0y = 160;
+    const p1x = 1500, p1y = 195;
+    const p2x = 1150, p2y = 230;
+    const px = (1-t)*(1-t)*p0x + 2*(1-t)*t*p1x + t*t*p2x;
+    const py = (1-t)*(1-t)*p0y + 2*(1-t)*t*p1y + t*t*p2y;
+    curvePts.push([px, py]);
+  }
+
+  // Mixed shape: curve on top + 4 straight edges covering slope towards farm shed
+  const poly = [
+    ...curvePts,
+    [1210, 350], // Edge 1: downhill towards farm shed
+    [1560, 300], // Edge 2: along lower slope
+    [1850, 240], // Edge 3: rising southeast
+    [1840, 160]  // Edge 4: closing to ridge
+  ];
+
+  // 1. Lush Mountain Pasture Meadow Base
+  const g = ctx.createLinearGradient(1500, 160, 1500, 350);
+  g.addColorStop(0, '#C5E1A5'); g.addColorStop(0.5, '#9CCC65'); g.addColorStop(1, '#558B2F');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  poly.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
+  ctx.closePath();
+  ctx.fill();
+
+  // Subtle Clover & Wildflower Specks
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  const flowerOffsets = [[1250, 300], [1340, 270], [1450, 230], [1580, 260], [1700, 220], [1780, 200], [1400, 310], [1520, 280], [1650, 270]];
+  flowerOffsets.forEach(fp => {
+    ctx.fillRect(fp[0], fp[1], 2, 2);
+    ctx.fillRect(fp[0] + 5, fp[1] + 3, 2, 2);
+  });
+
+  // 2. Open Alpine Timber Stall Shed (Almhütte Shelter) at (1680, 185)
+  isoBox(ctx, 1680, 185, 54, 24, 20, '#5D4037', '#4E342E', '#3E2723');
+  isoRoof(ctx, 1680, 165, 60, 28, 0, 12, '#6D4C41', '#4E342E', '#5D4037');
+  // Straw Bedding & Feed Manger inside shed
+  ctx.fillStyle = '#FFFDE7'; ctx.fillRect(1665, 188, 30, 8);
+  ctx.fillStyle = '#FFE082'; for(let s = 1667; s < 1693; s += 4) ctx.fillRect(s, 190, 2, 6);
+  // Hollowed Stone Water Trough at (1640, 205)
+  ctx.fillStyle = '#78909C'; ctx.beginPath(); ctx.ellipse(1640, 205, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#00E5FF'; ctx.beginPath(); ctx.ellipse(1640, 204, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
+  // Mineral Salt Lick Block at (1420, 260)
+  isoBox(ctx, 1420, 260, 10, 8, 8, '#ECEFF1', '#CFD8DC', '#B0BEC5');
+
+  // 3. Post-and-Rail Rustic Wooden Paddock Fence along Curve and Edges
+  const posts = [];
+  for(let i = 0; i < poly.length - 1; i++){
+    const pA = poly[i], pB = poly[i + 1];
+    const dist = Math.hypot(pB[0] - pA[0], pB[1] - pA[1]);
+    const num = Math.max(1, Math.round(dist / 32));
+    for(let k = 0; k < num; k++){
+      const t = k / num;
+      posts.push([pA[0] + (pB[0] - pA[0]) * t, pA[1] + (pB[1] - pA[1]) * t]);
+    }
+  }
+
+  // Draw 3D Wooden Posts
+  posts.forEach(p => {
+    ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(p[0] - 2, p[1] + 2, 6, 4);
+    ctx.fillStyle = '#4E342E'; ctx.fillRect(p[0] - 3, p[1] - 20, 5, 22);
+    ctx.fillStyle = '#8D6E63'; ctx.fillRect(p[0] - 3.5, p[1] - 22, 6, 3);
+  });
+
+  // Double Horizontal Rails
+  ctx.strokeStyle = '#6D4C41'; ctx.lineWidth = 2.0;
+  for(let r = 0; r < 2; r++){
     ctx.beginPath();
-    ctx.arc(-5, -2, 5, 0, Math.PI * 2); ctx.arc(2, -3, 6, 0, Math.PI * 2); ctx.arc(6, 0, 5, 0, Math.PI * 2);
-    ctx.arc(-4, 2, 5, 0, Math.PI * 2); ctx.arc(3, 3, 5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.ellipse(10, 0, 4, 3, 0.2, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#212121'; ctx.fillRect(-6, 3, 2, 6); ctx.fillRect(4, 3, 2, 6);
-    ctx.restore();
+    posts.forEach((p, idx) => {
+      const yy = p[1] - 15 + r * 7;
+      idx === 0 ? ctx.moveTo(p[0], yy) : ctx.lineTo(p[0], yy);
+    });
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // 4. Volumetric Simmental Cattle, Calves & Sheep
+  if (built) {
+    // COW 1: Grazing Adult Simmental with Golden Brass Cowbell
+    drawSimmentalCow(ctx, 1610, 245, 1.0, true);
+    // COW 2: Young Simmental Heifer
+    drawSimmentalCow(ctx, 1480, 255, 0.82, false);
+    // CALF: Simmental Calf
+    drawSimmentalCalf(ctx, 1530, 280);
+    // SHEEP 1 & 2
+    drawPastureSheep(ctx, 1380, 280);
+    drawPastureSheep(ctx, 1290, 295);
   }
 
   ctx.restore();
@@ -1382,19 +1506,115 @@ function drawBessStorage(ctx, cx, cy, built){
   ctx.restore();
 }
 
-/* 13. Grape Vineyard Terraces at (1707, 420) */
-function drawVineyardTerraces(ctx, cx, cy, built){
+/* 13. Commercial 3x3 Grape Vineyard: 9 Rectangular Beds x 12 Circular Vines = 108 Total Vines */
+function drawVineyard(ctx, time, built){
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.globalAlpha = built ? 1 : 0.55;
+  ctx.globalAlpha = built ? 1 : 0.50;
 
-  for(let r = 0; r < 2; r++) for(let c = 0; c < 2; c++){
-    const px = -44 + c * 52, py = -14 + r * 38;
-    isoBox(ctx, px, py, 46, 20, 8, '#78909C', '#607D8B', '#455A64');
-    if (built) {
-      drawTree3D(ctx, px, py - 4, 'riesling', 3);
+  VINEYARD_BEDS.forEach((b, bIdx) => {
+    const vBed = state.vineyard.beds[bIdx];
+    const {cx, cy, w, h} = b;
+    const hw = w / 2, hh = h / 2;
+
+    // 1. Terrace Base Stone / Timber Frame
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + hh + 2, hw + 4, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Terrace bed polygon with downhill perspective tilt
+    ctx.fillStyle = vBed.aerated ? '#4E342E' : '#3E2723';
+    ctx.strokeStyle = '#D7CCC8';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(cx - hw, cy - hh);
+    ctx.lineTo(cx + hw, cy - hh - 5);
+    ctx.lineTo(cx + hw - 4, cy + hh - 5);
+    ctx.lineTo(cx - hw - 4, cy + hh);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner Loam Bed Pit
+    ctx.fillStyle = vBed.aerated ? '#2D1E18' : '#3E2723';
+    ctx.beginPath();
+    ctx.moveTo(cx - hw + 4, cy - hh + 3);
+    ctx.lineTo(cx + hw - 4, cy - hh - 2);
+    ctx.lineTo(cx + hw - 7, cy + hh - 7);
+    ctx.lineTo(cx - hw - 1, cy + hh - 3);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. 3x4 = 12 Circular Vine Planting Positions
+    for(let vr = 0; vr < 3; vr++){
+      for(let vc = 0; vc < 4; vc++){
+        const vineIdx = vr * 4 + vc;
+        const v = vBed.vines[vineIdx];
+        const vx = cx - hw + 10 + vc * (w - 20) / 3;
+        const vy = cy - hh + 9 + vr * (h - 18) / 2 - vc * 1.5;
+
+        // Circular planting rim
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.beginPath(); ctx.ellipse(vx, vy + 2, 4.5, 2.8, 0, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = v.status === 'crust' ? '#4E342E' : '#1F1610';
+        ctx.beginPath(); ctx.ellipse(vx, vy, 4, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+
+        if (v.status === 'crust') {
+          // Hard crust fissures
+          ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 0.8;
+          ctx.beginPath(); ctx.moveTo(vx - 2, vy); ctx.lineTo(vx + 2, vy); ctx.stroke();
+        } else if (v.status === 'empty') {
+          // Aerated pit with wooden planting stake
+          ctx.fillStyle = '#8D6E63';
+          ctx.fillRect(vx - 0.8, vy - 9, 1.6, 9);
+        } else if (v.species) {
+          const sp = GRAPE_SPECIES[v.species] || GRAPE_SPECIES.silvaner;
+          // Wooden vertical vine stake
+          ctx.fillStyle = '#6D4C41';
+          ctx.fillRect(vx - 0.9, vy - 13, 1.8, 13);
+          // Horizontal trellis wire
+          ctx.strokeStyle = '#9E9E9E'; ctx.lineWidth = 0.8;
+          ctx.beginPath(); ctx.moveTo(vx - 5, vy - 8); ctx.lineTo(vx + 5, vy - 8); ctx.stroke();
+
+          if (v.status === 'sprout') {
+            ctx.fillStyle = '#66BB6A';
+            ctx.beginPath(); ctx.arc(vx, vy - 4, 2.2, 0, Math.PI * 2); ctx.fill();
+          } else if (v.status === 'trellised') {
+            ctx.strokeStyle = '#4E342E'; ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(vx + 1, vy - 9); ctx.stroke();
+            ctx.fillStyle = sp.leafColor;
+            ctx.beginPath();
+            ctx.arc(vx - 2, vy - 9, 2.8, 0, Math.PI * 2);
+            ctx.arc(vx + 2, vy - 7, 2.6, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (v.status === 'mature') {
+            ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 1.4;
+            ctx.beginPath(); ctx.moveTo(vx, vy); ctx.bezierCurveTo(vx-2, vy-5, vx+2, vy-9, vx, vy-12); ctx.stroke();
+            ctx.fillStyle = sp.leafColor;
+            ctx.beginPath();
+            ctx.arc(vx - 3, vy - 11, 3.8, 0, Math.PI * 2);
+            ctx.arc(vx + 3, vy - 10, 3.6, 0, Math.PI * 2);
+            ctx.arc(vx, vy - 13, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+            // Hanging Teardrop Grape Bunch
+            ctx.fillStyle = sp.fruitColor;
+            ctx.beginPath();
+            ctx.moveTo(vx - 1.8, vy - 6);
+            ctx.lineTo(vx + 1.8, vy - 6);
+            ctx.lineTo(vx, vy - 1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.fillRect(vx - 0.8, vy - 5, 1, 1);
+          }
+        }
+      }
     }
-  }
+
+    ctx.restore();
+  });
 
   ctx.restore();
 }
@@ -1526,8 +1746,24 @@ const AlpenMap = {
 
   onClick(e){
     const {cx, cy} = this.worldFromEvent(e);
+
+    // Direct click on any of the 9 Vineyard Beds
+    for(let bi = 0; bi < VINEYARD_BEDS.length; bi++){
+      const vb = VINEYARD_BEDS[bi];
+      if (Math.abs(cx - vb.cx) < vb.w / 2 + 6 && Math.abs(cy - vb.cy) < vb.h / 2 + 6){
+        openVineyardModal(bi);
+        return;
+      }
+    }
+
+    // Direct click on Cattle Pasture area
+    if (Math.hypot(cx - 1520, cy - 260) < 160) {
+      const catSite = SITES.find(s => s.id === 'cattle');
+      if (catSite) { this.handle(catSite); return; }
+    }
+
     for(const s of SITES){
-      const radius = s.action === 'cattle' || s.action === 'pond' ? 98 : 58;
+      const radius = s.action === 'pond' ? 98 : s.action === 'vine' ? 90 : 58;
       if (Math.hypot(cx - s.x, cy - s.y) < radius){
         this.handle(s);
         return;
@@ -1581,7 +1817,7 @@ const AlpenMap = {
       else if (s.action === 'veg') drawVegGarden4Part(ctx, s.x, s.y, built);
       else if (s.action === 'crop') drawCropField2x2(ctx, s.x, s.y, built, this.time);
       else if (s.action === 'flower') drawFlowerTerraces(ctx, s.x, s.y, built, s.id === 'flower_e');
-      else if (s.action === 'vine') drawVineyardTerraces(ctx, s.x, s.y, built);
+      else if (s.action === 'vine') drawVineyard(ctx, this.time, built);
       else if (s.action === 'gate') drawMainGate(ctx, s.x, s.y, built);
       else if (s.action === 'restaurant') drawGasthofStuben(ctx, s.x, s.y, built, this.time);
       else if (s.action === 'juice') drawJuiceBar(ctx, s.x, s.y, built);
@@ -1621,6 +1857,14 @@ function openSiteModal(s){
   if (s.action === 'orchard') {
     openOrchardModal(s);
     return;
+  }
+  if (s.action === 'vine') {
+    if (!state.built['vineyard']) {
+      // Allow building or inspecting
+    } else {
+      openVineyardModal(0);
+      return;
+    }
   }
 
   const built = !!state.built[s.id];
@@ -1682,6 +1926,209 @@ window.switchWhyTab = function(btn, mode){
   } else {
     box.innerHTML = '<b>Bavarian Heritage & Engineering:</b> Streuobstwiesen (meadow orchards) have been preserved in Bavaria for over 500 years. Combining traditional timber architecture with modern BESS storage unites regional culture with sustainability.';
   }
+};
+
+/* ================= COMMERCIAL 3x3 VINEYARD (108 VINES) MODAL & CARE ================= */
+function openVineyardModal(bedIndex){
+  if (typeof bedIndex === 'number') state.vineyard.currentBed = bedIndex;
+  const currentBedIdx = state.vineyard.currentBed || 0;
+  const bDef = VINEYARD_BEDS[currentBedIdx];
+  const bState = state.vineyard.beds[currentBedIdx];
+
+  let h = '<div class="modal-hdr"><h3>🍇 Bavarian Heritage Vineyard · Bed #' + (currentBedIdx + 1) + ' / 9</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  h += '<p style="font-size:0.80rem;color:#A5D6A7;margin-bottom:10px">Commercial 3×3 Vineyard Terrace: <b>9 Beds · 12 Vines/Bed · 108 Estate Vines Total</b>. Aerate bedrock loam, plant Franconian heritage varieties, train trellises, and harvest for the Stuben & Mosterei.</p>';
+
+  // Bed Navigation Tabs (1 to 9)
+  h += '<div style="display:flex;gap:4px;overflow-x:auto;padding-bottom:8px;margin-bottom:10px">';
+  VINEYARD_BEDS.forEach((b, idx) => {
+    const active = idx === currentBedIdx;
+    const vCount = state.vineyard.beds[idx].vines.filter(v => v.species).length;
+    h += '<button class="bed-nav-btn ' + (active ? 'active' : '') + '" onclick="openVineyardModal(' + idx + ')">' +
+         'Bed ' + (idx + 1) + ' <span style="font-size:0.68rem;opacity:.8">(' + vCount + '/12)</span></button>';
+  });
+  h += '</div>';
+
+  // Current Bed Status Card
+  const crusts = bState.vines.filter(v => v.status === 'crust').length;
+  const ready = bState.vines.filter(v => v.status === 'empty').length;
+  const planted = bState.vines.filter(v => v.species).length;
+  const mature = bState.vines.filter(v => v.status === 'mature').length;
+
+  h += '<div class="card-box" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">' +
+       '<div><b>' + bDef.title + '</b><div style="font-size:0.75rem;color:#B0BEC5">' +
+         (bState.aerated ? '✓ Loam Tilth Aerated' : '🪨 Hard Bedrock Crust') + ' · ' + planted + '/12 Planted · ' + mature + ' Mature</div></div>' +
+       '<div>' + (bState.aerated ? '<span style="color:var(--teal);font-size:0.8rem">🌱 Active Terrace</span>' : '<span style="color:var(--gold);font-size:0.8rem">⚠️ Crust Intact</span>') + '</div>' +
+       '</div>';
+
+  // 3x4 Grid of 12 Vines
+  h += '<div class="grid-4" style="margin-bottom:12px">';
+  bState.vines.forEach((v, vi) => {
+    let lbl = '🪨 Crust', cls = '';
+    if (v.status === 'empty') { lbl = '⛏️ Ready'; cls = 'open'; }
+    else if (v.species) {
+      const sp = GRAPE_SPECIES[v.species] || GRAPE_SPECIES.silvaner;
+      lbl = sp.icon + ' ' + (v.status === 'mature' ? 'Fruiting' : v.status === 'trellised' ? 'Trellis' : 'Sprout');
+      cls = v.status === 'mature' ? 'mature' : 'planted';
+    }
+    h += '<div class="vine-cell ' + cls + '" onclick="selectVineHole(' + currentBedIdx + ',' + vi + ')">' +
+         '<b>#' + (vi + 1) + '</b><br/>' + lbl + '</div>';
+  });
+  h += '</div>';
+
+  // Bed Action Buttons
+  if (crusts > 0) {
+    h += '<button class="btn btn-a" style="width:100%;margin-bottom:8px" onclick="aerateVineBed(' + currentBedIdx + ')">⛏️ Aerate all 12 vine pits (€35)</button>';
+  }
+
+  if (ready > 0) {
+    h += '<button class="btn btn-g" style="width:100%;margin-bottom:8px" onclick="openUniformPlantModal(' + currentBedIdx + ')">🍇 Plant All ' + ready + ' Ready Holes with Variety</button>';
+  }
+
+  if (planted > 0) {
+    h += '<button class="btn btn-c" style="width:100%;margin-bottom:8px" onclick="careVineBed(' + currentBedIdx + ')">✂️ Rebschnitt & Spalierbindung (Trellis Training & Pruning, +15 XP)</button>';
+  }
+
+  if (mature > 0) {
+    h += '<button class="btn btn-g" style="width:100%;margin-bottom:8px;background:var(--amber);color:#1A1200" onclick="harvestVineBed(' + currentBedIdx + ')">🍷 Traubenlese (Harvest ' + mature + ' Mature Vines · +€120 + 30 O₂)</button>';
+  }
+
+  // Educational Viticulture Card
+  h += '<div class="why-card" style="margin-top:10px">' +
+       '<b>Bavarian Viticulture & Franconian Terroir</b>' +
+       '<div class="recall-box"><b>Recalling Polyculture & Scaling:</b> Since 1659, Franconian vintners in Upper Bavaria adapted Riesling and Silvaner to steep sunny terraces. High-density 12-hole planting teaches commercial estate scaling for direct juice bar pressing and restaurant carafes.</div>' +
+       '<p style="font-size:0.76rem;color:#C8E6C9;margin-top:4px">Traditional winter spur pruning (<i>Rebschnitt</i>) concentrates sugar, while willow-tied stakes (<i>Spalier</i>) maximize mountain sun exposure.</p>' +
+       '</div>';
+
+  openModal(h, true);
+}
+
+window.selectVineHole = function(bedIdx, vineIdx){
+  const vine = state.vineyard.beds[bedIdx].vines[vineIdx];
+  if (vine.status === 'crust') { toast('Aerate this bed first with the spade'); return; }
+  if (vine.species) {
+    const sp = GRAPE_SPECIES[vine.species] || GRAPE_SPECIES.silvaner;
+    toast(sp.name + ' · Growth: ' + vine.status.toUpperCase() + ' · ' + sp.de);
+    return;
+  }
+
+  let h = '<div class="modal-hdr"><h3>🍇 Plant Vine #' + (vineIdx + 1) + ' · Bed #' + (bedIdx + 1) + '</h3><button class="btn-close" onclick="openVineyardModal(' + bedIdx + ')">←</button></div>';
+  h += '<p style="font-size:0.80rem;color:#A5D6A7;margin-bottom:10px">Select one Bavarian/German heritage grape variety for this circular vine spot.</p><div class="grid-2">';
+
+  Object.keys(GRAPE_SPECIES).forEach(k => {
+    const sp = GRAPE_SPECIES[k];
+    h += '<button class="btn btn-c" style="text-align:left;padding:8px 12px" onclick="plantVineHole(' + bedIdx + ',' + vineIdx + ',\'' + k + '\')">' +
+         sp.icon + ' <b>' + sp.name + '</b> (€' + sp.cost + ')<br/>' +
+         '<span style="font-size:0.72rem;opacity:.88">' + sp.de + ' (+ ' + sp.o2 + ' O₂)</span></button>';
+  });
+  h += '</div>';
+  openModal(h, true);
+};
+
+window.openUniformPlantModal = function(bedIdx){
+  let h = '<div class="modal-hdr"><h3>🍇 Plant Bed #' + (bedIdx + 1) + ' Uniform Variety</h3><button class="btn-close" onclick="openVineyardModal(' + bedIdx + ')">←</button></div>';
+  h += '<p style="font-size:0.80rem;color:#A5D6A7;margin-bottom:10px">Select variety to plant across all available ready holes in this bed.</p><div class="grid-2">';
+
+  Object.keys(GRAPE_SPECIES).forEach(k => {
+    const sp = GRAPE_SPECIES[k];
+    h += '<button class="btn btn-g" style="text-align:left;padding:8px 12px" onclick="plantUniformBed(' + bedIdx + ',\'' + k + '\')">' +
+         sp.icon + ' <b>' + sp.name + '</b> (€' + sp.cost + '/vine)<br/>' +
+         '<span style="font-size:0.72rem;opacity:.88">' + sp.de + ' (+ ' + sp.o2 + ' O₂)</span></button>';
+  });
+  h += '</div>';
+  openModal(h, true);
+};
+
+window.plantVineHole = function(bedIdx, vineIdx, spKey){
+  const sp = GRAPE_SPECIES[spKey];
+  if (!sp) return;
+  if (state.money < sp.cost) { toast('Need €' + sp.cost + ' for grape vine cutting'); return; }
+  const vine = state.vineyard.beds[bedIdx].vines[vineIdx];
+  if (vine.species) { toast('Spot already planted'); return; }
+  if (vine.status === 'crust') { toast('Aerate crust first'); return; }
+
+  state.money -= sp.cost;
+  vine.species = spKey;
+  vine.status = 'sprout';
+  vine.progress = 0;
+  grantXP({fruit: sp.xp, oxygen: sp.o2});
+  toast('Planted ' + sp.name + '! Emerging green vine shoot');
+  renderScoreboard();
+  openVineyardModal(bedIdx);
+};
+
+window.plantUniformBed = function(bedIdx, spKey){
+  const sp = GRAPE_SPECIES[spKey];
+  if (!sp) return;
+  const bed = state.vineyard.beds[bedIdx];
+  const readyHoles = bed.vines.filter(v => v.status === 'empty' && !v.species);
+  if (readyHoles.length === 0) { toast('No ready holes in this bed'); return; }
+
+  const totalCost = readyHoles.length * sp.cost;
+  if (state.money < totalCost) {
+    toast('Need €' + totalCost + ' for ' + readyHoles.length + ' vines (have €' + state.money + ')');
+    return;
+  }
+
+  state.money -= totalCost;
+  readyHoles.forEach(v => {
+    v.species = spKey;
+    v.status = 'sprout';
+    v.progress = 0;
+  });
+  grantXP({fruit: sp.xp * readyHoles.length, oxygen: sp.o2 * readyHoles.length});
+  toast('Planted ' + readyHoles.length + ' ' + sp.name + ' vines in Bed #' + (bedIdx + 1) + '!');
+  renderScoreboard();
+  openVineyardModal(bedIdx);
+};
+
+window.aerateVineBed = function(bedIdx){
+  if (state.money < 35) { toast('Need €35 to aerate vineyard bed'); return; }
+  state.money -= 35;
+  const bed = state.vineyard.beds[bedIdx];
+  bed.aerated = true;
+  bed.vines.forEach(v => {
+    if (v.status === 'crust') v.status = 'empty';
+  });
+  grantXP({oxygen: 10, fruit: 8});
+  toast('Vineyard Bed #' + (bedIdx + 1) + ' aerated! Rich loam ready for vines');
+  renderScoreboard();
+  openVineyardModal(bedIdx);
+};
+
+window.careVineBed = function(bedIdx){
+  const bed = state.vineyard.beds[bedIdx];
+  const plantedVines = bed.vines.filter(v => v.species);
+  if (plantedVines.length === 0) { toast('No planted vines to care for'); return; }
+
+  let advanced = 0;
+  plantedVines.forEach(v => {
+    if (v.status === 'sprout') { v.status = 'trellised'; advanced++; }
+    else if (v.status === 'trellised') { v.status = 'mature'; advanced++; }
+  });
+
+  grantXP({fruit: 15, biodiversity: 8});
+  toast('✂️ Rebschnitt & Spalierbindung complete! Advanced ' + advanced + ' vines');
+  renderScoreboard();
+  openVineyardModal(bedIdx);
+};
+
+window.harvestVineBed = function(bedIdx){
+  const bed = state.vineyard.beds[bedIdx];
+  const matureVines = bed.vines.filter(v => v.status === 'mature');
+  if (matureVines.length === 0) { toast('No mature grapes ready to harvest'); return; }
+
+  const yieldRevenue = matureVines.length * 12 + 40;
+  state.money += yieldRevenue;
+  state.o2 += 30;
+  state.vineyard.harvested += matureVines.length;
+
+  // Reset to trellised for next vintage
+  matureVines.forEach(v => { v.status = 'trellised'; });
+
+  grantXP({fruit: 25, oxygen: 15});
+  toast('🍷 Harvested ' + matureVines.length + ' mature vines! +€' + yieldRevenue + ' · Dispatched to Stuben & Mosterei');
+  renderScoreboard();
+  openVineyardModal(bedIdx);
 };
 
 function openOrchardModal(s){

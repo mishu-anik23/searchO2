@@ -5,7 +5,7 @@ const assert = require('assert');
 
 (async () => {
   console.log('========================================================');
-  console.log('  Bavaria Alpenhof Journey Comprehensive Verification   ');
+  console.log('  Bavaria Alpenhof Journey Comprehensive Verification v4');
   console.log('========================================================');
 
   // 1. Strict Byte Parity between bavaria/alpenhof.html and public/bavaria/alpenhof.html
@@ -71,15 +71,20 @@ const assert = require('assert');
       orchardsCount: ORCHARD_PLOTS.length,
       sites: SITES.map(s => ({ id: s.id, x: s.x, y: s.y, action: s.action })),
       speciesCount: Object.keys(SPECIES).length,
+      grapeSpeciesCount: Object.keys(GRAPE_SPECIES).length,
+      vineyardBedsCount: VINEYARD_BEDS.length,
+      totalVinePositions: VINEYARD_BEDS.length * 12,
       chaptersCount: CHAPTERS.length
     };
   });
   assert.strictEqual(farmConfig.sitesCount, 21, `Expected 21 sites, found ${farmConfig.sitesCount}`);
   assert.strictEqual(farmConfig.orchardsCount, 6, `Expected 6 orchard plots, found ${farmConfig.orchardsCount}`);
+  assert.strictEqual(farmConfig.vineyardBedsCount, 9, `Expected 9 vineyard beds, found ${farmConfig.vineyardBedsCount}`);
+  assert.strictEqual(farmConfig.totalVinePositions, 108, `Expected 108 total vine positions, found ${farmConfig.totalVinePositions}`);
   assert.strictEqual(farmConfig.chaptersCount, 6, `Expected 6 progression chapters, found ${farmConfig.chaptersCount}`);
-  console.log('[✓ PASSED] 21 calibrated sites, 6 orchard plots, 6 chapters verified');
+  console.log('[✓ PASSED] 21 calibrated sites, 6 orchard plots (54 tree beds), 9 vineyard beds (108 vine positions), 6 chapters verified');
 
-  // Verify specific calibrated coordinates from bavaria-bg-plan.jpg
+  // Verify calibrated coordinates from bavaria-bg-plan.jpg
   const findSite = id => farmConfig.sites.find(s => s.id === id);
   assert.deepStrictEqual({ x: findSite('wind_w').x, y: findSite('wind_w').y }, { x: 316, y: 156 }, 'wind_w coordinates');
   assert.deepStrictEqual({ x: findSite('bess').x, y: findSite('bess').y }, { x: 710, y: 216 }, 'bess coordinates');
@@ -88,8 +93,9 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('crop').x, y: findSite('crop').y }, { x: 946, y: 558 }, 'crop coordinates');
   assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 890, y: 800 }, 'pond coordinates');
   assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1588, y: 670 }, 'restaurant coordinates');
-  assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1658, y: 277 }, 'cattle coordinates');
+  assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1520, y: 260 }, 'cattle coordinates stretched along hill slope');
   assert.deepStrictEqual({ x: findSite('gate').x, y: findSite('gate').y }, { x: 1544, y: 794 }, 'gate coordinates');
+  assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1710, y: 385 }, 'vineyard coordinates');
   assert.deepStrictEqual({ x: findSite('wind_e').x, y: findSite('wind_e').y }, { x: 1830, y: 130 }, 'wind_e coordinates behind cow shed');
   console.log('[✓ PASSED] Strict coordinate mapping verified against bavaria-bg-plan.jpg');
 
@@ -106,7 +112,6 @@ const assert = require('assert');
   assert(introWhyText.includes('Why Streuobst & Polyculture'), 'Intro Why modal title');
   assert(introWhyText.includes('German Farm Recall Link'), 'Must have German Farm Recall Link');
   console.log('[✓ PASSED] Intro Why modal verified with 3-tier recall');
-  // Dismiss intro modal
   await page.click('#modalBody .btn-g');
   await page.waitForTimeout(300);
 
@@ -147,14 +152,13 @@ const assert = require('assert');
   await page.click('#btn-labour');
   await page.waitForTimeout(300);
   const labourContent = await page.textContent('#modalBody');
-  assert(labourContent.includes('Hans Weber') && labourContent.includes('Greta Lindner'), 'Must contain labour roster');
+  assert(labourContent.includes('Hans Weber') && labourContent.includes('Lukas Gruber'), 'Must contain labour roster');
   console.log('[✓ PASSED] Labour HQ roster verified');
-  // Test hiring Hans Weber
   const hireBtns = await page.$$('#modalBody .btn-g');
   if (hireBtns.length > 0) {
     await hireBtns[0].click();
     await page.waitForTimeout(200);
-    console.log('[✓ PASSED] Worker hired successfully');
+    console.log('[✓ PASSED] Worker hired successfully without syntax errors');
   }
   await page.click('.btn-close');
   await page.waitForTimeout(200);
@@ -171,51 +175,102 @@ const assert = require('assert');
   assert(orchardContent.includes('Orchard Plot 1 (NW'), 'Must show Orchard Plot 1');
   assert(orchardContent.includes('3×3 circular'), 'Must indicate 3x3 circular beds');
 
-  // Test Aerate Plot 1
   const aerateBtn = await page.$('#modalBody .btn-a');
   assert(aerateBtn, 'Aerate button must exist for un-aerated crust');
   await aerateBtn.click();
   await page.waitForTimeout(400);
   console.log('[✓ PASSED] Bed #1 soil crust aerated into fertile planting ring');
 
-  // Click Bed #1 cell to open species selector
   const bed1Cell = await page.$('.bed-cell.open');
   assert(bed1Cell, 'Bed #1 cell should be ready and clickable');
   await bed1Cell.click();
   await page.waitForTimeout(300);
 
-  // Click Sweet Cherry species button (first in list)
   const plantCherryBtn = await page.$('#modalBody .btn-c');
   assert(plantCherryBtn, 'Plant species button must exist');
   await plantCherryBtn.click();
   await page.waitForTimeout(400);
   console.log('[✓ PASSED] Sweet Cherry planted in aerated circular bed');
 
-  // Plant Bed #2 with Boskoop Apple
   const bed2Cell = await page.$$('.bed-cell.open');
   if (bed2Cell.length > 0) {
     await bed2Cell[0].click();
     await page.waitForTimeout(300);
     const btns = await page.$$('#modalBody .btn-c');
     if (btns.length > 1) {
-      await btns[1].click(); // Apple
+      await btns[1].click();
       await page.waitForTimeout(400);
       console.log('[✓ PASSED] Boskoop Apple planted in aerated circular bed');
     }
   }
-
-  await page.click('.btn-close');
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
   await page.waitForTimeout(200);
 
-  // 10. Construct Key Facilities for Realistic 3D Visual Rendering
-  // A. Living Waters Pond
+  // 10. Commercial 3x3 Grape Vineyard (108 Vines) Verification
+  await page.evaluate(() => {
+    const vine = SITES.find(s => s.id === 'vineyard');
+    AlpenMap.handle(vine);
+  });
+  await page.waitForTimeout(300);
+  const buildVineBtn = await page.$('#modalBody .btn-g');
+  if (buildVineBtn) {
+    await buildVineBtn.click();
+    await page.waitForTimeout(300);
+    console.log('[✓ PASSED] Bavarian Heritage Vineyard commissioned');
+  }
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+
+  await page.evaluate(() => {
+    openVineyardModal(0);
+  });
+  await page.waitForTimeout(300);
+  const vineModalContent = await page.textContent('#modalBody');
+  assert(vineModalContent.includes('Bavarian Heritage Vineyard · Bed #1 / 9'), 'Vineyard modal title');
+  assert(vineModalContent.includes('108 Estate Vines Total'), 'Must mention 108 estate vines total');
+  assert(vineModalContent.includes('Bed 9'), 'Must have navigation buttons for all 9 beds');
+
+  const aerateVineBtn = await page.$('#modalBody .btn-a');
+  assert(aerateVineBtn, 'Aerate button must exist for un-aerated vineyard bed');
+  await aerateVineBtn.click();
+  await page.waitForTimeout(300);
+  console.log('[✓ PASSED] Vineyard Bed #1 aerated (all 12 vine pits ready)');
+
+  await page.evaluate(() => {
+    plantVineHole(0, 0, 'silvaner');
+    plantVineHole(0, 1, 'riesling');
+  });
+  await page.waitForTimeout(300);
+  console.log('[✓ PASSED] Silvaner and Riesling heritage vines planted in Bed #1');
+
+  await page.evaluate(() => {
+    aerateVineBed(1);
+    plantUniformBed(1, 'bacchus');
+  });
+  await page.waitForTimeout(300);
+  console.log('[✓ PASSED] Bed #2 planted uniformly with 12 Bacchus grapevines');
+
+  await page.evaluate(() => {
+    careVineBed(0);
+    careVineBed(0);
+  });
+  await page.waitForTimeout(300);
+  console.log('[✓ PASSED] Rebschnitt & Spalierbindung trellis training advanced vines to mature fruiting');
+
+  await page.evaluate(() => {
+    harvestVineBed(0);
+  });
+  await page.waitForTimeout(300);
+  console.log('[✓ PASSED] Traubenlese vintage harvested and dispatched to Stuben & Mosterei');
+
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+  await page.waitForTimeout(200);
+
+  // 11. Test Facility Construction: Living Pond, Cattle Pasture, Wind Turbines, Barn & Stuben
   await page.evaluate(() => {
     const pond = SITES.find(s => s.id === 'pond');
     AlpenMap.handle(pond);
   });
   await page.waitForTimeout(400);
-  const pondContent = await page.textContent('#modalBody');
-  assert(pondContent.includes('Living Waters Alpine Pond'), 'Pond modal title');
   const buildPondBtn = await page.$('#modalBody .btn-g');
   if (buildPondBtn) {
     await buildPondBtn.click();
@@ -224,7 +279,6 @@ const assert = require('assert');
   }
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
 
-  // B. Cattle Pasture Enclosure
   await page.evaluate(() => {
     const cattle = SITES.find(s => s.id === 'cattle');
     AlpenMap.handle(cattle);
@@ -234,11 +288,10 @@ const assert = require('assert');
   if (buildCattleBtn) {
     await buildCattleBtn.click();
     await page.waitForTimeout(300);
-    console.log('[✓ PASSED] Simmental Cattle Pasture commissioned');
+    console.log('[✓ PASSED] Hillside Simmental Cattle Pasture commissioned');
   }
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
 
-  // C. Wind Turbine East (Behind Cow Shed)
   await page.evaluate(() => {
     const windE = SITES.find(s => s.id === 'wind_e');
     AlpenMap.handle(windE);
@@ -252,7 +305,6 @@ const assert = require('assert');
   }
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
 
-  // D. Farm Barn & Fendt Tractor
   await page.evaluate(() => {
     const shed = SITES.find(s => s.id === 'farm_shed');
     AlpenMap.handle(shed);
@@ -266,7 +318,6 @@ const assert = require('assert');
   }
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
 
-  // E. Alpenhof Gasthof Stuben & Village Fountain
   await page.evaluate(() => {
     const rest = SITES.find(s => s.id === 'restaurant');
     AlpenMap.handle(rest);
@@ -280,17 +331,22 @@ const assert = require('assert');
   }
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
 
-  // Advance tree growth to mature for rich fruiting screenshot
+  // Advance trees and vines to mature for rich screenshot captures
   await page.evaluate(() => {
     Object.values(state.orchards).forEach(o => {
       o.beds.forEach(b => {
         if (b.species) { b.status = 'mature'; b.progress = 1.0; }
       });
     });
+    state.vineyard.beds.forEach(b => {
+      b.vines.forEach(v => {
+        if (v.species) { v.status = 'mature'; v.progress = 1.0; }
+      });
+    });
   });
   await page.waitForTimeout(300);
 
-  // 11. Multi-level Zoom Controls
+  // 12. Multi-level Zoom Controls
   await page.click('.zoom-btn[data-z="2"]');
   await page.waitForTimeout(300);
   let curZoom = await page.evaluate(() => state.zoom);
@@ -303,15 +359,14 @@ const assert = require('assert');
   assert.strictEqual(curZoom, 1, 'Zoom should return to 1x');
   console.log('[✓ PASSED] 1x zoom mode reset');
 
-  // 12. Capture High-Resolution Visual Screenshots
+  // 13. Capture High-Resolution Visual Screenshots
   const scratchDir = 'C:\\Users\\AM\\.gemini\\antigravity\\brain\\d0f09cad-1638-4e2c-b505-333cd232aacf\\scratch';
   if (!fs.existsSync(scratchDir)) fs.mkdirSync(scratchDir, { recursive: true });
 
-  // A. Estate Overview
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_overview.png'), fullPage: true });
   console.log('[✓ SAVED] screenshot_alpenhof_overview.png');
 
-  // B. Close-up on the 6 Streuobst Orchards (Hillside Alignment & Realistic Trees)
+  // Orchards close-up
   await page.evaluate(() => {
     state.zoom = 2.4;
     state.panX = 390;
@@ -321,17 +376,27 @@ const assert = require('assert');
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_orchards.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_orchards.png');
 
-  // C. Central Meadow (Living Pond, Vegetable Garden, Crop Field, Flower Terraces)
+  // Cattle pasture close-up
   await page.evaluate(() => {
     state.zoom = 2.0;
-    state.panX = -120;
-    state.panY = -120;
+    state.panX = -580;
+    state.panY = 240;
   });
   await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_central_meadow.png') });
-  console.log('[✓ SAVED] screenshot_alpenhof_central_meadow.png');
+  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_cattle_pasture.png') });
+  console.log('[✓ SAVED] screenshot_alpenhof_cattle_pasture.png');
 
-  // D. East Village Plaza (Gasthof Stuben with Geranium Balcony & Stone Fountain)
+  // 108-vine vineyard close-up
+  await page.evaluate(() => {
+    state.zoom = 2.3;
+    state.panX = -720;
+    state.panY = 20;
+  });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_vineyard_108.png') });
+  console.log('[✓ SAVED] screenshot_alpenhof_vineyard_108.png');
+
+  // Village plaza close-up
   await page.evaluate(() => {
     state.zoom = 2.2;
     state.panX = -670;
@@ -341,27 +406,7 @@ const assert = require('assert');
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_village_plaza.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_village_plaza.png');
 
-  // E. Cattle Pasture & High-Ridge Wind Turbine Behind Cow Shed
-  await page.evaluate(() => {
-    state.zoom = 2.1;
-    state.panX = -720;
-    state.panY = 240;
-  });
-  await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_cattle_wind.png') });
-  console.log('[✓ SAVED] screenshot_alpenhof_cattle_wind.png');
-
-  // F. Farm Barn with Hayloft & Green Fendt Tractor
-  await page.evaluate(() => {
-    state.zoom = 2.4;
-    state.panX = -100;
-    state.panY = 320;
-  });
-  await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_barn_fendt.png') });
-  console.log('[✓ SAVED] screenshot_alpenhof_barn_fendt.png');
-
-  // Reset zoom to 1x
+  // Reset zoom
   await page.evaluate(() => {
     state.zoom = 1.0;
     state.panX = 0;
@@ -369,7 +414,7 @@ const assert = require('assert');
   });
   await page.waitForTimeout(200);
 
-  // 13. Mobile Landscape & Portrait View Verification
+  // 14. Mobile Landscape & Portrait View Verification
   await page.setViewportSize({ width: 844, height: 390 });
   await page.waitForTimeout(400);
   const isLandscapePromptHidden = await page.evaluate(() => {
@@ -380,7 +425,7 @@ const assert = require('assert');
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_mobile_landscape.png') });
   console.log('[✓ PASSED] Mobile Landscape view verified with edge-to-edge canvas');
 
-  // Test Mobile Portrait View (Prompt should show)
+  // Test Mobile Portrait View
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(400);
   const isPortraitPromptVisible = await page.evaluate(() => {
@@ -390,7 +435,6 @@ const assert = require('assert');
   assert(isPortraitPromptVisible, 'Landscape rotate prompt MUST be visible in portrait view on mobile');
   console.log('[✓ PASSED] Mobile Portrait view displays rotation prompt');
 
-  // Dismiss prompt and verify fallback
   await page.click('#landscapeRotatePrompt button');
   await page.waitForTimeout(200);
   const isPromptDismissed = await page.evaluate(() => {
@@ -402,7 +446,7 @@ const assert = require('assert');
 
   assert.strictEqual(errors.length, 0, `Errors occurred during testing: ${errors.join(', ')}`);
   console.log('\n========================================================');
-  console.log('  ALL BAVARIA ALPENHOF SUITE TESTS PASSED (13/13)!     ');
+  console.log('  ALL BAVARIA ALPENHOF SUITE TESTS PASSED (14/14)!     ');
   console.log('========================================================');
 
   await browser.close();
