@@ -52,34 +52,58 @@ admin2faRouter.post('/auth/bootstrap', async (req: Request, res: Response, next:
       return;
     }
 
-    const userRes = await query(
-      `SELECT id, password_hash, role, bootstrap_admin, password_must_change, totp_enabled
+    // Ensure admin row exists (migration 004 may not have run yet)
+    let userRes = await query(
+      `SELECT id, password_hash, role, password_must_change, totp_enabled
        FROM users WHERE lower(email) = $1 LIMIT 1`,
       [BOOTSTRAP_EMAIL]
     );
     if (!userRes.rowCount) {
-      res.status(404).json({ error: 'Bootstrap admin not found. Run migration 004.' });
-      return;
+      try {
+        userRes = await query(
+          `INSERT INTO users (email, password_hash, display_name, role, auth_provider, status, email_verified, bootstrap_admin, password_must_change)
+           VALUES ($1, NULL, 'SearchO2 Admin', 'admin', 'local', 'active', TRUE, TRUE, TRUE)
+           RETURNING id, password_hash, role, password_must_change, totp_enabled`,
+          [BOOTSTRAP_EMAIL]
+        );
+      } catch (createErr: any) {
+        // Columns bootstrap_admin / password_must_change may be missing — minimal insert
+        userRes = await query(
+          `INSERT INTO users (email, password_hash, display_name, role, auth_provider)
+           VALUES ($1, NULL, 'SearchO2 Admin', 'admin', 'local')
+           ON CONFLICT (email) DO UPDATE SET role = 'admin'
+           RETURNING id, password_hash, role`,
+          [BOOTSTRAP_EMAIL]
+        );
+      }
     }
     const user = userRes.rows[0];
     if (user.role !== 'admin') {
       res.status(403).json({ error: 'Not an admin account.' });
       return;
     }
-    if (user.password_hash && !user.password_must_change) {
+    if (user.password_hash && user.password_must_change === false) {
       res.status(400).json({ error: 'Password already set. Use normal login + 2FA.' });
       return;
     }
 
     const hash = await bcrypt.hash(newPassword, 12);
-    await query(
-      `UPDATE users SET password_hash = $1, password_must_change = FALSE, updated_at = NOW() WHERE id = $2`,
-      [hash, user.id]
-    );
+    try {
+      await query(
+        `UPDATE users SET password_hash = $1, password_must_change = FALSE, role = 'admin', updated_at = NOW() WHERE id = $2`,
+        [hash, user.id]
+      );
+    } catch {
+      await query(`UPDATE users SET password_hash = $1, role = 'admin', updated_at = NOW() WHERE id = $2`, [
+        hash,
+        user.id,
+      ]);
+    }
 
     res.json({
       ok: true,
-      message: 'Admin password saved. Next: enroll authenticator 2FA before dashboard access.',
+      source: 'postgres',
+      message: 'Admin password saved to database. Next: login, then enroll authenticator 2FA.',
       requireTotpEnrollment: !user.totp_enabled,
       email: BOOTSTRAP_EMAIL,
     });

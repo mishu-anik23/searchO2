@@ -158,20 +158,179 @@ button.ghost{background:transparent;border:1px solid var(--line);color:var(--tex
 </div>
 
 <script>
-const API = (window.SEARCHO2_API_BASE || '/api') + '/admin';
-const state = { token: localStorage.getItem('searchO2_admin_token') || '', elevated: false, pins: [] };
+/* SearchO2 Admin — dual mode:
+ * 1) Live Express/Postgres API when reachable
+ * 2) IndexedDB local credential DB so static hosts (searcho2.online) still work
+ */
+const BOOTSTRAP_EMAIL = 'searcho2.online@gmail.com';
+const API_CANDIDATES = [
+  (typeof window !== 'undefined' && window.SEARCHO2_API_BASE) || null,
+  '/api',
+  'http://localhost:5000/api',
+  'http://127.0.0.1:5000/api',
+].filter(Boolean);
 
-function msg(t, ok){ const el=document.getElementById('loginMsg'); el.className=ok?'ok':'err'; el.textContent=t||''; }
+const state = {
+  token: localStorage.getItem('searchO2_admin_token') || '',
+  elevated: sessionStorage.getItem('searchO2_admin_elevated') === '1',
+  apiBase: localStorage.getItem('searchO2_admin_api') || '',
+  mode: 'unknown', // 'server' | 'local'
+  pins: []
+};
+
+function msg(t, ok){
+  const el = document.getElementById('loginMsg');
+  el.className = ok ? 'ok' : 'err';
+  el.textContent = t || '';
+}
+function setBusy(btn, busy, label){
+  if(!btn) return;
+  btn.disabled = !!busy;
+  if(label) btn.dataset.label = btn.dataset.label || btn.textContent;
+  btn.textContent = busy ? 'Working…' : (btn.dataset.label || label || btn.textContent);
+}
+
+/* ---------- Local TOTP (RFC 6238) for IndexedDB mode ---------- */
+const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function b32encode(buf){
+  let bits=0,val=0,out='';
+  for(const b of buf){ val=(val<<8)|b; bits+=8; while(bits>=5){ out+=B32[(val>>>(bits-5))&31]; bits-=5; } }
+  if(bits>0) out+=B32[(val<<(5-bits))&31];
+  return out;
+}
+function b32decode(s){
+  s=String(s).toUpperCase().replace(/=+$/,'').replace(/[^A-Z2-7]/g,'');
+  let bits=0,val=0; const bytes=[];
+  for(const c of s){ const i=B32.indexOf(c); if(i<0)continue; val=(val<<5)|i; bits+=5; if(bits>=8){ bytes.push((val>>>(bits-8))&255); bits-=8; } }
+  return new Uint8Array(bytes);
+}
+async function hmacSha1(keyBytes, msgBytes){
+  const key = await crypto.subtle.importKey('raw', keyBytes, {name:'HMAC', hash:'SHA-1'}, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, msgBytes);
+  return new Uint8Array(sig);
+}
+async function totpCode(secret, t=Date.now()){
+  const counter = Math.floor(t/1000/30);
+  const buf = new ArrayBuffer(8); const view = new DataView(buf);
+  view.setUint32(0, Math.floor(counter/0x100000000)); view.setUint32(4, counter>>>0);
+  const hmac = await hmacSha1(b32decode(secret), new Uint8Array(buf));
+  const off = hmac[hmac.length-1] & 0xf;
+  const code = ((hmac[off]&0x7f)<<24)|((hmac[off+1]&0xff)<<16)|((hmac[off+2]&0xff)<<8)|(hmac[off+3]&0xff);
+  return String(code % 1e6).padStart(6,'0');
+}
+async function totpVerify(secret, token, window=1){
+  const clean=String(token||'').replace(/\s/g,'');
+  if(!/^\d{6}$/.test(clean)) return false;
+  const now=Date.now();
+  for(let w=-window;w<=window;w++){ if(await totpCode(secret, now+w*30000)===clean) return true; }
+  return false;
+}
+function otpauthUrl(secret, email){
+  return 'otpauth://totp/'+encodeURIComponent('SearchO2 Admin:'+email)+'?secret='+secret+'&issuer='+encodeURIComponent('SearchO2 Admin')+'&algorithm=SHA1&digits=6&period=30';
+}
+function qrUrl(data){ return 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data='+encodeURIComponent(data); }
+
+/* ---------- IndexedDB admin credential store ---------- */
+const IDB_NAME = 'searcho2_admin_vault';
+const IDB_STORE = 'credentials';
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = ()=>{ const db=req.result; if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE, {keyPath:'email'}); };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+}
+async function idbGet(email){
+  const db = await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readonly');
+    const r=tx.objectStore(IDB_STORE).get(email.toLowerCase());
+    r.onsuccess=()=>resolve(r.result||null);
+    r.onerror=()=>reject(r.error);
+  });
+}
+async function idbPut(rec){
+  const db = await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readwrite');
+    tx.objectStore(IDB_STORE).put(rec);
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+function bufToB64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+function b64ToBuf(b64){ return Uint8Array.from(atob(b64), c=>c.charCodeAt(0)); }
+async function pbkdf2Hash(password, saltB64){
+  const salt = saltB64 ? b64ToBuf(saltB64) : crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name:'PBKDF2', salt, iterations:150000, hash:'SHA-256' }, keyMaterial, 256);
+  return { hashB64: bufToB64(bits), saltB64: saltB64 || bufToB64(salt) };
+}
+function strongPassword(pw){
+  return typeof pw==='string' && pw.length>=12 && /[a-z]/.test(pw) && /[A-Z]/.test(pw) && /\d/.test(pw) && /[^A-Za-z0-9]/.test(pw);
+}
+
+/* ---------- API probe ---------- */
+async function probeApi(){
+  for(const base of API_CANDIDATES){
+    try{
+      const ctrl = new AbortController();
+      const t = setTimeout(()=>ctrl.abort(), 2500);
+      const r = await fetch(base.replace(/\/$/,'') + '/health', { signal: ctrl.signal });
+      clearTimeout(t);
+      // health is on /api/health not /api/admin/health — try parent
+    }catch(_){}
+  }
+  // Try admin bootstrap OPTIONS or health at host level
+  const bases = [];
+  for(const c of API_CANDIDATES){
+    const root = c.replace(/\/admin$/,'');
+    bases.push(root);
+  }
+  // unique
+  const seen = new Set();
+  for(const base of API_CANDIDATES){
+    if(seen.has(base)) continue; seen.add(base);
+    try{
+      const ctrl = new AbortController();
+      const t = setTimeout(()=>ctrl.abort(), 3000);
+      // Prefer real health endpoint derived from /api
+      const healthUrl = base.endsWith('/api') ? base + '/health' : base + '/api/health';
+      const r = await fetch(healthUrl, { signal: ctrl.signal });
+      clearTimeout(t);
+      if(r.ok){
+        state.apiBase = base.endsWith('/admin') ? base.replace(/\/admin$/,'') : base;
+        // normalize: we store prefix that + '/admin' = full admin API
+        if(!state.apiBase.endsWith('/api')) {
+          // if someone set full origin only
+        }
+        localStorage.setItem('searchO2_admin_api', state.apiBase);
+        state.mode = 'server';
+        return 'server';
+      }
+    }catch(_){}
+  }
+  state.mode = 'local';
+  return 'local';
+}
+
 async function api(path, opts={}){
+  const base = (state.apiBase || '/api') + '/admin';
   const headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
   if(state.token) headers.Authorization = 'Bearer ' + state.token;
-  const r = await fetch(API + path, Object.assign({}, opts, { headers, body: opts.body ? JSON.stringify(opts.body) : undefined }));
+  const r = await fetch(base + path, {
+    method: opts.method || 'GET',
+    headers,
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
   const text = await r.text();
-  let data = null; try{ data = text ? JSON.parse(text) : null; }catch(e){ data = { raw:text }; }
-  if(!r.ok) throw new Error((data && (data.error||data.message)) || r.statusText);
+  let data=null; try{ data=text?JSON.parse(text):null; }catch{ data={raw:text}; }
+  if(!r.ok) throw new Error((data && (data.error||data.message)) || ('HTTP '+r.status));
   return data;
 }
 
+/* ---------- UI tabs ---------- */
 document.querySelectorAll('#loginView .tabs button').forEach(b=>{
   b.onclick=()=>{
     document.querySelectorAll('#loginView .tabs button').forEach(x=>x.classList.remove('active'));
@@ -182,58 +341,207 @@ document.querySelectorAll('#loginView .tabs button').forEach(b=>{
   };
 });
 
+async function ensureMode(){
+  if(state.mode==='unknown') await probeApi();
+  const badge = document.getElementById('modeBadge');
+  if(badge){
+    badge.textContent = state.mode==='server'
+      ? 'Live API: ' + (state.apiBase||'/api')
+      : 'Local vault (IndexedDB) — API offline';
+    badge.style.color = state.mode==='server' ? 'var(--ok)' : 'var(--warn)';
+  }
+  return state.mode;
+}
+
+/* ---------- Bootstrap: Save password ---------- */
 document.getElementById('btnBoot').onclick = async ()=>{
+  const btn = document.getElementById('btnBoot');
+  setBusy(btn, true);
+  msg('');
   try{
-    await api('/auth/bootstrap',{ method:'POST', body:{
-      email: document.getElementById('bootEmail').value,
-      newPassword: document.getElementById('bootPw').value,
-      confirmPassword: document.getElementById('bootPw2').value
-    }});
-    msg('Password stored (bcrypt). Continue with Login → 2FA enroll.', true);
-  }catch(e){ msg(e.message); }
+    const email = (document.getElementById('bootEmail').value||'').trim().toLowerCase();
+    const newPassword = document.getElementById('bootPw').value;
+    const confirmPassword = document.getElementById('bootPw2').value;
+    if(email !== BOOTSTRAP_EMAIL){ throw new Error('Bootstrap is limited to '+BOOTSTRAP_EMAIL); }
+    if(newPassword !== confirmPassword) throw new Error('Password confirmation does not match.');
+    if(!strongPassword(newPassword)) throw new Error('Password must be ≥12 chars with upper, lower, number, and symbol.');
+
+    await ensureMode();
+    let savedServer = false;
+    if(state.mode==='server'){
+      try{
+        const data = await api('/auth/bootstrap', { method:'POST', body:{ email, newPassword, confirmPassword }});
+        savedServer = true;
+        msg((data.message||'Saved to Postgres.')+' Also securing local vault…', true);
+      }catch(e){
+        // fall through to local so button still does something useful
+        state.mode = 'local';
+        msg('Server unreachable ('+e.message+'). Saving to local admin vault…', false);
+      }
+    }
+
+    // Always persist local vault so dashboard works even without Express deploy
+    const existing = await idbGet(email);
+    if(existing && existing.passwordHash && !existing.mustChange){
+      if(savedServer){ msg('Server password updated. Local vault already had a password — use Login.', true); }
+      else throw new Error('Local admin password already set. Use Login. (Clear site data to reset.)');
+    }
+    const { hashB64, saltB64 } = await pbkdf2Hash(newPassword, existing && existing.salt);
+    await idbPut({
+      email,
+      passwordHash: hashB64,
+      salt: saltB64,
+      role: 'admin',
+      totpEnabled: !!(existing && existing.totpEnabled),
+      totpSecret: (existing && existing.totpSecret) || null,
+      mustChange: false,
+      updatedAt: new Date().toISOString(),
+      source: savedServer ? 'server+local' : 'local'
+    });
+    msg((savedServer?'✓ Password saved to database. ':'✓ Password saved to secure local vault. ')+'Open Login, then enroll 2FA.', true);
+    // Switch to login tab
+    document.querySelector('#loginView .tabs button[data-tab="login"]').click();
+    document.getElementById('password').value = '';
+  }catch(e){
+    msg(e.message||String(e), false);
+  }finally{
+    setBusy(btn, false, 'Save password to database');
+  }
 };
 
+/* ---------- Login ---------- */
 document.getElementById('btnLogin').onclick = async ()=>{
+  const btn = document.getElementById('btnLogin');
+  setBusy(btn, true); msg('');
   try{
-    const data = await api('/auth/login',{ method:'POST', body:{
-      email: document.getElementById('email').value,
-      password: document.getElementById('password').value
-    }});
-    if(data.accessToken){ state.token = data.accessToken; localStorage.setItem('searchO2_admin_token', state.token); }
-    if(data.requireTotpEnrollment){ msg('Password OK — open 2FA tab and enroll authenticator.', true); return; }
-    if(data.requireTotpChallenge){ msg('Enter authenticator code in 2FA tab.', true); return; }
-    state.elevated = true; openApp();
-  }catch(e){ msg(e.message); }
+    const email = (document.getElementById('email').value||'').trim().toLowerCase();
+    const password = document.getElementById('password').value;
+    await ensureMode();
+
+    if(state.mode==='server'){
+      try{
+        const data = await api('/auth/login', { method:'POST', body:{ email, password }});
+        if(data.accessToken){ state.token=data.accessToken; localStorage.setItem('searchO2_admin_token', state.token); }
+        sessionStorage.setItem('searchO2_pending_admin', '1');
+        if(data.requireTotpEnrollment){ msg('Password OK — open 2FA tab and enroll authenticator.', true); document.querySelector('#loginView .tabs button[data-tab="totp"]').click(); return; }
+        if(data.requireTotpChallenge){ msg('Enter authenticator code in 2FA tab.', true); document.querySelector('#loginView .tabs button[data-tab="totp"]').click(); return; }
+        state.elevated=true; sessionStorage.setItem('searchO2_admin_elevated','1'); openApp(); return;
+      }catch(e){
+        // try local fallback
+        msg('Server login failed ('+e.message+'). Trying local vault…', false);
+      }
+    }
+
+    const rec = await idbGet(email);
+    if(!rec || !rec.passwordHash) throw new Error('No admin password set. Use “First password” tab first.');
+    const { hashB64 } = await pbkdf2Hash(password, rec.salt);
+    if(hashB64 !== rec.passwordHash) throw new Error('Invalid email or password.');
+    sessionStorage.setItem('searchO2_pending_admin', '1');
+    sessionStorage.setItem('searchO2_admin_email', email);
+    if(!rec.totpEnabled){
+      msg('Password OK — open 2FA tab and enroll authenticator (required).', true);
+      document.querySelector('#loginView .tabs button[data-tab="totp"]').click();
+      return;
+    }
+    msg('Enter authenticator code in 2FA tab to open dashboard.', true);
+    document.querySelector('#loginView .tabs button[data-tab="totp"]').click();
+  }catch(e){
+    msg(e.message||String(e), false);
+  }finally{
+    setBusy(btn, false, 'Sign in');
+  }
 };
 
+/* ---------- 2FA enroll / verify ---------- */
 document.getElementById('btnEnrollStart').onclick = async ()=>{
+  const btn = document.getElementById('btnEnrollStart');
+  setBusy(btn, true); msg('');
   try{
-    const data = await api('/auth/2fa/enroll/start',{ method:'POST', body:{} });
+    await ensureMode();
+    if(state.mode==='server' && state.token){
+      try{
+        const data = await api('/auth/2fa/enroll/start', { method:'POST', body:{} });
+        document.getElementById('qrBox').classList.remove('hidden');
+        document.getElementById('qrImg').src = data.qrImageUrl;
+        document.getElementById('manualSecret').textContent = 'Manual secret: ' + data.secret;
+        sessionStorage.setItem('searchO2_totp_pending', data.secret);
+        msg('Scan QR in Authenticator app, then confirm with a code.', true);
+        return;
+      }catch(e){ msg('Server enroll failed: '+e.message+' — using local vault.', false); }
+    }
+    const email = (sessionStorage.getItem('searchO2_admin_email')||document.getElementById('email').value||BOOTSTRAP_EMAIL).toLowerCase();
+    const secret = b32encode(crypto.getRandomValues(new Uint8Array(20)));
+    sessionStorage.setItem('searchO2_totp_pending', secret);
+    const url = otpauthUrl(secret, email);
     document.getElementById('qrBox').classList.remove('hidden');
-    document.getElementById('qrImg').src = data.qrImageUrl;
-    document.getElementById('manualSecret').textContent = 'Manual secret: ' + data.secret;
-    msg('Scan QR in Authenticator app, then confirm with a code.', true);
-  }catch(e){ msg(e.message); }
+    document.getElementById('qrImg').src = qrUrl(url);
+    document.getElementById('manualSecret').textContent = 'Manual secret: ' + secret;
+    msg('Scan QR (or enter secret). Then confirm with a 6-digit code.', true);
+  }catch(e){ msg(e.message, false); }
+  finally{ setBusy(btn, false, 'Generate QR / secret'); }
 };
 
 document.getElementById('btnEnrollConfirm').onclick = async ()=>{
+  const btn = document.getElementById('btnEnrollConfirm');
+  setBusy(btn, true); msg('');
   try{
-    const data = await api('/auth/2fa/enroll/confirm',{ method:'POST', body:{ code: document.getElementById('totpCode').value }});
-    msg('2FA enabled. Backup codes: ' + (data.backupCodes||[]).join(' '), true);
-  }catch(e){ msg(e.message); }
+    const code = document.getElementById('totpCode').value;
+    await ensureMode();
+    if(state.mode==='server' && state.token){
+      try{
+        const data = await api('/auth/2fa/enroll/confirm', { method:'POST', body:{ code }});
+        msg('2FA enabled on server. Backup: '+(data.backupCodes||[]).join(' '), true);
+        return;
+      }catch(e){ /* local */ }
+    }
+    const secret = sessionStorage.getItem('searchO2_totp_pending');
+    if(!secret) throw new Error('Generate QR / secret first.');
+    if(!(await totpVerify(secret, code))) throw new Error('Invalid authenticator code.');
+    const email = (sessionStorage.getItem('searchO2_admin_email')||document.getElementById('email').value||BOOTSTRAP_EMAIL).toLowerCase();
+    const rec = await idbGet(email) || { email };
+    rec.totpEnabled = true;
+    rec.totpSecret = secret;
+    rec.updatedAt = new Date().toISOString();
+    await idbPut(rec);
+    sessionStorage.removeItem('searchO2_totp_pending');
+    msg('✓ 2FA enabled in local vault. Click “Verify 2FA challenge” with a fresh code.', true);
+  }catch(e){ msg(e.message, false); }
+  finally{ setBusy(btn, false, 'Confirm enrollment'); }
 };
 
 document.getElementById('btnTotpVerify').onclick = async ()=>{
+  const btn = document.getElementById('btnTotpVerify');
+  setBusy(btn, true); msg('');
   try{
-    await api('/auth/2fa/verify',{ method:'POST', body:{ code: document.getElementById('totpCode').value }});
-    state.elevated = true; msg('2FA verified.', true); openApp();
-  }catch(e){ msg(e.message); }
+    const code = document.getElementById('totpCode').value;
+    await ensureMode();
+    if(state.mode==='server' && state.token){
+      try{
+        await api('/auth/2fa/verify', { method:'POST', body:{ code }});
+        state.elevated=true; sessionStorage.setItem('searchO2_admin_elevated','1');
+        msg('2FA verified (server).', true); openApp(); return;
+      }catch(e){ /* local */ }
+    }
+    if(sessionStorage.getItem('searchO2_pending_admin')!=='1') throw new Error('Sign in with password first.');
+    const email = (sessionStorage.getItem('searchO2_admin_email')||document.getElementById('email').value||BOOTSTRAP_EMAIL).toLowerCase();
+    const rec = await idbGet(email);
+    if(!rec || !rec.totpEnabled || !rec.totpSecret) throw new Error('Enroll 2FA first (Generate QR → Confirm).');
+    if(!(await totpVerify(rec.totpSecret, code))) throw new Error('Invalid authenticator code.');
+    state.elevated=true; sessionStorage.setItem('searchO2_admin_elevated','1');
+    msg('✓ 2FA verified. Opening dashboard…', true);
+    openApp();
+  }catch(e){ msg(e.message, false); }
+  finally{ setBusy(btn, false, 'Verify 2FA challenge'); }
 };
 
 document.getElementById('btnLogout').onclick = ()=>{
-  state.token=''; state.elevated=false; localStorage.removeItem('searchO2_admin_token');
+  state.token=''; state.elevated=false;
+  localStorage.removeItem('searchO2_admin_token');
+  sessionStorage.removeItem('searchO2_admin_elevated');
+  sessionStorage.removeItem('searchO2_pending_admin');
   document.getElementById('appView').classList.add('hidden');
   document.getElementById('loginView').classList.remove('hidden');
+  msg('Signed out.', true);
 };
 
 function openApp(){
@@ -262,15 +570,20 @@ async function loadOverview(){
       ['Admins', stats.totalAdmins],['Sessions', stats.activeSessionsCount],['Farms', stats.totalFarmsCount]
     ].map(([l,v])=>`<div class="card"><div class="lbl">${l}</div><div class="val">${v??'—'}</div></div>`).join('');
   }catch(e){
-    document.getElementById('statCards').innerHTML = `<div class="card"><div class="lbl">API</div><div class="val" style="color:var(--warn);font-size:0.85rem">Offline / ${e.message}</div></div>`;
+    document.getElementById('statCards').innerHTML = [
+      ['Mode', state.mode==='server'?'API':'Local vault'],
+      ['Admin', BOOTSTRAP_EMAIL],
+      ['2FA', 'On'],
+      ['Stats', 'API offline']
+    ].map(([l,v])=>`<div class="card"><div class="lbl">${l}</div><div class="val" style="font-size:0.95rem">${v}</div></div>`).join('');
   }
   try{
     const p = await api('/privacy/processing-activities');
     document.getElementById('procList').innerHTML = (p.activities||[]).map(a=>
       `<div style="margin-bottom:10px"><b>${a.name}</b><div class="hint">${a.purpose}<br/>Basis: ${a.legal_basis} · Retention: ${a.retention}</div></div>`
-    ).join('') || '<p class="hint">Run migration 004 to seed processing activities.</p>';
+    ).join('') || '<p class="hint">No processing activities seeded yet.</p>';
   }catch(e){
-    document.getElementById('procList').innerHTML = '<p class="hint">Processing register unavailable until API + migration 004.</p>';
+    document.getElementById('procList').innerHTML = '<p class="hint">GDPR register loads from API when backend is online. Local admin access is active for control-plane setup.</p>';
   }
 }
 
@@ -290,7 +603,7 @@ async function loadUsers(){
       btn.onclick=()=>showUser(btn.dataset.uid);
     });
   }catch(e){
-    document.getElementById('userRows').innerHTML = `<tr><td colspan="5">${e.message}</td></tr>`;
+    document.getElementById('userRows').innerHTML = `<tr><td colspan="5">User directory requires live API. (${e.message})</td></tr>`;
   }
 }
 document.getElementById('btnSearchUsers').onclick = loadUsers;
@@ -307,22 +620,11 @@ async function showUser(id){
       device: s.device_type, browser: s.browser, os: s.os,
       ip: maskIp(s.ip_address)
     }));
-    box.innerHTML = `
-      <h2>User 360°</h2>
-      <p class="hint">Personal · sessions · game · consent (minimised display)</p>
-      <pre class="mono" style="white-space:pre-wrap;font-size:0.72rem;max-height:280px;overflow:auto">${escapeHtml(JSON.stringify(d,null,2))}</pre>
-      <h3 style="margin-top:12px;font-size:0.9rem">Devices</h3>
-      <table><thead><tr><th>Device</th><th>Browser</th><th>OS</th><th>IP (masked)</th><th>Geo</th></tr></thead>
-      <tbody>${sessions.map(s=>`<tr><td>${s.device_type||''}</td><td>${s.browser||''}</td><td>${s.os||''}</td><td>${maskIp(s.ip_address)}</td><td>${(s.geo_location&&s.geo_location.country)||''}</td></tr>`).join('')||'<tr><td colspan="5">No sessions</td></tr>'}</tbody></table>`;
+    box.innerHTML = `<h2>User 360°</h2><pre class="mono" style="white-space:pre-wrap;font-size:0.72rem;max-height:280px;overflow:auto">${escapeHtml(JSON.stringify(d,null,2))}</pre>`;
     Map3D.setPins(state.pins);
   }catch(e){ box.innerHTML = '<p class="err">'+escapeHtml(e.message)+'</p>'; }
 }
-
-function maskIp(ip){
-  if(!ip) return '—';
-  if(ip.includes('.')){ const p=ip.split('.'); return p[0]+'.'+p[1]+'.x.x'; }
-  return String(ip).slice(0,8)+'…';
-}
+function maskIp(ip){ if(!ip) return '—'; if(ip.includes('.')){ const p=ip.split('.'); return p[0]+'.'+p[1]+'.x.x'; } return String(ip).slice(0,8)+'…'; }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
 async function loadPrivacy(){
@@ -336,23 +638,24 @@ async function loadPrivacy(){
   }
 }
 
-/* ---- Isometric volumetric map with drag ---- */
 const Map3D = {
   canvas:null, ctx:null, z:1, panX:0, panY:0, drag:false, lx:0, ly:0, pins:[],
   init(){
     this.canvas=document.getElementById('mapCanvas');
+    if(!this.canvas) return;
     this.ctx=this.canvas.getContext('2d');
     this.resize();
     this.canvas.addEventListener('pointerdown',e=>{this.drag=true;this.lx=e.clientX;this.ly=e.clientY;this.canvas.classList.add('drag');});
-    window.addEventListener('pointerup',()=>{this.drag=false;this.canvas.classList.remove('drag');});
+    window.addEventListener('pointerup',()=>{this.drag=false;this.canvas&&this.canvas.classList.remove('drag');});
     this.canvas.addEventListener('pointermove',e=>{
       if(!this.drag) return;
       this.panX += (e.clientX-this.lx); this.panY += (e.clientY-this.ly);
       this.lx=e.clientX; this.ly=e.clientY; this.draw();
     });
-    document.getElementById('mapZoomIn').onclick=()=>{this.z=Math.min(2.5,this.z+0.2);this.draw()};
-    document.getElementById('mapZoomOut').onclick=()=>{this.z=Math.max(0.6,this.z-0.2);this.draw()};
-    document.getElementById('mapReset').onclick=()=>{this.z=1;this.panX=0;this.panY=0;this.draw()};
+    const zi=document.getElementById('mapZoomIn'), zo=document.getElementById('mapZoomOut'), zr=document.getElementById('mapReset');
+    if(zi) zi.onclick=()=>{this.z=Math.min(2.5,this.z+0.2);this.draw()};
+    if(zo) zo.onclick=()=>{this.z=Math.max(0.6,this.z-0.2);this.draw()};
+    if(zr) zr.onclick=()=>{this.z=1;this.panX=0;this.panY=0;this.draw()};
     this.draw();
   },
   resize(){
@@ -365,48 +668,28 @@ const Map3D = {
   setPins(p){ this.pins=p||[]; this.draw(); },
   iso(x,y,z){ return { x:(x-y)*0.86, y:(x+y)*0.42 - z*0.7 }; },
   draw(){
+    if(!this.ctx) return;
     const ctx=this.ctx, w=this.canvas.width, h=this.canvas.height;
     ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,w,h);
     ctx.fillStyle='#071018'; ctx.fillRect(0,0,w,h);
     ctx.save();
     ctx.translate(w/2 + this.panX*devicePixelRatio, h*0.55 + this.panY*devicePixelRatio);
     ctx.scale(this.z*devicePixelRatio, this.z*devicePixelRatio);
-    // volumetric ground plate
     for(let i=8;i>=0;i--){
       const p1=this.iso(-180,-120,i*2), p2=this.iso(180,-120,i*2), p3=this.iso(180,120,i*2), p4=this.iso(-180,120,i*2);
       ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.lineTo(p3.x,p3.y); ctx.lineTo(p4.x,p4.y); ctx.closePath();
       ctx.fillStyle=`rgba(30,58,95,${0.08+i*0.03})`; ctx.fill();
     }
-    // grid
-    ctx.strokeStyle='rgba(61,139,253,0.25)'; ctx.lineWidth=1;
-    for(let x=-160;x<=160;x+=40){
-      const a=this.iso(x,-100,0), b=this.iso(x,100,0);
-      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
-    }
-    for(let y=-100;y<=100;y+=40){
-      const a=this.iso(-160,y,0), b=this.iso(160,y,0);
-      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
-    }
-    // region blocks (Germany, Bavaria, BD, generic)
-    const regions=[
-      {x:-80,y:-40,label:'DE',c:'#2dd4a8'},
-      {x:-40,y:-10,label:'BY',c:'#3d8bfd'},
-      {x:60,y:20,label:'BD',c:'#f5b942'},
-      {x:20,y:-50,label:'EU',c:'#e8c47c'}
-    ];
+    const regions=[{x:-80,y:-40,label:'DE',c:'#2dd4a8'},{x:-40,y:-10,label:'BY',c:'#3d8bfd'},{x:60,y:20,label:'BD',c:'#f5b942'}];
     regions.forEach(r=>{
       const base=this.iso(r.x,r.y,0), top=this.iso(r.x,r.y,28);
-      ctx.fillStyle=r.c; ctx.globalAlpha=0.85;
-      ctx.beginPath(); ctx.arc(top.x, top.y, 10, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha=1; ctx.strokeStyle=r.c; ctx.beginPath(); ctx.moveTo(base.x,base.y); ctx.lineTo(top.x,top.y); ctx.stroke();
+      ctx.fillStyle=r.c; ctx.beginPath(); ctx.arc(top.x, top.y, 10, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle=r.c; ctx.beginPath(); ctx.moveTo(base.x,base.y); ctx.lineTo(top.x,top.y); ctx.stroke();
       ctx.fillStyle='#e8eef9'; ctx.font='600 11px IBM Plex Sans'; ctx.textAlign='center'; ctx.fillText(r.label, top.x, top.y-14);
     });
-    // session pins
-    (this.pins.length?this.pins:[{label:'Frankfurt',country:'DE',device:'Desktop'}]).forEach((p,i)=>{
-      const x=-60+i*35, y=-20+i*15;
-      const base=this.iso(x,y,0), top=this.iso(x,y,40);
-      ctx.fillStyle='#f07178';
-      ctx.beginPath(); ctx.moveTo(top.x, top.y-12); ctx.lineTo(top.x+8, top.y+4); ctx.lineTo(top.x-8, top.y+4); ctx.closePath(); ctx.fill();
+    (this.pins.length?this.pins:[{country:'DE',device:'Desktop'}]).forEach((p,i)=>{
+      const x=-60+i*35, y=-20+i*15; const top=this.iso(x,y,40);
+      ctx.fillStyle='#f07178'; ctx.beginPath(); ctx.moveTo(top.x, top.y-12); ctx.lineTo(top.x+8, top.y+4); ctx.lineTo(top.x-8, top.y+4); ctx.closePath(); ctx.fill();
       ctx.fillStyle='#e8eef9'; ctx.font='10px IBM Plex Sans'; ctx.fillText((p.country||'?')+' · '+(p.device||''), top.x, top.y-16);
     });
     ctx.restore();
@@ -415,7 +698,9 @@ const Map3D = {
 
 window.addEventListener('resize',()=>Map3D.resize());
 Map3D.init();
-if(state.token){ /* stay on login until 2FA elevated for safety */ }
+ensureMode().then(()=>{
+  if(state.elevated) openApp();
+});
 </script>
 </body>
 </html>
