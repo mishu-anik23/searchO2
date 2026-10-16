@@ -91,12 +91,12 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('farm_shed').x, y: findSite('farm_shed').y }, { x: 933, y: 237 }, 'farm_shed coordinates');
   assert.deepStrictEqual({ x: findSite('veg').x, y: findSite('veg').y }, { x: 973, y: 373 }, 'veg coordinates');
   assert.deepStrictEqual({ x: findSite('crop').x, y: findSite('crop').y }, { x: 946, y: 558 }, 'crop coordinates');
-  assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 890, y: 800 }, 'pond coordinates');
+  assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 390, y: 840 }, 'pond coordinates bottom-left meadow');
   assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1588, y: 670 }, 'restaurant coordinates');
-  assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1520, y: 260 }, 'cattle coordinates stretched along hill slope');
+  assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1360, y: 285 }, 'cattle coordinates long pasture downslope');
   assert.deepStrictEqual({ x: findSite('gate').x, y: findSite('gate').y }, { x: 1544, y: 794 }, 'gate coordinates');
-  assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1710, y: 385 }, 'vineyard coordinates');
-  assert.deepStrictEqual({ x: findSite('wind_e').x, y: findSite('wind_e').y }, { x: 1830, y: 130 }, 'wind_e coordinates behind cow shed');
+  assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1470, y: 445 }, 'vineyard coordinates terrace above road');
+  assert.deepStrictEqual({ x: findSite('wind_e').x, y: findSite('wind_e').y }, { x: 1700, y: 165 }, 'wind_e coordinates on farm hilltop');
   console.log('[✓ PASSED] Strict coordinate mapping verified against bavaria-bg-plan.jpg');
 
   // 5. Dismiss Welcome Banner and verify Intro Why Modal
@@ -265,18 +265,34 @@ const assert = require('assert');
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
   await page.waitForTimeout(200);
 
-  // 11. Test Facility Construction: Living Pond, Cattle Pasture, Wind Turbines, Barn & Stuben
+  // 11. Test Facility Construction: Living Lake Excavation Sequence, Cattle Pasture, Wind Turbines, Barn & Stuben
   await page.evaluate(() => {
     const pond = SITES.find(s => s.id === 'pond');
     AlpenMap.handle(pond);
   });
   await page.waitForTimeout(400);
-  const buildPondBtn = await page.$('#modalBody .btn-g');
-  if (buildPondBtn) {
-    await buildPondBtn.click();
-    await page.waitForTimeout(300);
-    console.log('[✓ PASSED] Living Waters Pond excavated and commissioned');
-  }
+  const lakeModalOpen = await page.isVisible('#modal.open');
+  assert(lakeModalOpen, 'Lake modal must open on site click');
+  const lakeContent = await page.textContent('#modalBody');
+  assert(lakeContent.includes('Living Waters Alpine Lake · Excavation Console'), 'Must show excavation console');
+  assert(lakeContent.includes('Excavation Progress'), 'Must show progress indicator');
+
+  // Step 1: Survey
+  await page.evaluate(() => advanceLakeStep(0, 25));
+  await page.waitForTimeout(200);
+  console.log('[✓ PASSED] Lake Step 1: Surveying & Staking completed');
+
+  // Step 2: Excavation
+  await page.evaluate(() => advanceLakeStep(1, 35));
+  await page.waitForTimeout(200);
+  console.log('[✓ PASSED] Lake Step 2: Mechanical Loam Excavation completed');
+
+  // Complete Lake
+  await page.evaluate(() => buildLakeComplete(120));
+  await page.waitForTimeout(300);
+  const lakeDone = await page.evaluate(() => state.built['pond'] && state.lake.stage >= 4);
+  assert(lakeDone, 'Lake must be fully built and commissioned');
+  console.log('[✓ PASSED] Living Waters Alpine Lake fully excavated and commissioned with 3D assets');
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
 
   await page.evaluate(() => {
@@ -369,8 +385,8 @@ const assert = require('assert');
   // Orchards close-up
   await page.evaluate(() => {
     state.zoom = 2.4;
-    state.panX = 390;
-    state.panY = 70;
+    state.panX = 660;
+    state.panY = 60;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_orchards.png') });
@@ -379,18 +395,28 @@ const assert = require('assert');
   // Cattle pasture close-up
   await page.evaluate(() => {
     state.zoom = 2.0;
-    state.panX = -580;
-    state.panY = 240;
+    state.panX = -460;
+    state.panY = 210;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_cattle_pasture.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_cattle_pasture.png');
 
+  // Lake amoeba close-up
+  await page.evaluate(() => {
+    state.zoom = 2.2;
+    state.panX = 520;
+    state.panY = -340;
+  });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_lake_amoeba.png') });
+  console.log('[✓ SAVED] screenshot_alpenhof_lake_amoeba.png');
+
   // 108-vine vineyard close-up
   await page.evaluate(() => {
     state.zoom = 2.3;
-    state.panX = -720;
-    state.panY = 20;
+    state.panX = -540;
+    state.panY = 50;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_vineyard_108.png') });
