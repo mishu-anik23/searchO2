@@ -275,6 +275,78 @@ const VINEYARD_BEDS = [
   {id:'v8', cx:1560, cy:430, w:82, h:28, title:'Vineyard Bed #9 (Low-E)', r:2, c:2}
 ];
 
+/* ================= VEGETABLE & CROP SPECIES DATA ================= */
+const VEG_SPECIES = {
+  kuerbis: {
+    id: 'kuerbis', name: 'Alpen-Hokkaido Kürbis', sub: 'Cucurbita maxima · Rich Carotenoids & Sweet Flesh',
+    icon: '🎃', cost: 12, rev: 32, xp: 16, o2: 10, col: '#F57C00'
+  },
+  zucchini: {
+    id: 'zucchini', name: 'Bayerische Zucchini', sub: 'Cucurbita pepo · Glossy Emerald & Tender Blossom',
+    icon: '🥒', cost: 10, rev: 25, xp: 14, o2: 8, col: '#2E7D32'
+  },
+  broccoli: {
+    id: 'broccoli', name: 'Calabrese Brokkoli', sub: 'Brassica oleracea · Dense Mineral-Rich Florets',
+    icon: '🥦', cost: 12, rev: 28, xp: 15, o2: 12, col: '#1B5E20'
+  },
+  spargel: {
+    id: 'spargel', name: 'Königs-Spargel', sub: 'Asparagus officinalis · Purple-Tipped Stately Spears',
+    icon: '🎋', cost: 16, rev: 40, xp: 20, o2: 14, col: '#7CB342'
+  },
+  sellerie: {
+    id: 'sellerie', name: 'Stauden-Sellerie', sub: 'Apium graveolens · Crunchy Ribbed Stalks & Aromatic Crest',
+    icon: '🥬', cost: 10, rev: 24, xp: 14, o2: 9, col: '#558B2F'
+  },
+  karotte: {
+    id: 'karotte', name: 'Ochsenherz-Karotte', sub: 'Daucus carota · Crisp Sweet Root with Lacy Greenery',
+    icon: '🥕', cost: 8, rev: 20, xp: 12, o2: 8, col: '#FF6F00'
+  },
+  kartoffel: {
+    id: 'kartoffel', name: 'Bamberger Hörnchen Kartoffel', sub: 'Solanum tuberosum · Heirloom Waxy Alpine Spud',
+    icon: '🥔', cost: 10, rev: 26, xp: 15, o2: 10, col: '#8D6E63'
+  },
+  kohl: {
+    id: 'kohl', name: 'Filderkraut Weißkohl', sub: 'Brassica oleracea · Pointed Sweet Cabbage for Kraut',
+    icon: '🥗', cost: 10, rev: 24, xp: 13, o2: 8, col: '#689F38'
+  }
+};
+
+/* 48-Plot Hexagonal Vegetable Garden: 4 Quadrant Beds (2x2) x 12 Plants each */
+const VEG_BED_NAMES = ['Nordwest-Beet', 'Nordost-Beet', 'Südwest-Beet', 'Südost-Beet'];
+function makeVegBeds(){
+  const initialSpecies = [
+    ['kuerbis', 'zucchini'],  // NW Bed: Pumpkin & Zucchini
+    ['broccoli', 'spargel'],  // NE Bed: Broccoli & Asparagus
+    ['sellerie', 'karotte'],  // SW Bed: Celery & Carrots
+    ['kartoffel', 'kohl']     // SE Bed: Potatoes & Cabbage
+  ];
+  return [0, 1, 2, 3].map(bIdx => {
+    const plants = [];
+    for(let r = 0; r < 3; r++){
+      for(let c = 0; c < 4; c++){
+        const pIdx = r * 4 + c;
+        const sp = initialSpecies[bIdx][pIdx % 2];
+        const stages = ['sprout', 'growing', 'flowering', 'mature'];
+        const st = stages[(pIdx + bIdx) % 4];
+        const prog = st === 'mature' ? 1.0 : st === 'flowering' ? 0.75 : st === 'growing' ? 0.50 : 0.25;
+        plants.push({
+          id: pIdx,
+          row: r,
+          col: c,
+          species: sp,
+          status: st,
+          progress: prog
+        });
+      }
+    }
+    return {
+      id: bIdx,
+      name: VEG_BED_NAMES[bIdx],
+      plants: plants
+    };
+  });
+}
+
 function makeVineBeds(){
   return VINEYARD_BEDS.map(b => ({
     id: b.id,
@@ -324,11 +396,10 @@ const SITES = [
     cat: 'orchard', color: '#8D6E63', action: 'orchard', plot: p.id
   })),
   {id:'bess',      x:710,  y:216, icon:'⚡', title:'Energy Storage Farm',           sub:'Industrial BESS Pad · Grid Intertie',    cat:'energy',    color:'#00E676', action:'bess'},
-  {id:'farm_shed', x:933,  y:237, icon:'🏚️', title:'Farm Shed & Workshop',         sub:'Timber Barn · Loft & Fendt Tractor',     cat:'infra',     color:'#FFA726', action:'shed'},
-  {id:'veg',       x:973,  y:373, icon:'🥬', title:'Vegetable Garden (4 Parts)',    sub:'Polyculture Companion Vegetable Beds',   cat:'veg',       color:'#76FF03', action:'veg'},
-  {id:'crop',      x:946,  y:558, icon:'🌾', title:'2×2 Crop Field',                sub:'Rotational Arable: Wheat, Kale, Corn',   cat:'crop',      color:'#C0CA33', action:'crop'},
-  {id:'flower_w',  x:810,  y:715, icon:'🌸', title:'Flower Garden West',            sub:'Pollination Bank & Wooden Bee Hotel',    cat:'flower',    color:'#FF4081', action:'flower'},
-  {id:'flower_e',  x:990,  y:735, icon:'🌼', title:'Flower Garden East',            sub:'Pollination Bank & Bavarian Beehives',   cat:'flower',    color:'#F48FB1', action:'flower'},
+  {id:'farm_shed',   x:933, y:237, icon:'🏚️', title:'Farm Shed & Workshop',         sub:'Timber Barn · Loft & Fendt Tractor',     cat:'infra',     color:'#FFA726', action:'shed'},
+  {id:'solar',       x:935, y:315, icon:'☀️', title:'Agrivoltaic Solar Farm',      sub:'4×4 Photovoltaic Array · 16 Modules Faced to Cow Shed', cat:'energy', color:'#FFD54F', action:'solar'},
+  {id:'veg',         x:960, y:460, icon:'🥦', title:'Hexagonal Vegetable Garden',  sub:'48-Plot Polyculture Bauerngarten · 2×2 Beds · Heirloom Crops', cat:'veg', color:'#76FF03', action:'veg'},
+  {id:'flower_oval', x:870, y:730, icon:'🌸', title:'Oval Alpine Flower Garden',   sub:'Volumetric 3D Floral Terraces · Bee Hotel & Honey Bank', cat:'flower', color:'#FF4081', action:'flower'},
   {id:'pond',      x:630,  y:870, icon:'💧', title:'Living Waters Alpine Lake System', sub:'2 Joined Glacial Basins · Fish Hatchery & Duck Aviary', cat:'water', color:'#29B6F6', action:'pond'},
   {id:'crew',      x:1282, y:541, icon:'🧑‍🌾', title:'Crew Shed & Labour HQ',        sub:'Alpine Timber Lodge & Labour Board',     cat:'labour',    color:'#FFD54F', action:'crew'},
   {id:'juice',     x:1306, y:601, icon:'🧃', title:'Hof-Mosterei & Juice Bar',      sub:'Cold-Pressed Cider Press & Terrace',     cat:'trade',     color:'#FF7043', action:'juice'},
@@ -356,6 +427,21 @@ const state = {
   surveyed: {}, built: {}, zoom: 1.0, panX: 0, panY: 0,
   orchards: Object.fromEntries(ORCHARD_PLOTS.map(p => [p.id, {beds: makeBeds(), aerated: 0}])),
   vineyard: { beds: makeVineBeds(), currentBed: 0, harvested: 0 },
+  vegetables: {
+    beds: makeVegBeds(),
+    currentBed: 0,
+    harvestedTotal: 0
+  },
+  solar: {
+    stage: 0,
+    progress: 0,
+    dailyPower: 120
+  },
+  flowers: {
+    blooming: true,
+    harvestedHoney: 0,
+    lastHarvest: 0
+  },
   lake: { stage: 0, progress: 0, timeRemaining: 0, digging: false },
   cattle: {
     animals: [
@@ -403,7 +489,7 @@ const CHAPTERS = [
     id: 3,
     title: 'Polyculture Arable & Pollinator Guilds',
     recall: 'Recalling Ecosystem & Companion Guilds Ch. 3',
-    desc: 'Echoing Basic Farm Ch. 3, establish balanced companion habitats: build the 4-part Vegetable Garden, 2×2 Crop Field (Wheat, Kale, Lavender, Corn), and Twin Flower Terraces with bee hotels.',
+    desc: 'Echoing Basic Farm Ch. 3, establish balanced companion habitats: build the 48-plot Hexagonal Vegetable Garden (Kürbis, Zucchini, Broccoli, Spargel, Sellerie) and the Oval Flower Garden with pollinator bee hotel.',
     goal: 3,
     badge: '🐝 Biodiversity Guardian'
   },
@@ -419,7 +505,7 @@ const CHAPTERS = [
     id: 5,
     title: 'Mountain Renewable Microgrid & Automation',
     recall: 'Recalling Microgrid & Clean Power Ch. 5',
-    desc: 'Connecting to Basic Farm Ch. 5 energy systems, commission West & East Wind Turbines and connect the BESS Storage Farm to power automated processing machinery.',
+    desc: 'Connecting to Basic Farm Ch. 5 energy systems, commission the 4×4 Agrivoltaic Solar Farm, West & East Wind Turbines and connect the BESS Storage Farm to power automated processing machinery.',
     goal: 2,
     badge: '⚡ Alpine Grid Engineer'
   },
@@ -1693,80 +1779,755 @@ function drawCrewLodge(ctx, cx, cy, built){
 }
 
 /* 8. Twin Flower Terraces at (810, 715) and (990, 735) */
-function drawFlowerTerraces(ctx, cx, cy, built, isEast){
+/* ================= 3D VOLUMETRIC VEGETABLE SPRITE RENDERER ================= */
+function drawVegPlant(ctx, px, py, spKey, status, time){
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.globalAlpha = built ? 1 : 0.50;
+  ctx.translate(px, py);
 
-  // Stepped Limestone Retaining Walls
-  isoBox(ctx, 0, 0, 74, 28, 8, '#90A4AE', '#78909C', '#607D8B', '#455A64');
-  ctx.fillStyle = '#4E342E'; ctx.beginPath(); ctx.ellipse(0, -9, 32, 11, 0, 0, Math.PI * 2); ctx.fill();
+  // Soft ambient ground shadow
+  ctx.fillStyle = 'rgba(20, 35, 15, 0.28)';
+  ctx.beginPath();
+  ctx.ellipse(0, 3, 9, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Flowering Mounds
-  const colors = isEast ? ['#FF80AB', '#FF4081', '#F50057', '#FFD54F'] : ['#B388FF', '#7C4DFF', '#651FFF', '#FFD54F'];
-  for(let i = -24; i <= 24; i += 8){
-    const col = colors[Math.abs(i) % colors.length];
-    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(i, -12 + (i % 3), 4, 0, Math.PI * 2); ctx.fill();
+  // Dark organic compost soil mound
+  ctx.fillStyle = '#3E2723';
+  ctx.beginPath();
+  ctx.ellipse(0, 1, 7.5, 3.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#4E342E';
+  ctx.beginPath();
+  ctx.ellipse(-1, 0, 5.5, 2.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const isMature = status === 'mature';
+  const isFlowering = status === 'flowering';
+  const isGrowing = status === 'growing';
+  const isSprout = status === 'sprout';
+
+  if (isSprout) {
+    // Sprouting: Two tender bright chartreuse cotyledon shoots
+    ctx.fillStyle = '#8BC34A';
+    ctx.beginPath(); ctx.ellipse(-2.5, -2, 2.5, 4, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(2.5, -2, 2.5, 4, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#AED581';
+    ctx.beginPath(); ctx.arc(0, -3.5, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return;
   }
 
-  // West: Solitary Bee Hotel / East: Painted Bavarian Beehives
+  // 1. Kürbis (Alpine Hokkaido Pumpkin)
+  if (spKey === 'kuerbis') {
+    // Broad lobed dark green pumpkin vine leaves
+    ctx.fillStyle = '#2E7D32';
+    ctx.beginPath(); ctx.ellipse(-6, -1, 6, 4, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6, -2, 6, 4, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -6, 5, 4, 0, 0, Math.PI * 2); ctx.fill();
+    // Vine tendril
+    ctx.strokeStyle = '#43A047'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(7, -8, 9, -5); ctx.stroke();
+
+    if (isFlowering) {
+      // Large golden 5-pointed pumpkin blossom
+      ctx.fillStyle = '#FDD835';
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = (i * Math.PI * 2) / 5 - Math.PI / 2;
+        const r1 = 6, r2 = 2.5;
+        const x1 = Math.cos(a) * r1, y1 = -4 + Math.sin(a) * r1;
+        const aMid = a + Math.PI / 5;
+        const x2 = Math.cos(aMid) * r2, y2 = -4 + Math.sin(aMid) * r2;
+        if (i === 0) ctx.moveTo(x1, y1); else ctx.lineTo(x1, y1);
+        ctx.lineTo(x2, y2);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#E65100'; ctx.beginPath(); ctx.arc(0, -4, 1.8, 0, Math.PI * 2); ctx.fill();
+    } else if (isMature) {
+      // Plump ribbed orange Hokkaido pumpkin
+      // Outer shadow body
+      ctx.fillStyle = '#E65100'; ctx.beginPath(); ctx.ellipse(0, -3, 10, 7.5, 0, 0, Math.PI * 2); ctx.fill();
+      // Main vibrant orange pumpkin body
+      ctx.fillStyle = '#F57C00'; ctx.beginPath(); ctx.ellipse(0, -3.5, 9.5, 7, 0, 0, Math.PI * 2); ctx.fill();
+      // Ribbed segmental lobes
+      ctx.strokeStyle = '#D84315'; ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.moveTo(-6, -4); ctx.quadraticCurveTo(-6, 0, 0, 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(6, -4); ctx.quadraticCurveTo(6, 0, 0, 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(0, 2); ctx.stroke();
+      // Top glossy highlight
+      ctx.fillStyle = '#FFB74D'; ctx.beginPath(); ctx.ellipse(-2, -6, 3, 1.8, -0.2, 0, Math.PI * 2); ctx.fill();
+      // Woody curved pumpkin stem
+      ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 2.0;
+      ctx.beginPath(); ctx.moveTo(0, -8); ctx.quadraticCurveTo(2, -12, 4, -11); ctx.stroke();
+    }
+  }
+
+  // 2. Zucchini (Green Courgette)
+  else if (spKey === 'zucchini') {
+    // Mottled umbrella leaves
+    ctx.fillStyle = '#1B5E20';
+    ctx.beginPath(); ctx.ellipse(-6, -2, 7, 4, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6, -3, 7, 4, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#388E3C';
+    ctx.beginPath(); ctx.ellipse(-3, -5, 5, 3.5, -0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(3, -5, 5, 3.5, 0.2, 0, Math.PI * 2); ctx.fill();
+
+    if (isFlowering) {
+      // Golden-yellow trumpet blossom
+      ctx.fillStyle = '#FFD54F';
+      ctx.beginPath();
+      ctx.moveTo(-1, 0); ctx.lineTo(-4, -7); ctx.lineTo(0, -9); ctx.lineTo(4, -7); ctx.lineTo(1, 0);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#FFA000'; ctx.beginPath(); ctx.arc(0, -6, 1.5, 0, Math.PI * 2); ctx.fill();
+    } else if (isMature) {
+      // Long glossy deep-emerald zucchini lying diagonally
+      ctx.save();
+      ctx.rotate(-0.25);
+      // Shadow & body
+      ctx.fillStyle = '#0E3813'; ctx.beginPath(); ctx.ellipse(0, -1, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.ellipse(0, -2, 9.5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+      // Pale green longitudinal flecks & highlight
+      ctx.fillStyle = '#81C784'; ctx.beginPath(); ctx.ellipse(-2, -3.2, 6, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+      // Yellow tip flower remnant
+      ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(9, -2, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // 3. Broccoli (Calabrese Heirloom)
+  else if (spKey === 'broccoli') {
+    // Broad waxy blue-green outer collar leaves
+    ctx.fillStyle = '#004D40';
+    ctx.beginPath(); ctx.ellipse(-7, 0, 7, 3.5, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(7, 0, 7, 3.5, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#00695C';
+    ctx.beginPath(); ctx.ellipse(0, -7, 6, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-5, -4, 6, 3.5, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(5, -4, 6, 3.5, 0.4, 0, Math.PI * 2); ctx.fill();
+
+    if (isFlowering) {
+      // Delicate pale yellow floret buds opening
+      ctx.fillStyle = '#FFF59D';
+      ctx.beginPath();
+      for(let a = 0; a < 6; a++){
+        const ang = a * Math.PI / 3;
+        ctx.arc(Math.cos(ang) * 4, -4 + Math.sin(ang) * 3, 1.5, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    } else if (isMature) {
+      // Thick pale green stalk
+      ctx.fillStyle = '#66BB6A'; ctx.fillRect(-2, -3, 4, 4);
+      // Dense pebbled emerald green broccoli crown
+      ctx.fillStyle = '#1B5E20';
+      ctx.beginPath(); ctx.ellipse(0, -5, 8.5, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2E7D32';
+      ctx.beginPath();
+      ctx.arc(-4, -6, 3.5, 0, Math.PI * 2);
+      ctx.arc(0, -8, 4.0, 0, Math.PI * 2);
+      ctx.arc(4, -6, 3.5, 0, Math.PI * 2);
+      ctx.arc(-2, -4, 3.0, 0, Math.PI * 2);
+      ctx.arc(2, -4, 3.0, 0, Math.PI * 2);
+      ctx.fill();
+      // Highlight beads
+      ctx.fillStyle = '#43A047';
+      ctx.beginPath();
+      ctx.arc(-1, -7, 1.5, 0, Math.PI * 2);
+      ctx.arc(3, -5, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 4. Spargel (Bavarian Asparagus)
+  else if (spKey === 'spargel') {
+    // Sandy loam ridge
+    ctx.fillStyle = '#795548'; ctx.beginPath(); ctx.ellipse(0, 1, 9, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Feathery asparagus fern fronds
+    ctx.strokeStyle = '#4CAF50'; ctx.lineWidth = 1.0;
+    ctx.beginPath(); ctx.moveTo(-3, 0); ctx.quadraticCurveTo(-7, -8, -6, -14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(3, 0); ctx.quadraticCurveTo(7, -8, 6, -14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -15); ctx.stroke();
+    // Feathery spray branches
+    ctx.strokeStyle = '#81C784'; ctx.lineWidth = 0.8;
+    for(let h = -4; h >= -14; h -= 3){
+      ctx.beginPath(); ctx.moveTo(-2, h); ctx.lineTo(-6, h - 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(2, h); ctx.lineTo(6, h - 2); ctx.stroke();
+    }
+
+    if (isFlowering) {
+      // Tiny pale white-green hanging bell blossoms
+      ctx.fillStyle = '#E8F5E9';
+      ctx.beginPath();
+      ctx.arc(-4, -9, 1.3, 0, Math.PI * 2);
+      ctx.arc(4, -8, 1.3, 0, Math.PI * 2);
+      ctx.arc(-1, -12, 1.3, 0, Math.PI * 2);
+      ctx.arc(2, -13, 1.3, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (isMature) {
+      // 3 Upright stately asparagus spears poking through loam
+      const spears = [[-3, -8, 0.8], [0, -12, 1.0], [3, -9, 0.85]];
+      spears.forEach(([sx, topY, w]) => {
+        // Pale ivory/green stalk
+        ctx.fillStyle = '#C8E6C9';
+        ctx.fillRect(sx - 1.4 * w, topY + 3, 2.8 * w, -topY - 3);
+        // Spear head with triangular scale leaves
+        ctx.fillStyle = '#81C784';
+        ctx.beginPath();
+        ctx.moveTo(sx - 1.5 * w, topY + 3);
+        ctx.lineTo(sx, topY);
+        ctx.lineTo(sx + 1.5 * w, topY + 3);
+        ctx.closePath(); ctx.fill();
+        // Royal purple tip blush (Spargelspitze)
+        ctx.fillStyle = '#8E24AA';
+        ctx.beginPath();
+        ctx.moveTo(sx - 1.0 * w, topY + 1.8);
+        ctx.lineTo(sx, topY);
+        ctx.lineTo(sx + 1.0 * w, topY + 1.8);
+        ctx.closePath(); ctx.fill();
+      });
+    }
+  }
+
+  // 5. Sellerie (Celery / Celeriac)
+  else if (spKey === 'sellerie') {
+    // Pale celery root bulb at base
+    ctx.fillStyle = '#D7CCC8'; ctx.beginPath(); ctx.ellipse(0, 0, 5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Ribbed upright celery stalks
+    ctx.strokeStyle = '#AED581'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(-2, 0); ctx.quadraticCurveTo(-4, -6, -5, -11); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(2, 0); ctx.quadraticCurveTo(4, -6, 5, -11); ctx.stroke();
+
+    if (isFlowering) {
+      // White floral umbels
+      ctx.fillStyle = '#FAFAFA';
+      ctx.beginPath();
+      ctx.arc(-5, -12, 2.2, 0, Math.PI * 2);
+      ctx.arc(0, -14, 2.5, 0, Math.PI * 2);
+      ctx.arc(5, -12, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (isMature) {
+      // Thick crunchy ribbed stalks & lush toothed dark green celery leaf crown
+      ctx.fillStyle = '#33691E';
+      ctx.beginPath(); ctx.ellipse(-5, -12, 4.5, 3, -0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, -13.5, 5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(5, -12, 4.5, 3, 0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#558B2F';
+      ctx.beginPath(); ctx.ellipse(-1, -11, 3.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(2, -10, 3.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // 6. Karotte (Heritage Carrot)
+  else if (spKey === 'karotte') {
+    // Feathery lacy foliage
+    ctx.strokeStyle = '#388E3C'; ctx.lineWidth = 1.0;
+    ctx.beginPath(); ctx.moveTo(-1, 0); ctx.quadraticCurveTo(-5, -6, -6, -11); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -13); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(1, 0); ctx.quadraticCurveTo(5, -6, 6, -11); ctx.stroke();
+
+    if (isFlowering) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath(); ctx.arc(0, -14, 3, 0, Math.PI * 2); ctx.fill();
+    } else if (isMature) {
+      // Orange carrot shoulder emerging from dark soil
+      ctx.fillStyle = '#FF6F00';
+      ctx.beginPath(); ctx.ellipse(0, -1, 4.5, 2.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FFA000';
+      ctx.beginPath(); ctx.ellipse(0, -1.8, 3.5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+      // Dense feathery green spray
+      ctx.fillStyle = '#2E7D32';
+      ctx.beginPath(); ctx.arc(-4, -10, 2.5, 0, Math.PI * 2); ctx.arc(0, -12, 3, 0, Math.PI * 2); ctx.arc(4, -10, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // 7. Kartoffel (Potato)
+  else if (spKey === 'kartoffel') {
+    // Dense potato plant mound
+    ctx.fillStyle = '#2E7D32';
+    ctx.beginPath(); ctx.ellipse(-5, -3, 6, 4, -0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(5, -3, 6, 4, 0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -6, 6, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+
+    if (isFlowering) {
+      // Starry purple-violet blossoms with yellow centers
+      ctx.fillStyle = '#CE93D8';
+      ctx.beginPath(); ctx.arc(-2, -8, 2.2, 0, Math.PI * 2); ctx.arc(3, -7, 2.0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FFD54F';
+      ctx.beginPath(); ctx.arc(-2, -8, 0.8, 0, Math.PI * 2); ctx.arc(3, -7, 0.8, 0, Math.PI * 2); ctx.fill();
+    } else if (isMature) {
+      // Golden potato tubers showing at soil base
+      ctx.fillStyle = '#8D6E63'; ctx.beginPath(); ctx.ellipse(-4, 0, 4, 2.5, 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#A1887F'; ctx.beginPath(); ctx.ellipse(4, 0, 3.5, 2.2, -0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#D7CCC8'; ctx.beginPath(); ctx.arc(-4, -0.5, 1, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // 8. Weißkohl (Bavarian Cabbage)
+  else {
+    // Wide wavy outer cabbage wrapper leaves
+    ctx.fillStyle = '#33691E';
+    ctx.beginPath(); ctx.ellipse(-6, -1, 7, 4.5, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6, -1, 7, 4.5, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -5, 7, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+    if (isFlowering) {
+      ctx.fillStyle = '#FFEE58';
+      ctx.beginPath(); ctx.arc(-1, -9, 1.8, 0, Math.PI * 2); ctx.arc(2, -8, 1.5, 0, Math.PI * 2); ctx.fill();
+    } else if (isMature) {
+      // Solid pale-green cabbage head nestled in dark outer leaves
+      ctx.fillStyle = '#AED581'; ctx.beginPath(); ctx.ellipse(0, -4, 6.5, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#DCEDC8'; ctx.beginPath(); ctx.ellipse(-1, -5, 4.5, 3.5, -0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#7CB342'; ctx.lineWidth = 1.0;
+      ctx.beginPath(); ctx.arc(0, -4, 4, 0.2, Math.PI * 0.9); ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+/* ================= 1. HEXAGONAL VEGETABLE GARDEN (48 PLOTS) ================= */
+function drawHexagonalVegGarden(ctx, cx, cy, built, time){
+  ctx.save();
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  // 1. Isometric Hexagonal Bed Geometry
+  // 6 Vertices forming an isometric hexagon: Width ~190, Height ~140
+  const hex = [
+    [cx, cy - 70],
+    [cx + 95, cy - 35],
+    [cx + 95, cy + 35],
+    [cx, cy + 70],
+    [cx - 95, cy + 35],
+    [cx - 95, cy - 35]
+  ];
+
+  // Ground ambient shadow
+  ctx.fillStyle = 'rgba(20, 38, 18, 0.32)';
+  ctx.beginPath();
+  ctx.ellipse(cx + 4, cy + 8, 102, 68, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Outer Stone/Timber Retaining Border
+  ctx.beginPath();
+  hex.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
+  ctx.closePath();
+  ctx.fillStyle = '#4E342E'; ctx.fill();
+  ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 4; ctx.stroke();
+
+  // Top bevel edge highlight on north edges
+  ctx.strokeStyle = '#8D6E63'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(hex[4][0], hex[4][1]);
+  ctx.lineTo(hex[5][0], hex[5][1]);
+  ctx.lineTo(hex[0][0], hex[0][1]);
+  ctx.lineTo(hex[1][0], hex[1][1]);
+  ctx.stroke();
+
+  // Inner Rich Dark Compost Loam Bed
+  const innerHex = [
+    [cx, cy - 65],
+    [cx + 89, cy - 32],
+    [cx + 89, cy + 32],
+    [cx, cy + 65],
+    [cx - 89, cy + 32],
+    [cx - 89, cy - 32]
+  ];
+  ctx.beginPath();
+  innerHex.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
+  ctx.closePath();
+  ctx.fillStyle = '#26160F'; ctx.fill();
+
+  // 2. Internal Cruciform Gravel Pathways (divides into 2x2 Quadrant Beds)
+  // Vertical Path: North to South
+  ctx.fillStyle = '#D7CCC8';
+  ctx.beginPath();
+  ctx.moveTo(cx - 7, cy - 64);
+  ctx.lineTo(cx + 7, cy - 64);
+  ctx.lineTo(cx + 7, cy + 64);
+  ctx.lineTo(cx - 7, cy + 64);
+  ctx.closePath(); ctx.fill();
+
+  // Horizontal Path: West to East
+  ctx.beginPath();
+  ctx.moveTo(cx - 88, cy - 6);
+  ctx.lineTo(cx + 88, cy - 6);
+  ctx.lineTo(cx + 88, cy + 6);
+  ctx.lineTo(cx - 88, cy + 6);
+  ctx.closePath(); ctx.fill();
+
+  // Path stone borders
+  ctx.strokeStyle = '#A1887F'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - 7, cy - 64); ctx.lineTo(cx - 7, cy + 64);
+  ctx.moveTo(cx + 7, cy - 64); ctx.lineTo(cx + 7, cy + 64);
+  ctx.moveTo(cx - 88, cy - 6); ctx.lineTo(cx + 88, cy - 6);
+  ctx.moveTo(cx - 88, cy + 6); ctx.lineTo(cx + 88, cy + 6);
+  ctx.stroke();
+
+  // Central Stone Sundial / Birdbath Basin at Crossroads
+  ctx.fillStyle = '#90A4AE'; ctx.beginPath(); ctx.ellipse(cx, cy, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#B0BEC5'; ctx.beginPath(); ctx.ellipse(cx, cy - 2, 7, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#455A64'; ctx.beginPath(); ctx.arc(cx, cy - 2, 1.8, 0, Math.PI * 2); ctx.fill();
+
+  // 3. Render 4 Quadrant Beds (2x2) x 12 Plants each = 48 Plant Positions
+  const quadCenters = [
+    { bx: cx - 46, by: cy - 35, bedId: 0 }, // NW Quadrant
+    { bx: cx + 46, by: cy - 35, bedId: 1 }, // NE Quadrant
+    { bx: cx - 46, by: cy + 35, bedId: 2 }, // SW Quadrant
+    { bx: cx + 46, by: cy + 35, bedId: 3 }  // SE Quadrant
+  ];
+
+  const vegData = (state.vegetables && state.vegetables.beds) ? state.vegetables.beds : null;
+
+  quadCenters.forEach(q => {
+    const bed = vegData ? vegData[q.bedId] : null;
+
+    // 3 rows x 4 cols = 12 plant positions per quadrant
+    for(let r = 0; r < 3; r++){
+      for(let c = 0; c < 4; c++){
+        const pIdx = r * 4 + c;
+        const colOff = (c - 1.5) * 17.5;
+        const rowOff = (r - 1.0) * 14.5;
+        const px = q.bx + colOff;
+        const py = q.by + rowOff;
+
+        const plant = (bed && bed.plants && bed.plants[pIdx]) ? bed.plants[pIdx] : {
+          species: ['kuerbis', 'zucchini', 'broccoli', 'spargel', 'sellerie', 'karotte', 'kartoffel', 'kohl'][(q.bedId * 2 + pIdx) % 8],
+          status: 'mature'
+        };
+
+        if (built && plant.species) {
+          drawVegPlant(ctx, px, py, plant.species, plant.status, time);
+        } else {
+          // Empty soil mound
+          ctx.fillStyle = '#3E2723'; ctx.beginPath(); ctx.ellipse(px, py, 6, 2.8, 0, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+    }
+  });
+
+  // 4. Garden Accessories & Gate at Southern Path
+  // Rustic timber entrance archway at (cx, cy + 68)
+  ctx.fillStyle = '#5D4037';
+  ctx.fillRect(cx - 9, cy + 62, 3, 10);
+  ctx.fillRect(cx + 6, cy + 62, 3, 10);
+  ctx.fillStyle = '#8D6E63';
+  ctx.fillRect(cx - 11, cy + 60, 22, 3.5);
+
+  // Wooden tool bench and watering can near West path
+  ctx.fillStyle = '#6D4C41'; ctx.fillRect(cx - 86, cy - 12, 14, 4);
+  ctx.fillStyle = '#4E342E'; ctx.fillRect(cx - 85, cy - 8, 2, 5); ctx.fillRect(cx - 74, cy - 8, 2, 5);
+  // Zinc watering can
+  ctx.fillStyle = '#90A4AE'; ctx.beginPath(); ctx.ellipse(cx - 78, cy - 13, 2.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
+/* ================= 2. 4x4 AGRIVOLTAIC SOLAR FARM (16 MODULES) ================= */
+function drawSolarFarm(ctx, cx, cy, built, stage){
+  ctx.save();
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  const curStage = (stage !== undefined) ? stage : (built ? 4 : 0);
+
+  // Construction Stage 0: Staked layout pegs with orange boundary string
+  if (!built && curStage === 0) {
+    ctx.strokeStyle = '#FFA726'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+    ctx.strokeRect(cx - 50, cy - 25, 100, 50);
+    ctx.setLineDash([]);
+    // Survey pegs
+    [[-50, -25], [50, -25], [50, 25], [-50, 25]].forEach(([ox, oy]) => {
+      ctx.fillStyle = '#FF5722'; ctx.fillRect(cx + ox - 2, cy + oy - 8, 4, 12);
+    });
+    ctx.restore();
+    return;
+  }
+
+  // 4 rows x 4 columns = 16 Photovoltaic Modules
+  // Angled towards the Cow Shed (facing southeast / east)
+  const rows = 4, cols = 4;
+  const modW = 21, modH = 12;
+  const spacingX = 23, spacingY = 14;
+
+  // Ground shadow beneath the entire array
+  ctx.fillStyle = 'rgba(15, 30, 20, 0.28)';
+  ctx.beginPath();
+  ctx.ellipse(cx + 6, cy + 6, 56, 34, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  for(let r = 0; r < rows; r++){
+    for(let c = 0; c < cols; c++){
+      // Isometric positioning: rows stack along depth, cols step across
+      const px = cx - 38 + c * spacingX - r * 2.5;
+      const py = cy - 22 + r * spacingY + c * 2.0;
+
+      // Stage 1: Foundation Piles
+      if (curStage === 1) {
+        ctx.fillStyle = '#78909C'; ctx.fillRect(px + 4, py + 2, 3, 8); ctx.fillRect(px + 14, py + 2, 3, 8);
+        continue;
+      }
+
+      // Stage 2: Racking & Aluminum Rails
+      if (curStage === 2) {
+        ctx.fillStyle = '#90A4AE'; ctx.fillRect(px + 4, py - 4, 2.5, 12); ctx.fillRect(px + 14, py - 2, 2.5, 10);
+        ctx.strokeStyle = '#B0BEC5'; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(px, py + 2); ctx.lineTo(px + modW, py - 2); ctx.stroke();
+        continue;
+      }
+
+      // Stage 3 & 4: Mounted Solar Modules
+      const isMounted = curStage >= 4 || (curStage === 3 && (r * 4 + c) < 8);
+
+      // Support stanchions (rear taller than front to tilt towards southeast)
+      ctx.fillStyle = '#78909C';
+      ctx.fillRect(px + 3, py - 2, 2.2, 10); // Rear post
+      ctx.fillRect(px + modW - 5, py + 2, 2.2, 6); // Front post
+      // Diagonal support strut
+      ctx.strokeStyle = '#90A4AE'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(px + 4, py - 1); ctx.lineTo(px + modW - 4, py + 6); ctx.stroke();
+
+      if (isMounted) {
+        // Tilted Photovoltaic Module Face (Facing Cow Shed / Southeast)
+        // Polygon for tilted rectangular solar panel
+        const p1 = [px, py - 1];              // Top-left
+        const p2 = [px + modW, py - 5];       // Top-right
+        const p3 = [px + modW + 2, py + 4];   // Bottom-right
+        const p4 = [px + 2, py + 8];          // Bottom-left
+
+        // Aluminum frame border
+        ctx.fillStyle = '#B0BEC5';
+        ctx.beginPath();
+        ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]);
+        ctx.lineTo(p3[0], p3[1]); ctx.lineTo(p4[0], p4[1]);
+        ctx.closePath(); ctx.fill();
+
+        // Monocrystalline Silicon Cell Surface (Deep Navy-Cobalt Gradient)
+        const cell1 = [px + 1.2, py - 0.2];
+        const cell2 = [px + modW - 1.2, py - 4.2];
+        const cell3 = [px + modW + 0.8, py + 3.2];
+        const cell4 = [px + 3.2, py + 7.2];
+
+        const pvGrad = ctx.createLinearGradient(cell1[0], cell1[1], cell3[0], cell3[1]);
+        pvGrad.addColorStop(0, '#0D47A1');   // Deep cobalt
+        pvGrad.addColorStop(0.5, '#1565C0'); // High-efficiency silicon blue
+        pvGrad.addColorStop(1, '#0A2540');   // Dark silicon edge
+        ctx.fillStyle = pvGrad;
+        ctx.beginPath();
+        ctx.moveTo(cell1[0], cell1[1]); ctx.lineTo(cell2[0], cell2[1]);
+        ctx.lineTo(cell3[0], cell3[1]); ctx.lineTo(cell4[0], cell4[1]);
+        ctx.closePath(); ctx.fill();
+
+        // Conductive Silver Grid Busbars
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)'; ctx.lineWidth = 0.8;
+        // Mid horizontal line
+        ctx.beginPath();
+        ctx.moveTo((cell1[0] + cell4[0]) / 2, (cell1[1] + cell4[1]) / 2);
+        ctx.lineTo((cell2[0] + cell3[0]) / 2, (cell2[1] + cell3[1]) / 2);
+        ctx.stroke();
+        // Mid vertical line
+        ctx.beginPath();
+        ctx.moveTo((cell1[0] + cell2[0]) / 2, (cell1[1] + cell2[1]) / 2);
+        ctx.lineTo((cell4[0] + cell3[0]) / 2, (cell4[1] + cell3[1]) / 2);
+        ctx.stroke();
+
+        // Specular Glass Reflection Sheen
+        const sheen = ctx.createLinearGradient(cell1[0], cell1[1], cell2[0], cell4[1]);
+        sheen.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+        sheen.addColorStop(0.3, 'rgba(255, 255, 255, 0.15)');
+        sheen.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+        ctx.fillStyle = sheen;
+        ctx.beginPath();
+        ctx.moveTo(cell1[0], cell1[1]); ctx.lineTo(cell2[0], cell2[1]);
+        ctx.lineTo(cell4[0], cell4[1]); ctx.closePath(); ctx.fill();
+      }
+    }
+  }
+
+  // Central Weatherproof Inverter Box & BESS Conduit Line
+  if (curStage >= 4) {
+    ctx.fillStyle = '#ECEFF1'; ctx.fillRect(cx - 5, cy + 24, 10, 8);
+    ctx.strokeStyle = '#78909C'; ctx.lineWidth = 1; ctx.strokeRect(cx - 5, cy + 24, 10, 8);
+    // Green generation status LED
+    ctx.fillStyle = '#00E676'; ctx.beginPath(); ctx.arc(cx - 2, cy + 27, 1.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#00B0FF'; ctx.beginPath(); ctx.arc(cx + 2, cy + 27, 1.2, 0, Math.PI * 2); ctx.fill();
+    // Underground conduit pipe routed southwest towards BESS
+    ctx.strokeStyle = '#455A64'; ctx.lineWidth = 2.0;
+    ctx.beginPath(); ctx.moveTo(cx, cy + 32); ctx.lineTo(cx - 18, cy + 38); ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/* ================= 3. OVAL SHAPE FLOWER GARDEN (VOLUMETRIC 3D) ================= */
+function drawOvalFlowerGarden(ctx, cx, cy, built, time){
+  ctx.save();
+  ctx.globalAlpha = built ? 1 : 0.55;
+
+  // 1. Volumetric 3D Raised Limestone Elliptical Wall
+  // Ground ambient shadow
+  ctx.fillStyle = 'rgba(20, 35, 18, 0.32)';
+  ctx.beginPath();
+  ctx.ellipse(cx + 4, cy + 7, 88, 38, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Lower retaining wall bevel
+  ctx.fillStyle = '#455A64';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 5, 84, 35, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Upper limestone wall face
+  ctx.fillStyle = '#90A4AE';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 84, 35, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#78909C'; ctx.lineWidth = 2.5; ctx.stroke();
+
+  // Limestone block radial division joints
+  ctx.strokeStyle = '#607D8B'; ctx.lineWidth = 1.0;
+  for(let a = 0; a < Math.PI * 2; a += Math.PI / 6){
+    const cosA = Math.cos(a), sinA = Math.sin(a);
+    ctx.beginPath();
+    ctx.moveTo(cx + cosA * 77, cy + sinA * 31);
+    ctx.lineTo(cx + cosA * 84, cy + sinA * 35);
+    ctx.stroke();
+  }
+
+  // Inner rich dark humus planting bed
+  ctx.fillStyle = '#26160F';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - 2, 76, 30, 0, 0, Math.PI * 2);
+  ctx.fill();
+
   if (built) {
-    if (isEast) {
-      isoBox(ctx, 22, -14, 8, 8, 12, '#42A5F5', '#1E88E5', '#1565C0');
-      ctx.fillStyle = '#FFA000'; ctx.beginPath(); ctx.ellipse(22, -22, 5, 6, 0, 0, Math.PI); ctx.fill(); // Straw skep
-    } else {
-      isoBox(ctx, -22, -14, 10, 6, 14, '#FFB300', '#FFA000', '#FF8F00');
-      ctx.fillStyle = '#3E2723'; for(let h = -24; h < -16; h += 3) ctx.fillRect(-24, h, 4, 1.5); // Nesting tubes
-    }
-  }
+    // 2. Concentric Floral Bands with Real Flower Sprites
+    // Outer Band: Edelweiß & Alpenrose
+    const outerCount = 14;
+    for(let i = 0; i < outerCount; i++){
+      const ang = (i / outerCount) * Math.PI * 2;
+      const fx = cx + Math.cos(ang) * 62;
+      const fy = cy - 2 + Math.sin(ang) * 23;
+      const isEdelweiss = i % 2 === 0;
 
-  ctx.restore();
-}
-
-/* 9. Polyculture Vegetable Garden at (973, 373) */
-function drawVegGarden4Part(ctx, cx, cy, built){
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.globalAlpha = built ? 1 : 0.50;
-
-  // 4 Raised Timber Bauerngarten Beds
-  for(let r = 0; r < 2; r++) for(let c = 0; c < 2; c++){
-    const px = -28 + c * 56, py = -14 + r * 30;
-    isoBox(ctx, px, py, 46, 20, 6, '#5D4037', '#4E342E', '#3E2723');
-    if (built) {
-      const vCol = (r + c) % 2 === 0 ? '#43A047' : '#7CB342';
-      for(let k = -14; k <= 14; k += 7){
-        ctx.fillStyle = vCol; ctx.beginPath(); ctx.arc(px + k, py - 8, 3.5, 0, Math.PI * 2); ctx.fill();
+      if (isEdelweiss) {
+        // Starry white felt Edelweiß with gold center
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        for(let p = 0; p < 6; p++){
+          const pa = ang + (p * Math.PI / 3);
+          ctx.arc(fx + Math.cos(pa) * 3.5, fy + Math.sin(pa) * 2.2, 1.8, 0, Math.PI * 2);
+        }
+        ctx.fill();
+        ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(fx, fy, 1.5, 0, Math.PI * 2); ctx.fill();
+      } else {
+        // Lush pink Alpenrose cluster
+        ctx.fillStyle = '#E91E63';
+        ctx.beginPath();
+        ctx.arc(fx - 2, fy - 1, 2.5, 0, Math.PI * 2);
+        ctx.arc(fx + 2, fy - 1, 2.5, 0, Math.PI * 2);
+        ctx.arc(fx, fy + 1.5, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#F48FB1'; ctx.beginPath(); ctx.arc(fx, fy - 1, 1.2, 0, Math.PI * 2); ctx.fill();
       }
     }
-  }
 
-  ctx.restore();
-}
+    // Middle Band: Alpine Gentian (Enzian) & Marigold (Ringelblume)
+    const midCount = 10;
+    for(let i = 0; i < midCount; i++){
+      const ang = (i / midCount) * Math.PI * 2 + 0.3;
+      const fx = cx + Math.cos(ang) * 42;
+      const fy = cy - 2 + Math.sin(ang) * 15;
+      const isEnzian = i % 2 === 0;
 
-/* 10. Rotational Arable Crop Field at (946, 558) */
-function drawCropField2x2(ctx, cx, cy, built, time){
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.globalAlpha = built ? 1 : 0.50;
-
-  for(let r = 0; r < 2; r++) for(let c = 0; c < 2; c++){
-    const px = -40 + c * 80, py = -20 + r * 42;
-    isoBox(ctx, px, py, 70, 32, 5, '#6D4C41', '#5D4037', '#4E342E');
-    if (built) {
-      const isWheat = (r + c) % 2 === 0;
-      ctx.strokeStyle = isWheat ? '#FFD54F' : '#388E3C';
-      ctx.lineWidth = 2;
-      for(let f = -22; f <= 22; f += 8){
-        ctx.beginPath(); ctx.moveTo(px + f, py - 4); ctx.lineTo(px + f + 6, py - 14); ctx.stroke();
+      if (isEnzian) {
+        // Deep royal ultramarine Enzian trumpet bells
+        ctx.fillStyle = '#0D47A1';
+        ctx.beginPath();
+        ctx.arc(fx - 1.5, fy, 2.8, 0, Math.PI * 2);
+        ctx.arc(fx + 1.5, fy, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1976D2'; ctx.beginPath(); ctx.arc(fx, fy - 1, 2.0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#82B1FF'; ctx.beginPath(); ctx.arc(fx, fy - 1, 0.8, 0, Math.PI * 2); ctx.fill();
+      } else {
+        // Bright orange Ringelblume / Marigold
+        ctx.fillStyle = '#FF9800'; ctx.beginPath(); ctx.arc(fx, fy, 3.2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FFB74D'; ctx.beginPath(); ctx.arc(fx, fy, 2.0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#5D4037'; ctx.beginPath(); ctx.arc(fx, fy, 1.0, 0, Math.PI * 2); ctx.fill();
       }
+    }
+
+    // Inner Band: Golden Dwarf Sunflowers & Lavender Spikes
+    const innerCount = 6;
+    for(let i = 0; i < innerCount; i++){
+      const ang = (i / innerCount) * Math.PI * 2 + 0.6;
+      const fx = cx + Math.cos(ang) * 22;
+      const fy = cy - 2 + Math.sin(ang) * 8;
+      const isSunflower = i % 2 === 0;
+
+      if (isSunflower) {
+        // Golden sunflower with dark chocolate seed center
+        ctx.fillStyle = '#FFD54F';
+        for(let p = 0; p < 8; p++){
+          const pa = p * Math.PI / 4;
+          ctx.beginPath(); ctx.ellipse(fx + Math.cos(pa) * 3, fy + Math.sin(pa) * 2.2, 2.2, 1.2, pa, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = '#4E342E'; ctx.beginPath(); ctx.arc(fx, fy, 2.0, 0, Math.PI * 2); ctx.fill();
+      } else {
+        // Purple Lavender flowering spike
+        ctx.strokeStyle = '#7B1FA2'; ctx.lineWidth = 2.0;
+        ctx.beginPath(); ctx.moveTo(fx, fy + 3); ctx.lineTo(fx, fy - 5); ctx.stroke();
+        ctx.fillStyle = '#BA68C8';
+        ctx.beginPath(); ctx.arc(fx, fy - 5, 1.6, 0, Math.PI * 2); ctx.arc(fx, fy - 2, 1.6, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // 3. Central Carved Wooden Bavarian Bee Hotel (Wildbienenhotel)
+    ctx.fillStyle = '#5D4037';
+    // Hexagonal timber shelter
+    ctx.beginPath();
+    for(let a = 0; a < 6; a++){
+      const ang = a * Math.PI / 3 - Math.PI / 6;
+      const hx = cx + Math.cos(ang) * 8;
+      const hy = cy - 3 + Math.sin(ang) * 5.5;
+      if (a === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // Timber gable roof
+    ctx.fillStyle = '#8D6E63';
+    ctx.beginPath();
+    ctx.moveTo(cx - 9, cy - 6); ctx.lineTo(cx, cy - 12); ctx.lineTo(cx + 9, cy - 6);
+    ctx.closePath(); ctx.fill();
+
+    // Bamboo / reed bundle nesting tubes
+    ctx.fillStyle = '#FFE082';
+    for(let bx = -4; bx <= 4; bx += 3.5){
+      for(let by = -4; by <= 0; by += 3){
+        ctx.beginPath(); ctx.arc(cx + bx, cy + by, 1.0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // 4. Animated Honeybees Fluttering Above Flowers
+    for(let b = 0; b < 4; b++){
+      const bTime = (time || 0) * 2.5 + b * 1.5;
+      const bx = cx + Math.cos(bTime) * (32 + b * 10);
+      const by = cy - 6 + Math.sin(bTime * 1.3) * (14 + b * 4);
+      const wingFlap = Math.sin(bTime * 15) * 2;
+
+      // Bee body (amber with dark stripes)
+      ctx.fillStyle = '#FFB300'; ctx.beginPath(); ctx.ellipse(bx, by, 2.2, 1.4, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#212121'; ctx.fillRect(bx - 0.5, by - 1, 1, 2);
+      // Translucent white wings
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.beginPath(); ctx.ellipse(bx, by - 1.8 + wingFlap * 0.3, 1.8, 1.0, -0.3, 0, Math.PI * 2); ctx.fill();
     }
   }
 
   ctx.restore();
 }
 
-/* 11. Main Entrance Gate at (1544, 794) */
 function drawMainGate(ctx, cx, cy, built){
   ctx.save();
   ctx.translate(cx, cy);
@@ -2116,6 +2877,26 @@ const AlpenMap = {
       });
     });
 
+    // 3. 48-Plot Hexagonal Vegetable Garden Natural Growth Ticking
+    if (state.vegetables && state.vegetables.beds) {
+      state.vegetables.beds.forEach(b => {
+        b.plants.forEach(p => {
+          if (p.species && p.status !== 'mature') {
+            p.progress = Math.min(1.0, (p.progress || 0) + 0.0035);
+            if (p.progress >= 1.0) {
+              p.status = 'mature';
+            } else if (p.progress >= 0.70) {
+              p.status = 'flowering';
+            } else if (p.progress >= 0.35) {
+              p.status = 'growing';
+            } else {
+              p.status = 'sprout';
+            }
+          }
+        });
+      });
+    }
+
     // 2. Commercial Vineyard Vines Natural Maturing & Fruiting Ticking
     if (state.vineyard && state.vineyard.beds) {
       state.vineyard.beds.forEach(b => {
@@ -2308,9 +3089,9 @@ const AlpenMap = {
       else if (s.action === 'bridge') drawWoodenOverbridge(ctx, this.time, built);
       else if (s.action === 'wind') drawWindTurbine(ctx, s.x, s.y, this.time, built);
       else if (s.action === 'bess') drawBessStorage(ctx, s.x, s.y, built);
-      else if (s.action === 'veg') drawVegGarden4Part(ctx, s.x, s.y, built);
-      else if (s.action === 'crop') drawCropField2x2(ctx, s.x, s.y, built, this.time);
-      else if (s.action === 'flower') drawFlowerTerraces(ctx, s.x, s.y, built, s.id === 'flower_e');
+      else if (s.action === 'veg') drawHexagonalVegGarden(ctx, s.x, s.y, built, this.time);
+      else if (s.action === 'solar') drawSolarFarm(ctx, s.x, s.y, built, (state.solar && state.solar.stage !== undefined) ? state.solar.stage : (built ? 4 : 0));
+      else if (s.action === 'flower') drawOvalFlowerGarden(ctx, s.x, s.y, built, this.time);
       else if (s.action === 'vine') drawVineyard(ctx, this.time, built);
       else if (s.action === 'gate') drawMainGate(ctx, s.x, s.y, built);
       else if (s.action === 'restaurant') drawGasthofStuben(ctx, s.x, s.y, built, this.time);
@@ -2508,6 +3289,315 @@ function collectDairyProducts(){
   openCattleModal();
 }
 
+/* ================= 48-PLOT HEXAGONAL VEGETABLE GARDEN CONSOLE ================= */
+function openVegModal(bedIdx){
+  if (bedIdx === undefined) bedIdx = state.vegetables.currentBed || 0;
+  state.vegetables.currentBed = bedIdx;
+
+  const built = !!state.built['veg'];
+  const curBed = state.vegetables.beds[bedIdx];
+
+  let h = '<div class="modal-hdr"><h3>🥦 48-Plot Hexagonal Vegetable Garden</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  h += '<p style="font-size:0.82rem;color:#A5D6A7;margin-bottom:10px">Hexagonal Polyculture Bauerngarten · 2×2 Quadrant Beds · 48 Plant Positions · Heirloom Bavarian Crops</p>';
+
+  if (!built) {
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--gold)">' +
+         '<b>Estate Construction Required:</b><br/>' +
+         '<span style="font-size:0.78rem;color:#C8E6C9">Excavate the central green meadow, lay internal gravel cross-paths, build raised stone borders, and fertilize with alpine humus loam.</span><br/>' +
+         '<button class="btn btn-g" style="margin-top:10px;width:100%" onclick="buildSite(\'veg\', 80)">🔨 Commission Hexagonal Garden (€80 · +25 XP)</button>' +
+         '</div>';
+  } else {
+    // Bed Selection Tabs
+    h += '<div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:4px">';
+    state.vegetables.beds.forEach((b, idx) => {
+      const isCur = idx === bedIdx;
+      const icons = ['🌱', '🥦', '🥬', '🥔'];
+      h += '<button class="why-tab' + (isCur ? ' active' : '') + '" style="font-size:0.75rem;padding:6px 10px" onclick="openVegModal(' + idx + ')">' +
+             icons[idx] + ' ' + b.name +
+           '</button>';
+    });
+    h += '</div>';
+
+    // Current Bed Overview
+    const matureCount = curBed.plants.filter(p => p.status === 'mature').length;
+    const flowerCount = curBed.plants.filter(p => p.status === 'flowering').length;
+    const growCount = curBed.plants.filter(p => p.status === 'growing').length;
+    const sproutCount = curBed.plants.filter(p => p.status === 'sprout').length;
+
+    h += '<div class="card-box" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">' +
+         '<div><b>' + curBed.name + ' (12 Positions)</b><div style="font-size:0.75rem;color:#B0BEC5">' +
+           matureCount + ' Mature · ' + flowerCount + ' Flowering · ' + growCount + ' Growing · ' + sproutCount + ' Sprouting</div></div>' +
+         '<div style="display:flex;gap:6px">' +
+           '<button class="btn btn-c" style="font-size:0.72rem;padding:6px 10px" onclick="waterVegBed(' + bedIdx + ')">💧 Water (€15)</button>' +
+           '<button class="btn btn-g" style="font-size:0.72rem;padding:6px 10px" onclick="harvestVegBed(' + bedIdx + ')">🧺 Harvest</button>' +
+         '</div>' +
+         '</div>';
+
+    // 12 Plant Slots in 3x4 Grid
+    h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">';
+    curBed.plants.forEach(p => {
+      const sp = VEG_SPECIES[p.species] || { name: 'Empty', icon: '🌱', col: '#9E9E9E' };
+      const statusBadge = p.status === 'mature' ? '✓ Mature' : p.status === 'flowering' ? '🌸 Flower' : p.status === 'growing' ? '🌿 Growing' : '🌱 Sprout';
+      const badgeCol = p.status === 'mature' ? 'var(--gold)' : p.status === 'flowering' ? '#F48FB1' : p.status === 'growing' ? 'var(--teal)' : '#B0BEC5';
+
+      h += '<div style="background:rgba(8,20,12,0.85);border:1px solid var(--border);border-radius:10px;padding:6px 4px;text-align:center">' +
+             '<div style="font-size:1.1rem;margin-bottom:2px">' + sp.icon + '</div>' +
+             '<div style="font-size:0.68rem;font-weight:800;color:' + sp.col + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + sp.name.split(' ')[0] + '</div>' +
+             '<div style="font-size:0.62rem;color:' + badgeCol + ';font-weight:700">' + statusBadge + '</div>' +
+             '<div class="prog-bar" style="height:4px;margin-top:4px"><div class="prog-fill" style="width:' + (p.progress * 100) + '%"></div></div>' +
+           '</div>';
+    });
+    h += '</div>';
+
+    // Plant Selection & Crop Sowing
+    h += '<div style="font-size:0.80rem;font-weight:800;color:var(--gold);margin-bottom:6px">Sow Heirloom German Crops into Bed:</div>';
+    h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">';
+    Object.values(VEG_SPECIES).forEach(sp => {
+      h += '<button class="btn btn-c" style="font-size:0.68rem;padding:6px 4px;text-align:center;display:flex;flex-direction:column;align-items:center" onclick="plantVegBed(' + bedIdx + ',\'' + sp.id + '\')">' +
+             '<span style="font-size:1.0rem">' + sp.icon + '</span>' +
+             '<b style="margin-top:2px">' + sp.name.split(' ')[0] + '</b>' +
+             '<span style="font-size:0.60rem;opacity:.85">€' + sp.cost + '</span>' +
+           '</button>';
+    });
+    h += '</div>';
+
+    // Global Actions
+    h += '<button class="btn btn-a" style="width:100%;margin-bottom:12px" onclick="harvestAllVeg()">🧺 Harvest All 4 Beds Across Estate</button>';
+  }
+
+  // Educational Why Recall Card
+  h += '<div class="card-box" style="border-color:rgba(255,213,79,0.35);background:rgba(25,20,10,0.65)">' +
+       '<h4 style="font-size:0.80rem;color:var(--gold);margin-bottom:4px">🇩🇪 German Farm Recall Link: Polyculture Guilds & Seasonal Succession</h4>' +
+       '<p style="font-size:0.75rem;color:#FFE082">Echoing the vegetable companion planting from Basic Farm Ch. 3, this 48-plot hexagonal Bauerngarten interplants heavy feeders (Kürbis, Zucchini) with brassicas (Brokkoli, Kohl), taproots (Karotte, Kartoffel), and perennial crowns (Spargel) to maximize mycorrhizal soil health.</p>' +
+       '</div>';
+
+  openModal(h, true);
+}
+
+window.plantVegBed = function(bedIdx, spKey){
+  const sp = VEG_SPECIES[spKey];
+  if (!sp) return;
+  const cost = sp.cost * 12;
+  if (state.money < cost) { toast('Need €' + cost + ' to sow 12 ' + sp.name + ' plants'); return; }
+  state.money -= cost;
+
+  const bed = state.vegetables.beds[bedIdx];
+  bed.plants.forEach(p => {
+    p.species = spKey;
+    p.status = 'sprout';
+    p.progress = 0.15;
+  });
+  grantXP({biodiversity: 14, oxygen: 8});
+  toast('🌱 Sowed 12 ' + sp.name + ' into ' + bed.name + ' (-€' + cost + ')');
+  renderScoreboard();
+  openVegModal(bedIdx);
+};
+
+window.waterVegBed = function(bedIdx){
+  if (state.money < 15) { toast('Need €15 for compost tea and furrow irrigation'); return; }
+  state.money -= 15;
+  const bed = state.vegetables.beds[bedIdx];
+  let updated = 0;
+  bed.plants.forEach(p => {
+    p.progress = Math.min(1.0, (p.progress || 0) + 0.50);
+    if (p.progress >= 1.0) p.status = 'mature';
+    else if (p.progress >= 0.70) p.status = 'flowering';
+    else p.status = 'growing';
+    updated++;
+  });
+  grantXP({fruit: 10, oxygen: 10});
+  toast('💧 Nourished ' + bed.name + '! ' + updated + ' crops accelerated towards flowering & maturity');
+  renderScoreboard();
+  openVegModal(bedIdx);
+};
+
+window.harvestVegBed = function(bedIdx){
+  const bed = state.vegetables.beds[bedIdx];
+  let maturePlants = bed.plants.filter(p => p.status === 'mature');
+  if (maturePlants.length === 0) {
+    toast('No mature crops in ' + bed.name + ' ready for harvest yet');
+    return;
+  }
+  let totalRev = 0, totalXP = 0, totalO2 = 0;
+  maturePlants.forEach(p => {
+    const sp = VEG_SPECIES[p.species] || { rev: 25, xp: 12, o2: 8 };
+    totalRev += sp.rev;
+    totalXP += sp.xp;
+    totalO2 += sp.o2;
+    p.status = 'sprout';
+    p.progress = 0.10;
+  });
+  state.money += totalRev;
+  state.o2 += totalO2;
+  state.vegetables.harvestedTotal += maturePlants.length;
+  grantXP({fruit: totalXP, oxygen: totalO2});
+  toast('🧺 Harvested ' + maturePlants.length + ' crops from ' + bed.name + '! +€' + totalRev + ' · Dispatched to Gasthof Stuben');
+  renderScoreboard();
+  openVegModal(bedIdx);
+};
+
+window.harvestAllVeg = function(){
+  let totalHarvested = 0, totalRev = 0, totalXP = 0, totalO2 = 0;
+  state.vegetables.beds.forEach(bed => {
+    bed.plants.forEach(p => {
+      if (p.status === 'mature') {
+        const sp = VEG_SPECIES[p.species] || { rev: 25, xp: 12, o2: 8 };
+        totalRev += sp.rev;
+        totalXP += sp.xp;
+        totalO2 += sp.o2;
+        p.status = 'sprout';
+        p.progress = 0.10;
+        totalHarvested++;
+      }
+    });
+  });
+  if (totalHarvested === 0) {
+    toast('No mature vegetables ready for harvest across the 4 beds');
+    return;
+  }
+  state.money += totalRev;
+  state.o2 += totalO2;
+  state.vegetables.harvestedTotal += totalHarvested;
+  grantXP({fruit: totalXP, oxygen: totalO2});
+  toast('🎉 Grand Bauerngarten Harvest! ' + totalHarvested + ' crops collected (+€' + totalRev + ', +' + totalO2 + ' O₂)');
+  renderScoreboard();
+  openVegModal(state.vegetables.currentBed || 0);
+};
+
+/* ================= 4x4 AGRIVOLTAIC SOLAR FARM CONSOLE ================= */
+function openSolarModal(){
+  const solar = state.solar || { stage: 0, progress: 0, dailyPower: 120 };
+  const built = !!state.built['solar'] || solar.stage >= 4;
+
+  const steps = [
+    { title: '📐 Step 1: Topographical Ground Survey & Steel Foundation Piles', cost: 40, xp: 12, time: 3 },
+    { title: '🏗️ Step 2: Dual-Axis Racking & Aluminum Mounting Rails', cost: 50, xp: 15, time: 4 },
+    { title: '☀️ Step 3: Install 16 Monocrystalline Photovoltaic Modules', cost: 65, xp: 20, time: 4 },
+    { title: '⚡ Step 4: Microgrid Inverter & Underground BESS Grid Intertie', cost: 60, xp: 25, time: 5 }
+  ];
+
+  let h = '<div class="modal-hdr"><h3>☀️ 4×4 Agrivoltaic Solar Farm Console</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  h += '<p style="font-size:0.82rem;color:#A5D6A7;margin-bottom:10px">16 Monocrystalline Silicon Modules · Tilted Facing Southeast Cow Shed · BESS Microgrid Intertie</p>';
+
+  const pct = built ? 100 : (solar.stage * 25);
+  h += '<div class="card-box" style="margin-bottom:12px">' +
+       '<div style="display:flex;justify-content:space-between;align-items:center">' +
+         '<b>Construction Progress: <span style="color:var(--teal)">' + pct + '% Completed</span></b>' +
+         '<span style="font-size:0.75rem;color:var(--gold)">Stage ' + (built ? 4 : solar.stage) + ' / 4</span>' +
+       '</div>' +
+       '<div class="prog-bar" style="height:8px;margin-top:8px"><div class="prog-fill" style="width:' + pct + '%"></div></div>' +
+       '</div>';
+
+  if (!built) {
+    const curStep = steps[solar.stage];
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--gold)">' +
+         '<b>Current Required Action:</b><br/>' +
+         '<span style="font-size:0.85rem;color:#E8F5E9">' + curStep.title + '</span><br/>' +
+         '<div style="margin-top:6px;font-size:0.75rem;color:#CFD8DC">Investment: <b>€' + curStep.cost + '</b> · Rewards: +' + curStep.xp + ' XP & Clean Microgrid Power</div>' +
+         '<button class="btn btn-g" style="margin-top:10px;width:100%" onclick="advanceSolarStep(' + solar.stage + ',' + curStep.cost + ')">' +
+           '⚡ Execute Solar Construction Step (' + (solar.stage + 1) + '/4)' +
+         '</button>' +
+         '</div>';
+
+    // Instant Build Option
+    h += '<button class="btn btn-a" style="margin-bottom:12px;width:100%" onclick="buildSolarComplete(200)">' +
+           '🚀 Instant Commission 4×4 Solar Array (€200)' +
+         '</button>';
+  } else {
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--teal)">' +
+         '<b>Status: <span style="color:var(--teal)">✓ Operational & Intertied to BESS</span></b><br/>' +
+         '<span style="font-size:0.78rem;color:#C8E6C9">16 high-efficiency monocrystalline modules generating ~120 kWh/day of clean solar electricity for automated milling and farm heating.</span>' +
+         '</div>';
+  }
+
+  // Educational Why Recall
+  h += '<div class="card-box" style="border-color:rgba(255,213,79,0.35);background:rgba(25,20,10,0.65)">' +
+       '<h4 style="font-size:0.80rem;color:var(--gold);margin-bottom:4px">🇩🇪 German Farm Recall Link: Renewable Microgrids & Agrivoltaics</h4>' +
+       '<p style="font-size:0.75rem;color:#FFE082">Recalling the solar microgrids of Basic Farm Ch. 5, this 4×4 ground-mounted array pairs dual land use (pasture grazing below, solar radiation above), routing clean direct current to the BESS battery bank to replace fossil grid reliance.</p>' +
+       '</div>';
+
+  openModal(h, true);
+}
+
+window.advanceSolarStep = function(stepIdx, cost){
+  if (state.money < cost) { toast('Need €' + cost + ' for this solar construction step'); return; }
+  state.money -= cost;
+  state.solar.stage = stepIdx + 1;
+  grantXP({oxygen: 12, biodiversity: 10});
+  if (state.solar.stage >= 4) {
+    state.built['solar'] = true;
+    toast('🎉 4×4 Agrivoltaic Solar Farm 100% Commissioned! Power flowing to BESS');
+  } else {
+    toast('✓ Completed Step ' + (stepIdx + 1) + ' of solar construction (' + (state.solar.stage * 25) + '%)');
+  }
+  renderScoreboard();
+  openSolarModal();
+};
+
+window.buildSolarComplete = function(cost){
+  if (state.money < cost) { toast('Need €' + cost + ' for instant solar commission'); return; }
+  state.money -= cost;
+  state.solar.stage = 4;
+  state.built['solar'] = true;
+  grantXP({oxygen: 35, biodiversity: 25});
+  toast('🎉 4×4 Agrivoltaic Solar Array Fully Commissioned & Generating Clean Power!');
+  renderScoreboard();
+  openSolarModal();
+};
+
+/* ================= 3. OVAL SHAPE FLOWER GARDEN & BEE HOTEL CONSOLE ================= */
+function openFlowerModal(){
+  const built = !!state.built['flower_oval'] || !!state.built['flower_w'] || !!state.built['flower_e'];
+
+  let h = '<div class="modal-hdr"><h3>🌸 Oval Alpine Flower Garden & Bee Hotel</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  h += '<p style="font-size:0.82rem;color:#A5D6A7;margin-bottom:10px">Volumetric 3D Floral Terraces · Concentric Bloom Rings · Bavarian Wildbienenhotel</p>';
+
+  if (!built) {
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--gold)">' +
+         '<b>Estate Construction Required:</b><br/>' +
+         '<span style="font-size:0.78rem;color:#C8E6C9">Build the carved limestone elliptical retaining wall between the pond and road network, fill with alpine humus, and erect the artisan bee hotel.</span><br/>' +
+         '<button class="btn btn-g" style="margin-top:10px;width:100%" onclick="buildSite(\'flower_oval\', 75)">🔨 Construct Oval Flower Garden (€75 · +25 XP)</button>' +
+         '</div>';
+  } else {
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--teal)">' +
+         '<b>Status: <span style="color:var(--teal)">✓ Blooming Alpine Sanctuary</span></b><br/>' +
+         '<span style="font-size:0.78rem;color:#C8E6C9">3 concentric floral bands active: Edelweiß, Alpenrose, Enzian, Ringelblumen, and Sunflowers sustaining 4 active honeybee colonies.</span>' +
+         '</div>';
+
+    h += '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+         '<button class="btn btn-c" style="flex:1" onclick="tendFlowerGarden()">🌸 Tend Blooms (€20)</button>' +
+         '<button class="btn btn-g" style="flex:1" onclick="harvestFlowerHoney()">🍯 Harvest Honey</button>' +
+         '</div>';
+  }
+
+  // Educational Why Recall
+  h += '<div class="card-box" style="border-color:rgba(255,213,79,0.35);background:rgba(25,20,10,0.65)">' +
+       '<h4 style="font-size:0.80rem;color:var(--gold);margin-bottom:4px">🇩🇪 German Farm Recall Link: Pollinator Banks & Companion Flowering</h4>' +
+       '<p style="font-size:0.75rem;color:#FFE082">Echoing the wildflower borders of Basic Farm Ch. 3, this oval garden provides continuous nectar flow from April through October, sustaining solitary bees that increase Streuobst apple and cherry pollination yields by up to 40%.</p>' +
+       '</div>';
+
+  openModal(h, true);
+}
+
+window.tendFlowerGarden = function(){
+  if (state.money < 20) { toast('Need €20 for alpine seeds and organic mulch'); return; }
+  state.money -= 20;
+  grantXP({biodiversity: 18, oxygen: 12});
+  toast('🌸 Tended the oval flower terraces! Edelweiß, Enzian & Alpenrose blooming in vibrant color');
+  renderScoreboard();
+  openFlowerModal();
+};
+
+window.harvestFlowerHoney = function(){
+  const rev = 42;
+  state.money += rev;
+  state.flowers.harvestedHoney = (state.flowers.harvestedHoney || 0) + 4;
+  grantXP({fruit: 15, biodiversity: 20});
+  toast('🍯 Harvested 4 kg of raw alpine wildflower honey! +€' + rev + ' · Sent to Gasthof Stuben');
+  renderScoreboard();
+  openFlowerModal();
+};
+
 function openLakeModal(){
   const lake = state.lake || { stage: 0, progress: 0 };
   const built = !!state.built['pond'] || lake.stage >= 4;
@@ -2674,6 +3764,18 @@ function openSiteModal(s){
   }
   if (s.action === 'cattle') {
     openCattleModal();
+    return;
+  }
+  if (s.action === 'veg') {
+    openVegModal(0);
+    return;
+  }
+  if (s.action === 'solar') {
+    openSolarModal();
+    return;
+  }
+  if (s.action === 'flower') {
+    openFlowerModal();
     return;
   }
   if (s.action === 'vine') {

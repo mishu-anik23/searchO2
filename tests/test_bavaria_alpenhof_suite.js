@@ -72,25 +72,32 @@ const assert = require('assert');
       sites: SITES.map(s => ({ id: s.id, x: s.x, y: s.y, action: s.action })),
       speciesCount: Object.keys(SPECIES).length,
       grapeSpeciesCount: Object.keys(GRAPE_SPECIES).length,
+      vegSpeciesCount: Object.keys(VEG_SPECIES).length,
+      vegBedsCount: state.vegetables.beds.length,
+      totalVegPositions: state.vegetables.beds.reduce((acc, b) => acc + b.plants.length, 0),
       vineyardBedsCount: VINEYARD_BEDS.length,
       totalVinePositions: VINEYARD_BEDS.length * 12,
       chaptersCount: CHAPTERS.length
     };
   });
-  assert.strictEqual(farmConfig.sitesCount, 22, `Expected 22 sites, found ${farmConfig.sitesCount}`);
+  assert.strictEqual(farmConfig.sitesCount, 21, `Expected 21 sites, found ${farmConfig.sitesCount}`);
   assert.strictEqual(farmConfig.orchardsCount, 6, `Expected 6 orchard plots, found ${farmConfig.orchardsCount}`);
+  assert.strictEqual(farmConfig.vegBedsCount, 4, `Expected 4 vegetable quadrant beds (2x2), found ${farmConfig.vegBedsCount}`);
+  assert.strictEqual(farmConfig.totalVegPositions, 48, `Expected 48 total vegetable plant positions, found ${farmConfig.totalVegPositions}`);
+  assert.strictEqual(farmConfig.vegSpeciesCount, 8, `Expected 8 German heirloom vegetable varieties, found ${farmConfig.vegSpeciesCount}`);
   assert.strictEqual(farmConfig.vineyardBedsCount, 9, `Expected 9 vineyard beds, found ${farmConfig.vineyardBedsCount}`);
   assert.strictEqual(farmConfig.totalVinePositions, 108, `Expected 108 total vine positions, found ${farmConfig.totalVinePositions}`);
   assert.strictEqual(farmConfig.chaptersCount, 6, `Expected 6 progression chapters, found ${farmConfig.chaptersCount}`);
-  console.log('[✓ PASSED] 22 calibrated sites, 6 orchard plots (54 tree beds), 9 vineyard beds (108 vine positions), 6 chapters verified');
+  console.log('[✓ PASSED] 21 calibrated sites, 6 orchard plots, 48-plot hexagonal vegetable garden (4 beds x 12 plants), 108-vine vineyard, 6 chapters verified');
 
   // Verify calibrated coordinates from bavaria-bg-plan.jpg
   const findSite = id => farmConfig.sites.find(s => s.id === id);
   assert.deepStrictEqual({ x: findSite('wind_w').x, y: findSite('wind_w').y }, { x: 316, y: 156 }, 'wind_w coordinates');
   assert.deepStrictEqual({ x: findSite('bess').x, y: findSite('bess').y }, { x: 710, y: 216 }, 'bess coordinates');
   assert.deepStrictEqual({ x: findSite('farm_shed').x, y: findSite('farm_shed').y }, { x: 933, y: 237 }, 'farm_shed coordinates');
-  assert.deepStrictEqual({ x: findSite('veg').x, y: findSite('veg').y }, { x: 973, y: 373 }, 'veg coordinates');
-  assert.deepStrictEqual({ x: findSite('crop').x, y: findSite('crop').y }, { x: 946, y: 558 }, 'crop coordinates');
+  assert.deepStrictEqual({ x: findSite('solar').x, y: findSite('solar').y }, { x: 935, y: 315 }, 'solar farm coordinates between barn and veg garden');
+  assert.deepStrictEqual({ x: findSite('veg').x, y: findSite('veg').y }, { x: 960, y: 460 }, 'hexagonal vegetable garden coordinates in central meadow');
+  assert.deepStrictEqual({ x: findSite('flower_oval').x, y: findSite('flower_oval').y }, { x: 870, y: 730 }, 'oval flower garden coordinates between pond and road');
   assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 630, y: 870 }, 'pond coordinates bottom-left meadow');
   assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1588, y: 670 }, 'restaurant coordinates');
   assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1360, y: 255 }, 'cattle coordinates long pasture downslope');
@@ -277,6 +284,100 @@ const assert = require('assert');
   await page.waitForTimeout(200);
 
   // 11. Test Facility Construction: Living Lake Excavation Sequence, Cattle Pasture, Wind Turbines, Barn & Stuben
+  // 11A. Test 48-Plot Hexagonal Vegetable Garden (Plant Selection, Watering, Harvesting)
+  await page.evaluate(() => {
+    const vegSite = SITES.find(s => s.id === 'veg');
+    AlpenMap.handle(vegSite);
+  });
+  await page.waitForTimeout(400);
+  const vegModalOpen = await page.isVisible('#modal.open');
+  assert(vegModalOpen, 'Vegetable garden modal must open');
+  const vegModalContent = await page.textContent('#modalBody');
+  assert(vegModalContent.includes('48-Plot Hexagonal Vegetable Garden'), 'Must show hexagonal garden header');
+
+  // Commission garden if unbuilt
+  await page.evaluate(() => {
+    if (!state.built['veg']) buildSite('veg', 80);
+  });
+  await page.waitForTimeout(300);
+
+  // Test plant selection: Sow Kürbis into Bed 0, Spargel into Bed 1
+  await page.evaluate(() => {
+    plantVegBed(0, 'kuerbis');
+    plantVegBed(1, 'spargel');
+  });
+  await page.waitForTimeout(200);
+
+  // Test watering and automatic growth progression via tickGrowth
+  await page.evaluate(() => {
+    waterVegBed(0);
+    AlpenMap.tickGrowth();
+  });
+  await page.waitForTimeout(200);
+
+  // Test harvesting
+  await page.evaluate(() => {
+    state.vegetables.beds[0].plants[0].status = 'mature';
+    harvestVegBed(0);
+    harvestAllVeg();
+  });
+  await page.waitForTimeout(200);
+  const harvestedCount = await page.evaluate(() => state.vegetables.harvestedTotal);
+  assert(harvestedCount > 0, 'Vegetable harvesting must record harvested produce');
+  console.log(`[✓ PASSED] 48-Plot Hexagonal Vegetable Garden verified (Kürbis, Zucchini, Spargel sown, watered & harvested: ${harvestedCount} crops)`);
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+  await page.waitForTimeout(200);
+
+  // 11B. Test 4x4 Agrivoltaic Solar Farm Multi-Stage Construction
+  await page.evaluate(() => {
+    const solarSite = SITES.find(s => s.id === 'solar');
+    AlpenMap.handle(solarSite);
+  });
+  await page.waitForTimeout(400);
+  const solarModalOpen = await page.isVisible('#modal.open');
+  assert(solarModalOpen, 'Solar farm modal must open');
+  const solarModalContent = await page.textContent('#modalBody');
+  assert(solarModalContent.includes('4×4 Agrivoltaic Solar Farm Console'), 'Must show solar farm header');
+
+  // Step 1: Foundation Piles
+  await page.evaluate(() => advanceSolarStep(0, 40));
+  await page.waitForTimeout(200);
+  // Step 2: Aluminum Racking
+  await page.evaluate(() => advanceSolarStep(1, 50));
+  await page.waitForTimeout(200);
+  // Complete Solar Array
+  await page.evaluate(() => buildSolarComplete(200));
+  await page.waitForTimeout(300);
+  const solarDone = await page.evaluate(() => state.built['solar'] && state.solar.stage >= 4);
+  assert(solarDone, '4x4 Solar Farm must be fully commissioned and operational');
+  console.log('[✓ PASSED] 4×4 Agrivoltaic Solar Farm multi-stage construction verified (16 modules producing clean power)');
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+  await page.waitForTimeout(200);
+
+  // 11C. Test Oval Shape Flower Garden & Bee Hotel
+  await page.evaluate(() => {
+    const flowerSite = SITES.find(s => s.id === 'flower_oval');
+    AlpenMap.handle(flowerSite);
+  });
+  await page.waitForTimeout(400);
+  const flowerModalOpen = await page.isVisible('#modal.open');
+  assert(flowerModalOpen, 'Oval flower garden modal must open');
+  const flowerModalContent = await page.textContent('#modalBody');
+  assert(flowerModalContent.includes('Oval Alpine Flower Garden'), 'Must show oval flower garden header');
+
+  // Commission, tend, and harvest honey
+  await page.evaluate(() => {
+    buildSite('flower_oval', 75);
+    tendFlowerGarden();
+    harvestFlowerHoney();
+  });
+  await page.waitForTimeout(200);
+  const honeyCount = await page.evaluate(() => state.flowers.harvestedHoney);
+  assert(honeyCount > 0, 'Honey must be harvested from the bee hotel');
+  console.log(`[✓ PASSED] Oval Alpine Flower Garden verified (Edelweiß/Enzian bloomed, ${honeyCount} kg honey harvested)`);
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+  await page.waitForTimeout(200);
+
   await page.evaluate(() => {
     const pond = SITES.find(s => s.id === 'pond');
     AlpenMap.handle(pond);
@@ -495,6 +596,36 @@ const assert = require('assert');
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_wooden_bridge.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_wooden_bridge.png');
+
+  // Hexagonal vegetable garden close-up
+  await page.evaluate(() => {
+    state.zoom = 2.4;
+    state.panX = -50;
+    state.panY = -80;
+  });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_hexagonal_veg.png') });
+  console.log('[✓ SAVED] screenshot_alpenhof_hexagonal_veg.png');
+
+  // 4x4 Agrivoltaic solar farm close-up
+  await page.evaluate(() => {
+    state.zoom = 2.6;
+    state.panX = 0;
+    state.panY = 180;
+  });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_solar_farm.png') });
+  console.log('[✓ SAVED] screenshot_alpenhof_solar_farm.png');
+
+  // Oval flower garden close-up
+  await page.evaluate(() => {
+    state.zoom = 2.5;
+    state.panX = 120;
+    state.panY = -480;
+  });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_oval_flowers.png') });
+  console.log('[✓ SAVED] screenshot_alpenhof_oval_flowers.png');
 
   // Reset zoom
   await page.evaluate(() => {
