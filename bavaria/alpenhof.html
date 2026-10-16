@@ -329,14 +329,14 @@ const SITES = [
   {id:'crop',      x:946,  y:558, icon:'🌾', title:'2×2 Crop Field',                sub:'Rotational Arable: Wheat, Kale, Corn',   cat:'crop',      color:'#C0CA33', action:'crop'},
   {id:'flower_w',  x:810,  y:715, icon:'🌸', title:'Flower Garden West',            sub:'Pollination Bank & Wooden Bee Hotel',    cat:'flower',    color:'#FF4081', action:'flower'},
   {id:'flower_e',  x:990,  y:735, icon:'🌼', title:'Flower Garden East',            sub:'Pollination Bank & Bavarian Beehives',   cat:'flower',    color:'#F48FB1', action:'flower'},
-  {id:'pond',      x:390,  y:840, icon:'💧', title:'Living Waters Alpine Lake',     sub:'Excavated Mountain Spring Lake · Lilies & Pier', cat:'water', color:'#29B6F6', action:'pond'},
+  {id:'pond',      x:630,  y:870, icon:'💧', title:'Living Waters Alpine Lake System', sub:'2 Joined Glacial Basins · Fish Hatchery & Duck Aviary', cat:'water', color:'#29B6F6', action:'pond'},
   {id:'crew',      x:1282, y:541, icon:'🧑‍🌾', title:'Crew Shed & Labour HQ',        sub:'Alpine Timber Lodge & Labour Board',     cat:'labour',    color:'#FFD54F', action:'crew'},
   {id:'juice',     x:1306, y:601, icon:'🧃', title:'Hof-Mosterei & Juice Bar',      sub:'Cold-Pressed Cider Press & Terrace',     cat:'trade',     color:'#FF7043', action:'juice'},
   {id:'restaurant',x:1588, y:670, icon:'🍽️', title:'Alpenhof Gasthof & Stuben',    sub:'Alpine Restaurant & Village Fountain',   cat:'trade',     color:'#EF5350', action:'restaurant'},
   {id:'gate',      x:1544, y:794, icon:'🚪', title:'Main Entrance Gate',            sub:'Carved Timber Arch · Willkommen',        cat:'infra',     color:'#B0BEC5', action:'gate'},
   {id:'vineyard',  x:1435, y:380, icon:'🍇', title:'Bavarian Heritage Vineyard',    sub:'3×3 Terraced Beds · 108 Estate Grapevines',cat:'fruit', color:'#7B1FA2', action:'vine'},
-  {id:'bridge',    x:1725, y:215, icon:'🌉', title:'Alpine Wooden Overbridge',      sub:'Connected Timber Walking Bridge to Distant Hilltop Turbine', cat:'infra', color:'#8D6E63', action:'bridge'},
-  {id:'cattle',    x:1360, y:285, icon:'🐄', title:'Cattle Pasture Enclosure',      sub:'Hillside Post-&-Rail · Simmental Dairy', cat:'livestock', color:'#8D6E63', action:'cattle'},
+  {id:'bridge',    x:1625, y:230, icon:'🌉', title:'Alpine Wooden Overbridge',      sub:'Connected Timber Walking Bridge to Distant Hilltop Turbine', cat:'infra', color:'#8D6E63', action:'bridge'},
+  {id:'cattle',    x:1360, y:255, icon:'🐄', title:'Cattle Pasture Enclosure',      sub:'Hillside Post-&-Rail · Simmental Dairy, Sheep & Goats', cat:'livestock', color:'#8D6E63', action:'cattle'},
   {id:'wind_w',    x:316,  y:156, icon:'🌬️', title:'Wind Turbine West',            sub:'High-Ridge Turbine · Forest Clearing',   cat:'energy',    color:'#00E5FF', action:'wind'},
   {id:'wind_e',    x:1700, y:165, icon:'🌬️', title:'Wind Turbine East',            sub:'Alpine Hilltop Turbine Inside Farm',     cat:'energy',    color:'#00E5FF', action:'wind'}
 ];
@@ -357,6 +357,20 @@ const state = {
   orchards: Object.fromEntries(ORCHARD_PLOTS.map(p => [p.id, {beds: makeBeds(), aerated: 0}])),
   vineyard: { beds: makeVineBeds(), currentBed: 0, harvested: 0 },
   lake: { stage: 0, progress: 0, timeRemaining: 0, digging: false },
+  cattle: {
+    animals: [
+      { id: 1, type: 'cow', stage: 'mature', x: 1460, y: 240, tx: 1350, ty: 250, state: 'walk', speed: 0.35, timer: 0, phase: 0 },
+      { id: 2, type: 'cow', stage: 'young',  x: 1350, y: 245, tx: 1220, ty: 255, state: 'graze', speed: 0.35, timer: 5.0, phase: 1.2 },
+      { id: 3, type: 'cow', stage: 'calf',   x: 1400, y: 255, tx: 1380, ty: 245, state: 'walk', speed: 0.40, timer: 0, phase: 2.1 },
+      { id: 4, type: 'sheep', stage: 'mature', x: 1230, y: 250, tx: 1120, ty: 265, state: 'graze', speed: 0.45, timer: 4.0, phase: 0.5 },
+      { id: 5, type: 'sheep', stage: 'mature', x: 1140, y: 260, tx: 1150, ty: 255, state: 'walk', speed: 0.45, timer: 0, phase: 1.7 },
+      { id: 6, type: 'goat', stage: 'mature', x: 1540, y: 230, tx: 1570, ty: 220, state: 'graze', speed: 0.50, timer: 6.0, phase: 3.0 },
+      { id: 7, type: 'goat', stage: 'kid',    x: 1500, y: 235, tx: 1460, ty: 230, state: 'walk', speed: 0.55, timer: 0, phase: 0.8 }
+    ],
+    dairyCollected: 0
+  },
+  fish: { trout: 14, charr: 10, carp: 8, harvested: 0 },
+  ducks: { count: 6, ducklings: 4, eggsCollected: 0 },
   catXP: {oxygen: 15, fruit: 10, biodiversity: 8, veg: 6, flower: 5},
   labourPool: [
     {id:'hans',  name:'Hans Weber',     role:'Master Orchardist', cost:120, skill:'fruit', icon:'🧑‍🌾'},
@@ -880,12 +894,12 @@ function drawRoadNetwork(ctx){
     [[990, 560], [1160, 560], [1282, 550], [1330, 535], [1620, 535], [1588, 675]],
     // 4. North Ridge Track: Barn to BESS & West Wind Turbine
     [[933, 270], [820, 240], [710, 226], [480, 190], [316, 170]],
-    // 5. Eastern Hillside Access Road: Past Gasthof Stuben towards Hilltop Turbine
-    [[1588, 675], [1750, 600], [1820, 480], [1780, 270], [1730, 225], [1700, 175]],
+    // 5. Eastern Hillside Access Road: Past Gasthof Stuben across Wooden Bridge to Hilltop Turbine
+    [[1588, 675], [1750, 600], [1820, 480], [1760, 270], [1625, 230], [1700, 165]],
     // 6. Western Orchard Terrace connector
     [[330, 650], [330, 430], [330, 280]],
-    // 7. Southern Branch: Orchard Crossroads down to Lake Jetty
-    [[530, 650], [480, 720], [440, 780]]
+    // 7. Southern Branch: Orchard Crossroads down to West Lake Jetty
+    [[530, 650], [580, 715], [630, 775]]
   ];
 
   roadSegments.forEach(pts => {
@@ -1076,119 +1090,187 @@ function drawFarmBarn(ctx, cx, cy, built){
   ctx.restore();
 }
 
-/* Helper: Authentic Volumetric Simmental Cattle (Fleckvieh) from index.html */
-function drawSimmentalCow(ctx, cx, cy, scale, hasBell){
+/* Simmental Fleckvieh Cattle, Sheep & Alpine Chamois Goats with Dynamic Walk & Graze Animations */
+function drawSimmentalCow(ctx, cx, cy, scale, hasBell, walkPhase, isGrazing, flip){
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.scale(scale, scale);
+  ctx.scale(flip ? -scale : scale, scale);
 
   // Ground shadow
   ctx.fillStyle = 'rgba(0,0,0,0.24)'; ctx.beginPath(); ctx.ellipse(2, 14, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Dynamic walking leg swing
+  const legSwing1 = walkPhase ? Math.sin(walkPhase) * 4 : 0;
+  const legSwing2 = walkPhase ? -Math.sin(walkPhase) * 4 : 0;
+
   // Far legs (darker depth)
   ctx.fillStyle = '#795548';
-  ctx.fillRect(-12, 4, 4, 10); ctx.fillRect(8, 4, 4, 10);
-  ctx.fillStyle = '#212121'; ctx.fillRect(-12, 12, 4, 2.5); ctx.fillRect(8, 12, 4, 2.5); // Cloven hooves
+  ctx.fillRect(-12 + legSwing2, 4, 4, 10); ctx.fillRect(8 + legSwing1, 4, 4, 10);
+  ctx.fillStyle = '#212121'; ctx.fillRect(-12 + legSwing2, 12, 4, 2.5); ctx.fillRect(8 + legSwing1, 12, 4, 2.5); // Cloven hooves
+
   // Udder
   ctx.fillStyle = '#FFCDD2'; ctx.beginPath(); ctx.ellipse(-2, 8, 5, 3.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#F48FB1'; ctx.fillRect(-3, 11, 1.4, 2.5); ctx.fillRect(0, 11, 1.4, 2.5);
+
   // Volumetric 3D Barrel Torso: Golden-Tan & White Fleckvieh
-  ctx.fillStyle = '#A1887F';
-  ctx.beginPath(); ctx.ellipse(0, 2, 18, 11, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#D7CCC8';
-  ctx.beginPath(); ctx.ellipse(2, 2, 17, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#A1887F'; ctx.beginPath(); ctx.ellipse(0, 2, 18, 11, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#D7CCC8'; ctx.beginPath(); ctx.ellipse(2, 2, 17, 10, 0, 0, Math.PI * 2); ctx.fill();
+
   // Characteristic Simmental Red/Tan Patches
   ctx.fillStyle = '#8D6E63';
   ctx.beginPath(); ctx.ellipse(-6, 0, 8, 6, 0.3, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(6, 1, 7, 5, -0.2, 0, Math.PI * 2); ctx.fill();
+
   // Near legs (lighter)
-  ctx.fillStyle = '#D7CCC8'; ctx.fillRect(-9, 5, 4, 10); ctx.fillRect(11, 5, 4, 10);
-  ctx.fillStyle = '#212121'; ctx.fillRect(-9, 13, 4, 2.5); ctx.fillRect(11, 13, 4, 2.5);
+  ctx.fillStyle = '#D7CCC8';
+  ctx.fillRect(-9 + legSwing1, 5, 4, 10); ctx.fillRect(11 + legSwing2, 5, 4, 10);
+  ctx.fillStyle = '#212121'; ctx.fillRect(-9 + legSwing1, 13, 4, 2.5); ctx.fillRect(11 + legSwing2, 13, 4, 2.5);
+
   // Tail with white tuft
   ctx.strokeStyle = '#D7CCC8'; ctx.lineWidth = 1.8;
-  ctx.beginPath(); ctx.moveTo(-16, 0); ctx.quadraticCurveTo(-22, 6, -20, 12); ctx.stroke();
-  ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(-20, 12.5, 2, 0, Math.PI * 2); ctx.fill();
+  const tailBob = walkPhase ? Math.sin(walkPhase * 1.5) * 3 : 0;
+  ctx.beginPath(); ctx.moveTo(-16, 0); ctx.quadraticCurveTo(-22 + tailBob, 6, -20 + tailBob, 14); ctx.stroke();
+  ctx.fillStyle = '#FAFAFA'; ctx.beginPath(); ctx.arc(-20 + tailBob, 14, 2.5, 0, Math.PI * 2); ctx.fill();
 
+  // Head Position: Lowered down towards grass when grazing
+  const headY = isGrazing ? 3 : -4;
+  const headRot = isGrazing ? 0.35 : 0.2;
+
+  // Characteristic White Head & Soft Pink Muzzle
+  ctx.fillStyle = '#FAFAFA';
+  ctx.beginPath(); ctx.ellipse(16, headY, 8, 7, headRot, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#FFCDD2'; // Broad pink muzzle
+  ctx.beginPath(); ctx.ellipse(22, headY + 2, 5, 4, isGrazing ? 0.2 : 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#4E342E'; ctx.fillRect(23, headY + 1, 1.5, 1.8); ctx.fillRect(23, headY + 3, 1.5, 1.8); // Nostrils
+
+  // Big dark bovine eye
+  ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.arc(17, headY - 3, 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(16.5, headY - 3.5, 0.8, 0.8);
+
+  // Soft drooped ears
+  ctx.fillStyle = '#D7CCC8'; ctx.beginPath(); ctx.ellipse(12, headY - 6, 4.5, 2.2, -0.4, 0, Math.PI * 2); ctx.fill();
+
+  // Curved Ivory Horns with Dark Tips
+  ctx.strokeStyle = '#FFF9C4'; ctx.lineWidth = 2.0;
+  ctx.beginPath(); ctx.moveTo(14, headY - 6); ctx.quadraticCurveTo(13, headY - 13, 18, headY - 14); ctx.stroke();
+  ctx.strokeStyle = '#424242'; ctx.lineWidth = 2.0;
+  ctx.beginPath(); ctx.moveTo(17, headY - 13.5); ctx.lineTo(18, headY - 14); ctx.stroke();
+
+  // Traditional Bavarian Brass Cowbell (Kuhglocke) on leather strap
   if (hasBell) {
-    // Embroidered Leather Collar & Golden Brass Bavarian Cowbell
-    ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 2.4;
-    ctx.beginPath(); ctx.moveTo(13, 1); ctx.lineTo(15, 8); ctx.stroke();
-    ctx.fillStyle = '#FFB300';
-    ctx.beginPath(); ctx.moveTo(13, 7); ctx.lineTo(17, 7); ctx.lineTo(18, 12); ctx.lineTo(12, 12); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#BF360C'; ctx.beginPath(); ctx.arc(15, 12, 1, 0, Math.PI * 2); ctx.fill(); // Clapper
+    ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 3.2; // Leather collar
+    ctx.beginPath(); ctx.moveTo(14, headY + 6); ctx.lineTo(15, headY - 2); ctx.stroke();
+    // Golden Bell
+    ctx.fillStyle = '#FFD54F';
+    ctx.beginPath();
+    ctx.moveTo(13, headY + 7); ctx.lineTo(18, headY + 7); ctx.lineTo(19, headY + 13); ctx.lineTo(12, headY + 13);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#FFA000'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#5D4037'; ctx.beginPath(); ctx.arc(15.5, headY + 13.5, 1.2, 0, Math.PI * 2); ctx.fill();
   }
 
-  // 3D Head: White face, ivory horns, pink muzzle, cud chewing
-  ctx.fillStyle = '#FAFAFA'; ctx.beginPath(); ctx.ellipse(19, 1, 7, 6, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#8D6E63'; ctx.beginPath(); ctx.arc(18, -2, 3.5, 0, Math.PI * 2); ctx.fill();
-  // Horns
-  ctx.strokeStyle = '#FFE082'; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(17, -4); ctx.quadraticCurveTo(19, -9, 22, -7); ctx.stroke();
-  // Muzzle & straw sprig
-  ctx.fillStyle = '#FFCDD2'; ctx.beginPath(); ctx.ellipse(24, 3, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#37474F'; ctx.beginPath(); ctx.arc(24, 2.5, 0.7, 0, Math.PI * 2); ctx.fill();
-  if (hasBell) {
-    ctx.strokeStyle = '#FFE082'; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(25, 4); ctx.lineTo(29, 6); ctx.stroke();
-  }
   ctx.restore();
 }
 
-function drawSimmentalCalf(ctx, cx, cy){
+function drawSimmentalCalf(ctx, cx, cy, walkPhase, isGrazing, flip){
   ctx.save();
   ctx.translate(cx, cy);
+  ctx.scale(flip ? -0.75 : 0.75, 0.75);
+
+  const legSwing1 = walkPhase ? Math.sin(walkPhase) * 3 : 0;
+  const legSwing2 = walkPhase ? -Math.sin(walkPhase) * 3 : 0;
+  const headY = isGrazing ? 5 : 0;
+
   ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(0, 10, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#D7CCC8'; ctx.beginPath(); ctx.ellipse(0, 0, 11, 6.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#8D6E63'; ctx.beginPath(); ctx.ellipse(-2, -1, 5, 4, 0.4, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#FAFAFA'; ctx.beginPath(); ctx.arc(10, 1, 4, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#FFCDD2'; ctx.beginPath(); ctx.arc(13, 2, 2.5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#795548'; ctx.fillRect(-6, 2, 2.5, 7); ctx.fillRect(4, 2, 2.5, 7);
+  ctx.fillStyle = '#FAFAFA'; ctx.beginPath(); ctx.arc(10, headY, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#FFCDD2'; ctx.beginPath(); ctx.arc(13, headY + 1, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#795548';
+  ctx.fillRect(-6 + legSwing1, 2, 2.5, 7); ctx.fillRect(4 + legSwing2, 2, 2.5, 7);
   ctx.restore();
 }
 
-function drawPastureSheep(ctx, cx, cy){
+function drawPastureSheep(ctx, cx, cy, walkPhase, isGrazing, flip){
   ctx.save();
   ctx.translate(cx, cy);
+  ctx.scale(flip ? -1 : 1, 1);
+
+  const legSwing1 = walkPhase ? Math.sin(walkPhase) * 2.5 : 0;
+  const legSwing2 = walkPhase ? -Math.sin(walkPhase) * 2.5 : 0;
+  const headY = isGrazing ? 4 : 0;
+
   ctx.fillStyle = 'rgba(0,0,0,0.20)'; ctx.beginPath(); ctx.ellipse(0, 8, 12, 4.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#E0E0E0'; ctx.beginPath(); ctx.ellipse(0, 0, 11, 7.5, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#FFFFFF';
   ctx.beginPath();
   ctx.arc(-5, -2, 5, 0, Math.PI * 2); ctx.arc(2, -3, 6, 0, Math.PI * 2); ctx.arc(6, 0, 5, 0, Math.PI * 2);
   ctx.arc(-4, 2, 5, 0, Math.PI * 2); ctx.arc(3, 3, 5, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.ellipse(10, 0, 4, 3, 0.2, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#212121'; ctx.fillRect(-6, 3, 2, 6); ctx.fillRect(4, 3, 2, 6);
+  // Head
+  ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.ellipse(10, headY, 4, 3, isGrazing ? 0.3 : 0.1, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(-6 + legSwing1, 3, 2, 6); ctx.fillRect(4 + legSwing2, 3, 2, 6);
   ctx.restore();
 }
 
-/* 3. Long Hillside-Stretched Simmental Cattle Pasture with Smooth 3D Volumetric Grazing Turf */
+function drawAlpineGoat(ctx, cx, cy, walkPhase, isGrazing, flip, isKid){
+  ctx.save();
+  ctx.translate(cx, cy);
+  const scale = isKid ? 0.65 : 0.88;
+  ctx.scale(flip ? -scale : scale, scale);
+
+  const legSwing1 = walkPhase ? Math.sin(walkPhase) * 3 : 0;
+  const legSwing2 = walkPhase ? -Math.sin(walkPhase) * 3 : 0;
+  const headY = isGrazing ? 5 : -4;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.20)'; ctx.beginPath(); ctx.ellipse(0, 10, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+  // Slender Chestnut/Tan Body with black dorsal ridge
+  ctx.fillStyle = '#8D6E63'; ctx.beginPath(); ctx.ellipse(0, 0, 12, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#212121'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-11, -2); ctx.lineTo(10, -2); ctx.stroke();
+
+  // Agile Legs
+  ctx.fillStyle = '#4E342E';
+  ctx.fillRect(-7 + legSwing1, 3, 2.2, 8); ctx.fillRect(6 + legSwing2, 3, 2.2, 8);
+
+  // Short upright tail
+  ctx.strokeStyle = '#212121'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-12, -2); ctx.lineTo(-15, -7); ctx.stroke();
+
+  // Head with facial stripes
+  ctx.fillStyle = '#A1887F'; ctx.beginPath(); ctx.ellipse(12, headY, 5, 4, isGrazing ? 0.4 : 0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#212121';
+  ctx.beginPath(); ctx.moveTo(9, headY - 2); ctx.lineTo(16, headY); ctx.stroke(); // Facial stripe
+  // Chin beard
+  ctx.strokeStyle = '#212121'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(15, headY + 3); ctx.lineTo(16, headY + 7); ctx.stroke();
+
+  // Backwards curved goat horns
+  ctx.strokeStyle = '#37474F'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(10, headY - 3); ctx.quadraticCurveTo(8, headY - 11, 4, headY - 9); ctx.stroke();
+
+  ctx.restore();
+}
+
+/* 3. Hillside-Stretched Simmental Cattle Pasture: Natural Meadow, Clean Boundary & Dynamic 3D Livestock */
+const CATTLE_TURF_PADS = [
+  [1100, 275, 18, 8], [1150, 265, 20, 9], [1200, 270, 22, 9], [1260, 255, 24, 10],
+  [1320, 260, 24, 10], [1370, 245, 20, 8], [1420, 255, 22, 9], [1480, 240, 20, 8],
+  [1530, 250, 24, 10], [1580, 235, 20, 8], [1180, 280, 18, 7], [1240, 275, 20, 8],
+  [1300, 240, 18, 7], [1360, 268, 22, 9], [1450, 265, 20, 8], [1510, 230, 18, 7],
+  [1560, 245, 20, 8]
+];
+
 function drawCattlePasture(ctx, cx, cy, built){
   ctx.save();
   ctx.globalAlpha = built ? 1 : 0.55;
 
-  // Hilltop ridge downslope polygon: curve around hill to protect grazing animals, leaving hill upslope meadow open for vineyard
+  // Hilltop ridge downslope polygon: stops strictly at near hill green meadow edge without overpassing onto distant hill
   const poly = [
-    [1680, 205], [1560, 208], [1420, 214], [1280, 225], [1160, 240], [1060, 255],
-    [1045, 290], [1120, 295], [1240, 290], [1400, 280], [1550, 270], [1650, 250], [1690, 240], [1680, 205]
+    [1615, 215], [1530, 212], [1420, 216], [1280, 225], [1160, 240], [1060, 255],
+    [1045, 290], [1120, 295], [1240, 290], [1380, 280], [1500, 270], [1590, 255], [1620, 240], [1615, 215]
   ];
 
-  // 1. Lush Mountain Pasture Meadow Base
-  const g = ctx.createLinearGradient(1400, 205, 1400, 295);
-  g.addColorStop(0, '#C5E1A5'); g.addColorStop(0.5, '#9CCC65'); g.addColorStop(1, '#558B2F');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  poly.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
-  ctx.closePath();
-  ctx.fill();
+  // NOTE: Artificial green background polygon fill removed per user instruction so authentic background meadow shows through!
 
-  // 2. Smooth 3D Volumetric Isometric Grazing Turf Cushions & White Clovers (Authentic Almliegewiese, No Weeds)
-  const turfPads = [
-    [1100, 275, 18, 8], [1150, 265, 20, 9], [1200, 270, 22, 9], [1260, 255, 24, 10],
-    [1320, 260, 24, 10], [1370, 245, 20, 8], [1420, 255, 22, 9], [1480, 240, 20, 8],
-    [1530, 250, 24, 10], [1590, 235, 20, 8], [1640, 230, 18, 8], [1180, 280, 18, 7],
-    [1240, 275, 20, 8], [1300, 240, 18, 7], [1360, 268, 22, 9], [1450, 265, 20, 8],
-    [1510, 230, 18, 7], [1570, 255, 22, 9], [1620, 245, 18, 7]
-  ];
-
-  turfPads.forEach(tp => {
+  // 1. Smooth 3D Volumetric Isometric Grazing Turf Cushions & White Clovers
+  CATTLE_TURF_PADS.forEach(tp => {
     const [tx, ty, rx, ry] = tp;
     // Ambient drop shadow beneath turf cushion
     ctx.fillStyle = 'rgba(25, 50, 15, 0.22)';
@@ -1213,15 +1295,14 @@ function drawCattlePasture(ctx, cx, cy, built){
     ctx.arc(tx + 2, ty - 1, 2, 0, Math.PI * 2);
     ctx.arc(tx, ty + 2, 2, 0, Math.PI * 2);
     ctx.fill();
-    // Tiny white/cream clover floret center
     ctx.fillStyle = '#FFFDE7';
     ctx.fillRect(tx - 0.7, ty - 0.7, 1.4, 1.4);
   });
 
-  // Bavarian Alpine Wildflowers (Enzian Blue, Alpenrose Pink, Edelweiss White, Yellow Clover)
+  // Bavarian Alpine Wildflowers
   const flowers = [
     [1125, 275, '#2979FF'], [1210, 260, '#FF4081'], [1315, 270, '#FFFFFF'], [1395, 245, '#FFD54F'],
-    [1475, 255, '#2979FF'], [1565, 240, '#FF4081'], [1635, 235, '#FFFFFF'], [1265, 270, '#FFD54F']
+    [1475, 255, '#2979FF'], [1555, 235, '#FF4081'], [1605, 230, '#FFFFFF'], [1265, 270, '#FFD54F']
   ];
   flowers.forEach(f => {
     ctx.fillStyle = f[2];
@@ -1229,20 +1310,20 @@ function drawCattlePasture(ctx, cx, cy, built){
     ctx.fillStyle = '#FFD54F'; ctx.fillRect(f[0] - 0.5, f[1] - 0.5, 1, 1);
   });
 
-  // 3. Open Alpine Timber Stall Shed (Almhütte Shelter) at (1540, 230)
-  isoBox(ctx, 1540, 230, 52, 24, 20, '#5D4037', '#4E342E', '#3E2723');
-  isoRoof(ctx, 1540, 210, 58, 28, 0, 12, '#6D4C41', '#4E342E', '#5D4037');
-  ctx.fillStyle = '#FFFDE7'; ctx.fillRect(1526, 233, 28, 8); // Straw bedding
-  ctx.fillStyle = '#FFE082'; for(let s = 1528; s < 1552; s += 4) ctx.fillRect(s, 235, 2, 6);
+  // 2. Open Alpine Timber Stall Shed (Almhütte Shelter) at (1520, 225)
+  isoBox(ctx, 1520, 225, 50, 24, 20, '#5D4037', '#4E342E', '#3E2723');
+  isoRoof(ctx, 1520, 205, 56, 28, 0, 12, '#6D4C41', '#4E342E', '#5D4037');
+  ctx.fillStyle = '#FFFDE7'; ctx.fillRect(1506, 228, 28, 8); // Straw bedding
+  ctx.fillStyle = '#FFE082'; for(let s = 1508; s < 1532; s += 4) ctx.fillRect(s, 230, 2, 6);
 
-  // Hollowed Stone Water Trough at (1485, 250)
-  ctx.fillStyle = '#78909C'; ctx.beginPath(); ctx.ellipse(1485, 250, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#00E5FF'; ctx.beginPath(); ctx.ellipse(1485, 249, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
+  // Hollowed Stone Water Trough at (1460, 240)
+  ctx.fillStyle = '#78909C'; ctx.beginPath(); ctx.ellipse(1460, 240, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#00E5FF'; ctx.beginPath(); ctx.ellipse(1460, 239, 7, 3, 0, 0, Math.PI * 2); ctx.fill();
 
-  // Mineral Salt Lick Block at (1280, 275)
-  isoBox(ctx, 1280, 275, 10, 8, 8, '#ECEFF1', '#CFD8DC', '#B0BEC5');
+  // Mineral Salt Lick Block at (1260, 265)
+  isoBox(ctx, 1260, 265, 10, 8, 8, '#ECEFF1', '#CFD8DC', '#B0BEC5');
 
-  // 4. Post-and-Rail Rustic Wooden Paddock Fence along Boundary
+  // 3. Post-and-Rail Rustic Wooden Paddock Fence along Boundary
   const posts = [];
   for(let i = 0; i < poly.length - 1; i++){
     const pA = poly[i], pB = poly[i + 1];
@@ -1273,17 +1354,28 @@ function drawCattlePasture(ctx, cx, cy, built){
     ctx.stroke();
   }
 
-  // 5. Volumetric Simmental Cattle, Calves & Sheep
-  if (built) {
-    // COW 1: Grazing Adult Simmental with Golden Brass Cowbell
-    drawSimmentalCow(ctx, 1490, 260, 1.0, true);
-    // COW 2: Young Simmental Heifer
-    drawSimmentalCow(ctx, 1370, 270, 0.84, false);
-    // CALF: Simmental Calf
-    drawSimmentalCalf(ctx, 1420, 280);
-    // SHEEP 1 & 2
-    drawPastureSheep(ctx, 1230, 275);
-    drawPastureSheep(ctx, 1150, 280);
+  // 4. Dynamic Roaming 3D Livestock (Simmental Cows, Calves, Alpine Sheep & Mountain Goats)
+  if (built && state.cattle && state.cattle.animals) {
+    // Sort animals by Y so deeper animals render behind closer animals
+    const sorted = [...state.cattle.animals].sort((a, b) => a.y - b.y);
+    sorted.forEach(a => {
+      const isWalk = a.state === 'walk';
+      const isGraze = a.state === 'graze';
+      const flip = (a.tx || a.x) < a.x; // Face left if moving left
+
+      if (a.type === 'cow') {
+        if (a.stage === 'calf') {
+          drawSimmentalCalf(ctx, a.x, a.y, isWalk ? a.phase : 0, isGraze, flip);
+        } else {
+          const scale = a.stage === 'young' ? 0.82 : 1.0;
+          drawSimmentalCow(ctx, a.x, a.y, scale, a.id === 1, isWalk ? a.phase : 0, isGraze, flip);
+        }
+      } else if (a.type === 'sheep') {
+        drawPastureSheep(ctx, a.x, a.y, isWalk ? a.phase : 0, isGraze, flip);
+      } else if (a.type === 'goat') {
+        drawAlpineGoat(ctx, a.x, a.y, isWalk ? a.phase : 0, isGraze, flip, a.stage === 'kid');
+      }
+    });
   }
 
   ctx.restore();
@@ -1325,27 +1417,20 @@ function drawWindTurbine(ctx, cx, cy, time, built){
   ctx.restore();
 }
 
-/* 5. Living Waters Joined Alpine Lake System: West Amoeba + Central Amoeba + East Mitochondria stretching towards Main Gate */
-const LAKE_CHAIN_PTS = [
-  // Basin 1: West Amoeba North & West rim
-  [240, 825], [270, 785], [330, 770], [410, 775], [480, 790], [530, 815],
-  // Strait 1 North rim
-  [570, 825],
-  // Basin 2: Central Amoeba North rim
-  [620, 805], [690, 790], [770, 785], [840, 805], [880, 835],
-  // Strait 2 North rim
-  [920, 842],
-  // Basin 3: Mitochondria North & East rim stretching towards Main Gate (1544, 794)
-  [960, 830], [1040, 822], [1130, 820], [1220, 825], [1300, 838], [1370, 860],
-  [1410, 895], [1390, 930], [1330, 952], [1240, 965], [1140, 968], [1050, 960], [970, 940],
-  // Strait 2 South rim
-  [920, 885],
-  // Basin 2: Central Amoeba South rim
-  [870, 905], [810, 935], [730, 942], [650, 925], [590, 890],
-  // Strait 1 South rim
-  [550, 875],
-  // Basin 1: West Amoeba South rim
-  [510, 905], [450, 928], [370, 932], [290, 915], [245, 875]
+/* 5. Living Waters 2-Basin Joined Alpine Lake System: West Pond + East Big Pond Rotated Down-Right */
+const LAKE_2BASIN_PTS = [
+  // West Pond West & North rim (480..800, 780..980)
+  [480, 860], [510, 810], [580, 785], [670, 780], [750, 805], [800, 845],
+  // Narrow Joint North rim
+  [835, 860],
+  // East Big Pond North rim (sloping down-right towards main gate)
+  [880, 845], [980, 835], [1100, 840], [1220, 855], [1340, 885], [1430, 925],
+  // East Big Pond East & Bottom-Right tip (rotated down into southern green meadow)
+  [1470, 965], [1450, 1005], [1380, 1030], [1260, 1035], [1120, 1025], [990, 1000], [890, 960],
+  // Narrow Joint South rim
+  [835, 915],
+  // West Pond South rim
+  [780, 945], [710, 975], [610, 980], [530, 955], [480, 910]
 ];
 
 function drawLivingLake(ctx, cx, cy, built, time){
@@ -1359,13 +1444,13 @@ function drawLivingLake(ctx, cx, cy, built, time){
     ctx.lineWidth = 1.8;
     ctx.setLineDash([6, 6]);
     ctx.beginPath();
-    LAKE_CHAIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
+    LAKE_2BASIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
     ctx.closePath();
     ctx.stroke();
     ctx.setLineDash([]);
 
     // Wooden Surveyor Stakes with Ribbon Flags
-    LAKE_CHAIN_PTS.forEach(pt => {
+    LAKE_2BASIN_PTS.forEach(pt => {
       ctx.fillStyle = '#8D6E63'; ctx.fillRect(pt[0] - 1.5, pt[1] - 12, 3, 14);
       ctx.fillStyle = '#FF3D00'; ctx.fillRect(pt[0] + 1.5, pt[1] - 12, 5, 4);
     });
@@ -1375,25 +1460,24 @@ function drawLivingLake(ctx, cx, cy, built, time){
     ctx.beginPath(); ctx.roundRect(cx - 95, cy - 14, 190, 28, 8); ctx.fill();
     ctx.strokeStyle = '#FFB300'; ctx.lineWidth = 1.2; ctx.stroke();
     ctx.fillStyle = '#FFD54F'; ctx.font = 'bold 11px Nunito'; ctx.textAlign = 'center';
-    ctx.fillText('📐 Alpenhof-Seenkette (Survey 0%)', cx, cy + 4);
+    ctx.fillText('📐 2-Becken Alpen-See (Survey 0%)', cx, cy + 4);
   } else if (stage === 1) {
     // STAGE 1: SCRAPED TOPSOIL & EXCAVATION TRENCHES (25%)
     ctx.fillStyle = '#4E342E';
     ctx.beginPath();
-    LAKE_CHAIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
+    LAKE_2BASIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
     ctx.closePath();
     ctx.fill();
 
-    // Trench Lines & Mounds across all 3 basins
+    // Trench Lines across both basins
     ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(310, 830); ctx.lineTo(470, 870);
-    ctx.moveTo(650, 850); ctx.lineTo(820, 880);
-    ctx.moveTo(1020, 880); ctx.lineTo(1320, 910);
+    ctx.moveTo(520, 850); ctx.lineTo(760, 890);
+    ctx.moveTo(920, 880); ctx.lineTo(1380, 960);
     ctx.stroke();
 
     // Glacial Loam Dirt Piles
-    [[350, 800], [450, 910], [700, 820], [800, 920], [1050, 840], [1200, 950], [1320, 880]].forEach(dp => {
+    [[560, 820], [680, 930], [950, 870], [1120, 970], [1320, 920]].forEach(dp => {
       ctx.fillStyle = '#5D4037'; ctx.beginPath(); ctx.ellipse(dp[0], dp[1], 16, 8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#8D6E63'; ctx.beginPath(); ctx.ellipse(dp[0], dp[1] - 2, 12, 5, 0, 0, Math.PI * 2); ctx.fill();
     });
@@ -1401,132 +1485,123 @@ function drawLivingLake(ctx, cx, cy, built, time){
     // STAGE 2: DEEP BASIN EXCAVATION (50%)
     ctx.fillStyle = '#3E2723';
     ctx.beginPath();
-    LAKE_CHAIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
+    LAKE_2BASIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
     ctx.closePath(); ctx.fill();
 
-    // Stepped Inner Basin Rim for all 3 basins
+    // Stepped Inner Basin Rim
     ctx.fillStyle = '#271206';
     ctx.beginPath();
-    LAKE_CHAIN_PTS.forEach((pt, i) => {
-      const rx = 390 + (pt[0] - 390) * 0.88;
-      const ry = 860 + (pt[1] - 860) * 0.88;
+    LAKE_2BASIN_PTS.forEach((pt, i) => {
+      const rx = 900 + (pt[0] - 900) * 0.90;
+      const ry = 900 + (pt[1] - 900) * 0.90;
       i === 0 ? ctx.moveTo(rx, ry) : ctx.lineTo(rx, ry);
     });
     ctx.closePath(); ctx.fill();
 
-    // Shallow Inflow Mud Puddles in each basin
+    // Shallow Inflow Mud Puddles
     ctx.fillStyle = '#00838F';
-    ctx.beginPath(); ctx.ellipse(390, 850, 50, 20, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(740, 860, 55, 22, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(1160, 890, 85, 26, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(630, 870, 60, 25, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(1160, 930, 110, 35, 0.15, 0, Math.PI * 2); ctx.fill();
   } else if (stage === 3) {
     // STAGE 3: BENTONITE CLAY SEALING & RIP-RAP (75%)
     ctx.fillStyle = '#78909C';
     ctx.beginPath();
-    LAKE_CHAIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
+    LAKE_2BASIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
     ctx.closePath(); ctx.fill();
 
     // Shoreline Rip-Rap Boulders
-    LAKE_CHAIN_PTS.forEach((pt, idx) => {
+    LAKE_2BASIN_PTS.forEach((pt, idx) => {
       if (idx % 2 === 0) {
         ctx.fillStyle = '#607D8B'; ctx.beginPath(); ctx.arc(pt[0], pt[1], 4.5, 0, Math.PI * 2); ctx.fill();
       }
     });
 
     // 50% Water Filling Gradient
-    const g = ctx.createLinearGradient(300, 780, 1300, 960);
+    const g = ctx.createLinearGradient(480, 780, 1470, 1035);
     g.addColorStop(0, '#00E5FF'); g.addColorStop(1, '#0277BD');
     ctx.fillStyle = g;
     ctx.beginPath();
-    LAKE_CHAIN_PTS.forEach((pt, i) => {
-      const rx = 390 + (pt[0] - 390) * 0.94;
-      const ry = 860 + (pt[1] - 860) * 0.94;
+    LAKE_2BASIN_PTS.forEach((pt, i) => {
+      const rx = 900 + (pt[0] - 900) * 0.95;
+      const ry = 900 + (pt[1] - 900) * 0.95;
       i === 0 ? ctx.moveTo(rx, ry) : ctx.lineTo(rx, ry);
     });
     ctx.closePath(); ctx.fill();
   } else {
-    // STAGE 4 / BUILT: FULL 3D VOLUMETRIC ISOMETRIC ALPINE LAKE CHAIN (100%)
-    // 1. Natural Clean Pebble/Sand Shoreline
+    // STAGE 4 / BUILT: FULL 3D VOLUMETRIC ISOMETRIC 2-BASIN ALPINE LAKE (100%)
+    // 1. Natural Clean Pebble/Sand Shoreline Rim
     ctx.strokeStyle = '#B0BEC5';
     ctx.lineWidth = 4;
     ctx.beginPath();
-    LAKE_CHAIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
+    LAKE_2BASIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
     ctx.closePath();
     ctx.stroke();
 
-    // 2. Luminous Glacial Alpine Turquoise Water Gradient across all 3 joined basins
-    const g = ctx.createLinearGradient(240, 770, 1410, 970);
+    // 2. Luminous Glacial Alpine Turquoise Water Gradient
+    const g = ctx.createLinearGradient(480, 780, 1470, 1035);
     g.addColorStop(0, '#18FFFF');
     g.addColorStop(0.35, '#00E5FF');
     g.addColorStop(0.70, '#0091EA');
     g.addColorStop(1, '#0D47A1');
     ctx.fillStyle = g;
     ctx.beginPath();
-    LAKE_CHAIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
+    LAKE_2BASIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
     ctx.closePath();
     ctx.fill();
 
-    // 3. Mitochondria Inner Cristae Folds (Submerged luminous cyan reefs in East Basin)
-    const cristae = [
-      [[1020, 825], [1040, 875], [1060, 825]],
-      [[1100, 965], [1120, 910], [1140, 965]],
-      [[1180, 825], [1200, 880], [1220, 825]],
-      [[1260, 960], [1280, 905], [1300, 955]],
-      [[1340, 845], [1355, 895], [1370, 860]]
-    ];
+    // 3. 3D Volumetric Moving Waves with Specular Crests
+    const t = time || 0;
     ctx.save();
-    ctx.strokeStyle = 'rgba(24, 255, 255, 0.45)';
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    cristae.forEach(cr => {
-      ctx.beginPath();
-      cr.forEach((p, idx) => idx === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
-      ctx.stroke();
-    });
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.lineWidth = 1.4;
+    // West Pond Waves
+    for(let w = 0; w < 4; w++){
+      const wx = 520 + w * 65 + Math.sin(t * 1.6 + w) * 8;
+      const wy = 830 + (w % 2) * 35 + Math.cos(t * 1.3 + w) * 6;
+      ctx.beginPath(); ctx.ellipse(wx, wy, 22, 6, 0.1, 0, Math.PI); ctx.stroke();
+    }
+    // East Big Pond Waves (tilted along the down-right angle)
+    for(let w = 0; w < 6; w++){
+      const wx = 940 + w * 85 + Math.sin(t * 1.4 + w) * 10;
+      const wy = 870 + w * 20 + (w % 2) * 28 + Math.cos(t * 1.1 + w) * 7;
+      ctx.beginPath(); ctx.ellipse(wx, wy, 28, 8, 0.18, 0, Math.PI); ctx.stroke();
+    }
     ctx.restore();
 
-    // 4. Arched Rustic Timber Footbridges Crossing Narrow Connecting Straits
-    // Bridge 1 over Strait 1 at x=560
-    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(548, 830, 8, 48);
-    isoBox(ctx, 552, 852, 10, 44, 5, '#8D6E63', '#6D4C41', '#4E342E');
-    ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 1.8;
-    ctx.beginPath(); ctx.moveTo(552, 832); ctx.lineTo(552, 872); ctx.stroke();
+    // 4. Arched Rustic Timber Footbridge over Narrow Joint at x=835
+    ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(830, 860, 10, 58);
+    isoBox(ctx, 835, 888, 12, 54, 6, '#8D6E63', '#6D4C41', '#4E342E');
+    ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 2.0;
+    ctx.beginPath(); ctx.moveTo(835, 860); ctx.lineTo(835, 915); ctx.stroke();
 
-    // Bridge 2 over Strait 2 at x=920
-    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(918, 842, 8, 44);
-    isoBox(ctx, 922, 864, 10, 42, 5, '#8D6E63', '#6D4C41', '#4E342E');
-    ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 1.8;
-    ctx.beginPath(); ctx.moveTo(922, 844); ctx.lineTo(922, 884); ctx.stroke();
+    // 5. Floating Timber Entenhaus (Bavarian Duck Shelter) at (1120, 910)
+    isoBox(ctx, 1120, 910, 24, 18, 10, '#5D4037', '#4E342E', '#3E2723');
+    isoRoof(ctx, 1120, 900, 28, 22, 0, 8, '#795548', '#5D4037', '#6D4C41');
+    // Wooden entry ramp down into water
+    ctx.fillStyle = '#8D6E63';
+    ctx.beginPath();
+    ctx.moveTo(1116, 915); ctx.lineTo(1124, 915); ctx.lineTo(1126, 924); ctx.lineTo(1114, 924);
+    ctx.closePath(); ctx.fill();
 
-    // 5. Gentle Animated Water Caustic Ripples across All 3 Basins
-    const t = time || 0;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.40)';
-    ctx.lineWidth = 1.3;
-    // Basin 1 ripples
-    for(let r = 0; r < 3; r++){
-      const ripX = 350 + r * 35 + Math.sin(t * 1.5 + r) * 6;
-      const ripY = 830 + (r % 2) * 26 + Math.cos(t * 1.2 + r) * 4;
-      ctx.beginPath(); ctx.ellipse(ripX, ripY, 14, 5, 0.1, 0, Math.PI); ctx.stroke();
-    }
-    // Basin 2 ripples
-    for(let r = 0; r < 3; r++){
-      const ripX = 700 + r * 35 + Math.sin(t * 1.4 + r) * 6;
-      const ripY = 840 + (r % 2) * 22 + Math.cos(t * 1.1 + r) * 4;
-      ctx.beginPath(); ctx.ellipse(ripX, ripY, 14, 5, 0.1, 0, Math.PI); ctx.stroke();
-    }
-    // Basin 3 Mitochondria ripples
-    for(let r = 0; r < 4; r++){
-      const ripX = 1060 + r * 55 + Math.sin(t * 1.3 + r) * 8;
-      const ripY = 875 + (r % 2) * 24 + Math.cos(t * 1.0 + r) * 5;
-      ctx.beginPath(); ctx.ellipse(ripX, ripY, 16, 6, 0.1, 0, Math.PI); ctx.stroke();
-    }
+    // 6. Submerged Swimming Fish (Bachforelle & Saibling Silhouettes beneath water)
+    const fishList = [
+      [580, 860, 0.8], [690, 890, -1.2], [740, 840, 0.5],
+      [980, 910, 1.1], [1050, 940, -0.7], [1200, 920, 0.9], [1310, 960, -1.0]
+    ];
+    fishList.forEach((f, idx) => {
+      const fx = f[0] + Math.sin(t * 1.8 + idx) * 18;
+      const fy = f[1] + Math.cos(t * 1.2 + idx) * 6;
+      ctx.fillStyle = 'rgba(13, 71, 161, 0.45)'; // Submerged silhouette
+      ctx.beginPath(); ctx.ellipse(fx, fy, 7, 2.5, f[2], 0, Math.PI * 2); ctx.fill();
+      // Forked tail
+      ctx.fillStyle = 'rgba(2, 119, 189, 0.55)';
+      ctx.beginPath(); ctx.moveTo(fx - 6, fy); ctx.lineTo(fx - 10, fy - 2.5); ctx.lineTo(fx - 10, fy + 2.5); ctx.closePath(); ctx.fill();
+    });
 
-    // 6. Floating Water Lilies with Pink/White Lotus Blossoms across the chain
+    // 7. Floating Water Lilies with Pink/White Lotus Blossoms
     const lilies = [
-      [320, 840], [365, 812], [425, 805], [465, 845], [410, 872], [350, 875],
-      [660, 830], [720, 870], [800, 820], [830, 880],
-      [1010, 860], [1150, 840], [1270, 870], [1340, 910], [1190, 930]
+      [530, 850], [610, 820], [670, 910], [730, 860], [770, 930],
+      [960, 880], [1030, 860], [1180, 880], [1240, 950], [1350, 920], [1400, 980]
     ];
     lilies.forEach(l => {
       ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.ellipse(l[0], l[1], 8, 4.5, 0.2, 0, Math.PI * 2); ctx.fill();
@@ -1534,30 +1609,32 @@ function drawLivingLake(ctx, cx, cy, built, time){
       ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(l[0], l[1], 1.2, 0, Math.PI * 2); ctx.fill();
     });
 
-    // 7. Shoreline Reeds & Cattails
+    // 8. Shoreline Reeds & Cattails
     ctx.strokeStyle = '#33691E'; ctx.lineWidth = 2.4;
     for(let i = 0; i < 9; i++){
-      ctx.beginPath(); ctx.moveTo(250 + i * 5, 835); ctx.lineTo(248 + i * 5, 805); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(490 + i * 5, 875); ctx.lineTo(488 + i * 5, 845); ctx.stroke();
     }
-    for(let i = 0; i < 7; i++){
-      ctx.beginPath(); ctx.moveTo(1360 + i * 5, 870); ctx.lineTo(1362 + i * 5, 845); ctx.stroke();
+    for(let i = 0; i < 8; i++){
+      ctx.beginPath(); ctx.moveTo(1420 + i * 5, 940); ctx.lineTo(1422 + i * 5, 915); ctx.stroke();
     }
 
-    // 8. Timber Fishing Jetty Dock with Tied Wooden Rowboat at Basin 1 North Shore
-    isoBox(ctx, 440, 780, 38, 12, 6, '#8D6E63', '#6D4C41', '#4E342E');
+    // 9. Timber Fishing Jetty Dock with Tied Wooden Rowboat on West Pond North Shore
+    isoBox(ctx, 630, 775, 42, 12, 6, '#8D6E63', '#6D4C41', '#4E342E');
+    // Wooden skiff/rowboat
     ctx.fillStyle = '#5D4037';
-    ctx.beginPath(); ctx.ellipse(475, 788, 14, 6, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(668, 783, 14, 6, 0.3, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#8D6E63';
-    ctx.beginPath(); ctx.ellipse(475, 787, 11, 4, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(668, 782, 11, 4, 0.3, 0, Math.PI * 2); ctx.fill();
 
-    // 9. Swimming Mallards (Stockenten) with ducklings navigating between basins
-    const duckX = 740 + Math.sin(t * 0.7) * 35;
-    const duckY = 855 + Math.cos(t * 0.5) * 15;
-    ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.arc(duckX, duckY, 3.5, 0, Math.PI * 2); ctx.fill(); // Emerald head
-    ctx.fillStyle = '#5D4037'; ctx.beginPath(); ctx.ellipse(duckX - 4, duckY + 1.2, 6, 3.8, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FFD54F'; ctx.fillRect(duckX + 2.5, duckY - 0.5, 2.5, 1.2); // Beak
-    // Duckling
-    ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(duckX - 11, duckY + 3, 2.2, 0, Math.PI * 2); ctx.fill();
+    // 10. Swimming Mallards (Stockenten) and Ducklings navigating across the ponds
+    const duckX = 990 + Math.sin(t * 0.7) * 45;
+    const duckY = 920 + Math.cos(t * 0.5) * 15;
+    ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.arc(duckX, duckY, 3.8, 0, Math.PI * 2); ctx.fill(); // Emerald head
+    ctx.fillStyle = '#5D4037'; ctx.beginPath(); ctx.ellipse(duckX - 4.5, duckY + 1.2, 7, 4.2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFD54F'; ctx.fillRect(duckX + 3, duckY - 0.5, 2.5, 1.4); // Beak
+    // Swimming Duckling
+    ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(duckX - 13, duckY + 3.5, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FF9800'; ctx.fillRect(duckX - 10, duckY + 3, 1.5, 1);
   }
 
   ctx.restore();
@@ -1791,45 +1868,93 @@ function drawVineyard(ctx, time, built){
           ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 0.8;
           ctx.beginPath(); ctx.moveTo(vx - 2, vy); ctx.lineTo(vx + 2, vy); ctx.stroke();
         } else if (v.status === 'empty') {
-          ctx.fillStyle = '#8D6E63'; ctx.fillRect(vx - 0.8, vy - 9, 1.6, 9);
+          ctx.fillStyle = '#8D6E63'; ctx.fillRect(vx - 1.0, vy - 10, 2.0, 10);
         } else if (v.species) {
           const sp = GRAPE_SPECIES[v.species] || GRAPE_SPECIES.silvaner;
-          // Wooden vertical vine stake
-          ctx.fillStyle = '#6D4C41'; ctx.fillRect(vx - 1.0, vy - 14, 2.0, 14);
-          // Horizontal guide wire
-          ctx.strokeStyle = '#B0BEC5'; ctx.lineWidth = 0.8;
-          ctx.beginPath(); ctx.moveTo(vx - 6, vy - 9); ctx.lineTo(vx + 6, vy - 9); ctx.stroke();
+          // Sturdy 3D Cedar Vine Post
+          ctx.fillStyle = '#4E342E'; ctx.fillRect(vx - 1.2, vy - 16, 2.4, 16);
+          // Double Galvanized Trellis Wires
+          ctx.strokeStyle = '#CFD8DC'; ctx.lineWidth = 0.9;
+          ctx.beginPath();
+          ctx.moveTo(vx - 7, vy - 8); ctx.lineTo(vx + 7, vy - 8);
+          ctx.moveTo(vx - 7, vy - 14); ctx.lineTo(vx + 7, vy - 14);
+          ctx.stroke();
 
-          if (v.status === 'sprout') {
-            ctx.fillStyle = '#66BB6A'; ctx.beginPath(); ctx.arc(vx, vy - 5, 2.8, 0, Math.PI * 2); ctx.fill();
+          if (v.status === 'seed' || v.status === 'sprout') {
+            // Emerging green vine shoots & young leaf buds
+            ctx.fillStyle = '#66BB6A';
+            ctx.beginPath(); ctx.arc(vx - 2, vy - 6, 3.2, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#81C784';
+            ctx.beginPath(); ctx.arc(vx + 2, vy - 8, 3.0, 0, Math.PI * 2); ctx.fill();
           } else if (v.status === 'trellised') {
-            ctx.strokeStyle = '#4E342E'; ctx.lineWidth = 1.3;
-            ctx.beginPath(); ctx.moveTo(vx, vy); ctx.lineTo(vx + 1, vy - 10); ctx.stroke();
+            // Trained gnarled vine stock & bushy leaf canopy
+            ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 1.6;
+            ctx.beginPath(); ctx.moveTo(vx, vy); ctx.quadraticCurveTo(vx + 2, vy - 7, vx, vy - 14); ctx.stroke();
+            // Lush 3-lobe foliage dome
             ctx.fillStyle = sp.leafColor;
             ctx.beginPath();
-            ctx.arc(vx - 3, vy - 10, 3.6, 0, Math.PI * 2);
-            ctx.arc(vx + 3, vy - 8, 3.4, 0, Math.PI * 2);
+            ctx.arc(vx - 4, vy - 13, 4.5, 0, Math.PI * 2);
+            ctx.arc(vx + 4, vy - 12, 4.2, 0, Math.PI * 2);
+            ctx.arc(vx, vy - 16, 4.8, 0, Math.PI * 2);
             ctx.fill();
+            ctx.fillStyle = '#81C784'; ctx.beginPath(); ctx.arc(vx - 1, vy - 14, 2.2, 0, Math.PI * 2); ctx.fill();
           } else if (v.status === 'mature') {
-            ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.moveTo(vx, vy); ctx.bezierCurveTo(vx-2, vy-6, vx+2, vy-10, vx, vy-13); ctx.stroke();
+            // Full 3D Volumetric Mature Vine with Overflowing Canopy & Juicy Cascading Grape Clusters
+            ctx.strokeStyle = '#271206'; ctx.lineWidth = 2.0;
+            ctx.beginPath(); ctx.moveTo(vx, vy); ctx.bezierCurveTo(vx - 3, vy - 6, vx + 3, vy - 11, vx, vy - 16); ctx.stroke();
+
+            // Broad Lush Leaf Canopy
             ctx.fillStyle = sp.leafColor;
             ctx.beginPath();
-            ctx.arc(vx - 3.5, vy - 12, 4.5, 0, Math.PI * 2);
-            ctx.arc(vx + 3.5, vy - 11, 4.2, 0, Math.PI * 2);
-            ctx.arc(vx, vy - 14, 4.0, 0, Math.PI * 2);
+            ctx.arc(vx - 5, vy - 14, 5.5, 0, Math.PI * 2);
+            ctx.arc(vx + 5, vy - 13, 5.2, 0, Math.PI * 2);
+            ctx.arc(vx, vy - 18, 5.8, 0, Math.PI * 2);
+            ctx.arc(vx - 2, vy - 10, 4.2, 0, Math.PI * 2);
+            ctx.arc(vx + 3, vy - 9, 4.0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Hanging Distinctive Grape Clusters
-            ctx.fillStyle = sp.fruitColor;
+            // Sunlit leaf highlight
+            ctx.fillStyle = '#A5D6A7';
+            ctx.beginPath(); ctx.arc(vx - 1, vy - 16, 2.8, 0, Math.PI * 2); ctx.fill();
+
+            // Large, Prominent, 3D Cascading Grape Clusters (Heavy ripe fruit)
+            const isRed = sp.key === 'spatburgunder' || sp.key === 'dornfelder';
+            const berryFill = isRed ? '#4A148C' : '#FBC02D';
+            const berryHighlight = isRed ? '#BA68C8' : '#FFF9C4';
+            const clusterShadow = isRed ? '#1A0033' : '#827717';
+
+            // Cluster 1 (Left flank)
+            ctx.fillStyle = clusterShadow;
+            ctx.beginPath(); ctx.arc(vx - 3.5, vy - 5.5, 4.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = berryFill;
             ctx.beginPath();
-            ctx.moveTo(vx - 2.2, vy - 7);
-            ctx.lineTo(vx + 2.2, vy - 7);
-            ctx.lineTo(vx, vy - 1);
-            ctx.closePath();
+            ctx.arc(vx - 4.5, vy - 7, 2.2, 0, Math.PI * 2);
+            ctx.arc(vx - 2.5, vy - 7, 2.2, 0, Math.PI * 2);
+            ctx.arc(vx - 5.0, vy - 5, 2.2, 0, Math.PI * 2);
+            ctx.arc(vx - 3.0, vy - 5, 2.4, 0, Math.PI * 2);
+            ctx.arc(vx - 1.5, vy - 5, 2.0, 0, Math.PI * 2);
+            ctx.arc(vx - 3.5, vy - 3, 2.0, 0, Math.PI * 2);
+            ctx.arc(vx - 3.5, vy - 1.2, 1.6, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            ctx.fillRect(vx - 0.8, vy - 6, 1.2, 1.2);
+            // Glossy berry shine
+            ctx.fillStyle = berryHighlight;
+            ctx.fillRect(vx - 4, vy - 6, 1.2, 1.2);
+            ctx.fillRect(vx - 3, vy - 4, 1.0, 1.0);
+
+            // Cluster 2 (Right flank)
+            ctx.fillStyle = clusterShadow;
+            ctx.beginPath(); ctx.arc(vx + 3.5, vy - 4.5, 4.2, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = berryFill;
+            ctx.beginPath();
+            ctx.arc(vx + 2.5, vy - 6, 2.0, 0, Math.PI * 2);
+            ctx.arc(vx + 4.5, vy - 6, 2.0, 0, Math.PI * 2);
+            ctx.arc(vx + 2.0, vy - 4, 2.2, 0, Math.PI * 2);
+            ctx.arc(vx + 4.0, vy - 4, 2.2, 0, Math.PI * 2);
+            ctx.arc(vx + 3.2, vy - 2, 1.8, 0, Math.PI * 2);
+            ctx.arc(vx + 3.2, vy - 0.5, 1.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = berryHighlight;
+            ctx.fillRect(vx + 3, vy - 5, 1.1, 1.1);
           }
         }
       }
@@ -1856,8 +1981,8 @@ function drawMarker(ctx, s){
 /* 7. 3D Volumetric Isometric Alpine Wooden Overbridge (Alpiner Holz-Steg) Spanning Cleft to Distant Hilltop Turbine */
 function drawWoodenOverbridge(ctx, time, built){
   ctx.save();
-  const pA = [1755, 235]; // Farm Ridge trail abutment
-  const pB = [1705, 175]; // Distant Hilltop Turbine abutment
+  const pA = [1625, 230]; // Near hill green meadow edge abutment
+  const pB = [1700, 165]; // Distant Hilltop Turbine abutment
 
   ctx.globalAlpha = built ? 1 : 0.55;
 
@@ -1975,6 +2100,7 @@ const AlpenMap = {
   },
 
   tickGrowth(){
+    // 1. Orchard Trees Natural Growth
     Object.values(state.orchards).forEach(o => {
       o.beds.forEach(b => {
         if (b.status === 'seed') {
@@ -1989,6 +2115,66 @@ const AlpenMap = {
         }
       });
     });
+
+    // 2. Commercial Vineyard Vines Natural Maturing & Fruiting Ticking
+    if (state.vineyard && state.vineyard.beds) {
+      state.vineyard.beds.forEach(b => {
+        b.vines.forEach(v => {
+          if (v.species) {
+            if (v.status === 'seed' || v.status === 'sprout') {
+              v.progress = (v.progress || 0) + 0.004;
+              if (v.progress >= 1) { v.status = 'trellised'; v.progress = 0; }
+            } else if (v.status === 'trellised') {
+              v.progress = (v.progress || 0) + 0.003;
+              if (v.progress >= 1) { v.status = 'mature'; v.progress = 0; }
+            }
+          }
+        });
+      });
+    }
+
+    // 3. Dynamic Roaming Livestock AI (Simmental Cattle, Sheep & Goats)
+    if (state.cattle && state.cattle.animals) {
+      state.cattle.animals.forEach(a => {
+        if (a.state === 'graze') {
+          a.timer = (a.timer || 0) - 0.016;
+          if (a.timer <= 0) {
+            // Finished grazing duration! Pick next walking destination across the pasture
+            a.state = 'walk';
+            const pickTurf = Math.random() < 0.7 && typeof CATTLE_TURF_PADS !== 'undefined';
+            if (pickTurf) {
+              const tp = CATTLE_TURF_PADS[Math.floor(Math.random() * CATTLE_TURF_PADS.length)];
+              a.tx = tp[0] + (Math.random() - 0.5) * 12;
+              a.ty = tp[1] + (Math.random() - 0.5) * 8;
+            } else {
+              // Roam to left, top-right hill crest, upslope or downslope
+              a.tx = 1080 + Math.random() * 510;
+              a.ty = 220 + Math.random() * 65;
+            }
+          }
+        } else {
+          // Walking state: Move towards (tx, ty) with animated leg phase
+          const dx = (a.tx || a.x) - a.x;
+          const dy = (a.ty || a.y) - a.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < 4) {
+            // Arrived at grass or meadow spot! Start grazing for a set duration (4-8s)
+            a.state = 'graze';
+            a.timer = 4.0 + Math.random() * 4.5;
+          } else {
+            const step = Math.min(dist, a.speed * 1.2);
+            a.x += (dx / dist) * step;
+            a.y += (dy / dist) * step;
+            a.phase = (a.phase || 0) + a.speed * 0.22;
+          }
+
+          // Boundary clamping inside pasture
+          a.x = Math.max(1070, Math.min(1605, a.x));
+          a.y = Math.max(215, Math.min(285, a.y));
+        }
+      });
+    }
   },
 
   worldFromEvent(e){
@@ -2048,8 +2234,8 @@ const AlpenMap = {
   onClick(e){
     const {cx, cy} = this.worldFromEvent(e);
 
-    // Direct click on Lake area (390, 840)
-    if (Math.hypot(cx - 390, cy - 840) < 140) {
+    // Direct click on 2-Basin Lake System (West Pond or East Big Pond)
+    if (Math.hypot(cx - 630, cy - 870) < 160 || Math.hypot(cx - 1150, cy - 930) < 220) {
       openLakeModal();
       return;
     }
@@ -2205,19 +2391,136 @@ function buildBridge(){
   openBridgeModal();
 }
 
+/* ================= CATTLE PASTURE MODAL & LIVESTOCK CONSOLE ================= */
+
+function openCattleModal(){
+  const built = !!state.built['cattle'];
+  let h = '<div class="modal-hdr"><h3>🐄 Hillside Cattle Pasture · Simmental, Sheep & Goats</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  h += '<p style="font-size:0.82rem;color:#A5D6A7;margin-bottom:10px">Hillside Paddock Enclosure: <b>Autonomous 3D Roaming Herd · Simmental Dairy Cows, Alpine Merino Sheep & Mountain Chamois Goats</b>. Rotate livestock, browse lush clovers, and produce artisanal alpine milk, wool, and cheese.</p>';
+
+  if (!built) {
+    h += '<div class="card-box" style="margin-bottom:12px">' +
+         '<b>Paddock Enclosure Status: <span style="color:var(--gold)">Unbuilt Hillside Meadow</span></b>' +
+         '<p style="font-size:0.75rem;color:#B0BEC5;margin-top:6px">Erect the rustic post-and-rail timber fence, Almhütte shelter, stone water trough, and mineral salt lick to pasture your dairy herd.</p>' +
+         '</div>';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(8,20,12,0.85);padding:10px;border-radius:12px;border:1px solid var(--border)">' +
+         '<div><div style="font-size:0.84rem;font-weight:800;color:var(--gold)">Commission Hillside Paddock</div><div style="font-size:0.72rem;color:#A5D6A7">Cost: 55 M · +20 XP · +25 O₂/s</div></div>' +
+         '<button class="btn btn-g" onclick="buildPastureEnclosure()">🔨 Commission Pasture</button>' +
+         '</div>';
+  } else {
+    const cows = state.cattle.animals.filter(a => a.type === 'cow').length;
+    const sheep = state.cattle.animals.filter(a => a.type === 'sheep').length;
+    const goats = state.cattle.animals.filter(a => a.type === 'goat').length;
+    const mature = state.cattle.animals.filter(a => a.stage === 'mature').length;
+
+    h += '<div class="card-box" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">' +
+         '<div><b>Active Herd Roster</b><div style="font-size:0.75rem;color:#B0BEC5">' +
+           cows + ' Cows · ' + sheep + ' Sheep · ' + goats + ' Goats (' + mature + ' Mature Producing)</div></div>' +
+         '<button class="btn btn-a" style="font-size:0.75rem;padding:6px 12px" onclick="feedHerd()">🍼 Feed & Grow Herd (€25)</button>' +
+         '</div>';
+
+    // Animal Acquisition Buttons
+    h += '<div style="font-size:0.80rem;font-weight:800;color:var(--gold);margin-bottom:6px">Acquire Purebred Bavarian Livestock:</div>';
+    h += '<div class="grid-3" style="margin-bottom:12px">';
+    h += '<button class="btn btn-g" style="text-align:left;padding:8px" onclick="acquireLivestock(\'cow\')">🐄 <b>Simmental Cow</b><br/><span style="font-size:0.70rem;opacity:.9">€120 · +25 O₂ · Dairy Milk</span></button>';
+    h += '<button class="btn btn-g" style="text-align:left;padding:8px" onclick="acquireLivestock(\'sheep\')">🐑 <b>Alpine Sheep</b><br/><span style="font-size:0.70rem;opacity:.9">€60 · +15 O₂ · Wool Fleece</span></button>';
+    h += '<button class="btn btn-g" style="text-align:left;padding:8px" onclick="acquireLivestock(\'goat\')">🐐 <b>Chamois Goat</b><br/><span style="font-size:0.70rem;opacity:.9">€45 · +12 O₂ · Artisan Cheese</span></button>';
+    h += '</div>';
+
+    // Dairy & Harvest Action
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(8,20,12,0.85);padding:10px;border-radius:12px;border:1px solid var(--border)">' +
+         '<div><div style="font-size:0.84rem;font-weight:800;color:var(--teal)">🥛 Collect Artisan Dairy, Wool & Cheese</div><div style="font-size:0.72rem;color:#A5D6A7">Generates € and supplies Alpenhof Stuben</div></div>' +
+         '<button class="btn btn-c" onclick="collectDairyProducts()">🧀 Collect Dairy</button>' +
+         '</div>';
+  }
+
+  // German Farm Recall Link
+  h += '<div class="card-box" style="margin-top:12px;border-color:rgba(255,213,79,0.35);background:rgba(25,20,10,0.65)">' +
+       '<h4 style="font-size:0.80rem;color:var(--gold);margin-bottom:4px">🇩🇪 German Farm Recall Link: Circular Pasture Ecology</h4>' +
+       '<p style="font-size:0.75rem;color:#FFE082">Echoing the livestock rotation established in Basic Farm Ch. 4, your cattle, sheep, and goats naturally graze alpine clovers, aerate turf, and supply rich organic manure to close the ecological loop.</p>' +
+       '</div>';
+
+  openModal(h, true);
+}
+
+function buildPastureEnclosure(){
+  if (state.money < 55) { toast('⚠️ Insufficient funds (Needs €55)'); return; }
+  state.money -= 55;
+  state.xp += 20;
+  state.built['cattle'] = true;
+  if (typeof renderScoreboard === 'function') renderScoreboard();
+  toast('🐄 Hillside Pasture Enclosure commissioned! Livestock roaming active');
+  openCattleModal();
+}
+
+function acquireLivestock(type){
+  const costs = { cow: 120, sheep: 60, goat: 45 };
+  const cost = costs[type] || 60;
+  if (state.money < cost) { toast('⚠️ Insufficient funds (Needs €' + cost + ')'); return; }
+
+  state.money -= cost;
+  const newId = (state.cattle.animals.length + 1);
+  const animal = {
+    id: newId,
+    type,
+    stage: 'young',
+    x: 1400 + (Math.random() - 0.5) * 100,
+    y: 245 + (Math.random() - 0.5) * 25,
+    tx: 1300 + (Math.random() - 0.5) * 150,
+    ty: 250,
+    state: 'walk',
+    speed: type === 'goat' ? 0.50 : type === 'sheep' ? 0.45 : 0.35,
+    timer: 0,
+    phase: Math.random() * Math.PI * 2
+  };
+  state.cattle.animals.push(animal);
+  grantXP({biodiversity: 15, oxygen: 10});
+  toast('Acquired ' + type.toUpperCase() + '! Added to alpine grazing herd');
+  if (typeof renderScoreboard === 'function') renderScoreboard();
+  openCattleModal();
+}
+
+function feedHerd(){
+  if (state.money < 25) { toast('⚠️ Insufficient funds (Needs €25)'); return; }
+  state.money -= 25;
+  let grown = 0;
+  state.cattle.animals.forEach(a => {
+    if (a.stage === 'calf' || a.stage === 'young' || a.stage === 'kid') {
+      a.stage = 'mature'; grown++;
+    }
+  });
+  grantXP({biodiversity: 12, fruit: 8});
+  toast('🍼 Fed the herd! ' + grown + ' young animals matured into active dairy producers');
+  if (typeof renderScoreboard === 'function') renderScoreboard();
+  openCattleModal();
+}
+
+function collectDairyProducts(){
+  const mature = state.cattle.animals.filter(a => a.stage === 'mature').length;
+  if (mature === 0) { toast('No mature animals ready to produce'); return; }
+  const rev = mature * 15 + 35;
+  state.money += rev;
+  state.o2 += 25;
+  state.cattle.dairyCollected += mature;
+  grantXP({fruit: 10, oxygen: 15});
+  toast('🧀 Collected artisan dairy & wool! +€' + rev + ' · Dispatched to Stuben');
+  if (typeof renderScoreboard === 'function') renderScoreboard();
+  openCattleModal();
+}
+
 function openLakeModal(){
   const lake = state.lake || { stage: 0, progress: 0 };
   const built = !!state.built['pond'] || lake.stage >= 4;
 
   const steps = [
-    { title: '📐 Step 1: Survey Amoeba Basin & Soil Topography', cost: 25, xp: 8, time: 3 },
-    { title: '🚜 Step 2: Mechanical Glacial Loam Excavation', cost: 35, xp: 12, time: 4 },
-    { title: '🪨 Step 3: Bentonite Clay Sealing & Shore Rip-Rap', cost: 35, xp: 12, time: 4 },
-    { title: '🌊 Step 4: Divert Mountain Spring & Release Fish/Lilies', cost: 35, xp: 15, time: 5 }
+    { title: '📐 Step 1: Survey 2-Basin Alpine Topography', cost: 25, xp: 8, time: 3 },
+    { title: '🚜 Step 2: Mechanical Loam Basin Excavation', cost: 35, xp: 12, time: 4 },
+    { title: '🪨 Step 3: Bentonite Clay Sealing & Shoreline Rip-Rap', cost: 35, xp: 12, time: 4 },
+    { title: '🌊 Step 4: Divert Mountain Spring & Commission Fish/Duck Aviary', cost: 35, xp: 15, time: 5 }
   ];
 
-  let h = '<div class="modal-hdr"><h3>💧 Living Waters Alpine Lake · Excavation Console</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
-  h += '<p style="font-size:0.82rem;color:#A5D6A7;margin-bottom:10px">Enlarge and excavate the bottom-left natural alpine lake with simple amoeba shoreline and massive glacial reservoir.</p>';
+  let h = '<div class="modal-hdr"><h3>💧 Living Waters 2-Basin Alpine Lake System</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  h += '<p style="font-size:0.82rem;color:#A5D6A7;margin-bottom:10px">2 Joined Glacial Basins: <b>West Alpine Pond & East Big Pond</b>. Excavate glacial basins, stock cold-water trout/charr, build the floating Entenhaus, and breed Bavarian waterfowl.</p>';
 
   // Progress Bar & Stats
   const pct = built ? 100 : (lake.stage * 25);
@@ -2226,40 +2529,109 @@ function openLakeModal(){
          '<b>Excavation Progress: <span style="color:var(--teal)">' + pct + '% Completed</span></b>' +
          '<span style="font-size:0.75rem;color:var(--gold)">Stage ' + (built ? 4 : lake.stage) + ' / 4</span>' +
        '</div>' +
-       '<div class="prog-bar" style="height:8px;margin-top:8px"><div class="prog-fill" style="width:' + pct + '%"></div></div>' +
+       '<div class="prog-bar" style="margin-top:6px;height:8px"><div class="prog-fill" style="width:' + pct + '%"></div></div>' +
        '</div>';
 
   if (!built) {
     const curStep = steps[lake.stage];
-    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--teal)">' +
-         '<b>Current Required Action:</b><br/>' +
-         '<span style="font-size:0.85rem;color:#E8F5E9">' + curStep.title + '</span><br/>' +
-         '<div style="margin-top:6px;font-size:0.75rem;color:#CFD8DC">Investment: <b>€' + curStep.cost + '</b> · Rewards: +' + curStep.xp + ' XP & Living Water Tilth</div>' +
-         '<button class="btn btn-g" style="margin-top:10px;width:100%" onclick="advanceLakeStep(' + lake.stage + ',' + curStep.cost + ')">' +
-           '⛏️ Execute Excavation Step (' + (lake.stage + 1) + '/4)' +
-         '</button>' +
+    h += '<div style="background:rgba(8,20,12,0.85);padding:12px;border-radius:14px;border:1px solid var(--border);margin-bottom:12px">' +
+         '<div style="font-size:0.88rem;font-weight:800;color:var(--gold);margin-bottom:4px">' + curStep.title + '</div>' +
+         '<div style="font-size:0.75rem;color:#C8E6C9;margin-bottom:8px">Cost: €' + curStep.cost + ' · + ' + curStep.xp + ' XP</div>' +
+         '<div style="display:flex;gap:8px">' +
+           '<button class="btn btn-g" onclick="advanceLakeStep(' + lake.stage + ',' + curStep.cost + ')">⛏️ Execute Step (' + curStep.cost + ' M)</button>' +
+           '<button class="btn btn-a" onclick="buildLakeComplete(120)">🚀 Instant Commission (120 M)</button>' +
+         '</div>' +
+         '</div>';
+  } else {
+    // Active Fish & Duck Farming Management Console
+    const fish = state.fish || { trout: 14, charr: 10, carp: 8 };
+    const ducks = state.ducks || { count: 6, ducklings: 4 };
+
+    h += '<div class="grid-2" style="margin-bottom:12px">';
+
+    // 1. Bavarian Alpine Fish Hatchery
+    h += '<div class="card-box">' +
+         '<div style="font-size:0.84rem;font-weight:800;color:var(--cyan);margin-bottom:4px">🐟 Alpine Fish Hatchery</div>' +
+         '<div style="font-size:0.75rem;color:#B0BEC5;margin-bottom:8px">' +
+           fish.trout + ' Bachforellen (Trout) · ' + fish.charr + ' Saiblinge · ' + fish.carp + ' Karpfen</div>' +
+         '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+           '<button class="btn btn-g" style="font-size:0.72rem;padding:6px 10px" onclick="stockAlpineFish()">Stock Fingerlings (€35)</button>' +
+           '<button class="btn btn-c" style="font-size:0.72rem;padding:6px 10px" onclick="harvestAlpineFish()">🎣 Harvest Fish</button>' +
+         '</div>' +
          '</div>';
 
-    // Instant Build Option
-    h += '<button class="btn btn-a" style="margin-bottom:12px;width:100%" onclick="buildLakeComplete(120)">' +
-           '🏗️ Complete Full Excavation & Fill Immediately (€120)' +
-         '</button>';
-  } else {
-    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--teal)">' +
-         '<b>Status: <span style="color:var(--teal)">✓ Fully Commissioned Alpine Lake</span></b><br/>' +
-         '<span style="font-size:0.78rem;color:#C8E6C9">Massive inner glacial reservoir active with water lilies, fishing dock, mallards and closed-loop farm irrigation buffers.</span>' +
+    // 2. Bavarian Waterfowl & Duck Aviary
+    h += '<div class="card-box">' +
+         '<div style="font-size:0.84rem;font-weight:800;color:var(--gold);margin-bottom:4px">🦆 Waterfowl & Floating Entenhaus</div>' +
+         '<div style="font-size:0.75rem;color:#B0BEC5;margin-bottom:8px">' +
+           ducks.count + ' Adult Mallards · ' + ducks.ducklings + ' Ducklings (Entenhaus Active)</div>' +
+         '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+           '<button class="btn btn-g" style="font-size:0.72rem;padding:6px 10px" onclick="breedDucklings()">Breed Ducklings (€20)</button>' +
+           '<button class="btn btn-a" style="font-size:0.72rem;padding:6px 10px" onclick="collectDuckEggs()">🥚 Collect Eggs</button>' +
+         '</div>' +
          '</div>';
+
+    h += '</div>';
   }
 
-  // Why Card: Closed Loop Hydrology
-  h += '<div class="why-card">' +
-       '<b>Closed-Loop Living Waters Hydrology (Basic Farm Ch. 4 Recall)</b>' +
-       '<div class="recall-box"><b>Basic Farm Ch. 4 Recall:</b> Scaling from your small pond, this amoeba-shaped mountain lake acts as a thermal buffer, captures nutrient-rich mountain run-off, supports aquatic biodiversity, and supplies pure gravity-fed irrigation.</div>' +
-       '<p style="font-size:0.76rem;color:#C8E6C9;margin-top:4px">Impermeable bentonite clay prevents seepage while native reeds and bulrushes filter nitrate run-off from the cattle pastures above.</p>' +
+  // Educational Why Recall
+  h += '<div class="card-box" style="border-color:rgba(255,213,79,0.35);background:rgba(25,20,10,0.65)">' +
+       '<h4 style="font-size:0.80rem;color:var(--gold);margin-bottom:4px">🇩🇪 German Farm Recall Link: Aquatic Polyculture & Microclimate</h4>' +
+       '<p style="font-size:0.75rem;color:#FFE082">Echoing the pond from Basic Farm Ch. 4, this 2-basin glacial lake moderates alpine temperature fluctuations, recharges groundwater for the Streuobst loam, and creates circular polyculture with indigenous cold-water fish and waterfowl.</p>' +
        '</div>';
 
   openModal(h, true);
 }
+
+function stockAlpineFish(){
+  if (state.money < 35) { toast('⚠️ Insufficient funds (Needs €35)'); return; }
+  state.money -= 35;
+  state.fish.trout += 8;
+  state.fish.charr += 6;
+  state.fish.carp += 4;
+  grantXP({biodiversity: 15, oxygen: 10});
+  toast('🐟 Stocked 18 fingerlings: Bachforellen & Saiblinge released into glacial depths');
+  if (typeof renderScoreboard === 'function') renderScoreboard();
+  openLakeModal();
+}
+
+function harvestAlpineFish(){
+  const total = (state.fish.trout + state.fish.charr + state.fish.carp);
+  if (total < 6) { toast('Fish population too young to harvest'); return; }
+  const rev = Math.min(total, 12) * 8 + 45;
+  state.money += rev;
+  state.o2 += 20;
+  state.fish.trout = Math.max(4, state.fish.trout - 4);
+  state.fish.charr = Math.max(3, state.fish.charr - 3);
+  grantXP({fruit: 15, oxygen: 12});
+  toast('🎣 Harvested alpine trout & charr! +€' + rev + ' · Dispatched to Gasthof Stuben');
+  if (typeof renderScoreboard === 'function') renderScoreboard();
+  openLakeModal();
+}
+
+function breedDucklings(){
+  if (state.money < 20) { toast('⚠️ Insufficient funds (Needs €20)'); return; }
+  state.money -= 20;
+  state.ducks.ducklings += 3;
+  state.ducks.count += 1;
+  grantXP({biodiversity: 10, oxygen: 8});
+  toast('🦆 Entenhaus nesting complete! 3 wild ducklings hatched');
+  if (typeof renderScoreboard === 'function') renderScoreboard();
+  openLakeModal();
+}
+
+function collectDuckEggs(){
+  if (state.ducks.count < 2) { toast('No ducks to lay eggs'); return; }
+  const rev = state.ducks.count * 6 + 18;
+  state.money += rev;
+  state.ducks.eggsCollected += state.ducks.count * 2;
+  grantXP({fruit: 8, oxygen: 10});
+  toast('🥚 Collected fresh organic duck eggs! +€' + rev + ' · Sent to Alpenhof Bakery');
+  if (typeof renderScoreboard === 'function') renderScoreboard();
+  openLakeModal();
+}
+
+
 
 window.advanceLakeStep = function(stepIdx, cost){
   if (state.money < cost) { toast('Need €' + cost + ' for this excavation step'); return; }
@@ -2298,6 +2670,10 @@ function openSiteModal(s){
   }
   if (s.action === 'bridge') {
     openBridgeModal();
+    return;
+  }
+  if (s.action === 'cattle') {
+    openCattleModal();
     return;
   }
   if (s.action === 'vine') {

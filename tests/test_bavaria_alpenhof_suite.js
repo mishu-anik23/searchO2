@@ -91,12 +91,12 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('farm_shed').x, y: findSite('farm_shed').y }, { x: 933, y: 237 }, 'farm_shed coordinates');
   assert.deepStrictEqual({ x: findSite('veg').x, y: findSite('veg').y }, { x: 973, y: 373 }, 'veg coordinates');
   assert.deepStrictEqual({ x: findSite('crop').x, y: findSite('crop').y }, { x: 946, y: 558 }, 'crop coordinates');
-  assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 390, y: 840 }, 'pond coordinates bottom-left meadow');
+  assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 630, y: 870 }, 'pond coordinates bottom-left meadow');
   assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1588, y: 670 }, 'restaurant coordinates');
-  assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1360, y: 285 }, 'cattle coordinates long pasture downslope');
+  assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1360, y: 255 }, 'cattle coordinates long pasture downslope');
   assert.deepStrictEqual({ x: findSite('gate').x, y: findSite('gate').y }, { x: 1544, y: 794 }, 'gate coordinates');
   assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1435, y: 380 }, 'vineyard coordinates terrace on hill upslope');
-  assert.deepStrictEqual({ x: findSite('bridge').x, y: findSite('bridge').y }, { x: 1725, y: 215 }, 'bridge coordinates to distant hilltop turbine');
+  assert.deepStrictEqual({ x: findSite('bridge').x, y: findSite('bridge').y }, { x: 1625, y: 230 }, 'bridge coordinates to distant hilltop turbine');
   assert.deepStrictEqual({ x: findSite('wind_e').x, y: findSite('wind_e').y }, { x: 1700, y: 165 }, 'wind_e coordinates on farm hilltop');
   console.log('[✓ PASSED] Strict coordinate mapping verified against bavaria-bg-plan.jpg');
 
@@ -263,6 +263,16 @@ const assert = require('assert');
   await page.waitForTimeout(300);
   console.log('[✓ PASSED] Traubenlese vintage harvested and dispatched to Stuben & Mosterei');
 
+  // Test automatic vine growth via tickGrowth
+  const vineGrowthResult = await page.evaluate(() => {
+    state.vineyard.beds[1].vines[0].progress = 0.10;
+    state.vineyard.beds[1].vines[0].status = 'sprout';
+    AlpenMap.tickGrowth();
+    return state.vineyard.beds[1].vines[0].progress > 0.10;
+  });
+  assert(vineGrowthResult, 'Vineyard vines must advance growth automatically during tickGrowth');
+  console.log('[✓ PASSED] Vineyard vines automatic growth ticking verified in tickGrowth()');
+
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
   await page.waitForTimeout(200);
 
@@ -275,7 +285,7 @@ const assert = require('assert');
   const lakeModalOpen = await page.isVisible('#modal.open');
   assert(lakeModalOpen, 'Lake modal must open on site click');
   const lakeContent = await page.textContent('#modalBody');
-  assert(lakeContent.includes('Living Waters Alpine Lake · Excavation Console'), 'Must show excavation console');
+  assert(lakeContent.includes('Living Waters 2-Basin Alpine Lake System'), 'Must show 2-basin excavation console');
   assert(lakeContent.includes('Excavation Progress'), 'Must show progress indicator');
 
   // Step 1: Survey
@@ -294,6 +304,19 @@ const assert = require('assert');
   const lakeDone = await page.evaluate(() => state.built['pond'] && state.lake.stage >= 4);
   assert(lakeDone, 'Lake must be fully built and commissioned');
   console.log('[✓ PASSED] Living Waters Alpine Lake fully excavated and commissioned with 3D assets');
+
+  // Test Fish Hatchery & Duck Aviary Actions
+  await page.evaluate(() => {
+    stockAlpineFish();
+    harvestAlpineFish();
+    breedDucklings();
+    collectDuckEggs();
+  });
+  const lakeFauna = await page.evaluate(() => ({ fish: state.fish, ducks: state.ducks }));
+  assert(lakeFauna.fish.trout > 0, 'Fish must be actively stocked');
+  assert(lakeFauna.ducks.ducklings > 0, 'Ducklings must be bred');
+  console.log('[✓ PASSED] Glacial Fish Hatchery & Floating Entenhaus waterfowl management verified');
+
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
 
   await page.evaluate(() => {
@@ -305,8 +328,22 @@ const assert = require('assert');
   if (buildCattleBtn) {
     await buildCattleBtn.click();
     await page.waitForTimeout(300);
-    console.log('[✓ PASSED] Hillside Simmental Cattle Pasture commissioned');
   }
+  // Commission and test livestock acquisition (Simmental cow, Alpine sheep, Chamois goat)
+  await page.evaluate(() => {
+    buildPastureEnclosure();
+    acquireLivestock('goat');
+    acquireLivestock('cow');
+    feedHerd();
+    collectDairyProducts();
+  });
+  const herdState = await page.evaluate(() => ({
+    total: state.cattle.animals.length,
+    types: [...new Set(state.cattle.animals.map(a => a.type))]
+  }));
+  assert(herdState.total >= 9, 'Herd must have at least 9 active animals');
+  assert(herdState.types.includes('cow') && herdState.types.includes('sheep') && herdState.types.includes('goat'), 'Herd must include cows, sheep, and goats');
+  console.log(`[✓ PASSED] Hillside Pasture commissioned with ${herdState.total} multi-species livestock (${herdState.types.join(', ')})`);
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
 
   await page.evaluate(() => {
