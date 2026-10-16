@@ -77,12 +77,12 @@ const assert = require('assert');
       chaptersCount: CHAPTERS.length
     };
   });
-  assert.strictEqual(farmConfig.sitesCount, 21, `Expected 21 sites, found ${farmConfig.sitesCount}`);
+  assert.strictEqual(farmConfig.sitesCount, 22, `Expected 22 sites, found ${farmConfig.sitesCount}`);
   assert.strictEqual(farmConfig.orchardsCount, 6, `Expected 6 orchard plots, found ${farmConfig.orchardsCount}`);
   assert.strictEqual(farmConfig.vineyardBedsCount, 9, `Expected 9 vineyard beds, found ${farmConfig.vineyardBedsCount}`);
   assert.strictEqual(farmConfig.totalVinePositions, 108, `Expected 108 total vine positions, found ${farmConfig.totalVinePositions}`);
   assert.strictEqual(farmConfig.chaptersCount, 6, `Expected 6 progression chapters, found ${farmConfig.chaptersCount}`);
-  console.log('[✓ PASSED] 21 calibrated sites, 6 orchard plots (54 tree beds), 9 vineyard beds (108 vine positions), 6 chapters verified');
+  console.log('[✓ PASSED] 22 calibrated sites, 6 orchard plots (54 tree beds), 9 vineyard beds (108 vine positions), 6 chapters verified');
 
   // Verify calibrated coordinates from bavaria-bg-plan.jpg
   const findSite = id => farmConfig.sites.find(s => s.id === id);
@@ -95,7 +95,8 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1588, y: 670 }, 'restaurant coordinates');
   assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1360, y: 285 }, 'cattle coordinates long pasture downslope');
   assert.deepStrictEqual({ x: findSite('gate').x, y: findSite('gate').y }, { x: 1544, y: 794 }, 'gate coordinates');
-  assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1470, y: 445 }, 'vineyard coordinates terrace above road');
+  assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1435, y: 380 }, 'vineyard coordinates terrace on hill upslope');
+  assert.deepStrictEqual({ x: findSite('bridge').x, y: findSite('bridge').y }, { x: 1725, y: 215 }, 'bridge coordinates to distant hilltop turbine');
   assert.deepStrictEqual({ x: findSite('wind_e').x, y: findSite('wind_e').y }, { x: 1700, y: 165 }, 'wind_e coordinates on farm hilltop');
   console.log('[✓ PASSED] Strict coordinate mapping verified against bavaria-bg-plan.jpg');
 
@@ -322,6 +323,22 @@ const assert = require('assert');
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
 
   await page.evaluate(() => {
+    const bridge = SITES.find(s => s.id === 'bridge');
+    AlpenMap.handle(bridge);
+  });
+  await page.waitForTimeout(400);
+  const bridgeModalOpen = await page.isVisible('#modal.open');
+  assert(bridgeModalOpen, 'Bridge modal must open on site click');
+  const bridgeContent = await page.textContent('#modalBody');
+  assert(bridgeContent.includes('Alpine Wooden Overbridge'), 'Bridge modal title');
+  await page.evaluate(() => buildBridge());
+  await page.waitForTimeout(300);
+  const bridgeDone = await page.evaluate(() => !!state.built['bridge']);
+  assert(bridgeDone, 'Alpine Wooden Overbridge must be built and commissioned');
+  console.log('[✓ PASSED] Alpine Wooden Overbridge commissioned across mountain cleft');
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+
+  await page.evaluate(() => {
     const shed = SITES.find(s => s.id === 'farm_shed');
     AlpenMap.handle(shed);
   });
@@ -431,6 +448,16 @@ const assert = require('assert');
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_village_plaza.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_village_plaza.png');
+
+  // Wooden overbridge & hilltop turbine close-up
+  await page.evaluate(() => {
+    state.zoom = 2.0;
+    state.panX = -1150;
+    state.panY = 560;
+  });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_wooden_bridge.png') });
+  console.log('[✓ SAVED] screenshot_alpenhof_wooden_bridge.png');
 
   // Reset zoom
   await page.evaluate(() => {
