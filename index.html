@@ -17690,8 +17690,17 @@ function wireInitialAuthEvents(){
 }
 
 // ================= BACKEND & AUTHENTICATION BRIDGE =================
-var API_BASE_URL = 'http://localhost:5000/api';
-var WS_BASE_URL = 'ws://localhost:5000/ws';
+var API_BASE_URL = (typeof window !== 'undefined' && window.SEARCHO2_API_BASE)
+  ? window.SEARCHO2_API_BASE
+  : ((location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'http://localhost:5000/api'
+      : (location.origin + '/api'));
+var WS_BASE_URL = (typeof window !== 'undefined' && window.SEARCHO2_WS_BASE)
+  ? window.SEARCHO2_WS_BASE
+  : (API_BASE_URL.indexOf('https://') === 0
+      ? API_BASE_URL.replace(/^https/, 'wss').replace(/\/api\/?$/, '/ws')
+      : API_BASE_URL.replace(/^http/, 'ws').replace(/\/api\/?$/, '/ws'));
+
 var apiUser = null;
 var authToken = null;
 var backendOnline = false;
@@ -17706,6 +17715,7 @@ var ApiClient = {
         if (data.status === 'healthy'){
           backendOnline = true;
           console.log('✅ Connected to searchO2 backend on', API_BASE_URL);
+          try { self.startPresenceLoop(); } catch (e) {}
           var savedToken = localStorage.getItem('searchO2_token');
           if (savedToken){
             authToken = savedToken;
@@ -18023,7 +18033,65 @@ var ApiClient = {
       headers: { 'Authorization': 'Bearer ' + authToken }
     }).then(function(r){ return r.json(); });
   },
+  presenceSessionId: null,
+  getPresenceSessionId: function(){
+    if (this.presenceSessionId) return this.presenceSessionId;
+    try {
+      var sid = localStorage.getItem('searchO2_presence_sid');
+      if (!sid) {
+        sid = 's_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        localStorage.setItem('searchO2_presence_sid', sid);
+      }
+      this.presenceSessionId = sid;
+      return sid;
+    } catch (e) {
+      this.presenceSessionId = 's_tmp_' + Date.now();
+      return this.presenceSessionId;
+    }
+  },
+  presenceHeartbeat: function(){
+    if (!backendOnline) return Promise.resolve();
+    var region = 'germany';
+    try {
+      if (typeof currentRegion !== 'undefined' && currentRegion) region = currentRegion;
+      else if (typeof gameState !== 'undefined' && gameState && gameState.region) region = gameState.region;
+      else if (location.pathname.indexOf('bavaria') >= 0) region = 'bavaria';
+      else if (location.pathname.indexOf('saint-martin') >= 0 || location.pathname.indexOf('blue-lab') >= 0) region = 'saint_martin';
+    } catch (e) {}
+    var device = /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop';
+    var body = {
+      sessionId: this.getPresenceSessionId(),
+      userId: apiUser && apiUser.id ? apiUser.id : null,
+      displayName: apiUser && (apiUser.displayName || apiUser.display_name) ? (apiUser.displayName || apiUser.display_name) : 'Guest',
+      role: apiUser && apiUser.role ? apiUser.role : 'guest',
+      regionCode: region,
+      path: location.pathname + location.hash,
+      deviceType: device
+    };
+    return fetch(API_BASE_URL + '/presence/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      keepalive: true
+    }).catch(function(){});
+  },
+  startPresenceLoop: function(){
+    var self = this;
+    if (self._presenceTimer) return;
+    self.presenceHeartbeat();
+    self._presenceTimer = setInterval(function(){ self.presenceHeartbeat(); }, 45000);
+    window.addEventListener('beforeunload', function(){
+      try {
+        if (!backendOnline) return;
+        navigator.sendBeacon(
+          API_BASE_URL + '/presence/leave',
+          new Blob([JSON.stringify({ sessionId: self.getPresenceSessionId() })], { type: 'application/json' })
+        );
+      } catch (e) {}
+    });
+  },
   adminGetStats: function(){
+
     return fetch(API_BASE_URL + '/admin/stats', {
       headers: { 'Authorization': 'Bearer ' + authToken }
     }).then(function(r){ return r.json(); });

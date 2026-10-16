@@ -40,8 +40,12 @@ button.ghost{background:transparent;border:1px solid var(--line);color:var(--tex
 .row{display:grid;gap:10px;margin-bottom:10px}
 .err{color:var(--bad);font-size:0.8rem;margin-top:8px}
 .ok{color:var(--ok);font-size:0.8rem}
-#mapCanvas{width:100%;height:420px;border-radius:14px;border:1px solid var(--line);background:#071018;cursor:grab;touch-action:none}
-#mapCanvas.drag{cursor:grabbing}
+#osmMap{width:100%;height:480px;border-radius:14px;border:1px solid var(--line);z-index:1}
+.leaflet-container{font-family:inherit;background:#0b1220}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px;box-shadow:0 0 8px var(--ok);animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.player-row{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:0.78rem}
+
 .gdpr-box{font-size:0.75rem;color:var(--muted);line-height:1.5;border-left:3px solid var(--acc);padding-left:12px;margin:10px 0}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .tabs button{background:#0b1220;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:0.75rem}
@@ -95,7 +99,8 @@ button.ghost{background:transparent;border:1px solid var(--line);color:var(--tex
     <div class="sub">EU GDPR · Datenschutzerklärung</div>
     <button class="active" data-view="overview">Overview</button>
     <button data-view="users">Users & guests</button>
-    <button data-view="map">3D access map</button>
+    <button data-view="live">Live players</button>
+    <button data-view="map">OSM map</button>
     <button data-view="sessions">Sessions / devices</button>
     <button data-view="privacy">Privacy & consent</button>
     <button data-view="audit">Audit log</button>
@@ -121,16 +126,37 @@ button.ghost{background:transparent;border:1px solid var(--line);color:var(--tex
       </div>
       <div class="panel hidden" id="userDetail"></div>
     </section>
-    <section id="view-map" class="hidden">
+        <section id="view-live" class="hidden">
+      <div class="cards" id="liveCards"></div>
       <div class="panel">
-        <h2>Interactive isometric access map</h2>
-        <p class="hint">Drag to pan · scroll/buttons to zoom. Pins = coarse region of sessions (country/region only when available). No street-level tracking.</p>
-        <canvas id="mapCanvas" width="1200" height="420"></canvas>
-        <div style="margin-top:8px;display:flex;gap:8px">
+        <h2><span class="live-dot"></span>Active sessions</h2>
+        <p class="hint">Updated every 15s from <span class="mono">/api/presence/live</span>. Requires backend + player heartbeats.</p>
+        <div id="livePlayerListMain"></div>
+      </div>
+      <div class="panel">
+        <h2>By region</h2>
+        <div id="liveByRegion"></div>
+      </div>
+      <div class="panel">
+        <h2>Leaderboard snapshot</h2>
+        <div id="liveLeaderboard"><p class="hint">Loads from /api/leaderboard when API is online.</p></div>
+      </div>
+    </section>
+<section id="view-map" class="hidden">
+      <div class="panel">
+        <h2>OpenStreetMap · live players</h2>
+        <p class="hint">Drag to pan · scroll or buttons to zoom. Pins = coarse region only (GDPR). <span class="live-dot"></span><span id="liveCountLabel">0 online</span></p>
+        <div id="osmMap"></div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="ghost" id="mapZoomIn">Zoom +</button>
           <button class="ghost" id="mapZoomOut">Zoom −</button>
-          <button class="ghost" id="mapReset">Reset</button>
+          <button class="ghost" id="mapReset">World</button>
+          <button class="ghost" id="mapRefresh">Refresh live</button>
         </div>
+      </div>
+      <div class="panel">
+        <h2>Who is playing now</h2>
+        <div id="livePlayerList"><p class="hint">Waiting for presence heartbeats…</p></div>
       </div>
     </section>
     <section id="view-sessions" class="hidden">
@@ -556,7 +582,8 @@ document.querySelectorAll('.nav button[data-view]').forEach(b=>{
     b.classList.add('active');
     document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
     document.getElementById('view-'+b.dataset.view).classList.remove('hidden');
-    if(b.dataset.view==='map') requestAnimationFrame(()=>Map3D.resize());
+    if(b.dataset.view==='map'){ OsmMap.init(); requestAnimationFrame(()=>OsmMap.resize()); refreshLiveData(); }
+    if(b.dataset.view==='live'){ refreshLiveData(); }
     if(b.dataset.view==='privacy') loadPrivacy();
     if(b.dataset.view==='users') loadUsers();
   };
@@ -621,7 +648,7 @@ async function showUser(id){
       ip: maskIp(s.ip_address)
     }));
     box.innerHTML = `<h2>User 360°</h2><pre class="mono" style="white-space:pre-wrap;font-size:0.72rem;max-height:280px;overflow:auto">${escapeHtml(JSON.stringify(d,null,2))}</pre>`;
-    Map3D.setPins(state.pins);
+    OsmMap.setPins(state.pins);
   }catch(e){ box.innerHTML = '<p class="err">'+escapeHtml(e.message)+'</p>'; }
 }
 function maskIp(ip){ if(!ip) return '—'; if(ip.includes('.')){ const p=ip.split('.'); return p[0]+'.'+p[1]+'.x.x'; } return String(ip).slice(0,8)+'…'; }
@@ -638,66 +665,161 @@ async function loadPrivacy(){
   }
 }
 
-const Map3D = {
-  canvas:null, ctx:null, z:1, panX:0, panY:0, drag:false, lx:0, ly:0, pins:[],
+
+/* ---- OpenStreetMap (Leaflet) + live presence ---- */
+const REGION_FALLBACK = {
+  germany: { lat: 51.16, lon: 10.45, label: 'Germany · Central Farm' },
+  bavaria: { lat: 47.95, lon: 11.35, label: 'Bavaria · Alpenhof' },
+  saint_martin: { lat: 20.627, lon: 92.323, label: "St. Martin · Blue Lab" },
+  sweden: { lat: 60.12, lon: 18.64, label: 'Sweden' },
+  brazil: { lat: -3.46, lon: -62.22, label: 'Brazil' },
+  spain: { lat: 40.46, lon: -3.75, label: 'Spain' }
+};
+
+const OsmMap = {
+  map: null,
+  layer: null,
+  markers: [],
   init(){
-    this.canvas=document.getElementById('mapCanvas');
-    if(!this.canvas) return;
-    this.ctx=this.canvas.getContext('2d');
-    this.resize();
-    this.canvas.addEventListener('pointerdown',e=>{this.drag=true;this.lx=e.clientX;this.ly=e.clientY;this.canvas.classList.add('drag');});
-    window.addEventListener('pointerup',()=>{this.drag=false;this.canvas&&this.canvas.classList.remove('drag');});
-    this.canvas.addEventListener('pointermove',e=>{
-      if(!this.drag) return;
-      this.panX += (e.clientX-this.lx); this.panY += (e.clientY-this.ly);
-      this.lx=e.clientX; this.ly=e.clientY; this.draw();
+    const el = document.getElementById('osmMap');
+    if(!el || typeof L === 'undefined') return;
+    if(this.map){ this.map.invalidateSize(); return; }
+    this.map = L.map('osmMap', { zoomControl: true, worldCopyJump: true }).setView([30, 20], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(this.map);
+    this.layer = L.layerGroup().addTo(this.map);
+    // static region pads
+    Object.keys(REGION_FALLBACK).forEach(k=>{
+      const r = REGION_FALLBACK[k];
+      L.circleMarker([r.lat, r.lon], { radius: 8, color: '#3d8bfd', fillColor: '#3d8bfd', fillOpacity: 0.35, weight: 2 })
+        .bindPopup('<b>'+r.label+'</b><br/>Region pad')
+        .addTo(this.layer);
     });
-    const zi=document.getElementById('mapZoomIn'), zo=document.getElementById('mapZoomOut'), zr=document.getElementById('mapReset');
-    if(zi) zi.onclick=()=>{this.z=Math.min(2.5,this.z+0.2);this.draw()};
-    if(zo) zo.onclick=()=>{this.z=Math.max(0.6,this.z-0.2);this.draw()};
-    if(zr) zr.onclick=()=>{this.z=1;this.panX=0;this.panY=0;this.draw()};
-    this.draw();
+    const zi=document.getElementById('mapZoomIn'), zo=document.getElementById('mapZoomOut'), zr=document.getElementById('mapReset'), rf=document.getElementById('mapRefresh');
+    if(zi) zi.onclick=()=>this.map&&this.map.zoomIn();
+    if(zo) zo.onclick=()=>this.map&&this.map.zoomOut();
+    if(zr) zr.onclick=()=>this.map&&this.map.setView([30,20],2);
+    if(rf) rf.onclick=()=>refreshLiveData();
   },
-  resize(){
-    if(!this.canvas) return;
-    const r=this.canvas.getBoundingClientRect();
-    this.canvas.width=Math.max(600,r.width*devicePixelRatio);
-    this.canvas.height=420*devicePixelRatio;
-    this.draw();
-  },
-  setPins(p){ this.pins=p||[]; this.draw(); },
-  iso(x,y,z){ return { x:(x-y)*0.86, y:(x+y)*0.42 - z*0.7 }; },
-  draw(){
-    if(!this.ctx) return;
-    const ctx=this.ctx, w=this.canvas.width, h=this.canvas.height;
-    ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,w,h);
-    ctx.fillStyle='#071018'; ctx.fillRect(0,0,w,h);
-    ctx.save();
-    ctx.translate(w/2 + this.panX*devicePixelRatio, h*0.55 + this.panY*devicePixelRatio);
-    ctx.scale(this.z*devicePixelRatio, this.z*devicePixelRatio);
-    for(let i=8;i>=0;i--){
-      const p1=this.iso(-180,-120,i*2), p2=this.iso(180,-120,i*2), p3=this.iso(180,120,i*2), p4=this.iso(-180,120,i*2);
-      ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.lineTo(p3.x,p3.y); ctx.lineTo(p4.x,p4.y); ctx.closePath();
-      ctx.fillStyle=`rgba(30,58,95,${0.08+i*0.03})`; ctx.fill();
-    }
-    const regions=[{x:-80,y:-40,label:'DE',c:'#2dd4a8'},{x:-40,y:-10,label:'BY',c:'#3d8bfd'},{x:60,y:20,label:'BD',c:'#f5b942'}];
-    regions.forEach(r=>{
-      const base=this.iso(r.x,r.y,0), top=this.iso(r.x,r.y,28);
-      ctx.fillStyle=r.c; ctx.beginPath(); ctx.arc(top.x, top.y, 10, 0, Math.PI*2); ctx.fill();
-      ctx.strokeStyle=r.c; ctx.beginPath(); ctx.moveTo(base.x,base.y); ctx.lineTo(top.x,top.y); ctx.stroke();
-      ctx.fillStyle='#e8eef9'; ctx.font='600 11px IBM Plex Sans'; ctx.textAlign='center'; ctx.fillText(r.label, top.x, top.y-14);
+  resize(){ if(this.map) setTimeout(()=>this.map.invalidateSize(), 80); },
+  setPins(players){
+    if(!this.map) this.init();
+    if(!this.map) return;
+    this.markers.forEach(m=>this.map.removeLayer(m));
+    this.markers = [];
+    (players||[]).forEach(p=>{
+      const lat = p.lat || (REGION_FALLBACK[p.regionCode]||{}).lat || 51.16;
+      const lon = p.lon || (REGION_FALLBACK[p.regionCode]||{}).lon || 10.45;
+      const m = L.marker([lat, lon]).bindPopup(
+        '<b>'+escapeHtml(p.displayName||'Player')+'</b><br/>'+
+        escapeHtml(p.regionCode||'')+' · '+escapeHtml(p.role||'')+'<br/>'+
+        escapeHtml(p.deviceType||'')+' · '+escapeHtml(p.path||'')
+      );
+      m.addTo(this.map);
+      this.markers.push(m);
     });
-    (this.pins.length?this.pins:[{country:'DE',device:'Desktop'}]).forEach((p,i)=>{
-      const x=-60+i*35, y=-20+i*15; const top=this.iso(x,y,40);
-      ctx.fillStyle='#f07178'; ctx.beginPath(); ctx.moveTo(top.x, top.y-12); ctx.lineTo(top.x+8, top.y+4); ctx.lineTo(top.x-8, top.y+4); ctx.closePath(); ctx.fill();
-      ctx.fillStyle='#e8eef9'; ctx.font='10px IBM Plex Sans'; ctx.fillText((p.country||'?')+' · '+(p.device||''), top.x, top.y-16);
-    });
-    ctx.restore();
   }
 };
 
-window.addEventListener('resize',()=>Map3D.resize());
-Map3D.init();
+async function fetchLivePresence(){
+  // try admin API path and public presence
+  const bases = [];
+  if(state.apiBase) bases.push(state.apiBase);
+  bases.push('/api', 'http://localhost:5000/api');
+  for(const base of bases){
+    try{
+      const r = await fetch(base.replace(/\/$/,'') + '/presence/live', { cache: 'no-store' });
+      if(!r.ok) continue;
+      return await r.json();
+    }catch(_){}
+  }
+  return null;
+}
+
+async function fetchLeaderboard(){
+  const bases = [state.apiBase||'/api', 'http://localhost:5000/api'];
+  for(const base of bases){
+    try{
+      const r = await fetch(base.replace(/\/$/,'') + '/leaderboard', { cache: 'no-store' });
+      if(!r.ok) continue;
+      return await r.json();
+    }catch(_){}
+  }
+  return null;
+}
+
+function renderLiveLists(data){
+  const players = (data && data.players) || [];
+  const count = (data && data.count) || players.length;
+  const label = document.getElementById('liveCountLabel');
+  if(label) label.textContent = count + ' online';
+  const htmlList = players.length
+    ? players.map(p=>{
+        const ago = Math.max(0, Math.round((Date.now()-(p.lastSeen||Date.now()))/1000));
+        return '<div class="player-row"><span><b>'+escapeHtml(p.displayName||'Player')+'</b> · '+escapeHtml(p.regionCode||'')+' · '+escapeHtml(p.role||'')+'</span><span class="mono">'+ago+'s ago · '+escapeHtml(p.deviceType||'')+'</span></div>';
+      }).join('')
+    : '<p class="hint">No heartbeats yet. Players send presence every ~45s when the API is reachable.</p>';
+  const a=document.getElementById('livePlayerList'); if(a) a.innerHTML=htmlList;
+  const b=document.getElementById('livePlayerListMain'); if(b) b.innerHTML=htmlList;
+  const cards=document.getElementById('liveCards');
+  if(cards){
+    const by = (data && data.byRegion) || {};
+    cards.innerHTML = [
+      ['Online now', count],
+      ['Regions active', Object.keys(by).length],
+      ['Updated', data && data.updatedAt ? new Date(data.updatedAt).toLocaleTimeString() : '—']
+    ].map(([l,v])=>'<div class="card"><div class="lbl">'+l+'</div><div class="val" style="font-size:1.1rem">'+v+'</div></div>').join('');
+  }
+  const reg=document.getElementById('liveByRegion');
+  if(reg){
+    const by = (data && data.byRegion) || {};
+    const keys = Object.keys(by);
+    reg.innerHTML = keys.length ? keys.map(k=>'<div class="player-row"><span>'+escapeHtml(k)+'</span><span class="mono">'+by[k]+'</span></div>').join('') : '<p class="hint">No region traffic.</p>';
+  }
+  OsmMap.setPins(players);
+  state.pins = players;
+}
+
+async function refreshLiveData(){
+  const data = await fetchLivePresence();
+  if(data){ renderLiveLists(data); }
+  else {
+    renderLiveLists({ count:0, players:[], byRegion:{}, updatedAt:null });
+    const a=document.getElementById('livePlayerList');
+    if(a) a.innerHTML = '<p class="hint">Presence API offline. Deploy backend (<span class="mono">/api/presence/live</span>) and ensure the game posts heartbeats. OSM map still works.</p>';
+  }
+  try{
+    const lb = await fetchLeaderboard();
+    const box = document.getElementById('liveLeaderboard');
+    if(box && lb){
+      const top = (lb.oxygenRanking||[]).slice(0,8);
+      box.innerHTML = top.length ? '<table><thead><tr><th>#</th><th>Player</th><th>Region</th><th>O₂</th></tr></thead><tbody>'+
+        top.map(r=>'<tr><td>'+r.rank+'</td><td>'+escapeHtml(r.display_name||'')+'</td><td>'+escapeHtml(r.region_code||'')+'</td><td class="mono">'+r.score+'</td></tr>').join('')+
+        '</tbody></table>' : '<p class="hint">Leaderboard empty.</p>';
+    }
+  }catch(_){}
+}
+
+// Enhance overview to include live count
+const _loadOverview = loadOverview;
+loadOverview = async function(){
+  await _loadOverview();
+  const data = await fetchLivePresence();
+  if(data){
+    const sc = document.getElementById('statCards');
+    if(sc){
+      sc.insertAdjacentHTML('beforeend', '<div class="card"><div class="lbl">Online now</div><div class="val">'+(data.count||0)+'</div></div>');
+    }
+  }
+};
+
+window.addEventListener('resize',()=>OsmMap.resize());
+OsmMap.init();
+setInterval(function(){ if(state.elevated) refreshLiveData(); }, 15000);
+refreshLiveData();
+
 ensureMode().then(()=>{
   if(state.elevated) openApp();
 });
