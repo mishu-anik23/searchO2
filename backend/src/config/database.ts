@@ -1,14 +1,31 @@
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { env } from './env';
 
-const isLocal = env.DATABASE_URL.includes('localhost') || env.DATABASE_URL.includes('127.0.0.1');
+/**
+ * Supports local Postgres and Supabase (Session pooler or direct).
+ * Supabase URI examples:
+ *   postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+ *   postgresql://postgres:[password]@db.[ref].supabase.co:5432/postgres
+ */
+function isLocalHost(url: string): boolean {
+  return /localhost|127\.0\.0\.1/.test(url);
+}
+
+function isSupabase(url: string): boolean {
+  return /supabase\.(co|com)|pooler\.supabase/i.test(url);
+}
+
+const connectionString = env.DATABASE_URL;
+const local = isLocalHost(connectionString);
+const supabase = isSupabase(connectionString);
 
 export const pool = new Pool({
-  connectionString: env.DATABASE_URL,
-  max: 20,
+  connectionString,
+  max: supabase ? 8 : 20, // pooler-friendly
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-  ssl: isLocal ? false : { rejectUnauthorized: false },
+  connectionTimeoutMillis: 15000,
+  // Supabase and other remote hosts require TLS
+  ssl: local ? false : { rejectUnauthorized: false },
 });
 
 pool.on('error', (err: Error) => {
@@ -51,4 +68,11 @@ export async function checkDatabaseConnection(): Promise<boolean> {
     console.warn('PostgreSQL connection check failed:', error.message);
     return false;
   }
+}
+
+export function getDatabaseInfo(): { provider: string; local: boolean } {
+  return {
+    provider: supabase ? 'supabase' : local ? 'local' : 'postgres',
+    local,
+  };
 }
