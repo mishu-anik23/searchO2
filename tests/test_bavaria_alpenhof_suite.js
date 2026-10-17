@@ -80,7 +80,7 @@ const assert = require('assert');
       chaptersCount: CHAPTERS.length
     };
   });
-  assert.strictEqual(farmConfig.sitesCount, 21, `Expected 21 sites, found ${farmConfig.sitesCount}`);
+  assert.strictEqual(farmConfig.sitesCount, 22, `Expected 22 sites, found ${farmConfig.sitesCount}`);
   assert.strictEqual(farmConfig.orchardsCount, 6, `Expected 6 orchard plots, found ${farmConfig.orchardsCount}`);
   assert.strictEqual(farmConfig.vegBedsCount, 4, `Expected 4 vegetable quadrant beds (2x2), found ${farmConfig.vegBedsCount}`);
   assert.strictEqual(farmConfig.totalVegPositions, 48, `Expected 48 total vegetable plant positions, found ${farmConfig.totalVegPositions}`);
@@ -95,9 +95,10 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('wind_w').x, y: findSite('wind_w').y }, { x: 316, y: 156 }, 'wind_w coordinates');
   assert.deepStrictEqual({ x: findSite('bess').x, y: findSite('bess').y }, { x: 710, y: 216 }, 'bess coordinates');
   assert.deepStrictEqual({ x: findSite('farm_shed').x, y: findSite('farm_shed').y }, { x: 933, y: 237 }, 'farm_shed coordinates');
-  assert.deepStrictEqual({ x: findSite('solar').x, y: findSite('solar').y }, { x: 935, y: 315 }, 'solar farm coordinates between barn and veg garden');
-  assert.deepStrictEqual({ x: findSite('veg').x, y: findSite('veg').y }, { x: 960, y: 460 }, 'hexagonal vegetable garden coordinates in central meadow');
-  assert.deepStrictEqual({ x: findSite('flower_oval').x, y: findSite('flower_oval').y }, { x: 870, y: 730 }, 'oval flower garden coordinates between pond and road');
+  assert.deepStrictEqual({ x: findSite('solar').x, y: findSite('solar').y }, { x: 875, y: 310 }, 'solar farm coordinates shifted left towards orchard plot');
+  assert.deepStrictEqual({ x: findSite('veg').x, y: findSite('veg').y }, { x: 960, y: 465 }, 'hexagonal vegetable garden coordinates in central meadow');
+  assert.deepStrictEqual({ x: findSite('flower_oval').x, y: findSite('flower_oval').y }, { x: 835, y: 755 }, 'triangular 3-oval flower garden coordinates');
+  assert.deepStrictEqual({ x: findSite('bbq').x, y: findSite('bbq').y }, { x: 1740, y: 430 }, 'hilltop tourist bbq coordinates on cleared vineyard backside ridge');
   assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 630, y: 870 }, 'pond coordinates bottom-left meadow');
   assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1588, y: 670 }, 'restaurant coordinates');
   assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1360, y: 255 }, 'cattle coordinates long pasture downslope');
@@ -502,6 +503,45 @@ const assert = require('assert');
   }
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
 
+  // Commission Juice Bar with front boardwalk terrace & barrel tables
+  await page.evaluate(() => {
+    const juice = SITES.find(s => s.id === 'juice');
+    AlpenMap.handle(juice);
+  });
+  await page.waitForTimeout(400);
+  const buildJuiceBtn = await page.$('#modalBody .btn-g');
+  if (buildJuiceBtn) {
+    await buildJuiceBtn.click();
+    await page.waitForTimeout(300);
+    console.log('[✓ PASSED] Hof-Mosterei Juice Bar & Cider Press commissioned');
+  }
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+
+  // Commission Hilltop Tourist BBQ Place & Food Stand Console
+  await page.evaluate(() => {
+    const bbqSite = SITES.find(s => s.id === 'bbq');
+    AlpenMap.handle(bbqSite);
+  });
+  await page.waitForTimeout(400);
+  const bbqModalOpen = await page.isVisible('#modal.open');
+  assert(bbqModalOpen, 'Tourist BBQ modal must open on site click');
+  const bbqModalContent = await page.textContent('#modalBody');
+  assert(bbqModalContent.includes('Hilltop Tourist BBQ & Food Stand Console'), 'Must show BBQ modal header');
+
+  // Test multi-stage tourism development steps
+  await page.evaluate(() => {
+    advanceBBQStep(0, 35);
+    advanceBBQStep(1, 45);
+    buildBBQComplete(180);
+    restockBBQFood();
+    hostBBQTourists();
+  });
+  await page.waitForTimeout(300);
+  const bbqDone = await page.evaluate(() => state.built['bbq'] && state.bbq.touristsServed >= 12);
+  assert(bbqDone, 'Tourist BBQ Place must be fully commissioned and hosting tourists');
+  console.log('[✓ PASSED] Hilltop Tourist BBQ Place & Food Stand multi-stage development and tourist hosting verified');
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+
   // Advance trees and vines to mature for rich screenshot captures
   await page.evaluate(() => {
     Object.values(state.orchards).forEach(o => {
@@ -597,35 +637,65 @@ const assert = require('assert');
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_wooden_bridge.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_wooden_bridge.png');
 
-  // Hexagonal vegetable garden close-up
+  // Hexagonal vegetable garden close-up (rotated parallel to mud road)
   await page.evaluate(() => {
     state.zoom = 2.4;
-    state.panX = -50;
-    state.panY = -80;
+    state.panX = 0;
+    state.panY = 180;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_hexagonal_veg.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_hexagonal_veg.png');
 
-  // 4x4 Agrivoltaic solar farm close-up
+  // 4x4 Agrivoltaic solar farm close-up (stretched left with isometric rhombus shadow)
   await page.evaluate(() => {
-    state.zoom = 2.6;
-    state.panX = 0;
-    state.panY = 180;
+    state.zoom = 2.4;
+    state.panX = 205;
+    state.panY = 550;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_solar_farm.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_solar_farm.png');
 
-  // Oval flower garden close-up
+  // Triangular joined 3-oval flower garden close-up (with bee hotel and flutter bees)
   await page.evaluate(() => {
-    state.zoom = 2.5;
-    state.panX = 120;
-    state.panY = -480;
+    state.zoom = 2.4;
+    state.panX = 300;
+    state.panY = -515;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_oval_flowers.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_oval_flowers.png');
+
+  // Hilltop Tourist BBQ Place close-up (food stand, trays, twin fire pits, wood & benches)
+  await page.evaluate(() => {
+    state.zoom = 2.2;
+    state.panX = -1715;
+    state.panY = 240;
+  });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_tourist_bbq.png') });
+  console.log('[✓ SAVED] screenshot_alpenhof_tourist_bbq.png');
+
+  // Gasthof Stuben with Front Gastronomy Terrace, Fountain & Circular Pollination Garden
+  await page.evaluate(() => {
+    state.zoom = 2.2;
+    state.panX = -1380;
+    state.panY = -285;
+  });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_stuben_terrace.png') });
+  console.log('[✓ SAVED] screenshot_alpenhof_stuben_terrace.png');
+
+  // Hof-Mosterei Juice Bar with Front Boardwalk Terrace & Barrel Tables
+  await page.evaluate(() => {
+    state.zoom = 2.3;
+    state.panX = -795;
+    state.panY = -140;
+  });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_juice_terrace.png') });
+  console.log('[✓ SAVED] screenshot_alpenhof_juice_terrace.png');
 
   // Reset zoom
   await page.evaluate(() => {
