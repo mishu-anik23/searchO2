@@ -11221,7 +11221,7 @@ var CHAPTER_CHALLENGES = {
       },
       getActionHtml: function(s) {
         if (this.isComplete(s)) return '<span style="color:#78909C;font-weight:800;font-size:0.74rem;background:#CFD8DC;padding:3px 8px;border-radius:6px;">✓ Plot 3 Active</span>';
-        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Plot 3 requires both 1 Labourer and 1 Farmer!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Labourer + Farmer</button>';
+        if (!this.isUnlocked(s)) return '<div style="display:flex;gap:4px;align-items:center;"><button class="secondary mini-btn" onclick="openLaborAssignmentInfoModal();" style="font-size:0.70rem;padding:4px 7px;background:#FFF3E0;color:#E65100;border:1px solid #FFE082;font-weight:800;">ℹ️ Crew Guide</button><button class="secondary mini-btn" onclick="openLaborAssignmentInfoModal();" style="font-size:0.70rem;padding:4px 7px;">🔒 Needs Team</button></div>';
         return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',2);" style="font-size:0.75rem;padding:5px 10px;">Open Plot 3</button>';
       }
     },
@@ -11478,8 +11478,26 @@ var CHAPTER_CHALLENGES = {
       isUnlocked: function(s) { return true; },
       isComplete: function(s) { return !!(s.buildings && s.buildings.pond && s.buildings.pond.built); },
       getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Aquatic Basin</span>';
-        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'pond\');" ' + (s.money < 450 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Dig Pond (€450)</button>';
+        var pb = s.buildings && s.buildings.pond;
+        if (pb && pb.built) {
+          var pLvl = pb.level || 1;
+          if (pLvl < 2) {
+            return '<div style="display:flex;gap:4px;align-items:center;">' +
+              '<span style="color:#2E7D32;font-weight:800;font-size:0.70rem;background:#E8F5E9;padding:3px 6px;border-radius:6px;">✓ Lvl 1 Fish</span>' +
+              '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'pond\');" style="font-size:0.70rem;padding:3px 7px;">🆙 Lvl 2 Duck (€350)</button>' +
+            '</div>';
+          }
+          return '<span style="color:#00695C;font-weight:800;font-size:0.74rem;background:#E0F2F1;padding:3px 8px;border-radius:6px;">✓ Wetland Bio-Reserve (Lvl 2)</span>';
+        }
+        if (pb && pb.building) {
+          var pct = Math.round(Math.min(100, (pb.buildHours / 5.0) * 100));
+          var stageName = 'Stage 1/4: Excavate Basin';
+          if (pct >= 75) stageName = 'Stage 4/4: Water Inoculation';
+          else if (pct >= 50) stageName = 'Stage 3/4: Stone Rim & Reeds';
+          else if (pct >= 25) stageName = 'Stage 2/4: Bentonite Liner';
+          return '<button class="claim-btn" onclick="closePanel();openModal(\'building\',\'pond\');" style="font-size:0.70rem;padding:3px 7px;">🏗️ ' + stageName + ' (' + pct + '%)</button>';
+        }
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'pond\');" ' + (s.money < 400 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Dig Pond (€400)</button>';
       }
     },
     {
@@ -12254,6 +12272,17 @@ function updateChapterProgression() {
     }
     if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
     openChapter2CompletionModal();
+  }
+  // Detect Chapter 5 completion -> trigger celebration modal +50 XP
+  if (prevChapter === 5 && state.currentChapter >= 6 && !state.ch5CompletedModalShown) {
+    state.ch5CompletedModalShown = true;
+    if (typeof addKnowledgeXP === 'function') {
+      addKnowledgeXP(50, 'Chapter 5 Mastered: Power Your Community');
+    } else {
+      state.xp = (state.xp || 0) + 50;
+    }
+    if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+    openChapter5CompletionModal();
   }
   // Derive contextual flags from existing world (migration-friendly)
   if (state.plots && state.plots.some(function(p){ return (p.harvestsDone||0) > 0 || (state.harvestCount||0) > 0; })) {
@@ -18830,9 +18859,22 @@ function advanceGame(dh){
 
   // Physical Visitor Spawning — only after Main Arterial Road is built
   var roadOpen = !!(state.buildings && state.buildings.road && state.buildings.road.built);
-  var curMaxVisitors = Math.min(6, 3 + Math.floor(farmReputation() / 20));
-  if (roadOpen && farmReputation() >= (typeof VISITOR_MIN_REPUTATION !== 'undefined' ? VISITOR_MIN_REPUTATION : 10) && activeVisitorCount < curMaxVisitors){
-    if (Math.random() < (typeof VISITOR_SPAWN_RATE !== 'undefined' ? VISITOR_SPAWN_RATE : 0.18)){
+  var villageCoreBuilt = !!(state.buildings && state.buildings.juice_bar && state.buildings.juice_bar.built &&
+                            state.buildings.coffee_shop && state.buildings.coffee_shop.built &&
+                            state.roads && state.roads.market_promenade && state.roads.market_promenade.built);
+
+  if (villageCoreBuilt && !state.villagePromenadeActiveAnnounced){
+    state.villagePromenadeActiveAnnounced = true;
+    showNotification('🎉', 'Eco-Village Promenade is bustling! Tourists and villagers are strolling along the promenade.', 'building', 'market_promenade');
+    pushReport('🎉 Eco-Village Commerce Active: Tourists and villagers are strolling between the Juice Bar and Cafe Restaurant!');
+  }
+
+  var baseSpawnRate = (typeof VISITOR_SPAWN_RATE !== 'undefined' ? VISITOR_SPAWN_RATE : 0.18);
+  var effectiveSpawnRate = villageCoreBuilt ? Math.min(0.55, baseSpawnRate * 2.2) : baseSpawnRate;
+  var curMaxVisitors = villageCoreBuilt ? Math.min(8, 4 + Math.floor(farmReputation() / 15)) : Math.min(6, 3 + Math.floor(farmReputation() / 20));
+
+  if (roadOpen && (villageCoreBuilt || farmReputation() >= (typeof VISITOR_MIN_REPUTATION !== 'undefined' ? VISITOR_MIN_REPUTATION : 10)) && activeVisitorCount < curMaxVisitors){
+    if (Math.random() < effectiveSpawnRate){
       var dests = visitorEligibleDestinations();
       if (dests.length > 0){
         var chosenDest = dests[Math.floor(Math.random() * dests.length)];
@@ -19068,7 +19110,8 @@ function advanceGame(dh){
       var spec = POND_SPECIALIZATIONS[pond.specialization];
       var freshMult = pond.freshness/100;
       var produced = spec.productRate * dh * freshMult;
-      pond.pendingCollect = Math.min(150, (pond.pendingCollect||0) + produced);
+      var maxPondCap = (pond.level >= 2) ? 300 : 150;
+      pond.pendingCollect = Math.min(maxPondCap, (pond.pendingCollect||0) + produced);
     }
   }
 
@@ -19733,22 +19776,57 @@ function chapterRoadmapModalHtml(objectKey){
           '<div>' +
             '<div style="display:flex;align-items:center;gap:6px;">' +
               '<span style="background:#FDD835;color:#3E2723;font-size:0.68rem;font-weight:900;padding:2px 7px;border-radius:8px;text-transform:uppercase;letter-spacing:0.4px;box-shadow:0 2px 4px rgba(0,0,0,0.15);">Scout Chapter ' + chNum + '</span>' +
+              '<span style="font-size:1.1rem;margin-left:4px;" title="Theme &amp; Mission">' + chDef.icon + '</span>' +
               (isExplored ? '<span style="background:#C8E6C9;color:#1B5E20;font-size:0.68rem;font-weight:900;padding:2px 7px;border-radius:8px;">✓ Surveyed</span>' : '') +
             '</div>' +
+            '<div style="font-size:0.80rem;color:#C8E6C9;font-weight:800;margin-top:2px;">' + chDef.title + '</div>' +
             '<h2 style="margin:2px 0 0;font-size:1.18rem;color:#fff;font-weight:900;letter-spacing:-0.2px;">' + info.name + '</h2>' +
           '</div>' +
         '</div>' +
         '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.25);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-weight:900;font-size:1rem;display:flex;align-items:center;justify-content:center;">✕</button>' +
       '</div>' +
       '<div class="modal-body-scroll" style="padding:16px 20px;max-height:75vh;overflow-y:auto;">' +
-        '<div style="background:linear-gradient(180deg,#F1F8E9 0%,#E8F5E9 100%);border:2px solid #C8E6C9;border-radius:18px;padding:12px;margin-bottom:14px;display:flex;align-items:center;gap:14px;box-shadow:inset 0 2px 6px rgba(46,125,50,0.06);">' +
-          '<div style="flex-shrink:0;">' + iso3DIcon + '</div>' +
-          '<div style="flex:1;">' +
-            '<div style="font-size:0.75rem;font-weight:800;color:#2E7D32;text-transform:uppercase;letter-spacing:0.5px;">Theme &amp; Mission</div>' +
-            '<div style="font-size:0.95rem;font-weight:900;color:#1B5E20;margin:2px 0 4px;">' + chDef.title + '</div>' +
-            '<div style="font-size:0.78rem;color:#455A64;line-height:1.4;">' + (chDef.fantasy || chDef.desc) + '</div>' +
-          '</div>' +
-        '</div>' +
+        (function(){
+          var chTasks = (typeof CHAPTER_CHALLENGES !== 'undefined' && CHAPTER_CHALLENGES[chNum]) ? CHAPTER_CHALLENGES[chNum] : [];
+          var hCards = chTasks.map(function(tsk){
+            var isDone = (typeof tsk.isComplete === 'function') ? tsk.isComplete(state) : false;
+            var isUnl = (typeof tsk.isUnlocked === 'function') ? tsk.isUnlocked(state) : true;
+            var bgCol = isDone ? '#E8F5E9' : (isUnl ? '#FFFDE7' : '#ECEFF1');
+            var borderCol = isDone ? '#81C784' : (isUnl ? '#FFD54F' : '#CFD8DC');
+            var badgeText = isDone ? '✓ Done' : (isUnl ? 'Active' : '🔒 Locked');
+            var badgeBg = isDone ? '#C8E6C9' : (isUnl ? '#FFE082' : '#CFD8DC');
+            var badgeFg = isDone ? '#1B5E20' : (isUnl ? '#E65100' : '#455A64');
+
+            return '<div style="flex-shrink:0;width:150px;background:' + bgCol + ';border:1.5px solid ' + borderCol + ';border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;justify-content:space-between;">' +
+              '<div>' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+                  '<span style="font-size:1.15rem;">' + (tsk.icon || '🎯') + '</span>' +
+                  '<span style="font-size:0.65rem;font-weight:900;background:' + badgeBg + ';color:' + badgeFg + ';padding:1px 5px;border-radius:5px;">' + badgeText + '</span>' +
+                '</div>' +
+                '<div style="font-weight:800;font-size:0.76rem;color:#1B5E20;line-height:1.2;margin-bottom:3px;">' + (tsk.shortTitle || tsk.title) + '</div>' +
+                '<div style="font-size:0.68rem;color:#546E7A;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">' + (tsk.subtitle || '') + '</div>' +
+              '</div>' +
+              '<div style="font-size:0.66rem;font-weight:700;color:#E65100;margin-top:4px;">' + (tsk.reward || '') + '</div>' +
+            '</div>';
+          }).join('');
+
+          return '<div style="background:linear-gradient(180deg,#F1F8E9 0%,#E8F5E9 100%);border:2px solid #C8E6C9;border-radius:18px;padding:12px;margin-bottom:14px;box-shadow:inset 0 2px 6px rgba(46,125,50,0.06);">' +
+            '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">' +
+              '<div style="flex-shrink:0;">' + iso3DIcon + '</div>' +
+              '<div style="flex:1;">' +
+                '<div style="display:flex;align-items:center;gap:6px;">' +
+                  '<span style="font-size:1.1rem;">' + chDef.icon + '</span>' +
+                  '<span style="font-size:0.75rem;font-weight:800;color:#2E7D32;text-transform:uppercase;letter-spacing:0.5px;">Theme &amp; Mission: ' + chDef.title + '</span>' +
+                '</div>' +
+                '<div style="font-size:0.78rem;color:#455A64;line-height:1.35;margin-top:2px;">' + (chDef.fantasy || chDef.desc) + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="font-size:0.70rem;font-weight:800;color:#1B5E20;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">🎯 Chapter ' + chNum + ' Sequential Mission Progression:</div>' +
+            '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;">' +
+              (hCards || '<div style="font-size:0.74rem;color:#78909C;">No mission tasks found.</div>') +
+            '</div>' +
+          '</div>';
+        })() +
         '<div style="background:#FFFDF9;border:1.8px solid #E0E0E0;border-radius:14px;padding:12px;margin-bottom:14px;">' +
           '<div style="display:flex;align-items:center;gap:6px;font-weight:900;font-size:0.84rem;color:#3E2723;margin-bottom:4px;">' +
             '<span>🧭</span> FACILITY UNLOCK ROLE &amp; PURPOSE' +
@@ -20302,6 +20380,7 @@ function startPrep(plotId){
   var p = state.plots[plotId]; if (!p || p.status!=='barren') return;
   if (typeof isPlotUnlocked === 'function' && !isPlotUnlocked(plotId, state)) {
     if (plotId === 2) {
+      if (typeof openLaborAssignmentInfoModal === 'function') openLaborAssignmentInfoModal();
       showNotification('🔒', 'Plot 3 requires a hired team: Recruit at least 1 Labourer and 1 Farmer from the Crew Shed!', 'plot', 2);
       pushReport('🔒 Plot 3 requires a hired team: recruit at least 1 Labourer and 1 Farmer from the Crew Shed.');
       return;
@@ -22134,6 +22213,17 @@ function startBuildRoadSegment(segmentKey){
     return;
   }
 
+  // Walkable Promenade requires both Juice Bar and Coffee Shop (Cafe Restaurant)
+  if (segmentKey === 'market_promenade'){
+    var jb = state.buildings && state.buildings.juice_bar && state.buildings.juice_bar.built;
+    var cs = state.buildings && state.buildings.coffee_shop && state.buildings.coffee_shop.built;
+    if (!jb || !cs){
+      showNotification('🏛️', 'Marketplace Promenade Locked: Construct both the Juice Bar and Cafe Restaurant first!', 'building', 'market_promenade');
+      pushReport('🔒 Promenade Locked: The Walkable Promenade connects commerce venues — construct both the Juice Bar and Cafe Restaurant first.');
+      return;
+    }
+  }
+
   // Sub roads require rocks cleared and Main Road built
   if (!state.rocksCleared){
     showNotification('🪨', 'Clear boulders and rock obstacles before paving roads!', 'tasks', 'rocks');
@@ -23019,13 +23109,8 @@ function openModal(type, plotId){
         pushReport('🔒 Wind Turbines Locked: Renewable microgrid unlocks in Chapter 5.');
         return;
       }
-      var hasEng = state.workers && state.workers.some(function(w){ return w.type === 'engineer'; });
-      if (!hasEng){
-        showLockedStepPopup(null, 'engineer');
-        showNotification('🔒', 'Wind Turbine Grid Locked: Recruit a certified Engineer at Crew Shed (Chapter 5) first!', 'building', 'crew_shed');
-        pushReport('🔒 Wind Grid Locked: A certified Engineer is required to engineer and supervise the wind turbine installation.');
-        return;
-      }
+      openWindTurbineModal(plotId === 'wind_turbine' ? 'wt_nw' : plotId);
+      return;
     } else if (plotId === 'energy_storage'){
       if (typeof isObjectUnlockedByChapter === 'function' && !isObjectUnlockedByChapter('energy_storage', state)){
         showLockedStepPopup(null, 'energy_storage');
@@ -23248,7 +23333,7 @@ function processHarvests(){
     var plost = pamt - paccepted;
     state.storage.stored += paccepted;
     state.harvestCount = (state.harvestCount||0)+1;
-        if (typeof ProgressionEvaluator !== 'undefined') { ProgressionEvaluator.onWorldEvent('HARVEST_COMPLETED', { plotId: p.id }); }
+        if (typeof ProgressionEvaluator !== 'undefined') { ProgressionEvaluator.onWorldEvent('HARVEST_COMPLETED', { source: 'pond', cropKey: pondB.specialization }); }
     var pondLabel = POND_SPECIALIZATIONS[pondB.specialization].label;
     if (!state.storage.items) state.storage.items = [];
     state.storage.items.push({
@@ -24185,6 +24270,30 @@ var CENTRAL_RECIPES = {
       { key: 'flower', label: 'Decagonal Floral Honey Bouquet', qty: 1 }
     ],
     desc: 'Floral infused honey latte garnished with lavender blossoms.'
+  },
+  pan_seared_trout: {
+    id: 'pan_seared_trout',
+    facility: 'coffee_shop',
+    name: 'Pan-Seared Alpine River Trout',
+    icon: '🐟🍽️',
+    price: 95.0,
+    ingredients: [
+      { key: 'fish', label: 'Fresh River Trout', qty: 1 },
+      { key: 'milk', label: 'Farm Herb Butter', qty: 1 }
+    ],
+    desc: 'Crisp seared estate river trout basted with garlic pasture butter.'
+  },
+  crispy_roast_duck: {
+    id: 'crispy_roast_duck',
+    facility: 'coffee_shop',
+    name: 'Crispy Heritage Roast Duck',
+    icon: '🦆🍽️',
+    price: 125.0,
+    ingredients: [
+      { key: 'duck', label: 'Heritage Mallard Duck', qty: 1 },
+      { key: 'apple', label: 'Glazed Orchard Apple', qty: 1 }
+    ],
+    desc: 'Slow-roasted heritage duck with caramelized rosemary apple glaze.'
   }
 };
 
@@ -24193,6 +24302,8 @@ function hasRecipeIngredientInStorage(ingKey){
   return state.storage.items.some(function(item){
     var n = (item.name || '').toLowerCase();
     var ck = (item.cropKey || item.flowerKey || '').toLowerCase();
+    if (ingKey === 'fish') return n.indexOf('trout') !== -1 || n.indexOf('fish') !== -1 || ck === 'fish';
+    if (ingKey === 'duck') return n.indexOf('duck') !== -1 || ck === 'duck';
     if (ingKey === 'milk') return n.indexOf('milk') !== -1 || ck.indexOf('milk') !== -1;
     if (ingKey === 'flower') return n.indexOf('bouquet') !== -1 || n.indexOf('honey') !== -1 || item.category === 'flower';
     if (ingKey === 'apple') return n.indexOf('apple') !== -1 || ck.indexOf('apple') !== -1;
@@ -24208,6 +24319,8 @@ function consumeRecipeIngredientFromStorage(ingKey){
   var idx = state.storage.items.findIndex(function(item){
     var n = (item.name || '').toLowerCase();
     var ck = (item.cropKey || item.flowerKey || '').toLowerCase();
+    if (ingKey === 'fish') return n.indexOf('trout') !== -1 || n.indexOf('fish') !== -1 || ck === 'fish';
+    if (ingKey === 'duck') return n.indexOf('duck') !== -1 || ck === 'duck';
     if (ingKey === 'milk') return n.indexOf('milk') !== -1 || ck.indexOf('milk') !== -1;
     if (ingKey === 'flower') return n.indexOf('bouquet') !== -1 || n.indexOf('honey') !== -1 || item.category === 'flower';
     if (ingKey === 'apple') return n.indexOf('apple') !== -1 || ck.indexOf('apple') !== -1;
@@ -25022,7 +25135,11 @@ function handleStartingTaskGuideClick(){
   if (guide.actionType === 'build_storage'){
     openModal('storage', null);
   } else if (guide.actionType === 'open_modal'){
-    openModal('building', guide.targetId);
+    if (guide.targetId === 'wind_turbine' || (guide.targetId && guide.targetId.indexOf('wt_') === 0)){
+      openWindTurbineModal('wt_nw');
+    } else {
+      openModal('building', guide.targetId);
+    }
   } else if (guide.actionType === 'open_plot'){
     openModal('plot', guide.targetId);
   }
@@ -32383,37 +32500,116 @@ function getPendingTasksList(){
   return tasks;
 }
 
+function getPowerCommunityAssignedEngineersCount(){
+  ensureWindTurbinesState();
+  var count = 0;
+  if (state.buildings && state.buildings.wind_turbines){
+    ['wt_nw', 'wt_ne', 'wt_sw', 'wt_se'].forEach(function(k){
+      if (state.buildings.wind_turbines[k] && state.buildings.wind_turbines[k].assignedEngineerId) count++;
+    });
+  }
+  if (state.buildings && state.buildings.energy_storage && state.buildings.energy_storage.assignedEngineerId) count++;
+  return count;
+}
+
+function assignEngineerToTurbine(turbineKey, engId){
+  ensureWindTurbinesState();
+  var wt = state.buildings.wind_turbines[turbineKey];
+  if (!wt) return;
+  var eng = state.workers.find(function(w){ return w.id === engId && w.type === 'engineer'; });
+  if (!eng) return;
+  wt.assignedEngineerId = eng.id;
+  eng.assignedBuilding = 'wind_turbine_' + turbineKey;
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+  showNotification('👨‍🔧', 'Engineer #' + eng.id + ' assigned to operate ' + wt.label + '.', 'building', 'wind_turbine');
+  pushReport('👨‍🔧 Dedicated Engineer Assignment: Engineer #' + eng.id + ' stationed at ' + wt.label + '.');
+  render(); requestSave();
+}
+
+function assignEngineerToBESS(engId){
+  var es = state.buildings && state.buildings.energy_storage;
+  if (!es || !es.built) return;
+  var eng = state.workers.find(function(w){ return w.id === engId && w.type === 'engineer'; });
+  if (!eng) return;
+  es.assignedEngineerId = eng.id;
+  eng.assignedBuilding = 'energy_storage';
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
+  showNotification('👨‍🔧', 'Engineer #' + eng.id + ' stationed at BESS Substation.', 'building', 'energy_storage');
+  pushReport('👨‍🔧 Dedicated Engineer Assignment: Engineer #' + eng.id + ' designated Chief Power Engineer for BESS Substation.');
+  render(); requestSave();
+}
+
+function unassignEngineerFromPowerUnit(unitKey){
+  ensureWindTurbinesState();
+  if (unitKey === 'energy_storage'){
+    var es = state.buildings && state.buildings.energy_storage;
+    if (es && es.assignedEngineerId){
+      var eng = state.workers.find(function(w){ return w.id === es.assignedEngineerId; });
+      if (eng) eng.assignedBuilding = null;
+      es.assignedEngineerId = null;
+    }
+  } else if (state.buildings.wind_turbines && state.buildings.wind_turbines[unitKey]){
+    var wt = state.buildings.wind_turbines[unitKey];
+    if (wt.assignedEngineerId){
+      var eng = state.workers.find(function(w){ return w.id === wt.assignedEngineerId; });
+      if (eng) eng.assignedBuilding = null;
+      wt.assignedEngineerId = null;
+    }
+  }
+  showNotification('👨‍🔧', 'Engineer unassigned to idle roster.', 'building', 'crew_shed');
+  render(); requestSave();
+}
+
 function performEngineerCommissioning(workerId, turbineKey){
   ensureWindTurbinesState();
   var wt = null;
-  if (turbineKey && state.buildings.wind_turbines && state.buildings.wind_turbines[turbineKey]){
-    wt = state.buildings.wind_turbines[turbineKey];
+  var tKey = turbineKey || 'wt_nw';
+  if (tKey && state.buildings.wind_turbines && state.buildings.wind_turbines[tKey]){
+    wt = state.buildings.wind_turbines[tKey];
   } else if (state.buildings.wind_turbines){
     var pendingKey = Object.keys(state.buildings.wind_turbines).find(function(k){
       return state.buildings.wind_turbines[k].built && state.buildings.wind_turbines[k].checklistPending;
     });
-    if (pendingKey) wt = state.buildings.wind_turbines[pendingKey];
+    if (pendingKey) { wt = state.buildings.wind_turbines[pendingKey]; tKey = pendingKey; }
   }
   if (!wt && state.buildings.wind_turbine && state.buildings.wind_turbine.built && state.buildings.wind_turbine.checklistPending){
     wt = state.buildings.wind_turbine;
   }
   if (!wt || !wt.built || !wt.checklistPending) return;
+
+  // Enforce 1 dedicated engineer per turbine
+  var assignedEngIds = [];
+  ['wt_nw', 'wt_ne', 'wt_sw', 'wt_se'].forEach(function(k){
+    if (state.buildings.wind_turbines[k] && state.buildings.wind_turbines[k].assignedEngineerId){
+      assignedEngIds.push(state.buildings.wind_turbines[k].assignedEngineerId);
+    }
+  });
+  if (state.buildings.energy_storage && state.buildings.energy_storage.assignedEngineerId){
+    assignedEngIds.push(state.buildings.energy_storage.assignedEngineerId);
+  }
+
   var eng = (workerId !== undefined && workerId !== null)
-    ? state.workers.find(function(w){ return w.id === workerId && w.type === 'engineer'; })
-    : state.workers.find(function(w){ return w.type === 'engineer'; });
+    ? state.workers.find(function(w){ return w.id === workerId && w.type === 'engineer' && assignedEngIds.indexOf(w.id) === -1; })
+    : state.workers.find(function(w){ return w.type === 'engineer' && assignedEngIds.indexOf(w.id) === -1; });
+
   if (!eng){
-    showNotification('👷', 'An Engineer must be hired at the Crew Shed to commission the turbine!', 'building', 'crew_shed');
-    pushReport('⚠️ Commissioning blocked: No certified Engineer available on the farm roster.');
+    showNotification('⚠️', 'A dedicated unassigned Engineer is required! All current engineers are committed. Recruit at Crew Shed (€300).', 'building', 'crew_shed');
+    pushReport('⚠️ Commissioning blocked: 5 dedicated Engineers required (1 per Turbine + 1 for BESS). Recruit additional engineers.');
     return;
   }
+
   wt.checklistPending = false;
   wt.commissioned = true;
   wt.rotating = true;
+  wt.assignedEngineerId = eng.id;
+  eng.assignedBuilding = 'wind_turbine_' + tKey;
   ensureWindTurbinesState();
+
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
   var turbineName = wt.label || 'Wind Turbine';
-  pushReport('🔧 Engineer #' + eng.id + ' completed 3-point technical checklist (Gearbox, Rotor Pitch, Inverter) for ' + turbineName + '. Turbine commissioned & generating clean electricity!');
-  showNotification('💨', turbineName + ' commissioned! Clean 3 kWh/h power flowing to farm & storage.', 'building', wt.id || 'wind_turbine');
+  var totalEng = getPowerCommunityAssignedEngineersCount();
+  pushReport('🔧 Engineer #' + eng.id + ' certified & commissioned ' + turbineName + ' (' + totalEng + '/5 Engineers Dedicated to Power Community)!');
+  showNotification('💨', turbineName + ' commissioned & staffed by Engineer #' + eng.id + '! (' + totalEng + '/5 Power Community Staff)', 'building', wt.id || 'wind_turbine');
   render();
   requestSave();
 }
@@ -32485,11 +32681,18 @@ function windTurbineModalHtml(cornerKey){
     '<h2><span>💨 4-Corner Wind Turbine Grid (2+2 Hot Redundant)</span><button class="secondary mini-btn" onclick="openWhyModal(\'wind_turbine\')" style="margin-left:auto;margin-right:8px;font-size:0.75rem;padding:3px 9px;border-radius:8px;cursor:pointer;" title="Why do I need this?">💡 Why?</button><button class="close-modal" data-closemodal="1" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close Window">✕</button></h2>' +
     '<div class="modal-body-scroll">';
 
+  var assignedEngCount = (typeof getPowerCommunityAssignedEngineersCount === 'function') ? getPowerCommunityAssignedEngineersCount() : 0;
+  var totalEngHired = (state.workers || []).filter(function(w){ return w.type === 'engineer'; }).length;
+
   // 1. Grid Summary Telemetry Card
   html += '<div style="background:#E8F5E9;border:1.5px solid #A5D6A7;border-radius:12px;padding:12px;margin-bottom:12px;">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
       '<b style="color:#1B5E20;font-size:0.95rem;">⚡ 2+2 Hot-Redundant Microgrid Telemetry</b>' +
       '<span style="background:#2E7D32;color:#FFF;padding:2px 8px;border-radius:10px;font-size:0.72rem;font-weight:800;">' + totalCommissioned + ' / 4 ONLINE</span>' +
+    '</div>' +
+    '<div style="background:#FFF9C4;border:1px solid #FFE082;border-radius:8px;padding:6px 10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">' +
+      '<span style="font-weight:800;font-size:0.75rem;color:#795548;">👨‍🔧 Power Community Roster:</span>' +
+      '<span style="font-weight:900;font-size:0.76rem;color:' + (assignedEngCount >= 5 ? '#2E7D32' : '#E65100') + ';">' + assignedEngCount + ' / 5 Dedicated Engineers Assigned</span>' +
     '</div>' +
     '<div style="font-size:0.78rem;color:#33691E;line-height:1.45;margin-bottom:8px;">' +
       '2 Primary generators (6 kWh/h baseline) + 2 Hot-Standby redundant generators for surge handling & failover (up to 12 kWh/h total). Located at outer farm corners clear of all pastures.' +
@@ -32619,6 +32822,23 @@ function windTurbineModalHtml(cornerKey){
         '</div>' +
       '</div>' +
     '</div>';
+    var curEng = wt.assignedEngineerId ? state.workers.find(function(w){ return w.id === wt.assignedEngineerId; }) : null;
+    var idleEngs = state.workers.filter(function(w){
+      return w.type === 'engineer' && !w.assignedBuilding;
+    });
+
+    html += '<div class="row"><span>Dedicated Operating Engineer</span>' +
+      (curEng
+        ? '<span class="v" style="color:#2E7D32;font-weight:800;">✓ Engineer #' + curEng.id + ' Assigned</span>'
+        : '<span class="v" style="color:#E65100;font-weight:800;">⚠️ Unassigned</span>') +
+      '</div>';
+
+    if (!curEng && idleEngs.length > 0){
+      html += '<button class="primary mini-btn" onclick="assignEngineerToTurbine(\'' + selKey + '\',' + idleEngs[0].id + ')" style="width:100%;margin:4px 0 8px;">👨‍🔧 Assign Engineer #' + idleEngs[0].id + ' to this Turbine</button>';
+    } else if (!curEng){
+      html += '<button class="secondary mini-btn" onclick="hireWorker(\'engineer\')" style="width:100%;margin:4px 0 8px;">👨‍🔧 Recruit Additional Engineer (€300)</button>';
+    }
+
     html += '<div class="row"><span>Clean Generation Rate</span><span class="v" style="color:#2E7D32;font-weight:800;">3.0 kWh / h</span></div>' +
       '<div class="row"><span>Total Lifetime Generated</span><span class="v">' + Math.round(wt.totalGeneratedKWh || 0) + ' kWh</span></div>' +
       '<div class="row"><span>Carbon Offset</span><span class="v" style="color:#2E7D32;font-weight:800;">-' + Math.round((wt.totalGeneratedKWh || 0) * 0.45) + ' kg CO₂</span></div>';
@@ -32653,6 +32873,17 @@ function energyStorageModalHtml(){
     '<div style="display:flex;justify-content:space-between;font-size:0.75rem;color:#558B2F;margin-top:4px;">' +
       '<span>Empty (0 kWh)</span><span>Full Capacity (500 kWh)</span>' +
     '</div>' +
+  '</div>';
+
+  var bessEng = b.assignedEngineerId ? state.workers.find(function(w){ return w.id === b.assignedEngineerId; }) : null;
+  var idleEngsForBess = state.workers.filter(function(w){ return w.type === 'engineer' && !w.assignedBuilding; });
+
+  html += '<div class="section" style="background:#FFF8E1;border:1px solid #FFE082;border-radius:10px;padding:8px 10px;margin-bottom:10px;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+      '<b style="font-size:0.80rem;color:#795548;">👨‍🔧 BESS Chief Operating Engineer:</b>' +
+      (bessEng ? '<span style="color:#2E7D32;font-weight:800;font-size:0.76rem;">✓ Engineer #' + bessEng.id + ' Active</span>' : '<span style="color:#E65100;font-weight:800;font-size:0.76rem;">⚠️ Unassigned (5/5 Requirement)</span>') +
+    '</div>' +
+    (!bessEng && idleEngsForBess.length > 0 ? '<button class="primary mini-btn" onclick="assignEngineerToBESS(' + idleEngsForBess[0].id + ')" style="width:100%;margin-top:6px;">👨‍🔧 Assign Engineer #' + idleEngsForBess[0].id + ' to BESS</button>' : (!bessEng ? '<button class="secondary mini-btn" onclick="hireWorker(\'engineer\')" style="width:100%;margin-top:6px;">👨‍🔧 Recruit 5th Engineer for BESS (€300)</button>' : '')) +
   '</div>';
 
   html += '<div class="row"><span>Automated Farm Supply</span><span class="v" style="color:#2E7D32;font-weight:800;">✓ Active (4 kWh/h zero-cost)</span></div>' +
@@ -33010,7 +33241,14 @@ function buildingModalHtml(key){
                     : '<span style="font-size:0.70rem;color:#795548;">All recruited laborers busy.</span>') +
                 '</div>';
             })()
-          : '<button class="secondary" data-build-road-segment="market_promenade" ' + (!b.built || state.money<mpDef.cost?'disabled':'') + '>Construct Marketplace Promenade — €' + mpDef.cost + ' (' + mpDef.buildHours + 'h)</button>')) +
+          : (function(){
+                var jb = state.buildings && state.buildings.juice_bar && state.buildings.juice_bar.built;
+                var cs = state.buildings && state.buildings.coffee_shop && state.buildings.coffee_shop.built;
+                if (!jb || !cs){
+                  return '<button class="secondary mini-btn" disabled style="opacity:0.65;cursor:not-allowed;font-size:0.75rem;padding:6px 10px;">🔒 Locked — Construct Juice Bar &amp; Cafe Restaurant First</button>';
+                }
+                return '<button class="secondary" data-build-road-segment="market_promenade" ' + (!b.built || state.money<mpDef.cost?'disabled':'') + '>Construct Marketplace Promenade — €' + mpDef.cost + ' (' + mpDef.buildHours + 'h)</button>';
+              })())) +
     '</div>';
   } else if (key === 'crew_shed'){
     html += '<div class="section" style="margin-top:6px;">' +
@@ -33186,10 +33424,28 @@ function buildingModalHtml(key){
               '</div>';
     } else if (b.building){
       var csProg = formatTaskProgress(b.buildHours, def.buildHours, 1.0);
+      var labCount = (state.workers || []).filter(function(w){ return w.type === 'laborer'; }).length;
       html += '<div class="row"><span>Construction Progress</span><span class="v" style="font-weight:800;color:#2E7D32;">' + csProg.display + '</span></div>' +
-        '<div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:' + csProg.pct + '%;background:#F0AC3D;"></div></div>';
+        '<div class="healthbar" style="margin:4px 0 10px;"><div class="fill" style="width:' + csProg.pct + '%;background:#F0AC3D;"></div></div>' +
+        '<div style="background:#FFF3E0;border:1.5px solid #FFE082;border-radius:10px;padding:10px;margin:10px 0;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+            '<b style="color:#E65100;font-size:0.86rem;">👷 Field Labourer Recruitment (€80)</b>' +
+            '<span style="background:#FFE082;color:#5D4037;padding:2px 7px;border-radius:6px;font-size:0.72rem;font-weight:800;">' + labCount + ' on Payroll</span>' +
+          '</div>' +
+          '<div style="font-size:0.75rem;color:#5D4037;line-height:1.4;margin-bottom:8px;">Assigning 2 Labourers accelerates construction to 1.5h (2x speed)!</div>' +
+          '<button class="claim-btn active" onclick="hireWorker(\'laborer\')" ' + (state.money < 80 ? 'disabled' : '') + ' style="width:100%;font-size:0.82rem;font-weight:800;padding:8px;background:linear-gradient(135deg,#E65100,#BF360C);color:#fff;border:none;border-radius:8px;cursor:pointer;">👷 Recruit Field Labourer (€80)</button>' +
+        '</div>';
     } else {
-      html += '<button class="primary" data-buildbuilding="crew_shed" ' + (state.money<def.cost?'disabled':'') + '>Construct Crew Shed — €' + def.cost + ' (' + def.buildHours + 'h)</button>';
+      var labCount = (state.workers || []).filter(function(w){ return w.type === 'laborer'; }).length;
+      html += '<div style="background:#FFF3E0;border:1.5px solid #FFE082;border-radius:10px;padding:10px;margin:10px 0;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+          '<b style="color:#E65100;font-size:0.86rem;">👷 Field Labourer Recruitment</b>' +
+          '<span style="background:#FFE082;color:#5D4037;padding:2px 7px;border-radius:6px;font-size:0.72rem;font-weight:800;">' + labCount + ' on Payroll</span>' +
+        '</div>' +
+        '<div style="font-size:0.75rem;color:#5D4037;line-height:1.4;margin-bottom:8px;">Constructing the Crew Shed requires 1–2 Field Labourers (€80). 1 Labourer finishes in 3h; 2 Labourers complete in 1.5h (2x speed).</div>' +
+        '<button class="claim-btn active" onclick="hireWorker(\'laborer\')" ' + (state.money < 80 ? 'disabled' : '') + ' style="width:100%;font-size:0.82rem;font-weight:800;padding:8px;background:linear-gradient(135deg,#E65100,#BF360C);color:#fff;border:none;border-radius:8px;cursor:pointer;margin-bottom:8px;">👷 Recruit Field Labourer (€80)</button>' +
+      '</div>' +
+      '<button class="primary" data-buildbuilding="crew_shed" onclick="startBuildBuilding(\'crew_shed\')" ' + (state.money<def.cost?'disabled':'') + '>Construct Crew Shed — €' + def.cost + ' (' + def.buildHours + 'h)</button>';
     }
     html += '</div>';
   } else if (key === 'garage'){
@@ -33286,8 +33542,34 @@ function buildingModalHtml(key){
                 return idle.map(function(iw){ return '<div class="worker-opt"><span>🧑‍🌾 Farmer #' + iw.id + ' (Idle)</span><button class="worker-opt-btn" data-assignbuilding="pond" data-assignbuildingworker="' + iw.id + '">Assign</button></div>'; }).join('');
               })()) +
         '</div>' +
+        (function(){
+          var pLvl = b.level || 1;
+          var pCap = (pLvl >= 2) ? 300 : 150;
+          var pLvlBadge = (pLvl >= 2)
+            ? '<span style="background:#00695C;color:#fff;font-size:0.72rem;padding:2px 8px;border-radius:6px;font-weight:800;">Level 2 · Duck Aviary & Wetland</span>'
+            : '<span style="background:#1565C0;color:#fff;font-size:0.72rem;padding:2px 8px;border-radius:6px;font-weight:800;">Level 1 · Fish Hatchery</span>';
+
+          var secLvl = '<div class="section" style="background:#E0F2F1;border:1.5px solid #80CBC4;border-radius:12px;padding:12px;margin:8px 0;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+              '<b style="color:#004D40;font-size:0.88rem;">🏞️ Ecosystem Stage & Capacity</b>' +
+              pLvlBadge +
+            '</div>' +
+            '<div class="row"><span>Retention Capacity</span><span class="v" style="font-weight:800;color:#004D40;">' + pCap + ' Produce Units</span></div>' +
+            '<div class="row"><span>Species Diversity</span><span class="v">' + (pLvl >= 2 ? '🐟 Trout, Carp & 🦆 Heritage Mallards' : '🐟 River Trout & Saibling') + '</span></div>' +
+            (pLvl < 2
+              ? '<button class="primary" onclick="upgradePondLevel()" ' + (state.money < 350 ? 'disabled' : '') + ' style="width:100%;margin-top:8px;font-size:0.84rem;font-weight:800;background:linear-gradient(135deg,#00897B,#004D40);border:none;border-radius:8px;padding:8px;color:#fff;cursor:pointer;">🦆 Upgrade to Level 2: Duck Aviary & Multi-Species Wetland — €350</button>'
+              : '<div style="font-size:0.74rem;color:#004D40;margin-top:6px;font-weight:700;">✓ Max level attained: Dual species bio-cycle active.</div>') +
+          '</div>';
+
+          var secMenu = '<div class="section" style="background:#FFF9C4;border:1px solid #FFE082;border-radius:10px;padding:10px;margin:8px 0;">' +
+            '<div style="font-weight:800;font-size:0.82rem;color:#F57F17;margin-bottom:3px;">🍽️ Restaurant Food Menu Integration</div>' +
+            '<div style="font-size:0.75rem;color:#5D4037;line-height:1.4;">Harvested fish & ducks directly supply <b>Pan-Seared Alpine River Trout (€95)</b> and <b>Crispy Roast Duck (€125)</b> at the Village Cafe & Restaurant!</div>' +
+          '</div>';
+
+          return secLvl + secMenu;
+        })() +
         '<div class="section"><h4>🧺 Pond Produce</h4>' +
-          '<div class="row"><span>Ready to collect</span><span class="v" style="font-weight:800;color:#2E7D32;">€' + (b.pendingCollect||0).toFixed(2) + '</span></div>' +
+          '<div class="row"><span>Ready to collect</span><span class="v" style="font-weight:800;color:#2E7D32;">€' + (b.pendingCollect||0).toFixed(2) + ' / ' + ((b.level||1)>=2?300:150) + '</span></div>' +
           (b.collecting ? '<div class="empty-note" style="color:#2E7D32;">🧑‍🌾 Farmer is collecting produce… (' + Math.min(100,Math.round((Date.now()-b.collectStartReal)/4000*100)) + '%)</div>' :
             ((b.pendingCollect||0)>0.5 ? ('<button class="primary pond-action-btn" data-collectpond="1" ' + (!pw?'disabled':'') + '>Collect now (' + spec.label + ')</button>' +
               (!pw?'<div class="empty-note" style="color:#C62828;">⚠️ Assign a Farmer above to collect produce.</div>':''))
@@ -34973,6 +35255,8 @@ function modalHtml(){
     if (activeModal.type==='chapter_roadmap') return chapterRoadmapModalHtml(activeModal.objectKey);
     if (activeModal.type==='chapter1_complete') return chapter1CompleteModalHtml();
     if (activeModal.type==='chapter2_complete') return chapter2CompleteModalHtml();
+    if (activeModal.type==='chapter5_complete') return chapter5CompleteModalHtml();
+    if (activeModal.type==='labor_assignment_info') return laborAssignmentInfoModalHtml();
     if (activeModal.type==='crew_hired') return crewHiredModalHtml(activeModal.worker);
   if (activeModal.type==='garage_roadmap_intro') return garageRoadmapIntroModalHtml();
     if (activeModal.type==='harvest_spoilage_warning') return harvestSpoilageWarningModalHtml();
@@ -35439,7 +35723,7 @@ function panelHtml(){
 
     // Optional Subway & Feeder Roads Credibility Sub-Steps (Rendered in Chapter 2)
     var mainRoadBuilt = !!(state.buildings && state.buildings.road && state.buildings.road.built);
-    var subwayRoadRows = Object.keys(ROAD_SEGMENTS).filter(function(rk){ return rk !== 'main'; }).map(function(rk){
+    var subwayRoadRows = Object.keys(ROAD_SEGMENTS).filter(function(rk){ return rk !== 'main' && rk !== 'market_promenade'; }).map(function(rk){
       var rDef = ROAD_SEGMENTS[rk];
       var rSeg = state.roads ? state.roads[rk] : null;
       var isBuilt = rSeg && rSeg.built;
@@ -35468,11 +35752,55 @@ function panelHtml(){
       '</div>';
     }).join('');
 
+    var chAdvanceBannerHtml = '';
+    if (selectedCh === 2 && chDone) {
+      chAdvanceBannerHtml = '<div style="background:linear-gradient(135deg,#E8F5E9 0%,#C8E6C9 100%);border:2.5px solid #2E7D32;border-radius:16px;padding:14px 16px;margin:12px 0 16px;box-shadow:0 4px 14px rgba(46,125,50,0.22);">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<span style="font-size:1.6rem;">🎉</span>' +
+            '<div>' +
+              '<div style="font-weight:900;color:#1B5E20;font-size:0.96rem;">Chapter 2 Mastered: Build Your Farm!</div>' +
+              '<div style="font-size:0.75rem;color:#2E7D32;">Civil infrastructure, storage granary, and all 6 plots established.</div>' +
+            '</div>' +
+          '</div>' +
+          '<span style="background:#2E7D32;color:#fff;font-weight:900;font-size:0.72rem;padding:3px 8px;border-radius:8px;">100% COMPLETE</span>' +
+        '</div>' +
+        '<div style="font-size:0.78rem;color:#37474F;line-height:1.45;margin-bottom:10px;">' +
+          'You are ready to advance into the silent meadow, plant decagonal pollinator gardens, welcome wild honeybees, and cultivate companion polyculture fields.' +
+        '</div>' +
+        '<button class="primary" onclick="closeModal();openChapter2CompletionModal();" style="width:100%;padding:10px 18px;font-size:0.92rem;font-weight:900;background:linear-gradient(135deg,#2E7D32,#1B5E20);border:none;border-radius:12px;color:#fff;cursor:pointer;box-shadow:0 3px 8px rgba(46,125,50,0.3);">' +
+          '🚜 Advance to Chapter 3: The Silent Meadow &amp; Bee Sanctuary ➔' +
+        '</button>' +
+      '</div>';
+    } else if (selectedCh === 5 && chDone) {
+      chAdvanceBannerHtml = '<div style="background:linear-gradient(135deg,#E8F5E9 0%,#C8E6C9 100%);border:2.5px solid #2E7D32;border-radius:16px;padding:14px 16px;margin:12px 0 16px;box-shadow:0 4px 14px rgba(46,125,50,0.22);">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<span style="font-size:1.6rem;">🎉</span>' +
+            '<div>' +
+              '<div style="font-weight:900;color:#1B5E20;font-size:0.96rem;">Chapter 5 Mastered: Power Your Community!</div>' +
+              '<div style="font-size:0.75rem;color:#2E7D32;">4-Corner Wind Turbine Grid and BESS Substation operating at 100% clean power.</div>' +
+            '</div>' +
+          '</div>' +
+          '<span style="background:#2E7D32;color:#fff;font-weight:900;font-size:0.72rem;padding:3px 8px;border-radius:8px;">100% COMPLETE</span>' +
+        '</div>' +
+        '<div style="font-size:0.78rem;color:#37474F;line-height:1.45;margin-bottom:10px;">' +
+          'With zero fossil energy bills and autonomous microgrid charging, expand your estate into a thriving civic Eco-Village with artisan shops and commerce.' +
+        '</div>' +
+        '<button class="primary" onclick="closeModal();openChapter5CompletionModal();" style="width:100%;padding:10px 18px;font-size:0.92rem;font-weight:900;background:linear-gradient(135deg,#2E7D32,#1B5E20);border:none;border-radius:12px;color:#fff;cursor:pointer;box-shadow:0 3px 8px rgba(46,125,50,0.3);">' +
+          '🏘️ Advance to Chapter 6: Build an Eco-Village &amp; Commerce ➔' +
+        '</button>' +
+      '</div>';
+    }
+
     var subwaySectionHtml = '';
     if (selectedCh === 2) {
-      subwaySectionHtml = '<div style="font-size:0.75rem;font-weight:800;color:#2E7D32;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">⭐ Optional Subway &amp; Feeder Roads (Enhances Farm Credibility &amp; Worker Speed):</div>' +
+      subwaySectionHtml = chAdvanceBannerHtml +
+        '<div style="font-size:0.75rem;font-weight:800;color:#2E7D32;margin:12px 0 4px;text-transform:uppercase;letter-spacing:0.5px;">⭐ Optional Subway &amp; Feeder Roads (Enhances Farm Credibility &amp; Worker Speed):</div>' +
         '<div style="font-size:0.72rem;color:#546E7A;margin-bottom:6px;">Building feeder subways, walkways, and promenades enhances Farm Credibility (+Reputation) and worker movement speed.</div>' +
         subwayRoadRows;
+    } else if (selectedCh === 5) {
+      subwaySectionHtml = chAdvanceBannerHtml;
     }
 
     // Chapter-Relevant Facilities
@@ -36697,7 +37025,204 @@ window.resumeLockedStepPopupTimer = resumeLockedStepPopupTimer;
 window.closeLockedStepPopup = closeLockedStepPopup;
 window.isStepUnlocked = isStepUnlocked;
 window.getCurrentProgressionStepNumber = getCurrentProgressionStepNumber;
+
+/* ================= CHAPTER PROGRESSION & CREW SYNERGY EXTENSIONS ================= */
+function openLaborAssignmentInfoModal(){
+  if (typeof hideGameTooltip === 'function') hideGameTooltip();
+  activeModal = { type: 'labor_assignment_info' };
+  render();
+}
+
+function laborAssignmentInfoModalHtml(){
+  var farmers = (state.workers || []).filter(function(w){ return w.type === 'farmer'; });
+  var laborers = (state.workers || []).filter(function(w){ return w.type === 'laborer'; });
+
+  function getWorkerActivity(w){
+    if (w.assignedPlot !== null) return '🌱 Plot ' + (w.assignedPlot + 1);
+    if (w.assignedBuilding) {
+      if (w.assignedBuilding === 'road') return '🛤️ Paving Main Road';
+      if (w.assignedBuilding.indexOf('road_') === 0) return '🛤️ Paving ' + (ROAD_SEGMENTS[w.assignedBuilding.replace('road_','')] ? ROAD_SEGMENTS[w.assignedBuilding.replace('road_','')].label : 'Feeder Road');
+      if (w.assignedBuilding === 'storage') return '🏚️ Granary Storage';
+      if (w.assignedBuilding === 'crew_shed') return '🏠 Crew Shed';
+      return '🏗️ ' + w.assignedBuilding;
+    }
+    if (state.storage && state.storage.assignedLaborerId === w.id) return '🏚️ Granary Storage';
+    if (state.rocksClearing && state.rocksWorkerId === w.id) return '⛏️ Clearing Boulders';
+    return '✓ Idle at Crew Shed';
+  }
+
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:580px;border-radius:24px;border:3px solid #66BB6A;background:#FFFDF9;overflow:hidden;box-shadow:0 18px 48px rgba(0,0,0,0.3);">' +
+      '<div style="background:linear-gradient(135deg,#2E7D32,#1B5E20);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<span style="font-size:1.6rem;">🧑‍🌾👷</span>' +
+          '<div>' +
+            '<h2 style="margin:0;font-size:1.15rem;color:#fff;font-weight:900;">Plot 3 Crew Synergy &amp; Labor Allocation Guide</h2>' +
+            '<div style="font-size:0.75rem;color:#C8E6C9;">Understanding Field Laborers vs. Dedicated Farmers</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" style="color:#fff;background:rgba(255,255,255,0.25);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-weight:800;">✕</button>' +
+      '</div>' +
+      '<div class="modal-body-scroll" style="padding:16px 20px;max-height:75vh;overflow-y:auto;">' +
+        '<div style="background:#FFF8E1;border:1.5px solid #FFE082;border-radius:12px;padding:12px;margin-bottom:12px;">' +
+          '<div style="font-weight:900;color:#E65100;font-size:0.88rem;margin-bottom:4px;">🎯 Why Does Plot 3 Require Both 1 Labourer AND 1 Farmer?</div>' +
+          '<div style="font-size:0.78rem;color:#5D4037;line-height:1.45;">' +
+            'Plot 3 contains compacted glacial subsoil and requires dual synergy: a <b>Field Labourer</b> to trench hardpan crust and lay drainage ballast, paired with a <b>Trained Farmer</b> to establish precision multi-crop rows. Both must be on your payroll!' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">' +
+          '<div style="background:#F1F8E9;border:1px solid #C8E6C9;border-radius:12px;padding:10px;">' +
+            '<div style="font-weight:800;color:#2E7D32;font-size:0.84rem;margin-bottom:4px;">🧑‍🌾 Dedicated Farmer (€100)</div>' +
+            '<div style="font-size:0.74rem;color:#33691E;line-height:1.4;">' +
+              '• Tills &amp; sows multi-plot beds<br>' +
+              '• Waters &amp; tends growing crops<br>' +
+              '• Harvests mature produce<br>' +
+              '• Manages pasture livestock' +
+            '</div>' +
+          '</div>' +
+          '<div style="background:#FFF3E0;border:1px solid #FFE082;border-radius:12px;padding:10px;">' +
+            '<div style="font-weight:800;color:#E65100;font-size:0.84rem;margin-bottom:4px;">👷 Field Labourer (€80)</div>' +
+            '<div style="font-size:0.74rem;color:#BF360C;line-height:1.4;">' +
+              '• Clears road boulders &amp; ballast<br>' +
+              '• Paves Main Arterial Highway<br>' +
+              '• Constructs Granary Storage Barn<br>' +
+              '• Builds Entrance Gate &amp; Shed' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="font-weight:800;font-size:0.82rem;color:#263238;margin-bottom:6px;">📋 Current Farm Workforce Roster:</div>' +
+        '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">' +
+          (farmers.length === 0 ? '<div style="font-size:0.74rem;color:#C62828;background:#FFEBEE;padding:6px 10px;border-radius:8px;">⚠️ No Farmer hired yet. Recruit from Crew Shed or Task Card.</div>' :
+            farmers.map(function(f){ return '<div style="display:flex;justify-content:space-between;align-items:center;background:#F9FBE7;border:1px solid #E6EE9C;padding:6px 10px;border-radius:8px;font-size:0.76rem;"><span>🧑‍🌾 Farmer #' + f.id + '</span><span style="font-weight:700;color:#33691E;">' + getWorkerActivity(f) + '</span></div>'; }).join('')) +
+          (laborers.length === 0 ? '<div style="font-size:0.74rem;color:#C62828;background:#FFEBEE;padding:6px 10px;border-radius:8px;">⚠️ No Labourer hired yet. Recruit from Crew Shed or Task Card.</div>' :
+            laborers.map(function(l){ return '<div style="display:flex;justify-content:space-between;align-items:center;background:#FFF8E1;border:1px solid #FFE082;padding:6px 10px;border-radius:8px;font-size:0.76rem;"><span>👷 Labourer #' + l.id + '</span><span style="font-weight:700;color:#E65100;">' + getWorkerActivity(l) + '</span></div>'; }).join('')) +
+        '</div>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+          '<button class="secondary mini-btn" onclick="closeModal();openModal(\'building\',\'crew_shed\');" style="padding:8px 14px;border-radius:10px;font-weight:700;">🏠 Open Crew Shed Hub</button>' +
+          '<button class="primary mini-btn" onclick="closeModal();" style="padding:8px 16px;border-radius:10px;font-weight:800;background:#2E7D32;color:#fff;">✓ Got It</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  return html;
+}
+
+function upgradePondLevel(){
+  var b = state.buildings && state.buildings.pond;
+  if (!b || !b.built) return;
+  var currentLvl = b.level || 1;
+  if (currentLvl >= 2){
+    showNotification('🏞️', 'Pond is already at maximum Level 2 (Wetland Bio-Reserve)!', 'building', 'pond');
+    return;
+  }
+  var cost = 350;
+  if (state.money < cost){
+    showNotification('💰', 'Need €' + cost + ' to upgrade the Pond to Level 2!', 'building', 'pond');
+    return;
+  }
+  state.money -= cost;
+  b.level = 2;
+  b.fishCapacity = 300;
+  b.ducksUnlocked = true;
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+  showNotification('🪷', 'Pond upgraded to Level 2: Duck Aviary & Multi-Species Wetland!', 'building', 'pond');
+  pushReport('🪷 Pond upgraded to Level 2 (€350): Water capacity expanded to 300 produce; Heritage Ducks and wetland bird sanctuaries enabled!');
+  render();
+  requestSave();
+}
+
+function openChapter5CompletionModal(){
+  activeModal = {
+    type: 'chapter5_complete'
+  };
+  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
+  render();
+}
+
+function chapter5CompleteModalHtml(){
+  var assignedEng = (typeof getPowerCommunityAssignedEngineersCount === 'function') ? getPowerCommunityAssignedEngineersCount() : 5;
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
+    '<div class="modal" style="max-width:580px;border-radius:24px;overflow:hidden;box-shadow:0 14px 40px rgba(0,0,0,0.35);border:3px solid #66BB6A;">' +
+      '<div style="background:linear-gradient(135deg,#1B5E20,#2E7D32);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;color:#fff;">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<span style="font-size:1.8rem;">🎉</span>' +
+          '<div>' +
+            '<h2 style="margin:0;font-size:1.25rem;color:#fff;font-weight:900;">Chapter 5 Complete!</h2>' +
+            '<div style="font-size:0.80rem;color:#C8E6C9;">“Power Your Community” · Renewable Energy Microgrid Mastered</div>' +
+          '</div>' +
+        '</div>' +
+        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-weight:800;">✕</button>' +
+      '</div>' +
+      '<div class="modal-body-scroll" style="padding:18px 22px;max-height:75vh;overflow-y:auto;">' +
+        '<div style="background:#E8F5E9;border:1.5px solid #81C784;border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">' +
+          '<div>' +
+            '<div style="font-weight:900;color:#1B5E20;font-size:0.95rem;">🏆 Chapter Award: +50 Knowledge XP</div>' +
+            '<div style="font-size:0.76rem;color:#2E7D32;">High-Voltage Microgrid Engineering, Smart Curtailment &amp; Clean Storage</div>' +
+          '</div>' +
+          '<span style="font-size:1.8rem;">⚡</span>' +
+        '</div>' +
+        '<div style="font-weight:800;font-size:0.86rem;color:#263238;margin-bottom:8px;">🎓 Chapter 5 Milestones Accomplished:</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>4-Corner Wind Turbine Grid:</b> Erected perimeter tubular steel towers capturing up to 12 kWh/h kinetic power.</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>Power Community Engineering Roster:</b> Recruited and assigned dedicated Electrical Engineers (' + assignedEng + ' Engineers active across turbines &amp; BESS substation).</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>BESS Battery Substation:</b> Commissioned 500 kWh lithium-iron storage container eliminating curtailment energy loss.</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;font-size:0.78rem;color:#37474F;line-height:1.4;">' +
+            '<span style="color:#2E7D32;font-weight:900;">✓</span>' +
+            '<span><b>100% Zero-Carbon Microgrid:</b> Powers irrigation pumps, farm machinery, and electric utility vehicles with zero fossil bills!</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background:#FFF9C4;border:1px solid #FFF176;border-radius:12px;padding:12px;margin-bottom:16px;font-size:0.78rem;color:#795548;line-height:1.45;">' +
+          '<b>🏘️ Chapter 6 Unlocked: "Build an Eco-Village &amp; Commerce"</b><br>' +
+          'Open the Artisan Juice Bar &amp; Coffee House, pave the terracotta Walkable Promenade, craft gourmet recipes from farm produce, and welcome strolling tourists!' +
+        '</div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #ECEFF1;padding-top:14px;">' +
+          '<button class="primary" onclick="closeModal();selectChapterTab(6);if(typeof render===\'function\')render();" style="padding:10px 22px;font-size:0.92rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);box-shadow:0 4px 12px rgba(46,125,50,0.35);font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">🏘️ Advance to Chapter 6: Build an Eco-Village &amp; Commerce ➔</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  return html;
+}
+
 window.ensureWindTurbinesState = ensureWindTurbinesState;
+window.openLaborAssignmentInfoModal = openLaborAssignmentInfoModal;
+window.laborAssignmentInfoModalHtml = laborAssignmentInfoModalHtml;
+window.upgradePondLevel = upgradePondLevel;
+window.openChapter5CompletionModal = openChapter5CompletionModal;
+window.chapter5CompleteModalHtml = chapter5CompleteModalHtml;
+window.assignEngineerToTurbine = assignEngineerToTurbine;
+window.assignEngineerToBESS = assignEngineerToBESS;
+window.unassignEngineerFromPowerUnit = unassignEngineerFromPowerUnit;
+window.getPowerCommunityAssignedEngineersCount = getPowerCommunityAssignedEngineersCount;
+globalThis.openLaborAssignmentInfoModal = openLaborAssignmentInfoModal;
+globalThis.laborAssignmentInfoModalHtml = laborAssignmentInfoModalHtml;
+globalThis.upgradePondLevel = upgradePondLevel;
+globalThis.openChapter5CompletionModal = openChapter5CompletionModal;
+globalThis.chapter5CompleteModalHtml = chapter5CompleteModalHtml;
+globalThis.assignEngineerToTurbine = assignEngineerToTurbine;
+globalThis.assignEngineerToBESS = assignEngineerToBESS;
+globalThis.unassignEngineerFromPowerUnit = unassignEngineerFromPowerUnit;
+globalThis.getPowerCommunityAssignedEngineersCount = getPowerCommunityAssignedEngineersCount;
+window.startCollectPond = startCollectPond;
+window.visitorEligibleDestinations = visitorEligibleDestinations;
+window.updateGameTick = function(dh){ advanceGame(dh); };
+window.renderTasks = function(){ openPanel = 'tasks'; render(); };
+globalThis.startCollectPond = startCollectPond;
+globalThis.visitorEligibleDestinations = visitorEligibleDestinations;
+globalThis.updateGameTick = function(dh){ advanceGame(dh); };
+globalThis.renderTasks = function(){ openPanel = 'tasks'; render(); };
+globalThis.openChapter2CompletionModal = (typeof openChapter2CompletionModal !== 'undefined') ? openChapter2CompletionModal : null;
+globalThis.chapter2CompleteModalHtml = (typeof chapter2CompleteModalHtml !== 'undefined') ? chapter2CompleteModalHtml : null;
+
 window.ENERGY_STORAGE_SPOT = ENERGY_STORAGE_SPOT;
 window.GATE_SPOT = GATE_SPOT;
 window.PLOT_LAYOUT = PLOT_LAYOUT;
