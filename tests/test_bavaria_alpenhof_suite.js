@@ -95,12 +95,12 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('wind_w').x, y: findSite('wind_w').y }, { x: 316, y: 156 }, 'wind_w coordinates');
   assert.deepStrictEqual({ x: findSite('bess').x, y: findSite('bess').y }, { x: 710, y: 216 }, 'bess coordinates');
   assert.deepStrictEqual({ x: findSite('farm_shed').x, y: findSite('farm_shed').y }, { x: 933, y: 237 }, 'farm_shed coordinates');
-  assert.deepStrictEqual({ x: findSite('solar').x, y: findSite('solar').y }, { x: 875, y: 310 }, 'solar farm coordinates shifted left towards orchard plot');
-  assert.deepStrictEqual({ x: findSite('veg').x, y: findSite('veg').y }, { x: 960, y: 465 }, 'hexagonal vegetable garden coordinates in central meadow');
+  assert.deepStrictEqual({ x: findSite('solar').x, y: findSite('solar').y }, { x: 820, y: 280 }, 'solar farm coordinates shifted upslope towards orchard plots');
+  assert.deepStrictEqual({ x: findSite('veg').x, y: findSite('veg').y }, { x: 950, y: 465 }, 'hexagonal vegetable garden coordinates in central meadow');
   assert.deepStrictEqual({ x: findSite('flower_oval').x, y: findSite('flower_oval').y }, { x: 835, y: 755 }, 'triangular 3-oval flower garden coordinates');
-  assert.deepStrictEqual({ x: findSite('bbq').x, y: findSite('bbq').y }, { x: 1740, y: 430 }, 'hilltop tourist bbq coordinates on cleared vineyard backside ridge');
+  assert.deepStrictEqual({ x: findSite('bbq').x, y: findSite('bbq').y }, { x: 1760, y: 380 }, 'hilltop tourist bbq coordinates on cleared vineyard backside ridge');
   assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 630, y: 870 }, 'pond coordinates bottom-left meadow');
-  assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1588, y: 670 }, 'restaurant coordinates');
+  assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1620, y: 530 }, 'restaurant coordinates at corner of road network');
   assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1360, y: 255 }, 'cattle coordinates long pasture downslope');
   assert.deepStrictEqual({ x: findSite('gate').x, y: findSite('gate').y }, { x: 1544, y: 794 }, 'gate coordinates');
   assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1435, y: 380 }, 'vineyard coordinates terrace on hill upslope');
@@ -637,21 +637,21 @@ const assert = require('assert');
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_wooden_bridge.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_wooden_bridge.png');
 
-  // Hexagonal vegetable garden close-up (rotated parallel to mud road)
+  // Hexagonal vegetable garden close-up (rotated parallel to mud road, enlarged with wider pathways)
   await page.evaluate(() => {
-    state.zoom = 2.4;
-    state.panX = 0;
-    state.panY = 180;
+    state.zoom = 2.3;
+    state.panX = 24;
+    state.panY = 175;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_hexagonal_veg.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_hexagonal_veg.png');
 
-  // 4x4 Agrivoltaic solar farm close-up (stretched left with isometric rhombus shadow)
+  // 4x4 Agrivoltaic solar farm close-up (stretched upslope towards orchards with wide module spacing)
   await page.evaluate(() => {
-    state.zoom = 2.4;
-    state.panX = 205;
-    state.panY = 550;
+    state.zoom = 2.3;
+    state.panX = 322;
+    state.panY = 598;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_solar_farm.png') });
@@ -667,21 +667,21 @@ const assert = require('assert');
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_oval_flowers.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_oval_flowers.png');
 
-  // Hilltop Tourist BBQ Place close-up (food stand, trays, twin fire pits, wood & benches)
+  // Hilltop Tourist BBQ Place close-up (food stand, trays, twin fire pits, wood, benches & walking tourists)
   await page.evaluate(() => {
     state.zoom = 2.2;
-    state.panX = -1715;
-    state.panY = 240;
+    state.panX = -1760;
+    state.panY = 352;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_tourist_bbq.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_tourist_bbq.png');
 
-  // Gasthof Stuben with Front Gastronomy Terrace, Fountain & Circular Pollination Garden
+  // Gasthof Stuben at Road Corner with Expansive Front Meadow Terrace, Fountain, Garden & Walking Guests
   await page.evaluate(() => {
-    state.zoom = 2.2;
-    state.panX = -1380;
-    state.panY = -285;
+    state.zoom = 2.0;
+    state.panX = -1200;
+    state.panY = -140;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_stuben_terrace.png') });
