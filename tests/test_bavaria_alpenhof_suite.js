@@ -95,12 +95,12 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('wind_w').x, y: findSite('wind_w').y }, { x: 316, y: 156 }, 'wind_w coordinates');
   assert.deepStrictEqual({ x: findSite('bess').x, y: findSite('bess').y }, { x: 710, y: 216 }, 'bess coordinates');
   assert.deepStrictEqual({ x: findSite('farm_shed').x, y: findSite('farm_shed').y }, { x: 933, y: 237 }, 'farm_shed coordinates');
-  assert.deepStrictEqual({ x: findSite('solar').x, y: findSite('solar').y }, { x: 820, y: 280 }, 'solar farm coordinates shifted upslope towards orchard plots');
-  assert.deepStrictEqual({ x: findSite('veg').x, y: findSite('veg').y }, { x: 950, y: 465 }, 'hexagonal vegetable garden coordinates in central meadow');
+  assert.deepStrictEqual({ x: findSite('solar').x, y: findSite('solar').y }, { x: 770, y: 330 }, 'solar farm coordinates stretched left towards orchard plots and down towards veg garden');
+  assert.deepStrictEqual({ x: findSite('veg').x, y: findSite('veg').y }, { x: 920, y: 465 }, 'hexagonal vegetable garden coordinates rotated 45 deg more to right in central meadow');
   assert.deepStrictEqual({ x: findSite('flower_oval').x, y: findSite('flower_oval').y }, { x: 835, y: 755 }, 'triangular 3-oval flower garden coordinates');
-  assert.deepStrictEqual({ x: findSite('bbq').x, y: findSite('bbq').y }, { x: 1760, y: 380 }, 'hilltop tourist bbq coordinates on cleared vineyard backside ridge');
+  assert.deepStrictEqual({ x: findSite('bbq').x, y: findSite('bbq').y }, { x: 1760, y: 380 }, 'hilltop tourist bbq coordinates with marker placed behind kiosk roof');
   assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 630, y: 870 }, 'pond coordinates bottom-left meadow');
-  assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1620, y: 530 }, 'restaurant coordinates at corner of road network');
+  assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1620, y: 530 }, 'restaurant coordinates at corner of road network with timber deck & grape juice silo');
   assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1360, y: 255 }, 'cattle coordinates long pasture downslope');
   assert.deepStrictEqual({ x: findSite('gate').x, y: findSite('gate').y }, { x: 1544, y: 794 }, 'gate coordinates');
   assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1435, y: 380 }, 'vineyard coordinates terrace on hill upslope');
@@ -495,12 +495,25 @@ const assert = require('assert');
     AlpenMap.handle(rest);
   });
   await page.waitForTimeout(400);
+  const restModalOpen = await page.isVisible('#modal.open');
+  assert(restModalOpen, 'Restaurant modal must open on site click');
+  const restContent = await page.textContent('#modalBody');
+  assert(restContent.includes('Gasthof Stuben & Timber Terrace Console'), 'Must show timber terrace console');
+
   const buildRestBtn = await page.$('#modalBody .btn-g');
   if (buildRestBtn) {
     await buildRestBtn.click();
     await page.waitForTimeout(300);
-    console.log('[✓ PASSED] Alpenhof Gasthof & Stuben commissioned');
+    console.log('[✓ PASSED] Alpenhof Gasthof Stuben, Timber Terrace & Grape Juice Silo commissioned');
   }
+
+  // Test Grape Juice Silo dispensing and evening banquet
+  await page.evaluate(() => {
+    dispenseGrapeJuice();
+    hostGastronomyEvening();
+  });
+  await page.waitForTimeout(300);
+  console.log('[✓ PASSED] Grape Juice Silo dispensing and Gasthof evening banquet verified');
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
 
   // Commission Juice Bar with front boardwalk terrace & barrel tables
@@ -637,21 +650,21 @@ const assert = require('assert');
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_wooden_bridge.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_wooden_bridge.png');
 
-  // Hexagonal vegetable garden close-up (rotated parallel to mud road, enlarged with wider pathways)
+  // Hexagonal vegetable garden close-up (rotated 45 deg more to right, enlarged with wider pathways)
   await page.evaluate(() => {
-    state.zoom = 2.3;
-    state.panX = 24;
-    state.panY = 175;
+    state.zoom = 2.2;
+    state.panX = 88;
+    state.panY = 165;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_hexagonal_veg.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_hexagonal_veg.png');
 
-  // 4x4 Agrivoltaic solar farm close-up (stretched upslope towards orchards with wide module spacing)
+  // 4x4 Agrivoltaic solar farm close-up (stretched left towards orchards & bottom towards veg garden)
   await page.evaluate(() => {
-    state.zoom = 2.3;
-    state.panX = 322;
-    state.panY = 598;
+    state.zoom = 2.2;
+    state.panX = 418;
+    state.panY = 462;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_solar_farm.png') });
@@ -667,21 +680,21 @@ const assert = require('assert');
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_oval_flowers.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_oval_flowers.png');
 
-  // Hilltop Tourist BBQ Place close-up (food stand, trays, twin fire pits, wood, benches & walking tourists)
+  // Hilltop Tourist BBQ Place close-up (food kiosk, 4 fire pits, 7 benches, marker behind stand, walking tourists)
   await page.evaluate(() => {
-    state.zoom = 2.2;
-    state.panX = -1760;
-    state.panY = 352;
+    state.zoom = 2.0;
+    state.panX = -1600;
+    state.panY = 380;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_tourist_bbq.png') });
   console.log('[✓ SAVED] screenshot_alpenhof_tourist_bbq.png');
 
-  // Gasthof Stuben at Road Corner with Expansive Front Meadow Terrace, Fountain, Garden & Walking Guests
+  // Gasthof Stuben with Classical Timber Deck Floor, 4 Table Sets, Stehtische, 3 Umbrellas, Fountain & Grape Juice Silo
   await page.evaluate(() => {
     state.zoom = 2.0;
-    state.panX = -1200;
-    state.panY = -140;
+    state.panX = -1220;
+    state.panY = -60;
   });
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_stuben_terrace.png') });
