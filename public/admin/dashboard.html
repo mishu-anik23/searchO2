@@ -63,6 +63,7 @@ button.ghost{background:transparent;border:1px solid var(--line);color:var(--tex
     <button type="button" class="active" data-tab="login">Login</button>
     <button type="button" data-tab="bootstrap">First password</button>
     <button type="button" data-tab="totp">2FA</button>
+    <button type="button" data-tab="config">⚙️ Supabase / API</button>
   </div>
   <div id="tab-login" class="row">
     <input id="email" type="email" value="searcho2.online@gmail.com" autocomplete="username"/>
@@ -86,6 +87,17 @@ button.ghost{background:transparent;border:1px solid var(--line);color:var(--tex
     <button class="primary" id="btnEnrollConfirm">Confirm enrollment</button>
     <button class="ghost" id="btnTotpVerify">Verify 2FA challenge</button>
   </div>
+  <div id="tab-config" class="row hidden">
+    <p class="hint"><b>Direct Supabase & Backend Gateway:</b> When <span class="mono">searcho2.online/api</span> is not yet proxied, you can query Supabase Postgres directly with your API key.</p>
+    <label class="lbl" style="font-size:0.72rem;color:var(--muted)">SUPABASE PROJECT URL</label>
+    <input id="loginSupabaseUrl" value="https://plvieqzmwwjcjyvwyczl.supabase.co" placeholder="https://[project].supabase.co"/>
+    <label class="lbl" style="font-size:0.72rem;color:var(--muted)">SUPABASE API KEY (SERVICE_ROLE OR ANON)</label>
+    <input id="loginSupabaseKey" type="password" placeholder="Paste Supabase service_role or anon key"/>
+    <label class="lbl" style="font-size:0.72rem;color:var(--muted)">BACKEND API BASE URL (OPTIONAL)</label>
+    <input id="loginApiBase" placeholder="Default: /api (or http://localhost:5000/api)"/>
+    <button class="primary" id="btnLoginSaveConfig">Save & Test Connection</button>
+    <div id="loginConfigStatus" class="hint" style="margin-top:6px"></div>
+  </div>
   <div id="loginMsg" class="err"></div>
   <div class="gdpr-box">
     <b>Datenschutzhinweis (Admin):</b> Session-IP und Geräteklasse werden zur Missbrauchsprävention (Art. 6 Abs. 1 lit. f DSGVO) verarbeitet.
@@ -104,6 +116,7 @@ button.ghost{background:transparent;border:1px solid var(--line);color:var(--tex
     <button data-view="sessions">Sessions / devices</button>
     <button data-view="privacy">Privacy & consent</button>
     <button data-view="audit">Audit log</button>
+    <button data-view="datasource" style="color:var(--gold)">⚙️ Supabase & API</button>
     <button id="btnLogout" style="margin-top:24px;color:var(--bad)">Sign out</button>
   </aside>
   <main class="main">
@@ -180,6 +193,57 @@ button.ghost{background:transparent;border:1px solid var(--line);color:var(--tex
     <section id="view-audit" class="hidden">
       <div class="panel"><h2>Admin audit</h2><table><thead><tr><th>When</th><th>Action</th><th>Reason</th><th>IP</th></tr></thead><tbody id="auditRows"></tbody></table></div>
     </section>
+    <section id="view-datasource" class="hidden">
+      <div class="panel">
+        <h2>⚡ Data Source & Supabase Direct Gateway</h2>
+        <p class="hint">Choose how the Admin Dashboard pulls live player, farm, and telemetry data: via the <b>Express Backend API</b> or <b>Direct Supabase PostgREST</b>.</p>
+        
+        <div style="background:#0a101c;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <b style="color:var(--gold)">Active Connection Mode:</b>
+            <span id="dsActiveModeBadge" class="badge" style="background:#123328;color:var(--ok)">Detecting…</span>
+          </div>
+          <div id="dsActiveModeDesc" style="font-size:0.75rem;color:var(--muted);line-height:1.45;"></div>
+        </div>
+
+        <div class="row" style="grid-template-columns:1fr 1fr;gap:14px;">
+          <div style="background:#0a101c;border:1px solid var(--line);border-radius:12px;padding:14px;">
+            <h3 style="font-size:0.88rem;color:var(--text);margin-bottom:6px;">1. Supabase Direct PostgREST</h3>
+            <p class="hint">Queries Postgres directly from browser without requiring Express reverse-proxy. Uses <span class="mono">service_role</span> or <span class="mono">anon</span> key.</p>
+            <div style="margin-bottom:8px">
+              <label class="lbl" style="font-size:0.68rem;color:var(--muted)">PROJECT URL</label>
+              <input id="dsSupabaseUrl" value="https://plvieqzmwwjcjyvwyczl.supabase.co"/>
+            </div>
+            <div style="margin-bottom:10px">
+              <label class="lbl" style="font-size:0.68rem;color:var(--muted)">SUPABASE API KEY</label>
+              <input id="dsSupabaseKey" type="password" placeholder="Paste service_role or anon key"/>
+            </div>
+            <button class="primary" id="btnTestSupabase" style="width:100%">Test Supabase Connection</button>
+            <div id="dsSupabaseStatus" class="hint" style="margin-top:6px"></div>
+          </div>
+
+          <div style="background:#0a101c;border:1px solid var(--line);border-radius:12px;padding:14px;">
+            <h3 style="font-size:0.88rem;color:var(--text);margin-bottom:6px;">2. Express Backend API</h3>
+            <p class="hint">Queries Express server on <span class="mono">/api</span>. When hosted on <span class="mono">searcho2.online</span>, requires reverse-proxy to Node service.</p>
+            <div style="margin-bottom:10px">
+              <label class="lbl" style="font-size:0.68rem;color:var(--muted)">BACKEND API BASE</label>
+              <input id="dsApiBase" placeholder="/api or http://localhost:5000/api"/>
+            </div>
+            <button class="primary" id="btnTestApi" style="width:100%">Test Express Backend API</button>
+            <div id="dsApiStatus" class="hint" style="margin-top:6px"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;">
+          <h3 style="font-size:0.88rem;color:var(--gold);margin-bottom:6px;">🌐 How to connect searcho2.online to live Express backend:</h3>
+          <ol class="hint" style="padding-left:18px;line-height:1.6">
+            <li><b>Option A (Cloudflare Worker Proxy):</b> Set up a Cloudflare Worker on route <span class="mono">searcho2.online/api/*</span> to reverse-proxy requests to your deployed backend (e.g. Render/Railway).</li>
+            <li><b>Option B (Subdomain api.searcho2.online):</b> Point a DNS record <span class="mono">api.searcho2.online</span> directly to your backend host.</li>
+            <li><b>Option C (Local Dev Backend):</b> Start backend locally with <span class="mono">npm run dev</span> and enter <span class="mono">http://localhost:5000/api</span> above!</li>
+          </ol>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -200,7 +264,10 @@ const state = {
   token: localStorage.getItem('searchO2_admin_token') || '',
   elevated: sessionStorage.getItem('searchO2_admin_elevated') === '1',
   apiBase: localStorage.getItem('searchO2_admin_api') || '',
-  mode: 'unknown', // 'server' | 'local'
+  supabaseUrl: localStorage.getItem('searchO2_supabase_url') || 'https://plvieqzmwwjcjyvwyczl.supabase.co',
+  supabaseKey: localStorage.getItem('searchO2_supabase_key') || '',
+  mode: 'unknown', // 'server' | 'supabase' | 'local'
+  serverOnline: false,
   pins: []
 };
 
@@ -297,45 +364,53 @@ function strongPassword(pw){
   return typeof pw==='string' && pw.length>=12 && /[a-z]/.test(pw) && /[A-Z]/.test(pw) && /\d/.test(pw) && /[^A-Za-z0-9]/.test(pw);
 }
 
-/* ---------- API probe ---------- */
+/* ---------- Supabase REST & API probe ---------- */
+async function supabaseRest(endpoint, opts={}){
+  const url = (state.supabaseUrl || 'https://plvieqzmwwjcjyvwyczl.supabase.co').replace(/\/$/,'') + '/rest/v1/' + endpoint;
+  const key = state.supabaseKey || localStorage.getItem('searchO2_supabase_key') || '';
+  if(!key) throw new Error('No Supabase key configured. Open ⚙️ Supabase & API to set anon/service key.');
+  const headers = Object.assign({
+    'apikey': key,
+    'Authorization': 'Bearer ' + key,
+    'Content-Type': 'application/json',
+    'Prefer': opts.prefer || 'count=exact'
+  }, opts.headers || {});
+  const r = await fetch(url, {
+    method: opts.method || 'GET',
+    headers,
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  const text = await r.text();
+  let data = null; try{ data = text ? JSON.parse(text) : null; } catch{ data = { raw: text }; }
+  if(!r.ok) throw new Error((data && (data.message || data.error || data.hint)) || ('Supabase HTTP ' + r.status));
+  return data;
+}
+
 async function probeApi(){
-  for(const base of API_CANDIDATES){
-    try{
-      const ctrl = new AbortController();
-      const t = setTimeout(()=>ctrl.abort(), 2500);
-      const r = await fetch(base.replace(/\/$/,'') + '/health', { signal: ctrl.signal });
-      clearTimeout(t);
-      // health is on /api/health not /api/admin/health — try parent
-    }catch(_){}
-  }
-  // Try admin bootstrap OPTIONS or health at host level
-  const bases = [];
-  for(const c of API_CANDIDATES){
-    const root = c.replace(/\/admin$/,'');
-    bases.push(root);
-  }
-  // unique
   const seen = new Set();
   for(const base of API_CANDIDATES){
     if(seen.has(base)) continue; seen.add(base);
     try{
       const ctrl = new AbortController();
-      const t = setTimeout(()=>ctrl.abort(), 3000);
-      // Prefer real health endpoint derived from /api
+      const t = setTimeout(()=>ctrl.abort(), 2000);
       const healthUrl = base.endsWith('/api') ? base + '/health' : base + '/api/health';
       const r = await fetch(healthUrl, { signal: ctrl.signal });
       clearTimeout(t);
-      if(r.ok){
+      const ct = r.headers.get('content-type') || '';
+      // Ensure real JSON API, not static HTML fallback
+      if(r.ok && ct.includes('application/json')){
         state.apiBase = base.endsWith('/admin') ? base.replace(/\/admin$/,'') : base;
-        // normalize: we store prefix that + '/admin' = full admin API
-        if(!state.apiBase.endsWith('/api')) {
-          // if someone set full origin only
-        }
         localStorage.setItem('searchO2_admin_api', state.apiBase);
+        state.serverOnline = true;
         state.mode = 'server';
         return 'server';
       }
     }catch(_){}
+  }
+  state.serverOnline = false;
+  if(state.supabaseKey){
+    state.mode = 'supabase';
+    return 'supabase';
   }
   state.mode = 'local';
   return 'local';
@@ -350,6 +425,10 @@ async function api(path, opts={}){
     headers,
     body: opts.body ? JSON.stringify(opts.body) : undefined
   });
+  const ct = r.headers.get('content-type') || '';
+  if(ct.includes('text/html')){
+    throw new Error('API returned HTML page (backend not proxied on ' + base + ')');
+  }
   const text = await r.text();
   let data=null; try{ data=text?JSON.parse(text):null; }catch{ data={raw:text}; }
   if(!r.ok) throw new Error((data && (data.error||data.message)) || ('HTTP '+r.status));
@@ -361,7 +440,7 @@ document.querySelectorAll('#loginView .tabs button').forEach(b=>{
   b.onclick=()=>{
     document.querySelectorAll('#loginView .tabs button').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
-    ['login','bootstrap','totp'].forEach(id=>{
+    ['login','bootstrap','totp','config'].forEach(id=>{
       document.getElementById('tab-'+id).classList.toggle('hidden', b.dataset.tab!==id);
     });
   };
@@ -586,52 +665,106 @@ document.querySelectorAll('.nav button[data-view]').forEach(b=>{
     if(b.dataset.view==='live'){ refreshLiveData(); }
     if(b.dataset.view==='privacy') loadPrivacy();
     if(b.dataset.view==='users') loadUsers();
+    if(b.dataset.view==='audit') loadAudit();
+    if(b.dataset.view==='datasource') renderDataSourceView();
   };
 });
 
 async function loadOverview(){
+  let stats = null;
+  let source = 'server';
+
+  // 1. Try Express API
   try{
-    const stats = await api('/stats');
-    document.getElementById('statCards').innerHTML = [
-      ['Users', stats.totalUsers],['Guests', stats.totalGuests],['Registered', stats.totalRegistered],
-      ['Admins', stats.totalAdmins],['Sessions', stats.activeSessionsCount],['Farms', stats.totalFarmsCount]
-    ].map(([l,v])=>`<div class="card"><div class="lbl">${l}</div><div class="val">${v??'—'}</div></div>`).join('');
-  }catch(e){
-    document.getElementById('statCards').innerHTML = [
-      ['Mode', state.mode==='server'?'API':'Local vault'],
-      ['Admin', BOOTSTRAP_EMAIL],
-      ['2FA', 'On'],
-      ['Live DB', 'Not connected']
-    ].map(([l,v])=>`<div class="card"><div class="lbl">${l}</div><div class="val" style="font-size:0.95rem">${v}</div></div>`).join('') +
-    '<div class="panel" style="grid-column:1/-1"><h2>No live data</h2><p class="hint">Admin login works from the local vault, but <b>player/farm rows live in Supabase Postgres</b> and are only visible when the Express API is online with <span class="mono">DATABASE_URL</span> pointing at Supabase.<br/><br/>1) Set Supabase connection URI in <span class="mono">backend/.env</span><br/>2) Run migrations 001–004<br/>3) Start backend and proxy <span class="mono">/api</span> on searcho2.online<br/>4) Confirm <span class="mono">/api/health</span> returns JSON with <span class="mono">database: connected</span><br/><br/>Error: '+escapeHtml(e.message||'')+'</p></div>';
+    stats = await api('/stats');
+    source = 'server';
+  }catch(apiErr){
+    // 2. Fall back to Direct Supabase REST
+    try{
+      const users = await supabaseRest('users?select=id,role');
+      const farms = await supabaseRest('farms?select=id').catch(()=>[]);
+      const sessions = await supabaseRest('user_sessions?select=id').catch(()=>[]);
+      stats = {
+        totalUsers: users.length,
+        totalGuests: users.filter(u=>u.role==='guest').length,
+        totalRegistered: users.filter(u=>u.role==='user').length,
+        totalAdmins: users.filter(u=>u.role==='admin').length,
+        totalFarmsCount: farms.length,
+        activeSessionsCount: sessions.length
+      };
+      source = 'supabase';
+    }catch(sbErr){
+      // 3. Fall back to local vault info card
+      document.getElementById('statCards').innerHTML = [
+        ['Mode', 'Local vault'],
+        ['Admin', BOOTSTRAP_EMAIL],
+        ['2FA', 'On'],
+        ['Live DB', 'Connecting…']
+      ].map(([l,v])=>`<div class="card"><div class="lbl">${l}</div><div class="val" style="font-size:0.95rem">${v}</div></div>`).join('') +
+      `<div class="panel" style="grid-column:1/-1">
+        <h2>⚡ Connect Live Supabase Data</h2>
+        <p class="hint">
+          <b>Option 1 (Instant):</b> Enter your Supabase key (anon or service_role from your Supabase dashboard) in <b>⚙️ Supabase & API</b> to pull live user and farm data directly from PostgreSQL.<br/><br/>
+          <b>Option 2 (Express Backend):</b> Run the Express backend on <span class="mono">http://localhost:5000/api</span> or deploy to production and reverse-proxy <span class="mono">/api</span>.<br/><br/>
+          <button class="primary" onclick="document.querySelector('.nav button[data-view=datasource]').click()">⚙️ Configure Supabase / API Connection</button>
+        </p>
+      </div>`;
+      return;
+    }
   }
+
+  const badge = source === 'supabase' ? '🟢 Supabase Direct' : '⚡ Live Express API';
+  document.getElementById('statCards').innerHTML = [
+    ['Data Source', badge],
+    ['Users', stats.totalUsers],
+    ['Guests', stats.totalGuests],
+    ['Registered', stats.totalRegistered],
+    ['Admins', stats.totalAdmins],
+    ['Farms', stats.totalFarmsCount],
+    ['Sessions', stats.activeSessionsCount]
+  ].map(([l,v])=>`<div class="card"><div class="lbl">${l}</div><div class="val">${v??'—'}</div></div>`).join('');
+
   try{
-    const p = await api('/privacy/processing-activities');
-    document.getElementById('procList').innerHTML = (p.activities||[]).map(a=>
-      `<div style="margin-bottom:10px"><b>${a.name}</b><div class="hint">${a.purpose}<br/>Basis: ${a.legal_basis} · Retention: ${a.retention}</div></div>`
+    let activities = [];
+    try{
+      const p = await api('/privacy/processing-activities');
+      activities = p.activities || [];
+    }catch(_){
+      activities = await supabaseRest('processing_activities?select=*').catch(()=>[]);
+    }
+    document.getElementById('procList').innerHTML = activities.map(a=>
+      `<div style="margin-bottom:10px"><b>${escapeHtml(a.name)}</b><div class="hint">${escapeHtml(a.purpose)}<br/>Basis: ${escapeHtml(a.legal_basis)} · Retention: ${escapeHtml(a.retention)}</div></div>`
     ).join('') || '<p class="hint">No processing activities seeded yet.</p>';
   }catch(e){
-    document.getElementById('procList').innerHTML = '<p class="hint">GDPR register loads from API when backend is online. Local admin access is active for control-plane setup.</p>';
+    document.getElementById('procList').innerHTML = '<p class="hint">GDPR register loaded from local control plane.</p>';
   }
 }
 
 async function loadUsers(){
   const q = document.getElementById('userSearch').value || '';
   try{
-    const data = await api('/users?page=1&limit=50' + (q ? '&search='+encodeURIComponent(q) : ''));
-    document.getElementById('userRows').innerHTML = (data.users||[]).map(u=>`
+    let usersList = [];
+    try{
+      const data = await api('/users?page=1&limit=50' + (q ? '&search='+encodeURIComponent(q) : ''));
+      usersList = data.users || [];
+    }catch(_){
+      let endpoint = 'users?select=*&order=created_at.desc&limit=50';
+      if(q) endpoint += `&or=(email.ilike.*${encodeURIComponent(q)}*,display_name.ilike.*${encodeURIComponent(q)}*)`;
+      usersList = await supabaseRest(endpoint);
+    }
+    document.getElementById('userRows').innerHTML = (usersList||[]).map(u=>`
       <tr>
-        <td><div>${u.displayName||u.display_name||'—'}</div><div class="mono" style="color:var(--muted)">${u.email||'guest'}</div></td>
+        <td><div>${escapeHtml(u.displayName||u.display_name||'—')}</div><div class="mono" style="color:var(--muted)">${escapeHtml(u.email||'guest')}</div></td>
         <td><span class="badge ${u.role}">${u.role}</span></td>
-        <td>${u.authProvider||u.auth_provider||'—'}</td>
-        <td>${u.lastLoginAt||u.last_login_at||'—'}</td>
+        <td>${escapeHtml(u.authProvider||u.auth_provider||'—')}</td>
+        <td>${escapeHtml(u.lastLoginAt||u.last_login_at||u.created_at||'—')}</td>
         <td><button class="ghost" data-uid="${u.id}">View</button></td>
-      </tr>`).join('');
+      </tr>`).join('') || '<tr><td colspan="5">No users found.</td></tr>';
     document.querySelectorAll('#userRows button[data-uid]').forEach(btn=>{
       btn.onclick=()=>showUser(btn.dataset.uid);
     });
   }catch(e){
-    document.getElementById('userRows').innerHTML = `<tr><td colspan="5">User directory requires live API. (${e.message})</td></tr>`;
+    document.getElementById('userRows').innerHTML = `<tr><td colspan="5">User directory requires live API or Supabase Key. (${escapeHtml(e.message)})</td></tr>`;
   }
 }
 document.getElementById('btnSearchUsers').onclick = loadUsers;
@@ -640,7 +773,16 @@ async function showUser(id){
   const box = document.getElementById('userDetail');
   box.classList.remove('hidden');
   try{
-    const d = await api('/users/'+id);
+    let d = null;
+    try{
+      d = await api('/users/'+id);
+    }catch(_){
+      const uRes = await supabaseRest('users?id=eq.'+id);
+      const user = uRes[0] || {};
+      const farms = await supabaseRest('farms?user_id=eq.'+id).catch(()=>[]);
+      const sessions = await supabaseRest('user_sessions?user_id=eq.'+id).catch(()=>[]);
+      d = { user, farms, sessions };
+    }
     const sessions = d.sessions || d.userSessions || [];
     state.pins = sessions.map(s=>({
       label: (s.geo_location&&s.geo_location.city)||'Session',
@@ -657,12 +799,44 @@ function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({ '&':'&amp;','<
 
 async function loadPrivacy(){
   try{
-    const data = await api('/privacy/requests');
-    document.getElementById('privRows').innerHTML = (data.requests||[]).map(r=>`
-      <tr><td>${r.request_type}</td><td>${r.email||r.user_id}</td><td>${r.status}</td><td>${r.legal_deadline||''}</td></tr>
+    let requests = [];
+    try{
+      const data = await api('/privacy/requests');
+      requests = data.requests || [];
+    }catch(_){
+      requests = await supabaseRest('privacy_requests?select=*&order=created_at.desc&limit=50').catch(()=>[]);
+    }
+    document.getElementById('privRows').innerHTML = (requests||[]).map(r=>`
+      <tr><td>${escapeHtml(r.request_type)}</td><td>${escapeHtml(r.email||r.user_id)}</td><td>${escapeHtml(r.status)}</td><td>${escapeHtml(r.legal_deadline||'')}</td></tr>
     `).join('') || '<tr><td colspan="4">No open requests</td></tr>';
   }catch(e){
-    document.getElementById('privRows').innerHTML = `<tr><td colspan="4">${e.message}</td></tr>`;
+    document.getElementById('privRows').innerHTML = `<tr><td colspan="4">${escapeHtml(e.message)}</td></tr>`;
+  }
+}
+
+async function loadAudit(){
+  try{
+    let logs = [];
+    try{
+      const data = await api('/audit-logs');
+      logs = data.logs || [];
+    }catch(_){
+      logs = await supabaseRest('admin_audit_logs?select=*&order=created_at.desc&limit=50').catch(()=>[]);
+    }
+    const el = document.getElementById('auditRows');
+    if(el){
+      el.innerHTML = (logs||[]).map(l=>`
+        <tr>
+          <td>${escapeHtml(l.created_at||'')}</td>
+          <td>${escapeHtml(l.action||'')}</td>
+          <td>${escapeHtml(l.reason||l.details||'')}</td>
+          <td>${maskIp(l.ip_address)}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="4">No audit logs recorded</td></tr>';
+    }
+  }catch(e){
+    const el = document.getElementById('auditRows');
+    if(el) el.innerHTML = `<tr><td colspan="4">${escapeHtml(e.message)}</td></tr>`;
   }
 }
 
@@ -815,6 +989,115 @@ loadOverview = async function(){
     }
   }
 };
+
+function renderDataSourceView(){
+  const sUrl = document.getElementById('dsSupabaseUrl');
+  const sKey = document.getElementById('dsSupabaseKey');
+  const aBase = document.getElementById('dsApiBase');
+  const badge = document.getElementById('dsActiveModeBadge');
+  const desc = document.getElementById('dsActiveModeDesc');
+
+  if(sUrl) sUrl.value = state.supabaseUrl || localStorage.getItem('searchO2_supabase_url') || 'https://plvieqzmwwjcjyvwyczl.supabase.co';
+  if(sKey) sKey.value = state.supabaseKey || localStorage.getItem('searchO2_supabase_key') || '';
+  if(aBase) aBase.value = state.apiBase || localStorage.getItem('searchO2_admin_api') || '/api';
+
+  if(badge && desc){
+    if(state.serverOnline){
+      badge.textContent = '⚡ Express Backend API Active';
+      badge.style.background = '#123328'; badge.style.color = 'var(--ok)';
+      desc.textContent = 'Connected to Express backend at ' + (state.apiBase||'/api') + '. Serving live stats, telemetry & presence.';
+    } else if(state.supabaseKey){
+      badge.textContent = '🟢 Supabase Direct Active';
+      badge.style.background = '#1a2744'; badge.style.color = 'var(--acc)';
+      desc.textContent = 'Querying Supabase PostgREST directly (' + state.supabaseUrl + '). Live tables and metrics accessible without proxy.';
+    } else {
+      badge.textContent = '⚠️ Local Vault Only (Offline)';
+      badge.style.background = '#3a2e12'; badge.style.color = 'var(--warn)';
+      desc.textContent = 'Backend is offline and no Supabase API key is configured. Enter Supabase key below to grab live data immediately.';
+    }
+  }
+}
+
+// Handler for Login Screen Config Tab
+const btnLoginSaveConfig = document.getElementById('btnLoginSaveConfig');
+if(btnLoginSaveConfig){
+  btnLoginSaveConfig.onclick = async ()=>{
+    const sUrl = (document.getElementById('loginSupabaseUrl').value||'').trim();
+    const sKey = (document.getElementById('loginSupabaseKey').value||'').trim();
+    const aBase = (document.getElementById('loginApiBase').value||'').trim();
+    const status = document.getElementById('loginConfigStatus');
+
+    if(sUrl){ state.supabaseUrl = sUrl; localStorage.setItem('searchO2_supabase_url', sUrl); }
+    if(sKey){ state.supabaseKey = sKey; localStorage.setItem('searchO2_supabase_key', sKey); }
+    if(aBase){ state.apiBase = aBase; localStorage.setItem('searchO2_admin_api', aBase); }
+
+    status.innerHTML = '<span style="color:var(--gold)">Testing connection…</span>';
+    try{
+      await probeApi();
+      if(state.serverOnline){
+        status.innerHTML = '<span style="color:var(--ok)">✓ Express Backend Online (' + state.apiBase + ')!</span>';
+      } else if(state.supabaseKey){
+        const res = await supabaseRest('users?select=id&limit=1');
+        status.innerHTML = '<span style="color:var(--ok)">✓ Supabase Connected! Found ' + res.length + '+ users. Ready to view.</span>';
+      } else {
+        status.innerHTML = '<span style="color:var(--warn)">Saved. Enter Supabase key or start backend to enable live data.</span>';
+      }
+    }catch(e){
+      status.innerHTML = '<span style="color:var(--bad)">Connection failed: ' + escapeHtml(e.message) + '</span>';
+    }
+  };
+}
+
+// Handler for Dashboard Datasource View
+const btnTestSupabase = document.getElementById('btnTestSupabase');
+if(btnTestSupabase){
+  btnTestSupabase.onclick = async ()=>{
+    const sUrl = (document.getElementById('dsSupabaseUrl').value||'').trim();
+    const sKey = (document.getElementById('dsSupabaseKey').value||'').trim();
+    const status = document.getElementById('dsSupabaseStatus');
+
+    if(sUrl){ state.supabaseUrl = sUrl; localStorage.setItem('searchO2_supabase_url', sUrl); }
+    if(sKey){ state.supabaseKey = sKey; localStorage.setItem('searchO2_supabase_key', sKey); }
+
+    status.innerHTML = '<span style="color:var(--gold)">Testing Supabase REST…</span>';
+    try{
+      const users = await supabaseRest('users?select=id');
+      const farms = await supabaseRest('farms?select=id').catch(()=>[]);
+      status.innerHTML = '<span style="color:var(--ok)">✓ Supabase Connected! ' + users.length + ' users, ' + farms.length + ' farms detected.</span>';
+      renderDataSourceView();
+      loadOverview();
+    }catch(e){
+      status.innerHTML = '<span style="color:var(--bad)">❌ Supabase error: ' + escapeHtml(e.message) + '</span>';
+    }
+  };
+}
+
+const btnTestApi = document.getElementById('btnTestApi');
+if(btnTestApi){
+  btnTestApi.onclick = async ()=>{
+    const aBase = (document.getElementById('dsApiBase').value||'').trim();
+    const status = document.getElementById('dsApiStatus');
+    if(aBase){ state.apiBase = aBase; localStorage.setItem('searchO2_admin_api', aBase); }
+
+    status.innerHTML = '<span style="color:var(--gold)">Probing backend /api/health…</span>';
+    try{
+      const hUrl = (state.apiBase||'/api').replace(/\/$/,'') + '/health';
+      const r = await fetch(hUrl);
+      const ct = r.headers.get('content-type')||'';
+      if(!ct.includes('application/json')){
+        throw new Error('Endpoint returned HTML (' + r.status + '). Ensure reverse-proxy is configured for ' + state.apiBase);
+      }
+      const data = await r.json();
+      status.innerHTML = '<span style="color:var(--ok)">✓ Express Backend Healthy! Database: ' + data.database + '</span>';
+      state.serverOnline = true;
+      state.mode = 'server';
+      renderDataSourceView();
+      loadOverview();
+    }catch(e){
+      status.innerHTML = '<span style="color:var(--bad)">❌ Backend unreachable: ' + escapeHtml(e.message) + '</span>';
+    }
+  };
+}
 
 window.addEventListener('resize',()=>OsmMap.resize());
 OsmMap.init();
