@@ -66,11 +66,14 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
 .zoom-btn{width:42px;height:42px;border-radius:12px;border:1.5px solid var(--border);background:rgba(8,20,12,0.92);color:#E8F5E9;font-weight:900;cursor:pointer;backdrop-filter:blur(6px);transition:all .15s}
 .zoom-btn.active{border-color:var(--teal);color:var(--teal);background:rgba(0,230,118,0.15)}
 
-/* Task Capsule Bottom Center */
+/* Task Capsule Bottom-Left Sticky HUD */
 .task-capsule{
-  position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
-  width:min(540px,92vw);background:var(--card);border:1.5px solid var(--border);
+  position:absolute;bottom:20px;left:20px;transform:none;
+  width:min(440px,calc(100vw - 40px));background:var(--card);border:1.5px solid var(--border);
   border-radius:18px;padding:10px 16px;z-index:22;backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,0.55);
+}
+@media (max-width: 768px){
+  .task-capsule{bottom:12px;left:12px;width:min(400px,calc(100vw - 24px));padding:8px 12px}
 }
 .task-capsule h4{font-family:'Baloo 2',sans-serif;font-size:0.95rem;color:var(--gold);margin-bottom:3px;display:flex;align-items:center;gap:6px}
 .task-capsule p{font-size:0.78rem;color:#C8E6C9;line-height:1.35}
@@ -461,10 +464,10 @@ const SITES = [
   {id:'flower_oval', x:835,  y:755, icon:'🌸', title:'Triangular 3-Oval Flower Garden', sub:'Volumetric 3D Floral Terraces · Bee Hotel & Honey Bank', cat:'flower', color:'#FF4081', action:'flower'},
   {id:'bbq',         x:1760, y:380, markerX:1765, markerY:235, icon:'🍖', title:'Hilltop Tourist BBQ & Food Stand', sub:'Panoramic Jausenstation · 4 Fire Pits & 7 Park Benches', cat:'trade', color:'#FF7043', action:'bbq'},
   {id:'pond',      x:630,  y:870, icon:'💧', title:'Living Waters Alpine Lake System', sub:'2 Joined Glacial Basins · Fish Hatchery & Duck Aviary', cat:'water', color:'#29B6F6', action:'pond'},
-  {id:'crew',      x:1282, y:541, icon:'🧑‍🌾', title:'Crew Shed & Labour HQ',        sub:'Alpine Timber Lodge & Labour Board',     cat:'labour',    color:'#FFD54F', action:'crew'},
+  {id:'crew',      x:1220, y:465, icon:'🧑‍🌾', title:'Crew Shed & Labour HQ',        sub:'Alpine Timber Lodge & Labour Board · Central Roadside', cat:'labour', color:'#FFD54F', action:'crew'},
   {id:'juice',     x:1306, y:601, icon:'🧃', title:'Hof-Mosterei & Juice Bar',      sub:'Cold-Pressed Cider Press & Terrace',     cat:'trade',     color:'#FF7043', action:'juice'},
   {id:'restaurant',x:1620, y:530, icon:'🍽️', title:'Alpenhof Gasthof & Stuben',    sub:'Alpine Restaurant, Timber Terrace & Grape Juice Silo', cat:'trade', color:'#EF5350', action:'restaurant'},
-  {id:'gate',      x:1544, y:794, icon:'🚪', title:'Main Entrance Gate',            sub:'Carved Timber Arch · Willkommen',        cat:'infra',     color:'#B0BEC5', action:'gate'},
+  {id:'gate',      x:1680, y:760, icon:'🚪', title:'Main Entrance Gate',            sub:'Traditional Bavarian Torbogen Arch · Willkommen', cat:'infra', color:'#B0BEC5', action:'gate'},
   {id:'vineyard',  x:1435, y:380, icon:'🍇', title:'Bavarian Heritage Vineyard',    sub:'3×3 Terraced Beds · 108 Estate Grapevines',cat:'fruit', color:'#7B1FA2', action:'vine'},
   {id:'bridge',    x:1625, y:230, icon:'🌉', title:'Alpine Wooden Overbridge',      sub:'Connected Timber Walking Bridge to Distant Hilltop Turbine', cat:'infra', color:'#8D6E63', action:'bridge'},
   {id:'cattle',    x:1360, y:255, icon:'🐄', title:'Cattle Pasture Enclosure',      sub:'Hillside Post-&-Rail · Simmental Dairy, Sheep & Goats', cat:'livestock', color:'#8D6E63', action:'cattle'},
@@ -591,20 +594,11 @@ function toast(msg){
   setTimeout(() => t.classList.remove('show'), 2400);
 }
 
-function openModal(html, wide, isBottomLeft){
+function openModal(html, wide){
   const m = document.getElementById('modal');
   const c = document.getElementById('modalBody');
-  const isChapterJourney = isBottomLeft || (typeof html === 'string' && (
-    html.includes('Chapter') || html.includes('Masterplan') || html.includes('Recall') || html.includes('Why Alpenhof') || html.includes('Journey')
-  ));
-
-  if (isChapterJourney) {
-    m.classList.add('align-bottom-left');
-    c.className = 'modal-card' + (wide ? ' wide' : '') + ' bottom-left';
-  } else {
-    m.classList.remove('align-bottom-left');
-    c.className = 'modal-card' + (wide ? ' wide' : '');
-  }
+  m.classList.remove('align-bottom-left');
+  c.className = 'modal-card' + (wide ? ' wide' : '');
   c.innerHTML = html;
   m.classList.add('open');
 }
@@ -614,7 +608,7 @@ function closeModal(){
   m.classList.remove('open');
   m.classList.remove('align-bottom-left');
   const c = document.getElementById('modalBody');
-  if (c) c.classList.remove('bottom-left');
+  if (c) c.className = 'modal-card';
 }
 document.getElementById('modal').addEventListener('click', e => {
   if (e.target.id === 'modal') closeModal();
@@ -1053,19 +1047,21 @@ function drawRoadNetwork(ctx){
   ctx.lineJoin = 'round';
 
   const roadSegments = [
-    // 1. Main Gate to Orchard Terrace Crossroads
-    [[1544, 794], [1280, 680], [980, 680], [700, 650], [530, 650], [330, 650]],
-    // 2. Central Valley Road: Crossroads past Veg Garden to Timber Barn
-    [[980, 680], [1050, 560], [1040, 410], [933, 270]],
-    // 3. Branch from Central Valley to Crew Lodge & Gasthof Stuben at Road Corner
-    [[990, 560], [1160, 560], [1282, 550], [1330, 535], [1620, 530]],
-    // 4. North Ridge Track: Barn to BESS & West Wind Turbine
+    // 1. Main Entrance Track entering through Bavarian Gate into Mud Crossroads
+    [[1900, 860], [1680, 760]],
+    // 2. Mud Crossroads past West Lake towards Orchard Terrace
+    [[1680, 760], [1500, 730], [1280, 680], [980, 680], [700, 650], [530, 650], [330, 650]],
+    // 3. Central Valley Road: Crossroads past Veg Garden & Crew Lodge to Timber Barn
+    [[933, 270], [1050, 320], [1120, 390], [1145, 465], [1145, 550], [1080, 630], [980, 680]],
+    // 4. Branch from Central Road past Crew Lodge to Juice Bar & Gasthof Stuben
+    [[1145, 465], [1200, 510], [1306, 550], [1620, 530]],
+    // 5. North Ridge Track: Barn to BESS & West Wind Turbine
     [[933, 270], [820, 240], [710, 226], [480, 190], [316, 170]],
-    // 5. Eastern Village Plaza Loop from Main Gate to Gasthof Stuben Corner
-    [[1544, 794], [1590, 680], [1620, 530]],
-    // 6. Western Orchard Terrace connector
+    // 6. Eastern Village Plaza Loop from Mud Crossroads Gate to Gasthof Stuben
+    [[1680, 760], [1660, 670], [1620, 530]],
+    // 7. Western Orchard Terrace connector
     [[330, 650], [330, 430], [330, 280]],
-    // 7. Southern Branch: Orchard Crossroads down to West Lake Jetty
+    // 8. Southern Branch: Orchard Crossroads down to West Lake Jetty
     [[530, 650], [580, 715], [630, 775]]
   ];
 
@@ -2179,61 +2175,76 @@ function drawJuiceBar(ctx, cx, cy, built){
   ctx.restore();
 }
 
-/* 7. Crew Shed & Labour HQ at (1282, 541) */
+/* 7. Crew Shed & Labour HQ at (1080, 465) Beside Central Valley Road */
 function drawCrewLodge(ctx, cx, cy, built){
   ctx.save();
   ctx.translate(cx, cy);
   ctx.globalAlpha = built ? 1 : 0.50;
 
-  // Stretched ground shadow up towards vineyard green meadow
-  ctx.fillStyle = 'rgba(0,0,0,0.32)';
+  // Ground ambient shadow on green meadow
+  ctx.fillStyle = 'rgba(0,0,0,0.30)';
   ctx.beginPath();
-  ctx.ellipse(8, 10, 68, 26, -0.15, 0, Math.PI * 2);
+  ctx.ellipse(4, 12, 48, 20, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // STRETCHED NORTH-EAST TIMBER DORMER WING (TOWARDS VINEYARD SIDE MEADOW)
-  isoBox(ctx, 24, -16, 38, 28, 22, '#795548', '#6D4C41', '#5D4037', '#3E2723');
-  isoRoof(ctx, 24, -38, 42, 32, 0, 15, '#C62828', '#B71C1C', '#880E4F');
-  // Vineyard-facing dormer attic window
-  ctx.fillStyle = '#00E5FF'; ctx.fillRect(20, -30, 8, 7);
-  ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 1; ctx.strokeRect(20, -30, 8, 7);
+  // MAIN TIMBER LODGE BODY (Facing West toward Road and Vegetable Garden)
+  isoBox(ctx, 4, 0, 52, 32, 24, '#6D4C41', '#5D4037', '#4E342E', '#271206');
+  // High-pitched Bavarian Alpine Hip Roof with cedar shingles
+  isoRoof(ctx, 4, -24, 58, 38, 0, 18, '#C62828', '#B71C1C', '#880E4F');
 
-  // MAIN TIMBER LODGE BODY
-  isoBox(ctx, -8, 2, 58, 34, 26, '#6D4C41', '#5D4037', '#4E342E', '#271206');
-  isoRoof(ctx, -8, -24, 64, 40, 0, 18, '#C62828', '#B71C1C', '#880E4F');
-
-  // Covered Timber Veranda & Tool Porch connecting towards meadow
-  isoBox(ctx, 14, 18, 32, 16, 5, '#8D6E63', '#795548', '#5D4037');
-  // Porch posts
-  ctx.strokeStyle = '#4E342E'; ctx.lineWidth = 2.5;
+  // Covered Veranda Porch on West side (road-facing)
+  isoBox(ctx, -22, 4, 18, 26, 4, '#8D6E63', '#795548', '#5D4037');
+  // Porch rooflet
+  isoRoof(ctx, -22, -10, 20, 28, 0, 8, '#B71C1C', '#880E4F', '#4A148C');
+  // Porch timber posts
+  ctx.strokeStyle = '#4E342E'; ctx.lineWidth = 2.2;
   ctx.beginPath();
-  ctx.moveTo(0, 14); ctx.lineTo(0, -6);
-  ctx.moveTo(28, 14); ctx.lineTo(28, -6);
+  ctx.moveTo(-28, 14); ctx.lineTo(-28, -6);
+  ctx.moveTo(-28, -6); ctx.lineTo(-28, -26);
   ctx.stroke();
 
-  // Windows & Bavarian Blue Door
-  ctx.fillStyle = '#1565C0'; ctx.fillRect(-13, 2, 10, 15);
-  ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(-5, 9, 1.2, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#00E5FF'; ctx.fillRect(-26, -10, 8, 8); ctx.fillRect(2, -10, 8, 8);
+  // Road-facing Bavarian Blue Door
+  ctx.fillStyle = '#1565C0'; ctx.fillRect(-22, -4, 8, 14);
+  ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(-16, 2, 1.2, 0, Math.PI * 2); ctx.fill();
 
-  // Stacked firewood logs & vineyard pruning shears along upper timber wall
+  // Attic Dormer Window overlooking Vegetable Garden across Road
+  ctx.fillStyle = '#00E5FF'; ctx.fillRect(-4, -28, 8, 7);
+  ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 1; ctx.strokeRect(-4, -28, 8, 7);
+
+  // Fieldstone Chimney with gentle smoke wisp
+  isoBox(ctx, 22, -26, 8, 8, 14, '#78909C', '#546E7A', '#37474F');
+  if (built) {
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.beginPath(); ctx.arc(22, -44, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(25, -50, 4.5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Stacked firewood logs along south timber wall
   ctx.fillStyle = '#8D6E63';
-  for (let lx = 6; lx <= 24; lx += 4) {
+  for (let lx = -6; lx <= 18; lx += 4) {
     ctx.beginPath(); ctx.arc(lx, 15, 1.8, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(lx, 12, 1.8, 0, Math.PI * 2); ctx.fill();
   }
+
+  // Labour Guild Notice Board on road-facing veranda post
+  ctx.fillStyle = '#D7CCC8'; ctx.fillRect(-30, -2, 5, 7);
+  ctx.strokeStyle = '#4E342E'; ctx.lineWidth = 0.8; ctx.strokeRect(-30, -2, 5, 7);
 
   ctx.restore();
 }
 
 /* 8. Twin Flower Terraces at (810, 715) and (990, 735) */
 /* ================= 3D VOLUMETRIC VEGETABLE SPRITE RENDERER ================= */
-function drawVegPlant(ctx, px, py, spKey, status, time){
+function drawVegPlant(ctx, px, py, spKey, status, time, progress){
   ctx.save();
   ctx.translate(px, py);
 
-  // Enlarged 3D isometric volumetric scale factor (1.30x)
-  const scale = 1.30;
+  const animTime = (typeof time === 'number') ? time : ((window.AlpenMap && window.AlpenMap.time) || 0);
+  const sway = Math.sin(animTime * 2.2 + px * 0.05 + py * 0.05) * 0.04;
+  ctx.rotate(sway);
+
+  // Volumetric scale factor
+  const scale = 1.25;
   ctx.scale(scale, scale);
 
   // Soft ambient ground shadow with rich organic compost mound
@@ -2242,53 +2253,59 @@ function drawVegPlant(ctx, px, py, spKey, status, time){
   ctx.ellipse(0, 3.8, 11.5, 5.2, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Dark organic compost soil mound with 3D isometric layered depth
+  // Layered dark organic compost soil mound
   ctx.fillStyle = '#2D1810';
-  ctx.beginPath();
-  ctx.ellipse(0, 1.8, 9.5, 4.2, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 1.8, 9.5, 4.2, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#4E342E';
-  ctx.beginPath();
-  ctx.ellipse(-1.2, 0.4, 7.5, 3.0, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-1.2, 0.4, 7.5, 3.0, 0, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#6D4C41';
-  ctx.beginPath();
-  ctx.ellipse(-1.8, -0.6, 4.8, 1.8, -0.15, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-1.8, -0.6, 4.8, 1.8, -0.15, 0, Math.PI * 2); ctx.fill();
 
   const isMature = status === 'mature';
   const isFlowering = status === 'flowering';
   const isGrowing = status === 'growing';
   const isSprout = status === 'sprout';
 
+  // --- STAGE 1: SPROUT (Emerging Cotyledons & Green Shoots) ---
   if (isSprout) {
-    // Sprouting: Two plump volumetric cotyledon shoots with specular sheen
     ctx.fillStyle = '#558B2F';
-    ctx.beginPath(); ctx.ellipse(-3.2, -2.4, 3.2, 5.0, -0.42, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(3.2, -2.4, 3.2, 5.0, 0.42, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-3.0, -2.2, 2.8, 4.5, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(3.0, -2.2, 2.8, 4.5, 0.4, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#9CCC65';
-    ctx.beginPath(); ctx.ellipse(-2.8, -3.2, 2.0, 3.2, -0.42, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(2.8, -3.2, 2.0, 3.2, 0.42, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-2.5, -2.8, 1.8, 2.8, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(2.5, -2.8, 1.8, 2.8, 0.4, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#DCEDC8';
-    ctx.beginPath(); ctx.arc(0, -4.5, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -4.2, 1.6, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     return;
   }
 
+  // --- STAGE 2: GROWING (Foliage Expansion by Species) ---
+  if (isGrowing) {
+    ctx.fillStyle = '#2E7D32';
+    ctx.beginPath(); ctx.ellipse(-5.0, -2.5, 5.5, 3.8, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(5.0, -2.5, 5.5, 3.8, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#43A047';
+    ctx.beginPath(); ctx.ellipse(0, -5.5, 4.8, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#81C784';
+    ctx.beginPath(); ctx.arc(0, -7.0, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  // --- STAGES 3 & 4: FLOWERING & MATURE FRUITING BY SPECIES ---
+
   // 1. Kürbis (Cucurbita maxima · Alpine Hokkaido Pumpkin)
   if (spKey === 'kuerbis') {
-    // Broad lobed dark emerald pumpkin vine leaves with volumetric shading
     ctx.fillStyle = '#1B5E20';
     ctx.beginPath(); ctx.ellipse(-7.5, -1.2, 7.5, 5.2, -0.32, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(7.5, -2.5, 7.5, 5.2, 0.32, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2E7D32';
     ctx.beginPath(); ctx.ellipse(0, -7.5, 6.5, 5.0, 0, 0, Math.PI * 2); ctx.fill();
-    // Vine tendrils
     ctx.strokeStyle = '#43A047'; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(8.5, -10, 11.5, -6); ctx.stroke();
 
     if (isFlowering) {
-      // Large golden 5-pointed pumpkin blossom with deep orange throat
       ctx.fillStyle = '#FDD835';
       ctx.beginPath();
       for (let i = 0; i < 5; i++) {
@@ -2303,39 +2320,30 @@ function drawVegPlant(ctx, px, py, spKey, status, time){
       ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#E65100'; ctx.beginPath(); ctx.arc(0, -5, 2.2, 0, Math.PI * 2); ctx.fill();
     } else if (isMature) {
-      // Plump ribbed 3D isometric Hokkaido pumpkin
       ctx.fillStyle = '#BF360C'; ctx.beginPath(); ctx.ellipse(0, -3.8, 12.5, 9.5, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#E65100'; ctx.beginPath(); ctx.ellipse(0, -4.2, 11.8, 8.8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#F57C00'; ctx.beginPath(); ctx.ellipse(0, -4.8, 11.0, 8.0, 0, 0, Math.PI * 2); ctx.fill();
-      // Rib indents
       ctx.strokeStyle = '#D84315'; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.arc(-5.5, -4.5, 6.5, 0.4, 2.7); ctx.stroke();
       ctx.beginPath(); ctx.arc(5.5, -4.5, 6.5, 0.4, 2.7); ctx.stroke();
-      // Pumpkin stem cap
       ctx.fillStyle = '#33691E'; ctx.fillRect(-1.5, -13.5, 3.2, 5.0);
     }
   }
 
   // 2. Zucchini (Cucurbita pepo · Bayerische Zucchini)
   else if (spKey === 'zucchini') {
-    // Upright fan of speckled palmate leaves
     ctx.fillStyle = '#1B5E20';
     ctx.beginPath(); ctx.ellipse(-6.5, -5.5, 6.0, 10.0, -0.5, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(6.5, -5.5, 6.0, 10.0, 0.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#2E7D32';
-    ctx.beginPath(); ctx.ellipse(0, -9.0, 5.5, 9.0, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.ellipse(0, -9.0, 5.5, 9.0, 0, 0, Math.PI * 2); ctx.fill();
 
     if (isFlowering) {
-      ctx.fillStyle = '#FDD835'; ctx.beginPath(); ctx.arc(3.5, -6.5, 4.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#FB8C00'; ctx.beginPath(); ctx.arc(3.5, -6.5, 2.0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FDD835'; ctx.beginPath(); ctx.arc(3.5, -6.5, 5.0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FB8C00'; ctx.beginPath(); ctx.arc(3.5, -6.5, 2.2, 0, Math.PI * 2); ctx.fill();
     } else if (isMature) {
-      // Long glossy curved dark-emerald zucchini fruit
-      ctx.fillStyle = '#1B5E20';
-      ctx.beginPath(); ctx.ellipse(4.5, -1.5, 11.0, 4.0, 0.35, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#2E7D32';
-      ctx.beginPath(); ctx.ellipse(4.5, -2.2, 10.0, 3.2, 0.35, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#A5D6A7';
-      ctx.beginPath(); ctx.ellipse(2.5, -3.2, 6.0, 1.2, 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1B5E20'; ctx.beginPath(); ctx.ellipse(4.5, -1.5, 11.0, 4.0, 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.ellipse(4.5, -2.2, 10.0, 3.2, 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#A5D6A7'; ctx.beginPath(); ctx.ellipse(2.5, -3.2, 6.0, 1.2, 0.35, 0, Math.PI * 2); ctx.fill();
     }
   }
 
@@ -2344,13 +2352,11 @@ function drawVegPlant(ctx, px, py, spKey, status, time){
     ctx.fillStyle = '#1B5E20';
     ctx.beginPath(); ctx.ellipse(-8, -2, 8.5, 5.0, -0.4, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(8, -2, 8.5, 5.0, 0.4, 0, Math.PI * 2); ctx.fill();
-    // Thick stalk
     ctx.fillStyle = '#558B2F'; ctx.fillRect(-3, -8, 6, 9);
-    // Dense granular head (3 crowns)
     if (isFlowering) {
       ctx.fillStyle = '#FFEE58';
       [-4.5, 0, 4.5].forEach(ox => { ctx.beginPath(); ctx.arc(ox, -12, 4.5, 0, Math.PI * 2); ctx.fill(); });
-    } else if (isGrowing || isMature) {
+    } else if (isMature) {
       ctx.fillStyle = '#0E3E14';
       [-5, 0, 5].forEach(ox => { ctx.beginPath(); ctx.arc(ox, -10.5, 6.5, 0, Math.PI * 2); ctx.fill(); });
       ctx.fillStyle = '#1B5E20';
@@ -2363,14 +2369,12 @@ function drawVegPlant(ctx, px, py, spKey, status, time){
 
   // 4. Spargel (Asparagus officinalis · Königs-Spargel)
   else if (spKey === 'spargel') {
-    // Feathery asparagus ferns
     ctx.strokeStyle = '#33691E'; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(-12, -10, -15, -16); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(6, 0); ctx.quadraticCurveTo(12, -10, 15, -16); ctx.stroke();
-    // Stately purple-tipped spears poking out of sand loam ridge
-    if (isMature || isGrowing) {
+    if (isFlowering || isMature) {
       [-4, 0, 4].forEach((sx, i) => {
-        const sh = 10 + (i % 2) * 5;
+        const sh = isMature ? (12 + (i % 2) * 6) : 8;
         ctx.fillStyle = '#DCEDC8'; ctx.fillRect(sx - 1.6, -sh, 3.2, sh);
         ctx.fillStyle = '#8E24AA'; ctx.beginPath(); ctx.arc(sx, -sh, 2.2, Math.PI, 0); ctx.fill();
         ctx.fillStyle = '#7B1FA2'; ctx.fillRect(sx - 1.2, -sh + 1, 2.4, 2.0);
@@ -2380,27 +2384,28 @@ function drawVegPlant(ctx, px, py, spKey, status, time){
 
   // 5. Sellerie (Apium graveolens var. dulce · Stauden-Sellerie)
   else if (spKey === 'sellerie') {
-    // Upright cluster of crunchy ribbed pale green stalks
     ctx.fillStyle = '#689F38';
     ctx.beginPath(); ctx.ellipse(-5, -6, 4.5, 8.5, -0.25, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(5, -6, 4.5, 8.5, 0.25, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#8BC34A';
-    ctx.beginPath(); ctx.ellipse(0, -8, 5.0, 9.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8BC34A'; ctx.beginPath(); ctx.ellipse(0, -8, 5.0, 9.5, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#DCEDC8';
     [-2, 2].forEach(ox => { ctx.fillRect(ox - 1, -5, 2, 7); });
   }
 
   // 6. Karotte (Daucus carota subsp. sativus · Ochsenherz-Karotte)
   else if (spKey === 'karotte') {
-    // Lacy feathery fern greenery
     ctx.fillStyle = '#2E7D32';
     [-6, 0, 6].forEach(fx => {
       ctx.beginPath(); ctx.ellipse(fx, -9, 3.5, 8.0, fx * 0.05, 0, Math.PI * 2); ctx.fill();
     });
-    // Thick orange crown poking out of ridge
-    ctx.fillStyle = '#D84315'; ctx.beginPath(); ctx.ellipse(0, 0.5, 4.5, 3.0, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FF6F00'; ctx.beginPath(); ctx.ellipse(0, 0, 4.0, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FFA726'; ctx.beginPath(); ctx.ellipse(-1, -0.5, 2.0, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+    if (isFlowering) {
+      ctx.fillStyle = '#FFFDE7'; ctx.beginPath(); ctx.ellipse(0, -15, 5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    if (isMature) {
+      ctx.fillStyle = '#D84315'; ctx.beginPath(); ctx.ellipse(0, 0.5, 4.5, 3.0, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FF6F00'; ctx.beginPath(); ctx.ellipse(0, 0, 4.0, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FFA726'; ctx.beginPath(); ctx.ellipse(-1, -0.5, 2.0, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+    }
   }
 
   // 7. Kartoffel (Solanum tuberosum · Bamberger Hörnchen)
@@ -2409,12 +2414,10 @@ function drawVegPlant(ctx, px, py, spKey, status, time){
     ctx.beginPath(); ctx.ellipse(-6, -3, 6.5, 4.2, -0.3, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(6, -3, 6.5, 4.2, 0.3, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.ellipse(0, -6, 5.5, 4.0, 0, 0, Math.PI * 2); ctx.fill();
-    // Potato flowers
     if (isFlowering) {
-      ctx.fillStyle = '#EDE7F6'; ctx.beginPath(); ctx.arc(0, -9, 2.8, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#FDD835'; ctx.beginPath(); ctx.arc(0, -9, 1.0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#EDE7F6'; ctx.beginPath(); ctx.arc(0, -9, 3.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FDD835'; ctx.beginPath(); ctx.arc(0, -9, 1.2, 0, Math.PI * 2); ctx.fill();
     }
-    // Golden heirloom spuds poking at root base
     if (isMature) {
       ctx.fillStyle = '#6D4C41'; ctx.beginPath(); ctx.ellipse(-4, 2, 4.5, 2.8, 0.2, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#A1887F'; ctx.beginPath(); ctx.ellipse(4, 2, 4.2, 2.6, -0.2, 0, Math.PI * 2); ctx.fill();
@@ -2424,11 +2427,9 @@ function drawVegPlant(ctx, px, py, spKey, status, time){
 
   // 8. Kohl (Brassica oleracea var. capitata · Filderkraut Weißkohl)
   else if (spKey === 'kohl') {
-    // Broad ruffled outer guard leaves
     ctx.fillStyle = '#2E7D32';
     ctx.beginPath(); ctx.ellipse(-7, -2, 7.5, 5.0, -0.4, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(7, -2, 7.5, 5.0, 0.4, 0, Math.PI * 2); ctx.fill();
-    // Dense 3D spherical head
     ctx.fillStyle = '#33691E'; ctx.beginPath(); ctx.arc(0, -4.5, 7.5, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#558B2F'; ctx.beginPath(); ctx.arc(0, -5.0, 6.8, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#7CB342'; ctx.beginPath(); ctx.arc(-1.5, -6.0, 5.0, 0, Math.PI * 2); ctx.fill();
@@ -2444,25 +2445,25 @@ function drawHexagonalVegGarden(ctx, cx, cy, built, time){
   ctx.translate(cx, cy);
   ctx.globalAlpha = built ? 1 : 0.55;
 
-  // Stretched ground ambient shadow under garden, extending towards pond side green meadow
+  // HORIZONTALLY EXTENDED, VERTICALLY REDUCED GARDEN DIMENSIONS
+  // Horizontal half-width: rX = 168px (total width 336px spanning West-East across meadow)
+  // Vertical half-height: rY = 68px (total height 136px, top boundary at y=397 leaving >65px green meadow gap to solar farm)
+  const rX = 148, rY = 64;
+
+  // Ground ambient shadow under horizontally extended garden
   ctx.fillStyle = 'rgba(18, 36, 16, 0.35)';
   ctx.beginPath();
-  ctx.ellipse(8, 26, 172, 118, 1.42, 0, Math.PI * 2);
+  ctx.ellipse(0, 8, rX + 12, rY + 10, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // CLOCKWISE ROTATION: +15° MORE TO THE RIGHT (+1.427 rad = ~81.8°)
-  ctx.rotate(1.427);
-
-  // EXTENDED WIDTH & EXPANDED DIMENSIONS:
-  // rX = 162px (extended width so beds are clearly visible), rY = 106px (stretched bottom towards pond)
-  const rX = 162, rY = 106;
+  // Natural Horizontal Isometric Hexagon with wide points on left (-rX, 0) and right (+rX, 0)
   const hex = [
-    [0, -rY],
-    [rX, -rY * 0.5],
-    [rX, rY * 0.5],
-    [0, rY],
-    [-rX, rY * 0.5],
-    [-rX, -rY * 0.5]
+    [-rX * 0.5, -rY],
+    [ rX * 0.5, -rY],
+    [ rX, 0],
+    [ rX * 0.5, rY],
+    [-rX * 0.5, rY],
+    [-rX, 0]
   ];
 
   // Outer Heavy Stone/Timber Retaining Border
@@ -2470,62 +2471,62 @@ function drawHexagonalVegGarden(ctx, cx, cy, built, time){
   hex.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
   ctx.closePath();
   ctx.fillStyle = '#4E342E'; ctx.fill();
-  ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 5.0; ctx.stroke();
+  ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 4.8; ctx.stroke();
 
   // Bevel edge highlight on north facing borders
-  ctx.strokeStyle = '#8D6E63'; ctx.lineWidth = 2.4;
+  ctx.strokeStyle = '#8D6E63'; ctx.lineWidth = 2.2;
   ctx.beginPath();
-  ctx.moveTo(hex[4][0], hex[4][1]);
-  ctx.lineTo(hex[5][0], hex[5][1]);
+  ctx.moveTo(hex[5][0], hex[5][1]);
   ctx.lineTo(hex[0][0], hex[0][1]);
   ctx.lineTo(hex[1][0], hex[1][1]);
+  ctx.lineTo(hex[2][0], hex[2][1]);
   ctx.stroke();
 
   // Inner Rich Dark Compost Loam Bed
-  const inRX = 152, inRY = 98;
+  const inRX = 138, inRY = 56;
   const innerHex = [
-    [0, -inRY],
-    [inRX, -inRY * 0.5],
-    [inRX, inRY * 0.5],
-    [0, inRY],
-    [-inRX, inRY * 0.5],
-    [-inRX, -inRY * 0.5]
+    [-inRX * 0.5, -inRY],
+    [ inRX * 0.5, -inRY],
+    [ inRX, 0],
+    [ inRX * 0.5, inRY],
+    [-inRX * 0.5, inRY],
+    [-inRX, 0]
   ];
   ctx.beginPath();
   innerHex.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
   ctx.closePath();
   ctx.fillStyle = '#21120B'; ctx.fill();
 
-  // WIDENED Internal Cruciform Gravel Pathways (28px wide)
+  // Internal Cruciform Gravel Pathways (West-East wide path, North-South vertical path)
   ctx.fillStyle = '#D7CCC8';
+  // Horizontal Path: West to East (through entire width)
+  ctx.beginPath();
+  ctx.moveTo(-inRX, -9); ctx.lineTo(inRX, -9); ctx.lineTo(inRX, 9); ctx.lineTo(-inRX, 9);
+  ctx.closePath(); ctx.fill();
   // Vertical Path: North to South
   ctx.beginPath();
-  ctx.moveTo(-14, -inRY); ctx.lineTo(14, -inRY); ctx.lineTo(14, inRY); ctx.lineTo(-14, inRY);
-  ctx.closePath(); ctx.fill();
-  // Horizontal Path: West to East
-  ctx.beginPath();
-  ctx.moveTo(-inRX, -12); ctx.lineTo(inRX, -12); ctx.lineTo(inRX, 12); ctx.lineTo(-inRX, 12);
+  ctx.moveTo(-10, -inRY); ctx.lineTo(10, -inRY); ctx.lineTo(10, inRY); ctx.lineTo(-10, inRY);
   ctx.closePath(); ctx.fill();
 
   // Path stone borders
-  ctx.strokeStyle = '#A1887F'; ctx.lineWidth = 1.6;
+  ctx.strokeStyle = '#A1887F'; ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.moveTo(-14, -inRY); ctx.lineTo(-14, inRY); ctx.moveTo(14, -inRY); ctx.lineTo(14, inRY);
-  ctx.moveTo(-inRX, -12); ctx.lineTo(inRX, -12); ctx.moveTo(-inRX, 12); ctx.lineTo(inRX, 12);
+  ctx.moveTo(-inRX, -9); ctx.lineTo(inRX, -9); ctx.moveTo(-inRX, 9); ctx.lineTo(inRX, 9);
+  ctx.moveTo(-10, -inRY); ctx.lineTo(-10, inRY); ctx.moveTo(10, -inRY); ctx.lineTo(10, inRY);
   ctx.stroke();
 
   // Central Carved Stone Sundial Basin at Crossroads
-  ctx.fillStyle = '#90A4AE'; ctx.beginPath(); ctx.ellipse(0, 0, 13, 8.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#B0BEC5'; ctx.beginPath(); ctx.ellipse(0, -2.5, 10.5, 6.5, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#455A64'; ctx.beginPath(); ctx.arc(0, -2.5, 2.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#90A4AE'; ctx.beginPath(); ctx.ellipse(0, 0, 14, 9, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#B0BEC5'; ctx.beginPath(); ctx.ellipse(0, -2, 11, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#455A64'; ctx.beginPath(); ctx.arc(0, -2, 2.8, 0, Math.PI * 2); ctx.fill();
 
   // 4 Quadrant Beds (2x2) x 12 Plants each = 48 Plant Positions
-  // Spacious placement with generous bed dimensions
+  // Horizontally spread across West-East wings:
   const quadCenters = [
-    { bx: -78, by: -52, bedId: 0 }, // NW Quadrant
-    { bx: 78,  by: -52, bedId: 1 }, // NE Quadrant
-    { bx: -78, by: 52,  bedId: 2 }, // SW Quadrant
-    { bx: 78,  by: 52,  bedId: 3 }  // SE Quadrant
+    { bx: -70, by: -28, bedId: 0 }, // NW Quadrant
+    { bx:  70, by: -28, bedId: 1 }, // NE Quadrant
+    { bx: -70, by:  28, bedId: 2 }, // SW Quadrant
+    { bx:  70, by:  28, bedId: 3 }  // SE Quadrant
   ];
 
   const vegData = (state.vegetables && state.vegetables.beds) ? state.vegetables.beds : null;
@@ -2536,35 +2537,36 @@ function drawHexagonalVegGarden(ctx, cx, cy, built, time){
     for(let r = 0; r < 3; r++){
       for(let c = 0; c < 4; c++){
         const pIdx = r * 4 + c;
-        const colOff = (c - 1.5) * 28.0;
-        const rowOff = (r - 1.0) * 22.0;
+        // Spacious horizontal column spacing and compact vertical row spacing
+        const colOff = (c - 1.5) * 29.0;
+        const rowOff = (r - 1.0) * 13.0;
         const px = q.bx + colOff;
         const py = q.by + rowOff;
 
         const plant = (bed && bed.plants && bed.plants[pIdx]) ? bed.plants[pIdx] : {
           species: ['kuerbis', 'zucchini', 'broccoli', 'spargel', 'sellerie', 'karotte', 'kartoffel', 'kohl'][(q.bedId * 2 + pIdx) % 8],
-          status: 'mature'
+          status: 'mature',
+          progress: 1.0
         };
 
         if (built && plant.species) {
-          drawVegPlant(ctx, px, py, plant.species, plant.status, time);
+          drawVegPlant(ctx, px, py, plant.species, plant.status, time, plant.progress);
         } else {
-          ctx.fillStyle = '#3E2723'; ctx.beginPath(); ctx.ellipse(px, py, 8.5, 4.2, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = '#3E2723'; ctx.beginPath(); ctx.ellipse(px, py, 7.5, 3.8, 0, 0, Math.PI * 2); ctx.fill();
         }
       }
     }
   });
 
-  // Garden Entrance Archway on Southern Border
+  // Garden Entrance Archway on Eastern Border (facing Central Valley road)
   ctx.fillStyle = '#5D4037';
-  ctx.fillRect(-13, rY - 9, 4.0, 13);
-  ctx.fillRect(9, rY - 9, 4.0, 13);
+  ctx.fillRect(rX - 8, -12, 4.0, 24);
   ctx.fillStyle = '#8D6E63';
-  ctx.fillRect(-15, rY - 12, 30, 4.8);
+  ctx.fillRect(rX - 10, -14, 8, 4.5); ctx.fillRect(rX - 10, 9.5, 8, 4.5);
 
-  // Tool bench & watering can near West path
-  ctx.fillStyle = '#6D4C41'; ctx.fillRect(-rX + 10, -16, 18, 5.0);
-  ctx.fillStyle = '#4E342E'; ctx.fillRect(-rX + 11, -11, 2.5, 6.0); ctx.fillRect(-rX + 25, -11, 2.5, 6.0);
+  // Tool bench & watering can near West path edge
+  ctx.fillStyle = '#6D4C41'; ctx.fillRect(-rX + 8, -6, 16, 4.5);
+  ctx.fillStyle = '#4E342E'; ctx.fillRect(-rX + 9, -2, 2.5, 5.0); ctx.fillRect(-rX + 20, -2, 2.5, 5.0);
 
   ctx.restore();
 }
@@ -3112,24 +3114,79 @@ function drawTouristBBQ(ctx, cx, cy, built, stage, time){
 
 
 
+/* 11. Traditional Bavarian Volumetric Main Gate at (1680, 760) */
 function drawMainGate(ctx, cx, cy, built){
   ctx.save();
   ctx.translate(cx, cy);
   ctx.globalAlpha = built ? 1 : 0.55;
 
-  // Stone pillars
-  isoBox(ctx, -28, 0, 14, 14, 38, '#78909C', '#546E7A', '#37474F');
-  isoBox(ctx,  28, 0, 14, 14, 38, '#78909C', '#546E7A', '#37474F');
+  // Ground shadow across road threshold
+  ctx.fillStyle = 'rgba(15, 25, 15, 0.38)';
+  ctx.beginPath(); ctx.ellipse(0, 8, 64, 20, 0, 0, Math.PI * 2); ctx.fill();
 
-  // Carved Timber Portal Arch & Shingle Rooflet
-  ctx.fillStyle = '#4E342E'; ctx.fillRect(-32, -42, 64, 8);
-  isoRoof(ctx, 0, -42, 70, 20, 0, 8, '#6D4C41', '#4E342E', '#5D4037');
+  // MASSIVE ASHLAR LIMESTONE PILLARS (Pillars flanking the mud road)
+  // West Pillar (-46px)
+  isoBox(ctx, -46, 0, 20, 18, 48, '#78909C', '#607D8B', '#455A64', '#37474F');
+  // Pillar plinth base & capital molding
+  isoBox(ctx, -46, 6, 24, 22, 6, '#90A4AE', '#78909C', '#546E7A');
+  isoBox(ctx, -46, -46, 22, 20, 5, '#90A4AE', '#78909C', '#546E7A');
 
-  // Willkommen im Alpenhof Plank
+  // East Pillar (+46px)
+  isoBox(ctx, 46, 0, 20, 18, 48, '#78909C', '#607D8B', '#455A64', '#37474F');
+  isoBox(ctx, 46, 6, 24, 22, 6, '#90A4AE', '#78909C', '#546E7A');
+  isoBox(ctx, 46, -46, 22, 20, 5, '#90A4AE', '#78909C', '#546E7A');
+
+  // HEAVY CARVED TIMBER PORTAL ARCH BEAM (Spanning across the roadway)
+  isoBox(ctx, 0, -48, 108, 22, 12, '#5D4037', '#4E342E', '#3E2723', '#271206');
+
+  // TRADITIONAL BAVARIAN SHINGLE HIP ROOF (Holzschindeldach)
+  isoRoof(ctx, 0, -60, 118, 34, 0, 18, '#8D6E63', '#6D4C41', '#4E342E');
+  // Weathered copper ridge capping with ornamental finials
+  ctx.strokeStyle = '#26A69A'; ctx.lineWidth = 3.0;
+  ctx.beginPath(); ctx.moveTo(-45, -78); ctx.lineTo(45, -78); ctx.stroke();
+  [[-45, -78], [45, -78], [0, -82]].forEach(([fx, fy]) => {
+    ctx.fillStyle = '#80CBC4'; ctx.beginPath(); ctx.arc(fx, fy, 2.8, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // HANGING WROUGHT-IRON SCHMIEDEEISEN LANTERN
+  ctx.strokeStyle = '#263238'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(0, -42); ctx.lineTo(0, -32); ctx.stroke();
+  ctx.fillStyle = '#37474F'; ctx.fillRect(-3.5, -32, 7, 9);
+  // Warm golden amber ambient lantern glow
+  ctx.fillStyle = '#FFE082'; ctx.beginPath(); ctx.arc(0, -27, 2.8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255, 213, 79, 0.45)'; ctx.beginPath(); ctx.arc(0, -27, 8.5, 0, Math.PI * 2); ctx.fill();
+
+  // BAVARIAN COAT OF ARMS / HERALDIC SHIELD (Bayerische Rauten)
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  ctx.moveTo(0, -56); ctx.lineTo(9, -51); ctx.lineTo(9, -43); ctx.lineTo(0, -38); ctx.lineTo(-9, -43); ctx.lineTo(-9, -51);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#FFD54F'; ctx.lineWidth = 1.2; ctx.stroke();
+  // Blue diamond lozenges
+  ctx.fillStyle = '#1565C0';
+  ctx.beginPath(); ctx.moveTo(0, -53); ctx.lineTo(4, -49); ctx.lineTo(0, -45); ctx.lineTo(-4, -49); ctx.closePath(); ctx.fill();
+
+  // CARVED GOLDEN WELCOME PLAQUE ON TIMBER BEAM
   ctx.fillStyle = built ? '#FFD54F' : '#CFD8DC';
-  ctx.font = '900 10.5px Nunito';
+  ctx.font = '900 11.5px Nunito';
   ctx.textAlign = 'center';
-  ctx.fillText('WILLKOMMEN IM ALPENHOF', 0, -26);
+  ctx.shadowColor = 'rgba(0,0,0,0.85)';
+  ctx.shadowBlur = 4;
+  ctx.fillText('WILLKOMMEN IM ALPENHOF', 0, -43);
+  ctx.shadowBlur = 0;
+
+  // RUSTIC POST-AND-RAIL TIMBER WING FENCES FLANKING THE ROAD
+  // Left Wing Fence
+  ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 3.0;
+  ctx.beginPath(); ctx.moveTo(-56, 4); ctx.lineTo(-90, 8); ctx.moveTo(-56, -4); ctx.lineTo(-90, 0); ctx.stroke();
+  [[-70, 6], [-90, 8]].forEach(([px, py]) => {
+    ctx.fillStyle = '#4E342E'; ctx.fillRect(px - 2, py - 16, 4, 18);
+  });
+  // Right Wing Fence
+  ctx.beginPath(); ctx.moveTo(56, 4); ctx.lineTo(90, 8); ctx.moveTo(56, -4); ctx.lineTo(90, 0); ctx.stroke();
+  [[70, 6], [90, 8]].forEach(([px, py]) => {
+    ctx.fillStyle = '#4E342E'; ctx.fillRect(px - 2, py - 16, 4, 18);
+  });
 
   ctx.restore();
 }
@@ -3462,17 +3519,17 @@ const AlpenMap = {
       });
     });
 
-    // 3. 48-Plot Hexagonal Vegetable Garden Natural Growth Ticking
-    if (state.vegetables && state.vegetables.beds) {
+    // 3. 48-Plot Hexagonal Vegetable Garden Natural Growth Ticking (Sprout -> Grow -> Flower -> Mature)
+    if (state.built['veg'] && state.vegetables && state.vegetables.beds) {
       state.vegetables.beds.forEach(b => {
         b.plants.forEach(p => {
           if (p.species && p.status !== 'mature') {
             p.progress = Math.min(1.0, (p.progress || 0) + 0.0035);
-            if (p.progress >= 1.0) {
+            if (p.progress >= 0.95) {
               p.status = 'mature';
-            } else if (p.progress >= 0.70) {
+            } else if (p.progress >= 0.65) {
               p.status = 'flowering';
-            } else if (p.progress >= 0.35) {
+            } else if (p.progress >= 0.30) {
               p.status = 'growing';
             } else {
               p.status = 'sprout';
