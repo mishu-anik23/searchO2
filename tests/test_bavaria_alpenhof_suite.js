@@ -102,7 +102,7 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 630, y: 870 }, 'pond coordinates bottom-left meadow');
   assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1620, y: 530 }, 'restaurant coordinates at corner of road network with timber deck & grape juice silo');
   assert.deepStrictEqual({ x: findSite('cattle').x, y: findSite('cattle').y }, { x: 1360, y: 255 }, 'cattle coordinates long pasture downslope');
-  assert.deepStrictEqual({ x: findSite('gate').x, y: findSite('gate').y }, { x: 1690, y: 740 }, 'gate coordinates behind 3 mud road intersection faced to farm');
+  assert.deepStrictEqual({ x: findSite('gate').x, y: findSite('gate').y }, { x: 1460, y: 690 }, 'gate coordinates near zoom controls on green meadow roadside faced to veg garden');
   assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1435, y: 380 }, 'vineyard coordinates terrace on hill upslope');
   assert.deepStrictEqual({ x: findSite('bridge').x, y: findSite('bridge').y }, { x: 1625, y: 230 }, 'bridge coordinates to distant hilltop turbine');
   assert.deepStrictEqual({ x: findSite('wind_e').x, y: findSite('wind_e').y }, { x: 1700, y: 165 }, 'wind_e coordinates on farm hilltop');

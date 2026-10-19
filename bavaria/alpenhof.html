@@ -467,7 +467,7 @@ const SITES = [
   {id:'crew',      x:1220, y:465, icon:'🧑‍🌾', title:'Crew Shed & Labour HQ',        sub:'Alpine Timber Lodge & Labour Board · Central Roadside', cat:'labour', color:'#FFD54F', action:'crew'},
   {id:'juice',     x:1306, y:601, icon:'🧃', title:'Hof-Mosterei & Juice Bar',      sub:'Cold-Pressed Cider Press & Terrace',     cat:'trade',     color:'#FF7043', action:'juice'},
   {id:'restaurant',x:1620, y:530, icon:'🍽️', title:'Alpenhof Gasthof & Stuben',    sub:'Alpine Restaurant, Timber Terrace & Grape Juice Silo', cat:'trade', color:'#EF5350', action:'restaurant'},
-  {id:'gate',      x:1690, y:740, icon:'🚪', title:'Main Entrance Gate',            sub:'Traditional Bavarian Torbogen Arch · Willkommen', cat:'infra', color:'#B0BEC5', action:'gate'},
+  {id:'gate',      x:1460, y:690, icon:'🚪', title:'Main Entrance Gate',            sub:'Traditional Bavarian Torbogen Arch · Willkommen', cat:'infra', color:'#B0BEC5', action:'gate'},
   {id:'vineyard',  x:1435, y:380, icon:'🍇', title:'Bavarian Heritage Vineyard',    sub:'3×3 Terraced Beds · 108 Estate Grapevines',cat:'fruit', color:'#7B1FA2', action:'vine'},
   {id:'bridge',    x:1625, y:230, icon:'🌉', title:'Alpine Wooden Overbridge',      sub:'Connected Timber Walking Bridge to Distant Hilltop Turbine', cat:'infra', color:'#8D6E63', action:'bridge'},
   {id:'cattle',    x:1360, y:255, icon:'🐄', title:'Cattle Pasture Enclosure',      sub:'Hillside Post-&-Rail · Simmental Dairy, Sheep & Goats', cat:'livestock', color:'#8D6E63', action:'cattle'},
@@ -1825,16 +1825,16 @@ function drawWindTurbine(ctx, cx, cy, time, built){
 const LAKE_2BASIN_PTS = [
   // West Pond West & North rim (480..800, 780..980)
   [480, 860], [510, 810], [580, 785], [670, 780], [750, 805], [800, 845],
-  // Narrow Joint North rim
+  // Narrow Joint North rim (Garden side remain shrinked/indented)
   [835, 860],
   // East Big Pond North rim (sloping down-right towards main gate)
   [880, 845], [980, 835], [1100, 840], [1220, 855], [1340, 885], [1430, 925],
-  // East Big Pond East & Bottom-Right tip (rotated down into southern green meadow)
-  [1470, 965], [1450, 1005], [1380, 1030], [1260, 1035], [1120, 1025], [990, 1000], [890, 960],
-  // Narrow Joint South rim
-  [835, 915],
-  // West Pond South rim
-  [780, 945], [710, 975], [610, 980], [530, 955], [480, 910]
+  // East Big Pond East & Bottom-Right tip
+  [1470, 965], [1450, 1005], [1380, 1030], [1260, 1035], [1120, 1025], [990, 1005],
+  // UNIFORM CONTINUOUS CURVE JOINING TWO PONDS TO BOTTOM GREEN MEADOW (Joint bottom flat, no pinch)
+  [890, 995], [835, 990], [780, 985],
+  // West Pond South rim along bottom meadow
+  [710, 980], [610, 980], [530, 955], [480, 910]
 ];
 
 function drawLivingLake(ctx, cx, cy, built, time){
@@ -1953,53 +1953,159 @@ function drawLivingLake(ctx, cx, cy, built, time){
     ctx.closePath();
     ctx.fill();
 
-    // 3. 3D Volumetric Moving Waves with Specular Crests
+    // 3. 3D ISOMETRIC VOLUMETRIC WATER: Caustic Layers & Dynamic Wave Crests
     const t = time || 0;
     ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.lineWidth = 1.4;
-    // West Pond Waves
-    for(let w = 0; w < 4; w++){
-      const wx = 520 + w * 65 + Math.sin(t * 1.6 + w) * 8;
-      const wy = 830 + (w % 2) * 35 + Math.cos(t * 1.3 + w) * 6;
-      ctx.beginPath(); ctx.ellipse(wx, wy, 22, 6, 0.1, 0, Math.PI); ctx.stroke();
+    
+    // A. Subsurface Refractive Caustic Web (Glacial Water Depth)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    for (let c = 0; c < 12; c++) {
+      const cx_c = 540 + (c % 6) * 140 + Math.sin(t * 1.2 + c * 1.5) * 16;
+      const cy_c = 820 + Math.floor(c / 6) * 100 + (c % 3) * 25 + Math.cos(t * 1.4 + c) * 10;
+      ctx.beginPath(); ctx.ellipse(cx_c, cy_c, 34, 12, 0.22, 0, Math.PI * 2); ctx.fill();
     }
-    // East Big Pond Waves (tilted along the down-right angle)
-    for(let w = 0; w < 6; w++){
-      const wx = 940 + w * 85 + Math.sin(t * 1.4 + w) * 10;
-      const wy = 870 + w * 20 + (w % 2) * 28 + Math.cos(t * 1.1 + w) * 7;
-      ctx.beginPath(); ctx.ellipse(wx, wy, 28, 8, 0.18, 0, Math.PI); ctx.stroke();
+
+    // B. Concentric Isometric Expanding Water Ripples
+    for (let r = 0; r < 5; r++) {
+      const ripPhase = ((t * 0.8 + r * 1.2) % 4.0) / 4.0;
+      const ripRadius = ripPhase * 36;
+      const ripAlpha = (1 - ripPhase) * 0.35;
+      const ripCenters = [[630, 870], [1120, 920], [835, 920]];
+      const rc = ripCenters[r % 3];
+      ctx.strokeStyle = `rgba(255, 255, 255, ${ripAlpha})`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(rc[0], rc[1], ripRadius, ripRadius * 0.42, 0.15, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // C. 3D Volumetric Wave Crests with Specular Foam
+    ctx.strokeStyle = 'rgba(224, 247, 250, 0.55)';
+    ctx.lineWidth = 1.6;
+    for(let w = 0; w < 10; w++){
+      const wx = 520 + w * 88 + Math.sin(t * 1.5 + w * 0.8) * 12;
+      const wy = 810 + (w * 18) % 150 + Math.cos(t * 1.2 + w) * 6;
+      ctx.beginPath();
+      ctx.ellipse(wx, wy, 24, 6.5, 0.16, 0.1 * Math.PI, 0.9 * Math.PI);
+      ctx.stroke();
+      // Wave crest specular sparkle
+      if ((w + Math.floor(t * 1.5)) % 4 === 0) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath(); ctx.arc(wx, wy - 1, 1.4, 0, Math.PI * 2); ctx.fill();
+      }
     }
     ctx.restore();
 
-    // 4. Arched Rustic Timber Footbridge over Narrow Joint at x=835
-    ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fillRect(830, 860, 10, 58);
-    isoBox(ctx, 835, 888, 12, 54, 6, '#8D6E63', '#6D4C41', '#4E342E');
-    ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 2.0;
-    ctx.beginPath(); ctx.moveTo(835, 860); ctx.lineTo(835, 915); ctx.stroke();
+    // 4. Arched Rustic Timber Footbridge over Garden-Side Inlet at x=835 (Spanning Garden Bank)
+    ctx.save();
+    // Bridge shadow on water
+    ctx.fillStyle = 'rgba(0, 30, 45, 0.38)';
+    ctx.beginPath(); ctx.ellipse(835, 875, 14, 28, 0, 0, Math.PI * 2); ctx.fill();
+    // Arched Timber Promenade Bridge (Connecting Garden bank to mid-lagoon pier)
+    isoBox(ctx, 835, 872, 14, 46, 7, '#8D6E63', '#6D4C41', '#4E342E');
+    // Heavy timber side handrails
+    ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(828, 850); ctx.lineTo(828, 895);
+    ctx.moveTo(842, 850); ctx.lineTo(842, 895);
+    ctx.stroke();
+    // Vertical rail balusters
+    for (let by = 852; by <= 892; by += 10) {
+      ctx.fillRect(827, by - 6, 2, 6);
+      ctx.fillRect(841, by - 6, 2, 6);
+    }
+    ctx.restore();
 
     // 5. Floating Timber Entenhaus (Bavarian Duck Shelter) at (1120, 910)
-    isoBox(ctx, 1120, 910, 24, 18, 10, '#5D4037', '#4E342E', '#3E2723');
-    isoRoof(ctx, 1120, 900, 28, 22, 0, 8, '#795548', '#5D4037', '#6D4C41');
+    isoBox(ctx, 1120, 910, 26, 20, 11, '#5D4037', '#4E342E', '#3E2723');
+    isoRoof(ctx, 1120, 899, 30, 24, 0, 9, '#795548', '#5D4037', '#6D4C41');
     // Wooden entry ramp down into water
     ctx.fillStyle = '#8D6E63';
     ctx.beginPath();
-    ctx.moveTo(1116, 915); ctx.lineTo(1124, 915); ctx.lineTo(1126, 924); ctx.lineTo(1114, 924);
+    ctx.moveTo(1115, 915); ctx.lineTo(1125, 915); ctx.lineTo(1128, 926); ctx.lineTo(1113, 926);
     ctx.closePath(); ctx.fill();
 
-    // 6. Submerged Swimming Fish (Bachforelle & Saibling Silhouettes beneath water)
+    // 6. REALISTIC 3D ISOMETRIC VOLUMETRIC FISH (Bachforelle & Alpensaibling)
+    // Moving fish with 3D shaded body, ruby spots, animated wagging tail fin, and surface wake
     const fishList = [
-      [580, 860, 0.8], [690, 890, -1.2], [740, 840, 0.5],
-      [980, 910, 1.1], [1050, 940, -0.7], [1200, 920, 0.9], [1310, 960, -1.0]
+      { x: 570, y: 865, ang: 0.3, sp: 'trout' },
+      { x: 690, y: 890, ang: -0.4, sp: 'saibling' },
+      { x: 745, y: 840, ang: 0.6, sp: 'trout' },
+      { x: 960, y: 920, ang: 0.2, sp: 'saibling' },
+      { x: 1060, y: 945, ang: -0.3, sp: 'trout' },
+      { x: 1220, y: 925, ang: 0.4, sp: 'saibling' },
+      { x: 1330, y: 960, ang: -0.5, sp: 'trout' }
     ];
+
     fishList.forEach((f, idx) => {
-      const fx = f[0] + Math.sin(t * 1.8 + idx) * 18;
-      const fy = f[1] + Math.cos(t * 1.2 + idx) * 6;
-      ctx.fillStyle = 'rgba(13, 71, 161, 0.45)'; // Submerged silhouette
-      ctx.beginPath(); ctx.ellipse(fx, fy, 7, 2.5, f[2], 0, Math.PI * 2); ctx.fill();
-      // Forked tail
-      ctx.fillStyle = 'rgba(2, 119, 189, 0.55)';
-      ctx.beginPath(); ctx.moveTo(fx - 6, fy); ctx.lineTo(fx - 10, fy - 2.5); ctx.lineTo(fx - 10, fy + 2.5); ctx.closePath(); ctx.fill();
+      ctx.save();
+      const swimPhase = t * 3.5 + idx * 1.4;
+      const fx = f.x + Math.sin(t * 1.5 + idx) * 22;
+      const fy = f.y + Math.cos(t * 1.1 + idx) * 8;
+      const tailWag = Math.sin(swimPhase) * 3.5;
+
+      ctx.translate(fx, fy);
+      ctx.rotate(f.ang);
+
+      // Trailing surface wake rings
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.ellipse(-14, 0, 10, 4, 0, 0, Math.PI * 2); ctx.stroke();
+
+      // Fish Underwater Ambient Shadow
+      ctx.fillStyle = 'rgba(2, 40, 60, 0.32)';
+      ctx.beginPath(); ctx.ellipse(1, 4, 11, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+      // 3D Volumetric Fish Torso (Olive-Green Spine to Golden Pearl Belly)
+      const fishGrad = ctx.createLinearGradient(0, -4, 0, 4);
+      if (f.sp === 'trout') {
+        fishGrad.addColorStop(0, '#2E7D32'); // Olive spine
+        fishGrad.addColorStop(0.5, '#9E9D24'); // Golden flank
+        fishGrad.addColorStop(1, '#ECEFF1'); // Pearl white belly
+      } else {
+        fishGrad.addColorStop(0, '#37474F'); // Dark charcoal spine
+        fishGrad.addColorStop(0.5, '#E65100'); // Fiery orange Saibling flank
+        fishGrad.addColorStop(1, '#FFF3E0'); // Cream belly
+      }
+      ctx.fillStyle = fishGrad;
+      ctx.beginPath();
+      ctx.moveTo(11, 0); // Snout
+      ctx.quadraticCurveTo(3, -4.5, -4, -3.5); // Back curve
+      ctx.lineTo(-9, 0); // Tail root
+      ctx.quadraticCurveTo(-4, 4.0, 3, 4.0); // Belly curve
+      ctx.closePath(); ctx.fill();
+
+      // Ruby-red and dark Forellen-Punkte (trout dots) on flank
+      ctx.fillStyle = '#D32F2F';
+      ctx.beginPath();
+      ctx.arc(-2, -0.8, 0.9, 0, Math.PI * 2);
+      ctx.arc(2, 0.5, 0.9, 0, Math.PI * 2);
+      ctx.arc(5, -0.5, 0.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#212121';
+      ctx.beginPath();
+      ctx.arc(0, 1.2, 0.7, 0, Math.PI * 2);
+      ctx.arc(-4, 0.8, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Animated 3D Wagging Caudal Fin (Tail)
+      ctx.fillStyle = f.sp === 'trout' ? 'rgba(76, 175, 80, 0.85)' : 'rgba(239, 108, 0, 0.85)';
+      ctx.beginPath();
+      ctx.moveTo(-9, 0);
+      ctx.lineTo(-15, -4.5 + tailWag);
+      ctx.lineTo(-13, 0 + tailWag * 0.5);
+      ctx.lineTo(-15, 4.5 + tailWag);
+      ctx.closePath(); ctx.fill();
+
+      // Pectoral fin
+      ctx.fillStyle = 'rgba(255, 235, 59, 0.70)';
+      ctx.beginPath(); ctx.ellipse(2, 3, 3, 1.4, 0.5, 0, Math.PI * 2); ctx.fill();
+
+      // Fish Eye with golden iris
+      ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(8, -1.2, 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#000000'; ctx.beginPath(); ctx.arc(8.3, -1.2, 0.6, 0, Math.PI * 2); ctx.fill();
+
+      ctx.restore();
     });
 
     // 7. Floating Water Lilies with Pink/White Lotus Blossoms
@@ -2030,15 +2136,99 @@ function drawLivingLake(ctx, cx, cy, built, time){
     ctx.fillStyle = '#8D6E63';
     ctx.beginPath(); ctx.ellipse(668, 782, 11, 4, 0.3, 0, Math.PI * 2); ctx.fill();
 
-    // 10. Swimming Mallards (Stockenten) and Ducklings navigating across the ponds
+    // 10. REALISTIC 3D ISOMETRIC VOLUMETRIC DUCKS & DUCKLINGS (Stockenten-Familie)
     const duckX = 990 + Math.sin(t * 0.7) * 45;
     const duckY = 920 + Math.cos(t * 0.5) * 15;
-    ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.arc(duckX, duckY, 3.8, 0, Math.PI * 2); ctx.fill(); // Emerald head
-    ctx.fillStyle = '#5D4037'; ctx.beginPath(); ctx.ellipse(duckX - 4.5, duckY + 1.2, 7, 4.2, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FFD54F'; ctx.fillRect(duckX + 3, duckY - 0.5, 2.5, 1.4); // Beak
-    // Swimming Duckling
-    ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(duckX - 13, duckY + 3.5, 2.4, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FF9800'; ctx.fillRect(duckX - 10, duckY + 3, 1.5, 1);
+    const duckDir = Math.cos(t * 0.7) >= 0 ? 1 : -1;
+
+    ctx.save();
+    ctx.translate(duckX, duckY);
+    if (duckDir < 0) ctx.scale(-1, 1);
+
+    // A. 3D V-Shaped Surface Displacement Bow Wake
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'; ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(8, 2); ctx.lineTo(-18, -10);
+    ctx.moveTo(8, 2); ctx.lineTo(-18, 14);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'; ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(2, 2); ctx.lineTo(-24, -14);
+    ctx.moveTo(2, 2); ctx.lineTo(-24, 18);
+    ctx.stroke();
+
+    // Water ripple under duck
+    ctx.fillStyle = 'rgba(0, 45, 60, 0.35)';
+    ctx.beginPath(); ctx.ellipse(-2, 3, 11, 5, 0, 0, Math.PI * 2); ctx.fill();
+
+    // B. Mother Mallard Drake 3D Volumetric Body
+    // Wing & Torso (Deep chestnut breast & layered slate wing with blue speculum)
+    ctx.fillStyle = '#4E342E';
+    ctx.beginPath(); ctx.ellipse(-2, 1, 9, 5.5, -0.1, 0, Math.PI * 2); ctx.fill();
+    // Slate-grey wing with iridescent royal blue speculum bar
+    ctx.fillStyle = '#546E7A';
+    ctx.beginPath(); ctx.ellipse(-4, -0.5, 7, 3.8, -0.15, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1565C0'; // Speculum
+    ctx.fillRect(-6, -1.2, 4.5, 2.0);
+    ctx.fillStyle = '#FFFFFF'; // Speculum white trim
+    ctx.fillRect(-6, -1.6, 4.5, 0.6);
+
+    // Curled black tail feathers (Erpellocke)
+    ctx.fillStyle = '#212121';
+    ctx.beginPath(); ctx.moveTo(-9, 1); ctx.quadraticCurveTo(-14, -2, -12, -4); ctx.stroke();
+
+    // Crisp white neck ring (Halsring)
+    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(4.5, -2.5, 3.2, 0.2 * Math.PI, 0.9 * Math.PI); ctx.stroke();
+
+    // 3D Iridescent Emerald-Green Head
+    const headGrad = ctx.createRadialGradient(5.5, -4.5, 1, 5, -4, 5);
+    headGrad.addColorStop(0, '#00E676'); // Shiny highlight
+    headGrad.addColorStop(0.5, '#00695C'); // Emerald
+    headGrad.addColorStop(1, '#004D40'); // Dark shaded rim
+    ctx.fillStyle = headGrad;
+    ctx.beginPath(); ctx.arc(5, -4, 4.2, 0, Math.PI * 2); ctx.fill();
+
+    // Duck Eye
+    ctx.fillStyle = '#000000'; ctx.beginPath(); ctx.arc(6, -4.8, 0.8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(6.2, -5.0, 0.3, 0, Math.PI * 2); ctx.fill();
+
+    // Sculpted Yellow Duck Bill with dark nostril
+    ctx.fillStyle = '#FDD835';
+    ctx.beginPath();
+    ctx.moveTo(8.5, -4.5); ctx.lineTo(13.5, -3.2); ctx.lineTo(12.5, -2.0); ctx.lineTo(8.0, -2.6);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#3E2723'; ctx.fillRect(9.5, -3.8, 0.8, 0.8);
+
+    // C. 3 Fluffy Volumetric 3D Ducklings Swimming in Echelon
+    [
+      { ox: -16, oy: 6, bob: 0 },
+      { ox: -25, oy: 10, bob: 1.2 },
+      { ox: -33, oy: 15, bob: 2.4 }
+    ].forEach((dk, i) => {
+      const bobY = Math.sin(t * 4.0 + dk.bob) * 1.0;
+      const dx = dk.ox;
+      const dy = dk.oy + bobY;
+
+      // Duckling wake
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(dx + 2, dy); ctx.lineTo(dx - 5, dy - 3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(dx + 2, dy); ctx.lineTo(dx - 5, dy + 3); ctx.stroke();
+
+      // Downy yellow fluffy body
+      ctx.fillStyle = '#FFEE58';
+      ctx.beginPath(); ctx.ellipse(dx - 1, dy, 3.8, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+      // Brown wing mark
+      ctx.fillStyle = '#795548'; ctx.fillRect(dx - 2.5, dy - 1.2, 2.2, 1.2);
+      // Head
+      ctx.fillStyle = '#FDD835'; ctx.beginPath(); ctx.arc(dx + 2.4, dy - 2.2, 2.0, 0, Math.PI * 2); ctx.fill();
+      // Beak
+      ctx.fillStyle = '#FF9800'; ctx.fillRect(dx + 4.2, dy - 2.0, 1.5, 0.9);
+      // Eye
+      ctx.fillStyle = '#000000'; ctx.beginPath(); ctx.arc(dx + 2.8, dy - 2.6, 0.4, 0, Math.PI * 2); ctx.fill();
+    });
+
+    ctx.restore();
   }
 
   ctx.restore();
@@ -2596,82 +2786,116 @@ function drawSolarFarm(ctx, cx, cy, built, stage, time){
   const modW = 30, modH = 17;
   const spacingX = 40, spacingY = 28;
 
-  // Stretched ground shadow up towards garage side green meadow
-  const shadowRhombus = [
-    [cx - 82, cy - 68],
-    [cx + 106, cy - 52],
-    [cx + 118, cy + 58],
-    [cx - 70, cy + 42]
-  ];
-  ctx.fillStyle = 'rgba(15, 30, 20, 0.32)';
-  ctx.beginPath();
-  shadowRhombus.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
-  ctx.closePath(); ctx.fill();
-
+  // 16 Individual 3D Isometric Volumetric Panels with INDIVIDUAL drop-shadows (NO flat rhombus)
   for(let r = 0; r < rows; r++){
     for(let c = 0; c < cols; c++){
-      // Tilted module placement stretched above towards farm garage side meadow (lower y, reaching up towards y ~ 250)
+      // Tilted module placement stretched above towards farm garage side meadow
       const px = cx - 64 + c * spacingX - r * 5.0 + (3 - r) * 3.8;
       const py = cy - 64 + r * spacingY + c * 3.2 - (3 - r) * 4.2;
 
-      // Stage 1: Foundation Piles
+      // 1. INDIVIDUAL GROUND DROP-SHADOW FOR EACH PANEL TABLE
+      ctx.fillStyle = 'rgba(10, 25, 15, 0.38)';
+      ctx.beginPath();
+      ctx.moveTo(px - 4, py + 12);
+      ctx.lineTo(px + modW + 6, py + 8);
+      ctx.lineTo(px + modW + 12, py + 22);
+      ctx.lineTo(px + 2, py + 26);
+      ctx.closePath();
+      ctx.fill();
+
+      // Stage 1: Foundation Piles with Concrete Footings
       if (curStage === 1) {
-        ctx.fillStyle = '#78909C'; ctx.fillRect(px + 4, py + 2, 3.8, 12); ctx.fillRect(px + 22, py + 2, 3.8, 12);
+        ctx.fillStyle = '#B0BEC5'; ctx.fillRect(px + 2, py + 10, 6, 4); ctx.fillRect(px + 20, py + 10, 6, 4);
+        ctx.fillStyle = '#78909C'; ctx.fillRect(px + 3.5, py + 2, 3, 10); ctx.fillRect(px + 21.5, py + 2, 3, 10);
         continue;
       }
 
-      // Stage 2: Racking & Aluminum Rails
+      // Stage 2: Racking Truss & Aluminum Rails
       if (curStage === 2) {
-        ctx.fillStyle = '#90A4AE'; ctx.fillRect(px + 4, py - 4, 3.0, 16); ctx.fillRect(px + 22, py - 2, 3.0, 14);
-        ctx.strokeStyle = '#B0BEC5'; ctx.lineWidth = 2.2;
-        ctx.beginPath(); ctx.moveTo(px, py + 2); ctx.lineTo(px + modW + 2, py - 4); ctx.stroke();
+        ctx.fillStyle = '#90A4AE'; ctx.fillRect(px + 2, py + 10, 6, 4); ctx.fillRect(px + 20, py + 10, 6, 4);
+        ctx.fillStyle = '#78909C'; ctx.fillRect(px + 3.5, py - 4, 3, 16); ctx.fillRect(px + 21.5, py - 2, 3, 14);
+        ctx.strokeStyle = '#CFD8DC'; ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.moveTo(px - 2, py + 3); ctx.lineTo(px + modW + 4, py - 4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(px, py + 10); ctx.lineTo(px + modW + 6, py + 3); ctx.stroke();
+        ctx.strokeStyle = '#78909C'; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(px + 4, py - 3); ctx.lineTo(px + 22, py + 11); ctx.stroke();
         continue;
       }
 
-      // Stage 3 & 4: Mounted Solar Modules
+      // Stage 3 & 4: 3D Volumetric Photovoltaic Modules
       const isMounted = curStage >= 4 || (curStage === 3 && (r * 4 + c) < 8);
 
-      // Support stanchions
-      ctx.fillStyle = '#78909C';
-      ctx.fillRect(px + 3, py - 4, 3.0, 15); // Rear post
-      ctx.fillRect(px + modW - 5, py + 2, 3.0, 9); // Front post
-      // Diagonal brace
-      ctx.strokeStyle = '#90A4AE'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(px + 4, py - 3); ctx.lineTo(px + modW - 4, py + 9); ctx.stroke();
+      // Heavy 3D Structural Steel Stanchions
+      ctx.fillStyle = '#90A4AE'; ctx.fillRect(px + 2, py + 9, 6, 3.5); ctx.fillRect(px + modW - 6, py + 10, 6, 3.5);
+      ctx.fillStyle = '#455A64'; ctx.fillRect(px + 3.5, py - 5, 3.2, 16);
+      ctx.fillStyle = '#607D8B'; ctx.fillRect(px + 3.5, py - 5, 1.2, 16);
+      ctx.fillStyle = '#546E7A'; ctx.fillRect(px + modW - 4.5, py + 1, 3.2, 10.5);
+      ctx.fillStyle = '#78909C'; ctx.fillRect(px + modW - 4.5, py + 1, 1.2, 10.5);
+      ctx.strokeStyle = '#607D8B'; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(px + 5, py - 3); ctx.lineTo(px + modW - 3, py + 9); ctx.stroke();
 
       if (isMounted) {
-        // Tilted Photovoltaic Module Face
         const p1 = [px, py - 2];
         const p2 = [px + modW, py - 7];
         const p3 = [px + modW + 2, py + 7];
         const p4 = [px + 2, py + 12];
+        const depth = 2.8;
 
-        // Aluminum frame border
+        // Bottom Under-Panel Backsheet
+        ctx.fillStyle = '#263238';
+        ctx.beginPath();
+        ctx.moveTo(p4[0], p4[1]); ctx.lineTo(p3[0], p3[1]);
+        ctx.lineTo(p3[0], p3[1] + depth); ctx.lineTo(p4[0], p4[1] + depth);
+        ctx.closePath(); ctx.fill();
+
+        // 3D Front Aluminum Frame Extrusion
+        ctx.fillStyle = '#78909C';
+        ctx.beginPath();
+        ctx.moveTo(p4[0], p4[1]); ctx.lineTo(p3[0], p3[1]);
+        ctx.lineTo(p3[0], p3[1] + depth); ctx.lineTo(p4[0], p4[1] + depth);
+        ctx.closePath(); ctx.fill();
+
+        // 3D Left-Facing Aluminum Frame Extrusion
+        ctx.fillStyle = '#546E7A';
+        ctx.beginPath();
+        ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p4[0], p4[1]);
+        ctx.lineTo(p4[0], p4[1] + depth); ctx.lineTo(p1[0], p1[1] + depth);
+        ctx.closePath(); ctx.fill();
+
+        // Top Aluminum Outer Bezel Frame
         ctx.fillStyle = '#B0BEC5';
         ctx.beginPath();
         ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.lineTo(p3[0], p3[1]); ctx.lineTo(p4[0], p4[1]);
         ctx.closePath(); ctx.fill();
 
-        // Monocrystalline dark blue photovoltaic glass
+        // Monocrystalline Photovoltaic Glass Face
+        const innerM = 1.6;
         ctx.fillStyle = '#0D47A1';
         ctx.beginPath();
-        ctx.moveTo(p1[0] + 1.2, p1[1] + 0.8);
-        ctx.lineTo(p2[0] - 1.2, p2[1] + 0.8);
-        ctx.lineTo(p3[0] - 1.2, p3[1] - 0.8);
-        ctx.lineTo(p4[0] + 1.2, p4[1] - 0.8);
+        ctx.moveTo(p1[0] + innerM, p1[1] + innerM * 0.7);
+        ctx.lineTo(p2[0] - innerM, p2[1] + innerM * 0.7);
+        ctx.lineTo(p3[0] - innerM, p3[1] - innerM * 0.7);
+        ctx.lineTo(p4[0] + innerM, p4[1] - innerM * 0.7);
         ctx.closePath(); ctx.fill();
 
-        // Photovoltaic cell busbars (silver grid lines)
-        ctx.strokeStyle = '#64B5F6'; ctx.lineWidth = 0.6;
+        // Wafer Cell Grid Lines
+        ctx.strokeStyle = 'rgba(100, 181, 246, 0.75)'; ctx.lineWidth = 0.7;
         const midX1 = (p1[0] + p2[0]) / 2, midY1 = (p1[1] + p2[1]) / 2;
         const midX2 = (p4[0] + p3[0]) / 2, midY2 = (p4[1] + p3[1]) / 2;
         ctx.beginPath(); ctx.moveTo(midX1, midY1); ctx.lineTo(midX2, midY2); ctx.stroke();
+        const cx1 = p1[0] * 0.5 + p4[0] * 0.5, cy1 = p1[1] * 0.5 + p4[1] * 0.5;
+        const cx2 = p2[0] * 0.5 + p3[0] * 0.5, cy2 = p2[1] * 0.5 + p3[1] * 0.5;
+        ctx.beginPath(); ctx.moveTo(cx1, cy1); ctx.lineTo(cx2, cy2); ctx.stroke();
 
-        // Antireflective glass sheen
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+        // Tempered Glass Reflection
+        const glassGrad = ctx.createLinearGradient(p1[0], p1[1], p3[0], p3[1]);
+        glassGrad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+        glassGrad.addColorStop(0.35, 'rgba(179, 229, 252, 0.20)');
+        glassGrad.addColorStop(1, 'rgba(255, 255, 255, 0.05)');
+        ctx.fillStyle = glassGrad;
         ctx.beginPath();
         ctx.moveTo(p1[0] + 2, p1[1] + 1); ctx.lineTo(midX1, midY1);
-        ctx.lineTo(midX2 - 4, midY2 - 2); ctx.lineTo(p4[0] + 2, p4[1] - 1);
+        ctx.lineTo(midX2 - 3, midY2 - 2); ctx.lineTo(p4[0] + 2, p4[1] - 1);
         ctx.closePath(); ctx.fill();
       }
     }
@@ -3114,7 +3338,7 @@ function drawTouristBBQ(ctx, cx, cy, built, stage, time){
 
 
 
-/* 11. Traditional Bavarian Volumetric Main Gate at (1680, 760) */
+/* 11. Traditional Bavarian Volumetric Main Gate at (1460, 690) */
 function drawMainGate(ctx, cx, cy, built){
   ctx.save();
   ctx.translate(cx, cy);
