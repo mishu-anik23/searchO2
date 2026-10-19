@@ -598,12 +598,24 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--deep);font-fam
   <canvas id="dive-canvas"></canvas>
   <div class="hud">
     <div class="scoreboard" id="scoreboard-dive"></div>
-    <div class="top-right-hud">
+    <div class="task-capsule" id="dive-capsule" style="pointer-events:auto;z-index:25;">
+      <h4 id="dive-title">🤿 Coral Sanctuary Dive</h4>
+      <p id="dive-desc">Bird’s-eye survey · switch to FPV for polyp scans. Two living shelves: Lagoon + Deep Trench.</p>
+      <div class="prog-bar"><div class="prog-fill" id="dive-bar" style="width:0%"></div></div>
+    </div>
+    <div class="top-right-hud" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:min(420px,92vw);">
+      <button class="chip-btn" id="btn-dive-view">🔭 Toggle FPV / Bird’s-eye</button>
+      <button class="chip-btn" id="btn-dive-sanctuary">🪸 Switch Sanctuary</button>
       <button class="chip-btn pink" id="btn-dive-scan">🔬 Scan Coral Polyps</button>
       <button class="chip-btn" id="btn-surface">🫧 Ascend to Surface</button>
     </div>
   </div>
 </section>
+
+<!-- DIVE WHY / POLYP INFO -->
+<div class="modal-overlay" id="dive-info-modal">
+  <div class="modal-card" id="dive-info-card"></div>
+</div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
@@ -3076,7 +3088,7 @@ const IslandMap={
       if(!state.buildings.desalination_facility.built)openConstructionModal('desalination_facility');
       else openDesalModal();
     }
-    else if(a==='dive')enterDive();
+    else if(a==='dive')enterDive(s.id);
     else if(a==='gas')openGasModal();
     else if(a==='tourist_cottages'){
       if(!state.buildings.tourist_cottages.built)openConstructionModal('tourist_cottages');
@@ -5816,6 +5828,8 @@ function tryDock() {
 }
 
 function enterMain(force) {
+  try{ if(typeof DiveScene!=='undefined'&&DiveScene.active) DiveScene.stop(); }catch(e){}
+
   boatState.active = false;
   document.getElementById('boat-tour').style.display = 'none';
   document.getElementById('outer-zone').style.display = 'none';
@@ -7741,12 +7755,505 @@ function enterOuter(){
   GasPlatformScene.start();
 }
 
-function enterDive(){
+/* ================= CORAL DIVE SCENE (2 SANCTUARIES · BIRDS-EYE + FPV) ================= */
+const DiveScene = {
+  canvas: null, ctx: null, active: false, raf: 0, t0: 0,
+  mode: 'birds', // 'birds' | 'fpv'
+  sanctuary: 'lagoon', // 'lagoon' | 'trench'
+  diver: { x: 0.42, y: 0.55, a: 0.2, kick: 0 },
+  fish: [], coral: [], grass: [], rays: [], scanned: {},
+  keys: {}, scaleX: 1, scaleY: 1, W: 1920, H: 1080,
+
+  init(canvas){
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.resize();
+    if(!this._bound){
+      this._bound = true;
+      window.addEventListener('resize', ()=>this.resize());
+      window.addEventListener('keydown', e=>{ this.keys[e.key.toLowerCase()] = true; if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) e.preventDefault(); });
+      window.addEventListener('keyup', e=>{ this.keys[e.key.toLowerCase()] = false; });
+      canvas.addEventListener('pointerdown', e=>this.onTap(e));
+    }
+    this.seedWorld();
+  },
+  resize(){
+    if(!this.canvas) return;
+    const dpr = Math.min(devicePixelRatio||1, 2);
+    this.canvas.width = innerWidth * dpr;
+    this.canvas.height = innerHeight * dpr;
+    this.scaleX = innerWidth / this.W;
+    this.scaleY = innerHeight / this.H;
+  },
+  seedWorld(){
+    this.fish = [];
+    this.coral = [];
+    this.grass = [];
+    // Two sanctuary beds in world space [0..1]
+    const lagoon = { cx:0.38, cy:0.48, r:0.22, name:'Lagoon Sanctuary', depth:'Shallow shelf' };
+    const trench = { cx:0.68, cy:0.62, r:0.20, name:'Deep Trench Sanctuary', depth:'Pelagic trench' };
+    this.sanctuaries = { lagoon, trench };
+    // Corals — volumetric towers
+    for(let i=0;i<28;i++){
+      const s = i%2===0 ? lagoon : trench;
+      const ang = Math.random()*Math.PI*2;
+      const dist = Math.random()*s.r*0.85;
+      this.coral.push({
+        x: s.cx + Math.cos(ang)*dist,
+        y: s.cy + Math.sin(ang)*dist*0.75,
+        h: 18+Math.random()*42,
+        kind: ['staghorn','brain','table','fan'][i%4],
+        hue: 320 + (i%6)*18,
+        sanctuary: i%2===0 ? 'lagoon' : 'trench',
+        id: 'c'+i
+      });
+    }
+    // Seagrass meadows
+    for(let i=0;i<40;i++){
+      const s = i<22 ? lagoon : trench;
+      this.grass.push({
+        x: s.cx + (Math.random()-0.5)*s.r*1.6,
+        y: s.cy + (Math.random()-0.5)*s.r*1.2,
+        h: 12+Math.random()*28,
+        phase: Math.random()*Math.PI*2
+      });
+    }
+    // Fish schools
+    for(let i=0;i<36;i++){
+      this.fish.push({
+        x: Math.random(), y: 0.25+Math.random()*0.55,
+        vx: (Math.random()-0.5)*0.0009, vy: (Math.random()-0.5)*0.0005,
+        size: 4+Math.random()*10,
+        kind: ['chromis','angelfish','parrot','clown','surgeon'][i%5],
+        phase: Math.random()*10
+      });
+    }
+    // Extra charismatic megafauna
+    this.fauna = [
+      {kind:'turtle', x:0.55, y:0.40, a:0.3},
+      {kind:'dolphin', x:0.72, y:0.35, a:-0.4},
+      {kind:'seahorse', x:0.33, y:0.58, a:0},
+      {kind:'ray', x:0.60, y:0.70, a:0.1}
+    ];
+    this.diver = { x: 0.42, y: 0.55, a: 0.15, kick: 0 };
+    this.scanned = state.diveLogged || {};
+  },
+  start(sanctuary){
+    this.active = true;
+    this.sanctuary = sanctuary === 'trench' || sanctuary === 'reef_basin_outer' ? 'trench' : 'lagoon';
+    this.mode = 'birds';
+    this.t0 = performance.now();
+    this.seedWorld();
+    // Place diver near selected sanctuary
+    const s = this.sanctuaries[this.sanctuary];
+    this.diver.x = s.cx - 0.08; this.diver.y = s.cy;
+    this.updateHUD();
+    cancelAnimationFrame(this.raf);
+    const loop = (now)=>{
+      if(!this.active) return;
+      this.tick((now-this.t0)*0.001);
+      this.draw();
+      this.raf = requestAnimationFrame(loop);
+    };
+    this.raf = requestAnimationFrame(loop);
+  },
+  stop(){
+    this.active = false;
+    cancelAnimationFrame(this.raf);
+  },
+  toggleMode(){
+    this.mode = this.mode==='birds' ? 'fpv' : 'birds';
+    this.updateHUD();
+    toast(this.mode==='fpv' ? 'FPV diver visor · swim with WASD / arrows' : 'Bird’s-eye survey · diver avatar visible');
+  },
+  toggleSanctuary(){
+    this.sanctuary = this.sanctuary==='lagoon' ? 'trench' : 'lagoon';
+    const s = this.sanctuaries[this.sanctuary];
+    this.diver.x = s.cx - 0.06; this.diver.y = s.cy;
+    this.updateHUD();
+    toast('Entering '+s.name);
+  },
+  updateHUD(){
+    const s = this.sanctuaries[this.sanctuary];
+    const n = Object.keys(this.scanned).length;
+    const title = document.getElementById('dive-title');
+    const desc = document.getElementById('dive-desc');
+    const bar = document.getElementById('dive-bar');
+    if(title) title.textContent = (this.mode==='fpv'?'🥽 FPV · ':'🔭 Bird’s-eye · ')+s.name;
+    if(desc) desc.textContent = s.depth+' · '+n+'/12 polyp colonies scanned · WASD swim · Toggle view for FPV reef corridors';
+    if(bar) bar.style.width = Math.min(100, Math.round(n/12*100))+'%';
+  },
+  onTap(e){
+    // In birds mode, tapping near a coral scans it
+    if(this.mode!=='birds') return;
+    const rect = this.canvas.getBoundingClientRect();
+    const nx = (e.clientX-rect.left)/rect.width;
+    const ny = (e.clientY-rect.top)/rect.height;
+    let best=null, bd=1;
+    this.coral.forEach(c=>{
+      const d = Math.hypot(c.x-nx, c.y-ny);
+      if(d<bd){ bd=d; best=c; }
+    });
+    if(best && bd<0.06) this.scanCoral(best);
+  },
+  scanCoral(c){
+    if(this.scanned[c.id]){ toast('Colony already logged'); return; }
+    this.scanned[c.id] = true;
+    state.diveLogged = this.scanned;
+    grantXP({marine:12, zoology:8});
+    const labels = {staghorn:'Acropora staghorn', brain:'Favites brain coral', table:'Table Acropora', fan:'Gorgonian sea fan'};
+    const card=document.getElementById('dive-info-card');
+    const modal=document.getElementById('dive-info-modal');
+    if(card&&modal){
+      card.innerHTML =
+        '<div class="modal-hdr"><h3>🪸 Polyps · '+labels[c.kind]+'</h3><button class="btn-close" id="dive-info-close">✕</button></div>'+
+        '<div class="card-box marine"><b>Why this reef matters</b><br/>Living calcium carbonate frameworks shelter juvenile fish, buffer wave energy, and host symbiotic zooxanthellae that feed the colony with light-driven sugars.</div>'+
+        '<div class="why-card" style="margin-top:10px"><b>How you help</b><br/>Logged colony health index · reduced trampling risk · data feeds Blue Lab resilience score.</div>'+
+        '<p style="margin-top:10px;font-size:0.8rem;color:#A5D6A7">Sanctuary: <b>'+c.sanctuary+'</b> · Structure height ~'+Math.round(c.h)+' cm (isometric)</p>'+
+        '<button class="btn btn-g" style="margin-top:12px;width:100%" id="dive-info-ok">Continue Dive</button>';
+      modal.classList.add('open');
+      const close=()=>modal.classList.remove('open');
+      const cbtn=document.getElementById('dive-info-close');
+      const ok=document.getElementById('dive-info-ok');
+      if(cbtn) cbtn.onclick=close;
+      if(ok) ok.onclick=close;
+    } else {
+      toast('🪸 Logged '+labels[c.kind]);
+    }
+    this.updateHUD();
+    // Chapter task progress if exists
+    try{
+      if(typeof completeTask==='function') completeTask('1.1');
+      else if(state.chapters){ /* soft progress */ }
+    }catch(_){}
+  },
+  scanNearest(){
+    let best=null, bd=9;
+    this.coral.filter(c=>c.sanctuary===this.sanctuary).forEach(c=>{
+      const d=Math.hypot(c.x-this.diver.x, c.y-this.diver.y);
+      if(d<bd){ bd=d; best=c; }
+    });
+    if(best && bd<0.12) this.scanCoral(best);
+    else toast('Swim closer to a coral tower (within ~12 m)');
+  },
+  tick(t){
+    // Diver control
+    let dx=0, dy=0;
+    if(this.keys['w']||this.keys['arrowup']) dy-=1;
+    if(this.keys['s']||this.keys['arrowdown']) dy+=1;
+    if(this.keys['a']||this.keys['arrowleft']) dx-=1;
+    if(this.keys['d']||this.keys['arrowright']) dx+=1;
+    if(dx||dy){
+      const len=Math.hypot(dx,dy)||1;
+      this.diver.a = Math.atan2(dy,dx);
+      this.diver.x += (dx/len)*0.0035;
+      this.diver.y += (dy/len)*0.0035;
+      this.diver.kick += 0.35;
+    } else this.diver.kick *= 0.9;
+    this.diver.x = Math.max(0.08, Math.min(0.92, this.diver.x));
+    this.diver.y = Math.max(0.18, Math.min(0.88, this.diver.y));
+    // Fish motion
+    this.fish.forEach(f=>{
+      f.x += f.vx + Math.sin(t+f.phase)*0.00015;
+      f.y += f.vy + Math.cos(t*0.7+f.phase)*0.0001;
+      if(f.x<0.05||f.x>0.95) f.vx*=-1;
+      if(f.y<0.2||f.y>0.85) f.vy*=-1;
+    });
+    this.fauna.forEach((m,i)=>{
+      m.x += Math.sin(t*0.3+i)*0.00025;
+      m.y += Math.cos(t*0.25+i)*0.00018;
+    });
+  },
+  w2c(nx,ny){
+    // world normalized → canvas with letterbox transform matching other scenes
+    const dpr = Math.min(devicePixelRatio||1, 2);
+    return { x: nx * this.canvas.width, y: ny * this.canvas.height };
+  },
+  drawWaterBg(ctx, t){
+    const w=this.canvas.width, h=this.canvas.height;
+    const g = ctx.createLinearGradient(0,0,0,h);
+    if(this.sanctuary==='trench'){
+      g.addColorStop(0,'#01579B'); g.addColorStop(0.45,'#014F86'); g.addColorStop(1,'#002B45');
+    } else {
+      g.addColorStop(0,'#4FC3F7'); g.addColorStop(0.4,'#0288D1'); g.addColorStop(1,'#01579B');
+    }
+    ctx.fillStyle=g; ctx.fillRect(0,0,w,h);
+    // caustic light bands
+    ctx.save();
+    ctx.globalAlpha=0.12;
+    for(let i=0;i<8;i++){
+      ctx.strokeStyle='#E1F5FE';
+      ctx.lineWidth=3+i;
+      ctx.beginPath();
+      for(let x=0;x<=w;x+=20){
+        const y = h*0.15 + i*h*0.08 + Math.sin(x*0.01+t*1.5+i)*18;
+        x?ctx.lineTo(x,y):ctx.moveTo(x,y);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    // god rays
+    ctx.save();
+    for(let i=0;i<5;i++){
+      const x = w*(0.2+i*0.15)+Math.sin(t+i)*30;
+      const rg = ctx.createLinearGradient(x,0,x+40,h*0.7);
+      rg.addColorStop(0,'rgba(255,255,255,0.14)');
+      rg.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=rg;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x+60,0); ctx.lineTo(x+20,h*0.75); ctx.lineTo(x-40,h*0.75); ctx.fill();
+    }
+    ctx.restore();
+  },
+  drawSeagrass(ctx, t){
+    this.grass.forEach(g=>{
+      const p=this.w2c(g.x,g.y);
+      const sway = Math.sin(t*2+g.phase)*6;
+      ctx.strokeStyle='rgba(46,125,50,0.85)';
+      ctx.lineWidth=2;
+      for(let k=0;k<3;k++){
+        ctx.beginPath();
+        ctx.moveTo(p.x+k*3, p.y);
+        ctx.quadraticCurveTo(p.x+sway+k*2, p.y-g.h*0.5*(this.canvas.height/1080), p.x-sway*0.5+k, p.y-g.h*(this.canvas.height/1080));
+        ctx.stroke();
+      }
+    });
+  },
+  drawCoralTower(ctx, c, t){
+    const p=this.w2c(c.x,c.y);
+    const sc = this.canvas.height/1080;
+    const h=c.h*sc;
+    // shadow plate
+    ctx.fillStyle='rgba(0,0,0,0.25)';
+    ctx.beginPath(); ctx.ellipse(p.x+4, p.y+6, 16*sc, 7*sc, 0, 0, Math.PI*2); ctx.fill();
+    if(c.kind==='staghorn'){
+      ctx.strokeStyle=`hsl(${c.hue},70%,55%)`; ctx.lineWidth=3*sc; ctx.lineCap='round';
+      for(let i=0;i<5;i++){
+        const a=-Math.PI/2 + (i-2)*0.35;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x+Math.cos(a)*h*0.7, p.y+Math.sin(a)*h*0.7);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(p.x+Math.cos(a)*h*0.45, p.y+Math.sin(a)*h*0.45);
+        ctx.lineTo(p.x+Math.cos(a+0.5)*h*0.65, p.y+Math.sin(a+0.5)*h*0.55);
+        ctx.stroke();
+      }
+    } else if(c.kind==='brain'){
+      const g=ctx.createRadialGradient(p.x,p.y-h*0.3,2,p.x,p.y,h*0.55);
+      g.addColorStop(0,`hsl(${c.hue},60%,70%)`); g.addColorStop(1,`hsl(${c.hue},70%,35%)`);
+      ctx.fillStyle=g;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y-h*0.15, 18*sc, 14*sc, 0, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1;
+      for(let i=0;i<4;i++){ ctx.beginPath(); ctx.ellipse(p.x, p.y-h*0.15, 8+i*3, 5+i*2, 0, 0, Math.PI*2); ctx.stroke(); }
+    } else if(c.kind==='table'){
+      ctx.fillStyle=`hsl(${c.hue},65%,45%)`;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y-h*0.5, 22*sc, 10*sc, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle=`hsl(${c.hue},65%,30%)`;
+      ctx.fillRect(p.x-3*sc, p.y-h*0.5, 6*sc, h*0.5);
+    } else {
+      // fan
+      ctx.strokeStyle=`hsl(${c.hue},80%,60%)`; ctx.lineWidth=1.5;
+      for(let i=0;i<7;i++){
+        const a=-Math.PI/2 + (i-3)*0.22;
+        ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+Math.cos(a)*h, p.y+Math.sin(a)*h); ctx.stroke();
+      }
+    }
+    if(this.scanned[c.id]){
+      ctx.strokeStyle='#00E676'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(p.x, p.y-h*0.3, 14*sc, 0, Math.PI*2); ctx.stroke();
+    }
+  },
+  drawFish(ctx, f, t){
+    const p=this.w2c(f.x,f.y);
+    const sc=this.canvas.height/1080;
+    const s=f.size*sc;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(Math.atan2(f.vy, f.vx||0.001));
+    const colors={chromis:'#42A5F5',angelfish:'#FFD54F',parrot:'#66BB6A',clown:'#FF7043',surgeon:'#26C6DA'};
+    ctx.fillStyle=colors[f.kind]||'#81D4FA';
+    ctx.beginPath(); ctx.ellipse(0,0,s,s*0.45,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-s,0); ctx.lineTo(-s*1.4,-s*0.4); ctx.lineTo(-s*1.4,s*0.4); ctx.fill();
+    ctx.fillStyle='#0D47A1'; ctx.beginPath(); ctx.arc(s*0.45,-s*0.1,s*0.12,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  },
+  drawFauna(ctx, m, t){
+    const p=this.w2c(m.x,m.y);
+    const sc=this.canvas.height/1080;
+    ctx.save(); ctx.translate(p.x,p.y);
+    if(m.kind==='turtle'){
+      ctx.fillStyle='#558B2F'; ctx.beginPath(); ctx.ellipse(0,0,22*sc,14*sc,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#8D6E63'; ctx.beginPath(); ctx.ellipse(-18*sc,0,8*sc,5*sc,0,0,Math.PI*2); ctx.fill();
+    } else if(m.kind==='dolphin'){
+      ctx.fillStyle='#78909C'; ctx.beginPath(); ctx.ellipse(0,0,28*sc,12*sc,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(10*sc,-10*sc); ctx.lineTo(0,-22*sc); ctx.lineTo(-6*sc,-8*sc); ctx.fill();
+    } else if(m.kind==='seahorse'){
+      ctx.strokeStyle='#FFB74D'; ctx.lineWidth=3*sc;
+      ctx.beginPath(); ctx.moveTo(0,10*sc); ctx.quadraticCurveTo(-8*sc,0,0,-12*sc); ctx.quadraticCurveTo(8*sc,-18*sc,4*sc,-8*sc); ctx.stroke();
+    } else if(m.kind==='ray'){
+      ctx.fillStyle='#5C6BC0'; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-30*sc,12*sc); ctx.lineTo(0,6*sc); ctx.lineTo(30*sc,12*sc); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  },
+  /** SearchO2 diver: swimsuit, mask, tank backpack, flippers — isometric volumetric */
+  drawDiver(ctx, t){
+    const p=this.w2c(this.diver.x, this.diver.y);
+    const sc=this.canvas.height/1080;
+    const kick=Math.sin(this.diver.kick)*8*sc;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(this.diver.a);
+    // shadow
+    ctx.fillStyle='rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.ellipse(4*sc, 10*sc, 18*sc, 7*sc, 0, 0, Math.PI*2); ctx.fill();
+    // flippers
+    ctx.fillStyle='#1565C0';
+    ctx.beginPath(); ctx.ellipse(-16*sc, 6*sc+kick, 12*sc, 5*sc, -0.4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-16*sc, -6*sc-kick, 12*sc, 5*sc, 0.4, 0, Math.PI*2); ctx.fill();
+    // legs + torso swimsuit
+    ctx.fillStyle='#00BCD4';
+    ctx.fillRect(-10*sc, -6*sc, 18*sc, 12*sc);
+    ctx.fillStyle='#006064';
+    ctx.fillRect(-2*sc, -7*sc, 14*sc, 14*sc); // torso panel
+    // SearchO2 oxygen tank backpack
+    ctx.fillStyle='#37474F';
+    ctx.fillRect(-6*sc, -16*sc, 10*sc, 22*sc);
+    ctx.fillStyle='#00E676';
+    ctx.fillRect(-5*sc, -14*sc, 8*sc, 4*sc);
+    ctx.fillStyle='#FFF';
+    ctx.font = (7*sc)+'px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('O₂', -1*sc, -4*sc);
+    // arms
+    ctx.strokeStyle='#FFCC80'; ctx.lineWidth=3*sc; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(8*sc, -8*sc); ctx.lineTo(18*sc, -14*sc); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(8*sc, 8*sc); ctx.lineTo(18*sc, 12*sc); ctx.stroke();
+    // head + mask + glasses
+    ctx.fillStyle='#FFCC80';
+    ctx.beginPath(); ctx.arc(14*sc, 0, 7*sc, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#263238'; ctx.lineWidth=2*sc;
+    ctx.beginPath(); ctx.arc(16*sc, 0, 5*sc, -0.8, 0.8); ctx.stroke(); // mask seal
+    ctx.fillStyle='rgba(129,212,250,0.55)';
+    ctx.beginPath(); ctx.ellipse(17*sc, 0, 4*sc, 3*sc, 0, 0, Math.PI*2); ctx.fill(); // glass
+    // bubbles
+    ctx.fillStyle='rgba(255,255,255,0.45)';
+    for(let i=0;i<4;i++){
+      const by = -20*sc - (t*40+i*12)%50;
+      ctx.beginPath(); ctx.arc(20*sc+i*2, by, 2+i*0.5, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+  },
+  drawSanctuaryRing(ctx, key){
+    const s=this.sanctuaries[key];
+    const p=this.w2c(s.cx,s.cy);
+    const rx=s.r*this.canvas.width, ry=s.r*this.canvas.height*0.75;
+    ctx.save();
+    ctx.strokeStyle = key===this.sanctuary ? 'rgba(0,230,118,0.55)' : 'rgba(0,229,255,0.25)';
+    ctx.lineWidth = key===this.sanctuary ? 3 : 1.5;
+    ctx.setLineDash(key===this.sanctuary?[8,6]:[4,6]);
+    ctx.beginPath(); ctx.ellipse(p.x,p.y,rx,ry,0,0,Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#E0F7FA'; ctx.font=(12*this.canvas.height/1080)+'px Nunito,sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText(s.name, p.x, p.y-ry-8);
+    ctx.restore();
+  },
+  drawFPV(ctx, t){
+    // Camera locked near diver looking forward through reef corridor
+    const w=this.canvas.width, h=this.canvas.height;
+    this.drawWaterBg(ctx, t);
+    // Depth vignette
+    const vg=ctx.createRadialGradient(w*0.5,h*0.45,h*0.1,w*0.5,h*0.5,h*0.75);
+    vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,20,40,0.55)');
+    ctx.fillStyle=vg; ctx.fillRect(0,0,w,h);
+    // Sort corals by depth (y) for pseudo-3D
+    const sorted=[...this.coral].filter(c=>c.sanctuary===this.sanctuary).sort((a,b)=>a.y-b.y);
+    // Seagrass mid
+    this.grass.filter((_,i)=>i%2===0).forEach(g=>this.drawSeagrassItem(ctx,g,t));
+    sorted.forEach(c=>{
+      // project relative to diver for FPV parallax
+      const dx=(c.x-this.diver.x)*2.2 + 0.5;
+      const dy=(c.y-this.diver.y)*2.0 + 0.62;
+      const c2={...c, x:dx, y:dy, h:c.h*1.4};
+      if(dx>0.05&&dx<0.95&&dy>0.25&&dy<0.95) this.drawCoralTower(ctx,c2,t);
+    });
+    this.fish.forEach(f=>{
+      const dx=(f.x-this.diver.x)*2.2+0.5;
+      const dy=(f.y-this.diver.y)*2.0+0.55;
+      if(dx>0&&dx<1&&dy>0.2&&dy<0.9) this.drawFish(ctx,{...f,x:dx,y:dy},t);
+    });
+    // Mask HUD frame
+    ctx.strokeStyle='rgba(0,0,0,0.45)'; ctx.lineWidth=18;
+    ctx.beginPath(); ctx.ellipse(w/2,h/2,w*0.42,h*0.38,0,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle='rgba(0,230,118,0.9)';
+    ctx.font=(14*h/1080)+'px JetBrains Mono,monospace';
+    ctx.textAlign='center';
+    ctx.fillText('O₂ 94%  ·  DEPTH '+(this.sanctuary==='trench'?'12.4 m':'4.2 m')+'  ·  SEARCHO2 TANK', w*0.5, h*0.12);
+  },
+  drawSeagrassItem(ctx,g,t){
+    const p=this.w2c(g.x,g.y);
+    const sc=this.canvas.height/1080;
+    const sway=Math.sin(t*2+g.phase)*8;
+    ctx.strokeStyle='rgba(67,160,71,0.9)'; ctx.lineWidth=2.2*sc;
+    for(let k=0;k<4;k++){
+      ctx.beginPath();
+      ctx.moveTo(p.x+k*4*sc, p.y);
+      ctx.quadraticCurveTo(p.x+sway+k*3, p.y-g.h*0.5*sc, p.x-sway*0.4+k*2, p.y-g.h*sc);
+      ctx.stroke();
+    }
+  },
+  drawBirds(ctx, t){
+    this.drawWaterBg(ctx, t);
+    this.drawSanctuaryRing(ctx,'lagoon');
+    this.drawSanctuaryRing(ctx,'trench');
+    this.grass.forEach(g=>this.drawSeagrassItem(ctx,g,t));
+    // seabed sand ridges
+    ctx.strokeStyle='rgba(255,248,225,0.08)'; ctx.lineWidth=2;
+    for(let i=0;i<6;i++){
+      ctx.beginPath();
+      for(let x=0;x<this.canvas.width;x+=16){
+        const y=this.canvas.height*(0.55+i*0.06)+Math.sin(x*0.01+t+i)*10;
+        x?ctx.lineTo(x,y):ctx.moveTo(x,y);
+      }
+      ctx.stroke();
+    }
+    [...this.coral].sort((a,b)=>a.y-b.y).forEach(c=>this.drawCoralTower(ctx,c,t));
+    this.fish.forEach(f=>this.drawFish(ctx,f,t));
+    this.fauna.forEach(m=>this.drawFauna(ctx,m,t));
+    this.drawDiver(ctx, t);
+    // legend
+    ctx.fillStyle='rgba(6,18,30,0.75)';
+    ctx.fillRect(12, this.canvas.height-56, 280, 44);
+    ctx.fillStyle='#E0F7FA'; ctx.font='12px Nunito,sans-serif'; ctx.textAlign='left';
+    ctx.fillText('🤿 Diver · SearchO2 O₂ tank · mask · flippers', 20, this.canvas.height-30);
+    ctx.fillText('🪸 Tap coral or Scan · WASD swim', 20, this.canvas.height-14);
+  },
+  draw(){
+    if(!this.ctx) return;
+    const t=(performance.now()-this.t0)*0.001;
+    if(this.mode==='fpv') this.drawFPV(this.ctx, t);
+    else this.drawBirds(this.ctx, t);
+  }
+};
+
+function enterDive(siteId){
   const why=document.getElementById('why-modal');if(why)why.classList.remove('open');
   document.getElementById('island-zone').style.display='none';
+  document.getElementById('outer-zone').style.display='none';
+  const boat=document.getElementById('boat-tour'); if(boat) boat.style.display='none';
   document.getElementById('dive-zone').style.display='block';
   renderScoreboard('scoreboard-dive');
+  const sanct = (siteId==='reef_basin_outer') ? 'trench' : 'lagoon';
+  DiveScene.init(document.getElementById('dive-canvas'));
+  DiveScene.start(sanct);
+  toast(sanct==='trench' ? 'Deep Trench Sanctuary · bird’s-eye dive' : 'Lagoon Coral Sanctuary · bird’s-eye dive');
 }
+
+function exitDive(){
+  DiveScene.stop();
+  enterMain(true);
+}
+
 
 function toggleFullscreenMode(){
   if(!document.fullscreenElement){
@@ -7788,7 +8295,14 @@ window.addEventListener('DOMContentLoaded',()=>{
 
   // Return to island from outer / dive
   document.getElementById('btn-outer-island').onclick=()=>enterMain(true);
-  document.getElementById('btn-surface').onclick=()=>enterMain(true);
+  document.getElementById('btn-surface').onclick=()=>exitDive();
+  const btnDiveScan=document.getElementById('btn-dive-scan');
+  if(btnDiveScan) btnDiveScan.onclick=()=>{ if(DiveScene.active) DiveScene.scanNearest(); else enterDive('lagoon'); };
+  const btnDiveView=document.getElementById('btn-dive-view');
+  if(btnDiveView) btnDiveView.onclick=()=>{ if(DiveScene.active) DiveScene.toggleMode(); };
+  const btnDiveSanct=document.getElementById('btn-dive-sanctuary');
+  if(btnDiveSanct) btnDiveSanct.onclick=()=>{ if(DiveScene.active) DiveScene.toggleSanctuary(); };
+
 
   // Modal Close buttons
   const modalCloses=[
