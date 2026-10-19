@@ -66,16 +66,16 @@ const assert = require('assert');
   assert.strictEqual(cotSite.y1080, 230, 'tourist_cottages y1080 must be 230');
 
   const sunSite = sites.find(s => s.id === 'beach_sunbeds');
-  assert.strictEqual(sunSite.x1080, 230, 'beach_sunbeds x1080 must be 230');
-  assert.strictEqual(sunSite.y1080, 205, 'beach_sunbeds y1080 must be 205');
+  assert.strictEqual(sunSite.x1080, 228, 'beach_sunbeds x1080 must be 228');
+  assert.strictEqual(sunSite.y1080, 178, 'beach_sunbeds y1080 must be 178');
 
   const dec3Site = sites.find(s => s.id === 'mangrove_decagon_3');
   assert.strictEqual(dec3Site.x1080, 265, 'mangrove_decagon_3 x1080 must be 265');
   assert.strictEqual(dec3Site.y1080, 335, 'mangrove_decagon_3 y1080 must be 335');
 
   const saltSite = sites.find(s => s.id === 'salt_brine_beds');
-  assert.strictEqual(saltSite.x1080, 190, 'salt_brine_beds x1080 must be 190');
-  assert.strictEqual(saltSite.y1080, 505, 'salt_brine_beds y1080 must be 505');
+  assert.strictEqual(saltSite.x1080, 205, 'salt_brine_beds x1080 must be 205');
+  assert.strictEqual(saltSite.y1080, 475, 'salt_brine_beds y1080 must be 475');
 
   const jettySite = sites.find(s => s.id === 't_jetty_pier');
   assert.strictEqual(jettySite.x1080, 1415, 't_jetty_pier x1080 must be 1415');
@@ -85,9 +85,9 @@ const assert = require('assert');
   // 4. Verify Decagon 3 PLOT_DEFS Coordinates
   const plotDefs = await page.evaluate(() => PLOT_DEFS);
   assert.strictEqual(plotDefs['dec3.plot1'].y1080, 275);
-  assert.strictEqual(plotDefs['dec3.plot5'].x1080, 350);
-  assert.strictEqual(plotDefs['dec3.plot5'].y1080, 325);
-  console.log('[✓ PASSED] Decagon 3 PLOT_DEFS verified with plot5 relocated to green meadow (350, 325)');
+  assert.strictEqual(plotDefs['dec3.plot5'].x1080, 320);
+  assert.strictEqual(plotDefs['dec3.plot5'].y1080, 358);
+  console.log('[✓ PASSED] Decagon 3 PLOT_DEFS verified with plot5 relocated to green meadow (320, 358)');
 
   // 5. Test Building all 6 Facilities in Parallel / Sequential
   console.log('Testing construction of all 6 facilities...');
