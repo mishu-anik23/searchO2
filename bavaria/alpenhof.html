@@ -1042,7 +1042,102 @@ function drawOrchardField(ctx, p, time){
   });
 }
 
-/* ================= ORGANIC COUNTRY MUD ROAD FOOTPRINT ================= */
+/* ================= ORGANIC COUNTRY MUD ROAD & BYPASS HIGHWAY NETWORK ================= */
+const ROAD_BYPASS_PTS = [
+  [1750, 890], [1580, 865], [1340, 835], [1080, 810], [835, 805], [590, 795], [400, 785], [200, 770]
+];
+
+function getBypassPolylinePoint(pts, progress) {
+  let totalLen = 0;
+  const segLens = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const d = Math.hypot(pts[i+1][0] - pts[i][0], pts[i+1][1] - pts[i][1]);
+    segLens.push(d);
+    totalLen += d;
+  }
+  let target = progress * totalLen;
+  for (let i = 0; i < segLens.length; i++) {
+    if (target <= segLens[i] || i === segLens.length - 1) {
+      const segT = segLens[i] > 0 ? target / segLens[i] : 0;
+      const x = pts[i][0] + (pts[i+1][0] - pts[i][0]) * segT;
+      const y = pts[i][1] + (pts[i+1][1] - pts[i][1]) * segT;
+      const angle = Math.atan2(pts[i+1][1] - pts[i][1], pts[i+1][0] - pts[i][0]);
+      return {x, y, angle};
+    }
+    target -= segLens[i];
+  }
+  return {x: pts[0][0], y: pts[0][1], angle: 0};
+}
+
+function isNearBypassRoad(cx, cy) {
+  for (let i = 0; i < ROAD_BYPASS_PTS.length - 1; i++) {
+    const p1 = ROAD_BYPASS_PTS[i];
+    const p2 = ROAD_BYPASS_PTS[i+1];
+    const dx = p2[0] - p1[0];
+    const dy = p2[1] - p1[1];
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) continue;
+    let t = ((cx - p1[0]) * dx + (cy - p1[1]) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    const projX = p1[0] + t * dx;
+    const projY = p1[1] + t * dy;
+    if (Math.hypot(cx - projX, cy - projY) < 32) return true;
+  }
+  return false;
+}
+
+function drawMilkTransportTruck(ctx, time) {
+  const tNorm = ((time * 0.05) % 2.0);
+  const forward = tNorm < 1.0;
+  const t = forward ? tNorm : (2.0 - tNorm);
+  const {x, y, angle} = getBypassPolylinePoint(ROAD_BYPASS_PTS, t);
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Ground drop shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.beginPath();
+  ctx.ellipse(0, 5, 24, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (!forward) ctx.scale(-1, 1);
+
+  // Wheels
+  ctx.fillStyle = '#212121';
+  [-13, -5, 9].forEach(wx => {
+    ctx.fillRect(wx - 3, 3, 6, 5);
+    ctx.fillStyle = '#CFD8DC'; ctx.fillRect(wx - 1, 4.5, 2, 2);
+    ctx.fillStyle = '#212121';
+  });
+
+  // Cylindrical Stainless Steel Milk Tanker Trailer
+  isoBox(ctx, -7, -2, 24, 12, 10, '#ECEFF1', '#CFD8DC', '#B0BEC5', '#78909C');
+  // Tank bands & top inspection dome
+  ctx.strokeStyle = '#90A4AE'; ctx.lineWidth = 1;
+  ctx.strokeRect(-16, -11, 4, 8);
+  ctx.strokeRect(-2, -11, 4, 8);
+  ctx.fillStyle = '#78909C';
+  ctx.beginPath(); ctx.ellipse(-7, -12, 3.5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+  // "ALPEN-MILCH" Blue livery band
+  ctx.fillStyle = '#0288D1';
+  ctx.fillRect(-17, -7, 20, 3.2);
+
+  // Bavarian Alpine White & Blue Cab
+  isoBox(ctx, 11, 0, 10, 11, 11, '#E1F5FE', '#0288D1', '#01579B', '#0277BD');
+  // Windscreen & Headlights
+  ctx.fillStyle = '#00E5FF'; ctx.fillRect(11, -9, 4, 5);
+  ctx.fillStyle = '#FFF59D'; ctx.fillRect(15, -3, 2, 2);
+  // Chrome Front Grille
+  ctx.fillStyle = '#B0BEC5'; ctx.fillRect(15, -1, 1.5, 3.2);
+  // Amber Flashing Roof Beacon
+  const flash = Math.sin(time * 10) > 0;
+  ctx.fillStyle = flash ? '#FFB300' : '#FF6F00';
+  ctx.beginPath(); ctx.arc(10, -12, 1.8, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+}
+
 function drawRoadNetwork(ctx){
   ctx.save();
   ctx.lineCap = 'round';
@@ -1100,6 +1195,90 @@ function drawRoadNetwork(ctx){
     ctx.stroke();
     ctx.setLineDash([]);
   });
+
+  // ================= SOUTHERN MEADOW MANHATTAN BYPASS MAIN ROAD =================
+  const isBypassBuilt = !!(state.built && state.built['road_dairy_bypass']);
+  const animTime = (window.AlpenMap && window.AlpenMap.time) || 0;
+
+  if (!isBypassBuilt) {
+    // Unbuilt Blueprint Excavation Shadow & Survey Marking
+    ctx.strokeStyle = 'rgba(18, 36, 18, 0.40)';
+    ctx.lineWidth = 16;
+    ctx.beginPath();
+    ROAD_BYPASS_PTS.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1] + 2) : ctx.lineTo(p[0], p[1] + 2));
+    ctx.stroke();
+
+    // Blueprint excavation dashed lines (Cyan / Gold survey ribbon)
+    ctx.strokeStyle = '#00E5FF';
+    ctx.lineWidth = 3.2;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ROAD_BYPASS_PTS.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Wooden surveyor stakes with orange flags at turns
+    ROAD_BYPASS_PTS.forEach((p, idx) => {
+      ctx.fillStyle = '#8D6E63'; ctx.fillRect(p[0] - 1.5, p[1] - 10, 3, 11);
+      ctx.fillStyle = (idx % 2 === 0) ? '#FF3D00' : '#FFB300';
+      ctx.fillRect(p[0] + 1.5, p[1] - 10, 5, 3.5);
+    });
+
+    // Floating blueprint badge on southern causeway at (1080, 808)
+    ctx.save();
+    ctx.fillStyle = 'rgba(5, 16, 9, 0.92)';
+    ctx.beginPath();
+    ctx.roundRect(970, 794, 220, 26, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#00E5FF'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.fillStyle = '#00E5FF'; ctx.font = 'bold 10px JetBrains Mono'; ctx.textAlign = 'center';
+    ctx.fillText('🛣️ Manhattan Bypass Blueprint (Click)', 1080, 811);
+    ctx.restore();
+  } else {
+    // BUILT: 3D VOLUMETRIC BAVARIAN COBBLESTONE HIGHWAY
+    // 1. Crushed aggregate embankment underlayer
+    ctx.strokeStyle = '#3E2723';
+    ctx.lineWidth = 18;
+    ctx.beginPath();
+    ROAD_BYPASS_PTS.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1] + 2) : ctx.lineTo(p[0], p[1] + 2));
+    ctx.stroke();
+
+    // 2. Solid bedded stone base
+    ctx.strokeStyle = '#5D4037';
+    ctx.lineWidth = 14;
+    ctx.beginPath();
+    ROAD_BYPASS_PTS.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
+    ctx.stroke();
+
+    // 3. Beveled Granite Cobblestone Paving
+    ctx.strokeStyle = '#8D6E63';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ROAD_BYPASS_PTS.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1]) : ctx.lineTo(p[0], p[1]));
+    ctx.stroke();
+
+    // 4. Cobblestone transverse texture lines
+    ctx.strokeStyle = '#BCAAA4';
+    ctx.lineWidth = 1.0;
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ROAD_BYPASS_PTS.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1] - 1.5) : ctx.lineTo(p[0], p[1] - 1.5));
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 5. Kerb edge stone highlights
+    ctx.strokeStyle = '#3E2723';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ROAD_BYPASS_PTS.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1] - 5) : ctx.lineTo(p[0], p[1] - 5));
+    ctx.stroke();
+    ctx.beginPath();
+    ROAD_BYPASS_PTS.forEach((p, i) => i === 0 ? ctx.moveTo(p[0], p[1] + 5) : ctx.lineTo(p[0], p[1] + 5));
+    ctx.stroke();
+
+    // Animated Milk Transport Truck
+    drawMilkTransportTruck(ctx, animTime);
+  }
 
   ctx.restore();
 }
@@ -1441,57 +1620,128 @@ function drawFarmBarn(ctx, cx, cy, built){
   ctx.translate(cx, cy);
   ctx.globalAlpha = built ? 1 : 0.50;
 
-  // Ground Shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.36)';
-  ctx.beginPath(); ctx.ellipse(0, 16, 82, 28, 0, 0, Math.PI * 2); ctx.fill();
+  // 1. Soft Ambient Ground Shadow
+  ctx.fillStyle = 'rgba(12, 28, 14, 0.40)';
+  ctx.beginPath(); ctx.ellipse(-6, 18, 88, 30, 0, 0, Math.PI * 2); ctx.fill();
 
-  // Foundation Plinth (Alpine Fieldstone)
-  isoBox(ctx, -14, 4, 76, 44, 6, '#90A4AE', '#78909C', '#607D8B');
+  // 2. Heavy Alpine Fieldstone Foundation Plinth
+  isoBox(ctx, -14, 5, 78, 46, 7, '#90A4AE', '#78909C', '#607D8B', '#455A64');
 
-  // Barn Main Structure: Heavy Interlocking Pine Logs
-  isoBox(ctx, -14, -2, 72, 40, 32, '#5D4037', '#4E342E', '#3E2723', '#271206');
+  // 3. Barn Main Structure: Heavy Larch Board-and-Batten Timber Walls
+  isoBox(ctx, -14, -2, 74, 42, 34, '#5D4037', '#4E342E', '#3E2723', '#271206');
 
-  // Double Barn Doors with Timber X-Bracing
-  ctx.fillStyle = '#3E2723'; ctx.fillRect(-22, -6, 16, 20);
-  ctx.strokeStyle = '#D7CCC8'; ctx.lineWidth = 1.2;
+  // Vertical board-and-batten siding texture
+  ctx.strokeStyle = 'rgba(39, 18, 6, 0.60)'; ctx.lineWidth = 1.0;
+  for (let bx = -46; bx <= 20; bx += 7) {
+    ctx.beginPath();
+    ctx.moveTo(bx, 10); ctx.lineTo(bx, -24);
+    ctx.stroke();
+  }
+  // Corner vertical heavy timber posts
+  ctx.fillStyle = '#3E2723';
+  ctx.fillRect(-51, -26, 3, 36);
+  ctx.fillRect(21, -26, 3, 36);
+
+  // 4. Double Sliding Timber Barn Doors with Forged X-Bracing
+  ctx.fillStyle = '#3E2723'; ctx.fillRect(-24, -6, 20, 22);
+  // Door panels and X-bracing
+  ctx.fillStyle = '#4E342E'; ctx.fillRect(-23, -5, 9, 20); ctx.fillRect(-13, -5, 9, 20);
+  ctx.strokeStyle = '#D7CCC8'; ctx.lineWidth = 1.3;
   ctx.beginPath();
-  ctx.moveTo(-22, -6); ctx.lineTo(-6, 14); ctx.moveTo(-6, -6); ctx.lineTo(-22, 14);
+  ctx.moveTo(-23, -5); ctx.lineTo(-14, 15); ctx.moveTo(-14, -5); ctx.lineTo(-23, 15);
+  ctx.moveTo(-13, -5); ctx.lineTo(-4, 15); ctx.moveTo(-4, -5); ctx.lineTo(-13, 15);
+  ctx.stroke();
+  // Overhead sliding track & guide rollers
+  ctx.fillStyle = '#212121';
+  ctx.fillRect(-26, -8, 24, 2.2);
+  ctx.beginPath(); ctx.arc(-20, -7, 1.4, 0, Math.PI * 2); ctx.arc(-8, -7, 1.4, 0, Math.PI * 2); ctx.fill();
+
+  // 5. Upper Hayloft Door, Golden Hay Bales & Crane Hoist Pulley
+  // Loft door opening
+  ctx.fillStyle = '#21120B'; ctx.fillRect(-20, -28, 12, 12);
+  // Stacked golden hay bales visible on loft sill
+  ctx.fillStyle = '#FBC02D'; ctx.fillRect(-19, -22, 5, 6);
+  ctx.fillStyle = '#F57F17'; ctx.fillRect(-14, -20, 5, 4);
+  ctx.fillStyle = '#FFE082'; ctx.fillRect(-18, -25, 4, 4);
+  // Projecting heavy crane hoist timber beam
+  ctx.strokeStyle = '#6D4C41'; ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.moveTo(-14, -30); ctx.lineTo(-14, -40); ctx.lineTo(-6, -38); ctx.stroke();
+  // Iron pulley wheel
+  ctx.fillStyle = '#37474F'; ctx.beginPath(); ctx.arc(-6, -38, 2.2, 0, Math.PI * 2); ctx.fill();
+  // Suspension hoist rope & forged iron hook
+  ctx.strokeStyle = '#FFE082'; ctx.lineWidth = 1.0;
+  ctx.beginPath(); ctx.moveTo(-6, -38); ctx.lineTo(-6, -24); ctx.stroke();
+  ctx.strokeStyle = '#212121'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(-6, -23, 1.2, 0, Math.PI); ctx.stroke();
+
+  // 6. Weathered Pitch Pine Shingle Roof with Snow Stoppers
+  isoRoof(ctx, -14, -36, 82, 50, 0, 26, '#6D4C41', '#4E342E', '#5D4037', '#271206');
+  // Snow-stop balks on roof slopes
+  ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-42, -30); ctx.lineTo(-14, -18); ctx.lineTo(18, -30);
   ctx.stroke();
 
-  // Upper Hayloft Door & Hoist Pulley Crane
-  ctx.fillStyle = '#271206'; ctx.fillRect(-18, -26, 8, 10);
-  ctx.strokeStyle = '#8D6E63'; ctx.lineWidth = 2.2;
-  ctx.beginPath(); ctx.moveTo(-14, -32); ctx.lineTo(-14, -38); ctx.lineTo(-7, -36); ctx.stroke();
-  ctx.strokeStyle = '#FFE082'; ctx.lineWidth = 0.9;
-  ctx.beginPath(); ctx.moveTo(-7, -36); ctx.lineTo(-7, -26); ctx.stroke(); // Hoist rope
-
-  // Weathered Pitch Pine Shingle Roof
-  isoRoof(ctx, -14, -34, 80, 48, 0, 24, '#6D4C41', '#4E342E', '#5D4037', '#271206');
-
-  // Classic Green Fendt Tractor parked beside the barn
+  // 7. CLASSIC GREEN FENDT TRACTOR (3D Isometric Volumetric Model)
   if (built) {
     ctx.save();
-    ctx.translate(42, 14);
-    // Tractor shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.beginPath(); ctx.ellipse(0, 6, 18, 8, 0, 0, Math.PI * 2); ctx.fill();
-    // Oversized rear tires
+    ctx.translate(44, 15);
+
+    // Tractor Ground Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.36)';
+    ctx.beginPath(); ctx.ellipse(2, 8, 24, 10, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Oversized Lugged Rear Drive Tires (Deep chevron treads)
     ctx.fillStyle = '#212121';
-    ctx.beginPath(); ctx.ellipse(-8, 4, 5, 8, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(-8, 4, 3, 0, Math.PI * 2); ctx.fill(); // Yellow hub
-    // Front tires
+    ctx.beginPath(); ctx.ellipse(-9, 4, 6.5, 10, 0, 0, Math.PI * 2); ctx.fill();
+    // Tread lugs
+    ctx.strokeStyle = '#424242'; ctx.lineWidth = 1.2;
+    [-4, 0, 4, 8].forEach(ty => {
+      ctx.beginPath(); ctx.moveTo(-13, ty); ctx.lineTo(-7, ty - 1.5); ctx.stroke();
+    });
+    // Iconic Fendt Yellow Hubcap with lug bolts
+    ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(-9, 4, 3.8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#C79A00'; ctx.beginPath(); ctx.arc(-9, 4, 1.8, 0, Math.PI * 2); ctx.fill();
+
+    // Steerable Front Tires with Yellow Rims
     ctx.fillStyle = '#212121';
-    ctx.beginPath(); ctx.ellipse(10, 7, 3, 5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(10, 7, 1.8, 0, Math.PI * 2); ctx.fill();
-    // Fendt Emerald Green Engine Hood & Chassis
-    isoBox(ctx, 4, 0, 18, 9, 8, '#2E7D32', '#1B5E20', '#1B5E20');
-    // Radiator front grill
-    ctx.fillStyle = '#212121'; ctx.fillRect(11, -3, 3, 5);
-    ctx.fillStyle = '#FFEB3B'; ctx.beginPath(); ctx.arc(12, -2, 1.2, 0, Math.PI * 2); ctx.fill(); // Headlight
-    // Black vertical diesel exhaust pipe
+    ctx.beginPath(); ctx.ellipse(13, 8, 4.0, 6.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(13, 8, 2.2, 0, Math.PI * 2); ctx.fill();
+
+    // Fendt Emerald Green Engine Hood & Heavy Chassis
+    isoBox(ctx, 4, 0, 22, 10, 9, '#2E7D32', '#1B5E20', '#1B5E20', '#144617');
+    // Bonnet hood highlight
+    ctx.fillStyle = '#43A047'; ctx.fillRect(0, -9, 10, 2.2);
+
+    // Front Radiator Grille & Twin Headlamps
+    ctx.fillStyle = '#212121'; ctx.fillRect(14, -4, 3.5, 6.5);
+    ctx.fillStyle = '#B0BEC5'; ctx.fillRect(14, -2, 3.5, 1.2); // Fendt chrome bar
+    // Bright twin headlamps
+    ctx.fillStyle = '#FFF59D';
+    ctx.beginPath(); ctx.arc(15, -3, 1.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(15, 1, 1.4, 0, Math.PI * 2); ctx.fill();
+
+    // Vertical Black Diesel Exhaust Pipe with Rain Flapper Cap
+    ctx.strokeStyle = '#212121'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(5, -9); ctx.lineTo(5, -20); ctx.stroke();
+    // Curved rain flapper
+    ctx.strokeStyle = '#424242'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(5, -20); ctx.lineTo(7, -22); ctx.stroke();
+
+    // Driver Cockpit: Spring-suspended Seat, Steering Wheel Column & Pedals
+    ctx.fillStyle = '#37474F'; ctx.fillRect(-5, -7, 7, 6); // seat
+    ctx.fillStyle = '#263238'; ctx.fillRect(-5, -11, 6, 4); // seat back
+    // Steering column & wheel
     ctx.strokeStyle = '#212121'; ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(4, -8); ctx.lineTo(4, -17); ctx.stroke();
-    // Steering seat
-    ctx.fillStyle = '#37474F'; ctx.fillRect(-4, -6, 6, 5);
+    ctx.beginPath(); ctx.moveTo(2, -7); ctx.lineTo(0, -12); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, -12, 2.5, 1.2, 0.4, 0, Math.PI * 2); ctx.stroke();
+
+    // Arched ROPS Tubular Safety Roll Bar
+    ctx.strokeStyle = '#263238'; ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(-9, -2); ctx.lineTo(-9, -17); ctx.lineTo(-2, -17); ctx.lineTo(-2, -2);
+    ctx.stroke();
+
     ctx.restore();
   }
 
@@ -1937,15 +2187,37 @@ function drawLivingLake(ctx, cx, cy, built, time){
     ctx.closePath(); ctx.fill();
   } else {
     // STAGE 4 / BUILT: FULL 3D VOLUMETRIC ISOMETRIC 2-BASIN ALPINE LAKE (100%)
-    // 1. Natural Clean Pebble/Sand Shoreline Rim
-    ctx.strokeStyle = '#B0BEC5';
-    ctx.lineWidth = 4;
+    // 1. Terraced Stone Revetment Embankment (Ground Grade Level)
+    ctx.strokeStyle = '#546E7A';
+    ctx.lineWidth = 10;
     ctx.beginPath();
     LAKE_2BASIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
     ctx.closePath();
     ctx.stroke();
 
-    // 2. Luminous Glacial Alpine Turquoise Water Gradient
+    // Beveled stone coping rim
+    ctx.strokeStyle = '#90A4AE';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    LAKE_2BASIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1] - 1.5) : ctx.lineTo(pt[0], pt[1] - 1.5));
+    ctx.closePath();
+    ctx.stroke();
+
+    // 2. Stepped Inner Basin Rim & Vertical Stone Courses (Sunken Basin Walls)
+    ctx.fillStyle = '#263238';
+    ctx.beginPath();
+    LAKE_2BASIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner depth drop shadow along north/west embankments
+    ctx.fillStyle = 'rgba(5, 15, 10, 0.45)';
+    ctx.beginPath();
+    LAKE_2BASIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1] + 3) : ctx.lineTo(pt[0], pt[1] + 3));
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. SUNKEN LAKESURF WATER PLANE (Lower than surrounding road/meadow grade)
     const g = ctx.createLinearGradient(480, 780, 1470, 1035);
     g.addColorStop(0, '#18FFFF');
     g.addColorStop(0.35, '#00E5FF');
@@ -1953,11 +2225,15 @@ function drawLivingLake(ctx, cx, cy, built, time){
     g.addColorStop(1, '#0D47A1');
     ctx.fillStyle = g;
     ctx.beginPath();
-    LAKE_2BASIN_PTS.forEach((pt, i) => i === 0 ? ctx.moveTo(pt[0], pt[1]) : ctx.lineTo(pt[0], pt[1]));
+    LAKE_2BASIN_PTS.forEach((pt, i) => {
+      const rx = 900 + (pt[0] - 900) * 0.96;
+      const ry = 900 + (pt[1] - 900) * 0.96;
+      i === 0 ? ctx.moveTo(rx, ry) : ctx.lineTo(rx, ry);
+    });
     ctx.closePath();
     ctx.fill();
 
-    // 3. 3D ISOMETRIC VOLUMETRIC WATER: Caustic Layers & Dynamic Wave Crests
+    // 4. 3D ISOMETRIC VOLUMETRIC WATER: Caustic Layers & Dynamic Wave Crests
     const t = time || 0;
     ctx.save();
     
@@ -2369,60 +2645,132 @@ function drawJuiceBar(ctx, cx, cy, built){
   ctx.restore();
 }
 
-/* 7. Crew Shed & Labour HQ at (1080, 465) Beside Central Valley Road */
+/* 7. Crew Shed & Labour HQ at (945, 310) Beside Central Valley Road */
 function drawCrewLodge(ctx, cx, cy, built){
   ctx.save();
   ctx.translate(cx, cy);
   ctx.globalAlpha = built ? 1 : 0.50;
 
-  // Ground ambient shadow on green meadow
-  ctx.fillStyle = 'rgba(0,0,0,0.30)';
+  // 1. Soft Ambient Ground Drop Shadow on Meadow
+  ctx.fillStyle = 'rgba(12, 28, 14, 0.38)';
   ctx.beginPath();
-  ctx.ellipse(4, 12, 48, 20, 0, 0, Math.PI * 2);
+  ctx.ellipse(4, 14, 52, 22, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // MAIN TIMBER LODGE BODY (Facing West toward Road and Vegetable Garden)
-  isoBox(ctx, 4, 0, 52, 32, 24, '#6D4C41', '#5D4037', '#4E342E', '#271206');
-  // High-pitched Bavarian Alpine Hip Roof with cedar shingles
-  isoRoof(ctx, 4, -24, 58, 38, 0, 18, '#C62828', '#B71C1C', '#880E4F');
+  // 2. Heavy Alpine Fieldstone Foundation Plinth
+  isoBox(ctx, 4, 4, 56, 36, 6, '#90A4AE', '#78909C', '#607D8B', '#455A64');
 
-  // Covered Veranda Porch on West side (road-facing)
-  isoBox(ctx, -22, 4, 18, 26, 4, '#8D6E63', '#795548', '#5D4037');
-  // Porch rooflet
-  isoRoof(ctx, -22, -10, 20, 28, 0, 8, '#B71C1C', '#880E4F', '#4A148C');
-  // Porch timber posts
-  ctx.strokeStyle = '#4E342E'; ctx.lineWidth = 2.2;
+  // 3. MAIN TIMBER LODGE BODY (Interlocking Hand-Hewn Pine/Larch Logs)
+  isoBox(ctx, 4, 0, 52, 32, 26, '#6D4C41', '#5D4037', '#4E342E', '#271206');
+
+  // Log wall horizontal mortise grooves & saddle notches at corners
+  ctx.strokeStyle = 'rgba(39, 18, 6, 0.55)'; ctx.lineWidth = 1.0;
+  [-4, -9, -14, -19, -24].forEach(ly => {
+    ctx.beginPath();
+    ctx.moveTo(-22, ly); ctx.lineTo(4, ly + 14); ctx.lineTo(30, ly);
+    ctx.stroke();
+  });
+  // Corner log extensions with end-grain bark rings
+  ctx.fillStyle = '#8D6E63';
+  [-2, -7, -12, -17, -22].forEach(ly => {
+    ctx.beginPath(); ctx.ellipse(-23, ly, 1.8, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(31, ly, 1.8, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // 4. HIGH-PITCHED BAVARIAN ALPINE HIP ROOF with Cedar Shingles & Snow Catchers
+  isoRoof(ctx, 4, -26, 62, 42, 0, 20, '#C62828', '#B71C1C', '#880E4F', '#3E2723');
+  // Alpine wooden snow-catchers along roof eaves
+  ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 1.8;
   ctx.beginPath();
-  ctx.moveTo(-28, 14); ctx.lineTo(-28, -6);
-  ctx.moveTo(-28, -6); ctx.lineTo(-28, -26);
+  ctx.moveTo(-24, -22); ctx.lineTo(4, -8); ctx.lineTo(32, -22);
   ctx.stroke();
 
-  // Road-facing Bavarian Blue Door
-  ctx.fillStyle = '#1565C0'; ctx.fillRect(-22, -4, 8, 14);
-  ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(-16, 2, 1.2, 0, Math.PI * 2); ctx.fill();
+  // 5. COVERED WESTERN VERANDA PORCH (Road & Garden Facing)
+  // Raised wooden porch deck
+  isoBox(ctx, -22, 5, 20, 28, 5, '#8D6E63', '#795548', '#5D4037', '#3E2723');
+  // Porch rooflet
+  isoRoof(ctx, -22, -11, 22, 30, 0, 9, '#B71C1C', '#880E4F', '#4A148C', '#3E2723');
+  // Chamfered timber support posts with diagonal knee braces
+  ctx.strokeStyle = '#4E342E'; ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.moveTo(-30, 16); ctx.lineTo(-30, -8);
+  ctx.moveTo(-14, 21); ctx.lineTo(-14, -3);
+  ctx.stroke();
+  // Knee braces
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(-30, -4); ctx.lineTo(-26, -9);
+  ctx.moveTo(-14, 1); ctx.lineTo(-18, -4);
+  ctx.stroke();
+  // Porch balustrade rail
+  ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(-30, 8); ctx.lineTo(-24, 11);
+  ctx.stroke();
 
-  // Attic Dormer Window overlooking Vegetable Garden across Road
-  ctx.fillStyle = '#00E5FF'; ctx.fillRect(-4, -28, 8, 7);
-  ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 1; ctx.strokeRect(-4, -28, 8, 7);
+  // 6. ROAD-FACING BAVARIAN BLUE PLANK DOOR
+  ctx.fillStyle = '#1565C0'; ctx.fillRect(-22, -5, 8, 15);
+  ctx.strokeStyle = '#0D47A1'; ctx.lineWidth = 1; ctx.strokeRect(-22, -5, 8, 15);
+  // Forged iron strap hinges
+  ctx.fillStyle = '#212121';
+  ctx.fillRect(-22, -3, 6, 1.4);
+  ctx.fillRect(-22, 6, 6, 1.4);
+  // Brass door handle
+  ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(-16, 2, 1.3, 0, Math.PI * 2); ctx.fill();
 
-  // Fieldstone Chimney with gentle smoke wisp
-  isoBox(ctx, 22, -26, 8, 8, 14, '#78909C', '#546E7A', '#37474F');
+  // 7. ATTIC DORMER WINDOW WITH REFLECTIVE GLASS
+  ctx.fillStyle = '#3E2723'; ctx.fillRect(-5, -31, 10, 9);
+  ctx.fillStyle = '#00E5FF'; ctx.fillRect(-4, -30, 8, 7);
+  // Window frame & mullions
+  ctx.strokeStyle = '#D7CCC8'; ctx.lineWidth = 0.9; ctx.strokeRect(-4, -30, 8, 7);
+  ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(0, -23); ctx.moveTo(-4, -26.5); ctx.lineTo(4, -26.5); ctx.stroke();
+
+  // 8. FIELDSTONE CHIMNEY WITH STONE CAP & ANIMATED DRIFTING SMOKE
+  isoBox(ctx, 22, -28, 8, 8, 16, '#90A4AE', '#78909C', '#546E7A', '#37474F');
+  // Stone capping slab
+  isoBox(ctx, 22, -44, 10, 10, 2, '#CFD8DC', '#B0BEC5', '#90A4AE');
   if (built) {
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.beginPath(); ctx.arc(22, -44, 3.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(25, -50, 4.5, 0, Math.PI * 2); ctx.fill();
+    const t = (window.AlpenMap && window.AlpenMap.time) || 0;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.40)';
+    for (let p = 0; p < 3; p++) {
+      const py = -48 - p * 7 - ((t * 6 + p * 5) % 15);
+      const px = 22 + Math.sin(t * 2.2 + p) * 3.5;
+      ctx.beginPath(); ctx.arc(px, py, 3 + p * 1.2, 0, Math.PI * 2); ctx.fill();
+    }
   }
 
-  // Stacked firewood logs along south timber wall
+  // 9. STACKED CORDWOOD FIREWOOD PILE ALONG SOUTH TIMBER WALL
   ctx.fillStyle = '#8D6E63';
   for (let lx = -6; lx <= 18; lx += 4) {
-    ctx.beginPath(); ctx.arc(lx, 15, 1.8, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(lx, 12, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(lx, 16, 2.0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(lx, 13, 2.0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(lx, 10, 1.8, 0, Math.PI * 2); ctx.fill();
+  }
+  // Wooden end stanchions holding wood pile
+  ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(-8, 8); ctx.lineTo(-8, 18); ctx.moveTo(20, 8); ctx.lineTo(20, 18); ctx.stroke();
+
+  // 10. SUSPENDED BRASS OIL LANTERN ON PORCH WITH AMBER GLOW
+  ctx.strokeStyle = '#212121'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(-30, -8); ctx.lineTo(-30, -3); ctx.stroke();
+  ctx.fillStyle = '#FFD54F'; ctx.fillRect(-31.5, -3, 3, 4);
+  if (built) {
+    ctx.fillStyle = 'rgba(255, 213, 79, 0.28)';
+    ctx.beginPath(); ctx.arc(-30, -1, 7, 0, Math.PI * 2); ctx.fill();
   }
 
-  // Labour Guild Notice Board on road-facing veranda post
-  ctx.fillStyle = '#D7CCC8'; ctx.fillRect(-30, -2, 5, 7);
-  ctx.strokeStyle = '#4E342E'; ctx.lineWidth = 0.8; ctx.strokeRect(-30, -2, 5, 7);
+  // 11. GUILD LABOUR NOTICE BOARD & LEANING TOOLS
+  ctx.fillStyle = '#D7CCC8'; ctx.fillRect(-32, -1, 6, 8);
+  ctx.strokeStyle = '#4E342E'; ctx.lineWidth = 0.9; ctx.strokeRect(-32, -1, 6, 8);
+  // Pinned parchment notices
+  ctx.fillStyle = '#FFF9C4'; ctx.fillRect(-31, 0.5, 4, 2);
+  ctx.fillStyle = '#FFCCBC'; ctx.fillRect(-31, 3.5, 4, 2.5);
+  // Leaning farm tools (pitchfork & spade against wall)
+  ctx.strokeStyle = '#8D6E63'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(-10, 18); ctx.lineTo(-6, 4); ctx.stroke(); // spade handle
+  ctx.fillStyle = '#78909C'; ctx.fillRect(-7.5, 4, 3, 4); // spade head
+  ctx.beginPath(); ctx.moveTo(-13, 19); ctx.lineTo(-11, 3); ctx.stroke(); // pitchfork
+  ctx.fillStyle = '#78909C'; ctx.fillRect(-12.5, 2, 3, 2); // tines base
 
   ctx.restore();
 }
@@ -2438,22 +2786,24 @@ function drawVegPlant(ctx, px, py, spKey, status, time, progress){
   ctx.rotate(sway);
 
   // Volumetric scale factor
-  const scale = 1.25;
+  const scale = 1.30;
   ctx.scale(scale, scale);
 
   // Soft ambient ground shadow with rich organic compost mound
-  ctx.fillStyle = 'rgba(16, 32, 14, 0.32)';
+  ctx.fillStyle = 'rgba(12, 28, 14, 0.36)';
   ctx.beginPath();
-  ctx.ellipse(0, 3.8, 11.5, 5.2, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 4.0, 12.0, 5.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Layered dark organic compost soil mound
-  ctx.fillStyle = '#2D1810';
-  ctx.beginPath(); ctx.ellipse(0, 1.8, 9.5, 4.2, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#4E342E';
-  ctx.beginPath(); ctx.ellipse(-1.2, 0.4, 7.5, 3.0, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#6D4C41';
-  ctx.beginPath(); ctx.ellipse(-1.8, -0.6, 4.8, 1.8, -0.15, 0, Math.PI * 2); ctx.fill();
+  // Multi-tier dark organic compost soil mound with small limestone retaining pebbles
+  ctx.fillStyle = '#21120B'; ctx.beginPath(); ctx.ellipse(0, 2.0, 10.0, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3E2723'; ctx.beginPath(); ctx.ellipse(-1.0, 0.6, 8.0, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#5D4037'; ctx.beginPath(); ctx.ellipse(-1.5, -0.4, 5.0, 2.0, -0.15, 0, Math.PI * 2); ctx.fill();
+  // Small perimeter soil pebbles
+  ctx.fillStyle = '#78909C';
+  ctx.beginPath(); ctx.arc(-7, 2.5, 1.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(7.5, 1.8, 1.0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(2, 4.5, 1.1, 0, Math.PI * 2); ctx.fill();
 
   const isMature = status === 'mature';
   const isFlowering = status === 'flowering';
@@ -2462,27 +2812,31 @@ function drawVegPlant(ctx, px, py, spKey, status, time, progress){
 
   // --- STAGE 1: SPROUT (Emerging Cotyledons & Green Shoots) ---
   if (isSprout) {
+    ctx.fillStyle = '#33691E';
+    ctx.fillRect(-0.8, -4, 1.6, 5); // hypocotyl stem
     ctx.fillStyle = '#558B2F';
-    ctx.beginPath(); ctx.ellipse(-3.0, -2.2, 2.8, 4.5, -0.4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(3.0, -2.2, 2.8, 4.5, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-3.2, -3.2, 3.0, 4.8, -0.45, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(3.2, -3.2, 3.0, 4.8, 0.45, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#9CCC65';
-    ctx.beginPath(); ctx.ellipse(-2.5, -2.8, 1.8, 2.8, -0.4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(2.5, -2.8, 1.8, 2.8, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-2.8, -3.8, 1.9, 3.0, -0.45, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(2.8, -3.8, 1.9, 3.0, 0.45, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#DCEDC8';
-    ctx.beginPath(); ctx.arc(0, -4.2, 1.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -5.0, 1.6, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     return;
   }
 
   // --- STAGE 2: GROWING (Foliage Expansion by Species) ---
   if (isGrowing) {
+    ctx.fillStyle = '#1B5E20';
+    ctx.beginPath(); ctx.ellipse(-5.5, -3.0, 6.0, 4.2, -0.35, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(5.5, -3.0, 6.0, 4.2, 0.35, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2E7D32';
-    ctx.beginPath(); ctx.ellipse(-5.0, -2.5, 5.5, 3.8, -0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(5.0, -2.5, 5.5, 3.8, 0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#43A047';
-    ctx.beginPath(); ctx.ellipse(0, -5.5, 4.8, 3.4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#81C784';
-    ctx.beginPath(); ctx.arc(0, -7.0, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -6.5, 5.5, 4.0, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#66BB6A';
+    ctx.beginPath(); ctx.ellipse(-1.5, -7.5, 3.2, 2.2, -0.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#A5D6A7';
+    ctx.beginPath(); ctx.arc(0, -8.2, 1.8, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
     return;
   }
@@ -2491,87 +2845,134 @@ function drawVegPlant(ctx, px, py, spKey, status, time, progress){
 
   // 1. Kürbis (Cucurbita maxima · Alpine Hokkaido Pumpkin)
   if (spKey === 'kuerbis') {
+    // Sprawling Ribbed Vines & Large Lobed Palmate Leaves
+    ctx.strokeStyle = '#2E7D32'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(8.5, -9, 12, -5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-8.5, -8, -12, -4); ctx.stroke();
+    // Curled tendrils
+    ctx.strokeStyle = '#66BB6A'; ctx.lineWidth = 1.0;
+    ctx.beginPath(); ctx.arc(13, -5, 2.5, 0, Math.PI * 1.5); ctx.stroke();
+
     ctx.fillStyle = '#1B5E20';
-    ctx.beginPath(); ctx.ellipse(-7.5, -1.2, 7.5, 5.2, -0.32, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(7.5, -2.5, 7.5, 5.2, 0.32, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-8.0, -2.0, 8.0, 5.5, -0.32, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(8.0, -3.2, 8.0, 5.5, 0.32, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#2E7D32';
-    ctx.beginPath(); ctx.ellipse(0, -7.5, 6.5, 5.0, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#43A047'; ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(8.5, -10, 11.5, -6); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, -8.5, 7.2, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#43A047';
+    ctx.beginPath(); ctx.ellipse(-1.5, -9.5, 4.0, 2.6, 0, 0, Math.PI * 2); ctx.fill();
 
     if (isFlowering) {
+      // Vibrant 5-Petaled Golden Star Flower with Orange Calyx & Pistil
       ctx.fillStyle = '#FDD835';
       ctx.beginPath();
       for (let i = 0; i < 5; i++) {
         const a = (i * Math.PI * 2) / 5 - Math.PI / 2;
-        const r1 = 7.5, r2 = 3.2;
-        const x1 = Math.cos(a) * r1, y1 = -5 + Math.sin(a) * r1;
+        const r1 = 8.0, r2 = 3.5;
+        const x1 = Math.cos(a) * r1, y1 = -6 + Math.sin(a) * r1;
         const aMid = a + Math.PI / 5;
-        const x2 = Math.cos(aMid) * r2, y2 = -5 + Math.sin(aMid) * r2;
+        const x2 = Math.cos(aMid) * r2, y2 = -6 + Math.sin(aMid) * r2;
         if (i === 0) ctx.moveTo(x1, y1); else ctx.lineTo(x1, y1);
         ctx.lineTo(x2, y2);
       }
       ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#E65100'; ctx.beginPath(); ctx.arc(0, -5, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#E65100'; ctx.beginPath(); ctx.arc(0, -6, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(0, -6, 1.2, 0, Math.PI * 2); ctx.fill();
     } else if (isMature) {
-      ctx.fillStyle = '#BF360C'; ctx.beginPath(); ctx.ellipse(0, -3.8, 12.5, 9.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#E65100'; ctx.beginPath(); ctx.ellipse(0, -4.2, 11.8, 8.8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#F57C00'; ctx.beginPath(); ctx.ellipse(0, -4.8, 11.0, 8.0, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#D84315'; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.arc(-5.5, -4.5, 6.5, 0.4, 2.7); ctx.stroke();
-      ctx.beginPath(); ctx.arc(5.5, -4.5, 6.5, 0.4, 2.7); ctx.stroke();
-      ctx.fillStyle = '#33691E'; ctx.fillRect(-1.5, -13.5, 3.2, 5.0);
+      // 3D Isometric Volumetric Hokkaido Pumpkin (Ribbed, segmented, glossy)
+      ctx.fillStyle = '#BF360C'; ctx.beginPath(); ctx.ellipse(0, -4.0, 13.0, 10.0, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#E65100'; ctx.beginPath(); ctx.ellipse(0, -4.5, 12.2, 9.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#F57C00'; ctx.beginPath(); ctx.ellipse(0, -5.2, 11.2, 8.4, 0, 0, Math.PI * 2); ctx.fill();
+      // Rib grooves
+      ctx.strokeStyle = '#D84315'; ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.arc(-6.0, -5.0, 7.0, 0.4, 2.7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(6.0, -5.0, 7.0, 0.4, 2.7); ctx.stroke();
+      // Sunlit specular shine
+      ctx.fillStyle = '#FFA726'; ctx.beginPath(); ctx.ellipse(-2.5, -8.0, 4.5, 2.2, -0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FFE082'; ctx.beginPath(); ctx.ellipse(-3.0, -8.5, 2.0, 1.0, -0.3, 0, Math.PI * 2); ctx.fill();
+      // Curved green stem peduncle
+      ctx.fillStyle = '#33691E'; ctx.fillRect(-1.6, -15.0, 3.4, 5.5);
+      ctx.beginPath(); ctx.arc(-0.5, -15.0, 2.0, Math.PI, 0); ctx.fill();
     }
   }
 
   // 2. Zucchini (Cucurbita pepo · Bayerische Zucchini)
   else if (spKey === 'zucchini') {
     ctx.fillStyle = '#1B5E20';
-    ctx.beginPath(); ctx.ellipse(-6.5, -5.5, 6.0, 10.0, -0.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(6.5, -5.5, 6.0, 10.0, 0.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.ellipse(0, -9.0, 5.5, 9.0, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-7.0, -6.0, 6.5, 10.5, -0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(7.0, -6.0, 6.5, 10.5, 0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.ellipse(0, -10.0, 6.0, 9.5, 0, 0, Math.PI * 2); ctx.fill();
+    // Silver-grey mottling
+    ctx.fillStyle = '#A5D6A7';
+    ctx.beginPath(); ctx.arc(-2, -9, 1.1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(2.5, -8, 1.0, 0, Math.PI * 2); ctx.fill();
 
     if (isFlowering) {
-      ctx.fillStyle = '#FDD835'; ctx.beginPath(); ctx.arc(3.5, -6.5, 5.0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#FB8C00'; ctx.beginPath(); ctx.arc(3.5, -6.5, 2.2, 0, Math.PI * 2); ctx.fill();
+      // Golden Trumpet Blossom
+      ctx.fillStyle = '#FDD835'; ctx.beginPath(); ctx.arc(4.0, -7.0, 5.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FB8C00'; ctx.beginPath(); ctx.arc(4.0, -7.0, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FFE082'; ctx.beginPath(); ctx.arc(3.5, -8.0, 1.2, 0, Math.PI * 2); ctx.fill();
     } else if (isMature) {
-      ctx.fillStyle = '#1B5E20'; ctx.beginPath(); ctx.ellipse(4.5, -1.5, 11.0, 4.0, 0.35, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.ellipse(4.5, -2.2, 10.0, 3.2, 0.35, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#A5D6A7'; ctx.beginPath(); ctx.ellipse(2.5, -3.2, 6.0, 1.2, 0.35, 0, Math.PI * 2); ctx.fill();
+      // 3D Angled Zucchini Fruit with Stripes and Gloss
+      ctx.fillStyle = '#1B5E20'; ctx.beginPath(); ctx.ellipse(5.0, -2.0, 12.0, 4.5, 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.ellipse(5.0, -2.6, 11.0, 3.6, 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#4CAF50'; ctx.beginPath(); ctx.ellipse(4.0, -3.2, 9.5, 2.0, 0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#A5D6A7'; ctx.beginPath(); ctx.ellipse(3.0, -3.8, 6.5, 1.2, 0.35, 0, Math.PI * 2); ctx.fill();
+      // Yellow blossom end remnant
+      ctx.fillStyle = '#FDD835'; ctx.beginPath(); ctx.arc(14.0, 1.8, 1.4, 0, Math.PI * 2); ctx.fill();
     }
   }
 
   // 3. Brokkoli (Brassica oleracea var. italica · Calabrese Brokkoli)
   else if (spKey === 'broccoli') {
     ctx.fillStyle = '#1B5E20';
-    ctx.beginPath(); ctx.ellipse(-8, -2, 8.5, 5.0, -0.4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(8, -2, 8.5, 5.0, 0.4, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#558B2F'; ctx.fillRect(-3, -8, 6, 9);
+    ctx.beginPath(); ctx.ellipse(-8.5, -2.5, 9.0, 5.5, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(8.5, -2.5, 9.0, 5.5, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#558B2F'; ctx.fillRect(-3.2, -9, 6.4, 10);
+
     if (isFlowering) {
+      // Yellow blossoming florets
       ctx.fillStyle = '#FFEE58';
-      [-4.5, 0, 4.5].forEach(ox => { ctx.beginPath(); ctx.arc(ox, -12, 4.5, 0, Math.PI * 2); ctx.fill(); });
+      [-5.0, 0, 5.0].forEach(ox => { ctx.beginPath(); ctx.arc(ox, -13, 4.8, 0, Math.PI * 2); ctx.fill(); });
+      ctx.fillStyle = '#FFF59D';
+      [-2.5, 2.5].forEach(ox => { ctx.beginPath(); ctx.arc(ox, -15, 3.2, 0, Math.PI * 2); ctx.fill(); });
     } else if (isMature) {
+      // Tight 3D Volumetric Granular Florets Dome
       ctx.fillStyle = '#0E3E14';
-      [-5, 0, 5].forEach(ox => { ctx.beginPath(); ctx.arc(ox, -10.5, 6.5, 0, Math.PI * 2); ctx.fill(); });
+      [-5.5, 0, 5.5].forEach(ox => { ctx.beginPath(); ctx.arc(ox, -11.0, 7.0, 0, Math.PI * 2); ctx.fill(); });
       ctx.fillStyle = '#1B5E20';
-      [-4.5, 0, 4.5].forEach(ox => { ctx.beginPath(); ctx.arc(ox, -11.5, 5.5, 0, Math.PI * 2); ctx.fill(); });
-      ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.arc(0, -14.5, 6.0, 0, Math.PI * 2); ctx.fill();
+      [-5.0, 0, 5.0].forEach(ox => { ctx.beginPath(); ctx.arc(ox, -12.0, 6.0, 0, Math.PI * 2); ctx.fill(); });
+      ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.arc(0, -15.5, 6.5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#4CAF50';
-      [-2, 2].forEach(ox => { ctx.beginPath(); ctx.arc(ox, -15, 2.2, 0, Math.PI * 2); ctx.fill(); });
+      [-2.2, 2.2].forEach(ox => { ctx.beginPath(); ctx.arc(ox, -16.2, 2.5, 0, Math.PI * 2); ctx.fill(); });
+      ctx.fillStyle = '#81C784'; ctx.beginPath(); ctx.arc(0, -17.5, 1.8, 0, Math.PI * 2); ctx.fill();
     }
   }
 
   // 4. Spargel (Asparagus officinalis · Königs-Spargel)
   else if (spKey === 'spargel') {
-    ctx.strokeStyle = '#33691E'; ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(-12, -10, -15, -16); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(6, 0); ctx.quadraticCurveTo(12, -10, 15, -16); ctx.stroke();
-    if (isFlowering || isMature) {
-      [-4, 0, 4].forEach((sx, i) => {
-        const sh = isMature ? (12 + (i % 2) * 6) : 8;
-        ctx.fillStyle = '#DCEDC8'; ctx.fillRect(sx - 1.6, -sh, 3.2, sh);
-        ctx.fillStyle = '#8E24AA'; ctx.beginPath(); ctx.arc(sx, -sh, 2.2, Math.PI, 0); ctx.fill();
-        ctx.fillStyle = '#7B1FA2'; ctx.fillRect(sx - 1.2, -sh + 1, 2.4, 2.0);
+    ctx.strokeStyle = '#33691E'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(-13, -11, -16, -18); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(6, 0); ctx.quadraticCurveTo(13, -11, 16, -18); ctx.stroke();
+    // Cladode feathery fronds
+    ctx.strokeStyle = '#689F38'; ctx.lineWidth = 1.0;
+    ctx.beginPath(); ctx.moveTo(-16, -18); ctx.lineTo(-20, -22); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(16, -18); ctx.lineTo(20, -22); ctx.stroke();
+
+    if (isFlowering) {
+      // Tiny cream flower droplets
+      ctx.fillStyle = '#FFF9C4';
+      [-12, -8, 8, 12].forEach(fx => { ctx.beginPath(); ctx.arc(fx, -14, 1.4, 0, Math.PI * 2); ctx.fill(); });
+    }
+    if (isMature || isFlowering) {
+      // Thick, succulent purple-tipped asparagus spears rising from crown
+      [-4.5, 0, 4.5].forEach((sx, i) => {
+        const sh = isMature ? (14 + (i % 2) * 6) : 9;
+        ctx.fillStyle = '#DCEDC8'; ctx.fillRect(sx - 1.8, -sh, 3.6, sh);
+        ctx.fillStyle = '#8E24AA'; ctx.beginPath(); ctx.arc(sx, -sh, 2.4, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = '#7B1FA2'; ctx.fillRect(sx - 1.4, -sh + 1, 2.8, 2.2);
+        // Spear scales
+        ctx.fillStyle = '#4A148C';
+        ctx.beginPath(); ctx.moveTo(sx - 1.2, -sh + 4); ctx.lineTo(sx + 1.2, -sh + 4); ctx.lineTo(sx, -sh + 2.5); ctx.fill();
       });
     }
   }
@@ -2579,55 +2980,90 @@ function drawVegPlant(ctx, px, py, spKey, status, time, progress){
   // 5. Sellerie (Apium graveolens var. dulce · Stauden-Sellerie)
   else if (spKey === 'sellerie') {
     ctx.fillStyle = '#689F38';
-    ctx.beginPath(); ctx.ellipse(-5, -6, 4.5, 8.5, -0.25, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(5, -6, 4.5, 8.5, 0.25, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#8BC34A'; ctx.beginPath(); ctx.ellipse(0, -8, 5.0, 9.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-5.5, -6.5, 5.0, 9.0, -0.25, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(5.5, -6.5, 5.0, 9.0, 0.25, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8BC34A'; ctx.beginPath(); ctx.ellipse(0, -9.0, 5.5, 10.0, 0, 0, Math.PI * 2); ctx.fill();
+
+    if (isFlowering) {
+      // Lacy greenish-white umbels
+      ctx.fillStyle = '#F1F8E9';
+      [-4, 0, 4].forEach(ux => { ctx.beginPath(); ctx.arc(ux, -16, 2.5, 0, Math.PI * 2); ctx.fill(); });
+    }
+    // Crisp grooved celery stalks
     ctx.fillStyle = '#DCEDC8';
-    [-2, 2].forEach(ox => { ctx.fillRect(ox - 1, -5, 2, 7); });
+    [-2.5, 0, 2.5].forEach(ox => { ctx.fillRect(ox - 1.1, -6, 2.2, 8); });
+    ctx.fillStyle = '#C8E6C9';
+    [-1.2, 1.2].forEach(ox => { ctx.fillRect(ox - 0.8, -7, 1.6, 9); });
   }
 
   // 6. Karotte (Daucus carota subsp. sativus · Ochsenherz-Karotte)
   else if (spKey === 'karotte') {
     ctx.fillStyle = '#2E7D32';
-    [-6, 0, 6].forEach(fx => {
-      ctx.beginPath(); ctx.ellipse(fx, -9, 3.5, 8.0, fx * 0.05, 0, Math.PI * 2); ctx.fill();
+    [-7, 0, 7].forEach(fx => {
+      ctx.beginPath(); ctx.ellipse(fx, -10, 4.0, 9.0, fx * 0.05, 0, Math.PI * 2); ctx.fill();
     });
+    ctx.fillStyle = '#4CAF50';
+    [-3.5, 3.5].forEach(fx => {
+      ctx.beginPath(); ctx.ellipse(fx, -11, 2.8, 7.5, fx * 0.04, 0, Math.PI * 2); ctx.fill();
+    });
+
     if (isFlowering) {
-      ctx.fillStyle = '#FFFDE7'; ctx.beginPath(); ctx.ellipse(0, -15, 5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      // Lacy Queen Anne's lace umbel blossoms
+      ctx.fillStyle = '#FFFDE7'; ctx.beginPath(); ctx.ellipse(0, -17, 6.0, 3.0, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#B0BEC5'; ctx.beginPath(); ctx.arc(0, -17, 1.2, 0, Math.PI * 2); ctx.fill();
     }
     if (isMature) {
-      ctx.fillStyle = '#D84315'; ctx.beginPath(); ctx.ellipse(0, 0.5, 4.5, 3.0, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#FF6F00'; ctx.beginPath(); ctx.ellipse(0, 0, 4.0, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#FFA726'; ctx.beginPath(); ctx.ellipse(-1, -0.5, 2.0, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+      // Prominent Orange Carrot Taproot Crown Protruding from Loam
+      ctx.fillStyle = '#D84315'; ctx.beginPath(); ctx.ellipse(0, 0.8, 5.2, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FF6F00'; ctx.beginPath(); ctx.ellipse(0, 0.2, 4.6, 2.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FFA726'; ctx.beginPath(); ctx.ellipse(-1.2, -0.4, 2.4, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+      // Soil crack lines around root
+      ctx.strokeStyle = '#21120B'; ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.moveTo(-5.5, 1); ctx.lineTo(-7.5, 2.5); ctx.moveTo(5.5, 1); ctx.lineTo(7.5, 2.5); ctx.stroke();
     }
   }
 
   // 7. Kartoffel (Solanum tuberosum · Bamberger Hörnchen)
   else if (spKey === 'kartoffel') {
     ctx.fillStyle = '#1B5E20';
-    ctx.beginPath(); ctx.ellipse(-6, -3, 6.5, 4.2, -0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(6, -3, 6.5, 4.2, 0.3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.ellipse(0, -6, 5.5, 4.0, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-6.5, -3.5, 7.0, 4.5, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6.5, -3.5, 7.0, 4.5, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2E7D32'; ctx.beginPath(); ctx.ellipse(0, -6.5, 6.0, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+
     if (isFlowering) {
-      ctx.fillStyle = '#EDE7F6'; ctx.beginPath(); ctx.arc(0, -9, 3.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#FDD835'; ctx.beginPath(); ctx.arc(0, -9, 1.2, 0, Math.PI * 2); ctx.fill();
+      // Star-shaped lilac/violet blossoms with yellow anthers
+      ctx.fillStyle = '#EDE7F6'; ctx.beginPath(); ctx.arc(0, -10.5, 3.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#D1C4E9'; ctx.beginPath(); ctx.arc(0, -10.5, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FDD835'; ctx.beginPath(); ctx.arc(0, -10.5, 1.4, 0, Math.PI * 2); ctx.fill();
     }
     if (isMature) {
-      ctx.fillStyle = '#6D4C41'; ctx.beginPath(); ctx.ellipse(-4, 2, 4.5, 2.8, 0.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#A1887F'; ctx.beginPath(); ctx.ellipse(4, 2, 4.2, 2.6, -0.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#BCAAA4'; ctx.beginPath(); ctx.ellipse(4, 1.5, 2.2, 1.2, 0, 0, Math.PI * 2); ctx.fill();
+      // Partially exposed smooth golden-brown Bavarian potato tubers
+      ctx.fillStyle = '#5D4037'; ctx.beginPath(); ctx.ellipse(-4.5, 2.5, 5.0, 3.0, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8D6E63'; ctx.beginPath(); ctx.ellipse(-4.5, 2.0, 4.5, 2.6, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#A1887F'; ctx.beginPath(); ctx.ellipse(4.5, 2.2, 4.6, 2.8, -0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#BCAAA4'; ctx.beginPath(); ctx.ellipse(4.5, 1.6, 2.4, 1.4, -0.2, 0, Math.PI * 2); ctx.fill();
+      // Potato eye spots
+      ctx.fillStyle = '#3E2723';
+      ctx.fillRect(-5, 2, 0.9, 0.9); ctx.fillRect(3.5, 2.5, 0.9, 0.9);
     }
   }
 
   // 8. Kohl (Brassica oleracea var. capitata · Filderkraut Weißkohl)
   else if (spKey === 'kohl') {
     ctx.fillStyle = '#2E7D32';
-    ctx.beginPath(); ctx.ellipse(-7, -2, 7.5, 5.0, -0.4, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(7, -2, 7.5, 5.0, 0.4, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#33691E'; ctx.beginPath(); ctx.arc(0, -4.5, 7.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#558B2F'; ctx.beginPath(); ctx.arc(0, -5.0, 6.8, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#7CB342'; ctx.beginPath(); ctx.arc(-1.5, -6.0, 5.0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#C8E6C9'; ctx.beginPath(); ctx.arc(-2.5, -7.0, 2.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-7.5, -2.5, 8.0, 5.5, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(7.5, -2.5, 8.0, 5.5, 0.4, 0, Math.PI * 2); ctx.fill();
+
+    if (isFlowering) {
+      ctx.fillStyle = '#FFEE58';
+      [-3, 0, 3].forEach(kx => { ctx.beginPath(); ctx.arc(kx, -12, 2.8, 0, Math.PI * 2); ctx.fill(); });
+    }
+    // Tightly wrapped layered spherical cabbage head
+    ctx.fillStyle = '#33691E'; ctx.beginPath(); ctx.arc(0, -4.8, 8.0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#558B2F'; ctx.beginPath(); ctx.arc(0, -5.4, 7.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7CB342'; ctx.beginPath(); ctx.arc(-1.6, -6.5, 5.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#C8E6C9'; ctx.beginPath(); ctx.arc(-2.8, -7.5, 3.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#E8F5E9'; ctx.beginPath(); ctx.arc(-3.0, -7.8, 1.5, 0, Math.PI * 2); ctx.fill();
   }
 
   ctx.restore();
@@ -3806,15 +4242,98 @@ function drawBessStorage(ctx, cx, cy, built){
   ctx.translate(cx, cy);
   ctx.globalAlpha = built ? 1 : 0.50;
 
-  ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.beginPath(); ctx.ellipse(0, 18, 52, 16, 0, 0, Math.PI * 2); ctx.fill();
-  // Modern Container with Alpine Larch Slat Cladding
-  isoBox(ctx, 0, 0, 82, 34, 22, '#2E7D32', '#1B5E20', '#1B5E20', '#00E676');
-  // Solar Panel Canopy Roof
-  isoBox(ctx, 0, -22, 86, 36, 4, '#0D47A1', '#01579B', '#0277BD', '#00E5FF');
-  // Glowing status LED indicator
+  // 1. Soft Ambient Ground Drop Shadow
+  ctx.fillStyle = 'rgba(12, 28, 14, 0.40)';
+  ctx.beginPath(); ctx.ellipse(0, 18, 60, 24, 0, 0, Math.PI * 2); ctx.fill();
+
+  // 2. Reinforced Cast-in-Place Concrete Foundation Pad
+  isoBox(ctx, 0, 5, 92, 42, 6, '#CFD8DC', '#B0BEC5', '#90A4AE', '#78909C');
+
+  // Yellow & Black Safety Bollards at 4 corners
+  [[-40, -10], [40, -10], [-40, 16], [40, 16]].forEach(bp => {
+    ctx.fillStyle = '#212121'; ctx.fillRect(bp[0] - 1.5, bp[1] - 8, 3, 9);
+    ctx.fillStyle = '#FFD54F';
+    ctx.fillRect(bp[0] - 1.5, bp[1] - 8, 3, 2.5);
+    ctx.fillRect(bp[0] - 1.5, bp[1] - 3.5, 3, 2.5);
+  });
+
+  // 3. Containerized Battery Enclosure: High-Efficiency Forest Green Body
+  isoBox(ctx, 0, -1, 82, 34, 25, '#2E7D32', '#1B5E20', '#1B5E20', '#0E3E14');
+
+  // 4. Vertical Acoustic Alpine Larch Louver Slats Cladding
+  ctx.strokeStyle = '#8D6E63'; ctx.lineWidth = 1.4;
+  for (let lx = -36; lx <= 36; lx += 4.5) {
+    ctx.beginPath();
+    ctx.moveTo(lx, 11); ctx.lineTo(lx, -13);
+    ctx.stroke();
+  }
+
+  // 5. HVAC Thermal Management Unit (Twin Exhaust Fans on End Face)
+  ctx.fillStyle = '#37474F'; ctx.fillRect(-39, -9, 8, 16);
+  ctx.strokeStyle = '#263238'; ctx.lineWidth = 1; ctx.strokeRect(-39, -9, 8, 16);
+  // Dual fan grilles
+  const t = (window.AlpenMap && window.AlpenMap.time) || 0;
+  [-5, 3].forEach(fy => {
+    ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.arc(-35, fy, 3.2, 0, Math.PI * 2); ctx.fill();
+    if (built) {
+      // Spinning fan blades
+      ctx.strokeStyle = '#78909C'; ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(-35 + Math.cos(t * 18) * 2.8, fy + Math.sin(t * 18) * 2.8);
+      ctx.lineTo(-35 - Math.cos(t * 18) * 2.8, fy - Math.sin(t * 18) * 2.8);
+      ctx.moveTo(-35 + Math.sin(t * 18) * 2.8, fy - Math.cos(t * 18) * 2.8);
+      ctx.lineTo(-35 - Math.sin(t * 18) * 2.8, fy + Math.cos(t * 18) * 2.8);
+      ctx.stroke();
+    }
+  });
+
+  // 6. High-Voltage Inverter Heatsink Ribs & Cable Conduits
+  ctx.strokeStyle = '#607D8B'; ctx.lineWidth = 1.0;
+  [-16, -18, -20].forEach(iy => {
+    ctx.beginPath(); ctx.moveTo(8, iy); ctx.lineTo(34, iy); ctx.stroke();
+  });
+  // Red Emergency Shutoff Switch
+  ctx.fillStyle = '#D32F2F'; ctx.beginPath(); ctx.arc(36, 2, 2.2, 0, Math.PI * 2); ctx.fill();
+
+  // 7. Elevated Bifacial Photovoltaic Canopy Roof with Support Struts
+  // Aluminum support stanchions
+  ctx.strokeStyle = '#CFD8DC'; ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-36, -26); ctx.lineTo(-36, -34);
+  ctx.moveTo(36, -26); ctx.lineTo(36, -34);
+  ctx.moveTo(0, -18); ctx.lineTo(0, -26);
+  ctx.stroke();
+  // Bifacial Solar Canopy Slab
+  isoBox(ctx, 0, -29, 88, 38, 4, '#0D47A1', '#01579B', '#0277BD', '#00E5FF');
+  // Solar silicon wafer cell grid lines
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.45)'; ctx.lineWidth = 0.8;
+  [-24, -8, 8, 24].forEach(cxo => {
+    ctx.beginPath(); ctx.moveTo(cxo, -45); ctx.lineTo(cxo, -31); ctx.stroke();
+  });
+
+  // 8. Dynamic Glowing Digital Telemetry Readout Panel
   if (built) {
-    ctx.fillStyle = '#00E676'; ctx.beginPath(); ctx.arc(32, -8, 2.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#FFD54F'; ctx.font = 'bold 9px JetBrains Mono'; ctx.fillText('⚡150kWh', -16, -10);
+    // Bezel screen
+    ctx.fillStyle = '#051009';
+    ctx.beginPath(); ctx.roundRect(-22, -18, 56, 12, 3); ctx.fill();
+    ctx.strokeStyle = '#00E676'; ctx.lineWidth = 0.9; ctx.stroke();
+
+    // Glowing green sync LED
+    const pulse = 0.7 + Math.sin(t * 5) * 0.3;
+    ctx.fillStyle = `rgba(0, 230, 118, ${pulse})`;
+    ctx.beginPath(); ctx.arc(-16, -12, 2.2, 0, Math.PI * 2); ctx.fill();
+
+    // Digital Telemetry text
+    ctx.fillStyle = '#00E676';
+    ctx.font = 'bold 8px JetBrains Mono';
+    ctx.fillText('⚡ 150 kWh · 98% · Sync', -10, -9);
+
+    // Safety Compliance Badge
+    ctx.fillStyle = '#FFD54F'; ctx.font = 'bold 6px Nunito';
+    ctx.fillText('VDE-AR-N 4105', 8, 4);
+  } else {
+    ctx.fillStyle = '#FFD54F'; ctx.font = 'bold 8px JetBrains Mono';
+    ctx.fillText('⚡ BESS Grid Unconnected', -18, -10);
   }
 
   ctx.restore();
@@ -3860,7 +4379,51 @@ function drawVineyard(ctx, time, built){
     ctx.closePath();
     ctx.fill();
 
-    // 2. 2 rows x 6 columns = 12 Circular Vine Planting Positions per Bed (108 total)
+    const hasBamboo = !!vBed.bambooBed || vBed.vines.some(v => v.status === 'trellised' || v.status === 'mature');
+
+    // 2. 3D ISOMETRIC VOLUMETRIC BAMBOO BED PERGOLA FRAMEWORK (Elevated Pergola Lattice)
+    if (hasBamboo) {
+      // A. Ground shadows of bamboo upright poles
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+      const poleX = [cx - hw + 7, cx, cx + hw - 7];
+      poleX.forEach(px => {
+        ctx.beginPath(); ctx.ellipse(px, cy - hh + 6, 3.8, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(px, cy + hh - 4, 3.8, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+      });
+
+      // B. Vertical segmented bamboo uprights rising 16px high
+      poleX.forEach(px => {
+        // Back uprights
+        ctx.fillStyle = '#C8B88A';
+        ctx.fillRect(px - 1.4, cy - hh - 10, 2.8, 16);
+        ctx.fillStyle = '#8D6E63'; // Node rings
+        [cy - hh - 6, cy - hh - 1, cy + hh - 9].forEach(ny => ctx.fillRect(px - 1.8, ny, 3.6, 1.0));
+
+        // Front uprights
+        ctx.fillStyle = '#D7CCC8';
+        ctx.fillRect(px - 1.4, cy + hh - 20, 2.8, 16);
+        ctx.fillStyle = '#8D6E63';
+        [cy + hh - 16, cy + hh - 11, cy + hh - 6].forEach(ny => ctx.fillRect(px - 1.8, ny, 3.6, 1.0));
+      });
+
+      // C. Longitudinal horizontal bamboo runner beams connecting pole tops
+      ctx.strokeStyle = '#D7CCC8'; ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(cx - hw + 4, cy - hh - 10); ctx.lineTo(cx + hw - 4, cy - hh - 12);
+      ctx.moveTo(cx - hw + 4, cy + hh - 20); ctx.lineTo(cx + hw - 4, cy + hh - 22);
+      ctx.stroke();
+
+      // D. Transverse bamboo cross-slats lattice grid forming horizontal bed platform
+      ctx.strokeStyle = '#C8B88A'; ctx.lineWidth = 1.3;
+      for (let sx = cx - hw + 8; sx <= cx + hw - 8; sx += 9) {
+        ctx.beginPath();
+        ctx.moveTo(sx, cy - hh - 10);
+        ctx.lineTo(sx - 3, cy + hh - 20);
+        ctx.stroke();
+      }
+    }
+
+    // 3. 2 rows x 6 columns = 12 Circular Vine Planting Positions per Bed (108 total)
     for(let vr = 0; vr < 2; vr++){
       for(let vc = 0; vc < 6; vc++){
         const vineIdx = vr * 6 + vc;
@@ -3868,7 +4431,7 @@ function drawVineyard(ctx, time, built){
         const vx = cx - hw + 9 + vc * (w - 18) / 5;
         const vy = cy - hh + 8 + vr * (h - 16) - vc * 0.7;
 
-        // Circular planting rim
+        // Circular planting rim in soil
         ctx.fillStyle = 'rgba(0,0,0,0.22)';
         ctx.beginPath(); ctx.ellipse(vx, vy + 2, 4.2, 2.5, 0, 0, Math.PI * 2); ctx.fill();
 
@@ -3882,90 +4445,107 @@ function drawVineyard(ctx, time, built){
           ctx.fillStyle = '#8D6E63'; ctx.fillRect(vx - 1.0, vy - 10, 2.0, 10);
         } else if (v.species) {
           const sp = GRAPE_SPECIES[v.species] || GRAPE_SPECIES.silvaner;
-          // Sturdy 3D Cedar Vine Post
-          ctx.fillStyle = '#4E342E'; ctx.fillRect(vx - 1.2, vy - 16, 2.4, 16);
-          // Double Galvanized Trellis Wires
-          ctx.strokeStyle = '#CFD8DC'; ctx.lineWidth = 0.9;
-          ctx.beginPath();
-          ctx.moveTo(vx - 7, vy - 8); ctx.lineTo(vx + 7, vy - 8);
-          ctx.moveTo(vx - 7, vy - 14); ctx.lineTo(vx + 7, vy - 14);
-          ctx.stroke();
+
+          // Vine post / guide stakes (if no bamboo) or guide cane
+          if (!hasBamboo) {
+            ctx.fillStyle = '#4E342E'; ctx.fillRect(vx - 1.2, vy - 16, 2.4, 16);
+            ctx.strokeStyle = '#CFD8DC'; ctx.lineWidth = 0.9;
+            ctx.beginPath();
+            ctx.moveTo(vx - 7, vy - 8); ctx.lineTo(vx + 7, vy - 8);
+            ctx.moveTo(vx - 7, vy - 14); ctx.lineTo(vx + 7, vy - 14);
+            ctx.stroke();
+          }
 
           if (v.status === 'seed' || v.status === 'sprout') {
-            // Emerging green vine shoots & young leaf buds
+            // Emerging green shoots climbing upwards
             ctx.fillStyle = '#66BB6A';
             ctx.beginPath(); ctx.arc(vx - 2, vy - 6, 3.2, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#81C784';
             ctx.beginPath(); ctx.arc(vx + 2, vy - 8, 3.0, 0, Math.PI * 2); ctx.fill();
           } else if (v.status === 'trellised') {
-            // Trained gnarled vine stock & bushy leaf canopy
-            ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 1.6;
-            ctx.beginPath(); ctx.moveTo(vx, vy); ctx.quadraticCurveTo(vx + 2, vy - 7, vx, vy - 14); ctx.stroke();
-            // Lush 3-lobe foliage dome
+            // Gnarled woody trunk ascending from soil to bamboo bed
+            ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 2.0;
+            ctx.beginPath(); ctx.moveTo(vx, vy); ctx.quadraticCurveTo(vx + 2, vy - 8, vx, vy - 16); ctx.stroke();
+
+            // 12 Plant Tops Laid OVER Bamboo Bed Pergola (Elevated foliage canopy)
             ctx.fillStyle = sp.leafColor;
             ctx.beginPath();
-            ctx.arc(vx - 4, vy - 13, 4.5, 0, Math.PI * 2);
-            ctx.arc(vx + 4, vy - 12, 4.2, 0, Math.PI * 2);
-            ctx.arc(vx, vy - 16, 4.8, 0, Math.PI * 2);
+            ctx.arc(vx - 5, vy - 17, 5.0, 0, Math.PI * 2);
+            ctx.arc(vx + 5, vy - 16, 4.8, 0, Math.PI * 2);
+            ctx.arc(vx, vy - 20, 5.5, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = '#81C784'; ctx.beginPath(); ctx.arc(vx - 1, vy - 14, 2.2, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#81C784'; ctx.beginPath(); ctx.arc(vx - 1, vy - 18, 2.4, 0, Math.PI * 2); ctx.fill();
+
+            // Small emerging floral blossom clusters along bamboo slats
+            ctx.fillStyle = '#DCEDC8';
+            ctx.beginPath(); ctx.arc(vx - 2.5, vy - 12, 1.4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx + 2.5, vy - 11, 1.4, 0, Math.PI * 2); ctx.fill();
           } else if (v.status === 'mature') {
-            // Full 3D Volumetric Mature Vine with Overflowing Canopy & Juicy Cascading Grape Clusters
-            ctx.strokeStyle = '#271206'; ctx.lineWidth = 2.0;
-            ctx.beginPath(); ctx.moveTo(vx, vy); ctx.bezierCurveTo(vx - 3, vy - 6, vx + 3, vy - 11, vx, vy - 16); ctx.stroke();
+            // FULL 3D ISOMETRIC VOLUMETRIC VINE OVER BAMBOO BED + SUSPENDED HANGING GRAPES
+            // Gnarled primary woody vine trunk reaching up to bamboo bed
+            ctx.strokeStyle = '#271206'; ctx.lineWidth = 2.4;
+            ctx.beginPath(); ctx.moveTo(vx, vy); ctx.bezierCurveTo(vx - 2.5, vy - 6, vx + 2.5, vy - 11, vx, vy - 16); ctx.stroke();
 
-            // Broad Lush Leaf Canopy
+            // 12 Plant Tops Laid OVER Bamboo Bed Pergola (Broad lush foliage dome on top)
             ctx.fillStyle = sp.leafColor;
             ctx.beginPath();
-            ctx.arc(vx - 5, vy - 14, 5.5, 0, Math.PI * 2);
-            ctx.arc(vx + 5, vy - 13, 5.2, 0, Math.PI * 2);
-            ctx.arc(vx, vy - 18, 5.8, 0, Math.PI * 2);
-            ctx.arc(vx - 2, vy - 10, 4.2, 0, Math.PI * 2);
-            ctx.arc(vx + 3, vy - 9, 4.0, 0, Math.PI * 2);
+            ctx.arc(vx - 6, vy - 17, 6.0, 0, Math.PI * 2);
+            ctx.arc(vx + 6, vy - 16, 5.6, 0, Math.PI * 2);
+            ctx.arc(vx, vy - 21, 6.2, 0, Math.PI * 2);
+            ctx.arc(vx - 3, vy - 14, 4.5, 0, Math.PI * 2);
+            ctx.arc(vx + 3, vy - 13, 4.4, 0, Math.PI * 2);
             ctx.fill();
 
-            // Sunlit leaf highlight
+            // Sunlit canopy foliage highlights
             ctx.fillStyle = '#A5D6A7';
-            ctx.beginPath(); ctx.arc(vx - 1, vy - 16, 2.8, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx - 1, vy - 19, 3.0, 0, Math.PI * 2); ctx.fill();
 
-            // Large, Prominent, 3D Cascading Grape Clusters (Heavy ripe fruit)
+            // GRAPES HANGING FROM BAMBOO BED (Elevated in mid-air, 6-9px above ground vy)
             const isRed = sp.key === 'spatburgunder' || sp.key === 'dornfelder';
             const berryFill = isRed ? '#4A148C' : '#FBC02D';
             const berryHighlight = isRed ? '#BA68C8' : '#FFF9C4';
             const clusterShadow = isRed ? '#1A0033' : '#827717';
 
-            // Cluster 1 (Left flank)
-            ctx.fillStyle = clusterShadow;
-            ctx.beginPath(); ctx.arc(vx - 3.5, vy - 5.5, 4.5, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = berryFill;
-            ctx.beginPath();
-            ctx.arc(vx - 4.5, vy - 7, 2.2, 0, Math.PI * 2);
-            ctx.arc(vx - 2.5, vy - 7, 2.2, 0, Math.PI * 2);
-            ctx.arc(vx - 5.0, vy - 5, 2.2, 0, Math.PI * 2);
-            ctx.arc(vx - 3.0, vy - 5, 2.4, 0, Math.PI * 2);
-            ctx.arc(vx - 1.5, vy - 5, 2.0, 0, Math.PI * 2);
-            ctx.arc(vx - 3.5, vy - 3, 2.0, 0, Math.PI * 2);
-            ctx.arc(vx - 3.5, vy - 1.2, 1.6, 0, Math.PI * 2);
-            ctx.fill();
-            // Glossy berry shine
-            ctx.fillStyle = berryHighlight;
-            ctx.fillRect(vx - 4, vy - 6, 1.2, 1.2);
-            ctx.fillRect(vx - 3, vy - 4, 1.0, 1.0);
+            // Ground drop shadow directly beneath suspended fruit cluster (shows elevation!)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+            ctx.beginPath(); ctx.ellipse(vx, vy + 1, 4.5, 2.0, 0, 0, Math.PI * 2); ctx.fill();
 
-            // Cluster 2 (Right flank)
+            // Hanging stem / pedicel descending from bamboo frame (vy - 16)
+            ctx.strokeStyle = '#558B2F'; ctx.lineWidth = 1.0;
+            ctx.beginPath(); ctx.moveTo(vx - 3.5, vy - 15); ctx.lineTo(vx - 3.5, vy - 12); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(vx + 3.5, vy - 15); ctx.lineTo(vx + 3.5, vy - 11); ctx.stroke();
+
+            // Suspended Cluster 1 (Left flank: hangs at vy - 12 down to vy - 7, clearly above ground vy)
             ctx.fillStyle = clusterShadow;
-            ctx.beginPath(); ctx.arc(vx + 3.5, vy - 4.5, 4.2, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(vx - 3.5, vy - 9.5, 3.8, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = berryFill;
             ctx.beginPath();
-            ctx.arc(vx + 2.5, vy - 6, 2.0, 0, Math.PI * 2);
-            ctx.arc(vx + 4.5, vy - 6, 2.0, 0, Math.PI * 2);
-            ctx.arc(vx + 2.0, vy - 4, 2.2, 0, Math.PI * 2);
-            ctx.arc(vx + 4.0, vy - 4, 2.2, 0, Math.PI * 2);
-            ctx.arc(vx + 3.2, vy - 2, 1.8, 0, Math.PI * 2);
-            ctx.arc(vx + 3.2, vy - 0.5, 1.4, 0, Math.PI * 2);
+            ctx.arc(vx - 4.5, vy - 11.5, 2.0, 0, Math.PI * 2);
+            ctx.arc(vx - 2.5, vy - 11.5, 2.0, 0, Math.PI * 2);
+            ctx.arc(vx - 5.0, vy - 9.5, 2.0, 0, Math.PI * 2);
+            ctx.arc(vx - 3.0, vy - 9.5, 2.2, 0, Math.PI * 2);
+            ctx.arc(vx - 1.5, vy - 9.5, 1.8, 0, Math.PI * 2);
+            ctx.arc(vx - 3.5, vy - 7.8, 1.8, 0, Math.PI * 2);
             ctx.fill();
+            // Glossy berry highlights
             ctx.fillStyle = berryHighlight;
-            ctx.fillRect(vx + 3, vy - 5, 1.1, 1.1);
+            ctx.fillRect(vx - 4, vy - 11, 1.0, 1.0);
+            ctx.fillRect(vx - 3, vy - 9, 0.9, 0.9);
+
+            // Suspended Cluster 2 (Right flank: hangs at vy - 11 down to vy - 6.5, clearly above ground vy)
+            ctx.fillStyle = clusterShadow;
+            ctx.beginPath(); ctx.arc(vx + 3.5, vy - 8.8, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = berryFill;
+            ctx.beginPath();
+            ctx.arc(vx + 2.5, vy - 10.5, 1.9, 0, Math.PI * 2);
+            ctx.arc(vx + 4.5, vy - 10.5, 1.9, 0, Math.PI * 2);
+            ctx.arc(vx + 2.0, vy - 8.8, 2.0, 0, Math.PI * 2);
+            ctx.arc(vx + 4.0, vy - 8.8, 2.0, 0, Math.PI * 2);
+            ctx.arc(vx + 3.2, vy - 7.0, 1.6, 0, Math.PI * 2);
+            ctx.fill();
+            // Glossy berry highlights
+            ctx.fillStyle = berryHighlight;
+            ctx.fillRect(vx + 3, vy - 10, 0.9, 0.9);
           }
         }
       }
@@ -4265,6 +4845,16 @@ const AlpenMap = {
 
   onClick(e){
     const {cx, cy} = this.worldFromEvent(e);
+
+    // Direct click on Southern Meadow Manhattan Bypass corridor
+    const isGate = Math.hypot(cx - 1750, cy - 890) < 50;
+    const isDairy = Math.hypot(cx - 200, cy - 770) < 60;
+    const isLakeCenter = Math.hypot(cx - 630, cy - 870) < 130 || Math.hypot(cx - 1150, cy - 930) < 160;
+
+    if (!isGate && !isDairy && !isLakeCenter && isNearBypassRoad(cx, cy)) {
+      openWhyManhattanRoadModal();
+      return;
+    }
 
     // Direct click on 2-Basin Lake System (West Pond or East Big Pond)
     if (Math.hypot(cx - 630, cy - 870) < 160 || Math.hypot(cx - 1150, cy - 930) < 220) {
@@ -4717,19 +5307,52 @@ function openVegModal(bedIdx){
          '</div>' +
          '</div>';
 
-    // 12 Plant Slots in 3x4 Grid
+    // 12 Plant Slots in 3x4 Grid with Real-Time Percentage Progression & Time Remaining
     h += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">';
-    curBed.plants.forEach(p => {
+    curBed.plants.forEach((p, pIdx) => {
       const sp = VEG_SPECIES[p.species] || { name: 'Empty', icon: '🌱', col: '#9E9E9E' };
-      const statusBadge = p.status === 'mature' ? '✓ Mature' : p.status === 'flowering' ? '🌸 Flower' : p.status === 'growing' ? '🌿 Growing' : '🌱 Sprout';
-      const badgeCol = p.status === 'mature' ? 'var(--gold)' : p.status === 'flowering' ? '#F48FB1' : p.status === 'growing' ? 'var(--teal)' : '#B0BEC5';
+      const prog = Math.min(1.0, Math.max(0, p.progress || 0));
+      const totalPct = Math.round(prog * 100);
 
-      h += '<div style="background:rgba(8,20,12,0.85);border:1px solid var(--border);border-radius:10px;padding:6px 4px;text-align:center">' +
-             '<div style="font-size:1.1rem;margin-bottom:2px">' + sp.icon + '</div>' +
+      let stageLabel = '🌱 Sprout', stagePct = 0, badgeCol = '#AED581', nextStageName = 'Growing';
+      let remSec = 0;
+
+      if (p.status === 'mature' || prog >= 0.95) {
+        stageLabel = '✓ Fruiting';
+        stagePct = 100;
+        remSec = 0;
+        badgeCol = 'var(--gold)';
+        nextStageName = 'Harvest Ready';
+      } else if (p.status === 'flowering' || prog >= 0.65) {
+        stageLabel = '🌸 Flower';
+        stagePct = Math.min(100, Math.round(((prog - 0.65) / 0.30) * 100));
+        remSec = Math.max(1, Math.ceil((0.95 - prog) / (0.0035 * 60)));
+        badgeCol = '#F48FB1';
+        nextStageName = 'Fruiting';
+      } else if (p.status === 'growing' || prog >= 0.30) {
+        stageLabel = '🌿 Grow';
+        stagePct = Math.min(100, Math.round(((prog - 0.30) / 0.35) * 100));
+        remSec = Math.max(1, Math.ceil((0.65 - prog) / (0.0035 * 60)));
+        badgeCol = 'var(--teal)';
+        nextStageName = 'Flower';
+      } else {
+        stageLabel = '🌱 Sprout';
+        stagePct = Math.min(100, Math.round((prog / 0.30) * 100));
+        remSec = Math.max(1, Math.ceil((0.30 - prog) / (0.0035 * 60)));
+        badgeCol = '#AED581';
+        nextStageName = 'Grow';
+      }
+
+      const totalRemSec = (prog >= 0.95 || p.status === 'mature') ? 0 : Math.max(1, Math.ceil((0.95 - prog) / (0.0035 * 60)));
+      const timerStr = (p.status === 'mature' || prog >= 0.95) ? '✓ Ready to pick!' : ('⏱️ ' + totalRemSec + 's rem');
+
+      h += '<div style="background:rgba(8,20,12,0.88);border:1px solid var(--border);border-radius:10px;padding:6px 4px;text-align:center">' +
+             '<div style="font-size:1.15rem;margin-bottom:1px">' + sp.icon + '</div>' +
              '<div style="font-size:0.68rem;font-weight:800;color:' + sp.col + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + sp.name.split(' ')[0] + '</div>' +
-             '<div style="font-size:0.55rem;font-style:italic;color:#C8E6C9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (sp.scientific || '') + '</div>' +
-             '<div style="font-size:0.62rem;color:' + badgeCol + ';font-weight:700">' + statusBadge + '</div>' +
-             '<div class="prog-bar" style="height:4px;margin-top:4px"><div class="prog-fill" style="width:' + (p.progress * 100) + '%"></div></div>' +
+             '<div style="font-size:0.56rem;font-style:italic;color:#C8E6C9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (sp.scientific || '') + '</div>' +
+             '<div style="font-size:0.62rem;color:' + badgeCol + ';font-weight:700;margin-top:2px">' + stageLabel + ' (' + stagePct + '%)</div>' +
+             '<div class="prog-bar" style="height:4px;margin:4px 0 2px 0"><div class="prog-fill" style="width:' + totalPct + '%"></div></div>' +
+             '<div style="font-size:0.56rem;color:' + (totalRemSec === 0 ? 'var(--gold)' : '#B0BEC5') + ';font-weight:700">' + timerStr + ' (' + totalPct + '%)</div>' +
            '</div>';
     });
     h += '</div>';
@@ -5512,6 +6135,13 @@ function openVineyardModal(bedIndex){
     h += '<button class="btn btn-g" style="width:100%;margin-bottom:8px" onclick="openUniformPlantModal(' + currentBedIdx + ')">🍇 Plant All ' + ready + ' Ready Holes with Variety</button>';
   }
 
+  // Bamboo Bed Pergola Building Step for 3D elevated training
+  if (!bState.bambooBed) {
+    h += '<button class="btn btn-g" style="width:100%;margin-bottom:8px;background:#2E7D32" onclick="buildBambooBed(' + currentBedIdx + ')">🎋 Build 3D Bamboo Bed Pergola (€25 · +15 XP)</button>';
+  } else {
+    h += '<div class="card-box" style="padding:6px 10px;margin-bottom:8px;border-color:var(--teal);background:rgba(0,230,118,0.08);display:flex;justify-content:space-between;align-items:center"><span style="color:var(--teal);font-size:0.76rem;font-weight:700">✓ 3D Bamboo Bed Pergola Installed</span><span style="font-size:0.72rem;color:#C8E6C9">12 Vines overhead · Grapes suspended</span></div>';
+  }
+
   if (planted > 0) {
     h += '<button class="btn btn-c" style="width:100%;margin-bottom:8px" onclick="careVineBed(' + currentBedIdx + ')">✂️ Rebschnitt & Spalierbindung (Trellis Training & Pruning, +15 XP)</button>';
   }
@@ -5623,10 +6253,24 @@ window.aerateVineBed = function(bedIdx){
   openVineyardModal(bedIdx);
 };
 
+window.buildBambooBed = function(bedIdx){
+  if (state.money < 25) { toast('Need €25 to build 3D bamboo bed pergola'); return; }
+  state.money -= 25;
+  const bed = state.vineyard.beds[bedIdx];
+  bed.bambooBed = true;
+  grantXP({fruit: 15, biodiversity: 8});
+  toast('🎋 3D Bamboo Bed Pergola erected for Bed #' + (bedIdx + 1) + '! 12 plant tops trained overhead');
+  renderScoreboard();
+  openVineyardModal(bedIdx);
+};
+
 window.careVineBed = function(bedIdx){
   const bed = state.vineyard.beds[bedIdx];
   const plantedVines = bed.vines.filter(v => v.species);
   if (plantedVines.length === 0) { toast('No planted vines to care for'); return; }
+
+  // Auto-build bamboo bed pergola so vines can train over it and fruiting starts
+  bed.bambooBed = true;
 
   let advanced = 0;
   plantedVines.forEach(v => {
@@ -5635,7 +6279,7 @@ window.careVineBed = function(bedIdx){
   });
 
   grantXP({fruit: 15, biodiversity: 8});
-  toast('✂️ Rebschnitt & Spalierbindung complete! Advanced ' + advanced + ' vines');
+  toast('✂️ Rebschnitt & Spalierbindung complete! Advanced ' + advanced + ' vines over bamboo bed');
   renderScoreboard();
   openVineyardModal(bedIdx);
 };
@@ -6075,6 +6719,77 @@ window.advanceFermentationLab = function(step){
     toast('🎉 Fermentation Laboratory Completed! Master Artisan Cheesemaker Certificate Awarded (+25 XP)');
     closeModal();
   }
+};
+/* ================= SOUTHERN MEADOW MANHATTAN BYPASS MAIN ROAD MODAL & ACTIONS ================= */
+function openWhyManhattanRoadModal(){
+  const built = !!(state.built && state.built['road_dairy_bypass']);
+  let h = '<div class="modal-hdr"><h3>🛣️ Southern Meadow Manhattan Bypass Main Road</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  h += '<p style="font-size:0.80rem;color:#A5D6A7;margin-bottom:10px">Direct Agricultural Arterial Highway · Connecting Main Gate (1750, 890) to Dairy Processing Plant (200, 770) past Living Lake</p>';
+
+  if (!built) {
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--gold);background:rgba(25,20,10,0.85)">' +
+         '<b>🚧 Unbuilt Logistics Blueprint Corridor:</b><br/>' +
+         '<span style="font-size:0.78rem;color:#FFE082">Construct 1,580m direct logistics highway across the southern meadow margin, bypassing eastern village congestion and saving 670m per milk transport haul.</span><br/>' +
+         '<button class="btn btn-g" style="margin-top:10px;width:100%" onclick="buildDairyRoad()">🔨 Construct Southern Meadow Bypass Road (€90 · +30 XP · +15 O₂)</button>' +
+         '</div>';
+  } else {
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--teal);background:rgba(8,24,14,0.85);display:flex;justify-content:space-between;align-items:center">' +
+         '<div><b style="color:var(--teal)">✓ Active Manhattan Logistics Arterial Highway</b>' +
+         '<div style="font-size:0.75rem;color:#C8E6C9">Cobblestone highway operational · Animated milk transport truck active</div></div>' +
+         '<div style="font-size:0.85rem">🚚 <b>Saving 670m / Run</b></div>' +
+         '</div>';
+  }
+
+  // 4 Core Analysis Sections: Bottlenecks, Shortest Path Manhattan Routing, Fuel Economics, Civil Redundancy
+  h += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">';
+
+  h += '<div class="card-box" style="padding:10px;background:rgba(12,24,16,0.9)">' +
+       '<h4 style="font-size:0.80rem;color:var(--gold);margin-bottom:4px">1. 🚜 Agricultural Logistics Bottleneck Mitigation</h4>' +
+       '<p style="font-size:0.74rem;color:#CFD8DC">Prior to this bypass, heavy raw milk tankers, silage trailers, and cold-chain haulers entered via Main Gate (1750, 890) and were forced through the pedestrian Eastern Village Plaza and Gasthof terrace (1620, 530), causing severe noise, tourist conflict, and tight turning hazards at the central crossroads.</p>' +
+       '</div>';
+
+  h += '<div class="card-box" style="padding:10px;background:rgba(12,24,16,0.9)">' +
+       '<h4 style="font-size:0.80rem;color:var(--cyan);margin-bottom:4px">2. 📐 Shortest-Path Manhattan Grid Routing (~30% Route Reduction)</h4>' +
+       '<p style="font-size:0.74rem;color:#CFD8DC">' +
+       '• <b>Existing Detour:</b> Gate ➔ Village Plaza ➔ Central Crossroads ➔ West Branch ➔ Dairy = <b>~2,250 meters</b>.<br/>' +
+       '• <b>Manhattan Direct Bypass:</b> Gate (1750, 890) ➔ Southern Meadow Causeway ➔ Dairy (200, 770) = <b>~1,580 meters</b>.<br/>' +
+       '• <b>Efficiency Gain:</b> <b>670 meters saved per trip (~30% route reduction)</b>, closely approximating the optimal <i>L₁</i> Manhattan distance (|Δx| + |Δy| = 1,670m).' +
+       '</p>' +
+       '</div>';
+
+  h += '<div class="card-box" style="padding:10px;background:rgba(12,24,16,0.9)">' +
+       '<h4 style="font-size:0.80rem;color:var(--amber);margin-bottom:4px">3. ⛽ Transporter Fuel Economics & Cold-Chain Preservation</h4>' +
+       '<p style="font-size:0.74rem;color:#CFD8DC">' +
+       '• <b>Fuel & Carbon:</b> Saves <b>~4.2 Liters of diesel</b> and prevents <b>11.2 kg CO₂ emissions</b> per round trip.<br/>' +
+       '• <b>Transit Time:</b> Cuts transit duration from 18 minutes down to <b>6 minutes</b>, preventing warm milk churn vibration, minimizing lactic acid spikes, and preserving top-tier butterfat quality for the Alpen-Käserei.' +
+       '</p>' +
+       '</div>';
+
+  h += '<div class="card-box" style="padding:10px;background:rgba(12,24,16,0.9)">' +
+       '<h4 style="font-size:0.80rem;color:#81C784;margin-bottom:4px">4. 🛡️ Civil Engineering Redundancy & Pedestrian Safety</h4>' +
+       '<p style="font-size:0.74rem;color:#CFD8DC">Segregates industrial heavy freight from the serene natural shoreline of the Living Waters Lake and Flower Gardens. Provides life-saving civil redundancy if winter snowdrifts or springtime mud torrents block the northern crossroad passes.</p>' +
+       '</div>';
+
+  h += '<div class="why-card" style="margin-top:2px">' +
+       '<b>🇩🇪 German Farm Recall Link: Transportation Infrastructure & Logistics</b>' +
+       '<div class="recall-box">Echoing German Farm Ch. 2 (Infrastructure & Tilth), arterial farm roads must balance shortest-path vehicle logistics against soil compaction and ecological tranquility. By hugging the meadow revetment, the bypass preserves the farm inner core while ensuring rapid industrial transport.</div>' +
+       '</div>';
+
+  h += '</div>';
+
+  openModal(h, true);
+}
+
+window.openWhyManhattanRoadModal = openWhyManhattanRoadModal;
+
+window.buildDairyRoad = function(){
+  if (state.money < 90) { toast('Need €90 to construct the bypass road'); return; }
+  state.money -= 90;
+  state.built['road_dairy_bypass'] = true;
+  grantXP({oxygen: 15, biodiversity: 15});
+  toast('🛣️ Southern Meadow Manhattan Bypass Constructed! Milk tankers dispatched');
+  renderScoreboard();
+  openWhyManhattanRoadModal();
 };
 
 function openWhy(){

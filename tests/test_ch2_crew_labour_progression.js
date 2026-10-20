@@ -5,8 +5,8 @@
  * 1. Multi-Labourer hiring & speed scaling (Crew Shed, Boulders, Gate, Storage).
  * 2. Arrange Basic Equipment: awards +10 XP, stows tarp cache so juteTarpSpotHtml() returns empty string.
  * 3. Boulder clearing: spade recognized from basic tools, 2 labourers speed 2x, yields ballast.
- * 4. Dedicated Farmer: hiring strictly blocked until Storage Granary Barn is built.
- * 5. Plot 3–6 Progression: strictly locked until Boulders + Gate + Road + Storage + Farmer are ready.
+ * 4. Dedicated Farmer: recruitment requires Crew Shed, accessible as Chapter 2 Mission 2 without artificial storage lock.
+ * 5. Plot 3–6 Progression: Plot 3 unlocked with crew (Laborer + Farmer); Plots 4–6 strictly gated behind Boulders + Gate + Road + Storage.
  * 6. Chapter 2 Completion & Manual Harvest Bottleneck: planting all 6 plots + storing harvest triggers Chapter 2 completion modal.
  * 7. Chapter 3 strict gating: no uniqueCount >= 3 leak; starts with Farm Garage & Depot.
  * 8. Idle Labourer Suggestion: automatic suggestion chip generated when laborers are idle.
@@ -119,33 +119,33 @@ async function runTestSuite() {
       report.test2_boulderClearingAndBallast.details.push('Error: ' + e.message);
     }
 
-    // --- TEST 3: Dedicated Farmer hiring strictly locked until Storage Granary Barn is built ---
+    // --- TEST 3: Dedicated Farmer hiring accessible once Crew Shed is built (without storage requirement) ---
     try {
       state.currentChapter = 2;
-      state.buildings.crew_shed.built = true;
+      state.buildings.crew_shed.built = false;
       state.storage = { built: false, building: false, buildHours: 0 };
       const farmerBefore = state.workers.filter(w => w.type === 'farmer').length;
 
-      // Attempt to hire farmer without storage
+      // Attempt to hire farmer without crew shed -> blocked
       hireWorker('farmer');
-      const farmerBlocked = state.workers.filter(w => w.type === 'farmer').length === farmerBefore;
+      const farmerBlockedWithoutCrewShed = state.workers.filter(w => w.type === 'farmer').length === farmerBefore;
 
-      // Now build storage
-      state.storage.built = true;
+      // Now build crew shed (storage is still unbuilt)
+      state.buildings.crew_shed.built = true;
       hireWorker('farmer');
-      const farmerHired = state.workers.filter(w => w.type === 'farmer').length === farmerBefore + 1;
+      const farmerHiredWithCrewShed = state.workers.filter(w => w.type === 'farmer').length === farmerBefore + 1;
 
-      if (farmerBlocked && farmerHired) {
+      if (farmerBlockedWithoutCrewShed && farmerHiredWithCrewShed) {
         report.test3_farmerLockedUntilStorage.passed = true;
-        report.test3_farmerLockedUntilStorage.details.push('Farmer hiring strictly blocked until Storage Granary Barn is built; successfully hired once storage is operational.');
+        report.test3_farmerLockedUntilStorage.details.push('Farmer recruitment requires Crew Shed, but is actively accessible as Chapter 2 Mission 2 without requiring Granary Storage.');
       } else {
-        report.test3_farmerLockedUntilStorage.details.push('Failed: farmerBlocked=' + farmerBlocked + ', farmerHired=' + farmerHired);
+        report.test3_farmerLockedUntilStorage.details.push('Failed: farmerBlockedWithoutCrewShed=' + farmerBlockedWithoutCrewShed + ', farmerHiredWithCrewShed=' + farmerHiredWithCrewShed);
       }
     } catch (e) {
       report.test3_farmerLockedUntilStorage.details.push('Error: ' + e.message);
     }
 
-    // --- TEST 4: Plot 3-6 strictly gated behind Boulders + Gate + Road + Storage + Farmer ---
+    // --- TEST 4: Plot 3 crew collaboration & Plots 4-6 civil infrastructure gating ---
     try {
       state.currentChapter = 2;
       state.plots = state.plots || [];
@@ -155,38 +155,41 @@ async function runTestSuite() {
       state.plots[0].status = 'ready';
       state.plots[1].status = 'ready';
 
-      // Plot 2 is auto-unlocked
+      // Plot 2 is auto-unlocked in Chapter 2
       const plot2Open = isPlotUnlocked(1, state);
 
-      // Plot 3 is locked when infrastructure is incomplete
+      // Plot 3 without crew is locked
+      state.workers = [];
+      const plot3LockedNoCrew = !isPlotUnlocked(2, state);
+
+      // Plot 3 with only Laborer is still locked
+      state.workers = [{ id: 101, type: 'laborer' }];
+      const plot3LockedOnlyLaborer = !isPlotUnlocked(2, state);
+
+      // Plot 3 with Laborer + Farmer unlocks!
+      state.workers = [{ id: 101, type: 'laborer' }, { id: 102, type: 'farmer' }];
+      const plot3UnlockedWithCrew = isPlotUnlocked(2, state);
+
+      // Plots 4-6 require full civil infrastructure (boulders cleared + gate + road + storage)
+      state.plots[2].status = 'ready';
       state.rocksCleared = false;
       state.buildings.gate = { built: false };
       state.buildings.road = { built: false };
       state.storage = { built: false };
-      const plot3Locked1 = !isPlotUnlocked(2, state);
+      const plot4LockedNoInfra = !isPlotUnlocked(3, state);
 
-      // Only boulders cleared -> still locked
+      // With full civil infrastructure -> Plot 4 UNLOCKED!
       state.rocksCleared = true;
-      const plot3Locked2 = !isPlotUnlocked(2, state);
-
-      // Gate built -> still locked
       state.buildings.gate.built = true;
-      const plot3Locked3 = !isPlotUnlocked(2, state);
-
-      // Road built -> still locked
       state.buildings.road.built = true;
-      const plot3Locked4 = !isPlotUnlocked(2, state);
-
-      // Storage built and Farmer hired -> UNLOCKED!
       state.storage.built = true;
-      const hasFarmer = state.workers.some(w => w.type === 'farmer');
-      const plot3Unlocked = isPlotUnlocked(2, state);
+      const plot4Unlocked = isPlotUnlocked(3, state);
 
-      if (plot2Open && plot3Locked1 && plot3Locked2 && plot3Locked3 && plot3Locked4 && hasFarmer && plot3Unlocked) {
+      if (plot2Open && plot3LockedNoCrew && plot3LockedOnlyLaborer && plot3UnlockedWithCrew && plot4LockedNoInfra && plot4Unlocked) {
         report.test4_plot3To6StrictGating.passed = true;
-        report.test4_plot3To6StrictGating.details.push('Plot 2 unlocked at start of Ch 2. Plots 3–6 strictly gated behind Boulders + Gate + Road + Storage + Farmer.');
+        report.test4_plot3To6StrictGating.details.push('Plot 2 unlocked at start of Ch 2; Plot 3 unlocked with collaborative crew (Laborer + Farmer); Plots 4–6 strictly gated behind civil infrastructure (boulders + gate + road + storage).');
       } else {
-        report.test4_plot3To6StrictGating.details.push('Failed: plot2Open=' + plot2Open + ', plot3Locked1=' + plot3Locked1 + ', plot3Locked4=' + plot3Locked4 + ', plot3Unlocked=' + plot3Unlocked);
+        report.test4_plot3To6StrictGating.details.push('Failed: plot2Open=' + plot2Open + ', plot3LockedNoCrew=' + plot3LockedNoCrew + ', plot3LockedOnlyLaborer=' + plot3LockedOnlyLaborer + ', plot3UnlockedWithCrew=' + plot3UnlockedWithCrew + ', plot4LockedNoInfra=' + plot4LockedNoInfra + ', plot4Unlocked=' + plot4Unlocked);
       }
     } catch (e) {
       report.test4_plot3To6StrictGating.details.push('Error: ' + e.message);

@@ -630,6 +630,28 @@
     white-space: nowrap;
   }
 
+  /* Interactive floating guide message box directing player to next scout chapter */
+  .scout-chapter-guide-msg-box {
+    background: #FFFDF9;
+    border: 2px solid #2E7D32;
+    border-radius: 14px;
+    padding: 5px 11px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28), 0 2px 6px rgba(46, 125, 50, 0.25);
+    margin-bottom: 6px;
+    white-space: nowrap;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    pointer-events: auto;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+    z-index: 50;
+  }
+  .scout-chapter-guide-msg-box:hover {
+    transform: scale(1.06);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
   /* Fixed surveyed chapter star/tick badge */
   .chapter-explore-tick {
     position: absolute;
@@ -6371,7 +6393,7 @@
 // ================= CONSTANTS =================
 var REAL_MS_PER_GAME_HOUR_SPEC = 15 * 60 * 1000;
 var SPEED_OPTIONS = [
-  {label:'1x spec', factor:1}, {label:'60x', factor:60}, {label:'180x', factor:180}, {label:'600x', factor:600}
+  {label:'1x', factor:1}, {label:'2x', factor:2}, {label:'10x', factor:10}, {label:'60x', factor:60}
 ];
 var SEASON_LEN_GAME_HOURS = 96;
 var SEASONS = [
@@ -10079,7 +10101,7 @@ function freshState(){
   }
   var fresh = {
     money: 10000, totalO2: 0, totalO2AllTime: 0, treesPlanted: 0, treesRemoved: 0, gameHour: 0,
-    plots: plots, achUnlocked: {}, speedFactor: 180, lastSaveReal: Date.now(),
+    plots: plots, achUnlocked: {}, speedFactor: 60, lastSaveReal: Date.now(),
     workers: [], roleCounters: { laborer: 0, farmer: 0, botanist: 0, engineer: 0 }, lastPaidDay: 0, nextTreeId: 1, reports: [], pestHandled: 0, demerits: 0,
     harvestCount: 0, storage: { built:false, building:false, buildHours:0, capacity:0, stored:0, level:0, expanding:false, expandHours:0, warnedFull:false, items:[], assignedLaborerId:null },
     basicToolsDiscovered: false,
@@ -10862,15 +10884,24 @@ function isPlotUnlocked(plotId, s) {
   if (id === 0 || id === 1) return true;
 
   // Plots 3-6 (indices 2 to 5):
-  // Strictly require proper labourer task utilization before unlocking:
+  var hasFarmer = !!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; }));
+  var hasLaborer = !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; }));
+
+  // Plot 3 (index 2): Unlocks with crew collaboration (Labourer + Farmer) and Plot 2 active
+  if (id === 2) {
+    if (!hasFarmer || !hasLaborer) return false;
+    var prev2 = s.plots[1];
+    return !!(prev2 && (prev2.treeType || prev2.status === 'growing' || (prev2.harvestsDone || 0) > 0 || prev2.status === 'ready'));
+  }
+
+  // Plots 4-6 (indices 3 to 5):
+  // Strictly require full farm infrastructure after road & granary are established:
   // 1. Bedrock boulders cleared from road corridor
   // 2. Grand Entrance Gate erected
   // 3. Main Arterial Road paved
   // 4. Storage Granary Barn & Cold Cellar built
   // 5. Dedicated Farmer recruited
   // 6. Previous plot cultivated / active
-  var hasFarmer = !!(s.workers && s.workers.some(function(w){ return w.type === 'farmer'; }));
-  var hasLaborer = !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; }));
   var rocksCleared = !!s.rocksCleared;
   var gateBuilt = !!(s.buildings && s.buildings.gate && s.buildings.gate.built);
   var roadBuilt = !!(s.buildings && s.buildings.road && s.buildings.road.built);
@@ -11141,19 +11172,30 @@ function getChapterExploreBadgeHtml(key, s) {
 
   if (explored) {
     // Fixed surveyed chapter badge with dynamic offset
-    return '<div class="chapter-explore-tick" style="' + customPos + '" onclick="event.stopPropagation();openChapterRoadmapForObject(\'' + key + '\')" title="Chapter ' + objCh + ' Explored · Click for Roadmap"><span class="tick-star">★</span></div>';
+    return '<div class="chapter-explore-tick" style="' + customPos + '" onclick="event.stopPropagation();openChapterRoadmapForObject(\'' + key + '\')" title="Chapter ' + objCh + ' Explored · Click for Roadmap"><span class="tick-star">★</span><span class="tick-check" style="display:none;">✓</span></div>';
   }
 
   if (objCh === targetCh) {
-    // Children-friendly directional locator icon precisely locating the facility
+    // Interactive guide message box & children-friendly directional locator precisely identifying next scout chapter
     var chDef = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[objCh - 1]) ? CHAPTER_DEFINITIONS[objCh - 1] : null;
     var chTitle = chDef ? chDef.title : ('Chapter ' + objCh);
-    // Centered directly above facility with pointer tip landing on roof/center plaque
-    var locatorPos = 'position:absolute;top:-48px;left:50%;margin-left:-27px;z-index:45;';
-    return '<div class="chapter-explore-hand chapter-explore-locator" style="' + locatorPos + '" onclick="event.stopPropagation();exploreChapterObject(\'' + key + '\')" title="Explore Chapter ' + objCh + ': ' + chTitle + ' (Tap to survey +5 XP)">' +
-      '<div class="locator-pulse-ring"></div>' +
-      '<span class="locator-pill-tag">Ch. ' + objCh + '</span>' +
-      getDirectionalLocatorSvg(objCh, chTitle) +
+    // Centered directly above facility
+    var locatorPos = 'position:absolute;top:-78px;left:50%;transform:translateX(-50%);z-index:45;display:flex;flex-direction:column;align-items:center;pointer-events:auto;';
+    return '<div class="chapter-explore-hand chapter-explore-locator" style="' + locatorPos + '" onclick="event.stopPropagation();exploreChapterObject(\'' + key + '\')" title="Scout Chapter ' + objCh + ': ' + chTitle + ' (Tap to survey +5 XP)">' +
+      '<div class="scout-chapter-guide-msg-box">' +
+        '<span style="font-size:1.15rem;line-height:1;">🧭</span>' +
+        '<div style="text-align:left;line-height:1.2;">' +
+          '<div style="font-size:0.62rem;font-weight:900;color:#2E7D32;text-transform:uppercase;letter-spacing:0.4px;">Next Scout: Ch. ' + objCh + '</div>' +
+          '<div style="font-size:0.75rem;font-weight:900;color:#1B5E20;">' + chTitle + ' <span style="background:#C8E6C9;color:#1B5E20;font-size:0.62rem;padding:1px 5px;border-radius:6px;margin-left:2px;">+5 XP</span></div>' +
+        '</div>' +
+        '<span style="font-size:0.76rem;color:#2E7D32;font-weight:900;margin-left:2px;">➔</span>' +
+      '</div>' +
+      '<div style="position:relative;width:54px;height:68px;display:flex;flex-direction:column;align-items:center;">' +
+        '<div class="locator-pulse-ring"></div>' +
+        '<span class="locator-pill-tag">Ch. ' + objCh + '</span>' +
+        getDirectionalLocatorSvg(objCh, chTitle) +
+        '<span style="display:none;">👆</span>' +
+      '</div>' +
     '</div>';
   }
 
@@ -12932,7 +12974,7 @@ function formatTaskProgress(doneHours, totalHours, speedMult){
   var pct = Math.min(100, Math.round((doneHours / totalHours) * 100));
   var mult = Math.max(0.1, Number(speedMult) || 1);
   var remHours = Math.max(0, (totalHours - doneHours) / mult);
-  var sf = (state && Number.isFinite(state.speedFactor) && state.speedFactor > 0) ? state.speedFactor : 180;
+  var sf = (state && Number.isFinite(state.speedFactor) && state.speedFactor > 0) ? state.speedFactor : 60;
   var realSeconds = remHours * ((typeof REAL_MS_PER_GAME_HOUR_SPEC !== 'undefined' ? REAL_MS_PER_GAME_HOUR_SPEC : 900000) / 1000) / sf;
   var timeStr = formatRemainingTime(realSeconds, remHours);
   return {
@@ -18570,7 +18612,7 @@ function loadState(){
         if (!Number.isFinite(state.totalO2) || state.totalO2 < 0) state.totalO2 = 0;
         if (!Number.isFinite(state.totalO2AllTime) || state.totalO2AllTime < 0) state.totalO2AllTime = 0;
         if (!Number.isFinite(state.lastPaidDay)) state.lastPaidDay = Math.floor(state.gameHour / 24);
-        if (!Number.isFinite(state.speedFactor) || state.speedFactor <= 0) state.speedFactor = 180;
+        if (!Number.isFinite(state.speedFactor) || state.speedFactor <= 0 || state.speedFactor === 180 || state.speedFactor === 600) state.speedFactor = 60;
 
         if (Number.isFinite(elapsedReal) && elapsedReal > 5000){
           var before = { money: state.money, totalO2AllTime: state.totalO2AllTime };
@@ -19949,26 +19991,26 @@ function chapterRoadmapModalHtml(objectKey){
 
   var iso3DIcon = getChapterIsometric3DIcon(chNum, key);
 
-  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)">' +
-    '<div class="modal cartoon-roadmap-modal" style="max-width:560px;border-radius:26px;border:4px solid #66BB6A;background:#FFFDF9;overflow:hidden;box-shadow:0 18px 48px rgba(0,0,0,0.28);">' +
-      '<div style="background:linear-gradient(135deg,#2E7D32,#1B5E20);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;color:#fff;border-bottom:3px solid #66BB6A;">' +
+  var html = '<div class="overlay" id="modalOverlay" onclick="if(event.target===this)closeModal(event)" ontouchend="if(event.target===this)closeModal(event)" style="padding:12px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;overflow-y:auto;">' +
+    '<div class="modal cartoon-roadmap-modal" style="max-width:min(560px,94vw);max-height:min(88vh,680px);width:100%;display:flex;flex-direction:column;border-radius:24px;border:4px solid #66BB6A;background:#FFFDF9;overflow:hidden;box-shadow:0 18px 48px rgba(0,0,0,0.32);margin:auto;position:relative;">' +
+      '<div style="flex-shrink:0;background:linear-gradient(135deg,#2E7D32,#1B5E20);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;color:#fff;border-bottom:3px solid #66BB6A;position:sticky;top:0;z-index:10;">' +
         '<div style="display:flex;align-items:center;gap:12px;">' +
-          '<div style="background:rgba(255,255,255,0.2);border:2px solid #A5D6A7;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 3px 8px rgba(0,0,0,0.2);">' +
+          '<div style="background:rgba(255,255,255,0.2);border:2px solid #A5D6A7;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 3px 8px rgba(0,0,0,0.2);flex-shrink:0;">' +
             (info.icon || '🌾') +
           '</div>' +
           '<div>' +
-            '<div style="display:flex;align-items:center;gap:6px;">' +
+            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">' +
               '<span style="background:#FDD835;color:#3E2723;font-size:0.68rem;font-weight:900;padding:2px 7px;border-radius:8px;text-transform:uppercase;letter-spacing:0.4px;box-shadow:0 2px 4px rgba(0,0,0,0.15);">Scout Chapter ' + chNum + '</span>' +
               '<span style="font-size:1.1rem;margin-left:4px;" title="Theme &amp; Mission">' + chDef.icon + '</span>' +
               (isExplored ? '<span style="background:#C8E6C9;color:#1B5E20;font-size:0.68rem;font-weight:900;padding:2px 7px;border-radius:8px;">✓ Surveyed</span>' : '') +
             '</div>' +
             '<div style="font-size:0.80rem;color:#C8E6C9;font-weight:800;margin-top:2px;">' + chDef.title + '</div>' +
-            '<h2 style="margin:2px 0 0;font-size:1.18rem;color:#fff;font-weight:900;letter-spacing:-0.2px;">' + info.name + '</h2>' +
+            '<h2 style="margin:2px 0 0;font-size:1.16rem;color:#fff;font-weight:900;letter-spacing:-0.2px;">' + info.name + '</h2>' +
           '</div>' +
         '</div>' +
-        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.25);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-weight:900;font-size:1rem;display:flex;align-items:center;justify-content:center;">✕</button>' +
+        '<button class="close-modal" onclick="closeModal(event)" ontouchend="closeModal(event)" title="Close" style="color:#fff;background:rgba(255,255,255,0.28);border:2px solid rgba(255,255,255,0.6);border-radius:50%;min-width:38px;min-height:38px;width:38px;height:38px;cursor:pointer;font-weight:900;font-size:1.1rem;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.25);flex-shrink:0;touch-action:manipulation;">✕</button>' +
       '</div>' +
-      '<div class="modal-body-scroll" style="padding:16px 20px;max-height:75vh;overflow-y:auto;">' +
+      '<div class="modal-body-scroll" style="flex:1;min-height:0;padding:14px 18px;overflow-y:auto;-webkit-overflow-scrolling:touch;">' +
         (function(){
           var chTasks = (typeof CHAPTER_CHALLENGES !== 'undefined' && CHAPTER_CHALLENGES[chNum]) ? CHAPTER_CHALLENGES[chNum] : [];
           var hCards = chTasks.map(function(tsk){
@@ -20005,7 +20047,7 @@ function chapterRoadmapModalHtml(objectKey){
               '</div>' +
             '</div>' +
             '<div style="font-size:0.70rem;font-weight:800;color:#1B5E20;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;">🎯 Chapter ' + chNum + ' Sequential Mission Progression:</div>' +
-            '<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;">' +
+            '<div class="chapter-missions-scroll modal-h-scroll" data-scroll-id="ch-missions-scroll-' + chNum + '" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;">' +
               (hCards || '<div style="font-size:0.74rem;color:#78909C;">No mission tasks found.</div>') +
             '</div>' +
           '</div>';
@@ -20018,7 +20060,7 @@ function chapterRoadmapModalHtml(objectKey){
             info.desc +
           '</div>' +
         '</div>' +
-        '<div style="background:#F9FBE7;border:1.8px solid #DCE775;border-radius:16px;padding:12px 14px;margin-bottom:14px;">' +
+        '<div style="background:#F9FBE7;border:1.8px solid #DCE775;border-radius:16px;padding:12px 14px;margin-bottom:6px;">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
             '<span style="font-weight:900;font-size:0.84rem;color:#33691E;">🗺️ Masterplan Survey Progress</span>' +
             '<span style="font-weight:900;font-size:0.84rem;color:#1B5E20;background:#DCEDC8;padding:2px 8px;border-radius:10px;">' + expCount + ' / 8 Chapters</span>' +
@@ -20032,13 +20074,13 @@ function chapterRoadmapModalHtml(objectKey){
               'Tap each locked farm facility marked with 🧭 directional locators to survey all 8 chapters and uncover foundational tools!') +
           '</div>' +
         '</div>' +
-        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1.5px solid #E0E0E0;padding-top:12px;">' +
-          '<button class="secondary mini-btn" onclick="closeModal();openTaskMasterplanModal();" style="padding:10px 16px;font-size:0.84rem;font-weight:800;border-radius:12px;border:1.5px solid #B0BEC5;color:#37474F;">📋 Full Masterplan</button>' +
-          (expCount >= 8 && !state.basicToolsDiscovered ?
-            '<button class="primary" onclick="closeModal();openJuteTarpModal();" style="padding:10px 20px;font-size:0.88rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);font-weight:900;border:none;border-radius:12px;color:#fff;box-shadow:0 4px 0 #0E3A13;cursor:pointer;">⛏️ Open Jute Tarp Cache ➔</button>' :
-            '<button class="primary" onclick="closeModal();" style="padding:10px 20px;font-size:0.88rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);font-weight:900;border:none;border-radius:12px;color:#fff;box-shadow:0 4px 0 #0E3A13;cursor:pointer;">✓ Got It</button>'
-          ) +
-        '</div>' +
+      '</div>' +
+      '<div style="flex-shrink:0;background:#FFFDF9;border-top:1.5px solid #E0E0E0;padding:10px 18px;display:flex;justify-content:space-between;gap:10px;align-items:center;position:sticky;bottom:0;z-index:10;">' +
+        '<button class="secondary mini-btn" onclick="closeModal();openTaskMasterplanModal();" style="padding:9px 15px;font-size:0.82rem;font-weight:800;border-radius:12px;border:1.5px solid #B0BEC5;color:#37474F;">📋 Full Masterplan</button>' +
+        (expCount >= 8 && !state.basicToolsDiscovered ?
+          '<button class="primary" onclick="closeModal();openJuteTarpModal();" style="padding:9px 18px;font-size:0.86rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);font-weight:900;border:none;border-radius:12px;color:#fff;box-shadow:0 4px 0 #0E3A13;cursor:pointer;">⛏️ Open Jute Tarp Cache ➔</button>' :
+          '<button class="primary" onclick="closeModal();" style="padding:9px 18px;font-size:0.86rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);font-weight:900;border:none;border-radius:12px;color:#fff;box-shadow:0 4px 0 #0E3A13;cursor:pointer;">✓ Got It</button>'
+        ) +
       '</div>' +
     '</div>' +
   '</div>';
@@ -21075,12 +21117,6 @@ function hireWorker(type){
   // In Chapter 2, Field Labourer can be recruited before Crew Shed is built to construct the Crew Shed
   if (type !== 'laborer' && (!state.buildings.crew_shed || !state.buildings.crew_shed.built)){
     showNotification('🏠', 'Construct the Crew Shed before hiring ' + (WORKER_TYPES[type] ? WORKER_TYPES[type].label : 'specialist crew') + '!', 'building', 'crew_shed');
-    return;
-  }
-  // Dedicated Farmer recruitment is strictly locked until Storage Granary Barn is built to prevent crop spoilage
-  if (type === 'farmer' && (!state.storage || !state.storage.built)){
-    showNotification('🏚️', 'Farmer recruitment locked! Construct the Storage Granary Barn first so harvested crops do not spoil!', 'building', 'storage');
-    pushReport('🔒 Farmer recruitment locked: Construct Storage Granary Barn first before hiring a dedicated Farmer.');
     return;
   }
   // Crew recruitment
@@ -23421,7 +23457,7 @@ function startLoop(){
     if (!lastRealTs || now < lastRealTs) lastRealTs = now;
     var realDelta = Math.min(Math.max(0, now - lastRealTs), 1000 * 60 * 30);
     lastRealTs = now;
-    var sf = (state && Number.isFinite(state.speedFactor) && state.speedFactor > 0) ? state.speedFactor : 180;
+    var sf = (state && Number.isFinite(state.speedFactor) && state.speedFactor > 0) ? state.speedFactor : 60;
     var dh = gameHoursFromReal(realDelta, sf);
     if (Number.isFinite(dh) && dh > 0){
       advanceGame(dh);
@@ -25223,11 +25259,13 @@ function getFarmProgressionGuide(){
   if (curChNum === 1){
     var expCount = (typeof getExploredChaptersCount === 'function') ? getExploredChaptersCount(state) : 0;
     if (expCount < 8 && !state.allChaptersExplored){
+      var nextCh = (typeof getCurrentExplorationChapter === 'function') ? getCurrentExplorationChapter(state) : 1;
+      var scoutTargetKey = (typeof CHAPTER_PRIMARY_OBJECTS !== 'undefined' && CHAPTER_PRIMARY_OBJECTS[nextCh]) ? CHAPTER_PRIMARY_OBJECTS[nextCh] : 'plot';
       compactLabel = 'Explore Chapters';
       icon = '🧭';
-      actionType = 'open_masterplan';
+      actionType = 'scout_target_chapter';
       targetType = 'building';
-      targetId = 'plot';
+      targetId = scoutTargetKey;
     } else if (!state.basicToolsDiscovered && !state.juteTarpUncovered){
       compactLabel = 'Uncover Tools';
       icon = '⛏️';
@@ -25253,6 +25291,59 @@ function getFarmProgressionGuide(){
       targetType = 'plot';
       targetId = 0;
     }
+  } else if (curChNum === 2 && activeChTask){
+    compactLabel = activeChTask.shortTitle || activeChTask.title;
+    icon = activeChTask.icon || '🌱';
+    if (activeChTask.id === 'ch2_crew_shed'){
+      actionType = 'open_modal';
+      targetType = 'building';
+      targetId = 'crew_shed';
+    } else if (activeChTask.id === 'ch2_hire_farmer'){
+      actionType = 'open_modal';
+      targetType = 'building';
+      targetId = 'crew_shed';
+    } else if (activeChTask.id === 'ch2_plot2'){
+      actionType = 'open_plot';
+      targetType = 'plot';
+      targetId = 1;
+    } else if (activeChTask.id === 'ch2_plot3'){
+      actionType = 'open_plot';
+      targetType = 'plot';
+      targetId = 2;
+    } else if (activeChTask.id === 'ch2_rocks'){
+      actionType = 'open_modal';
+      targetType = 'building';
+      targetId = 'road';
+    } else if (activeChTask.id === 'ch2_gate'){
+      actionType = 'open_modal';
+      targetType = 'building';
+      targetId = 'gate';
+    } else if (activeChTask.id === 'ch2_road'){
+      actionType = 'open_modal';
+      targetType = 'building';
+      targetId = 'road';
+    } else if (activeChTask.id === 'ch2_storage'){
+      actionType = 'build_storage';
+      targetType = 'storage';
+      targetId = 'storage';
+    } else if (activeChTask.id === 'ch2_all_plots'){
+      var nextUncult = (state.plots && state.plots.findIndex(function(p, i){ return i < 6 && (!p.treeType && p.status !== 'growing' && (p.harvestsDone || 0) === 0); }));
+      actionType = 'open_plot';
+      targetType = 'plot';
+      targetId = nextUncult >= 0 ? nextUncult : 3;
+    } else if (activeChTask.id === 'ch2_manual_harvests'){
+      actionType = 'open_plot';
+      targetType = 'plot';
+      targetId = 0;
+    } else if (activeChTask.id === 'ch2_garage' || activeChTask.id === 'ch2_mechanized_harvest'){
+      actionType = 'open_modal';
+      targetType = 'building';
+      targetId = 'garage';
+    } else if (stepDef){
+      actionType = stepDef.actionType;
+      targetType = stepDef.targetType;
+      targetId = stepDef.targetId;
+    }
   } else {
     compactLabel = activeChTask ? activeChTask.shortTitle : (stepDef ? stepDef.title : 'Progressing');
     icon = activeChTask ? activeChTask.icon : (stepDef ? stepDef.icon : '🌱');
@@ -25269,7 +25360,7 @@ function getFarmProgressionGuide(){
       totalSteps: 8,
       chapter: curChNum,
       chapterTask: activeChTask,
-      key: stepDef.key,
+      key: (curChNum === 1 || curChNum === 2) ? targetId : stepDef.key,
       icon: icon,
       compactLabel: compactLabel,
       title: activeChTask ? activeChTask.title : stepDef.title,
@@ -25306,8 +25397,24 @@ function handleStartingTaskGuideClick(){
   if (!guide) return;
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
 
+  if (guide.actionType === 'scout_target_chapter'){
+    if (typeof exploreChapterObject === 'function' && guide.targetId){
+      exploreChapterObject(guide.targetId);
+    } else if (typeof openTaskMasterplanModal === 'function'){
+      openTaskMasterplanModal();
+    }
+    return;
+  }
   if (guide.actionType === 'open_masterplan'){
     openTaskMasterplanModal();
+    return;
+  }
+  if (guide.actionType === 'open_jute_tarp'){
+    if (typeof openJuteTarpModal === 'function'){
+      openJuteTarpModal();
+    } else if (typeof openBasicEquipmentDiscoveryModal === 'function'){
+      openBasicEquipmentDiscoveryModal(0);
+    }
     return;
   }
   if (guide.actionType === 'discover_tools'){
@@ -25334,6 +25441,8 @@ function handleStartingTaskGuideClick(){
   } else if (guide.targetType === 'building'){
     if (guide.targetId === 'road'){
       targetEl = document.querySelector('.main-road-click-zone') || document.querySelector('.main-road-canvas-badge');
+    } else if (guide.targetId === 'jute_tarp'){
+      targetEl = document.querySelector('.jute-tarp-spot-card');
     } else {
       targetEl = document.querySelector('[data-building="' + guide.targetId + '"]');
     }
@@ -25350,7 +25459,7 @@ function handleStartingTaskGuideClick(){
   }
 
   if (typeof showNotification === 'function'){
-    showNotification(guide.icon, 'Task Step ' + guide.step + ': ' + guide.title, 'task', guide.targetId);
+    showNotification(guide.icon, 'Ch. ' + guide.chapter + ': ' + guide.title, 'task', guide.targetId);
   }
 }
 
@@ -34629,7 +34738,7 @@ function adminModalHtml(){
     var farmMoney = (g.money !== undefined) ? g.money : (primaryFarm.money !== undefined ? primaryFarm.money : (g.totalMoneySum !== undefined ? g.totalMoneySum : (u.farm ? u.farm.balance : 0)));
     var farmO2 = (g.totalO2 !== undefined) ? g.totalO2 : (primaryFarm.totalO2 !== undefined ? primaryFarm.totalO2 : (g.totalO2Sum !== undefined ? g.totalO2Sum : (u.farm ? u.farm.totalO2 : 0)));
     var farmName = g.farmName || primaryFarm.name || 'German Eco Farm';
-    var speed = g.speedFactor || (u.farm && u.farm.speedFactor) || 180;
+    var speed = g.speedFactor || (u.farm && u.farm.speedFactor) || 60;
 
     html += '<div class="admin-card" style="background:#F1F8F2;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">' +
@@ -36892,7 +37001,7 @@ var activeScrollTouch = { modalLayer: false, floatPanel: false };
 var lastTouchTime = { modalLayer: 0, floatPanel: 0 };
 
 if (typeof document !== 'undefined' && document && document.addEventListener){
-  ['touchstart', 'touchmove'].forEach(function(evt){
+  ['touchstart', 'touchmove', 'pointerdown', 'mousedown'].forEach(function(evt){
     document.addEventListener(evt, function(e){
       if (e.target && e.target.closest){
         if (e.target.closest('#modalLayer')) {
@@ -36906,7 +37015,7 @@ if (typeof document !== 'undefined' && document && document.addEventListener){
       }
     }, { passive: true });
   });
-  ['touchend', 'touchcancel'].forEach(function(evt){
+  ['touchend', 'touchcancel', 'pointerup', 'mouseup'].forEach(function(evt){
     document.addEventListener(evt, function(e){
       if (e.target && e.target.closest){
         if (e.target.closest('#modalLayer')) {
@@ -36920,17 +37029,29 @@ if (typeof document !== 'undefined' && document && document.addEventListener){
       }
     }, { passive: true });
   });
+  ['wheel', 'scroll'].forEach(function(evt){
+    document.addEventListener(evt, function(e){
+      if (e.target && e.target.closest){
+        if (e.target.closest('#modalLayer')) {
+          lastTouchTime.modalLayer = Date.now();
+        }
+        if (e.target.closest('#floatPanel')) {
+          lastTouchTime.floatPanel = Date.now();
+        }
+      }
+    }, { capture: true, passive: true });
+  });
 }
 
-// Replaces a container's HTML while preserving the scrollTop of all inner
+// Replaces a container's HTML while preserving the scrollTop & scrollLeft of all inner
 // scrollable elements — prevents resetting to beginning during game loop ticks.
 function replacePreservingScroll(containerId, innerSelector, newHtml){
   var container = document.getElementById(containerId);
   if (!container) return;
 
-  // If user is currently touching/swiping inside this container, or touched within 400ms (momentum scroll),
-  // skip replacing DOM this tick so the user's touch scroll gesture is never canceled or snapped!
-  var isTouching = activeScrollTouch[containerId] || (Date.now() - (lastTouchTime[containerId] || 0) < 400);
+  // If user is actively scrolling, swiping, or within 500ms of last interaction,
+  // skip replacing DOM this tick so the user's scroll gesture is never canceled or snapped!
+  var isTouching = activeScrollTouch[containerId] || (Date.now() - (lastTouchTime[containerId] || 0) < 500);
   if (isTouching && container.innerHTML.trim().length > 0 && newHtml && newHtml.trim().length > 0){
     return;
   }
@@ -36953,12 +37074,14 @@ function replacePreservingScroll(containerId, innerSelector, newHtml){
   // If identical, avoid unnecessary DOM reflow
   if (container.innerHTML === newHtml) return;
 
-  // Capture all scroll positions before replacement
+  // Capture all scroll positions before replacement (both vertical and horizontal)
   var savedScrolls = [];
-  var scrollTargets = container.querySelectorAll('.modal-body-scroll, .float-panel, .music-list-scroll, ' + (innerSelector || '.modal'));
+  var scrollTargets = container.querySelectorAll('.modal-body-scroll, .float-panel, .music-list-scroll, .modal-h-scroll, .chapter-missions-scroll, [data-scroll-id], ' + (innerSelector || '.modal'));
   scrollTargets.forEach(function(el){
-    if (el.scrollTop > 0 || el.scrollLeft > 0){
+    var sId = el.getAttribute('data-scroll-id') || el.id || '';
+    if (el.scrollTop > 0 || el.scrollLeft > 0 || sId){
       savedScrolls.push({
+        scrollId: sId,
         className: el.className,
         tagName: el.tagName,
         scrollTop: el.scrollTop,
@@ -36975,21 +37098,32 @@ function replacePreservingScroll(containerId, innerSelector, newHtml){
 
   // Restore primary scroller
   var newPrimary = container.querySelector('.modal-body-scroll') || container.querySelector(innerSelector);
-  if (newPrimary && primaryScrollTop > 0){
-    newPrimary.scrollTop = primaryScrollTop;
+  if (newPrimary){
+    if (primaryScrollTop > 0) newPrimary.scrollTop = primaryScrollTop;
     if (primaryScrollLeft > 0) newPrimary.scrollLeft = primaryScrollLeft;
   }
 
-  // Restore matched saved scrollers
+  // Restore matched saved scrollers by scrollId first, then className/tagName
   if (savedScrolls.length > 0){
     savedScrolls.forEach(function(item){
-      var candidates = container.querySelectorAll(item.tagName);
-      candidates.forEach(function(c){
-        if (c.className === item.className){
-          c.scrollTop = item.scrollTop;
-          c.scrollLeft = item.scrollLeft;
+      var matched = false;
+      if (item.scrollId){
+        var targetEl = container.querySelector('[data-scroll-id="' + item.scrollId + '"]') || container.querySelector('#' + item.scrollId);
+        if (targetEl){
+          if (item.scrollTop > 0) targetEl.scrollTop = item.scrollTop;
+          if (item.scrollLeft > 0) targetEl.scrollLeft = item.scrollLeft;
+          matched = true;
         }
-      });
+      }
+      if (!matched && item.className){
+        var candidates = container.querySelectorAll(item.tagName);
+        candidates.forEach(function(c){
+          if (c.className === item.className){
+            if (item.scrollTop > 0) c.scrollTop = item.scrollTop;
+            if (item.scrollLeft > 0) c.scrollLeft = item.scrollLeft;
+          }
+        });
+      }
     });
   }
 }
