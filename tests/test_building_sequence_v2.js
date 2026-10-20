@@ -103,9 +103,16 @@ const assert = require('assert');
   assert.strictEqual(roadSite.y1080, 280, 'road_network y1080 must be 280');
   console.log('[✓ PASSED] Road network site marker and building specs (€120, 15s, 1 worker) verified');
 
-  // 5. Test Building all 6 Facilities in Parallel / Sequential
-  console.log('Testing construction of all 6 facilities...');
-  const testBuildings = ['tourist_cottages', 'beach_sunbeds', 'salt_brine_beds', 'pearl_farming', 'shrimp_crab_freshwater', 't_jetty_pier'];
+  // Verify Underwater Autonomous Sensor Drone function exists and old cruising boat is removed
+  const hasAuv = await page.evaluate(() => typeof IslandMap.drawUnderwaterSensorDrone === 'function');
+  assert.strictEqual(hasAuv, true, 'IslandMap.drawUnderwaterSensorDrone must be a function');
+  const hasOldBoat = await page.evaluate(() => typeof IslandMap.drawCruisingBoat === 'function');
+  assert.strictEqual(hasOldBoat, false, 'Old circling catamaran drawCruisingBoat must be removed');
+  console.log('[✓ PASSED] 3D Autonomous Underwater Sensor Drone verified; old circling catamaran removed');
+
+  // 5. Test Building all Facilities in Parallel / Sequential (including 3D Road Network)
+  console.log('Testing construction of all facilities including 3D road network...');
+  const testBuildings = ['tourist_cottages', 'beach_sunbeds', 'salt_brine_beds', 'pearl_farming', 'shrimp_crab_freshwater', 't_jetty_pier', 'road_network'];
 
   for (const bKey of testBuildings) {
     await page.evaluate((key) => {

@@ -2791,8 +2791,8 @@ const IslandMap={
     // 3. Ambient Marine Life
     this.drawMarineLife(ctx);
 
-    // 4. Live Cruising Boat with Foaming Wake
-    this.drawCruisingBoat(ctx);
+    // 4. 3D Isometric Autonomous Underwater Water Quality Sensor Drone (AUV)
+    this.drawUnderwaterSensorDrone(ctx);
 
     // 5. Far Away Gas Platform (1728, 108)
     drawGasPlatformIso(ctx,1728,105,0.7,this.time);
@@ -2890,56 +2890,251 @@ const IslandMap={
     ctx.restore();
   },
 
-  drawCruisingBoat(ctx){
+  drawUnderwaterSensorDrone(ctx){
     ctx.save();
-    const t=this.time;
-    const bx=1520 + Math.sin(t*0.4)*90;
-    const by=460 + Math.cos(t*0.4)*55;
-    const angle=Math.atan2(-Math.sin(t*0.4)*55, Math.cos(t*0.4)*90);
+    const t = this.time;
+    // 40-second periodic mission cycle:
+    // 0s..26s: Active coastal survey roaming (Submerged depth ~3.5m, multi-spectral water quality sensors, bathymetric laser scan cone, sonar ripples, live telemetry badge)
+    // 26s..30s: Submerging transition into deep abyss
+    // 30s..36s: Deep trench station-keeping dive (Submerged in deep blue ocean shelf, blinking pinger beacon, deep telemetry)
+    // 36s..40s: Ascending back to coastal survey depth
+    const cycleDuration = 40;
+    const cycleTime = t % cycleDuration;
+    
+    // Closed marine patrol waypoints around Saint Martin's coastal shelf (STRICTLY IN OCEAN WATER)
+    const waypoints = [
+      { x: 1540, y: 520 }, // 0. Deep ocean berth basin east of cargo jetty
+      { x: 1680, y: 640 }, // 1. Eastern coral reef shelf
+      { x: 1480, y: 780 }, // 2. South-east ocean corridor
+      { x: 1180, y: 880 }, // 3. Southern deep shelf east
+      { x: 820,  y: 910 }, // 4. Southern deep channel center
+      { x: 420,  y: 930 }, // 5. Southwest pelagic channel
+      { x: 160,  y: 890 }, // 6. Deep trench station waters (south-west)
+      { x: 620,  y: 960 }, // 7. Southern deep returning passage
+      { x: 1220, y: 840 }, // 8. Eastern approach channel south
+      { x: 1560, y: 700 }  // 9. East reef outer approach
+    ];
 
+    const N = waypoints.length;
+    const progress = (cycleTime / cycleDuration) * N;
+    const i = Math.floor(progress) % N;
+    const f = progress - Math.floor(progress);
+
+    // Smooth Catmull-Rom closed spline interpolation
+    const p0 = waypoints[(i - 1 + N) % N];
+    const p1 = waypoints[i];
+    const p2 = waypoints[(i + 1) % N];
+    const p3 = waypoints[(i + 2) % N];
+
+    const getPos = (u, a, b, c, d) => {
+      const u2 = u * u, u3 = u2 * u;
+      return 0.5 * (
+        (2 * b) +
+        (-a + c) * u +
+        (2 * a - 5 * b + 4 * c - d) * u2 +
+        (-a + 3 * b - 3 * c + d) * u3
+      );
+    };
+
+    const posX = getPos(f, p0.x, p1.x, p2.x, p3.x);
+    const posY = getPos(f, p0.y, p1.y, p2.y, p3.y);
+
+    const nextF = f + 0.02;
+    const nextX = getPos(nextF, p0.x, p1.x, p2.x, p3.x);
+    const nextY = getPos(nextF, p0.y, p1.y, p2.y, p3.y);
+    const heading = Math.atan2(nextY - posY, nextX - posX);
+
+    // Interval depth & visibility calculation (ROAMING UNDER WATER ONLY)
+    let droneAlpha = 0.88;
+    let depthMeters = 3.5;
+    let isActive = cycleTime < 26;
+
+    if (cycleTime >= 26 && cycleTime < 30) {
+      const tFade = (cycleTime - 26) / 4;
+      droneAlpha = 0.88 - tFade * 0.64;
+      depthMeters = 3.5 + tFade * 28.5;
+    } else if (cycleTime >= 30 && cycleTime < 36) {
+      droneAlpha = 0.24;
+      depthMeters = 32.0;
+    } else if (cycleTime >= 36) {
+      const tAsc = (cycleTime - 36) / 4;
+      droneAlpha = 0.24 + tAsc * 0.64;
+      depthMeters = 32.0 - tAsc * 28.5;
+    }
+
+    // 1. Deep Ocean Floor Projection Shadow
     ctx.save();
-    ctx.translate(bx, by);
-    ctx.rotate(angle);
-
-    // Twin wake foam
-    ctx.strokeStyle='rgba(255, 255, 255, 0.45)';
-    ctx.lineWidth=2;
+    ctx.translate(posX + 4, posY + 16);
+    ctx.rotate(heading);
+    ctx.fillStyle = `rgba(0, 15, 30, ${droneAlpha * 0.4})`;
     ctx.beginPath();
-    ctx.moveTo(-16, -4);ctx.lineTo(-45 - Math.sin(t*8)*4, -14);
-    ctx.moveTo(-16, 4);ctx.lineTo(-45 - Math.sin(t*8)*4, 14);
+    ctx.ellipse(0, 0, 24, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 2. Active Downward Laser/Sonar Bathymetric Scan Cone (Active Survey Mode)
+    if (isActive) {
+      ctx.save();
+      ctx.translate(posX, posY);
+      ctx.rotate(heading);
+
+      const scanGrad = ctx.createRadialGradient(16, 0, 2, 16, 18, 32);
+      scanGrad.addColorStop(0, 'rgba(0, 230, 118, 0.45)');
+      scanGrad.addColorStop(0.5, 'rgba(0, 229, 255, 0.20)');
+      scanGrad.addColorStop(1, 'rgba(0, 229, 255, 0)');
+      ctx.fillStyle = scanGrad;
+      ctx.beginPath();
+      ctx.moveTo(16, 0);
+      ctx.lineTo(40, 28);
+      ctx.lineTo(-8, 28);
+      ctx.closePath();
+      ctx.fill();
+
+      // Expanding Sonar Ping Ring
+      const pingProg = (t * 0.7) % 1.0;
+      ctx.strokeStyle = `rgba(0, 230, 118, ${(1 - pingProg) * 0.55})`;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, pingProg * 48, pingProg * 24, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 3. Volumetric 3D AUV Drone Submersible
+    ctx.save();
+    ctx.translate(posX, posY);
+    ctx.globalAlpha = droneAlpha;
+
+    // Moving Underwater Light Caustic Band
+    const caustic = Math.sin(t * 3.5 + posX * 0.05) * 0.15;
+    ctx.save();
+    ctx.rotate(heading);
+
+    // Streamlined Lower Hull (Titanium Graphite)
+    ctx.fillStyle = '#0F1E2E';
+    ctx.beginPath();
+    ctx.roundRect(-22, -8, 42, 16, 6);
+    ctx.fill();
+
+    // Volumetric Research Upper Shell (Emerald & Ocean Cyan Livery)
+    const hullGrad = ctx.createLinearGradient(-18, -6, 16, 6);
+    hullGrad.addColorStop(0, '#00E5FF');
+    hullGrad.addColorStop(0.45, '#00E676');
+    hullGrad.addColorStop(1, '#00838F');
+    ctx.fillStyle = hullGrad;
+    ctx.beginPath();
+    ctx.roundRect(-18, -6.5, 34, 13, 5);
+    ctx.fill();
+
+    // Safety Gold Trim Stripe & Seams
+    ctx.strokeStyle = '#FFD54F';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-12, -6.5); ctx.lineTo(10, -6.5);
+    ctx.moveTo(-12, 6.5); ctx.lineTo(10, 6.5);
     ctx.stroke();
 
-    // Catamaran twin hull & deck
-    ctx.fillStyle='#ECEFF1';
+    // Forward Multi-Spectral Water Quality Sensor Cluster Dome
+    ctx.fillStyle = `rgba(0, 229, 255, ${0.85 + caustic})`;
     ctx.beginPath();
-    ctx.roundRect(-16, -9, 32, 6, 3);
-    ctx.roundRect(-16, 3, 32, 6, 3);
+    ctx.arc(16, 0, 6, -Math.PI * 0.5, Math.PI * 0.5);
+    ctx.fill();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Sensor Lenses (Optode Dissolved Oxygen & Fluorometer)
+    ctx.fillStyle = '#FF5252'; ctx.beginPath(); ctx.arc(18, -2, 1.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#69F0AE'; ctx.beginPath(); ctx.arc(18, 2, 1.4, 0, Math.PI * 2); ctx.fill();
+
+    // Port & Starboard Swept Hydrofoils
+    ctx.fillStyle = '#102A43';
+    ctx.beginPath();
+    ctx.moveTo(-4, -6.5); ctx.lineTo(-12, -16); ctx.lineTo(-4, -16); ctx.lineTo(4, -6.5);
+    ctx.moveTo(-4, 6.5); ctx.lineTo(-12, 16); ctx.lineTo(-4, 16); ctx.lineTo(4, 6.5);
     ctx.fill();
 
-    ctx.fillStyle='#0288D1';
+    // Shrouded Twin Propulsion Thrusters
+    ctx.fillStyle = '#263238';
+    ctx.fillRect(-24, -10, 9, 5);
+    ctx.fillRect(-24, 5, 9, 5);
+    // Cyan Propeller Cavitation Glow
+    ctx.fillStyle = '#00E5FF';
+    ctx.fillRect(-25, -9, 2, 3);
+    ctx.fillRect(-25, 6, 2, 3);
+
+    // Dorsal Fin & Communication Mast
+    ctx.strokeStyle = '#ECEFF1';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.roundRect(-10, -5, 20, 10, 3);
+    ctx.moveTo(0, 0); ctx.lineTo(-6, -10);
+    ctx.stroke();
+    // Blinking Telemetry LED Beacon
+    const blink = Math.sin(t * 8) > 0;
+    ctx.fillStyle = blink ? '#00E676' : (isActive ? '#004D40' : '#1DE9B6');
+    ctx.beginPath();
+    ctx.arc(-6, -10, 2.2, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle='#FFD54F';
-    ctx.fillRect(-6, -4, 12, 8);
+    // Trailing Cavitation Micro-Bubble Wake
+    for (let b = 1; b <= 4; b++) {
+      const bDist = b * 8 + Math.sin(t * 12 + b) * 2;
+      const bRad = 1.0 + b * 0.4;
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.45 / b})`;
+      ctx.beginPath();
+      ctx.arc(-24 - bDist, -7 + Math.sin(t * 6 + b) * 2, bRad, 0, Math.PI * 2);
+      ctx.arc(-24 - bDist, 7 + Math.cos(t * 6 + b) * 2, bRad, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-    // 🇧🇩 Ensign
-    ctx.fillStyle='#006A4E';ctx.fillRect(-15, -2, 5, 4);
-    ctx.fillStyle='#F42A41';ctx.beginPath();ctx.arc(-12.5, 0, 1.2, 0, Math.PI*2);ctx.fill();
-    ctx.restore();
+    ctx.restore(); // Restore drone rotation
 
-    // Moored wooden sampan
-    const bob=Math.sin(t*2.8)*1.5;
-    ctx.save();
-    ctx.translate(1415 + 18, 489 + bob);
-    ctx.rotate(0.35);
-    ctx.fillStyle='#8D6E63';
-    ctx.beginPath();ctx.ellipse(0, 0, 12, 4.5, 0, 0, Math.PI*2);ctx.fill();
-    ctx.fillStyle='#5D4037';ctx.fillRect(-4, -2.5, 8, 5);
-    ctx.restore();
+    // 4. Compact 3D Isometric Telemetry Badge
+    if (isActive) {
+      ctx.save();
+      const badgeY = -30;
+      ctx.translate(0, badgeY);
 
-    ctx.restore();
+      // Glassmorphic capsule
+      ctx.fillStyle = 'rgba(4, 18, 32, 0.88)';
+      ctx.strokeStyle = '#00E676';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.roundRect(-85, -12, 170, 24, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      // Telemetry Text
+      ctx.fillStyle = '#00E676';
+      ctx.font = 'bold 8.5px Nunito, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🔬 AUV ECO-PROBE · WATER QUALITY', 0, -2);
+      ctx.fillStyle = '#E0F2F1';
+      ctx.font = '7.5px JetBrains Mono, monospace';
+      ctx.fillText('DO 7.4mg/L · pH 8.12 · Sal 33ppt · ' + depthMeters.toFixed(1) + 'm', 0, 8);
+      ctx.restore();
+    } else {
+      // Deep Trench Abyss Ping Indicator
+      ctx.save();
+      const badgeY = -24;
+      ctx.translate(0, badgeY);
+      ctx.fillStyle = 'rgba(2, 24, 46, 0.75)';
+      ctx.strokeStyle = '#00E5FF';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.roundRect(-65, -9, 130, 18, 9);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#00E5FF';
+      ctx.font = 'bold 7.5px Nunito, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('📡 DEEP TRENCH DIVE · ' + depthMeters.toFixed(0) + 'm', 0, 3);
+      ctx.restore();
+    }
+
+    ctx.restore(); // Restore translation & alpha
+    ctx.restore(); // Restore initial save
   },
 
   drawRoadNetwork(ctx){
@@ -2952,172 +3147,263 @@ const IslandMap={
 
     // Hierarchical road segments connecting land objects on Saint Martin (STRICTLY ON LAND)
     const segments = [
-      // --- MAIN ARTERIAL ROAD (14px) ---
+      // --- MAIN ARTERIAL ROADS (22px) ---
       // 1. Cargo Pier Land Shore Apron (1365, 410) -> Decagon 2 Outer Rim (1340, 230)
-      {
-        id: 'main_pier_dec2', type: 'main', bldg: 't_jetty_pier',
-        path: (c) => { c.moveTo(1365, 410); c.bezierCurveTo(1360, 340, 1350, 270, 1340, 230); }
-      },
+      { id: 'main_pier_dec2', type: 'main', path: (c) => { c.moveTo(1365, 410); c.bezierCurveTo(1360, 340, 1350, 270, 1340, 230); } },
       // 2. Decagon 2 Outer Rim (1340, 230) -> BESS Substation (1620, 310) on East Meadow
-      {
-        id: 'sub_bess', type: 'sub', bldg: 'microgrid_bess',
-        path: (c) => { c.moveTo(1340, 230); c.bezierCurveTo(1440, 240, 1530, 270, 1620, 310); }
-      },
+      { id: 'sub_bess', type: 'sub', path: (c) => { c.moveTo(1340, 230); c.bezierCurveTo(1440, 240, 1530, 270, 1620, 310); } },
       // 3. Decagon 2 Outer Rim (1340, 230) -> North Meadow Corridor past Decagon 4 Rim -> North Storage Silos (1029, 191)
-      {
-        id: 'main_dec2_storage', type: 'main', bldg: 'storage_north',
-        path: (c) => { c.moveTo(1340, 230); c.bezierCurveTo(1240, 205, 1140, 195, 1029, 191); }
-      },
+      { id: 'main_dec2_storage', type: 'main', path: (c) => { c.moveTo(1340, 230); c.bezierCurveTo(1240, 205, 1140, 195, 1029, 191); } },
       // 4. North Storage Silos (1029, 191) -> Seafood & IQF Freezing Facility (858, 146)
-      {
-        id: 'sub_seafood', type: 'sub', bldg: 'seafood_processing',
-        path: (c) => { c.moveTo(1029, 191); c.bezierCurveTo(970, 175, 915, 160, 858, 146); }
-      },
+      { id: 'sub_seafood', type: 'sub', path: (c) => { c.moveTo(1029, 191); c.bezierCurveTo(970, 175, 915, 160, 858, 146); } },
       // 5. North Storage (1029, 191) -> Central Spine past Crew Shed (880, 340) -> Farm Garage Depot (705, 250)
-      {
-        id: 'main_storage_garage', type: 'main', bldg: 'farm_garage_dep',
-        path: (c) => { c.moveTo(1029, 191); c.bezierCurveTo(980, 260, 930, 310, 880, 340); c.bezierCurveTo(820, 340, 755, 290, 705, 250); }
-      },
+      { id: 'main_storage_garage', type: 'main', path: (c) => { c.moveTo(1029, 191); c.bezierCurveTo(980, 260, 930, 310, 880, 340); c.bezierCurveTo(820, 340, 755, 290, 705, 250); } },
       // 6. Farm Garage (705, 250) -> Eco Seaside Restaurant (690, 155) -> Greenhouse Vegetable Farm (510, 195)
-      {
-        id: 'sub_restaurant_veg', type: 'sub', bldg: 'vegetable_garden',
-        path: (c) => { c.moveTo(705, 250); c.bezierCurveTo(700, 200, 695, 175, 690, 155); c.bezierCurveTo(630, 175, 570, 185, 510, 195); }
-      },
+      { id: 'sub_restaurant_veg', type: 'sub', path: (c) => { c.moveTo(705, 250); c.bezierCurveTo(700, 200, 695, 175, 690, 155); c.bezierCurveTo(630, 175, 570, 185, 510, 195); } },
       // 7. Greenhouse Vegetable Farm (510, 195) -> Seaside Beach Loungers (228, 178) -> Eco Cottages (120, 230)
-      {
-        id: 'path_veg_sunbeds_cottages', type: 'path', bldg: 'beach_sunbeds',
-        path: (c) => { c.moveTo(510, 195); c.bezierCurveTo(410, 190, 310, 182, 228, 178); c.bezierCurveTo(180, 195, 150, 215, 120, 230); }
-      },
+      { id: 'path_veg_sunbeds_cottages', type: 'path', path: (c) => { c.moveTo(510, 195); c.bezierCurveTo(410, 190, 310, 182, 228, 178); c.bezierCurveTo(180, 195, 150, 215, 120, 230); } },
       // 8. Farm Garage (705, 250) -> Central Flower Garden (730, 485)
-      {
-        id: 'main_garage_flower', type: 'main', bldg: 'flower_garden',
-        path: (c) => { c.moveTo(705, 250); c.bezierCurveTo(715, 330, 725, 410, 730, 485); }
-      },
+      { id: 'main_garage_flower', type: 'main', path: (c) => { c.moveTo(705, 250); c.bezierCurveTo(715, 330, 725, 410, 730, 485); } },
       // 9. Flower Garden (730, 485) -> Coral Sanctuary Lagoon Dive Stand Shoreline (728, 637)
-      {
-        id: 'path_coral_lagoon', type: 'path', bldg: 'reef_basin_central',
-        path: (c) => { c.moveTo(730, 485); c.bezierCurveTo(730, 540, 729, 590, 728, 637); }
-      },
+      { id: 'path_coral_lagoon', type: 'path', path: (c) => { c.moveTo(730, 485); c.bezierCurveTo(730, 540, 729, 590, 728, 637); } },
       // 10. Flower Garden (730, 485) -> Decagon 1 Outer Perimeter Gate (380, 370)
-      {
-        id: 'sub_flower_dec1', type: 'sub', bldg: null,
-        path: (c) => { c.moveTo(730, 485); c.bezierCurveTo(610, 460, 490, 410, 380, 370); }
-      },
+      { id: 'sub_flower_dec1', type: 'sub', path: (c) => { c.moveTo(730, 485); c.bezierCurveTo(610, 460, 490, 410, 380, 370); } },
       // 11. Decagon 1 Outer Perimeter Gate (380, 370) -> Solar Salt Brine Beds (205, 475) -> Desalination Core (190, 704)
-      {
-        id: 'sub_dec1_salt_desal', type: 'sub', bldg: 'desalination_facility',
-        path: (c) => { c.moveTo(380, 370); c.bezierCurveTo(310, 400, 240, 435, 205, 475); c.bezierCurveTo(200, 550, 195, 630, 190, 704); }
-      },
+      { id: 'sub_dec1_salt_desal', type: 'sub', path: (c) => { c.moveTo(380, 370); c.bezierCurveTo(310, 400, 240, 435, 205, 475); c.bezierCurveTo(200, 550, 195, 630, 190, 704); } },
       // 12. Desalination Core (190, 704) -> Marine Pearl Oyster Farm Shore Gate (155, 820)
-      {
-        id: 'path_pearl_farm', type: 'path', bldg: 'pearl_farming',
-        path: (c) => { c.moveTo(190, 704); c.bezierCurveTo(180, 745, 168, 785, 155, 820); }
-      },
+      { id: 'path_pearl_farm', type: 'path', path: (c) => { c.moveTo(190, 704); c.bezierCurveTo(180, 745, 168, 785, 155, 820); } },
       // 13. Crew Shed Central Spine (880, 340) -> Freshwater Lake & Mud Crab RAS (1008, 535)
-      {
-        id: 'sub_crab_lake', type: 'sub', bldg: 'shrimp_crab_freshwater',
-        path: (c) => { c.moveTo(880, 340); c.bezierCurveTo(920, 400, 960, 460, 1008, 535); }
-      },
+      { id: 'sub_crab_lake', type: 'sub', path: (c) => { c.moveTo(880, 340); c.bezierCurveTo(920, 400, 960, 460, 1008, 535); } },
       // 14. North Storage Corridor (1029, 191) -> Decagon 4 Outer Perimeter Entrance (1085, 280)
-      {
-        id: 'sub_dec4_spur', type: 'sub', bldg: 'orchard_decagon_4',
-        path: (c) => { c.moveTo(1029, 191); c.bezierCurveTo(1050, 220, 1070, 250, 1085, 280); }
-      },
+      { id: 'sub_dec4_spur', type: 'sub', path: (c) => { c.moveTo(1029, 191); c.bezierCurveTo(1050, 220, 1070, 250, 1085, 280); } },
       // 15. Eco Cottages (120, 230) -> Beach Sand Path outside Decagon 3 Mangrove -> Salt Brine Beds (205, 475)
-      {
-        id: 'path_beach_dec3', type: 'path', bldg: 'salt_brine_beds',
-        path: (c) => { c.moveTo(120, 230); c.bezierCurveTo(140, 280, 160, 380, 205, 475); }
-      }
+      { id: 'path_beach_dec3', type: 'path', path: (c) => { c.moveTo(120, 230); c.bezierCurveTo(140, 280, 160, 380, 205, 475); } }
     ];
 
     segments.forEach(seg => {
-      const isSegmentDestinationBuilt = !seg.bldg || (state.buildings[seg.bldg] && state.buildings[seg.bldg].built);
-      const isBuilt = isRoadNetBuilt && isSegmentDestinationBuilt;
-      const width = seg.type === 'main' ? 14 : (seg.type === 'sub' ? 9 : 5.5);
+      // Substantial increased road width for high readability & 3D presence
+      const width = seg.type === 'main' ? 22 : (seg.type === 'sub' ? 15 : 10);
 
-      if (isBuilt) {
-        // --- COMPLETE 3D VISIBILITY (POST-BUILD) ---
-        // 1. Soft 3D drop shadow underneath
+      if (isRoadNetBuilt) {
+        // --- COMPLETE 3D ISOMETRIC VOLUMETRIC COBBLESTONE ROAD VIEW ---
+        // 1. Volumetric Ground Bed & Soft Ambient Occlusion Shadow
         ctx.save();
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+        ctx.translate(0, 3.8); // 3.8px vertical depth extrusion
+        ctx.strokeStyle = 'rgba(10, 20, 30, 0.45)';
+        ctx.lineWidth = width + 6;
+        ctx.beginPath();
+        seg.path(ctx);
+        ctx.stroke();
+        ctx.restore();
+
+        // 2. Excavated Sub-Base Earth Shoulder & Bedding Trench
+        ctx.save();
+        ctx.translate(0, 2.0); // 2px bed extrusion
+        ctx.strokeStyle = '#4E342E';
+        ctx.lineWidth = width + 3.8;
+        ctx.beginPath();
+        seg.path(ctx);
+        ctx.stroke();
+        ctx.restore();
+
+        // 3. Elevated Beveled Retaining Kerb Shoulders
+        // South/East shadow kerb
+        ctx.save();
+        ctx.translate(0, 1.2);
+        ctx.strokeStyle = '#6D4C41';
+        ctx.lineWidth = width + 2.0;
+        ctx.beginPath();
+        seg.path(ctx);
+        ctx.stroke();
+        ctx.restore();
+
+        // North/West sunlit curb lip
+        ctx.save();
+        ctx.translate(0, -1.0);
+        ctx.strokeStyle = '#A1887F';
+        ctx.lineWidth = width + 1.2;
+        ctx.beginPath();
+        seg.path(ctx);
+        ctx.stroke();
+        ctx.restore();
+
+        // 4. Porous Coral-Cobblestone Paved Surface Deck
+        ctx.save();
+        ctx.strokeStyle = seg.type === 'path' ? '#EBD8C1' : '#E5DAD0';
+        ctx.lineWidth = width;
+        ctx.beginPath();
+        seg.path(ctx);
+        ctx.stroke();
+
+        // 5. 3D Chiseled Masonry Kerb Edge Joints
+        ctx.strokeStyle = '#5D4037';
+        ctx.lineWidth = 1.6;
+        ctx.setLineDash([7, 3]);
+        ctx.lineDashOffset = 1.5;
+        ctx.stroke();
+
+        ctx.strokeStyle = '#D7CCC8';
+        ctx.lineWidth = 1.4;
+        ctx.setLineDash([7, 3]);
+        ctx.lineDashOffset = 0;
+        ctx.stroke();
+
+        // 6. 3D Interlocking Cobblestone Blocks
+        if (seg.type === 'main') {
+          // Main Avenues: Multiple staggered rows of textured cobblestone pavers
+          ctx.strokeStyle = 'rgba(130, 100, 80, 0.75)';
+          ctx.lineWidth = 3.6;
+          ctx.setLineDash([5, 4]);
+          ctx.lineDashOffset = 0;
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(160, 130, 110, 0.65)';
+          ctx.lineWidth = 2.4;
+          ctx.setLineDash([4, 5]);
+          ctx.lineDashOffset = 3;
+          ctx.stroke();
+
+          // Crown highlight glint
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.40)';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([]);
+          ctx.stroke();
+        } else if (seg.type === 'sub') {
+          // Secondary Connector Roads: Staggered paving blocks
+          ctx.strokeStyle = 'rgba(140, 110, 90, 0.70)';
+          ctx.lineWidth = 2.6;
+          ctx.setLineDash([5, 4]);
+          ctx.lineDashOffset = 0;
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
+          ctx.lineWidth = 1.0;
+          ctx.setLineDash([]);
+          ctx.stroke();
+        } else {
+          // Promenade Beach Paths: Crushed coral shell gravel aggregates
+          ctx.strokeStyle = 'rgba(160, 130, 110, 0.65)';
+          ctx.lineWidth = 1.8;
+          ctx.setLineDash([3, 4]);
+          ctx.stroke();
+        }
+        ctx.restore();
+      } else if (isRoadNetBuilding) {
+        // --- 3D CONSTRUCTION IN PROGRESS ---
+        // Excavated trench with animated caution hazard striping
+        ctx.save();
+        ctx.translate(0, 2.5);
+        ctx.strokeStyle = 'rgba(20, 10, 5, 0.55)';
         ctx.lineWidth = width + 4;
         ctx.beginPath();
         seg.path(ctx);
         ctx.stroke();
         ctx.restore();
 
-        // 2. 3D Beveled Road Shoulder
         ctx.save();
-        ctx.strokeStyle = '#8D6E63';
-        ctx.lineWidth = width + 1.8;
-        ctx.beginPath();
-        seg.path(ctx);
-        ctx.stroke();
-        ctx.restore();
-
-        // 3. Solid Volumetric Paved Surface
-        ctx.save();
-        ctx.strokeStyle = seg.type === 'path' ? 'rgba(235, 215, 185, 0.92)' : 'rgba(245, 235, 210, 0.95)';
-        ctx.lineWidth = width;
+        ctx.strokeStyle = '#6D4C41';
+        ctx.lineWidth = width + 1;
         ctx.beginPath();
         seg.path(ctx);
         ctx.stroke();
 
-        // 4. Patterned Cobblestone Stepping / Center Line
-        if (seg.type === 'main') {
-          ctx.strokeStyle = 'rgba(160, 135, 105, 0.85)';
-          ctx.lineWidth = 2.4;
-          ctx.setLineDash([8, 10]);
-          ctx.stroke();
-        } else if (seg.type === 'sub') {
-          ctx.strokeStyle = 'rgba(175, 150, 120, 0.75)';
-          ctx.lineWidth = 1.8;
-          ctx.setLineDash([6, 8]);
-          ctx.stroke();
-        } else {
-          ctx.strokeStyle = 'rgba(190, 165, 140, 0.65)';
-          ctx.lineWidth = 1.2;
-          ctx.setLineDash([4, 6]);
-          ctx.stroke();
-        }
-        ctx.restore();
-      } else if (isRoadNetBuilding) {
-        // --- 3D CONSTRUCTION IN PROGRESS ---
-        ctx.save();
-        ctx.strokeStyle = 'rgba(255, 179, 0, 0.35)';
-        ctx.lineWidth = width + 2;
-        ctx.beginPath();
-        seg.path(ctx);
+        ctx.strokeStyle = 'rgba(255, 179, 0, 0.90)';
+        ctx.lineWidth = width * 0.75;
+        ctx.setLineDash([10, 10]);
+        ctx.lineDashOffset = -(this.time * 24);
         ctx.stroke();
 
-        ctx.strokeStyle = 'rgba(255, 213, 79, 0.85)';
-        ctx.lineWidth = width * 0.7;
-        ctx.setLineDash([8, 8]);
-        ctx.lineDashOffset = -(this.time * 20);
+        ctx.strokeStyle = '#212121';
+        ctx.lineWidth = width * 0.35;
+        ctx.setLineDash([10, 10]);
+        ctx.lineDashOffset = -(this.time * 24) + 10;
         ctx.stroke();
         ctx.restore();
       } else {
-        // --- 3D TRANSPARENT VISIBILITY (PRE-BUILD / BLUEPRINT) ---
-        // Translucent holographic blueprint road corridor strictly on land
+        // --- 3D TRANSPARENT BLUEPRINT SURVEYOR'S CORRIDOR ---
         ctx.save();
-        ctx.strokeStyle = 'rgba(0, 229, 255, 0.12)';
-        ctx.lineWidth = width + 2;
+        // Soft terrain clearance footprint
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.09)';
+        ctx.lineWidth = width + 4;
         ctx.beginPath();
         seg.path(ctx);
         ctx.stroke();
 
-        ctx.strokeStyle = 'rgba(240, 225, 195, 0.22)';
+        // 3D holographic road boundary
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.22)';
         ctx.lineWidth = width;
         ctx.stroke();
 
-        // Futuristic blueprint dashed centerline
-        ctx.strokeStyle = 'rgba(0, 229, 255, 0.45)';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([5, 7]);
+        // Glowing holographic surveyor laser guidance line
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.70)';
+        ctx.lineWidth = 2.0;
+        ctx.setLineDash([6, 6]);
         ctx.stroke();
         ctx.restore();
       }
     });
+
+    // 3D Solar Pathway Bollard Lights at Key Road Junctions
+    if (isRoadNetBuilt) {
+      const junctions = [
+        { x: 1365, y: 410 }, // Pier land apron
+        { x: 1340, y: 230 }, // Decagon 2 outer rim
+        { x: 1029, y: 191 }, // North storage
+        { x: 880,  y: 340 }, // Crew shed spine
+        { x: 705,  y: 250 }, // Farm garage
+        { x: 690,  y: 155 }, // Eco restaurant
+        { x: 730,  y: 485 }, // Flower garden
+        { x: 380,  y: 370 }, // Decagon 1 gate
+        { x: 205,  y: 475 }  // Salt beds junction
+      ];
+      junctions.forEach(j => {
+        this.draw3DSolarBollard(ctx, j.x, j.y, this.time);
+      });
+    }
+
+    ctx.restore();
+  },
+
+  draw3DSolarBollard(ctx, x, y, time){
+    ctx.save();
+    // Soft ground light cast
+    const lightGrad = ctx.createRadialGradient(x, y + 2, 1, x, y + 2, 14);
+    lightGrad.addColorStop(0, 'rgba(255, 213, 79, 0.28)');
+    lightGrad.addColorStop(0.6, 'rgba(255, 179, 0, 0.10)');
+    lightGrad.addColorStop(1, 'rgba(255, 179, 0, 0)');
+    ctx.fillStyle = lightGrad;
+    ctx.beginPath();
+    ctx.ellipse(x, y + 2, 14, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Octagonal Stone Footing
+    ctx.fillStyle = '#455A64';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 2, 4.5, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bronze Post
+    ctx.fillStyle = '#263238';
+    ctx.fillRect(x - 1.5, y - 8, 3, 9);
+
+    // Glowing Amber Solar LED Fixture
+    ctx.fillStyle = '#FFF9C4';
+    ctx.beginPath();
+    ctx.arc(x, y - 7, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#FFB300';
+    ctx.beginPath();
+    ctx.arc(x, y - 7, 3.2, 0, Math.PI * 2);
+    ctx.globalAlpha = 0.45;
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+
+    // Bronze Cap
+    ctx.fillStyle = '#37474F';
+    ctx.beginPath();
+    ctx.moveTo(x - 2.5, y - 8.5); ctx.lineTo(x, y - 10.5); ctx.lineTo(x + 2.5, y - 8.5);
+    ctx.fill();
 
     ctx.restore();
   },
