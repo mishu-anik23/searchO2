@@ -907,8 +907,10 @@
     el.className = 's2-sky-heading';
     el.id = 's2SkyHeading';
     el.innerHTML = (icon ? '<span style="font-size:1.25rem;">' + icon + '</span>' : '') + '<span>' + text + '</span>';
-    el.style.left = at.left + '%';
-    el.style.top = Math.max(8, at.top - 10) + '%';
+    var safeLeft = Math.max(16, Math.min(84, (at && typeof at.left === 'number') ? at.left : 50));
+    var safeTop = Math.max(12, (at && typeof at.top === 'number') ? (at.top - 10) : 25);
+    el.style.left = safeLeft + '%';
+    el.style.top = safeTop + '%';
     scene.appendChild(el);
 
     setTimeout(function () {
