@@ -85,9 +85,23 @@ const assert = require('assert');
   // 4. Verify Decagon 3 PLOT_DEFS Coordinates
   const plotDefs = await page.evaluate(() => PLOT_DEFS);
   assert.strictEqual(plotDefs['dec3.plot1'].y1080, 275);
+  assert.strictEqual(plotDefs['dec3.plot3'].x1080, 195);
+  assert.strictEqual(plotDefs['dec3.plot3'].y1080, 355);
   assert.strictEqual(plotDefs['dec3.plot5'].x1080, 320);
   assert.strictEqual(plotDefs['dec3.plot5'].y1080, 358);
-  console.log('[✓ PASSED] Decagon 3 PLOT_DEFS verified with plot5 relocated to green meadow (320, 358)');
+  console.log('[✓ PASSED] Decagon 3 PLOT_DEFS verified with plot3 at (195, 355) and plot5 at (320, 358)');
+
+  // Verify Road Network building and site marker
+  const roadBldg = await page.evaluate(() => state.buildings.road_network);
+  assert(roadBldg, 'state.buildings.road_network must exist');
+  assert.strictEqual(roadBldg.cost, 120, 'road_network cost must be 120');
+  assert.strictEqual(roadBldg.remainingSec, 15, 'road_network duration must be 15s');
+  assert.strictEqual(roadBldg.labourRequired, 1, 'road_network labour must be 1');
+  const roadSite = sites.find(s => s.id === 'road_network');
+  assert(roadSite, 'road_network site marker must exist');
+  assert.strictEqual(roadSite.x1080, 835, 'road_network x1080 must be 835');
+  assert.strictEqual(roadSite.y1080, 280, 'road_network y1080 must be 280');
+  console.log('[✓ PASSED] Road network site marker and building specs (€120, 15s, 1 worker) verified');
 
   // 5. Test Building all 6 Facilities in Parallel / Sequential
   console.log('Testing construction of all 6 facilities...');
