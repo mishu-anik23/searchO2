@@ -229,7 +229,11 @@
     walkerEl: null,
     ghostLayer: null,
     skipped: false,
-    ageFilter: 'all'
+    ageFilter: 'all',
+    cooldownActive: false,
+    cooldownRemaining: 0,
+    cooldownTimer: null,
+    pendingNextChapter: null
   };
 
   // Helper: Shade color utility
@@ -547,6 +551,14 @@
         '<span id="s2TourProgressText">🧭 Chapter tour 1 / 8</span>' +
         '<button type="button" id="s2SkipTour">Skip tour</button>' +
       '</div>' +
+      '<div class="s2-scout-countdown-floater hidden" id="s2ScoutCountdownFloater">' +
+        '<div class="scf-badge">⏳ Survey Cooldown</div>' +
+        '<div class="scf-body" style="display:flex;align-items:center;gap:6px;">' +
+          '<span class="scf-icon">🧭</span>' +
+          '<span class="scf-text">Next scout in <b id="s2ScoutCountdownSec">45s</b></span>' +
+        '</div>' +
+        '<button type="button" class="scf-walk-btn" id="s2WalkNextBtn" title="Start walking now">Walk Now ➔</button>' +
+      '</div>' +
       '<div class="s2-tour-modal-overlay hidden" id="s2TourModal">' +
         '<div class="s2-tour-modal" id="s2TourModalCard"></div>' +
       '</div>'
@@ -646,6 +658,17 @@
     if (skipTour) {
       skipTour.onclick = function () {
         endTour(true);
+      };
+    }
+    var walkNextBtn = document.getElementById('s2WalkNextBtn');
+    if (walkNextBtn) {
+      walkNextBtn.onclick = function (e) {
+        if (e) e.stopPropagation();
+        walkToNextScoutNow();
+      };
+      walkNextBtn.ontouchend = function (e) {
+        if (e) e.stopPropagation();
+        walkToNextScoutNow();
       };
     }
   }
@@ -837,8 +860,9 @@
       var wps = points.map(function (p) {
         return { x: p.left, y: p.top };
       });
-      animateAlongWaypoints(el, wps, durationMs || 2600, function () {
+      animateAlongWaypoints(el, wps, durationMs || 3400, function () {
         el.classList.remove('walking');
+        el.style.transform = 'translate(-50%, -85%)';
         if (onDone) onDone();
       });
       return;
@@ -850,17 +874,18 @@
       i++;
       if (i >= points.length) {
         el.classList.remove('walking');
+        el.style.transform = 'translate(-50%, -85%)';
         if (onDone) onDone();
         return;
       }
       var prev = points[i - 1];
       var curr = points[i];
-      var dur = Math.max(350, (durationMs || 2600) / (points.length - 1));
+      var dur = Math.max(350, (durationMs || 3400) / (points.length - 1));
       var t0 = performance.now();
 
       var dx = curr.left - prev.left;
-      if (dx > 0.4) el.style.transform = 'translate(-50%, -85%) scaleX(1)';
-      else if (dx < -0.4) el.style.transform = 'translate(-50%, -85%) scaleX(-1)';
+      var facing = dx < -0.4 ? 'scaleX(-1)' : 'scaleX(1)';
+      el.style.transform = 'translate(-50%, -85%) ' + facing;
 
       function frame(now) {
         var t = Math.min(1, (now - t0) / dur);
@@ -1002,7 +1027,10 @@
     var names = objs.map(function (o) { return o.name; }).join(' · ');
 
     card.innerHTML =
-      '<div class="tm-icon">' + (def.icon || '🧭') + '</div>' +
+      '<div class="s2-tour-modal-top">' +
+        '<div class="tm-icon">' + (def.icon || '🧭') + '</div>' +
+        '<button type="button" class="s2-modal-close-btn" id="s2TourModalClose" title="Close modal and view avatar">✕</button>' +
+      '</div>' +
       '<h3>Chapter ' + ch + ' · ' + (def.title || '') + '</h3>' +
       '<p>' + (def.desc || 'Explore this zone of the farm.') + '</p>' +
       '<div class="tm-ghosts-note">' +
@@ -1013,61 +1041,165 @@
 
     modal.classList.remove('hidden');
 
-    var btn = document.getElementById('s2TourContinue');
-    if (btn) {
-      btn.onclick = function () {
-        modal.classList.add('hidden');
+    function handleModalCloseAndAdvance() {
+      modal.classList.add('hidden');
 
-        var keyMap = {
-          1: 'plot',
-          2: 'crew_shed',
-          3: 'garden',
-          4: 'pond',
-          5: 'wind_turbine',
-          6: 'juice_bar',
-          7: 'eco_passport',
-          8: 'space_mission'
-        };
-        var primaryKey = keyMap[ch];
-
-        // Drive the actual SearchO2 exploration mechanics
-        var exploreFn = (typeof exploreChapterObject === 'function')
-          ? exploreChapterObject
-          : ((typeof window !== 'undefined' && typeof window.exploreChapterObject === 'function') ? window.exploreChapterObject : null);
-
-        if (primaryKey && exploreFn) {
-          try {
-            exploreFn(primaryKey);
-          } catch (e) {}
-        }
-        if (typeof state !== 'undefined' && state) {
-          state.exploredChapters = state.exploredChapters || {};
-          state.exploredChapters[ch] = true;
-          state.exploredChapterObjects = state.exploredChapterObjects || {};
-          if (primaryKey) state.exploredChapterObjects[primaryKey] = true;
-          if (typeof state.xp === 'number' && state.xp === 0) state.xp = 5;
-        }
-
-        if (typeof render === 'function') render();
-
-        if (onContinue) onContinue();
+      var keyMap = {
+        1: 'plot',
+        2: 'crew_shed',
+        3: 'garden',
+        4: 'pond',
+        5: 'wind_turbine',
+        6: 'juice_bar',
+        7: 'eco_passport',
+        8: 'space_mission'
       };
+      var primaryKey = keyMap[ch];
+
+      // Drive the actual SearchO2 exploration mechanics
+      var exploreFn = (typeof exploreChapterObject === 'function')
+        ? exploreChapterObject
+        : ((typeof window !== 'undefined' && typeof window.exploreChapterObject === 'function') ? window.exploreChapterObject : null);
+
+      if (primaryKey && exploreFn) {
+        try {
+          exploreFn(primaryKey);
+        } catch (e) {}
+      }
+      if (typeof state !== 'undefined' && state) {
+        state.exploredChapters = state.exploredChapters || {};
+        state.exploredChapters[ch] = true;
+        state.exploredChapterObjects = state.exploredChapterObjects || {};
+        if (primaryKey) state.exploredChapterObjects[primaryKey] = true;
+        if (typeof state.xp === 'number' && state.xp === 0) state.xp = 5;
+      }
+
+      if (typeof render === 'function') render();
+
+      if (onContinue) onContinue();
     }
+
+    var btn = document.getElementById('s2TourContinue');
+    if (btn) btn.onclick = handleModalCloseAndAdvance;
+
+    var closeBtn = document.getElementById('s2TourModalClose');
+    if (closeBtn) closeBtn.onclick = handleModalCloseAndAdvance;
   }
 
-  function updateTourProgress(ch) {
+  function renderScoutCountdownFloater(seconds, nextCh) {
+    var floater = document.getElementById('s2ScoutCountdownFloater');
+    if (!floater) {
+      floater = document.createElement('div');
+      floater.id = 's2ScoutCountdownFloater';
+      floater.className = 's2-scout-countdown-floater';
+      floater.innerHTML =
+        '<div class="scf-badge">⏳ Survey Cooldown</div>' +
+        '<div class="scf-body" style="display:flex;align-items:center;gap:6px;">' +
+          '<span class="scf-icon">🧭</span>' +
+          '<span class="scf-text">Next scout in <b id="s2ScoutCountdownSec">' + seconds + 's</b></span>' +
+        '</div>' +
+        '<button type="button" class="scf-walk-btn" id="s2WalkNextBtn" title="Start walking now">Walk Now ➔</button>';
+      document.body.appendChild(floater);
+    }
+    var secSpan = document.getElementById('s2ScoutCountdownSec');
+    if (secSpan) secSpan.textContent = seconds + 's';
+    var wb = document.getElementById('s2WalkNextBtn');
+    if (wb) {
+      wb.onclick = function (e) {
+        if (e) e.stopPropagation();
+        walkToNextScoutNow();
+      };
+      wb.ontouchend = function (e) {
+        if (e) e.stopPropagation();
+        walkToNextScoutNow();
+      };
+    }
+    floater.classList.remove('hidden');
+  }
+
+  function updateScoutCountdownFloater(seconds, nextCh) {
+    var secSpan = document.getElementById('s2ScoutCountdownSec');
+    if (secSpan) secSpan.textContent = seconds + 's';
+  }
+
+  function hideScoutCountdownFloater() {
+    var floater = document.getElementById('s2ScoutCountdownFloater');
+    if (floater) floater.classList.add('hidden');
+  }
+
+  function clearScoutCooldown() {
+    if (tourState.cooldownTimer) {
+      clearInterval(tourState.cooldownTimer);
+      tourState.cooldownTimer = null;
+    }
+    tourState.cooldownActive = false;
+    tourState.cooldownRemaining = 0;
+    tourState.pendingNextChapter = null;
+    hideScoutCountdownFloater();
+  }
+
+  function triggerNextScoutWalk(nextCh) {
+    clearScoutCooldown();
+    clearGhosts(true);
+    if (tourState.walkerEl) {
+      tourState.walkerEl.classList.remove('wonder-touching');
+    }
+    runChapterStep(nextCh);
+  }
+
+  function walkToNextScoutNow() {
+    if (!tourState.active || !tourState.cooldownActive) return;
+    var nextCh = tourState.pendingNextChapter || (tourState.currentChapter + 1);
+    triggerNextScoutWalk(nextCh);
+  }
+
+  function startScoutCooldown(fromCh, nextCh) {
+    if (!tourState.active || tourState.skipped) return;
+    if (nextCh > 8) {
+      endTour(false);
+      return;
+    }
+
+    clearScoutCooldown();
+    tourState.cooldownActive = true;
+    tourState.cooldownRemaining = 45;
+    tourState.pendingNextChapter = nextCh;
+
+    renderScoutCountdownFloater(45, nextCh);
+    updateTourProgress(fromCh, 45);
+
+    tourState.cooldownTimer = setInterval(function () {
+      tourState.cooldownRemaining--;
+      var rem = tourState.cooldownRemaining;
+
+      updateScoutCountdownFloater(rem, nextCh);
+      updateTourProgress(fromCh, rem);
+
+      if (rem <= 0) {
+        clearScoutCooldown();
+        triggerNextScoutWalk(nextCh);
+      }
+    }, 1000);
+  }
+
+  function updateTourProgress(ch, cooldownSec) {
     var pill = document.getElementById('s2TourProgress');
     var txt = document.getElementById('s2TourProgressText');
     if (pill) pill.classList.add('visible');
     if (txt) {
       var avName = tourState.avatar ? (tourState.avatar.adjective + ' ' + tourState.avatar.name) : 'Explorer';
-      txt.textContent = '🧭 Chapter ' + ch + ' / 8 · ' + avName;
+      if (typeof cooldownSec === 'number' && cooldownSec > 0) {
+        txt.textContent = '🧭 Ch. ' + ch + ' / 8 Surveyed · Next scout in ' + cooldownSec + 's (' + avName + ')';
+      } else {
+        txt.textContent = '🧭 Chapter ' + ch + ' / 8 · ' + avName;
+      }
     }
   }
 
   function endTour(skipped) {
     tourState.active = false;
     tourState.skipped = !!skipped;
+    clearScoutCooldown();
     clearGhosts(true);
 
     var pill = document.getElementById('s2TourProgress');
@@ -1081,6 +1213,7 @@
 
     if (tourState.walkerEl) {
       tourState.walkerEl.classList.remove('walking', 'wonder-touching');
+      tourState.walkerEl.style.transform = 'translate(-50%, -85%)';
     }
 
     if (typeof showNotification === 'function') {
@@ -1138,8 +1271,11 @@
       ? CHAPTER_DEFINITIONS[ch - 1]
       : { icon: '🧭', title: 'Chapter ' + ch };
 
-    // 2. Avatar walks directly to the scout marker position
-    walkPath(el, [from, mid, targets.standPoint], 1400 + ch * 50, function () {
+    // 2. Avatar walks directly to the scout marker position at natural human walking speed
+    var dist = Math.hypot(targets.standPoint.left - from.left, targets.standPoint.top - from.top);
+    var walkDuration = Math.max(3400, Math.min(5800, Math.round(dist * 105)));
+
+    walkPath(el, [from, mid, targets.standPoint], walkDuration, function () {
       if (!tourState.active) return;
 
       // 3. WONDER TOUCH: Arm reaches up to contact the scout marker!
@@ -1165,16 +1301,24 @@
       // 5. Open educational chapter modal
       setTimeout(function () {
         openTourModal(ch, function () {
-          // 6. Ghosts vanish with particle sparkle
-          clearGhosts(true);
+          // 6. Modal is closed! Avatar visual is now 100% visible on farm screen
           el.classList.remove('wonder-touching');
 
-          // 7. Avatar turns and proceeds to next chapter scout marker
-          setTimeout(function () {
-            runChapterStep(ch + 1);
-          }, 450);
+          if (ch >= 8) {
+            clearGhosts(true);
+            endTour(false);
+          } else {
+            // Start the 45-second real-time countdown!
+            // During this time:
+            // - Modal is closed, avatar visual is 100% visible
+            // - Transparent ghosts remain visible
+            // - Next chapter scout marker is active
+            // - If user clicks next scout marker or "Walk Now ➔", walk starts immediately
+            // - Otherwise avatar starts walking when 45s timer completes
+            startScoutCooldown(ch, ch + 1);
+          }
         });
-      }, 400 + (CHAPTER_TOUR_OBJECTS[ch] || []).length * 100);
+      }, 700 + (CHAPTER_TOUR_OBJECTS[ch] || []).length * 80);
     });
   }
 
@@ -1214,8 +1358,10 @@
       '⛩️'
     );
 
-    // 1. Walk through the gate onto the green meadow
-    walkPath(el, [gate, meadow], 1200, function () {
+    // 1. Walk through the gate onto the green meadow at human walking pace
+    var gateMeadowDist = Math.hypot(meadow.left - gate.left, meadow.top - gate.top);
+    var gateMeadowDur = Math.max(2600, Math.round(gateMeadowDist * 110));
+    walkPath(el, [gate, meadow], gateMeadowDur, function () {
       if (!tourState.active) return;
       showSkyHeading('Green meadow · follow Chapter 1 scout marker', meadow, '🌱');
       setTimeout(function () {
@@ -1265,6 +1411,17 @@
     startChapterTour: startChapterTour,
     endTour: endTour,
     boot: bootIntegration,
+    walkToNextScoutNow: walkToNextScoutNow,
+    skipScoutCooldown: walkToNextScoutNow,
+    isCooldownActive: function () {
+      return !!(tourState.active && tourState.cooldownActive && tourState.cooldownRemaining > 0);
+    },
+    getCooldownRemaining: function () {
+      return tourState.cooldownRemaining;
+    },
+    getTourState: function () {
+      return tourState;
+    },
     selectAvatar: function (id) {
       tourState.avatarId = id;
       tourState.avatar = AVATAR_ROSTER.find(function (a) { return a.id === id; }) || null;
