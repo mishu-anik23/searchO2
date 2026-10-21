@@ -279,90 +279,163 @@
     return (
       '<svg class="walker-svg" viewBox="0 0 72 96" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
       '<defs>' +
-      // Lighting Gradients for 3D Volumetric Depth
-      '<radialGradient id="avG_' + avUniqueId + '_skin" cx="35%" cy="30%" r="65%">' +
-        '<stop offset="0%" stop-color="' + shade(skin, 25) + '"/>' +
-        '<stop offset="70%" stop-color="' + skin + '"/>' +
-        '<stop offset="100%" stop-color="' + shade(skin, -25) + '"/>' +
+      // 135° Overhead Isometric Sunlight Gradients
+      '<radialGradient id="avG_' + avUniqueId + '_skin" cx="30%" cy="26%" r="72%">' +
+        '<stop offset="0%" stop-color="' + shade(skin, 35) + '"/>' +
+        '<stop offset="50%" stop-color="' + skin + '"/>' +
+        '<stop offset="85%" stop-color="' + shade(skin, -18) + '"/>' +
+        '<stop offset="100%" stop-color="' + shade(skin, -32) + '"/>' +
       '</radialGradient>' +
       '<linearGradient id="avG_' + avUniqueId + '_top" x1="0" y1="0" x2="1" y2="1">' +
-        '<stop offset="0%" stop-color="' + shade(top, 25) + '"/>' +
-        '<stop offset="50%" stop-color="' + top + '"/>' +
-        '<stop offset="100%" stop-color="' + shade(top, -30) + '"/>' +
+        '<stop offset="0%" stop-color="' + shade(top, 32) + '"/>' +
+        '<stop offset="45%" stop-color="' + top + '"/>' +
+        '<stop offset="80%" stop-color="' + shade(top, -22) + '"/>' +
+        '<stop offset="100%" stop-color="' + shade(top, -38) + '"/>' +
       '</linearGradient>' +
-      '<linearGradient id="avG_' + avUniqueId + '_bot" x1="0" y1="0" x2="0" y2="1">' +
-        '<stop offset="0%" stop-color="' + shade(bottom, 15) + '"/>' +
-        '<stop offset="70%" stop-color="' + bottom + '"/>' +
+      '<linearGradient id="avG_' + avUniqueId + '_bot" x1="0" y1="0" x2="0.6" y2="1">' +
+        '<stop offset="0%" stop-color="' + shade(bottom, 24) + '"/>' +
+        '<stop offset="50%" stop-color="' + bottom + '"/>' +
         '<stop offset="100%" stop-color="' + shade(bottom, -35) + '"/>' +
       '</linearGradient>' +
-      '<linearGradient id="avG_' + avUniqueId + '_hair" x1="0" y1="0" x2="1" y2="1">' +
-        '<stop offset="0%" stop-color="' + shade(hair, 30) + '"/>' +
-        '<stop offset="100%" stop-color="' + hair + '"/>' +
+      '<radialGradient id="avG_' + avUniqueId + '_hair" cx="32%" cy="24%" r="75%">' +
+        '<stop offset="0%" stop-color="' + shade(hair, 45) + '"/>' +
+        '<stop offset="50%" stop-color="' + hair + '"/>' +
+        '<stop offset="100%" stop-color="' + shade(hair, -40) + '"/>' +
+      '</radialGradient>' +
+      '<linearGradient id="avG_' + avUniqueId + '_boot" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0%" stop-color="#5D4037"/>' +
+        '<stop offset="50%" stop-color="#2E1C14"/>' +
+        '<stop offset="100%" stop-color="#140D0A"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="avG_' + avUniqueId + '_pack" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0%" stop-color="#795548"/>' +
+        '<stop offset="50%" stop-color="#4E342E"/>' +
+        '<stop offset="100%" stop-color="#27140E"/>' +
       '</linearGradient>' +
       '</defs>' +
 
-      // 1. Volumetric Elliptical Ground Shadow
-      '<ellipse class="av-shadow" cx="36" cy="90" rx="17" ry="5.5" fill="rgba(0,0,0,0.32)"/>' +
+      // 1. Volumetric Elliptical Ground Shadow with Ambient Occlusion Core
+      '<ellipse class="av-shadow" cx="36" cy="90" rx="18" ry="5.5" fill="rgba(0,0,0,0.28)"/>' +
+      '<ellipse class="av-shadow-core" cx="36" cy="90.5" rx="10" ry="3" fill="rgba(0,0,0,0.20)"/>' +
 
-      // 2. Left Leg & Foot
+      // 2. Left Leg & 3D Hiker Boot
       '<g class="av-leg-left">' +
-        '<rect x="25" y="' + legY + '" width="8.5" height="' + legH + '" rx="3" fill="url(#avG_' + avUniqueId + '_bot)"/>' +
+        '<rect x="24.5" y="' + legY + '" width="8.5" height="' + (legH - 2) + '" rx="3" fill="url(#avG_' + avUniqueId + '_bot)"/>' +
         // Shaded side facet
-        '<path d="M25 ' + legY + ' L27 ' + legY + ' L27 ' + (legY + legH) + ' L25 ' + (legY + legH) + ' Z" fill="' + shade(bottom, -40) + '" opacity="0.4"/>' +
-        // Shoe
-        '<ellipse cx="28" cy="' + (legY + legH) + '" rx="5.5" ry="3" fill="#2E1C14"/>' +
+        '<path class="av-leg-side-left" d="M24.5 ' + legY + ' L26.5 ' + legY + ' L26.5 ' + (legY + legH - 2) + ' L24.5 ' + (legY + legH - 2) + ' Z" fill="' + shade(bottom, -40) + '" opacity="0.45"/>' +
+        // 3D Boot Upper Leather
+        '<path d="M23.5 ' + (legY + legH - 3) + ' L33.5 ' + (legY + legH - 3) + ' L34 ' + (legY + legH + 2) + ' L22.5 ' + (legY + legH + 2) + ' Z" fill="url(#avG_' + avUniqueId + '_boot)"/>' +
+        // 3D Boot Toe Cap
+        '<path class="av-boot-toe-left" d="M22.5 ' + (legY + legH + 1) + ' Q28 ' + (legY + legH + 4) + ' 34 ' + (legY + legH + 1) + ' L34 ' + (legY + legH + 3.5) + ' Q28 ' + (legY + legH + 6) + ' 22.5 ' + (legY + legH + 3.5) + ' Z" fill="#3E2723" stroke="rgba(255,255,255,0.25)" stroke-width="0.5"/>' +
+        // 3D Rubber Tread Sole
+        '<path class="av-boot-sole-left" d="M22 ' + (legY + legH + 3.5) + ' L34.5 ' + (legY + legH + 3.5) + ' L34 ' + (legY + legH + 5.5) + ' L22.5 ' + (legY + legH + 5.5) + ' Z" fill="#140D0A"/>' +
       '</g>' +
 
-      // 3. Right Leg & Foot
+      // 3. Right Leg & 3D Hiker Boot
       '<g class="av-leg-right">' +
-        '<rect x="38.5" y="' + legY + '" width="8.5" height="' + legH + '" rx="3" fill="url(#avG_' + avUniqueId + '_bot)"/>' +
-        '<path d="M45 ' + legY + ' L47 ' + legY + ' L47 ' + (legY + legH) + ' L45 ' + (legY + legH) + ' Z" fill="' + shade(bottom, -40) + '" opacity="0.4"/>' +
-        '<ellipse cx="44" cy="' + (legY + legH) + '" rx="5.5" ry="3" fill="#2E1C14"/>' +
+        '<rect x="39" y="' + legY + '" width="8.5" height="' + (legH - 2) + '" rx="3" fill="url(#avG_' + avUniqueId + '_bot)"/>' +
+        // Lit highlight facet
+        '<path class="av-leg-side-right" d="M45.5 ' + legY + ' L47.5 ' + legY + ' L47.5 ' + (legY + legH - 2) + ' L45.5 ' + (legY + legH - 2) + ' Z" fill="' + shade(bottom, -40) + '" opacity="0.45"/>' +
+        // 3D Boot Upper Leather
+        '<path d="M38 ' + (legY + legH - 3) + ' L48 ' + (legY + legH - 3) + ' L48.5 ' + (legY + legH + 2) + ' L37.5 ' + (legY + legH + 2) + ' Z" fill="url(#avG_' + avUniqueId + '_boot)"/>' +
+        // 3D Boot Toe Cap
+        '<path class="av-boot-toe-right" d="M37.5 ' + (legY + legH + 1) + ' Q43 ' + (legY + legH + 4) + ' 48.5 ' + (legY + legH + 1) + ' L48.5 ' + (legY + legH + 3.5) + ' Q43 ' + (legY + legH + 6) + ' 37.5 ' + (legY + legH + 3.5) + ' Z" fill="#3E2723" stroke="rgba(255,255,255,0.25)" stroke-width="0.5"/>' +
+        // 3D Rubber Tread Sole
+        '<path class="av-boot-sole-right" d="M37 ' + (legY + legH + 3.5) + ' L49 ' + (legY + legH + 3.5) + ' L48.5 ' + (legY + legH + 5.5) + ' L37.5 ' + (legY + legH + 5.5) + ' Z" fill="#140D0A"/>' +
       '</g>' +
 
-      // 4. Volumetric Torso Prism
+      // 4. Volumetric Torso Prism (Front & Back Views for 2.5D Isometric 360°)
       '<g class="av-torso">' +
-        // Main chest block
-        '<path d="M22 ' + (torsoY + 3) + ' L36 ' + torsoY + ' L50 ' + (torsoY + 3) + ' L47 ' + (torsoY + torsoH) + ' L25 ' + (torsoY + torsoH) + ' Z" fill="url(#avG_' + avUniqueId + '_top)" stroke="' + shade(top, -35) + '" stroke-width="0.75"/>' +
-        // Front highlight crease
-        '<line x1="36" y1="' + torsoY + '" x2="36" y2="' + (torsoY + torsoH) + '" stroke="rgba(255,255,255,0.22)" stroke-width="1.2"/>' +
-        // Accent belt/sash
-        '<rect x="24" y="' + (torsoY + torsoH - 5.5) + '" width="24" height="4" rx="1.5" fill="' + accent + '"/>' +
+        // Back View (Facing North / Away from camera)
+        '<g class="av-torso-back">' +
+          '<path d="M22 ' + (torsoY + 3) + ' L36 ' + torsoY + ' L50 ' + (torsoY + 3) + ' L47 ' + (torsoY + torsoH) + ' L25 ' + (torsoY + torsoH) + ' Z" fill="url(#avG_' + avUniqueId + '_top)" stroke="' + shade(top, -40) + '" stroke-width="0.8"/>' +
+          // 3D Explorer Field Satchel / Backpack
+          '<g class="av-backpack">' +
+            '<rect x="25" y="' + (torsoY + 4) + '" width="22" height="18" rx="3.8" fill="rgba(0,0,0,0.28)"/>' +
+            '<rect x="25.5" y="' + (torsoY + 3) + '" width="21" height="17" rx="3.5" fill="url(#avG_' + avUniqueId + '_pack)" stroke="#27140E" stroke-width="0.8"/>' +
+            '<path d="M25 ' + (torsoY + 3) + ' Q36 ' + torsoY + ' 47 ' + (torsoY + 3) + ' L46 ' + (torsoY + 7.5) + ' Q36 ' + (torsoY + 5.5) + ' 26 ' + (torsoY + 7.5) + ' Z" fill="#6D4C41" stroke="#3E2723" stroke-width="0.6"/>' +
+            '<path d="M25.5 ' + (torsoY + 3) + ' Q36 ' + (torsoY + 0.5) + ' 46.5 ' + (torsoY + 3) + '" stroke="rgba(255,255,255,0.35)" stroke-width="0.75" fill="none"/>' +
+            '<line x1="31" y1="' + (torsoY + 4) + '" x2="31" y2="' + (torsoY + 20) + '" stroke="#FFD54F" stroke-width="1.3"/>' +
+            '<line x1="41" y1="' + (torsoY + 4) + '" x2="41" y2="' + (torsoY + 20) + '" stroke="#FFD54F" stroke-width="1.3"/>' +
+            '<circle cx="31" cy="' + (torsoY + 12.5) + '" r="1.4" fill="#FFC107" stroke="#FFA000" stroke-width="0.5"/>' +
+            '<circle cx="41" cy="' + (torsoY + 12.5) + '" r="1.4" fill="#FFC107" stroke="#FFA000" stroke-width="0.5"/>' +
+            // Bottom gear bedroll
+            '<rect x="24.5" y="' + (torsoY + 19) + '" width="23" height="4.5" rx="2.2" fill="#558B2F" stroke="#33691E" stroke-width="0.6"/>' +
+          '</g>' +
+        '</g>' +
+        // Front View (Facing South / Towards camera)
+        '<g class="av-torso-front">' +
+          // Base Torso Prism
+          '<path d="M22 ' + (torsoY + 4) + ' L36 ' + (torsoY + 1) + ' L50 ' + (torsoY + 4) + ' L47 ' + (torsoY + torsoH) + ' L25 ' + (torsoY + torsoH) + ' Z" fill="url(#avG_' + avUniqueId + '_top)" stroke="' + shade(top, -35) + '" stroke-width="0.75"/>' +
+          // Lit Upper Shoulder Yoke Facet
+          '<polygon class="av-torso-yoke" points="23,' + (torsoY + 4) + ' 36,' + (torsoY + 1) + ' 49,' + (torsoY + 4) + ' 45,' + (torsoY + 8) + ' 27,' + (torsoY + 8) + '" fill="' + shade(top, 35) + '" opacity="0.6"/>' +
+          // Lateral Flank Facets (Left Shade / Right Lit)
+          '<polygon class="av-torso-flank-left" points="22,' + (torsoY + 4) + ' 27,' + (torsoY + 8) + ' 29,' + (torsoY + torsoH) + ' 25,' + (torsoY + torsoH) + '" fill="' + shade(top, -45) + '" opacity="0.5"/>' +
+          '<polygon class="av-torso-flank-right" points="50,' + (torsoY + 4) + ' 45,' + (torsoY + 8) + ' 43,' + (torsoY + torsoH) + ' 47,' + (torsoY + torsoH) + '" fill="' + shade(top, 25) + '" opacity="0.4"/>' +
+          // Specular Button/Zip Placket
+          '<line x1="36" y1="' + (torsoY + 1) + '" x2="36" y2="' + (torsoY + torsoH - 5) + '" stroke="rgba(255,255,255,0.3)" stroke-width="1.2"/>' +
+          // Utility Belt & 3D Metallic Buckle
+          '<rect x="24" y="' + (torsoY + torsoH - 5.5) + '" width="24" height="4.5" rx="1.5" fill="' + accent + '"/>' +
+          '<rect x="33.5" y="' + (torsoY + torsoH - 6) + '" width="5" height="5.5" rx="1.2" fill="#FFA000" stroke="#FFF" stroke-width="0.5"/>' +
+        '</g>' +
       '</g>' +
 
       // 5. Left Arm (Counter Swing)
       '<g class="av-arm-left">' +
-        '<rect x="15" y="' + (torsoY + 2) + '" width="7" height="17" rx="3.5" fill="url(#avG_' + avUniqueId + '_skin)" transform="rotate(8 18.5 ' + (torsoY + 10) + ')"/>' +
-        // Sleeve cap
-        '<rect x="15" y="' + (torsoY + 1) + '" width="7.5" height="7" rx="2.5" fill="url(#avG_' + avUniqueId + '_top)"/>' +
+        '<rect x="14.5" y="' + (torsoY + 2) + '" width="7" height="17" rx="3.5" fill="url(#avG_' + avUniqueId + '_skin)" transform="rotate(8 18.5 ' + (torsoY + 10) + ')"/>' +
+        '<rect x="14.5" y="' + (torsoY + 1) + '" width="7.5" height="7.5" rx="2.5" fill="url(#avG_' + avUniqueId + '_top)"/>' +
       '</g>' +
 
       // 6. Right Arm (Articulated for Wonder Touch Upward Reach)
       '<g class="av-arm-right">' +
         '<rect x="50" y="' + (torsoY + 2) + '" width="7" height="17" rx="3.5" fill="url(#avG_' + avUniqueId + '_skin)" transform="rotate(-8 53.5 ' + (torsoY + 10) + ')"/>' +
-        '<rect x="49.5" y="' + (torsoY + 1) + '" width="7.5" height="7" rx="2.5" fill="url(#avG_' + avUniqueId + '_top)"/>' +
-        // Fingertip spark point for wonder touch
+        '<rect x="49.5" y="' + (torsoY + 1) + '" width="7.5" height="7.5" rx="2.5" fill="url(#avG_' + avUniqueId + '_top)"/>' +
         '<circle cx="53.5" cy="' + (torsoY + 18) + '" r="2" fill="' + shade(skin, 20) + '"/>' +
       '</g>' +
 
       // 7. Elder Walking Staff (If Elder Haruto)
-      (av.id === 'av_haruto_man' ? '<line x1="58" y1="28" x2="60" y2="92" stroke="#8D6E63" stroke-width="2.2" stroke-linecap="round"/>' : '') +
+      (av.id === 'av_haruto_man' ? '<line x1="58" y1="28" x2="60" y2="92" stroke="#8D6E63" stroke-width="2.2" stroke-linecap="round"/><circle cx="58" cy="28" r="2" fill="#FFD54F"/>' : '') +
 
-      // 8. Volumetric Head & Face
+      // 8. Volumetric Head & Face (Front & Back Views for 2.5D Isometric 360° Turning)
       '<g class="av-head">' +
-        // Neck
-        '<rect x="33" y="' + (headY + headR - 3) + '" width="6" height="5" fill="' + shade(skin, -15) + '"/>' +
-        // Head sphere
-        '<circle cx="36" cy="' + headY + '" r="' + headR + '" fill="url(#avG_' + avUniqueId + '_skin)" stroke="' + shade(skin, -30) + '" stroke-width="0.65"/>' +
-        // Hair / Headwear
-        '<path d="M' + (36 - headR) + ' ' + (headY - 1) + ' Q36 ' + (headY - headR - 4) + ' ' + (36 + headR) + ' ' + (headY - 1) + ' Q36 ' + (headY - headR + 2) + ' ' + (36 - headR) + ' ' + (headY - 1) + ' Z" fill="url(#avG_' + avUniqueId + '_hair)"/>' +
-        // Eyes
-        '<circle cx="32" cy="' + (headY + 0.5) + '" r="1.4" fill="#1A1A1A"/>' +
-        '<circle cx="40" cy="' + (headY + 0.5) + '" r="1.4" fill="#1A1A1A"/>' +
-        '<circle cx="32.4" cy="' + (headY + 0.1) + '" r="0.55" fill="#FFF"/>' +
-        '<circle cx="40.4" cy="' + (headY + 0.1) + '" r="0.55" fill="#FFF"/>' +
-        // Smile
-        '<path d="M33 ' + (headY + 4.5) + ' Q36 ' + (headY + 7) + ' 39 ' + (headY + 4.5) + '" fill="none" stroke="#5D4037" stroke-width="1.15" stroke-linecap="round"/>' +
+        // Back View (Full rear hair and neck nape)
+        '<g class="av-head-back">' +
+          '<path d="M32.5 ' + (headY + headR - 3) + ' L39.5 ' + (headY + headR - 3) + ' L40 ' + (torsoY + 2) + ' L32 ' + (torsoY + 2) + ' Z" fill="' + shade(skin, -25) + '"/>' +
+          '<circle cx="36" cy="' + headY + '" r="' + headR + '" fill="url(#avG_' + avUniqueId + '_hair)" stroke="' + shade(hair, -38) + '" stroke-width="0.8"/>' +
+          '<path d="M' + (36 - headR + 1) + ' ' + (headY + 2) + ' Q36 ' + (headY + headR + 2) + ' ' + (36 + headR - 1) + ' ' + (headY + 2) + '" fill="' + shade(hair, -25) + '" opacity="0.6"/>' +
+        '</g>' +
+        // Front View (Face features, ears, nose, eyes, smile)
+        '<g class="av-head-front">' +
+          '<path d="M32.5 ' + (headY + headR - 3) + ' L39.5 ' + (headY + headR - 3) + ' L40 ' + (torsoY + 2) + ' L32 ' + (torsoY + 2) + ' Z" fill="' + shade(skin, -16) + '"/>' +
+          // 3D Isometric Ears
+          '<path class="av-ear-left" d="M' + (36 - headR - 0.5) + ' ' + (headY - 2.5) + ' Q' + (36 - headR - 3.8) + ' ' + headY + ' ' + (36 - headR - 0.5) + ' ' + (headY + 3.5) + ' Z" fill="' + shade(skin, -22) + '" stroke="' + shade(skin, -38) + '" stroke-width="0.5"/>' +
+          '<path class="av-ear-right" d="M' + (36 + headR + 0.5) + ' ' + (headY - 2.5) + ' Q' + (36 + headR + 3.8) + ' ' + headY + ' ' + (36 + headR + 0.5) + ' ' + (headY + 3.5) + ' Z" fill="' + shade(skin, 10) + '" stroke="' + shade(skin, -25) + '" stroke-width="0.5"/>' +
+          // Main Head Dome
+          '<circle cx="36" cy="' + headY + '" r="' + headR + '" fill="url(#avG_' + avUniqueId + '_skin)" stroke="' + shade(skin, -30) + '" stroke-width="0.65"/>' +
+          // Lit Crown Top Facet
+          '<ellipse class="av-head-top" cx="34" cy="' + (headY - headR * 0.45) + '" rx="' + (headR * 0.65) + '" ry="' + (headR * 0.35) + '" fill="rgba(255,255,255,0.28)"/>' +
+          // Left Lateral Cheek Facet (Shaded)
+          '<path class="av-head-side-left" d="M' + (36 - headR) + ' ' + headY + ' Q' + (36 - headR + 1) + ' ' + (headY + headR * 0.7) + ' 33 ' + (headY + headR - 1) + ' Q' + (36 - headR * 0.5) + ' ' + (headY + headR * 0.4) + ' ' + (36 - headR) + ' ' + headY + ' Z" fill="' + shade(skin, -35) + '" opacity="0.32"/>' +
+          // Right Lateral Cheek Facet (Lit)
+          '<path class="av-head-side-right" d="M' + (36 + headR) + ' ' + headY + ' Q' + (36 + headR - 1) + ' ' + (headY + headR * 0.7) + ' 39 ' + (headY + headR - 1) + ' Q' + (36 + headR * 0.5) + ' ' + (headY + headR * 0.4) + ' ' + (36 + headR) + ' ' + headY + ' Z" fill="rgba(255,255,255,0.25)" opacity="0.38"/>' +
+          // Hair Bangs & Volume
+          '<path d="M' + (36 - headR) + ' ' + (headY - 1) + ' Q36 ' + (headY - headR - 4) + ' ' + (36 + headR) + ' ' + (headY - 1) + ' Q36 ' + (headY - headR + 2) + ' ' + (36 - headR) + ' ' + (headY - 1) + ' Z" fill="url(#avG_' + avUniqueId + '_hair)"/>' +
+          // Face Features
+          '<g class="av-face-features">' +
+            // Eyes
+            '<circle cx="32" cy="' + (headY + 0.5) + '" r="1.4" fill="#1A1A1A"/>' +
+            '<circle cx="40" cy="' + (headY + 0.5) + '" r="1.4" fill="#1A1A1A"/>' +
+            '<circle cx="32.4" cy="' + (headY + 0.1) + '" r="0.55" fill="#FFF"/>' +
+            '<circle cx="40.4" cy="' + (headY + 0.1) + '" r="0.55" fill="#FFF"/>' +
+            // 3D Isometric Nose
+            '<polygon class="av-nose" points="35.5,' + (headY + 2.2) + ' 37,' + (headY + 3.6) + ' 34.8,' + (headY + 3.8) + '" fill="' + shade(skin, -26) + '" stroke="' + shade(skin, 20) + '" stroke-width="0.4"/>' +
+            // Smile
+            '<path d="M33 ' + (headY + 5.2) + ' Q36 ' + (headY + 7.2) + ' 39 ' + (headY + 5.2) + '" fill="none" stroke="#5D4037" stroke-width="1.15" stroke-linecap="round"/>' +
+            // Rosy Cheeks
+            '<circle cx="30" cy="' + (headY + 4) + '" r="1.8" fill="#FF8A80" opacity="0.30"/>' +
+            '<circle cx="42" cy="' + (headY + 4) + '" r="1.8" fill="#FF8A80" opacity="0.30"/>' +
+          '</g>' +
+        '</g>' +
       '</g>' +
       '</svg>'
     );
@@ -551,18 +624,28 @@
         '<span id="s2TourProgressText">🧭 Chapter tour 1 / 8</span>' +
         '<button type="button" id="s2SkipTour">Skip tour</button>' +
       '</div>' +
-      '<div class="s2-scout-countdown-floater hidden" id="s2ScoutCountdownFloater">' +
-        '<div class="scf-badge">⏳ Survey Cooldown</div>' +
-        '<div class="scf-body" style="display:flex;align-items:center;gap:6px;">' +
-          '<span class="scf-icon">🧭</span>' +
-          '<span class="scf-text">Next scout in <b id="s2ScoutCountdownSec">45s</b></span>' +
-        '</div>' +
-        '<button type="button" class="scf-walk-btn" id="s2WalkNextBtn" title="Start walking now">Walk Now ➔</button>' +
-      '</div>' +
       '<div class="s2-tour-modal-overlay hidden" id="s2TourModal">' +
         '<div class="s2-tour-modal" id="s2TourModalCard"></div>' +
+      '</div>' +
+      '<div class="s2-scout-countdown-floater hidden" id="s2ScoutCountdownFloater">' +
+        '<span class="scf-icon">⏳</span>' +
+        '<span class="scf-text">Next scout in <b id="s2ScoutCountdownSec">45s</b></span>' +
+        '<button type="button" class="scf-walk-btn" id="s2WalkNextBtn" title="Start walking now">Walk Now ➔</button>' +
       '</div>'
     );
+  }
+
+  function dockTopCapsules() {
+    var topContainer = document.getElementById('topGuideCapsulesContainer');
+    var modal = document.getElementById('s2TourModal');
+    if (topContainer && modal && modal.parentNode !== topContainer) {
+      topContainer.appendChild(modal);
+    }
+    var floater = document.getElementById('s2ScoutCountdownFloater');
+    var fieldScene = document.getElementById('fieldScene') || document.querySelector('.field-scene');
+    if (floater && fieldScene && floater.parentNode !== fieldScene) {
+      fieldScene.appendChild(floater);
+    }
   }
 
   function renderAvatarGrid() {
@@ -618,6 +701,7 @@
       while (wrap.firstChild) {
         document.body.appendChild(wrap.firstChild);
       }
+      dockTopCapsules();
     }
     var overlay = document.getElementById('s2HomeOverlay');
     if (overlay) overlay.classList.remove('hidden');
@@ -726,17 +810,35 @@
   // Farm Spatial Waypoints & Scout Marker Exact Coordinates
   // ---------------------------------------------------------------------------
   function getFacilitySpot(key) {
-    if (key === 'plot' && typeof PLOT_LAYOUT !== 'undefined' && PLOT_LAYOUT[0]) return PLOT_LAYOUT[0];
+    if (key === 'plot' || key === 'farm_plot_1' || key === 1 || key === '1') {
+      if (typeof PLOT_LAYOUT !== 'undefined' && PLOT_LAYOUT[0]) return PLOT_LAYOUT[0];
+      return { top: 28, left: 24, w: 12, h: 20 };
+    }
+    if (key === 'crew_shed' || key === 'water_well' || key === 2 || key === '2') {
+      if (typeof CREW_SHED_SPOT !== 'undefined') return CREW_SHED_SPOT;
+      return { top: 54, left: 8.5, w: 9.5, h: 18 };
+    }
+    if (key === 'garden' || key === 3 || key === '3') {
+      if (typeof VILLAGE_LAYOUT !== 'undefined' && VILLAGE_LAYOUT.garden) return VILLAGE_LAYOUT.garden;
+      return { top: 66, left: 32, w: 12, h: 22 };
+    }
+    if (key === 'pond' || key === 4 || key === '4') {
+      if (typeof VILLAGE_LAYOUT !== 'undefined' && VILLAGE_LAYOUT.pond) return VILLAGE_LAYOUT.pond;
+      return { top: 12, left: 32, w: 12, h: 22 };
+    }
+    if (key === 'juice_bar' || key === 6 || key === '6') {
+      if (typeof VILLAGE_LAYOUT !== 'undefined' && VILLAGE_LAYOUT.juice_bar) return VILLAGE_LAYOUT.juice_bar;
+      return { top: 66, left: 61, w: 12, h: 22 };
+    }
     if (typeof VILLAGE_LAYOUT !== 'undefined' && VILLAGE_LAYOUT[key]) return VILLAGE_LAYOUT[key];
     if (key === 'gate' && typeof GATE_SPOT !== 'undefined') return GATE_SPOT;
-    if (key === 'crew_shed' && typeof CREW_SHED_SPOT !== 'undefined') return CREW_SHED_SPOT;
     if (key === 'storage' && typeof STORAGE_SPOT !== 'undefined') return STORAGE_SPOT;
     if (key === 'garage' && typeof GARAGE_SPOT !== 'undefined') return GARAGE_SPOT;
     if (key === 'wind_turbine' && typeof WIND_TURBINE_SPOT !== 'undefined') return WIND_TURBINE_SPOT;
     if (key === 'energy_storage' && typeof ENERGY_STORAGE_SPOT !== 'undefined') return ENERGY_STORAGE_SPOT;
     if (key === 'jute_tarp' && typeof JUTE_TARP_SPOT !== 'undefined') return JUTE_TARP_SPOT;
-    if (key === 'eco_passport') return { top: 12, left: 77.5, w: 10.5, h: 22 };
-    if (key === 'space_mission') return { top: 66, left: 77.5, w: 10.5, h: 22 };
+    if (key === 'eco_passport' || key === 7 || key === '7') return { top: 12, left: 77.5, w: 10.5, h: 22 };
+    if (key === 'space_mission' || key === 8 || key === '8') return { top: 66, left: 77.5, w: 10.5, h: 22 };
 
     var fallbacks = {
       1: { top: 28, left: 24, w: 12, h: 20 },
@@ -884,7 +986,34 @@
       var t0 = performance.now();
 
       var dx = curr.left - prev.left;
-      var facing = dx < -0.4 ? 'scaleX(-1)' : 'scaleX(1)';
+      var dy = curr.top - prev.top;
+      var angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      el.setAttribute('data-heading-angle', Math.round(angle));
+
+      if (dy < -0.25) {
+        el.classList.add('facing-north');
+        el.classList.remove('facing-south');
+      } else if (dy > 0.25) {
+        el.classList.add('facing-south');
+        el.classList.remove('facing-north');
+      }
+
+      if (dx > 0.3) {
+        el.classList.add('facing-east');
+        el.classList.remove('facing-west');
+      } else if (dx < -0.3) {
+        el.classList.add('facing-west');
+        el.classList.remove('facing-east');
+      }
+
+      var prevDx = el.__lastDx || 0;
+      if ((prevDx > 0.25 && dx < -0.25) || (prevDx < -0.25 && dx > 0.25)) {
+        el.classList.add('turning-around');
+        setTimeout(function(){ el.classList.remove('turning-around'); }, 220);
+      }
+      el.__lastDx = dx;
+
+      var facing = dx < -0.3 ? 'scaleX(-1)' : 'scaleX(1)';
       el.style.transform = 'translate(-50%, -85%) ' + facing;
 
       function frame(now) {
@@ -977,6 +1106,98 @@
     }, 500);
   }
 
+  function getBuildingArchitecturalSvg(key, obj, ch) {
+    if (key === 'crew_shed' && typeof window !== 'undefined' && typeof window.drawCrewShedScene === 'function') {
+      try { return window.drawCrewShedScene({ built: true }); } catch (e) {}
+    }
+    if (key === 'garden' && typeof window !== 'undefined' && typeof window.drawGardenScene === 'function') {
+      try { return window.drawGardenScene('roses', 100, false, false); } catch (e) {}
+    }
+    if (key === 'pond' && typeof window !== 'undefined' && typeof window.drawPondScene === 'function') {
+      try { return window.drawPondScene('trout', 100, false, false, false); } catch (e) {}
+    }
+    if (key === 'wind_turbine' && typeof window !== 'undefined' && typeof window.drawWindTurbineScene === 'function') {
+      try { return window.drawWindTurbineScene({ built: true, commissioned: true }); } catch (e) {}
+    }
+    if (key === 'juice_bar' && typeof window !== 'undefined' && typeof window.drawJuiceBarScene === 'function') {
+      try { return window.drawJuiceBarScene({ built: true }, false); } catch (e) {}
+    }
+    if (key === 'coffee_shop' && typeof window !== 'undefined' && typeof window.drawCoffeeShopScene === 'function') {
+      try { return window.drawCoffeeShopScene({ built: true }, false); } catch (e) {}
+    }
+    if (key === 'garage' && typeof window !== 'undefined' && typeof window.drawGarageScene === 'function') {
+      try { return window.drawGarageScene({ built: true }); } catch (e) {}
+    }
+    if (key === 'storage' && typeof window !== 'undefined' && typeof window.drawStorageScene === 'function') {
+      try { return window.drawStorageScene({ built: true }); } catch (e) {}
+    }
+    if (key === 'crop_field' && typeof window !== 'undefined' && typeof window.drawCropFieldScene === 'function') {
+      try { return window.drawCropFieldScene({ built: true, beds: [{ cropKey: 'wheat', ready: true }] }); } catch (e) {}
+    }
+    if (key === 'cattle_farm' && typeof window !== 'undefined' && typeof window.drawCattleFarmScene === 'function') {
+      try { return window.drawCattleFarmScene({ built: true }, false); } catch (e) {}
+    }
+    if (key === 'energy_storage' && typeof window !== 'undefined' && typeof window.drawEnergyStorageScene === 'function') {
+      try { return window.drawEnergyStorageScene({ built: true, storedKWh: 350, maxKWh: 500 }); } catch (e) {}
+    }
+    if (key === 'gate' && typeof window !== 'undefined' && typeof window.drawMainGateScene === 'function') {
+      try { return window.drawMainGateScene(); } catch (e) {}
+    }
+    if (key === 'jute_tarp' && typeof window !== 'undefined' && typeof window.drawJuteTarpScene === 'function') {
+      try { return window.drawJuteTarpScene(true); } catch (e) {}
+    }
+
+    // High-fidelity fallback 3D isometric architectural blueprints
+    if (key === 'plot') {
+      return (
+        '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">' +
+          '<ellipse cx="80" cy="98" rx="66" ry="16" fill="rgba(0,229,255,0.2)"/>' +
+          '<polygon points="80,24 146,54 80,84 14,54" fill="#003B46" stroke="#00E5FF" stroke-width="1.8"/>' +
+          '<polygon points="14,54 80,84 80,94 14,64" fill="#00222B" stroke="#00E5FF" stroke-width="1.2"/>' +
+          '<polygon points="80,84 146,54 146,64 80,94" fill="#00171D" stroke="#00E5FF" stroke-width="1.2"/>' +
+          '<path d="M48,50 Q52,38 56,44 Q60,34 64,48" stroke="#69F0AE" stroke-width="2.5" fill="none"/>' +
+          '<path d="M72,62 Q76,50 80,56 Q84,46 88,60" stroke="#69F0AE" stroke-width="2.5" fill="none"/>' +
+          '<path d="M96,74 Q100,62 104,68 Q108,58 112,72" stroke="#69F0AE" stroke-width="2.5" fill="none"/>' +
+        '</svg>'
+      );
+    }
+    if (key === 'eco_passport') {
+      return (
+        '<svg viewBox="0 0 160 160" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">' +
+          '<ellipse cx="80" cy="125" rx="55" ry="18" fill="rgba(0,229,255,0.2)"/>' +
+          '<circle cx="80" cy="75" r="42" fill="rgba(0,137,123,0.3)" stroke="#00E5FF" stroke-width="2"/>' +
+          '<ellipse cx="80" cy="75" rx="42" ry="16" fill="none" stroke="#80D8FF" stroke-width="1.5" stroke-dasharray="4 2"/>' +
+          '<ellipse cx="80" cy="75" rx="18" ry="42" fill="none" stroke="#80D8FF" stroke-width="1.5" stroke-dasharray="4 2"/>' +
+          '<polygon points="80,33 118,55 118,95 80,117 42,95 42,55" fill="none" stroke="#00E5FF" stroke-width="1.5"/>' +
+          '<text x="80" y="80" font-size="20" text-anchor="middle">🌍</text>' +
+        '</svg>'
+      );
+    }
+    if (key === 'space_mission') {
+      return (
+        '<svg viewBox="0 0 160 160" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">' +
+          '<ellipse cx="80" cy="130" rx="58" ry="18" fill="rgba(0,229,255,0.2)"/>' +
+          '<rect x="72" y="35" width="16" height="70" rx="6" fill="rgba(3,169,244,0.35)" stroke="#00E5FF" stroke-width="2"/>' +
+          '<polygon points="80,15 72,35 88,35" fill="rgba(0,229,255,0.6)" stroke="#00E5FF" stroke-width="1.8"/>' +
+          '<polygon points="62,105 72,85 72,105" fill="#0288D1" stroke="#00E5FF" stroke-width="1.5"/>' +
+          '<polygon points="98,105 88,85 88,105" fill="#0288D1" stroke="#00E5FF" stroke-width="1.5"/>' +
+          '<rect x="42" y="110" width="76" height="12" rx="3" fill="#37474F" stroke="#00E5FF" stroke-width="1.5"/>' +
+          '<text x="80" y="75" font-size="22" text-anchor="middle">🚀</text>' +
+        '</svg>'
+      );
+    }
+
+    return (
+      '<svg viewBox="0 0 160 140" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">' +
+        '<ellipse cx="80" cy="115" rx="55" ry="16" fill="rgba(0,229,255,0.2)"/>' +
+        '<polygon points="80,25 140,55 80,85 20,55" fill="rgba(0,105,92,0.4)" stroke="#00E5FF" stroke-width="1.8"/>' +
+        '<polygon points="20,55 80,85 80,115 20,85" fill="rgba(0,77,64,0.6)" stroke="#00E5FF" stroke-width="1.2"/>' +
+        '<polygon points="80,85 140,55 140,85 80,115" fill="rgba(0,56,47,0.7)" stroke="#00E5FF" stroke-width="1.2"/>' +
+        '<text x="80" y="75" font-size="26" text-anchor="middle">' + (obj.icon || '🏛️') + '</text>' +
+      '</svg>'
+    );
+  }
+
   function showChapterGhosts(ch, sequential) {
     var layer = ensureGhostLayer();
     if (!layer) return;
@@ -987,6 +1208,7 @@
       var spot = getFacilitySpot(obj.key);
       if (!spot) return;
 
+      var archSvg = getBuildingArchitecturalSvg(obj.key, obj, ch);
       var el = document.createElement('div');
       el.className = 's2-ghost-obj';
       el.style.left = spot.left + '%';
@@ -994,8 +1216,9 @@
       el.style.width = (spot.w || 10) + '%';
       el.style.height = (spot.h || 16) + '%';
       el.innerHTML =
-        '<div class="s2-ghost-body">' +
-          '<span>' + (obj.icon || '🏗️') + '</span>' +
+        '<div class="s2-ghost-structure s2-ghost-body">' +
+          archSvg +
+          '<span class="s2-ghost-blueprint-tag">📐 Blueprint</span>' +
           '<span class="s2-ghost-lock">🔒</span>' +
         '</div>' +
         '<div class="s2-ghost-label">Ch. ' + ch + ' · ' + obj.name + '</div>';
@@ -1008,10 +1231,36 @@
     });
   }
 
+  function renderExploredFieldBadge(ch, key) {
+    var scene = document.getElementById('fieldScene');
+    if (!scene) return;
+    var spot = getFacilitySpot(key);
+    if (!spot) return;
+    var badgeId = 's2ExploredBadge_ch' + ch;
+    var badge = document.getElementById(badgeId);
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = badgeId;
+      badge.className = 'chapter-explore-tick s2-field-survey-tick';
+      badge.title = 'Chapter ' + ch + ' Explored · Click for Roadmap';
+      badge.innerHTML = '<span class="tick-star">★</span><span class="tick-check" style="display:none;">✓</span>';
+      badge.onclick = function (e) {
+        if (e) e.stopPropagation();
+        if (typeof openChapterRoadmapForObject === 'function') openChapterRoadmapForObject(key);
+      };
+      scene.appendChild(badge);
+    }
+    badge.style.position = 'absolute';
+    badge.style.left = (spot.left + (spot.w || 10) * 0.78) + '%';
+    badge.style.top = (spot.top + (spot.h || 16) * 0.12) + '%';
+    badge.style.zIndex = '36';
+  }
+
   // ---------------------------------------------------------------------------
-  // Chapter Roadmap Modal & Survey Progression
+  // Chapter Roadmap Modal & Survey Progression (Aligned beside Active Chapter Challenge)
   // ---------------------------------------------------------------------------
   function openTourModal(ch, onContinue) {
+    dockTopCapsules();
     var modal = document.getElementById('s2TourModal');
     var card = document.getElementById('s2TourModalCard');
     if (!modal || !card) {
@@ -1027,19 +1276,14 @@
     var names = objs.map(function (o) { return o.name; }).join(' · ');
 
     card.innerHTML =
-      '<div class="s2-tour-modal-top">' +
-        '<div class="tm-icon">' + (def.icon || '🧭') + '</div>' +
-        '<button type="button" class="s2-modal-close-btn" id="s2TourModalClose" title="Close modal and view avatar">✕</button>' +
-      '</div>' +
-      '<h3>Chapter ' + ch + ' · ' + (def.title || '') + '</h3>' +
-      '<p>' + (def.desc || 'Explore this zone of the farm.') + '</p>' +
-      '<div class="tm-ghosts-note">' +
-        '🔒 <b>Transparent Blueprint Models:</b><br/>' +
-        '<span>' + (names || 'Farm structures') + '</span>' +
-      '</div>' +
-      '<button type="button" class="s2-btn-primary" id="s2TourContinue">✓ I explored it · Next ➔</button>';
+      '<span class="guide-pulse-dot"></span>' +
+      '<span class="tm-icon" title="' + (names || 'Blueprint Unlocked') + '">' + (def.icon || '🧭') + '</span>' +
+      '<span class="tm-text" title="Chapter ' + ch + ': ' + (def.title || '') + ' — Blueprint Unlocked"><b>Ch. ' + ch + ': ' + (def.title || 'Scout') + '</b></span>' +
+      '<button type="button" class="s2-btn-primary tm-next-btn" id="s2TourContinue" title="Mark explored and continue tour">✓ Next ➔</button>' +
+      '<button type="button" class="s2-modal-close-btn" id="s2TourModalClose" title="Close guidance capsule">✕</button>';
 
     modal.classList.remove('hidden');
+    dockTopCapsules();
 
     function handleModalCloseAndAdvance() {
       modal.classList.add('hidden');
@@ -1074,6 +1318,8 @@
         if (typeof state.xp === 'number' && state.xp === 0) state.xp = 5;
       }
 
+      renderExploredFieldBadge(ch, primaryKey);
+
       if (typeof render === 'function') render();
 
       if (onContinue) onContinue();
@@ -1086,23 +1332,75 @@
     if (closeBtn) closeBtn.onclick = handleModalCloseAndAdvance;
   }
 
+  function isAnyExplorationModalOpen() {
+    var overlay = document.getElementById('modalOverlay');
+    if (overlay && !overlay.classList.contains('hidden') && overlay.style.display !== 'none') return true;
+    var lockedPopup = document.getElementById('stepInstructionPopupWrapper');
+    if (lockedPopup && !lockedPopup.classList.contains('hidden') && lockedPopup.style.display !== 'none') return true;
+    var tourOverlay = document.getElementById('s2HomeOverlay');
+    if (tourOverlay && !tourOverlay.classList.contains('hidden') && tourOverlay.style.display !== 'none') return true;
+    if (typeof document !== 'undefined' && document.body && document.body.classList.contains('modal-open')) return true;
+    return false;
+  }
+
   function renderScoutCountdownFloater(seconds, nextCh) {
     var floater = document.getElementById('s2ScoutCountdownFloater');
+    var fieldScene = document.getElementById('fieldScene') || document.querySelector('.field-scene');
     if (!floater) {
       floater = document.createElement('div');
       floater.id = 's2ScoutCountdownFloater';
       floater.className = 's2-scout-countdown-floater';
-      floater.innerHTML =
-        '<div class="scf-badge">⏳ Survey Cooldown</div>' +
-        '<div class="scf-body" style="display:flex;align-items:center;gap:6px;">' +
-          '<span class="scf-icon">🧭</span>' +
-          '<span class="scf-text">Next scout in <b id="s2ScoutCountdownSec">' + seconds + 's</b></span>' +
-        '</div>' +
-        '<button type="button" class="scf-walk-btn" id="s2WalkNextBtn" title="Start walking now">Walk Now ➔</button>';
-      document.body.appendChild(floater);
+      if (fieldScene) {
+        fieldScene.appendChild(floater);
+      } else {
+        document.body.appendChild(floater);
+      }
+    } else {
+      if (fieldScene && floater.parentElement !== fieldScene) {
+        fieldScene.appendChild(floater);
+      }
     }
-    var secSpan = document.getElementById('s2ScoutCountdownSec');
-    if (secSpan) secSpan.textContent = seconds + 's';
+
+    floater.innerHTML =
+      '<div class="scf-icon-pill" id="s2CooldownIconPill" role="button" tabindex="0" title="Scout cooldown active: Click to view details / walk now">' +
+        '<span class="scf-icon">⏳</span>' +
+        '<span class="scf-time-tag" id="s2ScoutCountdownSec">' + seconds + 's</span>' +
+      '</div>' +
+      '<div class="scf-pop-modal hidden" id="s2CooldownPopModal" role="dialog" aria-modal="true" aria-label="Scout Cooldown Details">' +
+        '<div class="scf-pop-header">' +
+          '<span class="scf-pop-title">⏳ Scout Cooldown</span>' +
+          '<button type="button" class="scf-pop-close" id="s2CooldownPopClose" aria-label="Close">✕</button>' +
+        '</div>' +
+        '<div class="scf-pop-body">' +
+          '<div class="scf-pop-desc">Next scout in <b class="scf-sec-accent" id="s2ScoutCountdownSecPop">' + seconds + 's</b></div>' +
+          '<button type="button" class="scf-walk-btn" id="s2WalkNextBtn" title="Start walking now">Walk Now ➔</button>' +
+        '</div>' +
+      '</div>';
+
+    var pill = document.getElementById('s2CooldownIconPill');
+    var popModal = document.getElementById('s2CooldownPopModal');
+    var closeBtn = document.getElementById('s2CooldownPopClose');
+    if (pill && popModal) {
+      pill.onclick = function (e) {
+        if (e) e.stopPropagation();
+        popModal.classList.toggle('hidden');
+      };
+      pill.ontouchend = function (e) {
+        if (e) e.stopPropagation();
+        popModal.classList.toggle('hidden');
+      };
+    }
+    if (closeBtn && popModal) {
+      closeBtn.onclick = function (e) {
+        if (e) e.stopPropagation();
+        popModal.classList.add('hidden');
+      };
+      closeBtn.ontouchend = function (e) {
+        if (e) e.stopPropagation();
+        popModal.classList.add('hidden');
+      };
+    }
+
     var wb = document.getElementById('s2WalkNextBtn');
     if (wb) {
       wb.onclick = function (e) {
@@ -1114,17 +1412,39 @@
         walkToNextScoutNow();
       };
     }
+
     floater.classList.remove('hidden');
+
+    if (isAnyExplorationModalOpen()) {
+      floater.classList.add('modal-hidden');
+    } else {
+      floater.classList.remove('modal-hidden');
+    }
   }
 
   function updateScoutCountdownFloater(seconds, nextCh) {
     var secSpan = document.getElementById('s2ScoutCountdownSec');
     if (secSpan) secSpan.textContent = seconds + 's';
+    var secPop = document.getElementById('s2ScoutCountdownSecPop');
+    if (secPop) secPop.textContent = seconds + 's';
+
+    var floater = document.getElementById('s2ScoutCountdownFloater');
+    if (floater) {
+      if (isAnyExplorationModalOpen()) {
+        floater.classList.add('modal-hidden');
+      } else {
+        floater.classList.remove('modal-hidden');
+      }
+    }
   }
 
   function hideScoutCountdownFloater() {
     var floater = document.getElementById('s2ScoutCountdownFloater');
-    if (floater) floater.classList.add('hidden');
+    if (floater) {
+      floater.classList.add('hidden');
+      var popModal = document.getElementById('s2CooldownPopModal');
+      if (popModal) popModal.classList.add('hidden');
+    }
   }
 
   function clearScoutCooldown() {
@@ -1429,7 +1749,18 @@
     },
     getSelected: function () {
       return tourState.avatar;
-    }
+    },
+    openTourModal: openTourModal,
+    renderScoutCountdownFloater: renderScoutCountdownFloater,
+    renderExploredFieldBadge: renderExploredFieldBadge,
+    showChapterGhosts: showChapterGhosts,
+    spawnWalker: spawnWalker,
+    initAvatar: function (id, ch) {
+      tourState.avatarId = id;
+      tourState.avatar = AVATAR_ROSTER.find(function (a) { return a.id === id; }) || AVATAR_ROSTER[0];
+      return spawnWalker(tourState.avatar, getFacilitySpot('plot'));
+    },
+    dockTopCapsules: dockTopCapsules
   };
 
   if (document.readyState === 'loading') {
