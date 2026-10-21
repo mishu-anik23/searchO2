@@ -11197,7 +11197,7 @@ var CHAPTER_PRIMARY_OBJECTS = {
   2: 'crew_shed',
   3: 'garden',
   4: 'pond',
-  5: 'wind_turbine',
+  5: 'energy_storage',
   6: 'juice_bar',
   7: 'eco_passport',
   8: 'space_mission'
@@ -25334,7 +25334,7 @@ var FARM_PROGRESSION_STEPS = [
     unlockedWhen: function(s){ return !!(s.buildings && s.buildings.crew_shed && s.buildings.crew_shed.built); },
     isComplete: function(s){ return !!(s.workers && s.workers.some(function(w){ return w.type === 'laborer'; })); },
     instructions: {
-      afterWhich: 'Unlocks in Chapter 2 after Crew Shed & Depot (Chapter 1) is built and operational.',
+      afterWhich: 'Unlocks in Chapter 2 after Crew Shed & Depot (Chapter 2) is built and operational.',
       howTo: '1. Build the Crew Shed & Depot (Step 1).\n2. Open the Crew Shed and click "Recruit Laborer" (€15/d wage).\n3. Field Laborer reports to bunkhouse, required to clear boulders from the road.'
     }
   },
@@ -30038,9 +30038,10 @@ function drawStorageScene(s){
   '</svg>';
 }
 
-function drawPondScene(specialization, freshness, tending, collecting, isBuilding){
+function drawPondScene(specialization, freshness, tending, collecting, isBuilding, forceBuilt){
   var pb = (typeof state !== 'undefined' && state && state.buildings) ? state.buildings.pond : null;
-  if (!isBuilding && (!pb || !pb.built)){
+  var isBuilt = forceBuilt || (pb && pb.built);
+  if (!isBuilding && !isBuilt){
     var isLocked = (typeof isObjectUnlockedByChapter === 'function') ? !isObjectUnlockedByChapter('pond', state) : false;
     return drawUnbuiltSpotMarker('pond', BUILDING_TYPES.pond, isLocked);
   }
@@ -30445,9 +30446,10 @@ function renderSectorPlants(bed, cx, cy, wilted){
   return s;
 }
 
-function drawGardenScene(flowerType, freshness, tending, isBuilding){
+function drawGardenScene(flowerType, freshness, tending, isBuilding, forceBuilt){
   var gb = (typeof state !== 'undefined' && state && state.buildings) ? state.buildings.garden : null;
-  if (!isBuilding && (!gb || !gb.built)){
+  var isBuilt = forceBuilt || (gb && gb.built);
+  if (!isBuilding && !isBuilt){
     var isLocked = (typeof isObjectUnlockedByChapter === 'function') ? !isObjectUnlockedByChapter('garden', state) : false;
     return drawUnbuiltSpotMarker('garden', BUILDING_TYPES.garden, isLocked);
   }
@@ -32731,24 +32733,28 @@ function roadPromenadeHtml(){
 
   var innerBadge = '';
   if (!isBuilt && !isBuilding){
-    var isRoadRec = (typeof getFarmProgressionGuide === 'function') && getFarmProgressionGuide() && getFarmProgressionGuide().key === 'road';
-    var badgeIcon = '⛩️';
-    var badgeText = 'Pave Main Road — €120';
-    var badgeClass = 'unbuilt ' + (isRoadRec ? 'guide-active-spot' : '');
+    var curCh = (state && state.currentChapter) ? state.currentChapter : 1;
+    if (curCh < 2) {
+      innerBadge = '';
+    } else {
+      var isRoadRec = (typeof getFarmProgressionGuide === 'function') && getFarmProgressionGuide() && getFarmProgressionGuide().key === 'road';
+      var badgeIcon = '⛩️';
+      var badgeText = 'Pave Main Road — €120';
+      var badgeClass = 'unbuilt ' + (isRoadRec ? 'guide-active-spot' : '');
 
-    var hasGate = state && state.buildings && state.buildings.gate && state.buildings.gate.built;
-    var isGateBuilding = state && state.buildings && state.buildings.gate && state.buildings.gate.building;
-    var gPct = isGateBuilding ? Math.round(Math.min(100, (state.buildings.gate.buildHours / 2.0) * 100)) : 0;
+      var hasGate = state && state.buildings && state.buildings.gate && state.buildings.gate.built;
+      var isGateBuilding = state && state.buildings && state.buildings.gate && state.buildings.gate.building;
+      var gPct = isGateBuilding ? Math.round(Math.min(100, (state.buildings.gate.buildHours / 2.0) * 100)) : 0;
 
-    if (!hasCrewShed){
-      badgeIcon = '🔒';
-      badgeText = 'Ch.1: Crew Shed Needed';
-      badgeClass = 'unbuilt';
-    } else if (!hasLaborer){
-      badgeIcon = '🔒';
-      badgeText = 'Ch.2: Recruit Laborer Needed';
-      badgeClass = 'unbuilt';
-    } else if (!rocksCleared){
+      if (!hasCrewShed){
+        badgeIcon = '🔒';
+        badgeText = 'Ch.2: Crew Shed Needed';
+        badgeClass = 'unbuilt';
+      } else if (!hasLaborer){
+        badgeIcon = '🔒';
+        badgeText = 'Ch.2: Recruit Laborer Needed';
+        badgeClass = 'unbuilt';
+      } else if (!rocksCleared){
       if (rocksClearing){
         badgeIcon = '⛏️';
         badgeText = 'Clearing Boulders (' + rkPct + '%)';
@@ -32775,6 +32781,7 @@ function roadPromenadeHtml(){
       '<span class="badge-icon">' + badgeIcon + '</span>' +
       '<span class="badge-text">' + badgeText + '</span>' +
     '</div>';
+    }
   } else if (isBuilding){
     innerBadge = '<div class="main-road-canvas-badge building" onclick="openModal(\'building\',\'road\')">' +
       '<span class="badge-icon">🚧</span>' +

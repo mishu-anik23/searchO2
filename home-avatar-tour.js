@@ -197,17 +197,20 @@
       { key: 'garage', name: 'Tractor Garage & Fendt Tractor', icon: '🚜' }
     ],
     3: [
-      { key: 'garden', name: 'Companion Pollinator Garden', icon: '🌸' },
+      { key: 'garden', name: 'Botanical Pollinator Flower Garden', icon: '🌸' },
       { key: 'crop_field', name: 'Rotational 3-Bed Crop Field', icon: '🌾' },
       { key: 'garden_walk', name: 'Heritage Garden Boardwalk', icon: '🪵' }
     ],
     4: [
-      { key: 'pond', name: '2-Basin Living Waters Lake', icon: '🐟' },
-      { key: 'cattle_farm', name: 'Simmental Pasture & Barn', icon: '🐄' }
+      { key: 'pond', name: 'Living Waters Retention Pond', icon: '🐟' },
+      { key: 'cattle_farm', name: 'Simmental Cow Shed & Pasture', icon: '🐄' }
     ],
     5: [
-      { key: 'wind_turbine', name: 'Dual High-Ridge Wind Turbines', icon: '💨' },
-      { key: 'energy_storage', name: 'BESS Microgrid Substation', icon: '🔋' }
+      { key: 'energy_storage', name: 'BESS Microgrid Substation', icon: '🔋' },
+      { key: 'wt_nw', name: 'NW Ridge Wind Turbine', icon: '💨' },
+      { key: 'wt_ne', name: 'NE Hilltop Wind Turbine', icon: '💨' },
+      { key: 'wt_sw', name: 'SW Meadow Wind Turbine', icon: '💨' },
+      { key: 'wt_se', name: 'SE Orchard Wind Turbine', icon: '💨' }
     ],
     6: [
       { key: 'juice_bar', name: 'Hof-Mosterei Juice Bar & Cider Press', icon: '🍎' },
@@ -219,6 +222,280 @@
     8: [
       { key: 'space_mission', name: 'Artemis Bioregenerative Space Center', icon: '🚀' }
     ]
+  };
+
+  // Detailed Step-by-Step Unlock Specifications for 3D Object Mouse Hover Modal
+  var OBJECT_UNLOCK_SPECS = {
+    plot: {
+      name: 'Plot 1 Soil Bed & Clean O₂',
+      icon: '🌱',
+      chapter: 1,
+      cost: '€25 prep',
+      prereq: 'Uncover hand tools from Jute Tarp cache',
+      steps: [
+        '1. Survey the 8-chapter estate masterplan (+40 XP).',
+        '2. Uncover the hidden jute tarp tool cache beside the shed.',
+        '3. Click Plot 1 to till compacted bedrock crust with hand spade (€25).',
+        '4. Plant your first crop seedling and water it to release clean O₂.'
+      ]
+    },
+    jute_tarp: {
+      name: 'Jute Tarpaulin Hidden Tool Cache',
+      icon: '📦',
+      chapter: 1,
+      cost: 'Free',
+      prereq: 'Survey all 8 estate chapters',
+      steps: [
+        '1. Follow the 3D directional locator to survey all 8 chapters.',
+        '2. Locate the heavy jute tarpaulin covering at the farm shed boundary.',
+        '3. Click to uncover and claim hand-forged spade & broadfork (+10 XP).'
+      ]
+    },
+    gate: {
+      name: 'Grand Farm Entrance Gate',
+      icon: '⛩️',
+      chapter: 2,
+      cost: '€120',
+      prereq: 'Chapter 2 unlocked & 1 Recruited Laborer',
+      steps: [
+        '1. Complete Chapter 1 solo founder goals.',
+        '2. Build Crew Shed & recruit at least 1 Field Laborer.',
+        '3. Click the eastern estate boundary to erect timber & stone gate (€120 · 2h).'
+      ]
+    },
+    crew_shed: {
+      name: 'Crew Shed & Living Quarters',
+      icon: '🏠',
+      chapter: 2,
+      cost: '€200',
+      prereq: 'Chapter 2 unlocked ("Build the Farm")',
+      steps: [
+        '1. Advance to Chapter 2 after your first clean O₂ harvest.',
+        '2. Open the Crew Shed plot peg in the SW wing.',
+        '3. Construct living quarters (€200 · 3h with 1 laborer, 1.5h with 2 laborers).',
+        '4. Recruit farm specialists (Laborer, Farmer, Botanist, Engineer).'
+      ]
+    },
+    road: {
+      name: 'Main Arterial Cobblestone Road',
+      icon: '🛤️',
+      chapter: 2,
+      cost: '€170 total',
+      prereq: 'Recruit Field Laborer & Heavy Spade/Pickaxe',
+      steps: [
+        '1. Recruit a Field Laborer at the Crew Shed (€15/d).',
+        '2. Clear bedrock boulder corridor obstacles (€50 · 2h).',
+        '3. Pave the central arterial road (€120 · 4h) for supply wagons & visitors.'
+      ]
+    },
+    storage: {
+      name: 'Granary Storage Barn',
+      icon: '🌾',
+      chapter: 2,
+      cost: '€100',
+      prereq: 'Main Arterial Road paved',
+      steps: [
+        '1. Complete paving the Main Arterial Road (Step 2).',
+        '2. Click the central upper yard storage peg or HUD button.',
+        '3. Construct Granary Barn (€100) to safeguard crops from spoilage.'
+      ]
+    },
+    garage: {
+      name: 'Agricultural Equipment Garage',
+      icon: '🚜',
+      chapter: 2,
+      cost: '€350',
+      prereq: 'Main Arterial Road paved',
+      steps: [
+        '1. Pave Main Arterial Road to allow heavy machinery transit.',
+        '2. Click East Mechanization depot site.',
+        '3. Construct Garage (€350) to deploy 2-wheel harvest carts & tractor haulage (+5 Rep).'
+      ]
+    },
+    garden: {
+      name: 'Botanical Pollinator Flower Garden',
+      icon: '🌸',
+      chapter: 3,
+      cost: '€300',
+      prereq: 'Chapter 3 unlocked & Main Road paved',
+      steps: [
+        '1. Advance to Chapter 3 ("Botanical Polyculture & Biodiversity").',
+        '2. Ensure Main Arterial Road is paved.',
+        '3. Click the south curb site opposite the pond.',
+        '4. Construct Garden (€300) and cultivate Sunflowers, Roses, or Daisies to attract beneficial bees (+8 Rep).'
+      ]
+    },
+    crop_field: {
+      name: 'Rotational 3-Bed Companion Field',
+      icon: '🌾',
+      chapter: 3,
+      cost: '€350',
+      prereq: 'Chapter 3 unlocked & Main Road paved',
+      steps: [
+        '1. Connect south field block to estate transport via Main Road.',
+        '2. Click octagonal field site in south block.',
+        '3. Construct 4-bed companion planting field (€350) for grain, corn & legumes (+8 Rep).'
+      ]
+    },
+    garden_walk: {
+      name: 'Heritage Garden Nature Walkway',
+      icon: '🪵',
+      chapter: 3,
+      cost: '€180',
+      prereq: 'Storage Barn & Garden built',
+      steps: [
+        '1. Construct Storage Barn and Botanical Garden.',
+        '2. Click road corridor between Granary and Garden.',
+        '3. Pave cobblestone nature path (€180) to boost flower freshness (+25%) and farm credibility (+4 Rep).'
+      ]
+    },
+    pond: {
+      name: 'Living Waters Retention Lake',
+      icon: '🐟',
+      chapter: 4,
+      cost: '€400',
+      prereq: 'Chapter 4 unlocked ("Living Waters & Retention")',
+      steps: [
+        '1. Advance to Chapter 4 to study aquatic closed-loop retention.',
+        '2. Ensure Main Arterial Road is paved.',
+        '3. Click serene north curb site opposite Botanical Garden.',
+        '4. Construct Pond (€400) and choose Trout Farm or Duck Reserve (+10 Rep).'
+      ]
+    },
+    cattle_farm: {
+      name: 'Simmental Cow Shed & Pasture',
+      icon: '🐄',
+      chapter: 4,
+      cost: '€550 total',
+      prereq: 'Chapter 4 unlocked & Main Road paved',
+      steps: [
+        '1. Advance to Chapter 4 ("The Circular Grazing Cycle").',
+        '2. Construct 4-chamber vertical timber cattle shed (€400).',
+        '3. Erect sturdy post-and-rail perimeter paddock fencing (€150).',
+        '4. Adopt Simmental dairy cows & sheep to produce organic milk, wool, and rich manure (+10 Rep).'
+      ]
+    },
+    energy_storage: {
+      name: 'BESS Microgrid Battery Substation',
+      icon: '🔋',
+      chapter: 5,
+      cost: '€400',
+      prereq: 'Chapter 5 unlocked & Wind Turbines generating power',
+      steps: [
+        '1. Advance to Chapter 5 ("Renewable Energy & Microgrid").',
+        '2. Commission primary wind turbines so clean electricity flows.',
+        '3. Click Battery Substation site beside Crew Shed in SW utility yard.',
+        '4. Construct 500 kWh BESS (€400) to store clean surplus power and export to regional grid (+€80/100 kWh).'
+      ]
+    },
+    wt_nw: {
+      name: 'Northwest Ridge Wind Turbine',
+      icon: '💨',
+      chapter: 5,
+      cost: '€275',
+      prereq: 'Chapter 5 unlocked & Certified Engineer hired',
+      steps: [
+        '1. Advance to Chapter 5 and recruit an Engineer at Crew Shed (€180/d).',
+        '2. Click Northwest Ridge hilltop spot.',
+        '3. Erect turbine (€275 · 4h) and perform 3-point technical safety inspection (Gearbox, Pitch, Inverter).'
+      ]
+    },
+    wt_ne: {
+      name: 'Northeast Hilltop Wind Turbine',
+      icon: '💨',
+      chapter: 5,
+      cost: '€275',
+      prereq: 'Chapter 5 unlocked & Certified Engineer hired',
+      steps: [
+        '1. Recruit Certified Engineer at Crew Shed.',
+        '2. Click Northeast Hilltop perimeter spot.',
+        '3. Erect turbine (€275 · 4h) and complete safety checklist to complete 2-turbine primary clean grid.'
+      ]
+    },
+    wt_sw: {
+      name: 'Southwest Meadow Wind Turbine',
+      icon: '💨',
+      chapter: 5,
+      cost: '€275',
+      prereq: 'Chapter 5 unlocked & Primary Turbines operational',
+      steps: [
+        '1. Operational NW and NE primary turbines generating power.',
+        '2. Click Southwest Meadow spot beside BESS substation.',
+        '3. Erect turbine (€275 · 4h) for 2+2 hot-redundant backup power during peak load.'
+      ]
+    },
+    wt_se: {
+      name: 'Southeast Orchard Wind Turbine',
+      icon: '💨',
+      chapter: 5,
+      cost: '€275',
+      prereq: 'Chapter 5 unlocked & Certified Engineer hired',
+      steps: [
+        '1. Recruit Certified Engineer at Crew Shed.',
+        '2. Click Southeast Orchard corner spot.',
+        '3. Erect turbine (€275 · 4h) to complete the 4-corner full perimeter redundant renewable microgrid (12 kWh/h).'
+      ]
+    },
+    wind_turbine: {
+      name: '4-Corner Wind Turbine Grid',
+      icon: '💨',
+      chapter: 5,
+      cost: '€275 each',
+      prereq: 'Chapter 5 unlocked & Certified Engineer hired',
+      steps: [
+        '1. Recruit an Engineer at the Crew Shed (€180/d).',
+        '2. Erect turbines at the 4 perimeter corners (NW, NE, SW, SE).',
+        '3. Execute 3-point technical safety inspection for each turbine to establish hot-redundant grid.'
+      ]
+    },
+    juice_bar: {
+      name: 'Hof-Mosterei Organic Juice & Cider Bar',
+      icon: '🍎',
+      chapter: 6,
+      cost: '€700',
+      prereq: 'Chapter 6 unlocked & Main Road paved',
+      steps: [
+        '1. Advance to Chapter 6 ("Eco-Village & Circular Commerce").',
+        '2. Click South Promenade plot opposite the coffee shop.',
+        '3. Construct Juice Bar (€700) to press orchard harvest into refreshing juices & cider (+5 Rep).'
+      ]
+    },
+    coffee_shop: {
+      name: 'Alpenhof Gasthof Stuben & Terrace Café',
+      icon: '🍽️',
+      chapter: 6,
+      cost: '€800',
+      prereq: 'Chapter 6 unlocked & Main Road paved',
+      steps: [
+        '1. Advance to Chapter 6 ("Eco-Village & Circular Commerce").',
+        '2. Click North Promenade commercial plot.',
+        '3. Construct Café (€800) to serve artisan coffee and hospitality to visitors (+5 Rep).'
+      ]
+    },
+    eco_passport: {
+      name: 'Global Biome Eco-Passport Hub',
+      icon: '🌍',
+      chapter: 7,
+      cost: 'Free Blueprint',
+      prereq: 'Chapter 7 unlocked ("World Regenerative Network")',
+      steps: [
+        '1. Advance to Chapter 7 after establishing your community eco-village.',
+        '2. Click the Global Biome Eco-Passport site.',
+        '3. Unlock planetary ecological exchange with Arctic Tundra, Amazon Rainforest, Sahel Savanna, and Indo-Pacific Coral biomes.'
+      ]
+    },
+    space_mission: {
+      name: 'Artemis Bioregenerative Launchpad',
+      icon: '🚀',
+      chapter: 8,
+      cost: 'Free Blueprint',
+      prereq: 'Chapter 8 unlocked ("Beyond Earth: The Living Cosmos")',
+      steps: [
+        '1. Advance to Chapter 8 after mastering planetary bioregenerative closed loops.',
+        '2. Click the Artemis Space Launchpad site.',
+        '3. Deploy closed-loop hydroponics, algae photobioreactors, and ISRU oxygen synthesis for Lunar and Martian colonies.'
+      ]
+    }
   };
 
   var tourState = {
@@ -826,16 +1103,48 @@
       if (typeof VILLAGE_LAYOUT !== 'undefined' && VILLAGE_LAYOUT.pond) return VILLAGE_LAYOUT.pond;
       return { top: 12, left: 32, w: 12, h: 22 };
     }
+    if (key === 'cattle_farm') {
+      if (typeof VILLAGE_LAYOUT !== 'undefined' && VILLAGE_LAYOUT.cattle_farm) return VILLAGE_LAYOUT.cattle_farm;
+      return { top: 21.5, left: 2.0, w: 7.2, h: 22.0 };
+    }
+    if (key === 'crop_field') {
+      if (typeof VILLAGE_LAYOUT !== 'undefined' && VILLAGE_LAYOUT.crop_field) return VILLAGE_LAYOUT.crop_field;
+      return { top: 76.0, left: 45.5, w: 14, h: 19.5 };
+    }
+    if (key === 'garden_walk') {
+      return { top: 58, left: 28, w: 10, h: 14 };
+    }
+    if (key === 'energy_storage' || key === 5 || key === '5') {
+      if (typeof ENERGY_STORAGE_SPOT !== 'undefined') return ENERGY_STORAGE_SPOT;
+      if (typeof VILLAGE_LAYOUT !== 'undefined' && VILLAGE_LAYOUT.energy_storage) return VILLAGE_LAYOUT.energy_storage;
+      return { top: 54, left: 1.2, w: 6.8, h: 18 };
+    }
+    if (key === 'wt_nw' || key === 'wt_ne' || key === 'wt_sw' || key === 'wt_se') {
+      if (typeof WIND_TURBINE_SPOTS !== 'undefined' && WIND_TURBINE_SPOTS[key]) return WIND_TURBINE_SPOTS[key];
+      var wtFallbacks = {
+        wt_nw: { top: 2.0, left: 19.5, w: 9.0, h: 21.0 },
+        wt_ne: { top: 2.0, left: 74.5, w: 9.0, h: 21.0 },
+        wt_sw: { top: 73.0, left: 1.2, w: 6.8, h: 20.0 },
+        wt_se: { top: 73.0, left: 88.5, w: 9.0, h: 20.0 }
+      };
+      if (wtFallbacks[key]) return wtFallbacks[key];
+    }
+    if (key === 'wind_turbine') {
+      if (typeof WIND_TURBINE_SPOT !== 'undefined') return WIND_TURBINE_SPOT;
+      return { top: 2.0, left: 19.5, w: 9.0, h: 21.0 };
+    }
     if (key === 'juice_bar' || key === 6 || key === '6') {
       if (typeof VILLAGE_LAYOUT !== 'undefined' && VILLAGE_LAYOUT.juice_bar) return VILLAGE_LAYOUT.juice_bar;
       return { top: 66, left: 61, w: 12, h: 22 };
+    }
+    if (key === 'coffee_shop') {
+      if (typeof VILLAGE_LAYOUT !== 'undefined' && VILLAGE_LAYOUT.coffee_shop) return VILLAGE_LAYOUT.coffee_shop;
+      return { top: 12, left: 61, w: 12, h: 22 };
     }
     if (typeof VILLAGE_LAYOUT !== 'undefined' && VILLAGE_LAYOUT[key]) return VILLAGE_LAYOUT[key];
     if (key === 'gate' && typeof GATE_SPOT !== 'undefined') return GATE_SPOT;
     if (key === 'storage' && typeof STORAGE_SPOT !== 'undefined') return STORAGE_SPOT;
     if (key === 'garage' && typeof GARAGE_SPOT !== 'undefined') return GARAGE_SPOT;
-    if (key === 'wind_turbine' && typeof WIND_TURBINE_SPOT !== 'undefined') return WIND_TURBINE_SPOT;
-    if (key === 'energy_storage' && typeof ENERGY_STORAGE_SPOT !== 'undefined') return ENERGY_STORAGE_SPOT;
     if (key === 'jute_tarp' && typeof JUTE_TARP_SPOT !== 'undefined') return JUTE_TARP_SPOT;
     if (key === 'eco_passport' || key === 7 || key === '7') return { top: 12, left: 77.5, w: 10.5, h: 22 };
     if (key === 'space_mission' || key === 8 || key === '8') return { top: 66, left: 77.5, w: 10.5, h: 22 };
@@ -845,7 +1154,7 @@
       2: { top: 54, left: 8.5, w: 9.5, h: 18 },
       3: { top: 66, left: 32, w: 12, h: 22 },
       4: { top: 12, left: 32, w: 12, h: 22 },
-      5: { top: 2, left: 19.5, w: 9, h: 21 },
+      5: { top: 54, left: 1.2, w: 6.8, h: 18 },
       6: { top: 66, left: 61, w: 12, h: 22 },
       7: { top: 12, left: 77.5, w: 10.5, h: 22 },
       8: { top: 66, left: 77.5, w: 10.5, h: 22 }
@@ -871,6 +1180,17 @@
    * Finds the actual DOM element of the scout marker (.chapter-explore-hand.chapter-explore-locator).
    */
   function getScoutMarkerTouchTarget(ch) {
+    if (ch === 5) {
+      // Chapter 5 MUST walk to BESS in the SW utility yard meadow (ground level, never in the sky)
+      var bessSpot = getFacilitySpot('energy_storage');
+      var bLeft = (bessSpot.left || 1.2) + (bessSpot.w || 6.8) * 0.5;
+      var bTop = (bessSpot.top || 54) + (bessSpot.h || 18) * 0.55;
+      return {
+        touchPoint: { left: Math.max(4, bLeft), top: Math.max(10, bessSpot.top - 2) },
+        standPoint: { left: Math.max(6, bLeft + 3), top: Math.min(84, bTop + 4) }
+      };
+    }
+
     var scene = document.getElementById('fieldScene');
     if (scene) {
       var sceneRect = scene.getBoundingClientRect();
@@ -894,7 +1214,7 @@
       2: 'crew_shed',
       3: 'garden',
       4: 'pond',
-      5: 'wind_turbine',
+      5: 'energy_storage',
       6: 'juice_bar',
       7: 'eco_passport',
       8: 'space_mission'
@@ -1110,14 +1430,75 @@
     if (key === 'crew_shed' && typeof window !== 'undefined' && typeof window.drawCrewShedScene === 'function') {
       try { return window.drawCrewShedScene({ built: true }); } catch (e) {}
     }
-    if (key === 'garden' && typeof window !== 'undefined' && typeof window.drawGardenScene === 'function') {
-      try { return window.drawGardenScene('roses', 100, false, false); } catch (e) {}
+    if (key === 'garden') {
+      if (typeof window !== 'undefined' && typeof window.drawGardenScene === 'function') {
+        try {
+          var gSvg = window.drawGardenScene('roses', 100, false, false, true);
+          if (gSvg && gSvg.indexOf('unbuilt-spot') === -1) return gSvg;
+        } catch (e) {}
+      }
+      return (
+        '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">' +
+          '<polygon points="80,24 136,44 136,84 80,104 24,84 24,44" fill="#3E2723" stroke="#81C784" stroke-width="2"/>' +
+          '<polygon points="80,28 130,46 130,80 80,98 30,80 30,46" fill="#4E342E"/>' +
+          '<!-- Flower Beds -->' +
+          '<ellipse cx="56" cy="52" rx="14" ry="9" fill="#1B5E20" stroke="#4CAF50" stroke-width="1"/>' +
+          '<ellipse cx="104" cy="52" rx="14" ry="9" fill="#1B5E20" stroke="#4CAF50" stroke-width="1"/>' +
+          '<ellipse cx="80" cy="74" rx="16" ry="10" fill="#1B5E20" stroke="#4CAF50" stroke-width="1"/>' +
+          '<!-- Blooming Flowers: Roses, Sunflowers & Lavender -->' +
+          '<circle cx="52" cy="50" r="3.5" fill="#E91E63"/><circle cx="60" cy="53" r="3.5" fill="#FF4081"/>' +
+          '<circle cx="100" cy="50" r="4" fill="#FFEB3B"/><circle cx="108" cy="53" r="4" fill="#FDD835"/>' +
+          '<circle cx="76" cy="72" r="3" fill="#BA68C8"/><circle cx="84" cy="74" r="3" fill="#AB47BC"/>' +
+          '<!-- Stepping Stones -->' +
+          '<circle cx="80" cy="54" r="4" fill="#B0BEC5"/>' +
+          '<!-- Honey Bee Hive -->' +
+          '<rect x="76" y="34" width="8" height="10" rx="2" fill="#FFA000" stroke="#FF6F00" stroke-width="0.8"/>' +
+          '<text x="80" y="42" font-size="6" text-anchor="middle">🐝</text>' +
+          '<text x="80" y="94" font-size="12" text-anchor="middle">🌸</text>' +
+        '</svg>'
+      );
     }
-    if (key === 'pond' && typeof window !== 'undefined' && typeof window.drawPondScene === 'function') {
-      try { return window.drawPondScene('trout', 100, false, false, false); } catch (e) {}
+    if (key === 'pond') {
+      if (typeof window !== 'undefined' && typeof window.drawPondScene === 'function') {
+        try {
+          var pSvg = window.drawPondScene('trout', 100, false, false, false, true);
+          if (pSvg && pSvg.indexOf('unbuilt-spot') === -1) return pSvg;
+        } catch (e) {}
+      }
+      return (
+        '<svg viewBox="0 0 160 120" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">' +
+          '<ellipse cx="80" cy="62" rx="74" ry="46" fill="#78909C" stroke="#455A64" stroke-width="2"/>' +
+          '<ellipse cx="80" cy="59" rx="66" ry="40" fill="#01579B"/>' +
+          '<ellipse cx="65" cy="54" rx="24" ry="12" fill="none" stroke="#4FC3F7" stroke-width="1.2" opacity="0.6"/>' +
+          '<ellipse cx="102" cy="64" rx="20" ry="10" fill="none" stroke="#4FC3F7" stroke-width="1.0" opacity="0.5"/>' +
+          '<!-- Wooden Viewing Pier -->' +
+          '<rect x="18" y="44" width="34" height="15" rx="2" fill="#8D6E63" stroke="#4E342E" stroke-width="1.2"/>' +
+          '<!-- Water Lilies & Mallard Duck -->' +
+          '<ellipse cx="98" cy="48" rx="7" ry="4" fill="#2E7D32"/><circle cx="98" cy="46" r="3" fill="#F48FB1"/>' +
+          '<ellipse cx="118" cy="66" rx="8" ry="4.5" fill="#2E7D32"/><circle cx="118" cy="64" r="3" fill="#FFF9C4"/>' +
+          '<text x="76" y="66" font-size="14" text-anchor="middle">🦆</text>' +
+        '</svg>'
+      );
     }
-    if (key === 'wind_turbine' && typeof window !== 'undefined' && typeof window.drawWindTurbineScene === 'function') {
-      try { return window.drawWindTurbineScene({ built: true, commissioned: true }); } catch (e) {}
+    if (key === 'wind_turbine' || (typeof key === 'string' && key.indexOf('wt_') === 0)) {
+      if (typeof window !== 'undefined' && typeof window.drawWindTurbineScene === 'function') {
+        try {
+          var wtSvg = window.drawWindTurbineScene({ built: true, commissioned: true });
+          if (wtSvg && wtSvg.indexOf('unbuilt-spot') === -1) return wtSvg;
+        } catch (e) {}
+      }
+      return (
+        '<svg viewBox="0 0 120 180" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">' +
+          '<ellipse cx="60" cy="168" rx="34" ry="8" fill="rgba(0,229,255,0.2)"/>' +
+          '<polygon points="56,165 64,165 61,45 59,45" fill="#CFD8DC" stroke="#78909C" stroke-width="1.2"/>' +
+          '<circle cx="60" cy="45" r="7" fill="#37474F" stroke="#00E5FF" stroke-width="1.5"/>' +
+          '<!-- 3 Rotor Blades -->' +
+          '<path d="M60,45 Q56,15 60,8 Q64,15 60,45" fill="#ECEFF1" stroke="#B0BEC5" stroke-width="1"/>' +
+          '<path d="M60,45 Q88,60 94,65 Q86,72 60,45" fill="#ECEFF1" stroke="#B0BEC5" stroke-width="1"/>' +
+          '<path d="M60,45 Q32,60 26,65 Q34,72 60,45" fill="#ECEFF1" stroke="#B0BEC5" stroke-width="1"/>' +
+          '<text x="60" y="48" font-size="7" text-anchor="middle" fill="#00E5FF">⚡</text>' +
+        '</svg>'
+      );
     }
     if (key === 'juice_bar' && typeof window !== 'undefined' && typeof window.drawJuiceBarScene === 'function') {
       try { return window.drawJuiceBarScene({ built: true }, false); } catch (e) {}
@@ -1134,11 +1515,50 @@
     if (key === 'crop_field' && typeof window !== 'undefined' && typeof window.drawCropFieldScene === 'function') {
       try { return window.drawCropFieldScene({ built: true, beds: [{ cropKey: 'wheat', ready: true }] }); } catch (e) {}
     }
-    if (key === 'cattle_farm' && typeof window !== 'undefined' && typeof window.drawCattleFarmScene === 'function') {
-      try { return window.drawCattleFarmScene({ built: true }, false); } catch (e) {}
+    if (key === 'cattle_farm') {
+      if (typeof window !== 'undefined' && typeof window.drawCattleFarmScene === 'function') {
+        try {
+          var cfSvg = window.drawCattleFarmScene({
+            built: true,
+            chambers: [
+              { id: 0, name: 'Stall 1', species: 'cow', animals: [{ species: 'cow', age: 'adult' }] },
+              { id: 1, name: 'Stall 2', species: 'cow', animals: [{ species: 'cow', age: 'adult' }] },
+              { id: 2, name: 'Stall 3', species: 'sheep', animals: [{ species: 'sheep', age: 'adult' }] },
+              { id: 3, name: 'Stall 4', species: 'sheep', animals: [{ species: 'sheep', age: 'adult' }] }
+            ]
+          }, false);
+          if (cfSvg && cfSvg.indexOf('unbuilt-spot') === -1) return cfSvg;
+        } catch (e) {}
+      }
+      return (
+        '<svg viewBox="0 0 90 240" preserveAspectRatio="none" style="width:100%;height:100%;">' +
+          '<rect x="4" y="6" width="82" height="228" rx="4" fill="#3E2723" stroke="#261713" stroke-width="2"/>' +
+          '<rect x="8" y="12" width="74" height="48" rx="2" fill="#FFFDE7"/><text x="45" y="44" font-size="16" text-anchor="middle">🐄</text>' +
+          '<rect x="8" y="68" width="74" height="48" rx="2" fill="#FFFDE7"/><text x="45" y="100" font-size="16" text-anchor="middle">🐄</text>' +
+          '<rect x="8" y="124" width="74" height="48" rx="2" fill="#FFFDE7"/><text x="45" y="156" font-size="16" text-anchor="middle">🐑</text>' +
+          '<rect x="8" y="180" width="74" height="48" rx="2" fill="#FFFDE7"/><text x="45" y="212" font-size="16" text-anchor="middle">🐑</text>' +
+        '</svg>'
+      );
     }
-    if (key === 'energy_storage' && typeof window !== 'undefined' && typeof window.drawEnergyStorageScene === 'function') {
-      try { return window.drawEnergyStorageScene({ built: true, storedKWh: 350, maxKWh: 500 }); } catch (e) {}
+    if (key === 'energy_storage') {
+      if (typeof window !== 'undefined' && typeof window.drawEnergyStorageScene === 'function') {
+        try {
+          var bSvg = window.drawEnergyStorageScene({ built: true, storedKWh: 350, maxKWh: 500 });
+          if (bSvg && bSvg.indexOf('unbuilt-spot') === -1) return bSvg;
+        } catch (e) {}
+      }
+      return (
+        '<svg viewBox="0 0 140 140" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">' +
+          '<ellipse cx="70" cy="122" rx="45" ry="12" fill="rgba(0,229,255,0.2)"/>' +
+          '<rect x="28" y="42" width="84" height="74" rx="6" fill="#263238" stroke="#00E5FF" stroke-width="2"/>' +
+          '<rect x="36" y="52" width="30" height="22" rx="3" fill="#37474F" stroke="#78909C" stroke-width="1"/>' +
+          '<rect x="74" y="52" width="30" height="22" rx="3" fill="#37474F" stroke="#78909C" stroke-width="1"/>' +
+          '<rect x="36" y="82" width="68" height="24" rx="3" fill="#1B5E20" stroke="#4CAF50" stroke-width="1"/>' +
+          '<text x="70" y="98" font-size="10" text-anchor="middle" font-weight="900" fill="#A5D6A7">350 / 500 kWh</text>' +
+          '<circle cx="44" cy="63" r="3" fill="#69F0AE"/><circle cx="54" cy="63" r="3" fill="#69F0AE"/>' +
+          '<text x="70" y="34" font-size="14" text-anchor="middle">🔋</text>' +
+        '</svg>'
+      );
     }
     if (key === 'gate' && typeof window !== 'undefined' && typeof window.drawMainGateScene === 'function') {
       try { return window.drawMainGateScene(); } catch (e) {}
@@ -1198,6 +1618,98 @@
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // 3D Object Mouse Hover Modal System (Triggered strictly on mouse hover)
+  // ---------------------------------------------------------------------------
+  function ensureObjectHoverModal() {
+    var modal = document.getElementById('s2ObjectHoverModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 's2ObjectHoverModal';
+      modal.className = 's2-object-hover-modal hidden';
+      document.body.appendChild(modal);
+    }
+    return modal;
+  }
+
+  function showObjectHoverModal(e, key, obj, ch, anchorEl) {
+    // Strictly mouse hover: ignore non-mouse pointer events (e.g. touch or pen)
+    if (e && e.pointerType && e.pointerType !== 'mouse') return;
+    var modal = ensureObjectHoverModal();
+    var spec = OBJECT_UNLOCK_SPECS[key] || {
+      name: (obj && obj.name) || key,
+      icon: (obj && obj.icon) || '🏛️',
+      chapter: ch || 1,
+      cost: 'Varies',
+      prereq: 'Survey Chapter ' + (ch || 1) + ' masterplan',
+      steps: [
+        '1. Survey Chapter ' + (ch || 1) + ' directional locator.',
+        '2. Advance farm infrastructure to meet prerequisites.',
+        '3. Commission and activate this ecological facility.'
+      ]
+    };
+
+    var miniSvg = getBuildingArchitecturalSvg(key, obj, ch);
+    var chNum = spec.chapter || ch || 1;
+    var chTitle = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[chNum - 1])
+      ? CHAPTER_DEFINITIONS[chNum - 1].title
+      : ('Chapter ' + chNum);
+
+    modal.innerHTML =
+      '<div class="ohm-header">' +
+        '<div class="ohm-title-row">' +
+          '<span class="ohm-icon">' + spec.icon + '</span>' +
+          '<div class="ohm-title-wrap">' +
+            '<div class="ohm-title">' + spec.name + '</div>' +
+            '<div class="ohm-badge">Ch. ' + chNum + ' · ' + chTitle + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<span class="ohm-status-tag">📐 Blueprint</span>' +
+      '</div>' +
+      '<div class="ohm-preview-card">' +
+        '<div class="ohm-preview-svg">' + miniSvg + '</div>' +
+      '</div>' +
+      '<div class="ohm-body">' +
+        '<div class="ohm-prereq-row">' +
+          '<span class="ohm-prereq-label">Prerequisites:</span> ' +
+          '<span class="ohm-prereq-val">' + spec.prereq + ' (' + spec.cost + ')</span>' +
+        '</div>' +
+        '<div class="ohm-steps-title">Steps to Unlock:</div>' +
+        '<ol class="ohm-steps-list">' +
+          spec.steps.map(function(s){ return '<li>' + s + '</li>'; }).join('') +
+        '</ol>' +
+      '</div>';
+
+    modal.classList.remove('hidden');
+
+    var rect = anchorEl ? anchorEl.getBoundingClientRect() : (e ? { left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY, width: 0, height: 0 } : null);
+    if (rect) {
+      var modalW = 270;
+      var modalH = modal.offsetHeight || 300;
+      var vw = window.innerWidth;
+      var vh = window.innerHeight;
+
+      var topPos = rect.top - modalH - 12;
+      if (topPos < 16) {
+        topPos = rect.bottom + 12;
+      }
+
+      var leftPos = rect.left + (rect.width / 2) - (modalW / 2);
+      if (leftPos < 12) leftPos = 12;
+      if (leftPos + modalW > vw - 12) leftPos = vw - modalW - 12;
+
+      modal.style.top = Math.max(10, Math.min(vh - modalH - 10, topPos)) + 'px';
+      modal.style.left = leftPos + 'px';
+    }
+  }
+
+  function hideObjectHoverModal() {
+    var modal = document.getElementById('s2ObjectHoverModal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+  }
+
   function showChapterGhosts(ch, sequential) {
     var layer = ensureGhostLayer();
     if (!layer) return;
@@ -1215,6 +1727,8 @@
       el.style.top = spot.top + '%';
       el.style.width = (spot.w || 10) + '%';
       el.style.height = (spot.h || 16) + '%';
+      el.setAttribute('data-object-key', obj.key);
+      el.setAttribute('data-facility-key', obj.key);
       el.innerHTML =
         '<div class="s2-ghost-structure s2-ghost-body">' +
           archSvg +
@@ -1222,6 +1736,14 @@
           '<span class="s2-ghost-lock">🔒</span>' +
         '</div>' +
         '<div class="s2-ghost-label">Ch. ' + ch + ' · ' + obj.name + '</div>';
+
+      // Mouse-only hover modal interaction
+      el.addEventListener('mouseenter', function (e) {
+        showObjectHoverModal(e, obj.key, obj, ch, el);
+      });
+      el.addEventListener('mouseleave', function () {
+        hideObjectHoverModal();
+      });
 
       layer.appendChild(el);
       var delay = sequential ? 200 + idx * 260 : 60 + idx * 60;
@@ -1357,16 +1879,12 @@
 
   function isAnyExplorationModalOpen() {
     var overlay = document.getElementById('modalOverlay');
-    if (overlay && !overlay.classList.contains('hidden') && overlay.style.display !== 'none') return true;
+    if (overlay && !overlay.classList.contains('hidden') && overlay.style.display !== 'none' && overlay.offsetWidth > 0) return true;
     var lockedPopup = document.getElementById('stepInstructionPopupWrapper');
-    if (lockedPopup && !lockedPopup.classList.contains('hidden') && lockedPopup.style.display !== 'none') return true;
+    if (lockedPopup && !lockedPopup.classList.contains('hidden') && lockedPopup.style.display !== 'none' && lockedPopup.offsetWidth > 0) return true;
     var tourOverlay = document.getElementById('s2HomeOverlay');
-    if (tourOverlay && !tourOverlay.classList.contains('hidden') && tourOverlay.style.display !== 'none') return true;
+    if (tourOverlay && !tourOverlay.classList.contains('hidden') && tourOverlay.style.display !== 'none' && tourOverlay.offsetWidth > 0) return true;
     if (typeof document !== 'undefined' && document.body && document.body.classList.contains('modal-open')) return true;
-    var activeModals = document.querySelectorAll('.modal, .cartoon-roadmap-modal, .marketplace-tray:not(.is-collapsed)');
-    for (var i = 0; i < activeModals.length; i++) {
-      if (activeModals[i].offsetWidth > 0 && activeModals[i].style.display !== 'none') return true;
-    }
     return false;
   }
 
@@ -1747,6 +2265,22 @@
     spawnWalker(av, meadow);
   }
 
+  function bindFarmObjectsHoverModal() {
+    if (typeof document === 'undefined') return;
+    var buildings = document.querySelectorAll('[data-building]');
+    buildings.forEach(function (el) {
+      if (el._hoverModalWired) return;
+      el._hoverModalWired = true;
+      var key = el.getAttribute('data-building');
+      el.addEventListener('mouseenter', function (e) {
+        showObjectHoverModal(e, key, { key: key }, (typeof OBJECT_TO_CHAPTER !== 'undefined' && OBJECT_TO_CHAPTER[key]) || 1, el);
+      });
+      el.addEventListener('mouseleave', function () {
+        hideObjectHoverModal();
+      });
+    });
+  }
+
   function bootIntegration() {
     setTimeout(function () {
       if (shouldShowHomeOverlay()) {
@@ -1754,12 +2288,16 @@
       } else {
         maybeResumeAvatarOnFarm();
       }
+      bindFarmObjectsHoverModal();
+      setInterval(bindFarmObjectsHoverModal, 2500);
     }, 800);
   }
 
   // Public Global API
   global.SearchO2HomeAvatar = {
     AVATAR_ROSTER: AVATAR_ROSTER,
+    OBJECT_UNLOCK_SPECS: OBJECT_UNLOCK_SPECS,
+    CHAPTER_TOUR_OBJECTS: CHAPTER_TOUR_OBJECTS,
     showHomeOverlay: showHomeOverlay,
     hideHomeOverlay: hideHomeOverlay,
     startChapterTour: startChapterTour,
@@ -1792,6 +2330,11 @@
     renderScoutCountdownFloater: renderScoutCountdownFloater,
     renderExploredFieldBadge: renderExploredFieldBadge,
     showChapterGhosts: showChapterGhosts,
+    showObjectHoverModal: showObjectHoverModal,
+    hideObjectHoverModal: hideObjectHoverModal,
+    bindFarmObjectsHoverModal: bindFarmObjectsHoverModal,
+    getScoutMarkerTouchTarget: getScoutMarkerTouchTarget,
+    getFacilitySpot: getFacilitySpot,
     spawnWalker: spawnWalker,
     initAvatar: function (id, ch) {
       tourState.avatarId = id;
