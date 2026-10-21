@@ -1259,12 +1259,71 @@
   // ---------------------------------------------------------------------------
   // Chapter Roadmap Modal & Survey Progression (Aligned beside Active Chapter Challenge)
   // ---------------------------------------------------------------------------
+  function advanceTourCheckpoint(targetCh) {
+    var c = targetCh || tourState.activeCheckpoint || 1;
+    tourState.activeCheckpoint = null;
+    var modal = document.getElementById('s2TourModal');
+    if (modal) modal.classList.add('hidden');
+
+    var keyMap = {
+      1: 'plot',
+      2: 'crew_shed',
+      3: 'garden',
+      4: 'pond',
+      5: 'wind_turbine',
+      6: 'juice_bar',
+      7: 'eco_passport',
+      8: 'space_mission'
+    };
+    var primaryKey = keyMap[c];
+
+    // Drive the actual SearchO2 exploration mechanics
+    var exploreFn = (typeof exploreChapterObject === 'function')
+      ? exploreChapterObject
+      : ((typeof window !== 'undefined' && typeof window.exploreChapterObject === 'function') ? window.exploreChapterObject : null);
+
+    if (primaryKey && exploreFn) {
+      try {
+        exploreFn(primaryKey);
+      } catch (e) {}
+    }
+    if (typeof closeModal === 'function') {
+      try { closeModal(); } catch(e){}
+    }
+    if (typeof state !== 'undefined' && state) {
+      state.exploredChapters = state.exploredChapters || {};
+      state.exploredChapters[c] = true;
+      state.exploredChapterObjects = state.exploredChapterObjects || {};
+      if (primaryKey) state.exploredChapterObjects[primaryKey] = true;
+      if (typeof state.xp === 'number' && state.xp === 0) state.xp = 5;
+    }
+
+    renderExploredFieldBadge(c, primaryKey);
+
+    if (typeof updateTaskCarouselDOM === 'function') updateTaskCarouselDOM();
+    if (typeof render === 'function') render();
+
+    var cb = tourState.onCheckpointAdvance;
+    tourState.onCheckpointAdvance = null;
+    if (cb) {
+      cb();
+    } else if (tourState.active && c < 8) {
+      startScoutCooldown(c, c + 1);
+    }
+  }
+
   function openTourModal(ch, onContinue) {
+    tourState.activeCheckpoint = ch;
+    tourState.onCheckpointAdvance = onContinue;
+
+    // Update existing chapter survey modal bottom left beside marketplace
+    if (typeof updateTaskCarouselDOM === 'function') updateTaskCarouselDOM();
+    if (typeof render === 'function') render();
+
     dockTopCapsules();
     var modal = document.getElementById('s2TourModal');
     var card = document.getElementById('s2TourModalCard');
     if (!modal || !card) {
-      if (onContinue) onContinue();
       return;
     }
 
@@ -1286,43 +1345,7 @@
     dockTopCapsules();
 
     function handleModalCloseAndAdvance() {
-      modal.classList.add('hidden');
-
-      var keyMap = {
-        1: 'plot',
-        2: 'crew_shed',
-        3: 'garden',
-        4: 'pond',
-        5: 'wind_turbine',
-        6: 'juice_bar',
-        7: 'eco_passport',
-        8: 'space_mission'
-      };
-      var primaryKey = keyMap[ch];
-
-      // Drive the actual SearchO2 exploration mechanics
-      var exploreFn = (typeof exploreChapterObject === 'function')
-        ? exploreChapterObject
-        : ((typeof window !== 'undefined' && typeof window.exploreChapterObject === 'function') ? window.exploreChapterObject : null);
-
-      if (primaryKey && exploreFn) {
-        try {
-          exploreFn(primaryKey);
-        } catch (e) {}
-      }
-      if (typeof state !== 'undefined' && state) {
-        state.exploredChapters = state.exploredChapters || {};
-        state.exploredChapters[ch] = true;
-        state.exploredChapterObjects = state.exploredChapterObjects || {};
-        if (primaryKey) state.exploredChapterObjects[primaryKey] = true;
-        if (typeof state.xp === 'number' && state.xp === 0) state.xp = 5;
-      }
-
-      renderExploredFieldBadge(ch, primaryKey);
-
-      if (typeof render === 'function') render();
-
-      if (onContinue) onContinue();
+      advanceTourCheckpoint(ch);
     }
 
     var btn = document.getElementById('s2TourContinue');
@@ -1340,24 +1363,24 @@
     var tourOverlay = document.getElementById('s2HomeOverlay');
     if (tourOverlay && !tourOverlay.classList.contains('hidden') && tourOverlay.style.display !== 'none') return true;
     if (typeof document !== 'undefined' && document.body && document.body.classList.contains('modal-open')) return true;
+    var activeModals = document.querySelectorAll('.modal, .cartoon-roadmap-modal, .marketplace-tray:not(.is-collapsed)');
+    for (var i = 0; i < activeModals.length; i++) {
+      if (activeModals[i].offsetWidth > 0 && activeModals[i].style.display !== 'none') return true;
+    }
     return false;
   }
 
   function renderScoutCountdownFloater(seconds, nextCh) {
     var floater = document.getElementById('s2ScoutCountdownFloater');
-    var fieldScene = document.getElementById('fieldScene') || document.querySelector('.field-scene');
+    var host = document.getElementById('fieldScene') || document.querySelector('.field-scene') || document.body;
     if (!floater) {
       floater = document.createElement('div');
       floater.id = 's2ScoutCountdownFloater';
       floater.className = 's2-scout-countdown-floater';
-      if (fieldScene) {
-        fieldScene.appendChild(floater);
-      } else {
-        document.body.appendChild(floater);
-      }
+      host.appendChild(floater);
     } else {
-      if (fieldScene && floater.parentElement !== fieldScene) {
-        fieldScene.appendChild(floater);
+      if (floater.parentElement !== host) {
+        host.appendChild(floater);
       }
     }
 
@@ -1423,8 +1446,10 @@
   }
 
   function updateScoutCountdownFloater(seconds, nextCh) {
-    var secSpan = document.getElementById('s2ScoutCountdownSec');
-    if (secSpan) secSpan.textContent = seconds + 's';
+    var secSpans = document.querySelectorAll('#s2ScoutCountdownSec, .s2-scout-countdown-sec');
+    secSpans.forEach(function (el) {
+      el.textContent = seconds + 's';
+    });
     var secPop = document.getElementById('s2ScoutCountdownSecPop');
     if (secPop) secPop.textContent = seconds + 's';
 
@@ -1456,6 +1481,8 @@
     tourState.cooldownRemaining = 0;
     tourState.pendingNextChapter = null;
     hideScoutCountdownFloater();
+    if (typeof updateTaskCarouselDOM === 'function') updateTaskCarouselDOM();
+    if (typeof render === 'function') render();
   }
 
   function triggerNextScoutWalk(nextCh) {
@@ -1468,8 +1495,12 @@
   }
 
   function walkToNextScoutNow() {
-    if (!tourState.active || !tourState.cooldownActive) return;
-    var nextCh = tourState.pendingNextChapter || (tourState.currentChapter + 1);
+    if (!tourState.active) {
+      startChapterTour();
+      return;
+    }
+    if (!tourState.cooldownActive) return;
+    var nextCh = tourState.pendingNextChapter || (tourState.currentChapter ? tourState.currentChapter + 1 : 2);
     triggerNextScoutWalk(nextCh);
   }
 
@@ -1487,6 +1518,8 @@
 
     renderScoutCountdownFloater(45, nextCh);
     updateTourProgress(fromCh, 45);
+    if (typeof updateTaskCarouselDOM === 'function') updateTaskCarouselDOM();
+    if (typeof render === 'function') render();
 
     tourState.cooldownTimer = setInterval(function () {
       tourState.cooldownRemaining--;
@@ -1494,6 +1527,7 @@
 
       updateScoutCountdownFloater(rem, nextCh);
       updateTourProgress(fromCh, rem);
+      if (typeof updateTaskCarouselDOM === 'function') updateTaskCarouselDOM();
 
       if (rem <= 0) {
         clearScoutCooldown();
@@ -1750,6 +1784,10 @@
     getSelected: function () {
       return tourState.avatar;
     },
+    getActiveCheckpoint: function () {
+      return tourState.activeCheckpoint || null;
+    },
+    advanceTourCheckpoint: advanceTourCheckpoint,
     openTourModal: openTourModal,
     renderScoutCountdownFloater: renderScoutCountdownFloater,
     renderExploredFieldBadge: renderExploredFieldBadge,

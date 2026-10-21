@@ -19973,8 +19973,17 @@ function openChapterRoadmapForObject(key){
     type: 'chapter_roadmap',
     objectKey: key
   };
-  if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
-  render();
+  setTimeout(function(){
+    if (typeof SoundTrackEngine !== 'undefined') {
+      try { SoundTrackEngine.playSFX('click'); } catch(e){}
+    }
+  }, 0);
+  var ml = document.getElementById('modalLayer');
+  if (ml && typeof modalHtml === 'function') {
+    ml.innerHTML = modalHtml();
+  } else {
+    render();
+  }
 }
 
 function getChapterIsometric3DIcon(ch, key) {
@@ -21725,6 +21734,43 @@ function getDynamicProfessionAvailableTasks(s) {
     }
   }
 
+  // 0. SCOUT / EXPLORER ACTIVE CHAPTER CHECKPOINT OR 45S COOLDOWN
+  if (typeof SearchO2HomeAvatar !== 'undefined' && SearchO2HomeAvatar) {
+    var activeCheckpoint = (typeof SearchO2HomeAvatar.getActiveCheckpoint === 'function') ? SearchO2HomeAvatar.getActiveCheckpoint() : null;
+    var isCooling = (typeof SearchO2HomeAvatar.isCooldownActive === 'function') ? SearchO2HomeAvatar.isCooldownActive() : false;
+    if (activeCheckpoint) {
+      var chDef = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[activeCheckpoint - 1])
+        ? CHAPTER_DEFINITIONS[activeCheckpoint - 1]
+        : { title: 'Chapter ' + activeCheckpoint, icon: '🧭' };
+      tasks.unshift({
+        id: 'chapter_scout_checkpoint',
+        profession: 'Explorer',
+        profIcon: '🧭',
+        profColor: '#1B5E20',
+        title: 'Ch. ' + activeCheckpoint + ': ' + (chDef.title || 'Scout'),
+        icon: chDef.icon || '🧭',
+        action: 'if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.advanceTourCheckpoint(' + activeCheckpoint + ')',
+        desc: 'Chapter ' + activeCheckpoint + ' surveyed! Blueprint unlocked. Tap to advance.',
+        btnText: 'Explore ➔',
+        btnId: 's2TourContinue'
+      });
+    } else if (isCooling) {
+      var rem = (typeof SearchO2HomeAvatar.getCooldownRemaining === 'function') ? SearchO2HomeAvatar.getCooldownRemaining() : 45;
+      tasks.unshift({
+        id: 'chapter_scout_cooldown',
+        profession: 'Explorer',
+        profIcon: '🧭',
+        profColor: '#1B5E20',
+        title: 'Next Scout in <b id="s2ScoutCountdownSec">' + rem + 's</b>',
+        icon: '⏳',
+        action: 'if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.walkToNextScoutNow()',
+        desc: 'Scout cooldown active. Tap Walk Now to continue tour immediately.',
+        btnText: 'Walk Now ➔',
+        btnId: 's2WalkNextBtn'
+      });
+    }
+  }
+
   return tasks;
 }
 
@@ -21802,7 +21848,7 @@ function renderIdleLaborerSuggestionHtml(s){
       dotsHtml +
     '</div>' +
     (tasks.length > 1 ? '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">' + arrowsHtml + '</div>' : '') +
-    '<button type="button" style="background:#fff;color:#1B5E20;border:none;border-radius:12px;padding:3px 8px;font-size:0.70rem;font-weight:900;cursor:pointer;margin-left:2px;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.18);touch-action:manipulation;">' + (task.btnText || 'Assign ➔') + '</button>' +
+    '<button type="button" ' + (task.btnId ? ('id="' + task.btnId + '" ') : '') + (task.btnId === 's2WalkNextBtn' ? 'class="scf-walk-btn" ' : '') + 'onclick="event.stopPropagation(); executeLaborerSuggestion(\'' + task.action.replace(/'/g, "\\'") + '\')" ontouchend="event.stopPropagation(); executeLaborerSuggestion(\'' + task.action.replace(/'/g, "\\'") + '\')" style="background:#fff;color:#1B5E20;border:none;border-radius:12px;padding:3px 8px;font-size:0.70rem;font-weight:900;cursor:pointer;margin-left:2px;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.18);touch-action:manipulation;">' + (task.btnText || 'Assign ➔') + '</button>' +
   '</div>';
 }
 
@@ -23759,6 +23805,13 @@ function openModal(type, plotId){
   }
 
   if (type === 'storage'){
+    var curCh = (typeof state !== 'undefined' && state && state.currentChapter) ? state.currentChapter : 1;
+    if (curCh < 2) {
+      if (typeof showNotification === 'function') {
+        showNotification('🌱', 'Focus on pioneering Plot 1! Storage granary barn unlocks in Chapter 2.', 'plot', 0);
+      }
+      return;
+    }
     if (typeof isObjectUnlockedByChapter === 'function' && !isObjectUnlockedByChapter('storage', state)){
       if (typeof exploreChapterObject === 'function') exploreChapterObject('storage');
       return;
@@ -23779,6 +23832,13 @@ function openModal(type, plotId){
   }
 
   if (type === 'building'){
+    var curCh = (typeof state !== 'undefined' && state && state.currentChapter) ? state.currentChapter : 1;
+    if (curCh < 2) {
+      if (typeof showNotification === 'function') {
+        showNotification('🌱', 'Focus on pioneering Plot 1! Facilities unlock starting in Chapter 2.', 'plot', 0);
+      }
+      return;
+    }
     if (typeof isObjectUnlockedByChapter === 'function' && !isObjectUnlockedByChapter(plotId, state)){
       if (typeof exploreChapterObject === 'function') exploreChapterObject(plotId);
       return;
@@ -25584,8 +25644,8 @@ function showLockedStepPopup(stepNum, optKey){
   var targetCh = info.chapter || 2;
   var chDef = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[targetCh - 1]) ? CHAPTER_DEFINITIONS[targetCh - 1] : { title: 'Estate Progression', fantasy: 'Regenerative Agriculture' };
   var curCh = (typeof state !== 'undefined' && state && state.currentChapter) ? state.currentChapter : 1;
-  // When in Chapter 1, suppress old sticky "Crew Shed Required" modal on laptop/desktop screen
-  if (curCh === 1 && (key === 'crew_shed' || key === 'laborer')) {
+  // Enable all info popups only after unlocking Chapter 2; suppress during Chapter 1
+  if (curCh < 2) {
     return;
   }
 
@@ -27320,6 +27380,7 @@ function dismissEducationalDiscoveryBubble(e){
 }
 
 function showEducationalDiscoveryBubble(targetType, targetKey, customData){
+  if (!state || (state.currentChapter || 1) < 2) return;
   if (state && state.settings && state.settings.knowledgeNotifications === false) return;
   var layer = document.getElementById('educationalDiscoveryLayer');
   if (!layer) return;
@@ -27538,6 +27599,7 @@ function showEducationalDiscoveryBubble(targetType, targetKey, customData){
 }
 
 function triggerRandomEducationalDiscovery(){
+  if (!state || (state.currentChapter || 1) < 2) return;
   if (state && state.settings && state.settings.knowledgeNotifications === false) return;
   if (typeof activeModal !== 'undefined' && activeModal) return;
   if (typeof currentScreen !== 'undefined' && currentScreen !== 'farm') return;
@@ -37436,6 +37498,12 @@ var tooltipTimeout = null;
 function showGameTooltip(el, text){
   var tip = document.getElementById('toolTip');
   if (!tip || !text || !el) return;
+  var curCh = (typeof state !== 'undefined' && state && state.currentChapter) ? state.currentChapter : 1;
+  if (curCh < 2) {
+    if (el.closest && el.closest('.plot-spot, .planted-tree-3d-wrapper, [data-building], [data-plot], .facility-spot, .tree-spot, .wild-tree-wrapper')) {
+      return;
+    }
+  }
 
   if (tooltipTimeout) clearTimeout(tooltipTimeout);
   activeTooltipTarget = el;
