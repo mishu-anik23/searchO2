@@ -1838,11 +1838,94 @@
     return { left: Math.max(55, g.left - 18), top: g.top + 2 };
   }
 
+  function isMobileViewport() {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth <= 860 || window.innerHeight <= 520 ||
+      (window.matchMedia && window.matchMedia('(max-width: 860px), (max-height: 520px), (pointer: coarse)').matches);
+  }
+
   /**
    * Calculates the exact coordinates for the avatar to stand and touch the active scout marker.
-   * Finds the actual DOM element of the scout marker corresponding to chapter `ch`.
+   * On PC: Restored exact coordinates and locator behavior from commit ade3468.
+   * On Mobile: Recalculated coordinates keeping avatar in clear, open spaces away from corners/cattle farm.
    */
   function getScoutMarkerTouchTarget(ch) {
+    var mobile = isMobileViewport();
+
+    // Mobile Recalculated Coordinates for accurate collision-free positioning
+    if (mobile) {
+      var mobileCoords = {
+        // Ch 1: Central Meadow / Plot 1 (away from top-left corner and cattle farm at 2.0%, 21.5%)
+        1: { standPoint: { left: 40.0, top: 32.0 }, touchPoint: { left: 40.0, top: 24.0 } },
+        // Ch 2: Crew Shed (Southwest, walkway east of shed)
+        2: { standPoint: { left: 15.5, top: 72.0 }, touchPoint: { left: 13.2, top: 56.0 } },
+        // Ch 3: Garden (South Mid-West walkway)
+        3: { standPoint: { left: 38.0, top: 88.0 }, touchPoint: { left: 38.0, top: 72.0 } },
+        // Ch 4: Pond (North Mid-West pier)
+        4: { standPoint: { left: 38.0, top: 36.0 }, touchPoint: { left: 38.0, top: 20.0 } },
+        // Ch 5: BESS / Energy Storage (Southwest yard ground level)
+        5: { standPoint: { left: 6.5, top: 74.0 }, touchPoint: { left: 4.5, top: 58.0 } },
+        // Ch 6: Juice Bar (South Mid-East terrace)
+        6: { standPoint: { left: 67.0, top: 88.0 }, touchPoint: { left: 67.0, top: 72.0 } },
+        // Ch 7: Eco-Passport (Northeast pavilion)
+        7: { standPoint: { left: 82.5, top: 36.0 }, touchPoint: { left: 82.5, top: 20.0 } },
+        // Ch 8: Space Mission (Southeast launchpad)
+        8: { standPoint: { left: 82.5, top: 88.0 }, touchPoint: { left: 82.5, top: 72.0 } }
+      };
+      if (mobileCoords[ch]) {
+        return mobileCoords[ch];
+      }
+    }
+
+    // PC Mode (Restores exact logic and coordinates from previous commit ade3468)
+    if (ch === 5) {
+      // Chapter 5 MUST walk to BESS in the SW utility yard meadow (ground level, never in the sky)
+      var bessSpot = getFacilitySpot('energy_storage');
+      var bLeft = (bessSpot.left || 1.2) + (bessSpot.w || 6.8) * 0.5;
+      var bTop = (bessSpot.top || 54) + (bessSpot.h || 18) * 0.55;
+      return {
+        touchPoint: { left: Math.max(4, bLeft), top: Math.max(10, (bessSpot.top || 54) - 2) },
+        standPoint: { left: Math.max(6, bLeft + 3), top: Math.min(84, bTop + 4) }
+      };
+    }
+
+    var scene = document.getElementById('fieldScene');
+    if (scene) {
+      var sceneRect = scene.getBoundingClientRect();
+      var locator = scene.querySelector('.chapter-explore-hand.chapter-explore-locator');
+      if (locator) {
+        var locRect = locator.getBoundingClientRect();
+        if (locRect && locRect.width > 0 && locRect.height > 0) {
+          var centerX = locRect.left + locRect.width / 2;
+          var bottomY = locRect.bottom;
+          var leftPct = ((centerX - sceneRect.left) / sceneRect.width) * 100;
+          var topPct = ((bottomY - sceneRect.top) / sceneRect.height) * 100;
+          // Guard against corner clamp on PC
+          if (leftPct > 30) {
+            return {
+              touchPoint: { left: leftPct, top: Math.max(4, topPct - 3) },
+              standPoint: { left: leftPct, top: Math.min(88, topPct + 4) }
+            };
+          }
+        }
+      }
+    }
+
+    // Calibrated spatial coordinates matching facility locations from ade3468
+    var pcFallbacks = {
+      1: { standPoint: { left: 40.5, top: 28.6 }, touchPoint: { left: 40.5, top: 21.6 } },
+      2: { standPoint: { left: 13.2, top: 74.0 }, touchPoint: { left: 13.2, top: 70.0 } },
+      3: { standPoint: { left: 38.0, top: 88.0 }, touchPoint: { left: 38.0, top: 86.0 } },
+      4: { standPoint: { left: 38.0, top: 36.0 }, touchPoint: { left: 38.0, top: 32.0 } },
+      5: { standPoint: { left: 4.6, top: 74.0 }, touchPoint: { left: 4.6, top: 70.0 } },
+      6: { standPoint: { left: 67.0, top: 88.0 }, touchPoint: { left: 67.0, top: 86.0 } },
+      7: { standPoint: { left: 82.7, top: 36.0 }, touchPoint: { left: 82.7, top: 32.0 } },
+      8: { standPoint: { left: 82.7, top: 88.0 }, touchPoint: { left: 82.7, top: 86.0 } }
+    };
+    if (pcFallbacks[ch]) {
+      return pcFallbacks[ch];
+    }
+
     var keyMap = {
       1: 'plot',
       2: 'crew_shed',
@@ -1855,64 +1938,13 @@
     };
     var key = keyMap[ch] || 'plot';
     var spot = getFacilitySpot(key);
+    var cX = (spot.left || 0) + (spot.w || 10) / 2;
+    var cY = (spot.top || 0) + (spot.h || 16) * 0.45;
 
-    var defCenterX = (spot.left || 0) + (spot.w || 10) * 0.5;
-    var defStandY = (spot.top || 0) + (spot.h || 16) * 0.7;
-    var defTouchY = Math.max(4, (spot.top || 0) - 2);
-
-    if (ch === 5) {
-      // BESS in SW utility yard meadow (ground level, never in sky)
-      defStandY = Math.min(84, (spot.top || 54) + (spot.h || 18) * 0.6);
-      defTouchY = Math.max(10, (spot.top || 54) - 2);
-    }
-
-    var result = {
-      touchPoint: { left: defCenterX, top: defTouchY },
-      standPoint: { left: defCenterX, top: Math.min(88, defStandY) }
+    return {
+      touchPoint: { left: cX, top: Math.max(4, (spot.top || 0) - 4) },
+      standPoint: { left: cX, top: Math.min(88, cY) }
     };
-
-    var scene = document.getElementById('fieldScene');
-    if (!scene) return result;
-    var sceneRect = scene.getBoundingClientRect();
-    if (!sceneRect || sceneRect.width <= 0 || sceneRect.height <= 0) return result;
-
-    var targetEl = null;
-    if (key === 'plot') {
-      targetEl = document.querySelector('[data-plot="0"]') || document.querySelector('.plot-spot');
-    } else if (key === 'eco_passport') {
-      targetEl = document.querySelector('[data-building="eco_passport"]') || document.querySelector('[data-building-key="eco_passport"]');
-    } else if (key === 'space_mission') {
-      targetEl = document.querySelector('[data-building="space_mission"]') || document.querySelector('[data-building-key="space_mission"]');
-    } else {
-      targetEl = document.querySelector('[data-building="' + key + '"]');
-    }
-
-    if (targetEl) {
-      var locator = targetEl.querySelector('.chapter-explore-locator');
-      var refEl = locator || targetEl;
-      var refRect = refEl.getBoundingClientRect();
-
-      if (refRect && refRect.width > 0 && refRect.height > 0) {
-        var centerX = refRect.left + refRect.width / 2;
-        var bottomY = refRect.bottom;
-        var leftPct = ((centerX - sceneRect.left) / sceneRect.width) * 100;
-        var topPct = ((bottomY - sceneRect.top) / sceneRect.height) * 100;
-
-        leftPct = Math.max(3, Math.min(96, leftPct));
-        topPct = Math.max(5, Math.min(88, topPct));
-
-        result.touchPoint = {
-          left: leftPct,
-          top: Math.max(4, topPct - (locator ? 4 : 2))
-        };
-        result.standPoint = {
-          left: leftPct,
-          top: Math.min(88, topPct + (locator ? 3 : 2))
-        };
-      }
-    }
-
-    return result;
   }
 
   // ---------------------------------------------------------------------------
@@ -1955,11 +1987,14 @@
     return el;
   }
 
+  var currentWalkToken = 0;
   function walkPath(el, points, durationMs, onDone) {
     if (!el || !points || points.length < 2) {
       if (onDone) onDone();
       return;
     }
+    var myWalkToken = ++currentWalkToken;
+    el.__walkToken = myWalkToken;
     el.classList.add('walking');
     el.classList.remove('wonder-touching');
 
@@ -1968,6 +2003,7 @@
         return { x: p.left, y: p.top };
       });
       animateAlongWaypoints(el, wps, durationMs || 3400, function () {
+        if (el.__walkToken !== myWalkToken) return;
         el.classList.remove('walking');
         el.style.transform = 'translate(-50%, -85%)';
         if (onDone) onDone();
@@ -1978,6 +2014,7 @@
     // Smooth fallback linear interpolation
     var i = 0;
     function step() {
+      if (el.__walkToken !== myWalkToken) return;
       i++;
       if (i >= points.length) {
         el.classList.remove('walking');
@@ -2022,6 +2059,7 @@
       el.style.transform = 'translate(-50%, -85%) ' + facing;
 
       function frame(now) {
+        if (el.__walkToken !== myWalkToken) return;
         var t = Math.min(1, (now - t0) / dur);
         var ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
         el.style.left = (prev.left + (curr.left - prev.left) * ease) + '%';
@@ -3017,7 +3055,7 @@
 
     var keyMap = { 1: 'plot', 2: 'crew_shed', 3: 'garden', 4: 'pond', 5: 'energy_storage', 6: 'juice_bar', 7: 'eco_passport', 8: 'space_mission' };
     var primaryKey = keyMap[ch] || 'plot';
-    var isMobile = (typeof window !== 'undefined' && (window.innerWidth <= 860 || window.innerHeight <= 520 || (window.matchMedia && window.matchMedia('(max-width: 860px), (max-height: 520px), (pointer: coarse)').matches)));
+    var isMobile = isMobileViewport();
 
     // 0. Purge all previous chapter scout locators, guide boxes, tick stars
     document.querySelectorAll('.chapter-explore-hand, .chapter-explore-locator, .scout-chapter-guide-msg-box, .chapter-explore-tick, .s2-field-survey-tick').forEach(function (node) {
@@ -3025,9 +3063,18 @@
     });
 
     // Ensure active chapter locator beacon is attached to the target facility
-    var targetEl = (primaryKey === 'plot')
-      ? (document.querySelector('[data-plot="0"]') || document.querySelector('.plot-spot'))
-      : document.querySelector('[data-building="' + primaryKey + '"]');
+    var targetEl = null;
+    if (primaryKey === 'plot') {
+      targetEl = isMobile
+        ? (document.querySelector('[data-plot="1"]') || document.querySelector('[data-plot="0"]') || document.querySelector('.plot-spot'))
+        : (document.querySelector('[data-plot="0"]') || document.querySelector('.plot-spot'));
+    } else if (primaryKey === 'eco_passport') {
+      targetEl = document.querySelector('[data-building="eco_passport"]') || document.querySelector('[data-building-key="eco_passport"]');
+    } else if (primaryKey === 'space_mission') {
+      targetEl = document.querySelector('[data-building="space_mission"]') || document.querySelector('[data-building-key="space_mission"]');
+    } else {
+      targetEl = document.querySelector('[data-building="' + primaryKey + '"]');
+    }
 
     if (targetEl && !targetEl.querySelector('.chapter-explore-locator')) {
       var locWrap = document.createElement('div');
@@ -3130,11 +3177,7 @@
       }
 
       // 6. Open merged scout modal laid bottom side beside marketplace
-      openTourModal(ch, function () {
-        if (!tourState.cooldownActive && ch < 8) {
-          startScoutCooldown(ch, ch + 1);
-        }
-      });
+      openTourModal(ch, null);
 
       // 7. Automatic cooldown activation upon wonder touch
       setTimeout(function () {
@@ -3162,6 +3205,9 @@
       tourState.avatar = av;
       tourState.avatarId = av.id;
       spawnWalker(av, getFacilitySpot(targetCh));
+    } else if (tourState.currentChapter === targetCh && (tourState.cooldownActive || (tourState.walkerEl && tourState.walkerEl.classList.contains('walking')))) {
+      // Already actively on this chapter — do not restart cooldown loop
+      return;
     }
     clearScoutCooldown();
     clearGhosts(true);
