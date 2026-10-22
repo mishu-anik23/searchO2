@@ -224,6 +224,32 @@
     ]
   };
 
+  // Chapter mapping for every buildable / blueprint facility on the estate
+  var OBJECT_TO_CHAPTER = {
+    plot: 1,
+    jute_tarp: 1,
+    gate: 2,
+    crew_shed: 2,
+    road: 2,
+    storage: 2,
+    garage: 2,
+    garden: 3,
+    crop_field: 3,
+    garden_walk: 3,
+    pond: 4,
+    cattle_farm: 4,
+    energy_storage: 5,
+    wind_turbine: 5,
+    wt_nw: 5,
+    wt_ne: 5,
+    wt_sw: 5,
+    wt_se: 5,
+    juice_bar: 6,
+    coffee_shop: 6,
+    eco_passport: 7,
+    space_mission: 8
+  };
+
   // Detailed Step-by-Step Unlock Specifications for 3D Object Mouse Hover Modal
   var OBJECT_UNLOCK_SPECS = {
     plot: {
@@ -913,10 +939,10 @@
   }
 
   function dockTopCapsules() {
-    var topContainer = document.getElementById('topGuideCapsulesContainer');
+    var stack = document.querySelector('.bottom-buttons-stack');
     var modal = document.getElementById('s2TourModal');
-    if (topContainer && modal && modal.parentNode !== topContainer) {
-      topContainer.appendChild(modal);
+    if (stack && modal && modal.parentNode !== stack) {
+      stack.insertBefore(modal, stack.firstChild);
     }
     var floater = document.getElementById('s2ScoutCountdownFloater');
     var fieldScene = document.getElementById('fieldScene') || document.querySelector('.field-scene');
@@ -1509,8 +1535,25 @@
     if (key === 'garage' && typeof window !== 'undefined' && typeof window.drawGarageScene === 'function') {
       try { return window.drawGarageScene({ built: true }); } catch (e) {}
     }
-    if (key === 'storage' && typeof window !== 'undefined' && typeof window.drawStorageScene === 'function') {
-      try { return window.drawStorageScene({ built: true }); } catch (e) {}
+    if (key === 'storage') {
+      if (typeof window !== 'undefined' && typeof window.drawStorageScene === 'function') {
+        try {
+          var stSvg = window.drawStorageScene({ built: true, stored: 50, capacity: 200 });
+          if (stSvg && stSvg.indexOf('unbuilt-spot') === -1) return stSvg;
+        } catch (e) {}
+      }
+      return (
+        '<svg viewBox="0 0 160 135" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">' +
+          '<ellipse cx="80" cy="118" rx="60" ry="14" fill="rgba(0,229,255,0.2)"/>' +
+          '<polygon points="30,85 80,105 130,85 80,65" fill="#5D4037" stroke="#00E5FF" stroke-width="1.5"/>' +
+          '<polygon points="30,85 80,105 80,118 30,98" fill="#3E2723" stroke="#00E5FF" stroke-width="1.2"/>' +
+          '<polygon points="80,105 130,85 130,98 80,118" fill="#2E1C14" stroke="#00E5FF" stroke-width="1.2"/>' +
+          '<polygon points="40,65 80,35 120,65 80,75" fill="#8D6E63" stroke="#80D8FF" stroke-width="1.5"/>' +
+          '<polygon points="80,20 100,35 80,50 60,35" fill="#BCAAA4" stroke="#00E5FF" stroke-width="1.2"/>' +
+          '<rect x="72" y="88" width="16" height="24" rx="2" fill="#D7CCC8" stroke="#5D4037" stroke-width="1"/>' +
+          '<text x="80" y="55" font-size="16" text-anchor="middle">🌾</text>' +
+        '</svg>'
+      );
     }
     if (key === 'crop_field' && typeof window !== 'undefined' && typeof window.drawCropFieldScene === 'function') {
       try { return window.drawCropFieldScene({ built: true, beds: [{ cropKey: 'wheat', ready: true }] }); } catch (e) {}
@@ -1632,14 +1675,14 @@
     return modal;
   }
 
-  function showObjectHoverModal(e, key, obj, ch, anchorEl) {
-    // Strictly mouse hover: ignore non-mouse pointer events (e.g. touch or pen)
-    if (e && e.pointerType && e.pointerType !== 'mouse') return;
+  function showObjectHoverModal(e, key, obj, ch, anchorEl, isTouchTrigger) {
+    // Desktop: strictly mouse hover, ignore touch/pen
+    if (!isTouchTrigger && e && e.pointerType && e.pointerType !== 'mouse') return;
     var modal = ensureObjectHoverModal();
     var spec = OBJECT_UNLOCK_SPECS[key] || {
       name: (obj && obj.name) || key,
       icon: (obj && obj.icon) || '🏛️',
-      chapter: ch || 1,
+      chapter: ch || (typeof OBJECT_TO_CHAPTER !== 'undefined' && OBJECT_TO_CHAPTER[key]) || 1,
       cost: 'Varies',
       prereq: 'Survey Chapter ' + (ch || 1) + ' masterplan',
       steps: [
@@ -1650,10 +1693,11 @@
     };
 
     var miniSvg = getBuildingArchitecturalSvg(key, obj, ch);
-    var chNum = spec.chapter || ch || 1;
-    var chTitle = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[chNum - 1])
-      ? CHAPTER_DEFINITIONS[chNum - 1].title
-      : ('Chapter ' + chNum);
+    var chNum = (spec && spec.chapter) || ch || (typeof OBJECT_TO_CHAPTER !== 'undefined' && OBJECT_TO_CHAPTER[key]) || 1;
+    var chDef = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[chNum - 1])
+      ? CHAPTER_DEFINITIONS[chNum - 1]
+      : null;
+    var chTitle = chDef ? (chDef.title || ('Chapter ' + chNum)) : ('Chapter ' + chNum);
 
     modal.innerHTML =
       '<div class="ohm-header">' +
@@ -1664,7 +1708,9 @@
             '<div class="ohm-badge">Ch. ' + chNum + ' · ' + chTitle + '</div>' +
           '</div>' +
         '</div>' +
-        '<span class="ohm-status-tag">📐 Blueprint</span>' +
+        (isTouchTrigger
+          ? '<button type="button" class="ohm-close-btn" id="s2OhmCloseBtn" onclick="if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.hideObjectHoverModal(); event.stopPropagation();" title="Close">✕</button>'
+          : '<span class="ohm-status-tag">📐 Blueprint</span>') +
       '</div>' +
       '<div class="ohm-preview-card">' +
         '<div class="ohm-preview-svg">' + miniSvg + '</div>' +
@@ -1681,25 +1727,38 @@
       '</div>';
 
     modal.classList.remove('hidden');
+    if (isTouchTrigger) {
+      modal.classList.add('is-touch-mode');
+    } else {
+      modal.classList.remove('is-touch-mode');
+    }
 
-    var rect = anchorEl ? anchorEl.getBoundingClientRect() : (e ? { left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY, width: 0, height: 0 } : null);
-    if (rect) {
-      var modalW = 270;
-      var modalH = modal.offsetHeight || 300;
-      var vw = window.innerWidth;
-      var vh = window.innerHeight;
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var modalW = 230;
+    var modalH = modal.offsetHeight || 260;
 
-      var topPos = rect.top - modalH - 12;
-      if (topPos < 16) {
-        topPos = rect.bottom + 12;
+    if (isTouchTrigger && vw <= 768) {
+      modal.style.position = 'fixed';
+      modal.style.left = '50%';
+      modal.style.transform = 'translateX(-50%)';
+      modal.style.bottom = '78px';
+      modal.style.top = 'auto';
+    } else {
+      modal.style.transform = '';
+      var rect = anchorEl ? anchorEl.getBoundingClientRect() : (e ? { left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY, width: 0, height: 0 } : null);
+      if (rect) {
+        var topPos = rect.top - modalH - 10;
+        if (topPos < 14) {
+          topPos = rect.bottom + 10;
+        }
+        var leftPos = rect.left + (rect.width / 2) - (modalW / 2);
+        if (leftPos < 10) leftPos = 10;
+        if (leftPos + modalW > vw - 10) leftPos = vw - modalW - 10;
+        modal.style.top = Math.max(10, Math.min(vh - modalH - 10, topPos)) + 'px';
+        modal.style.left = leftPos + 'px';
+        modal.style.bottom = 'auto';
       }
-
-      var leftPos = rect.left + (rect.width / 2) - (modalW / 2);
-      if (leftPos < 12) leftPos = 12;
-      if (leftPos + modalW > vw - 12) leftPos = vw - modalW - 12;
-
-      modal.style.top = Math.max(10, Math.min(vh - modalH - 10, topPos)) + 'px';
-      modal.style.left = leftPos + 'px';
     }
   }
 
@@ -1707,7 +1766,20 @@
     var modal = document.getElementById('s2ObjectHoverModal');
     if (modal) {
       modal.classList.add('hidden');
+      modal.classList.remove('is-touch-mode');
     }
+  }
+
+  // Dismiss touch hover modal when clicking/tapping outside
+  if (typeof document !== 'undefined') {
+    document.addEventListener('pointerdown', function (e) {
+      var modal = document.getElementById('s2ObjectHoverModal');
+      if (modal && !modal.classList.contains('hidden') && modal.classList.contains('is-touch-mode')) {
+        if (!modal.contains(e.target) && !e.target.closest('.s2-ghost-obj')) {
+          hideObjectHoverModal();
+        }
+      }
+    });
   }
 
   function showChapterGhosts(ch, sequential) {
@@ -1737,12 +1809,21 @@
         '</div>' +
         '<div class="s2-ghost-label">Ch. ' + ch + ' · ' + obj.name + '</div>';
 
-      // Mouse-only hover modal interaction
+      // Mouse-only hover modal interaction for PC
       el.addEventListener('mouseenter', function (e) {
-        showObjectHoverModal(e, obj.key, obj, ch, el);
+        showObjectHoverModal(e, obj.key, obj, ch, el, false);
       });
       el.addEventListener('mouseleave', function () {
         hideObjectHoverModal();
+      });
+
+      // Mobile finger touch: "enble cyan marked object touch by finger and then display. no touch no display."
+      el.addEventListener('click', function (e) {
+        var isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (e.pointerType === 'touch') || (window.innerWidth <= 768);
+        if (isTouch) {
+          e.stopPropagation();
+          showObjectHoverModal(e, obj.key, obj, ch, el, true);
+        }
       });
 
       layer.appendChild(el);
@@ -2167,30 +2248,43 @@
         } catch (e) {}
       }
 
-      // 4. Sequential reveals of transparent locked 3D objects
+      // 4. Sequential reveals of transparent locked 3D objects (cyan 3D blueprints)
       showChapterGhosts(ch, true);
 
-      // 5. Open educational chapter modal
-      setTimeout(function () {
-        openTourModal(ch, function () {
-          // 6. Modal is closed! Avatar visual is now 100% visible on farm screen
-          el.classList.remove('wonder-touching');
+      // 5. Automatic exploration milestone and reward
+      var keyMap = { 1: 'plot', 2: 'crew_shed', 3: 'garden', 4: 'pond', 5: 'energy_storage', 6: 'juice_bar', 7: 'eco_passport', 8: 'space_mission' };
+      var primaryKey = keyMap[ch];
+      if (primaryKey && typeof exploreChapterObject === 'function') {
+        try { exploreChapterObject(primaryKey); } catch (e) {}
+      }
+      if (typeof state !== 'undefined' && state) {
+        state.exploredChapters = state.exploredChapters || {};
+        state.exploredChapters[ch] = true;
+        state.exploredChapterObjects = state.exploredChapterObjects || {};
+        if (primaryKey) state.exploredChapterObjects[primaryKey] = true;
+        if (typeof state.xp === 'number' && state.xp === 0) state.xp = 5;
+      }
+      renderExploredFieldBadge(ch, primaryKey);
 
-          if (ch >= 8) {
-            clearGhosts(true);
-            endTour(false);
-          } else {
-            // Start the 45-second real-time countdown!
-            // During this time:
-            // - Modal is closed, avatar visual is 100% visible
-            // - Transparent ghosts remain visible
-            // - Next chapter scout marker is active
-            // - If user clicks next scout marker or "Walk Now ➔", walk starts immediately
-            // - Otherwise avatar starts walking when 45s timer completes
-            startScoutCooldown(ch, ch + 1);
-          }
-        });
-      }, 700 + (CHAPTER_TOUR_OBJECTS[ch] || []).length * 80);
+      // 6. Open merged scout modal laid bottom side beside marketplace
+      openTourModal(ch, function () {
+        if (!tourState.cooldownActive && ch < 8) {
+          startScoutCooldown(ch, ch + 1);
+        }
+      });
+
+      // 7. Automatic cooldown activation upon wonder touch
+      setTimeout(function () {
+        el.classList.remove('wonder-touching');
+
+        if (ch >= 8) {
+          clearGhosts(true);
+          endTour(false);
+        } else {
+          // Cooldown timer automatically active and visual on current place
+          startScoutCooldown(ch, ch + 1);
+        }
+      }, 700);
     });
   }
 
@@ -2267,13 +2361,23 @@
 
   function bindFarmObjectsHoverModal() {
     if (typeof document === 'undefined') return;
-    var buildings = document.querySelectorAll('[data-building]');
+    var selector = '[data-building], [data-storage], [data-turbine], [data-plot], .jute-tarp-spot-card, .main-road-canvas-badge, .main-road-paved-link';
+    var buildings = document.querySelectorAll(selector);
     buildings.forEach(function (el) {
       if (el._hoverModalWired) return;
       el._hoverModalWired = true;
       var key = el.getAttribute('data-building');
+      if (!key) {
+        if (el.hasAttribute('data-storage')) key = 'storage';
+        else if (el.hasAttribute('data-turbine')) key = el.getAttribute('data-turbine') || 'wind_turbine';
+        else if (el.hasAttribute('data-plot')) key = 'plot';
+        else if (el.classList.contains('jute-tarp-spot-card')) key = 'jute_tarp';
+        else if (el.classList.contains('main-road-canvas-badge') || el.classList.contains('main-road-paved-link')) key = 'road';
+      }
+      if (!key) return;
+      var ch = (typeof OBJECT_TO_CHAPTER !== 'undefined' && OBJECT_TO_CHAPTER[key]) || 1;
       el.addEventListener('mouseenter', function (e) {
-        showObjectHoverModal(e, key, { key: key }, (typeof OBJECT_TO_CHAPTER !== 'undefined' && OBJECT_TO_CHAPTER[key]) || 1, el);
+        showObjectHoverModal(e, key, { key: key }, ch, el, false);
       });
       el.addEventListener('mouseleave', function () {
         hideObjectHoverModal();

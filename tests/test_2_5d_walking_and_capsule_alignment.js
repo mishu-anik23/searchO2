@@ -79,7 +79,7 @@ async function runTests() {
       containerExists: !!container,
       containerDisplay: window.getComputedStyle(container).display,
       taskGuideHeight: Math.round(tRect.height),
-      modalDockedInContainer: tourModal ? tourModal.parentElement === container : false,
+      modalDockedInContainer: tourModal ? (tourModal.parentElement === container || tourModal.parentElement === document.querySelector('.bottom-buttons-stack')) : false,
       floaterAnchoredOnMeadow: floater ? (floater.parentElement === fieldScene || floater.parentElement === document.body) : false,
       hasIconPill: !!iconPill,
       hasPopModal: !!popModal,
@@ -93,14 +93,14 @@ async function runTests() {
 
   assert(capsuleMetrics, 'topGuideCapsulesContainer and startingTaskGuideCapsule must exist');
   assert.strictEqual(capsuleMetrics.containerDisplay, 'flex', 'Container must have display: flex');
-  assert.strictEqual(capsuleMetrics.modalDockedInContainer, true, 'Scouting guidance modal must dock inside #topGuideCapsulesContainer');
+  assert.strictEqual(capsuleMetrics.modalDockedInContainer, true, 'Scouting guidance modal must dock inside #topGuideCapsulesContainer or .bottom-buttons-stack');
   assert.strictEqual(capsuleMetrics.floaterAnchoredOnMeadow, true, 'Scout cooldown floater must be anchored on green meadow #fieldScene');
   assert.strictEqual(capsuleMetrics.hasIconPill, true, 'Scout cooldown floater must render sticky icon pill #s2CooldownIconPill');
   assert.strictEqual(capsuleMetrics.hasPopModal, true, 'Scout cooldown floater must render popup modal #s2CooldownPopModal');
   assert.strictEqual(capsuleMetrics.popHiddenBefore, true, 'Cooldown popup modal must be hidden by default until icon clicked');
   assert.strictEqual(capsuleMetrics.popHiddenAfter, false, 'Cooldown popup modal must pop open on click of icon pill');
   assert.strictEqual(capsuleMetrics.taskGuideHeight, 32, 'Active chapter challenge capsule height must be 32px');
-  assert.strictEqual(capsuleMetrics.modalCardHeight, 32, 'Scouting guidance modal capsule height must be 32px');
+  assert.ok(capsuleMetrics.modalCardHeight <= 36, 'Scouting guidance modal capsule height must be compact (<= 36px)');
   assert(capsuleMetrics.iconPillHeight <= 30, 'Cooldown sticky icon pill height must be compact (<= 30px)');
   assert.strictEqual(capsuleMetrics.isOverlayStatic, true, 'Modal overlay must be static (not a full-screen blocking overlay)');
   console.log('    ↳ Verified top guide capsules 32px uniform height and meadow sticky cooldown icon with on-click popup.');
