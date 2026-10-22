@@ -11300,7 +11300,10 @@ function getChapterExploreBadgeHtml(key, s) {
   var customPos = badgePosMap[key] || 'top:-10px;right:-8px;';
 
   if (explored) {
-    // Fixed surveyed chapter badge with dynamic offset
+    // After exploration remove all star icons
+    if (s.allChaptersExplored || (typeof getExploredChaptersCount === 'function' && getExploredChaptersCount(s) >= 8)) {
+      return '';
+    }
     return '<div class="chapter-explore-tick" style="' + customPos + '" onclick="event.stopPropagation();openChapterRoadmapForObject(\'' + key + '\')" title="Chapter ' + objCh + ' Explored · Click for Roadmap"><span class="tick-star">★</span><span class="tick-check" style="display:none;">✓</span></div>';
   }
 
@@ -19964,9 +19967,12 @@ function uncoverJuteTarpAction(){
     state.xp = (state.xp || 0) + 10;
   }
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('achieve');
-  showNotification('⛏️', 'Traditional Hand Spade uncovered & equipped! (+10 XP) Soil aeration unlocked.', 'achievement');
-  pushReport('✨ Jute tarpaulin pulled back! Equipped hand-forged trenching spade & broadfork (+10 Knowledge XP).');
-  openBasicEquipmentDiscoveryModal(0);
+  if (typeof closeModal === 'function') closeModal();
+  if (typeof SearchO2HomeAvatar !== 'undefined' && typeof SearchO2HomeAvatar.triggerJuteTarpDiggingSequence === 'function') {
+    SearchO2HomeAvatar.triggerJuteTarpDiggingSequence();
+  } else {
+    openBasicEquipmentDiscoveryModal(0);
+  }
 }
 
 function openChapterRoadmapForObject(key){
@@ -21716,58 +21722,6 @@ function getDynamicProfessionAvailableTasks(s) {
         action: labSugg.action,
         desc: labSugg.desc,
         btnText: 'Assign ➔'
-      });
-    } else {
-      var def = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[curCh - 1])
-        ? CHAPTER_DEFINITIONS[curCh - 1]
-        : { title: 'Chapter ' + curCh, icon: '🧭' };
-      tasks.push({
-        id: 'chapter_scout_task',
-        profession: 'Explorer',
-        profIcon: '🧭',
-        profColor: '#1B5E20',
-        title: 'Scout ' + (def.title || ('Chapter ' + curCh)),
-        icon: def.icon || '🧭',
-        action: 'if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.startChapterTour()',
-        desc: 'Follow the 3D directional locator to survey estate roadmap.',
-        btnText: 'Survey ➔'
-      });
-    }
-  }
-
-  // 0. SCOUT / EXPLORER ACTIVE CHAPTER CHECKPOINT OR 45S COOLDOWN
-  if (typeof SearchO2HomeAvatar !== 'undefined' && SearchO2HomeAvatar) {
-    var activeCheckpoint = (typeof SearchO2HomeAvatar.getActiveCheckpoint === 'function') ? SearchO2HomeAvatar.getActiveCheckpoint() : null;
-    var isCooling = (typeof SearchO2HomeAvatar.isCooldownActive === 'function') ? SearchO2HomeAvatar.isCooldownActive() : false;
-    if (activeCheckpoint) {
-      var chDef = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[activeCheckpoint - 1])
-        ? CHAPTER_DEFINITIONS[activeCheckpoint - 1]
-        : { title: 'Chapter ' + activeCheckpoint, icon: '🧭' };
-      tasks.unshift({
-        id: 'chapter_scout_checkpoint',
-        profession: 'Explorer',
-        profIcon: '🧭',
-        profColor: '#1B5E20',
-        title: 'Ch. ' + activeCheckpoint + ': ' + (chDef.title || 'Scout'),
-        icon: chDef.icon || '🧭',
-        action: 'if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.advanceTourCheckpoint(' + activeCheckpoint + ')',
-        desc: 'Chapter ' + activeCheckpoint + ' surveyed! Blueprint unlocked. Tap to advance.',
-        btnText: 'Explore ➔',
-        btnId: 's2TourContinue'
-      });
-    } else if (isCooling) {
-      var rem = (typeof SearchO2HomeAvatar.getCooldownRemaining === 'function') ? SearchO2HomeAvatar.getCooldownRemaining() : 45;
-      tasks.unshift({
-        id: 'chapter_scout_cooldown',
-        profession: 'Explorer',
-        profIcon: '🧭',
-        profColor: '#1B5E20',
-        title: 'Next Scout in <b id="s2ScoutCountdownSec">' + rem + 's</b>',
-        icon: '⏳',
-        action: 'if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.walkToNextScoutNow()',
-        desc: 'Scout cooldown active. Tap Walk Now to continue tour immediately.',
-        btnText: 'Walk Now ➔',
-        btnId: 's2WalkNextBtn'
       });
     }
   }

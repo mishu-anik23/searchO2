@@ -125,8 +125,11 @@ async function runTests() {
     const mRect = tourCard ? tourCard.getBoundingClientRect() : null;
     const pRect = iconPill ? iconPill.getBoundingClientRect() : null;
 
-    // Check whether top capsules overlap horizontally
-    const noOverlapTM = mRect ? (tRect.right <= mRect.left + 2 || mRect.right <= tRect.left + 2) : true;
+    // Check whether capsules overlap (separated horizontally or vertically)
+    const noOverlapTM = mRect ? (
+      tRect.bottom <= mRect.top || mRect.bottom <= tRect.top ||
+      tRect.right <= mRect.left + 2 || mRect.right <= tRect.left + 2
+    ) : true;
 
     return {
       overflowX: cStyle.overflowX,

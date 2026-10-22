@@ -615,6 +615,12 @@
         '<stop offset="50%" stop-color="#4E342E"/>' +
         '<stop offset="100%" stop-color="#27140E"/>' +
       '</linearGradient>' +
+      '<linearGradient id="avG_' + avUniqueId + '_spade" x1="0" y1="0" x2="1" y2="1">' +
+        '<stop offset="0%" stop-color="#ECEFF1"/>' +
+        '<stop offset="40%" stop-color="#B0BEC5"/>' +
+        '<stop offset="80%" stop-color="#607D8B"/>' +
+        '<stop offset="100%" stop-color="#37474F"/>' +
+      '</linearGradient>' +
       '</defs>' +
 
       // 1. Volumetric Elliptical Ground Shadow with Ambient Occlusion Core
@@ -694,6 +700,20 @@
         '<rect x="50" y="' + (torsoY + 2) + '" width="7" height="17" rx="3.5" fill="url(#avG_' + avUniqueId + '_skin)" transform="rotate(-8 53.5 ' + (torsoY + 10) + ')"/>' +
         '<rect x="49.5" y="' + (torsoY + 1) + '" width="7.5" height="7.5" rx="2.5" fill="url(#avG_' + avUniqueId + '_top)"/>' +
         '<circle cx="53.5" cy="' + (torsoY + 18) + '" r="2" fill="' + shade(skin, 20) + '"/>' +
+      '</g>' +
+
+      // 6b. 3D Hand Instrument (Hand-Forged Spade for Soil Tillage)
+      '<g class="av-hand-instrument" id="avHandInstrument">' +
+        // Ash wood handle shaft
+        '<line x1="53.5" y1="32" x2="55" y2="76" stroke="#8D6E63" stroke-width="2.6" stroke-linecap="round"/>' +
+        // Top D-grip
+        '<path d="M50.5,29 Q53.5,25.5 56.5,29 L56.5,33 L50.5,33 Z" fill="#6D4C41" stroke="#3E2723" stroke-width="0.7"/>' +
+        // Ferrule collar
+        '<rect x="53" y="63" width="4" height="4.5" rx="1" fill="#B0BEC5" stroke="#78909C" stroke-width="0.5"/>' +
+        // Steel spade blade
+        '<polygon points="51,67.5 59,67.5 58,82 55,87 52,82" fill="url(#avG_' + avUniqueId + '_spade)" stroke="#263238" stroke-width="0.9"/>' +
+        // Specular blade center spine
+        '<line x1="55" y1="68" x2="55" y2="84" stroke="rgba(255,255,255,0.45)" stroke-width="0.8"/>' +
       '</g>' +
 
       // 7. Elder Walking Staff (If Elder Haruto)
@@ -948,6 +968,24 @@
     var fieldScene = document.getElementById('fieldScene') || document.querySelector('.field-scene');
     if (floater && fieldScene && floater.parentNode !== fieldScene) {
       fieldScene.appendChild(floater);
+    }
+
+    // Modal cleanups:
+    // 1. Remove/hide explorer carousel on PC and mobile during tour
+    var suggContainer = document.getElementById('idleLaborerSuggestionContainer');
+    if (suggContainer && tourState.active) {
+      suggContainer.style.display = 'none';
+    }
+
+    // 2. On mobile, ensure ONLY #s2TourModal (containing Next button) remains during exploration
+    var isMobile = (typeof window !== 'undefined' && window.innerWidth <= 768);
+    if (isMobile && tourState.active) {
+      var progress = document.getElementById('s2TourProgress');
+      if (progress) progress.style.display = 'none';
+      if (suggContainer) suggContainer.style.display = 'none';
+      document.querySelectorAll('.scout-chapter-guide-msg-box').forEach(function (b) {
+        b.style.display = 'none';
+      });
     }
   }
 
@@ -2164,8 +2202,16 @@
     var heading = document.getElementById('s2SkyHeading');
     if (heading && heading.parentNode) heading.parentNode.removeChild(heading);
 
+    // After exploration remove all star icons
+    var stars = document.querySelectorAll('.chapter-explore-tick, .s2-field-survey-tick, .tick-star');
+    stars.forEach(function (s) {
+      if (s && s.parentNode) s.parentNode.removeChild(s);
+    });
+
+    // After exploration avatar stands still
     if (tourState.walkerEl) {
       tourState.walkerEl.classList.remove('walking', 'wonder-touching');
+      tourState.walkerEl.classList.add('idle-standing');
       tourState.walkerEl.style.transform = 'translate(-50%, -85%)';
     }
 
@@ -2185,6 +2231,143 @@
     try {
       localStorage.setItem('searchO2_chapter_tour_done', skipped ? 'skipped' : '1');
     } catch (e) {}
+
+    // When all 8 chapters explored, trigger jute tarp unlock walk and digging sequence
+    if (!skipped) {
+      setTimeout(function () {
+        triggerJuteTarpDiggingSequence();
+      }, 1000);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3D Soil Digging & Jute Tarpaulin Tool Equipment Sequence
+  // ---------------------------------------------------------------------------
+  function spawnDirtParticles(at) {
+    var scene = document.getElementById('fieldScene');
+    if (!scene) return;
+    var colors = ['#5D4037', '#4E342E', '#3E2723', '#795548', '#8D6E63'];
+    for (var i = 0; i < 6; i++) {
+      var p = document.createElement('div');
+      p.className = 's2-dirt-particle';
+      var dx = (Math.random() * 34 - 17) + 'px';
+      var dy = -(Math.random() * 26 + 10) + 'px';
+      p.style.setProperty('--dx', dx);
+      p.style.setProperty('--dy', dy);
+      p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      var sz = Math.floor(Math.random() * 4 + 3) + 'px';
+      p.style.width = sz;
+      p.style.height = sz;
+      p.style.left = (at.left + (Math.random() * 3.5 - 1.75)) + '%';
+      p.style.top = (at.top + (Math.random() * 3.5 - 1.75)) + '%';
+      scene.appendChild(p);
+      setTimeout((function (el) {
+        return function () {
+          if (el && el.parentNode) el.parentNode.removeChild(el);
+        };
+      })(p), 800);
+    }
+  }
+
+  function triggerJuteTarpDiggingSequence(onComplete) {
+    var scene = document.getElementById('fieldScene');
+    if (!scene) return;
+
+    // 1. Remove all star icons from field scene
+    var stars = document.querySelectorAll('.chapter-explore-tick, .s2-field-survey-tick, .tick-star');
+    stars.forEach(function (s) {
+      if (s && s.parentNode) s.parentNode.removeChild(s);
+    });
+
+    // 2. Hide any leftover tour modals or floaters
+    clearScoutCooldown();
+    hideScoutCountdownFloater();
+    var modal = document.getElementById('s2TourModal');
+    if (modal) modal.classList.add('hidden');
+    var progress = document.getElementById('s2TourProgress');
+    if (progress) progress.style.display = 'none';
+
+    // 3. Locate or spawn avatar
+    var el = tourState.walkerEl || document.getElementById('s2PlayerAvatar');
+    if (!el) {
+      var av = loadPersistedAvatar() || AVATAR_ROSTER[0];
+      el = spawnWalker(av, meadowEntryPoint());
+    }
+    if (!el) return;
+
+    var currentLeft = parseFloat(el.style.left) || 28;
+    var currentTop = parseFloat(el.style.top) || 25;
+    var tarpSpot = { left: 12.0, top: 72.0 };
+    var plot1Spot = { left: 23.5, top: 32.0 };
+
+    showSkyHeading('Walking to Jute Tarpaulin to equip hand tools...', tarpSpot, '⛏️');
+
+    // Step A: Walk to Jute Tarpaulin Cache
+    walkPath(el, [{ left: currentLeft, top: currentTop }, tarpSpot], 1800, function () {
+      el.classList.remove('walking');
+      el.classList.add('idle-standing');
+
+      // Step B: Uncover Jute Tarpaulin & Equip Hand Instrument
+      if (typeof state !== 'undefined' && state) {
+        state.juteTarpUncovered = true;
+        state.basicToolsDiscovered = true;
+        state.equipment = state.equipment || { owned: {}, leased: {} };
+        state.equipment.owned = state.equipment.owned || {};
+        state.equipment.owned['spade'] = true;
+      }
+      if (typeof render === 'function') render();
+
+      // Avatar physically equips 3D hand instrument
+      el.classList.add('has-instrument');
+      spawnTouchRipple(tarpSpot);
+      showSkyHeading('Equipped Hand-Forged Spade & Broadfork!', tarpSpot, '✨');
+      if (typeof showNotification === 'function') {
+        showNotification('⛏️', 'Equipped Traditional Hand Spade! Walking to Plot 1...', 'achievement');
+      }
+
+      // Step C: Walk with spade to Plot 1
+      setTimeout(function () {
+        showSkyHeading('Heading to Plot 1 to aerate bedrock and dig soil...', plot1Spot, '🌱');
+        walkPath(el, [tarpSpot, plot1Spot], 2000, function () {
+          el.classList.remove('walking');
+          el.classList.remove('facing-south', 'facing-west');
+          el.classList.add('facing-north', 'facing-east');
+          el.style.transform = 'translate(-50%, -85%) scaleX(1)';
+
+          // Step D: 3D Visual Digging Animation
+          el.classList.add('is-digging');
+
+          var bursts = 0;
+          var dirtTimer = setInterval(function () {
+            if (!el || !el.classList.contains('is-digging')) {
+              clearInterval(dirtTimer);
+              return;
+            }
+            spawnDirtParticles(plot1Spot);
+            bursts++;
+            if (bursts >= 8) {
+              clearInterval(dirtTimer);
+            }
+          }, 350);
+
+          // Step E: Update Task State to Digging / Soil Preparation
+          if (typeof state !== 'undefined' && state && state.plots && state.plots[0]) {
+            state.plots[0].status = 'preparing';
+            state.plots[0].taskHours = 0.5;
+          }
+          if (typeof updateTaskCarouselDOM === 'function') updateTaskCarouselDOM();
+          if (typeof render === 'function') render();
+          if (typeof requestSave === 'function') requestSave();
+
+          showSkyHeading('Plot 1 Tillage Underway · Hand Spade Aeration', plot1Spot, '🌱');
+          if (typeof showNotification === 'function') {
+            showNotification('🌱', 'Avatar started manual digging on Plot 1! Bedrock aerated.', 'plot', 0);
+          }
+
+          if (onComplete) onComplete();
+        });
+      }, 900);
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -2445,7 +2628,8 @@
       tourState.avatar = AVATAR_ROSTER.find(function (a) { return a.id === id; }) || AVATAR_ROSTER[0];
       return spawnWalker(tourState.avatar, getFacilitySpot('plot'));
     },
-    dockTopCapsules: dockTopCapsules
+    dockTopCapsules: dockTopCapsules,
+    triggerJuteTarpDiggingSequence: triggerJuteTarpDiggingSequence
   };
 
   if (document.readyState === 'loading') {
