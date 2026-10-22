@@ -19512,6 +19512,12 @@ function advanceGame(dh){
         p.taskHours += dh * clearMult;
         if (p.taskHours >= CLEAR_DURATION_HOURS){
           p.status='barren'; p.weedHours=0; p.taskHours=0;
+          if (typeof SearchO2HomeAvatar !== 'undefined' && SearchO2HomeAvatar.leavePlotTask) {
+            var curT1 = SearchO2HomeAvatar.getActiveAvatarTask ? SearchO2HomeAvatar.getActiveAvatarTask() : null;
+            if (curT1 && curT1.plotId === p.id && curT1.taskKind === 'clearing') {
+              SearchO2HomeAvatar.leavePlotTask();
+            }
+          }
           if (w){
             var retWorker1 = w; var retPlotId1 = p.id;
             p.assignedWorker = null; retWorker1.assignedPlot = null;
@@ -19528,6 +19534,12 @@ function advanceGame(dh){
         var curPrepDur = (typeof getPlotPrepDurationHours === 'function') ? getPlotPrepDurationHours(state) : PREP_DURATION_HOURS;
         if (p.taskHours >= curPrepDur){
           p.status='ready'; p.weedHours=0; p.taskHours=0;
+          if (typeof SearchO2HomeAvatar !== 'undefined' && SearchO2HomeAvatar.leavePlotTask) {
+            var curT2 = SearchO2HomeAvatar.getActiveAvatarTask ? SearchO2HomeAvatar.getActiveAvatarTask() : null;
+            if (curT2 && curT2.plotId === p.id && curT2.taskKind === 'digging') {
+              SearchO2HomeAvatar.leavePlotTask();
+            }
+          }
           showNotification('🌱','Plot '+(p.id+1)+' is prepared and ready for planting!','plot',p.id);
           if (typeof triggerMotivationalGuide === 'function' && (!state.motivationalEvents || !state.motivationalEvents['soil_prepared'])) {
             triggerMotivationalGuide('soil_prepared');
@@ -20798,6 +20810,9 @@ function startPrep(plotId){
     p.status = 'preparing';
     p.taskHours = 0;
     p.assignedWorker = null; // solo founder
+    if (typeof SearchO2HomeAvatar !== 'undefined' && SearchO2HomeAvatar && typeof SearchO2HomeAvatar.joinPlotTask === 'function') {
+      SearchO2HomeAvatar.joinPlotTask(0, 'digging');
+    }
     if (typeof activeModal !== 'undefined' && activeModal && (activeModal.type==='plot' || activeModal.type==='basic_equipment_discovery')) {
       activeModal = null;
     }
@@ -20965,6 +20980,15 @@ function plantTree(plotId, type){
     if (typeof pushReport === 'function') {
       pushReport('🌱 First plant on Plot 1. Chapter 1 complete. Open Storage when you are ready to protect harvests (Chapter 2 path).');
     }
+  }
+
+  if (typeof SearchO2HomeAvatar !== 'undefined' && SearchO2HomeAvatar && typeof SearchO2HomeAvatar.joinPlotTask === 'function') {
+    SearchO2HomeAvatar.joinPlotTask(plotId, 'planting');
+    setTimeout(function(){
+      if (SearchO2HomeAvatar.getActiveAvatarTask && SearchO2HomeAvatar.getActiveAvatarTask() && SearchO2HomeAvatar.getActiveAvatarTask().taskKind === 'planting') {
+        SearchO2HomeAvatar.leavePlotTask();
+      }
+    }, 5000);
   }
 
   checkAchievements(); closeModal(); requestSave();
@@ -22194,6 +22218,14 @@ function waterPlot(plotId){
   if (state.money<cost) return;
   state.money -= cost; p.health = Math.min(100, p.health+30);
   p.careAnimUntil = Date.now()+2200; p.careAnimType='water';
+  if (typeof SearchO2HomeAvatar !== 'undefined' && SearchO2HomeAvatar && typeof SearchO2HomeAvatar.joinPlotTask === 'function') {
+    SearchO2HomeAvatar.joinPlotTask(plotId, 'watering');
+    setTimeout(function(){
+      if (SearchO2HomeAvatar.getActiveAvatarTask && SearchO2HomeAvatar.getActiveAvatarTask() && SearchO2HomeAvatar.getActiveAvatarTask().taskKind === 'watering') {
+        SearchO2HomeAvatar.leavePlotTask();
+      }
+    }, 4500);
+  }
   render(); requestSave();
 }
 function prunePlot(plotId){
@@ -22213,6 +22245,9 @@ function startHarvest(plotId, destination){
   if (!w || w.type!=='farmer') return;
   if (destination) p.harvestDestination = destination;
   p.harvesting = true; p.harvestStartReal = Date.now(); p.harvestAmount = p.pendingHarvest;
+  if (typeof SearchO2HomeAvatar !== 'undefined' && SearchO2HomeAvatar && typeof SearchO2HomeAvatar.joinPlotTask === 'function') {
+    SearchO2HomeAvatar.joinPlotTask(plotId, 'harvesting');
+  }
   if (state.buildings.garage && state.buildings.garage.built){
     triggerHarvestCartSequence(plotId);
   }
@@ -24080,6 +24115,12 @@ function processHarvests(){
       }
       p.pendingHarvest = Math.max(0, p.pendingHarvest-amt);
       p.harvesting=false; p.harvestAmount=0;
+      if (typeof SearchO2HomeAvatar !== 'undefined' && SearchO2HomeAvatar && typeof SearchO2HomeAvatar.leavePlotTask === 'function') {
+        var curT3 = SearchO2HomeAvatar.getActiveAvatarTask ? SearchO2HomeAvatar.getActiveAvatarTask() : null;
+        if (curT3 && curT3.plotId === p.id && curT3.taskKind === 'harvesting') {
+          SearchO2HomeAvatar.leavePlotTask();
+        }
+      }
       if (!state.buildings.garage || !state.buildings.garage.built){
         spawnCarryAnimation(PLOT_LAYOUT[p.id], STORAGE_SPOT);
         p.manualHarvestsDone = (p.manualHarvestsDone || 0) + 1;
@@ -36216,12 +36257,18 @@ function modalHtml(){
       '<div class="row" style="margin-bottom:4px;"><span>Weed accumulation</span><span class="v" style="color:'+(weedPct>=70?'#E8785A':'var(--pine)')+';font-weight:800;">'+weedPct+'%</span></div>'+
       '<div class="healthbar" style="margin-bottom:12px;"><div class="fill" style="width:'+weedPct+'%;background:'+(weedPct>=70?'#E8785A':'#8D6E63')+';"></div></div>'+
       '<button class="primary plot-main-action-btn" data-prep="'+p.id+'" '+(state.money<LABOR_COST?'disabled':'')+'>⛏️ Begin Digging Land (€'+LABOR_COST+' · '+(typeof getPlotPrepDurationHours==='function'?getPlotPrepDurationHours(state):3.5)+'h)</button>'+
+      '<button type="button" class="secondary" onclick="closeModal();startPrep(' + p.id + ');if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.joinPlotTask(' + p.id + ',\'digging\');" style="margin-top:8px;width:100%;font-size:0.80rem;padding:7px 10px;background:#F1F8E9;border:1.5px solid #81C784;color:#1B5E20;font-weight:800;border-radius:10px;cursor:pointer;">' +
+        '🌟 Join with Avatar (Digging)' +
+      '</button>'+
     '</div>';
   } else if (p.status==='overgrown'){
     html += '<div class="plot-action-card overgrown">'+
       '<div class="plot-action-badge warn">🌿 Plot Overgrown with Weeds</div>'+
       '<div class="sub" style="margin-top:6px;margin-bottom:10px;">This plot became overgrown from neglect. Clear the dense wild overgrowth before you can prepare and plant here.</div>'+
       '<button class="primary plot-main-action-btn" data-clear="'+p.id+'" '+(state.money<CLEAR_COST?'disabled':'')+'>🌿 Begin Clearing Overgrowth (€'+CLEAR_COST+' · 2h)</button>'+
+      '<button type="button" class="secondary" onclick="closeModal();startClear(' + p.id + ');if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.joinPlotTask(' + p.id + ',\'clearing\');" style="margin-top:8px;width:100%;font-size:0.80rem;padding:7px 10px;background:#F1F8E9;border:1.5px solid #81C784;color:#1B5E20;font-weight:800;border-radius:10px;cursor:pointer;">' +
+        '🌟 Join with Avatar (Clearing)' +
+      '</button>'+
     '</div>';
   } else if (p.status==='preparing' || p.status==='clearing'){
     var dur = p.status==='preparing'?PREP_DURATION_HOURS:CLEAR_DURATION_HOURS;
@@ -36239,6 +36286,21 @@ function modalHtml(){
             return '<div class="section" style="margin-top:8px;"><h4>👷 Assign Field Worker</h4>'+
               idleCrew.map(function(iw){ return renderWorkerSelectionCard(iw, p.id); }).join('')+'</div>';
           })())+
+      (function(){
+        var curT = (typeof SearchO2HomeAvatar !== 'undefined' && SearchO2HomeAvatar.getActiveAvatarTask) ? SearchO2HomeAvatar.getActiveAvatarTask() : null;
+        var isWorkingHere = curT && curT.plotId === p.id;
+        var taskKind = p.status === 'preparing' ? 'digging' : 'clearing';
+        var taskLabel = p.status === 'preparing' ? 'Soil Tillage' : 'Clearing Brush';
+        if (isWorkingHere) {
+          return '<div style="margin-top:10px;padding:8px 12px;background:#E8F5E9;border:1.5px solid #81C784;border-radius:10px;display:flex;align-items:center;justify-content:space-between;">' +
+            '<span style="font-size:0.80rem;font-weight:800;color:#2E7D32;">🌟 Avatar Actively Assisting (' + taskLabel + ')</span>' +
+            '<button type="button" class="mini-btn secondary" onclick="closeModal();if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.leavePlotTask();" style="font-size:0.75rem;padding:3px 8px;border-radius:6px;">Step Away</button>' +
+          '</div>';
+        }
+        return '<button type="button" class="secondary" onclick="closeModal();if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.joinPlotTask(' + p.id + ',\'' + taskKind + '\');" style="margin-top:10px;width:100%;font-size:0.82rem;padding:8px 12px;background:#F1F8E9;border:1.5px solid #81C784;color:#1B5E20;font-weight:800;border-radius:10px;cursor:pointer;">' +
+          '🌟 Join with Avatar (' + taskLabel + ')' +
+        '</button>';
+      })()+
     '</div>';
   } else if (p.status==='dead'){
     var remCfg = REMOVE_CONFIG[def.category];
@@ -36411,6 +36473,19 @@ function modalHtml(){
             '</button>'
           : '') +
       '</div>' +
+      (function(){
+        var curT = (typeof SearchO2HomeAvatar !== 'undefined' && SearchO2HomeAvatar.getActiveAvatarTask) ? SearchO2HomeAvatar.getActiveAvatarTask() : null;
+        var isWorkingHere = curT && curT.plotId === p.id;
+        if (isWorkingHere) {
+          return '<div style="margin-top:8px;padding:6px 10px;background:#E8F5E9;border:1.5px solid #81C784;border-radius:8px;display:flex;align-items:center;justify-content:space-between;">' +
+            '<span style="font-size:0.76rem;font-weight:800;color:#2E7D32;">🌟 Avatar Active on Plot (' + (curT.taskKind || 'Care') + ')</span>' +
+            '<button type="button" class="mini-btn secondary" onclick="closeModal();if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.leavePlotTask();" style="font-size:0.72rem;padding:2px 6px;border-radius:6px;">Step Away</button>' +
+          '</div>';
+        }
+        return '<button type="button" class="secondary mini-btn" onclick="closeModal();if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.joinPlotTask(' + p.id + ',\'watering\');" style="margin-top:8px;width:100%;font-size:0.76rem;padding:6px 10px;border-radius:8px;color:#1B5E20;font-weight:700;border:1.5px solid #A5D6A7;background:#F1F8E9;cursor:pointer;">' +
+          '🌟 Join with Avatar (Irrigate &amp; Care)' +
+        '</button>';
+      })() +
     '</div>';
 
     // 4. ACCESSORIES & IRRIGATION GRID (3-COLUMN RESPONSIVE TILES)
