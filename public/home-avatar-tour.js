@@ -978,11 +978,15 @@
     }
 
     // 2. On mobile, ensure ONLY #s2TourModal (containing Next button) remains during exploration
-    var isMobile = (typeof window !== 'undefined' && window.innerWidth <= 768);
+    var isMobile = (typeof window !== 'undefined' && (window.innerWidth <= 860 || window.innerHeight <= 520 || (window.matchMedia && window.matchMedia('(max-width: 860px), (max-height: 520px), (pointer: coarse)').matches)));
     if (isMobile && tourState.active) {
       var progress = document.getElementById('s2TourProgress');
       if (progress) progress.style.display = 'none';
       if (suggContainer) suggContainer.style.display = 'none';
+      var botCarousel = document.getElementById('taskCarouselDOM');
+      if (botCarousel) botCarousel.style.display = 'none';
+      var chapModal = document.getElementById('chapterExploreModal');
+      if (chapModal) chapModal.style.display = 'none';
       document.querySelectorAll('.scout-chapter-guide-msg-box').forEach(function (b) {
         b.style.display = 'none';
       });
@@ -1153,7 +1157,7 @@
   function getFacilitySpot(key) {
     if (key === 'plot' || key === 'farm_plot_1' || key === 1 || key === '1') {
       if (typeof PLOT_LAYOUT !== 'undefined' && PLOT_LAYOUT[0]) return PLOT_LAYOUT[0];
-      return { top: 28, left: 24, w: 12, h: 20 };
+      return { top: 20, left: 18.5, w: 12, h: 22 };
     }
     if (key === 'crew_shed' || key === 'water_well' || key === 2 || key === '2') {
       if (typeof CREW_SHED_SPOT !== 'undefined') return CREW_SHED_SPOT;
@@ -1214,7 +1218,7 @@
     if (key === 'space_mission' || key === 8 || key === '8') return { top: 66, left: 77.5, w: 10.5, h: 22 };
 
     var fallbacks = {
-      1: { top: 28, left: 24, w: 12, h: 20 },
+      1: { top: 20, left: 18.5, w: 12, h: 22 },
       2: { top: 54, left: 8.5, w: 9.5, h: 18 },
       3: { top: 66, left: 32, w: 12, h: 22 },
       4: { top: 12, left: 32, w: 12, h: 22 },
@@ -1241,38 +1245,9 @@
 
   /**
    * Calculates the exact coordinates for the avatar to stand and touch the active scout marker.
-   * Finds the actual DOM element of the scout marker (.chapter-explore-hand.chapter-explore-locator).
+   * Finds the actual DOM element of the scout marker corresponding to chapter `ch`.
    */
   function getScoutMarkerTouchTarget(ch) {
-    if (ch === 5) {
-      // Chapter 5 MUST walk to BESS in the SW utility yard meadow (ground level, never in the sky)
-      var bessSpot = getFacilitySpot('energy_storage');
-      var bLeft = (bessSpot.left || 1.2) + (bessSpot.w || 6.8) * 0.5;
-      var bTop = (bessSpot.top || 54) + (bessSpot.h || 18) * 0.55;
-      return {
-        touchPoint: { left: Math.max(4, bLeft), top: Math.max(10, bessSpot.top - 2) },
-        standPoint: { left: Math.max(6, bLeft + 3), top: Math.min(84, bTop + 4) }
-      };
-    }
-
-    var scene = document.getElementById('fieldScene');
-    if (scene) {
-      var sceneRect = scene.getBoundingClientRect();
-      var locator = scene.querySelector('.chapter-explore-hand.chapter-explore-locator');
-      if (locator) {
-        var locRect = locator.getBoundingClientRect();
-        var centerX = locRect.left + locRect.width / 2;
-        var bottomY = locRect.bottom;
-        var leftPct = ((centerX - sceneRect.left) / sceneRect.width) * 100;
-        var topPct = ((bottomY - sceneRect.top) / sceneRect.height) * 100;
-        return {
-          touchPoint: { left: leftPct, top: Math.max(4, topPct - 3) },
-          standPoint: { left: leftPct, top: Math.min(88, topPct + 4) }
-        };
-      }
-    }
-
-    // Calibrated spatial coordinates matching facility locations
     var keyMap = {
       1: 'plot',
       2: 'crew_shed',
@@ -1285,13 +1260,64 @@
     };
     var key = keyMap[ch] || 'plot';
     var spot = getFacilitySpot(key);
-    var centerX = (spot.left || 0) + (spot.w || 10) / 2;
-    var centerY = (spot.top || 0) + (spot.h || 16) * 0.45;
 
-    return {
-      touchPoint: { left: centerX, top: Math.max(4, spot.top - 4) },
-      standPoint: { left: centerX, top: Math.min(88, centerY) }
+    var defCenterX = (spot.left || 0) + (spot.w || 10) * 0.5;
+    var defStandY = (spot.top || 0) + (spot.h || 16) * 0.7;
+    var defTouchY = Math.max(4, (spot.top || 0) - 2);
+
+    if (ch === 5) {
+      // BESS in SW utility yard meadow (ground level, never in sky)
+      defStandY = Math.min(84, (spot.top || 54) + (spot.h || 18) * 0.6);
+      defTouchY = Math.max(10, (spot.top || 54) - 2);
+    }
+
+    var result = {
+      touchPoint: { left: defCenterX, top: defTouchY },
+      standPoint: { left: defCenterX, top: Math.min(88, defStandY) }
     };
+
+    var scene = document.getElementById('fieldScene');
+    if (!scene) return result;
+    var sceneRect = scene.getBoundingClientRect();
+    if (!sceneRect || sceneRect.width <= 0 || sceneRect.height <= 0) return result;
+
+    var targetEl = null;
+    if (key === 'plot') {
+      targetEl = document.querySelector('[data-plot="0"]') || document.querySelector('.plot-spot');
+    } else if (key === 'eco_passport') {
+      targetEl = document.querySelector('[data-building="eco_passport"]') || document.querySelector('[data-building-key="eco_passport"]');
+    } else if (key === 'space_mission') {
+      targetEl = document.querySelector('[data-building="space_mission"]') || document.querySelector('[data-building-key="space_mission"]');
+    } else {
+      targetEl = document.querySelector('[data-building="' + key + '"]');
+    }
+
+    if (targetEl) {
+      var locator = targetEl.querySelector('.chapter-explore-locator');
+      var refEl = locator || targetEl;
+      var refRect = refEl.getBoundingClientRect();
+
+      if (refRect && refRect.width > 0 && refRect.height > 0) {
+        var centerX = refRect.left + refRect.width / 2;
+        var bottomY = refRect.bottom;
+        var leftPct = ((centerX - sceneRect.left) / sceneRect.width) * 100;
+        var topPct = ((bottomY - sceneRect.top) / sceneRect.height) * 100;
+
+        leftPct = Math.max(3, Math.min(96, leftPct));
+        topPct = Math.max(5, Math.min(88, topPct));
+
+        result.touchPoint = {
+          left: leftPct,
+          top: Math.max(4, topPct - (locator ? 4 : 2))
+        };
+        result.standPoint = {
+          left: leftPct,
+          top: Math.min(88, topPct + (locator ? 3 : 2))
+        };
+      }
+    }
+
+    return result;
   }
 
   // ---------------------------------------------------------------------------
@@ -1873,28 +1899,12 @@
   }
 
   function renderExploredFieldBadge(ch, key) {
-    var scene = document.getElementById('fieldScene');
-    if (!scene) return;
-    var spot = getFacilitySpot(key);
-    if (!spot) return;
+    // User instruction: after exploration remove all star icons
     var badgeId = 's2ExploredBadge_ch' + ch;
     var badge = document.getElementById(badgeId);
-    if (!badge) {
-      badge = document.createElement('div');
-      badge.id = badgeId;
-      badge.className = 'chapter-explore-tick s2-field-survey-tick';
-      badge.title = 'Chapter ' + ch + ' Explored · Click for Roadmap';
-      badge.innerHTML = '<span class="tick-star">★</span><span class="tick-check" style="display:none;">✓</span>';
-      badge.onclick = function (e) {
-        if (e) e.stopPropagation();
-        if (typeof openChapterRoadmapForObject === 'function') openChapterRoadmapForObject(key);
-      };
-      scene.appendChild(badge);
+    if (badge && badge.parentNode) {
+      badge.parentNode.removeChild(badge);
     }
-    badge.style.position = 'absolute';
-    badge.style.left = (spot.left + (spot.w || 10) * 0.78) + '%';
-    badge.style.top = (spot.top + (spot.h || 16) * 0.12) + '%';
-    badge.style.zIndex = '36';
   }
 
   // ---------------------------------------------------------------------------
@@ -1911,7 +1921,7 @@
       2: 'crew_shed',
       3: 'garden',
       4: 'pond',
-      5: 'wind_turbine',
+      5: 'energy_storage',
       6: 'juice_bar',
       7: 'eco_passport',
       8: 'space_mission'
@@ -1987,6 +1997,9 @@
 
     function handleModalCloseAndAdvance() {
       advanceTourCheckpoint(ch);
+      if (ch < 8) {
+        triggerNextScoutWalk(ch + 1);
+      }
     }
 
     var btn = document.getElementById('s2TourContinue');
@@ -1997,6 +2010,11 @@
   }
 
   function isAnyExplorationModalOpen() {
+    var isMobile = (typeof window !== 'undefined' && (window.innerWidth <= 860 || window.innerHeight <= 520 || (window.matchMedia && window.matchMedia('(max-width: 860px), (max-height: 520px), (pointer: coarse)').matches)));
+    if (isMobile) {
+      // On mobile during exploration, cooldown timer must always remain visible
+      return false;
+    }
     var overlay = document.getElementById('modalOverlay');
     if (overlay && !overlay.classList.contains('hidden') && overlay.style.display !== 'none' && overlay.offsetWidth > 0) return true;
     var lockedPopup = document.getElementById('stepInstructionPopupWrapper');
@@ -2390,6 +2408,66 @@
       return;
     }
 
+    var def = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[ch - 1])
+      ? CHAPTER_DEFINITIONS[ch - 1]
+      : { icon: '🧭', title: 'Chapter ' + ch };
+
+    var keyMap = { 1: 'plot', 2: 'crew_shed', 3: 'garden', 4: 'pond', 5: 'energy_storage', 6: 'juice_bar', 7: 'eco_passport', 8: 'space_mission' };
+    var primaryKey = keyMap[ch] || 'plot';
+    var isMobile = (typeof window !== 'undefined' && (window.innerWidth <= 860 || window.innerHeight <= 520 || (window.matchMedia && window.matchMedia('(max-width: 860px), (max-height: 520px), (pointer: coarse)').matches)));
+
+    // 0. Purge all previous chapter scout locators, guide boxes, tick stars
+    document.querySelectorAll('.chapter-explore-hand, .chapter-explore-locator, .scout-chapter-guide-msg-box, .chapter-explore-tick, .s2-field-survey-tick').forEach(function (node) {
+      node.remove();
+    });
+
+    // Ensure active chapter locator beacon is attached to the target facility
+    var targetEl = (primaryKey === 'plot')
+      ? (document.querySelector('[data-plot="0"]') || document.querySelector('.plot-spot'))
+      : document.querySelector('[data-building="' + primaryKey + '"]');
+
+    if (targetEl && !targetEl.querySelector('.chapter-explore-locator')) {
+      var locWrap = document.createElement('div');
+      locWrap.className = 'chapter-explore-hand chapter-explore-locator active-scout-beacon';
+      locWrap.style.cssText = 'position:absolute;top:' + (isMobile ? '-46px' : '-78px') + ';left:50%;transform:translateX(-50%);z-index:45;display:flex;flex-direction:column;align-items:center;pointer-events:auto;touch-action:manipulation;white-space:nowrap;';
+      locWrap.title = 'Scout Chapter ' + ch + ': ' + (def.title || '') + ' (Tap to survey +5 XP)';
+      locWrap.onclick = function (e) {
+        e.stopPropagation();
+        if (typeof exploreChapterObject === 'function') exploreChapterObject(primaryKey);
+      };
+      locWrap.ontouchend = function (e) {
+        e.stopPropagation();
+        if (typeof exploreChapterObject === 'function') exploreChapterObject(primaryKey);
+      };
+
+      var guideHtml = '';
+      if (!isMobile) {
+        guideHtml =
+          '<div class="scout-chapter-guide-msg-box" style="touch-action:manipulation;">' +
+            '<span style="font-size:1.15rem;line-height:1;">🧭</span>' +
+            '<div style="text-align:left;line-height:1.2;">' +
+              '<div style="font-size:0.62rem;font-weight:900;color:#2E7D32;text-transform:uppercase;letter-spacing:0.4px;">Next Scout: Ch. ' + ch + '</div>' +
+              '<div style="font-size:0.75rem;font-weight:900;color:#1B5E20;">' + (def.title || '') + ' <span style="background:#C8E6C9;color:#1B5E20;font-size:0.62rem;padding:1px 5px;border-radius:6px;margin-left:2px;">+5 XP</span></div>' +
+            '</div>' +
+            '<span style="font-size:0.76rem;color:#2E7D32;font-weight:900;margin-left:2px;">➔</span>' +
+          '</div>';
+      }
+
+      var svgHtml = (typeof getDirectionalLocatorSvg === 'function')
+        ? getDirectionalLocatorSvg(ch, def.title || '')
+        : '<span style="font-size:1.8rem;">🧭</span>';
+
+      locWrap.innerHTML =
+        guideHtml +
+        '<div style="position:relative;display:flex;flex-direction:column;align-items:center;">' +
+          '<div class="locator-pulse-ring"></div>' +
+          '<span class="locator-pill-tag">Ch. ' + ch + '</span>' +
+          svgHtml +
+        '</div>';
+
+      targetEl.appendChild(locWrap);
+    }
+
     // 1. Calculate exact touch and standing target for this chapter's scout marker
     var targets = getScoutMarkerTouchTarget(ch);
     var from = {
@@ -2402,10 +2480,6 @@
       left: (from.left + targets.standPoint.left) / 2 + (Math.random() * 3 - 1.5),
       top: (from.top + targets.standPoint.top) / 2 + (Math.random() * 2 - 1)
     };
-
-    var def = (typeof CHAPTER_DEFINITIONS !== 'undefined' && CHAPTER_DEFINITIONS[ch - 1])
-      ? CHAPTER_DEFINITIONS[ch - 1]
-      : { icon: '🧭', title: 'Chapter ' + ch };
 
     // 2. Avatar walks directly to the scout marker position at natural human walking speed
     var dist = Math.hypot(targets.standPoint.left - from.left, targets.standPoint.top - from.top);
@@ -2435,8 +2509,6 @@
       showChapterGhosts(ch, true);
 
       // 5. Automatic exploration milestone and reward
-      var keyMap = { 1: 'plot', 2: 'crew_shed', 3: 'garden', 4: 'pond', 5: 'energy_storage', 6: 'juice_bar', 7: 'eco_passport', 8: 'space_mission' };
-      var primaryKey = keyMap[ch];
       if (primaryKey && typeof exploreChapterObject === 'function') {
         try { exploreChapterObject(primaryKey); } catch (e) {}
       }
@@ -2448,6 +2520,11 @@
         if (typeof state.xp === 'number' && state.xp === 0) state.xp = 5;
       }
       renderExploredFieldBadge(ch, primaryKey);
+
+      // On mobile, ensure no intrusive popup modals cover the Next button
+      if (isMobile && typeof closeModal === 'function') {
+        closeModal();
+      }
 
       // 6. Open merged scout modal laid bottom side beside marketplace
       openTourModal(ch, function () {
@@ -2469,6 +2546,30 @@
         }
       }, 700);
     });
+  }
+
+  function walkToChapter(targetCh) {
+    targetCh = parseInt(targetCh, 10);
+    if (!targetCh || targetCh < 1 || targetCh > 8) return;
+    hideHomeOverlay();
+    if (!tourState.active) {
+      tourState.active = true;
+      tourState.skipped = false;
+      var av = tourState.avatar || (typeof state !== 'undefined' && state.playerAvatar) || AVATAR_ROSTER[0];
+      tourState.avatar = av;
+      tourState.avatarId = av.id;
+      spawnWalker(av, getFacilitySpot(targetCh));
+    }
+    clearScoutCooldown();
+    clearGhosts(true);
+    if (tourState.walkerEl) {
+      tourState.walkerEl.classList.remove('wonder-touching');
+    }
+    runChapterStep(targetCh);
+  }
+
+  function isTourActive() {
+    return !!(tourState && tourState.active && !tourState.skipped);
   }
 
   // ---------------------------------------------------------------------------
@@ -2629,6 +2730,8 @@
       return spawnWalker(tourState.avatar, getFacilitySpot('plot'));
     },
     dockTopCapsules: dockTopCapsules,
+    walkToChapter: walkToChapter,
+    isTourActive: isTourActive,
     triggerJuteTarpDiggingSequence: triggerJuteTarpDiggingSequence
   };
 
@@ -2637,4 +2740,4 @@
   } else {
     bootIntegration();
   }
-})(typeof window !== 'undefined' ? window : this);
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
