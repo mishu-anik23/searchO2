@@ -7,9 +7,18 @@
   'use strict';
 
   // ---------------------------------------------------------------------------
-  // 12 Diverse Pure Volumetric 3D Isometric Avatars
+  // ---------------------------------------------------------------------------
+  // 4 Global Regions & 12 Diverse Pure Volumetric 3D Isometric Avatars
   // Age bands: 8-10, 11-15, 16-25, 26-40, 41-60, 61-90
   // ---------------------------------------------------------------------------
+  var REGIONS = [
+    { id: 'all', name: 'All Regions', flag: '🌍', desc: '10 Planetary Biomes across Europe, Asia, Africa & Americas' },
+    { id: 'europe', name: 'Europe', flag: '🇪🇺', desc: 'Central European Plains, Bavarian Alpenhof, Spanish Dehesa & Nordic Taiga' },
+    { id: 'asia', name: 'Asia & Indo-Pacific', flag: '🌏', desc: 'East Asian Woodlands, Hokkaido Bamboo & Saint Martin Blue Lab' },
+    { id: 'africa', name: 'Africa & Maghreb', flag: '🌍', desc: 'Sahel Great Green Wall, Maghreb Oasis & Madagascar Spiny Forest' },
+    { id: 'americas', name: 'Americas', flag: '🌎', desc: 'Amazon Rainforest Basin, Andean Terraces & Pacific Northwest' }
+  ];
+
   var AVATAR_ROSTER = [
     {
       id: 'av_rio_boy',
@@ -17,6 +26,10 @@
       adjective: 'Curious',
       ageBand: '8-10',
       gender: 'boy',
+      region: 'americas',
+      regionName: 'Americas',
+      regionFlag: '🌎',
+      country: 'Brazil',
       heritage: 'Brazilian riverside',
       dress: 'Bright cotton shirt & river sandals',
       skin: '#C68642',
@@ -31,6 +44,10 @@
       adjective: 'Bright',
       ageBand: '8-10',
       gender: 'girl',
+      region: 'africa',
+      regionName: 'Africa & Maghreb',
+      regionFlag: '🌍',
+      country: 'Senegal',
       heritage: 'West African print',
       dress: 'Ankara-pattern dress & coral beads',
       skin: '#5D4037',
@@ -45,6 +62,10 @@
       adjective: 'Steady',
       ageBand: '11-15',
       gender: 'boy',
+      region: 'asia',
+      regionName: 'Asia & Indo-Pacific',
+      regionFlag: '🌏',
+      country: 'Japan',
       heritage: 'Japanese school jacket',
       dress: 'Navy gakuran-style jacket & sneakers',
       skin: '#E0BEA0',
@@ -59,6 +80,10 @@
       adjective: 'Gentle',
       ageBand: '11-15',
       gender: 'girl',
+      region: 'americas',
+      regionName: 'Americas',
+      regionFlag: '🌎',
+      country: 'Andes / Peru',
       heritage: 'Andean scarf',
       dress: 'Woven alpaca scarf & earth-tone skirt',
       skin: '#A0522D',
@@ -73,6 +98,10 @@
       adjective: 'Eager',
       ageBand: '16-25',
       gender: 'man',
+      region: 'europe',
+      regionName: 'Europe & Mediterranean',
+      regionFlag: '🇪🇺',
+      country: 'Ireland',
       heritage: 'Irish field kit',
       dress: 'Tweed work vest, rolled sleeves & field boots',
       skin: '#F5D0A9',
@@ -87,6 +116,10 @@
       adjective: 'Focused',
       ageBand: '16-25',
       gender: 'woman',
+      region: 'asia',
+      regionName: 'Asia & Indo-Pacific',
+      regionFlag: '🌏',
+      country: 'China',
       heritage: 'Chinese work tunic',
       dress: 'Indigo cotton work tunic & sash',
       skin: '#E8C4A2',
@@ -101,6 +134,10 @@
       adjective: 'Patient',
       ageBand: '26-40',
       gender: 'man',
+      region: 'africa',
+      regionName: 'Africa & Maghreb',
+      regionFlag: '🌍',
+      country: 'Morocco / Maghreb',
       heritage: 'Maghrebi sash',
       dress: 'Linen tunic, desert sash & leather babouche',
       skin: '#8D6E63',
@@ -115,6 +152,10 @@
       adjective: 'Wise',
       ageBand: '26-40',
       gender: 'woman',
+      region: 'asia',
+      regionName: 'Asia & Indo-Pacific',
+      regionFlag: '🌏',
+      country: 'Bengal / South Asia',
       heritage: 'South Asian kurta',
       dress: 'Saffron kurta, flowing dupatta & brass bangle',
       skin: '#C68642',
@@ -129,6 +170,10 @@
       adjective: 'Calm',
       ageBand: '41-60',
       gender: 'man',
+      region: 'europe',
+      regionName: 'Europe & Mediterranean',
+      regionFlag: '🇪🇺',
+      country: 'Sweden / Nordic',
       heritage: 'Nordic wool vest',
       dress: 'Chunky knit wool vest, field trousers & boots',
       skin: '#F5D0A9',
@@ -143,6 +188,10 @@
       adjective: 'Kind',
       ageBand: '41-60',
       gender: 'woman',
+      region: 'africa',
+      regionName: 'Africa & Maghreb',
+      regionFlag: '🌍',
+      country: 'East Africa / Madagascar',
       heritage: 'East African wrap',
       dress: 'Kitenge wrap, matching headscarf & beaded collar',
       skin: '#4E342E',
@@ -157,6 +206,10 @@
       adjective: 'Gentle',
       ageBand: '61-90',
       gender: 'man',
+      region: 'asia',
+      regionName: 'Asia & Indo-Pacific',
+      regionFlag: '🌏',
+      country: 'Japan',
       heritage: 'Japanese happi',
       dress: 'Master indigo happi coat, bamboo staff & sandals',
       skin: '#E0BEA0',
@@ -171,6 +224,10 @@
       adjective: 'Warm',
       ageBand: '61-90',
       gender: 'woman',
+      region: 'europe',
+      regionName: 'Europe & Mediterranean',
+      regionFlag: '🇪🇺',
+      country: 'Spain / Mediterranean',
       heritage: 'Mediterranean shawl',
       dress: 'Olive linen dress, sun shawl & straw hat',
       skin: '#D4A574',
@@ -532,6 +589,7 @@
     walkerEl: null,
     ghostLayer: null,
     skipped: false,
+    regionFilter: 'all',
     ageFilter: 'all',
     cooldownActive: false,
     cooldownRemaining: 0,
@@ -765,109 +823,543 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Volumetric 3D World Map SVG with Realistic Ocean & Land Colormap
+  // 3D Circular Planetary Map Engine with Dragging, Plot Markings & Regional Borders
   // ---------------------------------------------------------------------------
+  var HomeAvatarGlobe = (function () {
+    var canvas, ctx;
+    var dpr = 1, width = 320, height = 320, baseRadius = 130;
+    var rotY = -0.18; // Start facing Europe / Germany (lon ~10)
+    var rotX = 0.52;  // Downward tilt looking at Northern Hemisphere
+    var isDragging = false;
+    var lastX = 0, lastY = 0;
+    var velX = 0, velY = 0;
+    var autoSpin = true;
+    var idleTicks = 0;
+    var animId = null;
+    var targetRotY = null, targetRotX = null;
+    var isAnimatingTo = false;
+    var hoveredPlot = null;
+    var activeRegionHighlight = 'all';
+
+    var REGIONAL_BORDERS = [
+      {
+        id: 'europe',
+        name: 'Europe',
+        flag: '🇪🇺',
+        borderColor: '#FFD54F',
+        glowColor: 'rgba(255, 213, 79, 0.45)',
+        fill: 'rgba(255, 213, 79, 0.14)',
+        centroid: [50.0, 15.0],
+        coords: [
+          [58.0, -10.0], [68.0, 15.0], [70.0, 30.0], [55.0, 35.0], [42.0, 30.0],
+          [36.0, 25.0], [36.0, -6.0], [43.0, -10.0], [50.0, -10.0], [58.0, -10.0]
+        ]
+      },
+      {
+        id: 'asia',
+        name: 'Asia & Pacific',
+        flag: '🌏',
+        borderColor: '#00E5FF',
+        glowColor: 'rgba(0, 229, 255, 0.45)',
+        fill: 'rgba(0, 229, 255, 0.14)',
+        centroid: [32.0, 95.0],
+        coords: [
+          [55.0, 50.0], [65.0, 100.0], [65.0, 145.0], [45.0, 145.0], [30.0, 135.0],
+          [10.0, 110.0], [5.0, 95.0], [15.0, 75.0], [25.0, 60.0], [45.0, 50.0], [55.0, 50.0]
+        ]
+      },
+      {
+        id: 'africa',
+        name: 'Africa & Maghreb',
+        flag: '🌍',
+        borderColor: '#FFA726',
+        glowColor: 'rgba(255, 167, 38, 0.45)',
+        fill: 'rgba(255, 167, 38, 0.14)',
+        centroid: [8.0, 20.0],
+        coords: [
+          [35.0, -10.0], [35.0, 32.0], [12.0, 52.0], [-10.0, 42.0], [-25.0, 50.0],
+          [-35.0, 25.0], [-34.0, 18.0], [-5.0, 10.0], [5.0, -5.0], [15.0, -17.0], [35.0, -10.0]
+        ]
+      },
+      {
+        id: 'americas',
+        name: 'Americas',
+        flag: '🌎',
+        borderColor: '#76FF03',
+        glowColor: 'rgba(118, 255, 3, 0.45)',
+        fill: 'rgba(118, 255, 3, 0.14)',
+        centroid: [5.0, -65.0],
+        coords: [
+          [60.0, -135.0], [60.0, -60.0], [30.0, -75.0], [10.0, -75.0], [5.0, -50.0],
+          [-10.0, -35.0], [-35.0, -55.0], [-55.0, -68.0], [-20.0, -70.0], [5.0, -80.0],
+          [20.0, -105.0], [45.0, -125.0], [60.0, -135.0]
+        ]
+      }
+    ];
+
+    var PLOT_MARKINGS = [
+      { id: 'plot_1', num: '1', name: 'Plot 1 · Alluvial Meadow Loam', lat: 51.5, lon: 10.2, region: 'europe', icon: '🌱', status: 'Active Home Meadow', color: '#81C784', isHome: true },
+      { id: 'plot_2', num: '2', name: 'Plot 2 · Field Shed & Tools', lat: 51.0, lon: 9.8, region: 'europe', icon: '🛖', status: 'Equipped Cache', color: '#A5D6A7' },
+      { id: 'plot_3', num: '3', name: 'Plot 3 · Kitchen Permaculture', lat: 50.8, lon: 10.6, region: 'europe', icon: '🥕', status: 'Compost & Beds', color: '#C8E6C9' },
+      { id: 'plot_4', num: '4', name: 'Plot 4 · Agroforestry Pond', lat: 51.8, lon: 10.5, region: 'europe', icon: '💧', status: 'Irrigation Basin', color: '#4DD0E1' },
+      { id: 'plot_5', num: '5', name: 'Plot 5 · Clean BESS Storage', lat: 50.5, lon: 9.5, region: 'europe', icon: '⚡', status: 'Wind Turbine Grid', color: '#FFD54F' },
+      { id: 'plot_6', num: '6', name: 'Plot 6 · Hofstand Village', lat: 51.2, lon: 11.2, region: 'europe', icon: '🍎', status: 'Artisan Cider Market', color: '#FF8A65' },
+      { id: 'bavaria_plots', num: 'B1-12', name: 'Bavaria · Plots 1–12', lat: 47.95, lon: 11.35, region: 'europe', icon: '🏔️', status: 'Alpenhof Alpine Meadow', color: '#81C784' },
+      { id: 'spain_plots', num: 'ES', name: 'Spain · Dehesa Plots', lat: 40.46, lon: -3.74, region: 'europe', icon: '🫒', status: 'Mediterranean Silvopasture', color: '#FFB74D' },
+      { id: 'sweden_plots', num: 'SE', name: 'Sweden · Taiga Plots', lat: 60.12, lon: 18.64, region: 'europe', icon: '🌲', status: 'Nordic Boreal Forest', color: '#80D8FF' },
+      { id: 'japan_plots', num: 'JP', name: 'Japan · Hokkaido Plots', lat: 43.06, lon: 141.35, region: 'asia', icon: '🎋', status: 'Montane Bamboo Grove', color: '#69F0AE' },
+      { id: 'saint_martin_plots', num: 'SM', name: 'Saint Martin · Blue Lab', lat: 20.62, lon: 92.32, region: 'asia', icon: '🪸', status: 'Coral Lagoon & Lab', color: '#00E5FF' },
+      { id: 'senegal_plots', num: 'SN', name: 'Senegal · Sahel Plots', lat: 14.49, lon: -14.45, region: 'africa', icon: '🌳', status: 'Great Green Wall', color: '#FFE082' },
+      { id: 'madagascar_plots', num: 'MG', name: 'Madagascar · Spiny Plots', lat: -18.76, lon: 46.86, region: 'africa', icon: '🪵', status: 'Baobab & Spiny Thicket', color: '#FF8A80' },
+      { id: 'brazil_plots', num: 'BR', name: 'Brazil · Amazon Plots', lat: -3.46, lon: -62.21, region: 'americas', icon: '🌴', status: 'Amazon Basin Canopy', color: '#B9F6CA' },
+      { id: 'usa_plots', num: 'US', name: 'USA · Pacific NW Plots', lat: 47.60, lon: -122.33, region: 'americas', icon: '🌲', status: 'Cascadia Temperate Woods', color: '#A7FFEB' }
+    ];
+
+    var LAND_POINTS = [];
+    (function initLand() {
+      function addBox(minLat, maxLat, minLon, maxLon, stepLat, stepLon) {
+        for (var lt = minLat; lt <= maxLat; lt += stepLat) {
+          for (var ln = minLon; ln <= maxLon; ln += stepLon) {
+            LAND_POINTS.push({ lat: lt, lon: ln });
+          }
+        }
+      }
+      addBox(44, 56, -5, 22, 2.8, 3.0);
+      addBox(56, 68, 5, 28, 3.0, 3.4);
+      addBox(36, 44, -9, 26, 2.8, 3.0);
+      addBox(18, 36, -12, 35, 3.8, 4.2);
+      addBox(5, 17, -16, 15, 3.2, 3.8);
+      addBox(-4, 12, 32, 50, 3.5, 3.8);
+      addBox(-34, -5, 14, 36, 3.8, 4.2);
+      addBox(50, 68, 45, 135, 5.0, 6.0);
+      addBox(22, 45, 35, 75, 3.8, 4.5);
+      addBox(8, 32, 68, 88, 3.2, 3.8);
+      addBox(20, 45, 80, 122, 3.5, 4.0);
+      addBox(31, 44, 130, 143, 2.5, 2.8);
+      addBox(30, 50, -124, -72, 3.5, 4.0);
+      addBox(52, 68, -155, -60, 5.0, 6.5);
+      addBox(15, 29, -112, -88, 3.2, 3.5);
+      addBox(-8, 11, -75, -45, 3.5, 4.0);
+      addBox(-24, -9, -68, -40, 3.5, 4.0);
+      addBox(-54, -25, -72, -58, 3.8, 3.8);
+      addBox(-38, -14, 115, 152, 4.0, 4.5);
+    })();
+
+    function project(lat, lon, r) {
+      r = r || baseRadius;
+      var phi = lat * Math.PI / 180;
+      var lam = lon * Math.PI / 180;
+
+      var x0 = Math.cos(phi) * Math.sin(lam);
+      var y0 = -Math.sin(phi);
+      var z0 = Math.cos(phi) * Math.cos(lam);
+
+      var cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+      var x1 = x0 * cosY + z0 * sinY;
+      var y1 = y0;
+      var z1 = -x0 * sinY + z0 * cosY;
+
+      var cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+      var x2 = x1;
+      var y2 = y1 * cosX - z1 * sinX;
+      var z2 = y1 * sinX + z1 * cosX;
+
+      var cx = width / 2;
+      var cy = height / 2;
+
+      return {
+        x: cx + x2 * r,
+        y: cy + y2 * r,
+        z: z2,
+        visible: z2 > 0
+      };
+    }
+
+    function resize() {
+      if (!canvas || !canvas.parentElement) return;
+      var rect = canvas.parentElement.getBoundingClientRect();
+      var size = Math.min(rect.width || 320, rect.height || 320);
+      if (size <= 0) size = 300;
+      size = Math.min(size, 340);
+      dpr = window.devicePixelRatio || 1;
+      width = size;
+      height = size;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      baseRadius = size * 0.42;
+    }
+
+    function rotateTo(lat, lon, onComplete) {
+      var targetLam = -lon * Math.PI / 180;
+      var targetPhi = lat * Math.PI / 180;
+
+      var diff = (targetLam - rotY) % (Math.PI * 2);
+      if (diff > Math.PI) diff -= Math.PI * 2;
+      if (diff < -Math.PI) diff += Math.PI * 2;
+
+      targetRotY = rotY + diff;
+      targetRotX = Math.max(-1.15, Math.min(1.15, targetPhi));
+      isAnimatingTo = true;
+      velX = 0;
+      velY = 0;
+      idleTicks = 0;
+      if (onComplete) setTimeout(onComplete, 350);
+    }
+
+    function updatePhysics() {
+      if (isAnimatingTo && targetRotY !== null && targetRotX !== null) {
+        rotY += (targetRotY - rotY) * 0.14;
+        rotX += (targetRotX - rotX) * 0.14;
+        if (Math.abs(targetRotY - rotY) < 0.002 && Math.abs(targetRotX - rotX) < 0.002) {
+          rotY = targetRotY;
+          rotX = targetRotX;
+          isAnimatingTo = false;
+          targetRotY = null;
+          targetRotX = null;
+        }
+        return;
+      }
+      if (!isDragging) {
+        rotY += velX;
+        rotX += velY;
+        velX *= 0.92;
+        velY *= 0.92;
+        if (Math.abs(velX) < 0.0001) velX = 0;
+        if (Math.abs(velY) < 0.0001) velY = 0;
+        rotX = Math.max(-1.25, Math.min(1.25, rotX));
+
+        if (autoSpin && idleTicks > 60 && !hoveredPlot) {
+          rotY += 0.0018;
+        } else {
+          idleTicks++;
+        }
+      }
+    }
+
+    function draw() {
+      if (!ctx || width === 0 || height === 0) return;
+      updatePhysics();
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
+
+      var cx = width / 2;
+      var cy = height / 2;
+      var r = baseRadius;
+      var now = Date.now();
+
+      // 1. Atmosphere Halo
+      var halo = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r * 1.25);
+      halo.addColorStop(0, 'rgba(76, 175, 80, 0.28)');
+      halo.addColorStop(0.5, 'rgba(0, 229, 255, 0.10)');
+      halo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 1.25, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Spherical Ocean Base (Clipped)
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.clip();
+
+      var oceanGrad = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.35, r * 0.1, cx, cy, r);
+      oceanGrad.addColorStop(0, '#0D47A1');
+      oceanGrad.addColorStop(0.45, '#0B2848');
+      oceanGrad.addColorStop(1, '#051329');
+      ctx.fillStyle = oceanGrad;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+      // Graticule Lines (Latitudes & Longitudes)
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.12)';
+      ctx.lineWidth = 1;
+      [-60, -30, 0, 30, 60].forEach(function (lat) {
+        ctx.beginPath();
+        var first = true;
+        for (var lon = -180; lon <= 180; lon += 8) {
+          var p = project(lat, lon, r);
+          if (p.visible) {
+            if (first) { ctx.moveTo(p.x, p.y); first = false; }
+            else { ctx.lineTo(p.x, p.y); }
+          } else {
+            first = true;
+          }
+        }
+        ctx.stroke();
+      });
+      [0, 60, 120, 180, -120, -60].forEach(function (lon) {
+        ctx.beginPath();
+        var first = true;
+        for (var lat = -80; lat <= 80; lat += 6) {
+          var p = project(lat, lon, r);
+          if (p.visible) {
+            if (first) { ctx.moveTo(p.x, p.y); first = false; }
+            else { ctx.lineTo(p.x, p.y); }
+          } else {
+            first = true;
+          }
+        }
+        ctx.stroke();
+      });
+
+      // 3. Continental Landmass Points
+      ctx.fillStyle = '#66BB6A';
+      for (var i = 0; i < LAND_POINTS.length; i++) {
+        var lp = project(LAND_POINTS[i].lat, LAND_POINTS[i].lon, r);
+        if (lp.visible) {
+          var ptSize = (lp.z > 0.6 ? 2.5 : (lp.z > 0.2 ? 2.0 : 1.4));
+          ctx.beginPath();
+          ctx.arc(lp.x, lp.y, ptSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 4. Regional Map Borders
+      REGIONAL_BORDERS.forEach(function (reg) {
+        var isHigh = (activeRegionHighlight === 'all' || activeRegionHighlight === reg.id);
+        var visibleCount = 0;
+        ctx.beginPath();
+        for (var j = 0; j < reg.coords.length; j++) {
+          var p = project(reg.coords[j][0], reg.coords[j][1], r);
+          if (j === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+          if (p.visible) visibleCount++;
+        }
+        ctx.closePath();
+
+        if (visibleCount > 2) {
+          ctx.fillStyle = isHigh ? reg.fill : 'rgba(255,255,255,0.03)';
+          ctx.fill();
+          ctx.strokeStyle = isHigh ? reg.borderColor : 'rgba(255,255,255,0.2)';
+          ctx.lineWidth = isHigh ? 2.4 : 1.2;
+          ctx.stroke();
+
+          // Centroid Label Tag
+          var cP = project(reg.centroid[0], reg.centroid[1], r);
+          if (cP.z > 0.18) {
+            ctx.save();
+            ctx.font = '900 9px "Baloo 2", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            var tagText = reg.flag + ' ' + reg.name;
+            var tw = ctx.measureText(tagText).width;
+            ctx.fillStyle = 'rgba(5, 20, 15, 0.85)';
+            ctx.strokeStyle = reg.borderColor;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(cP.x - tw / 2 - 5, cP.y - 7, tw + 10, 14, 6);
+            else ctx.rect(cP.x - tw / 2 - 5, cP.y - 7, tw + 10, 14);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = '#FFF9C4';
+            ctx.fillText(tagText, cP.x, cP.y);
+            ctx.restore();
+          }
+        }
+      });
+
+      // 5. Plot Markings
+      PLOT_MARKINGS.forEach(function (plot) {
+        var p = project(plot.lat, plot.lon, r);
+        if (p.visible) {
+          var isHovered = hoveredPlot && hoveredPlot.id === plot.id;
+          var pulse = (Math.sin(now * 0.005 + (plot.lat + plot.lon)) + 1) * 0.5;
+
+          // Pulse ring
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 6 + pulse * 6, 0, Math.PI * 2);
+          ctx.strokeStyle = plot.color;
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+
+          // Plot marker dot
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, isHovered ? 6 : 4.5, 0, Math.PI * 2);
+          ctx.fillStyle = plot.color;
+          ctx.fill();
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 1.4;
+          ctx.stroke();
+
+          // Plot number badge
+          if (p.z > 0.12) {
+            ctx.save();
+            ctx.font = '900 8px "Nunito", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.shadowColor = '#000000';
+            ctx.shadowBlur = 3;
+            var numStr = plot.isHome ? '⭐' : plot.num;
+            ctx.fillText(numStr, p.x, p.y - 7);
+            ctx.restore();
+          }
+        }
+      });
+
+      // 6. 3D Spherical Volume Highlight & Terminator Shadow
+      var specLight = ctx.createRadialGradient(cx - r * 0.45, cy - r * 0.45, 0, cx, cy, r);
+      specLight.addColorStop(0, 'rgba(255, 255, 255, 0.22)');
+      specLight.addColorStop(0.5, 'rgba(255, 255, 255, 0.05)');
+      specLight.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = specLight;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+      var termShadow = ctx.createRadialGradient(cx + r * 0.6, cy + r * 0.6, r * 0.3, cx, cy, r);
+      termShadow.addColorStop(0, 'rgba(0, 0, 0, 0.7)');
+      termShadow.addColorStop(0.6, 'rgba(0, 0, 0, 0.35)');
+      termShadow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = termShadow;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+
+      ctx.restore(); // end clip
+
+      // Outer Metallic Ring
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(129, 199, 132, 0.65)';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function getPointerPos(e) {
+      if (!canvas) return { x: 0, y: 0 };
+      var rect = canvas.getBoundingClientRect();
+      var touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+      var clientX = touch ? touch.clientX : (e.clientX !== undefined ? e.clientX : 0);
+      var clientY = touch ? touch.clientY : (e.clientY !== undefined ? e.clientY : 0);
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+        clientX: clientX,
+        clientY: clientY
+      };
+    }
+
+    function checkPlotHover(x, y) {
+      if (!canvas) return;
+      var closest = null;
+      var minD = 18;
+      for (var i = 0; i < PLOT_MARKINGS.length; i++) {
+        var p = project(PLOT_MARKINGS[i].lat, PLOT_MARKINGS[i].lon);
+        if (p.visible) {
+          var d = Math.hypot(p.x - x, p.y - y);
+          if (d < minD) {
+            minD = d;
+            closest = PLOT_MARKINGS[i];
+          }
+        }
+      }
+      hoveredPlot = closest;
+      var tt = document.getElementById('s2GlobePlotTooltip');
+      if (tt) {
+        if (closest) {
+          tt.innerHTML =
+            '<div class="gpt-title">' + closest.icon + ' ' + closest.name + '</div>' +
+            '<div class="gpt-status">' + closest.status + '</div>' +
+            '<div class="gpt-coord">' + closest.lat.toFixed(1) + '°N, ' + closest.lon.toFixed(1) + '°E</div>';
+          tt.classList.remove('hidden');
+          tt.style.left = (x) + 'px';
+          tt.style.top = (y - 12) + 'px';
+        } else {
+          tt.classList.add('hidden');
+        }
+      }
+    }
+
+    function handlePointerDown(e) {
+      isDragging = true;
+      var pos = getPointerPos(e);
+      lastX = pos.x;
+      lastY = pos.y;
+      velX = 0;
+      velY = 0;
+      autoSpin = false;
+      idleTicks = 0;
+      if (canvas) canvas.style.cursor = 'grabbing';
+    }
+
+    function handlePointerMove(e) {
+      var pos = getPointerPos(e);
+      if (isDragging) {
+        var dx = pos.x - lastX;
+        var dy = pos.y - lastY;
+        lastX = pos.x;
+        lastY = pos.y;
+        rotY += dx * 0.008;
+        rotX -= dy * 0.008;
+        rotX = Math.max(-1.25, Math.min(1.25, rotX));
+        velX = dx * 0.008;
+        velY = -dy * 0.008;
+        if (e.cancelable) e.preventDefault();
+      } else {
+        checkPlotHover(pos.x, pos.y);
+      }
+    }
+
+    function handlePointerUp() {
+      if (isDragging) {
+        isDragging = false;
+        if (canvas) canvas.style.cursor = 'grab';
+      }
+    }
+
+    function loop() {
+      draw();
+      animId = requestAnimationFrame(loop);
+    }
+
+    function init(canvasId) {
+      canvas = document.getElementById(canvasId || 's2HomeGlobeCanvas');
+      if (!canvas) return;
+      ctx = canvas.getContext('2d');
+      resize();
+      window.addEventListener('resize', resize);
+
+      canvas.style.cursor = 'grab';
+      canvas.addEventListener('pointerdown', handlePointerDown);
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+
+      canvas.addEventListener('mousedown', handlePointerDown);
+      window.addEventListener('mousemove', handlePointerMove);
+      window.addEventListener('mouseup', handlePointerUp);
+
+      canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+      window.addEventListener('touchmove', handlePointerMove, { passive: false });
+      window.addEventListener('touchend', handlePointerUp);
+      canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+      canvas.addEventListener('touchend', handlePointerUp);
+
+      if (animId) cancelAnimationFrame(animId);
+      loop();
+    }
+
+    function setRegionHighlight(regId) {
+      activeRegionHighlight = regId || 'all';
+    }
+
+    return {
+      init: init,
+      rotateTo: rotateTo,
+      setRegionHighlight: setRegionHighlight,
+      getRotation: function () { return { rotY: rotY, rotX: rotX }; },
+      REGIONAL_BORDERS: REGIONAL_BORDERS,
+      PLOT_MARKINGS: PLOT_MARKINGS
+    };
+  })();
+
   function worldMapSvg() {
     return (
-      '<svg class="s2-world-map-svg" viewBox="0 0 640 125" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">' +
-      '<defs>' +
-        // Deep Realistic Bathymetric Ocean Depth Gradients
-        '<linearGradient id="s2OceanGrad" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0%" stop-color="#01579B"/>' +
-          '<stop offset="35%" stop-color="#0277BD"/>' +
-          '<stop offset="70%" stop-color="#0288D1"/>' +
-          '<stop offset="100%" stop-color="#00695C"/>' +
-        '</linearGradient>' +
-        // Continental Topographic Lowland & Alpine Colormap
-        '<linearGradient id="s2LandGrad" x1="0" y1="0" x2="1" y2="1">' +
-          '<stop offset="0%" stop-color="#66BB6A"/>' +
-          '<stop offset="40%" stop-color="#43A047"/>' +
-          '<stop offset="85%" stop-color="#2E7D32"/>' +
-          '<stop offset="100%" stop-color="#1B5E20"/>' +
-        '</linearGradient>' +
-        '<linearGradient id="s2DesertGrad" x1="0" y1="0" x2="1" y2="1">' +
-          '<stop offset="0%" stop-color="#FFE082"/>' +
-          '<stop offset="60%" stop-color="#FFB74D"/>' +
-          '<stop offset="100%" stop-color="#F57C00"/>' +
-        '</linearGradient>' +
-        '<linearGradient id="s2AlpineGrad" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0%" stop-color="#ECEFF1"/>' +
-          '<stop offset="40%" stop-color="#90A4AE"/>' +
-          '<stop offset="100%" stop-color="#546E7A"/>' +
-        '</linearGradient>' +
-      '</defs>' +
-
-      // 1. Oceanic Abyssal Water Base with Shelf Contours
-      '<rect width="640" height="125" rx="10" fill="url(#s2OceanGrad)"/>' +
-      // Subsea bathymetric shelf contours
-      '<path d="M0 65 Q160 85 320 60 T640 75 L640 125 L0 125 Z" fill="rgba(0, 229, 255, 0.08)"/>' +
-      '<path d="M0 90 Q180 110 360 85 T640 100 L640 125 L0 125 Z" fill="rgba(0, 230, 118, 0.06)"/>' +
-
-      // 2. Continents: Americas
-      '<g class="s2-continents" filter="drop-shadow(0 4px 8px rgba(0,0,0,0.4))">' +
-        // North America
-        '<path d="M50 25 Q95 10 145 28 Q175 42 160 65 Q135 60 105 75 Q75 65 55 45 Z" fill="url(#s2LandGrad)"/>' +
-        // Rocky Mountains spine
-        '<path d="M78 28 Q88 45 92 65" stroke="url(#s2AlpineGrad)" stroke-width="2.5" fill="none" opacity="0.8"/>' +
-        // South America
-        '<path d="M125 70 Q160 68 168 95 Q150 120 135 122 Q120 105 125 70 Z" fill="url(#s2LandGrad)"/>' +
-        // Amazon Basin lush core
-        '<circle cx="145" cy="88" r="14" fill="#1B5E20" opacity="0.7"/>' +
-
-        // Eurasia & Africa
-        '<path d="M260 22 Q340 10 460 18 Q510 35 480 65 Q410 70 330 55 Q280 62 260 22 Z" fill="url(#s2LandGrad)"/>' +
-        // Alps ridge
-        '<path d="M295 38 Q315 36 335 42" stroke="url(#s2AlpineGrad)" stroke-width="2.8" fill="none"/>' +
-        // Africa continent
-        '<path d="M275 58 Q345 52 355 85 Q335 120 305 122 Q275 95 275 58 Z" fill="url(#s2LandGrad)"/>' +
-        // Sahara Desert
-        '<ellipse cx="312" cy="74" rx="34" ry="14" fill="url(#s2DesertGrad)"/>' +
-
-        // Asia East & Southeast Archipelagos
-        '<path d="M460 28 Q540 32 555 60 Q520 80 470 65 Z" fill="url(#s2LandGrad)"/>' +
-        '<ellipse cx="505" cy="78" rx="28" ry="10" fill="url(#s2LandGrad)"/>' +
-
-        // Australia
-        '<path d="M525 85 Q575 80 585 102 Q555 118 525 110 Z" fill="url(#s2DesertGrad)"/>' +
-      '</g>' +
-
-      // 3. Active Farm & Biome Pins with Pulsing Beacons
-      // Germany Central Eco Farm (Active Beacon)
-      '<g class="s2-pin-germany" transform="translate(308, 36)">' +
-        '<circle cx="0" cy="0" r="11" fill="none" stroke="#FFD54F" stroke-width="1.2" opacity="0.6">' +
-          '<animate attributeName="r" values="4;14;4" dur="2.4s" repeatCount="indefinite"/>' +
-          '<animate attributeName="opacity" values="0.8;0.1;0.8" dur="2.4s" repeatCount="indefinite"/>' +
-        '</circle>' +
-        '<circle cx="0" cy="0" r="5" fill="#FFD54F" stroke="#FFF" stroke-width="1.5"/>' +
-        '<text x="0" y="-8" font-size="8.5" font-weight="900" fill="#FFF9C4" text-anchor="middle" filter="drop-shadow(0 1px 2px #000)">🇩🇪 Home Farm</text>' +
-      '</g>' +
-
-      // Bavaria Alpenhof Beacon
-      '<g class="s2-pin-bavaria" transform="translate(322, 45)">' +
-        '<circle cx="0" cy="0" r="3.8" fill="#81C784" stroke="#FFF" stroke-width="1.2"/>' +
-        '<text x="0" y="10" font-size="7.5" font-weight="800" fill="#C8E6C9" text-anchor="middle">Alpenhof</text>' +
-      '</g>' +
-
-      // Saint Martin Blue Lab Beacon
-      '<g class="s2-pin-caribbean" transform="translate(182, 64)">' +
-        '<circle cx="0" cy="0" r="4.2" fill="#00E5FF" stroke="#FFF" stroke-width="1.2"/>' +
-        '<text x="0" y="-7" font-size="7.5" font-weight="800" fill="#E0F7FA" text-anchor="middle">Blue Lab</text>' +
-      '</g>' +
-
-      // Brazil Amazon Beacon
-      '<g class="s2-pin-brazil" transform="translate(145, 92)">' +
-        '<circle cx="0" cy="0" r="3.8" fill="#69F0AE" stroke="#FFF" stroke-width="1"/>' +
-        '<text x="0" y="9" font-size="7" font-weight="700" fill="#B9F6CA" text-anchor="middle">Amazon</text>' +
-      '</g>' +
-
-      // Sweden Taiga Beacon
-      '<g class="s2-pin-sweden" transform="translate(320, 18)">' +
-        '<circle cx="0" cy="0" r="3.5" fill="#80D8FF" stroke="#FFF" stroke-width="1"/>' +
-        '<text x="0" y="-5" font-size="7" font-weight="700" fill="#E1F5FE" text-anchor="middle">Taiga</text>' +
-      '</g>' +
-
-      '<text x="16" y="116" font-size="7.5" font-weight="800" fill="rgba(224,242,241,0.85)">🌍 Realistic Ocean Bathymetry &amp; Topographic Colormap · Pure 3D Isometric Projection</text>' +
-      '</svg>'
+      '<div class="s2-globe-stage" id="s2GlobeStage">' +
+        '<canvas id="s2HomeGlobeCanvas" width="320" height="320" class="s2-home-globe-canvas" role="img" aria-label="Interactive 3D Planetary Map"></canvas>' +
+        '<div class="s2-globe-plot-tooltip hidden" id="s2GlobePlotTooltip"></div>' +
+      '</div>'
     );
   }
 
@@ -909,6 +1401,11 @@
       );
     }).join('');
 
+    var regionChips = REGIONS.map(function (reg) {
+      var active = (tourState.regionFilter || 'all') === reg.id;
+      return '<button type="button" class="s2-region-chip' + (active ? ' active' : '') + '" data-region="' + reg.id + '">' + reg.flag + ' ' + reg.name + '</button>';
+    }).join('');
+
     var ageChips = AGE_BANDS.map(function (band) {
       var label = band === 'all' ? 'All ages' : band + ' yrs';
       return '<button type="button" class="s2-age-chip' + (band === 'all' ? ' active' : '') + '" data-age="' + band + '">' + label + '</button>';
@@ -922,20 +1419,36 @@
           '<div class="sub">Volumetric 3D isometric farm adventure · walk the meadow · survey every chapter</div>' +
         '</div>' +
         '<div class="s2-home-body">' +
-          '<div class="s2-world-map-card">' +
+          '<div class="s2-world-map-card s2-circular-globe-card">' +
             '<div class="s2-world-map-inner">' +
               '<div class="s2-world-map-title">' +
-                '<span>🌍 Planetary Biome Network · Ocean &amp; Land Colormap</span>' +
-                '<span style="font-size:0.75rem;color:#81C784;">3D Isometric Elevation</span>' +
+                '<span>🌍 3D Planetary Map · Biomes, Plots &amp; Regional Borders</span>' +
+                '<span class="s2-globe-hint-pill">Drag to Rotate · Hover/Tap Plots</span>' +
               '</div>' +
-              worldMapSvg() +
-              '<div class="s2-world-map-hint">Germany Eco Farm is your home meadow · survey chapters to unlock tools and global biomes</div>' +
+              '<div class="s2-globe-stage" id="s2GlobeStage">' +
+                '<canvas id="s2HomeGlobeCanvas" width="320" height="320" class="s2-home-globe-canvas" role="img" aria-label="Interactive 3D Planetary Map"></canvas>' +
+                '<div class="s2-globe-plot-tooltip hidden" id="s2GlobePlotTooltip"></div>' +
+              '</div>' +
+              '<div class="s2-globe-quick-regions" id="s2GlobeQuickRegions">' +
+                '<span class="s2-quick-label">Center Region:</span>' +
+                '<button type="button" class="s2-quick-chip active" data-region="all">🌍 All</button>' +
+                '<button type="button" class="s2-quick-chip" data-region="europe">🇪🇺 Europe</button>' +
+                '<button type="button" class="s2-quick-chip" data-region="asia">🌏 Asia &amp; Pacific</button>' +
+                '<button type="button" class="s2-quick-chip" data-region="africa">🌍 Africa</button>' +
+                '<button type="button" class="s2-quick-chip" data-region="americas">🌎 Americas</button>' +
+              '</div>' +
+              '<div class="s2-world-map-hint">Interactive 3D circular map with farm plot markings &amp; regional borders · Drag to rotate</div>' +
             '</div>' +
           '</div>' +
           '<div class="s2-biome-row" id="s2BiomeRow">' + biomeCards + '</div>' +
           '<div class="s2-avatar-section-title">👤 Select Your 3D Explorer Avatar</div>' +
-          '<div class="s2-avatar-section-sub">12 diverse characters in boys, girls, men &amp; women · ages 8–90 · regional dress · matching adjectives</div>' +
-          '<div class="s2-age-filters" id="s2AgeFilters">' + ageChips + '</div>' +
+          '<div class="s2-avatar-section-sub">12 diverse characters grouped by world region · ages 8–90 · regional dress · matching adjectives</div>' +
+          '<div class="s2-filter-dock">' +
+            '<div class="s2-filter-label">🌍 Filter by Global Region:</div>' +
+            '<div class="s2-region-filters" id="s2RegionFilters">' + regionChips + '</div>' +
+            '<div class="s2-filter-label">🎂 Filter by Age Band:</div>' +
+            '<div class="s2-age-filters" id="s2AgeFilters">' + ageChips + '</div>' +
+          '</div>' +
           '<div class="s2-avatar-grid" id="s2AvatarGrid"></div>' +
         '</div>' +
         '<div class="s2-home-footer">' +
@@ -996,22 +1509,60 @@
   function renderAvatarGrid() {
     var grid = document.getElementById('s2AvatarGrid');
     if (!grid) return;
-    var filter = tourState.ageFilter || 'all';
-    var list = AVATAR_ROSTER.filter(function (a) {
-      return filter === 'all' || a.ageBand === filter;
+    var regionFilter = tourState.regionFilter || 'all';
+    var ageFilter = tourState.ageFilter || 'all';
+
+    var filtered = AVATAR_ROSTER.filter(function (a) {
+      var matchReg = (regionFilter === 'all' || a.region === regionFilter);
+      var matchAge = (ageFilter === 'all' || a.ageBand === ageFilter);
+      return matchReg && matchAge;
     });
-    grid.innerHTML = list.map(function (av) {
-      var sel = tourState.avatarId === av.id ? ' selected' : '';
-      return (
-        '<button type="button" class="s2-avatar-card' + sel + '" data-avatar="' + av.id + '" aria-pressed="' + (sel ? 'true' : 'false') + '">' +
-          '<div class="s2-avatar-figure">' + avatarFigureSvg(av, { w: 72, h: 96 }) + '</div>' +
-          '<div class="s2-avatar-name">' + av.name + '</div>' +
-          '<div class="s2-avatar-adj">' + av.adjective + '</div>' +
-          '<div class="s2-avatar-meta">' + av.gender + ' · ' + av.ageBand + '</div>' +
-          '<div class="s2-avatar-dress">' + av.dress + '</div>' +
-        '</button>'
-      );
-    }).join('');
+
+    if (filtered.length === 0) {
+      grid.innerHTML = '<div class="s2-no-avatars-msg">No explorers match the current region and age filters. Try selecting "All Regions" or "All ages".</div>';
+      return;
+    }
+
+    var regionsToShow = (regionFilter === 'all')
+      ? ['europe', 'asia', 'africa', 'americas']
+      : [regionFilter];
+
+    var html = '';
+    regionsToShow.forEach(function (rId) {
+      var rAvatars = filtered.filter(function (a) { return a.region === rId; });
+      if (rAvatars.length === 0) return;
+      var rDef = REGIONS.find(function (r) { return r.id === rId; }) || { name: rId, flag: '🌍', desc: '' };
+
+      html +=
+        '<div class="s2-region-group-wrapper" data-region-group="' + rId + '">' +
+          '<div class="s2-region-group-header">' +
+            '<div class="s2-rgh-title">' +
+              '<span class="s2-rgh-flag">' + rDef.flag + '</span>' +
+              '<span class="s2-rgh-name">' + rDef.name + '</span>' +
+              '<span class="s2-rgh-count">' + rAvatars.length + (rAvatars.length === 1 ? ' Explorer' : ' Explorers') + '</span>' +
+            '</div>' +
+            '<div class="s2-rgh-desc">' + rDef.desc + '</div>' +
+          '</div>' +
+          '<div class="s2-region-cards-row">';
+
+      rAvatars.forEach(function (av) {
+        var sel = tourState.avatarId === av.id ? ' selected' : '';
+        html +=
+          '<button type="button" class="s2-avatar-card' + sel + '" data-avatar="' + av.id + '" aria-pressed="' + (sel ? 'true' : 'false') + '">' +
+            '<div class="s2-avatar-region-badge">' + av.regionFlag + ' ' + (av.country || av.regionName) + '</div>' +
+            '<div class="s2-avatar-figure">' + avatarFigureSvg(av, { w: 72, h: 96 }) + '</div>' +
+            '<div class="s2-avatar-name">' + av.name + '</div>' +
+            '<div class="s2-avatar-adj">' + av.adjective + '</div>' +
+            '<div class="s2-avatar-meta">' + av.gender + ' · ' + av.ageBand + ' yrs</div>' +
+            '<div class="s2-avatar-heritage" title="' + av.heritage + '">Heritage: ' + av.heritage + '</div>' +
+            '<div class="s2-avatar-dress" title="' + av.dress + '">' + av.dress + '</div>' +
+          '</button>';
+      });
+
+      html += '</div></div>';
+    });
+
+    grid.innerHTML = html;
 
     var conf = document.getElementById('s2ConfirmAvatar');
     if (conf) conf.disabled = !tourState.avatarId;
@@ -1038,6 +1589,25 @@
     sky.innerHTML = html;
   }
 
+  function setAvatarRegionFilter(regId) {
+    tourState.regionFilter = regId;
+    document.querySelectorAll('.s2-region-chip').forEach(function (c) {
+      c.classList.toggle('active', c.getAttribute('data-region') === regId);
+    });
+    document.querySelectorAll('.s2-quick-chip').forEach(function (c) {
+      c.classList.toggle('active', c.getAttribute('data-region') === regId);
+    });
+    renderAvatarGrid();
+    if (typeof HomeAvatarGlobe !== 'undefined' && HomeAvatarGlobe && typeof HomeAvatarGlobe.rotateTo === 'function') {
+      HomeAvatarGlobe.setRegionHighlight(regId);
+      if (regId === 'europe') HomeAvatarGlobe.rotateTo(50.0, 15.0);
+      else if (regId === 'asia') HomeAvatarGlobe.rotateTo(30.0, 105.0);
+      else if (regId === 'africa') HomeAvatarGlobe.rotateTo(8.0, 20.0);
+      else if (regId === 'americas') HomeAvatarGlobe.rotateTo(-5.0, -60.0);
+      else HomeAvatarGlobe.rotateTo(51.16, 10.45);
+    }
+  }
+
   function showHomeOverlay() {
     var existing = document.getElementById('s2HomeOverlay');
     if (!existing) {
@@ -1052,6 +1622,31 @@
     if (overlay) overlay.classList.remove('hidden');
     sprinkleStars();
     renderAvatarGrid();
+
+    // Initialize 3D Circular Globe
+    setTimeout(function () {
+      HomeAvatarGlobe.init('s2HomeGlobeCanvas');
+    }, 50);
+
+    var regFilters = document.getElementById('s2RegionFilters');
+    if (regFilters) {
+      regFilters.querySelectorAll('[data-region]').forEach(function (chip) {
+        chip.onclick = function () {
+          var regId = chip.getAttribute('data-region');
+          setAvatarRegionFilter(regId);
+        };
+      });
+    }
+
+    var quickRegs = document.getElementById('s2GlobeQuickRegions');
+    if (quickRegs) {
+      quickRegs.querySelectorAll('[data-region]').forEach(function (chip) {
+        chip.onclick = function () {
+          var regId = chip.getAttribute('data-region');
+          setAvatarRegionFilter(regId);
+        };
+      });
+    }
 
     var filters = document.getElementById('s2AgeFilters');
     if (filters) {
@@ -2192,7 +2787,15 @@
   }
 
   function updateTourProgress(ch, cooldownSec) {
+    var isMobile = (typeof window !== 'undefined' && (window.innerWidth <= 860 || window.innerHeight <= 520 || (window.matchMedia && window.matchMedia('(max-width: 860px), (max-height: 520px), (pointer: coarse)').matches)));
     var pill = document.getElementById('s2TourProgress');
+    if (isMobile) {
+      if (pill) {
+        pill.classList.remove('visible');
+        pill.style.display = 'none';
+      }
+      return;
+    }
     var txt = document.getElementById('s2TourProgressText');
     if (pill) pill.classList.add('visible');
     if (txt) {
@@ -2732,8 +3335,16 @@
     dockTopCapsules: dockTopCapsules,
     walkToChapter: walkToChapter,
     isTourActive: isTourActive,
-    triggerJuteTarpDiggingSequence: triggerJuteTarpDiggingSequence
+    triggerJuteTarpDiggingSequence: triggerJuteTarpDiggingSequence,
+    updateTourProgress: updateTourProgress,
+    setAvatarRegionFilter: setAvatarRegionFilter,
+    Globe: HomeAvatarGlobe,
+    REGIONS: REGIONS,
+    AVATAR_ROSTER: AVATAR_ROSTER
   };
+
+  global.HomeAvatarGlobe = HomeAvatarGlobe;
+  global.SearchO2HomeAvatar = SearchO2HomeAvatar;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', bootIntegration);
