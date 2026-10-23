@@ -176,31 +176,8 @@
   }
 
   function mountGlobeHud() {
-    ensureGlobeHudStyles();
-    var host =
-      document.getElementById('regionScreen') ||
-      document.getElementById('globeStage') ||
-      document.querySelector('.globe-stage-wrapper') ||
-      document.getElementById('regionMainWrapper');
-    if (!host) return;
     var hud = document.getElementById('s2GlobeHud');
-    if (!hud) {
-      hud = document.createElement('div');
-      hud.id = 's2GlobeHud';
-      hud.className = 's2-globe-hud';
-      host.style.position = host.style.position || 'relative';
-      host.appendChild(hud);
-    }
-    var st = trialStatus();
-    var timerClass = 's2-globe-timer' + (st.expired ? ' expired' : '');
-    var timerText = isRegisteredUser()
-      ? '✅ Account saved'
-      : st.active
-        ? st.expired
-          ? '⏰ Trial ended — login required'
-          : '⏳ Guest trial · ' + formatRemaining(st.remainingMs)
-        : '🌱 Guest trial starts on play';
-    hud.innerHTML = avatarFaceHtml() + '<div class="' + timerClass + '" id="s2GlobeTimer">' + timerText + '</div>';
+    if (hud) hud.remove();
   }
 
   function tickTimer() {
@@ -370,99 +347,296 @@
     tickTimer();
   }
 
+  function showOAuthConfigModal(provider) {
+    var existing = document.getElementById('s2OauthModal');
+    if (existing) existing.remove();
+    var el = document.createElement('div');
+    el.id = 's2OauthModal';
+    el.className = 's2-trial-lock';
+    var isGoogle = provider === 'google';
+    var title = isGoogle ? 'Google Account Sign-In' : 'GitHub OAuth Sign-In';
+    var icon = isGoogle ? '🔍' : '🐙';
+    var envKey = isGoogle ? 'GOOGLE_CLIENT_ID' : 'GITHUB_CLIENT_ID';
+    var storageKey = isGoogle ? 'searchO2_google_client_id' : 'searchO2_github_client_id';
+    var currentVal = '';
+    try { currentVal = localStorage.getItem(storageKey) || ''; } catch (e) {}
+
+    el.innerHTML =
+      '<div class="s2-trial-lock-card" style="max-width:440px;text-align:left;position:relative;">' +
+      '<button type="button" id="s2OauthClose" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#546E7A;font-weight:700;">✕</button>' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+        '<span style="font-size:1.8rem;">' + icon + '</span>' +
+        '<div>' +
+          '<h3 style="margin:0;font-family:Baloo 2,sans-serif;font-size:1.15rem;color:#1B5E20;">' + title + '</h3>' +
+          '<div style="font-size:0.75rem;color:#558B2F;font-weight:700;">Select Account &amp; Secure Authentication</div>' +
+        '</div>' +
+      '</div>' +
+      '<p style="font-size:0.82rem;line-height:1.45;color:#2C4A32;margin:8px 0 12px;">' +
+        'To connect your personal ' + (isGoogle ? 'Google' : 'GitHub') + ' account on this domain, please enter your ' +
+        (isGoogle ? 'Google OAuth 2.0 Client ID' : 'GitHub OAuth App Client ID') + '. ' +
+        'Once entered, ' + (isGoogle ? 'Google\'s official account chooser will open for you to pick your account.' : 'GitHub authorization will open.') +
+      '</p>' +
+      '<div style="margin-bottom:12px;">' +
+        '<label style="display:block;font-size:0.75rem;font-weight:800;color:#1B5E20;margin-bottom:4px;">' + envKey + ':</label>' +
+        '<input type="text" id="s2OauthInput" value="' + currentVal.replace(/"/g, '&quot;') + '" placeholder="' + (isGoogle ? 'xxxxxx-xxxxxx.apps.googleusercontent.com' : 'Ov23li...') + '" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #81C784;border-radius:10px;font-family:monospace;font-size:0.8rem;background:#fff;" />' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;">' +
+        '<button type="button" id="s2OauthLaunch" class="s2-btn-social ' + (isGoogle ? 'google' : 'github') + '" style="flex:2;background:' + (isGoogle ? '#4285F4' : '#24292e') + ';color:#fff;border:none;padding:11px;">' +
+          '🔑 Choose Account &amp; Connect' +
+        '</button>' +
+        '<button type="button" id="s2OauthWhatsApp" class="s2-btn-social whatsapp" style="flex:1;background:#25D366;color:#fff;border:none;padding:11px;" title="Use WhatsApp Phone Login instead">' +
+          '💬 WhatsApp' +
+        '</button>' +
+      '</div>' +
+      '<div style="margin-top:10px;text-align:center;font-size:0.72rem;color:#78909C;">' +
+        'On production (searcho2.online), this is automatically loaded from the server.' +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(el);
+
+    document.getElementById('s2OauthClose').onclick = function() { el.remove(); };
+    document.getElementById('s2OauthWhatsApp').onclick = function() {
+      el.remove();
+      showWhatsAppModal();
+    };
+    document.getElementById('s2OauthLaunch').onclick = function() {
+      var val = (document.getElementById('s2OauthInput').value || '').trim();
+      if (!val) {
+        alert('Please enter a valid ' + (isGoogle ? 'Google Client ID' : 'GitHub Client ID') + ' or use WhatsApp sign-in.');
+        return;
+      }
+      try {
+        localStorage.setItem(storageKey, val);
+      } catch (e) {}
+      if (isGoogle) {
+        global.GOOGLE_CLIENT_ID = val;
+        oauthConfig.googleClientId = val;
+      } else {
+        global.GITHUB_CLIENT_ID = val;
+        oauthConfig.githubClientId = val;
+      }
+      el.remove();
+      if (isGoogle) loginGoogleFixed();
+      else loginGithub();
+    };
+  }
+
+  function showWhatsAppModal() {
+    var existing = document.getElementById('s2WhatsAppModal');
+    if (existing) existing.remove();
+    var el = document.createElement('div');
+    el.id = 's2WhatsAppModal';
+    el.className = 's2-trial-lock';
+    el.innerHTML =
+      '<div class="s2-trial-lock-card" style="max-width:400px;text-align:left;position:relative;">' +
+      '<button type="button" id="s2WaClose" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#546E7A;font-weight:700;">✕</button>' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+        '<div style="width:38px;height:38px;border-radius:10px;background:#25D366;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3rem;">💬</div>' +
+        '<div>' +
+          '<h3 style="margin:0;font-family:Baloo 2,sans-serif;font-size:1.15rem;color:#1B5E20;">WhatsApp Phone Sign-In</h3>' +
+          '<div style="font-size:0.75rem;color:#2E7D32;font-weight:700;">Fast 6-Digit OTP Verification</div>' +
+        '</div>' +
+      '</div>' +
+      '<div id="s2WaStep1">' +
+        '<p style="font-size:0.82rem;line-height:1.4;color:#2C4A32;margin:8px 0 12px;">' +
+          'Enter your mobile phone number with international country code to receive your 6-digit login code.' +
+        '</p>' +
+        '<div style="margin-bottom:12px;">' +
+          '<label style="display:block;font-size:0.75rem;font-weight:800;color:#1B5E20;margin-bottom:4px;">Phone Number (E.164):</label>' +
+          '<input type="tel" id="s2WaPhone" placeholder="+49 170 1234567 or +880 1712 345678" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #81C784;border-radius:10px;font-size:0.9rem;font-weight:700;background:#fff;" />' +
+        '</div>' +
+        '<button type="button" id="s2WaBtnSend" class="s2-btn-social whatsapp" style="width:100%;background:#25D366;color:#fff;border:none;padding:11px;font-size:0.88rem;">' +
+          '📲 Send WhatsApp Code' +
+        '</button>' +
+      '</div>' +
+      '<div id="s2WaStep2" style="display:none;">' +
+        '<p style="font-size:0.82rem;line-height:1.4;color:#2C4A32;margin:8px 0 10px;">' +
+          'Enter the 6-digit code sent to <b id="s2WaTargetPhone" style="color:#1B5E20;"></b>:' +
+        '</p>' +
+        '<div id="s2WaDevNotice" style="display:none;background:#FFF9C4;border:1px solid #FBC02D;border-radius:8px;padding:6px 10px;font-size:0.74rem;color:#F57F17;font-weight:700;margin-bottom:10px;"></div>' +
+        '<div style="margin-bottom:12px;">' +
+          '<input type="text" id="s2WaCode" maxlength="6" placeholder="123456" style="width:100%;box-sizing:border-box;padding:10px 12px;text-align:center;letter-spacing:6px;font-size:1.3rem;font-weight:800;border:1.5px solid #25D366;border-radius:10px;background:#fff;" />' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button type="button" id="s2WaBtnVerify" class="s2-btn-social whatsapp" style="flex:2;background:#25D366;color:#fff;border:none;padding:11px;font-size:0.88rem;">' +
+            '✅ Verify &amp; Sign In' +
+          '</button>' +
+          '<button type="button" id="s2WaBtnBack" class="s2-btn-social" style="flex:1;background:#ECEFF1;color:#37474F;border:none;padding:11px;font-size:0.8rem;">' +
+            'Back' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+      '</div>';
+    document.body.appendChild(el);
+
+    document.getElementById('s2WaClose').onclick = function() { el.remove(); };
+
+    var phoneInput = document.getElementById('s2WaPhone');
+    var sendBtn = document.getElementById('s2WaBtnSend');
+    var verifyBtn = document.getElementById('s2WaBtnVerify');
+    var backBtn = document.getElementById('s2WaBtnBack');
+
+    var currentPhone = '';
+
+    sendBtn.onclick = function() {
+      var phone = (phoneInput.value || '').trim();
+      if (!phone || phone.replace(/\D/g, '').length < 8) {
+        alert('Please enter a valid international phone number with country code (e.g. +49 170 1234567).');
+        return;
+      }
+      currentPhone = phone;
+      sendBtn.disabled = true;
+      sendBtn.textContent = '⏳ Sending...';
+
+      postAuth('/auth/whatsapp/start', { phone: phone })
+        .then(function(d) {
+          sendBtn.disabled = false;
+          sendBtn.textContent = '📲 Send WhatsApp Code';
+          document.getElementById('s2WaStep1').style.display = 'none';
+          document.getElementById('s2WaStep2').style.display = 'block';
+          document.getElementById('s2WaTargetPhone').textContent = phone;
+          if (d && d.devCode) {
+            var devEl = document.getElementById('s2WaDevNotice');
+            devEl.style.display = 'block';
+            devEl.textContent = '🔑 Development Demo Code: ' + d.devCode;
+            document.getElementById('s2WaCode').value = d.devCode;
+          }
+          document.getElementById('s2WaCode').focus();
+        })
+        .catch(function(err) {
+          sendBtn.disabled = false;
+          sendBtn.textContent = '📲 Send WhatsApp Code';
+          alert(err.message || 'Failed to send WhatsApp code');
+        });
+    };
+
+    backBtn.onclick = function() {
+      document.getElementById('s2WaStep2').style.display = 'none';
+      document.getElementById('s2WaStep1').style.display = 'block';
+    };
+
+    verifyBtn.onclick = function() {
+      var code = (document.getElementById('s2WaCode').value || '').trim();
+      if (!code || code.length < 6) {
+        alert('Please enter the 6-digit verification code.');
+        return;
+      }
+      verifyBtn.disabled = true;
+      verifyBtn.textContent = '⏳ Verifying...';
+
+      var guestId = '';
+      try {
+        var g = localStorage.getItem('searchO2_guest_user');
+        if (g) guestId = JSON.parse(g).id;
+      } catch (e) {}
+
+      postAuth('/auth/whatsapp/verify', { phone: currentPhone, code: code, guestId: guestId })
+        .then(function(d) {
+          el.remove();
+          applyAuthSuccess(d);
+        })
+        .catch(function(err) {
+          verifyBtn.disabled = false;
+          verifyBtn.textContent = '✅ Verify & Sign In';
+          alert(err.message || 'Verification failed');
+        });
+    };
+  }
+
   function loginGoogleFixed() {
     var clientId = global.GOOGLE_CLIENT_ID || oauthConfig.googleClientId;
     try {
       if (!clientId) clientId = localStorage.getItem('searchO2_google_client_id');
     } catch (e) {}
 
-    // Default to sandbox/dev mode without interrupting with prompts
-    if (!clientId) {
-      clientId = 'mock-google-client-id.apps.googleusercontent.com';
-    }
-
     var isMock = !clientId || clientId.startsWith('mock') || clientId.includes('mock-google');
-    var gisAvailable = !!(global.google && global.google.accounts && global.google.accounts.id);
 
-    if (isMock || !gisAvailable) {
-      // Seamless Dev / Mock sign-in flow (1-click, NO PROMPTS)
-      var mockToken = 'mock_google_user_' + Math.floor(1000 + Math.random() * 9000);
-      return postAuth('/auth/google', { idToken: mockToken })
-        .then(function (d) {
-          applyAuthSuccess(d);
-          return d;
-        })
-        .catch(function () {
-          // Local offline fallback if backend API is unreachable or static
-          var fallbackUser = {
-            id: 'usr_g_' + Date.now().toString(36),
-            email: 'google.player@searcho2.online',
-            displayName: 'Google Explorer',
-            role: 'user',
-            authProvider: 'google',
-            isGuest: false,
-            money: (typeof state !== 'undefined' && state && state.money) ? state.money : 10000,
-            totalO2: (typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0,
-          };
-          applyAuthSuccess({
-            accessToken: 's2_local_tok_' + Date.now(),
-            user: fallbackUser,
-          });
-          return { user: fallbackUser };
-        });
+    if (isMock) {
+      showOAuthConfigModal('google');
+      return Promise.resolve();
     }
 
-    // Standard Google Identity Services GIS prompt
+    // Google Identity Services (GIS) prompt with Account Chooser
     return new Promise(function (resolve, reject) {
       try {
-        global.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: function (resp) {
-            if (!resp || !resp.credential) {
-              reject(new Error('No Google credential received'));
-              return;
-            }
-            postAuth('/auth/google', { idToken: resp.credential })
-              .then(function (d) {
-                applyAuthSuccess(d);
-                resolve(d);
-              })
-              .catch(function (err) {
-                var fallbackUser = {
-                  id: 'usr_g_' + Date.now().toString(36),
-                  email: 'google.verified@searcho2.online',
-                  displayName: 'Google Player',
-                  role: 'user',
-                  authProvider: 'google',
-                  isGuest: false,
-                  money: (typeof state !== 'undefined' && state && state.money) ? state.money : 10000,
-                  totalO2: (typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0,
-                };
-                applyAuthSuccess({
-                  accessToken: 's2_local_tok_' + Date.now(),
-                  user: fallbackUser,
-                });
-                resolve({ user: fallbackUser });
-              });
-          },
-          auto_select: false,
-          cancel_on_tap_outside: true,
-        });
-        global.google.accounts.id.prompt(function (notification) {
-          if (notification && notification.isNotDisplayed && notification.isNotDisplayed()) {
-            var host = document.getElementById('g_id_onload') || document.getElementById('btnGoogleGis');
-            if (host) {
-              host.innerHTML = '';
-              global.google.accounts.id.renderButton(host, {
-                theme: 'outline',
-                size: 'large',
-                shape: 'pill',
-                text: 'continue_with',
-                width: 280,
-              });
-            }
-          }
-        });
+        if (!global.google || !global.google.accounts) {
+          alert('Google Identity Services is initializing. Please try again in a moment.');
+          return resolve();
+        }
+
+        // GIS Token Client with explicit prompt: 'select_account'
+        if (global.google.accounts.oauth2 && global.google.accounts.oauth2.initTokenClient) {
+          var tokenClient = global.google.accounts.oauth2.initTokenClient({
+            client_id: clientId,
+            scope: 'openid email profile',
+            prompt: 'select_account',
+            callback: function (tokenResp) {
+              if (tokenResp && tokenResp.access_token) {
+                fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                  headers: { Authorization: 'Bearer ' + tokenResp.access_token },
+                })
+                  .then(function (r) { return r.json(); })
+                  .then(function (profile) {
+                    return postAuth('/auth/google', {
+                      idToken: tokenResp.access_token,
+                      profile: profile,
+                    });
+                  })
+                  .then(function (d) {
+                    applyAuthSuccess(d);
+                    resolve(d);
+                  })
+                  .catch(function () {
+                    // Direct session fallback with real profile if backend expects id_token
+                    fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                      headers: { Authorization: 'Bearer ' + tokenResp.access_token },
+                    })
+                      .then(function (r) { return r.json(); })
+                      .then(function (u) {
+                        var realUser = {
+                          id: 'usr_g_' + (u.sub || Date.now().toString(36)),
+                          email: u.email || 'user@searcho2.online',
+                          displayName: u.name || u.given_name || 'Google Player',
+                          avatarUrl: u.picture || null,
+                          role: 'user',
+                          authProvider: 'google',
+                          isGuest: false,
+                          money: (typeof state !== 'undefined' && state && state.money) ? state.money : 10000,
+                          totalO2: (typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0,
+                        };
+                        applyAuthSuccess({
+                          accessToken: 's2_tok_' + Date.now(),
+                          user: realUser,
+                        });
+                        resolve({ user: realUser });
+                      });
+                  });
+              }
+            },
+          });
+          tokenClient.requestAccessToken({ prompt: 'select_account' });
+          return;
+        }
+
+        // Alternative GIS ID Token flow
+        if (global.google.accounts.id) {
+          global.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: function (resp) {
+              if (resp && resp.credential) {
+                postAuth('/auth/google', { idToken: resp.credential })
+                  .then(function (d) {
+                    applyAuthSuccess(d);
+                    resolve(d);
+                  })
+                  .catch(reject);
+              }
+            },
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+          global.google.accounts.id.prompt();
+        }
       } catch (e) {
         reject(e);
       }
@@ -475,31 +649,9 @@
       if (!cid) cid = localStorage.getItem('searchO2_github_client_id');
     } catch (e) {}
 
-    // Seamless Dev / Mock GitHub sign-in if client ID is mock or not yet configured (1-click, NO PROMPTS)
     if (!cid || cid.startsWith('mock')) {
-      var mockCode = 'mock_github_' + Math.floor(1000 + Math.random() * 9000);
-      return postAuth('/auth/github', { code: mockCode })
-        .then(function (d) {
-          applyAuthSuccess(d);
-          return d;
-        })
-        .catch(function () {
-          var fallbackUser = {
-            id: 'usr_gh_' + Date.now().toString(36),
-            email: 'github.dev@users.searcho2.online',
-            displayName: 'GitHub Developer',
-            role: 'user',
-            authProvider: 'github',
-            isGuest: false,
-            money: (typeof state !== 'undefined' && state && state.money) ? state.money : 10000,
-            totalO2: (typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0,
-          };
-          applyAuthSuccess({
-            accessToken: 's2_local_tok_' + Date.now(),
-            user: fallbackUser,
-          });
-          return { user: fallbackUser };
-        });
+      showOAuthConfigModal('github');
+      return;
     }
 
     var redirect = encodeURIComponent(location.origin + location.pathname + '?oauth=github');
@@ -512,6 +664,7 @@
       encodeURIComponent('read:user user:email') +
       '&state=searcho2';
   }
+
   function loginFacebook() {
     var appId = oauthConfig.facebookAppId;
     if (!appId) {
@@ -528,21 +681,7 @@
   }
 
   function loginWhatsApp() {
-    var phone = prompt('WhatsApp number with country code (e.g. +491701234567):');
-    if (!phone) return;
-    postAuth('/auth/whatsapp/start', { phone: phone })
-      .then(function (d) {
-        var hint = d.devCode ? ' Dev code: ' + d.devCode : '';
-        var code = prompt('Enter the 6-digit code sent to WhatsApp.' + hint);
-        if (!code) return;
-        return postAuth('/auth/whatsapp/verify', { phone: phone, code: code });
-      })
-      .then(function (d) {
-        if (d) applyAuthSuccess(d);
-      })
-      .catch(function (e) {
-        alert(e.message || String(e));
-      });
+    showWhatsAppModal();
   }
 
   function handleOAuthRedirect() {
@@ -688,6 +827,8 @@
     loginGithub: loginGithub,
     loginFacebook: loginFacebook,
     loginWhatsApp: loginWhatsApp,
+    showWhatsAppModal: showWhatsAppModal,
+    showOAuthConfigModal: showOAuthConfigModal,
     mountGlobeHud: mountGlobeHud,
     renderSocialButtons: renderSocialButtons,
   };
