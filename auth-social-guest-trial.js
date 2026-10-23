@@ -14,9 +14,14 @@
   var LS_START = 'searchO2_guest_started_at';
   var LS_AVATAR = 'searchO2_selected_avatar';
   var API = function () {
-    return (typeof API_BASE_URL !== 'undefined' && API_BASE_URL) ||
-      (global.SEARCHO2_API_URL || '') + '/api' ||
-      '/api';
+    if (typeof API_BASE_URL !== 'undefined' && API_BASE_URL) return API_BASE_URL;
+    if (global.SEARCHO2_API_BASE) return global.SEARCHO2_API_BASE;
+    if (global.SEARCHO2_API_URL && !global.SEARCHO2_API_URL.includes('api.searcho2.online')) {
+      return global.SEARCHO2_API_URL.replace(/\/+$/, '') + '/api';
+    }
+    return (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'http://localhost:5000/api'
+      : (location.origin + '/api');
   };
 
   // ---------- Guest trial (local + optional backend sync) ----------
