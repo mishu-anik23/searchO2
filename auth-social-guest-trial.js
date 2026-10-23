@@ -293,6 +293,17 @@
         }
       } catch (e) {}
     }
+    // Attach client farm state for combination / merging
+    try {
+      if (typeof state !== 'undefined' && state) {
+        body.farmState = {
+          money: state.money,
+          totalO2: state.totalO2,
+          plots: state.plots,
+        };
+      }
+    } catch (e) {}
+
     var headers = { 'Content-Type': 'application/json' };
     try {
       var tok = (typeof authToken !== 'undefined' && authToken) || localStorage.getItem('searchO2_token');
@@ -323,7 +334,24 @@
       if (typeof apiUser !== 'undefined') apiUser = d.user;
       try {
         localStorage.removeItem('searchO2_guest_user');
+        localStorage.setItem('searchO2_user', JSON.stringify(d.user));
       } catch (e) {}
+
+      // Combine / Merge user data into client farm state
+      if (typeof state !== 'undefined' && state) {
+        if (typeof d.user.money === 'number') {
+          state.money = Math.max(state.money || 0, d.user.money);
+        }
+        if (typeof d.user.totalO2 === 'number') {
+          state.totalO2 = Math.max(state.totalO2 || 0, d.user.totalO2);
+        }
+        if (d.user.displayName) {
+          state.userName = d.user.displayName;
+        }
+        try {
+          if (typeof saveState === 'function') saveState();
+        } catch (e) {}
+      }
     }
     // Registered users keep farm — clear trial pressure
     if (d.user && d.user.role !== 'guest') {
@@ -334,7 +362,8 @@
     var lock = document.getElementById('s2TrialLock');
     if (lock) lock.remove();
     if (typeof showNotification === 'function') {
-      showNotification('✅', 'Signed in — farm progress is saved.', 'bank', null);
+      var name = (d.user && d.user.displayName) ? d.user.displayName : 'Explorer';
+      showNotification('✅', 'Signed in as ' + name + ' — farm progress merged & saved!', 'bank', null);
     }
     if (typeof closeModal === 'function') closeModal();
     if (typeof render === 'function') render();
@@ -347,28 +376,16 @@
       if (!clientId) clientId = localStorage.getItem('searchO2_google_client_id');
     } catch (e) {}
 
-    // If client ID missing or placeholder, prompt user with option to enter ID or continue in Dev/Sandbox mode
+    // Default to sandbox/dev mode without interrupting with prompts
     if (!clientId) {
-      var entered = prompt(
-        'Google OAuth Client ID not detected in environment.\n\nEnter your Google Client ID (.apps.googleusercontent.com) or click Cancel / OK to continue with Sandbox / Dev Mode:'
-      );
-      if (entered && entered.trim()) {
-        clientId = entered.trim();
-        try {
-          localStorage.setItem('searchO2_google_client_id', clientId);
-          global.GOOGLE_CLIENT_ID = clientId;
-          oauthConfig.googleClientId = clientId;
-        } catch (e) {}
-      } else {
-        clientId = 'mock-google-client-id.apps.googleusercontent.com';
-      }
+      clientId = 'mock-google-client-id.apps.googleusercontent.com';
     }
 
     var isMock = !clientId || clientId.startsWith('mock') || clientId.includes('mock-google');
     var gisAvailable = !!(global.google && global.google.accounts && global.google.accounts.id);
 
     if (isMock || !gisAvailable) {
-      // Dev / Mock sign-in flow
+      // Seamless Dev / Mock sign-in flow (1-click, NO PROMPTS)
       var mockToken = 'mock_google_user_' + Math.floor(1000 + Math.random() * 9000);
       return postAuth('/auth/google', { idToken: mockToken })
         .then(function (d) {
@@ -379,12 +396,13 @@
           // Local offline fallback if backend API is unreachable or static
           var fallbackUser = {
             id: 'usr_g_' + Date.now().toString(36),
-            email: 'google.dev.explorer@searcho2.online',
+            email: 'google.player@searcho2.online',
             displayName: 'Google Explorer',
-            role: 'farmer',
+            role: 'user',
             authProvider: 'google',
             isGuest: false,
-            money: 10000,
+            money: (typeof state !== 'undefined' && state && state.money) ? state.money : 10000,
+            totalO2: (typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0,
           };
           applyAuthSuccess({
             accessToken: 's2_local_tok_' + Date.now(),
@@ -414,10 +432,11 @@
                   id: 'usr_g_' + Date.now().toString(36),
                   email: 'google.verified@searcho2.online',
                   displayName: 'Google Player',
-                  role: 'farmer',
+                  role: 'user',
                   authProvider: 'google',
                   isGuest: false,
-                  money: 10000,
+                  money: (typeof state !== 'undefined' && state && state.money) ? state.money : 10000,
+                  totalO2: (typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0,
                 };
                 applyAuthSuccess({
                   accessToken: 's2_local_tok_' + Date.now(),
@@ -456,22 +475,8 @@
       if (!cid) cid = localStorage.getItem('searchO2_github_client_id');
     } catch (e) {}
 
-    if (!cid) {
-      var entered = prompt(
-        'GitHub Client ID not detected in environment.\n\nEnter your GitHub OAuth Client ID or click Cancel / OK to continue with Sandbox / Dev Account:'
-      );
-      if (entered && entered.trim()) {
-        cid = entered.trim();
-        try {
-          localStorage.setItem('searchO2_github_client_id', cid);
-          global.GITHUB_CLIENT_ID = cid;
-          oauthConfig.githubClientId = cid;
-        } catch (e) {}
-      }
-    }
-
+    // Seamless Dev / Mock GitHub sign-in if client ID is mock or not yet configured (1-click, NO PROMPTS)
     if (!cid || cid.startsWith('mock')) {
-      // Dev / Mock GitHub sign-in
       var mockCode = 'mock_github_' + Math.floor(1000 + Math.random() * 9000);
       return postAuth('/auth/github', { code: mockCode })
         .then(function (d) {
@@ -483,10 +488,11 @@
             id: 'usr_gh_' + Date.now().toString(36),
             email: 'github.dev@users.searcho2.online',
             displayName: 'GitHub Developer',
-            role: 'farmer',
+            role: 'user',
             authProvider: 'github',
             isGuest: false,
-            money: 10000,
+            money: (typeof state !== 'undefined' && state && state.money) ? state.money : 10000,
+            totalO2: (typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0,
           };
           applyAuthSuccess({
             accessToken: 's2_local_tok_' + Date.now(),
@@ -506,7 +512,6 @@
       encodeURIComponent('read:user user:email') +
       '&state=searcho2';
   }
-
   function loginFacebook() {
     var appId = oauthConfig.facebookAppId;
     if (!appId) {

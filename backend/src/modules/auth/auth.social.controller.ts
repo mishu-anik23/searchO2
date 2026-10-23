@@ -145,6 +145,16 @@ router.post('/google', authLimiter, async (req: Request, res: Response, next: Ne
       }
     }
 
+    if (result.farmId) {
+      try {
+        const farmRes = await query(`SELECT id, money, total_o2 FROM farms WHERE id = $1`, [result.farmId]);
+        if (farmRes.rows.length) {
+          (result.user as any).money = parseFloat(farmRes.rows[0].money);
+          (result.user as any).totalO2 = parseFloat(farmRes.rows[0].total_o2);
+        }
+      } catch (e) {}
+    }
+
     setAuthCookies(res, result.accessToken, result.refreshToken);
     res.json({
       message: 'Google sign-in successful',
@@ -205,6 +215,16 @@ router.post('/github', authLimiter, async (req: Request, res: Response, next: Ne
         extractSessionMeta(req)
       );
       setAuthCookies(res, result.accessToken, result.refreshToken);
+    }
+
+    if (result.farmId) {
+      try {
+        const farmRes = await query(`SELECT id, money, total_o2 FROM farms WHERE id = $1`, [result.farmId]);
+        if (farmRes.rows.length) {
+          (result.user as any).money = parseFloat(farmRes.rows[0].money);
+          (result.user as any).totalO2 = parseFloat(farmRes.rows[0].total_o2);
+        }
+      } catch (e) {}
     }
 
     res.json({
