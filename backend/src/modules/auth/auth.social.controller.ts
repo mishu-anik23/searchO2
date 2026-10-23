@@ -433,13 +433,14 @@ router.post(
 
 // Config for SPA (public client ids only)
 router.get('/oauth/config', (_req: Request, res: Response): void => {
+  const googleClientId = process.env.GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID || null;
+  const githubClientId = process.env.GITHUB_CLIENT_ID || env.GITHUB_CLIENT_ID || null;
+  const facebookAppId = process.env.FACEBOOK_APP_ID || env.FACEBOOK_APP_ID || null;
+
   res.json({
-    googleClientId:
-      process.env.GOOGLE_CLIENT_ID && !process.env.GOOGLE_CLIENT_ID.startsWith('mock')
-        ? process.env.GOOGLE_CLIENT_ID
-        : null,
-    githubClientId: process.env.GITHUB_CLIENT_ID || null,
-    facebookAppId: process.env.FACEBOOK_APP_ID || null,
+    googleClientId,
+    githubClientId,
+    facebookAppId,
     whatsappEnabled: true,
     guestTrialDays: 7,
     frontendUrl: env.FRONTEND_URL,

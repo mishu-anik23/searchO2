@@ -2546,21 +2546,10 @@
         '</div>' +
         '<div class="s2-ghost-label">Ch. ' + ch + ' · ' + obj.name + '</div>';
 
-      // Mouse-only hover modal interaction for PC
-      el.addEventListener('mouseenter', function (e) {
-        showObjectHoverModal(e, obj.key, obj, ch, el, false);
-      });
-      el.addEventListener('mouseleave', function () {
-        hideObjectHoverModal();
-      });
-
-      // Mobile finger touch: "enble cyan marked object touch by finger and then display. no touch no display."
+      // Intentional click/touch interaction for PC & mobile (no mouse hover popups to prevent exhausting user)
       el.addEventListener('click', function (e) {
-        var isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (e.pointerType === 'touch') || (window.innerWidth <= 768);
-        if (isTouch) {
-          e.stopPropagation();
-          showObjectHoverModal(e, obj.key, obj, ch, el, true);
-        }
+        e.stopPropagation();
+        showObjectHoverModal(e, obj.key, obj, ch, el, true);
       });
 
       layer.appendChild(el);
@@ -3636,29 +3625,8 @@
   }
 
   function bindFarmObjectsHoverModal() {
-    if (typeof document === 'undefined') return;
-    var selector = '[data-building], [data-storage], [data-turbine], [data-plot], .jute-tarp-spot-card, .main-road-canvas-badge, .main-road-paved-link';
-    var buildings = document.querySelectorAll(selector);
-    buildings.forEach(function (el) {
-      if (el._hoverModalWired) return;
-      el._hoverModalWired = true;
-      var key = el.getAttribute('data-building');
-      if (!key) {
-        if (el.hasAttribute('data-storage')) key = 'storage';
-        else if (el.hasAttribute('data-turbine')) key = el.getAttribute('data-turbine') || 'wind_turbine';
-        else if (el.hasAttribute('data-plot')) key = 'plot';
-        else if (el.classList.contains('jute-tarp-spot-card')) key = 'jute_tarp';
-        else if (el.classList.contains('main-road-canvas-badge') || el.classList.contains('main-road-paved-link')) key = 'road';
-      }
-      if (!key) return;
-      var ch = (typeof OBJECT_TO_CHAPTER !== 'undefined' && OBJECT_TO_CHAPTER[key]) || 1;
-      el.addEventListener('mouseenter', function (e) {
-        showObjectHoverModal(e, key, { key: key }, ch, el, false);
-      });
-      el.addEventListener('mouseleave', function () {
-        hideObjectHoverModal();
-      });
-    });
+    // Suppressed: all mouse hover modals removed per user feedback to eliminate visual exhaustion.
+    // Standard click handlers on farm buildings and plots remain active.
   }
 
   function bootIntegration() {
@@ -3668,8 +3636,6 @@
       } else {
         maybeResumeAvatarOnFarm();
       }
-      bindFarmObjectsHoverModal();
-      setInterval(bindFarmObjectsHoverModal, 2500);
     }, 800);
   }
 
