@@ -9,6 +9,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { socketManager } from './modules/websocket/socketManager';
 
 import { authRouter } from './modules/auth/auth.controller';
+import { socialAuthRouter } from './modules/auth/auth.social.controller';
 import { userRouter } from './modules/users/user.controller';
 import { farmRouter } from './modules/farm/farm.controller';
 import { economyRouter } from './modules/economy/economy.controller';
@@ -44,6 +45,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 // 3. API Route Modules
+app.use('/api/auth', socialAuthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);
 app.use('/api/farm', farmRouter);

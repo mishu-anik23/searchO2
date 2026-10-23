@@ -24,6 +24,19 @@ const envSchema = z.object({
 
   GOOGLE_CLIENT_ID: z.string().optional().default('mock-google-client-id.apps.googleusercontent.com'),
   GOOGLE_CLIENT_SECRET: z.string().optional().default('mock-google-client-secret'),
+
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+
+  FACEBOOK_APP_ID: z.string().optional(),
+  FACEBOOK_APP_SECRET: z.string().optional(),
+
+  API_PUBLIC_URL: z.string().optional(),
+  COOKIE_DOMAIN: z.string().optional(),
+
+  WHATSAPP_ACCESS_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  OTP_PEPPER: z.string().optional(),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

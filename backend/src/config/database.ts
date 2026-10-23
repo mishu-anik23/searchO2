@@ -39,7 +39,7 @@ export async function query<T extends QueryResultRow = any>(
   const start = Date.now();
   const res = await pool.query<T>(text, params);
   const duration = Date.now() - start;
-  if (env.NODE_ENV === 'development' && duration > 50) {
+  if (env.NODE_ENV === 'development' && duration > 500) {
     console.debug(`Slow Query (${duration}ms):`, { text, rows: res.rowCount });
   }
   return res;

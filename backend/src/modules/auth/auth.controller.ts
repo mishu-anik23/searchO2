@@ -8,19 +8,18 @@ import { authenticate, requireAuth } from '../../middleware/auth';
 import { env } from '../../config/env';
 
 import { guestMergeService } from '../users/guestMerge.service';
+import { authCookieOptions } from './oauth.providers';
 
 const router = Router();
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: env.NODE_ENV === 'production',
-  sameSite: (env.NODE_ENV === 'production' ? 'strict' : 'lax') as 'strict' | 'lax',
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  path: '/',
-};
-
 function setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
-  res.cookie('refresh_token', refreshToken, COOKIE_OPTIONS);
+  const opts = authCookieOptions();
+  res.cookie('refresh_token', refreshToken, opts);
+  res.cookie('searcho2_logged_in', '1', {
+    ...opts,
+    httpOnly: false,
+    maxAge: opts.maxAge,
+  });
 }
 
 function extractSessionMeta(req: Request) {
