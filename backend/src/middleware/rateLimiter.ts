@@ -32,3 +32,14 @@ export const economyLimiter = rateLimit({
     error: 'Economy action rate limit reached. Please wait a moment before sending more commands.',
   },
 });
+
+// Public feedback / problem reports: a few per hour per IP is plenty for a real person.
+export const feedbackLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Too many messages from this connection. Please try again in an hour.',
+  },
+});

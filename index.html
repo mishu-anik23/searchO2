@@ -13339,6 +13339,12 @@ var REGIONAL_BIOMES = [
 ];
 window.REGIONAL_BIOMES = REGIONAL_BIOMES;
 
+// Learning Hub bridge (hub/index.html): remember the last map picked on the globe so the
+// hub's "Play" button can send the player back to it. Plain localStorage, same origin.
+function rememberSelectedRegion(id){
+  try { localStorage.setItem('searchO2_selected_region', id); } catch (e) {}
+}
+
 var regionalViewMode = 'globe'; // 'globe', 'split', or 'cards'
 
 // ================= PURE 3D MATHEMATICAL GLOBE ENGINE =================
@@ -14060,6 +14066,7 @@ var GlobeEngine = (function(){
 
     tt.onclick = function(e){
       e.stopPropagation();
+      rememberSelectedRegion(b.id);
       if (b.id === 'germany'){
         switchScreen('farm');
         showNotification('🇩🇪', 'Welcome to your Central European Farm in Germany!', 'bank', null);
@@ -14125,6 +14132,7 @@ var GlobeEngine = (function(){
   }
 
   function handleRegionClick(b){
+    rememberSelectedRegion(b.id);
     if (b.id === 'germany'){
       rotateTo(b.lat, b.lon, function(){
         switchScreen('farm');
@@ -17752,6 +17760,12 @@ function updateAuthUIState(){
     if (rScreen) rScreen.classList.remove('screen-blurred');
     if (authOverlay) authOverlay.classList.add('hidden');
     if (authCard) authCard.dataset.renderKey = '';
+    // Learning Hub deep link (?enter=farm): enter the farm once sign-in/guest is settled,
+    // exactly as if the player had clicked Germany on the globe.
+    if (window.__pendingEnterFarm && typeof state !== 'undefined' && state){
+      window.__pendingEnterFarm = false;
+      switchScreen('farm');
+    }
   }
 }
 
@@ -17916,7 +17930,7 @@ function renderRegionScreen(){
   var globeHtml = '<div class="globe-stage-wrapper" id="globeStageWrapper" style="' + (regionalViewMode==='cards'?'display:none;':'display:flex;') + '">' +
     '<div class="globe-header-dock">' +
       '<div class="globe-header-title"><span>🌐</span> Planetary Biome Globe <span class="tag" style="font-size:0.7rem;background:rgba(76,175,80,0.25);color:#A5D6A7;padding:2px 8px;border-radius:10px;">Interactive 3D</span></div>' +
-      '<div class="globe-header-sub">Drag to rotate · Hover for trees · Click beacon to play</div>' +
+      '<div class="globe-header-sub">Drag to rotate · Hover for trees · Click beacon to play · <a href="hub/index.html" style="color:#A5D6A7;font-weight:800;">📚 Learning Hub</a></div>' +
     '</div>' +
     '<div class="globe-canvas-container" id="globeCanvasContainer">' +
       '<div class="globe-quick-center">' +
@@ -17946,6 +17960,12 @@ function renderRegionScreen(){
   container.innerHTML = topbarHtml + heroHtml + mainHtml;
 
   GlobeEngine.init('globeCanvas');
+  // Learning Hub deep link (?region=<id>): turn the globe to a map that is still locked.
+  if (window.__pendingRegionFocus){
+    var focusReg = REGIONAL_BIOMES.find(function(x){ return x.id === window.__pendingRegionFocus; });
+    window.__pendingRegionFocus = null;
+    if (focusReg) GlobeEngine.rotateTo(focusReg.lat, focusReg.lon);
+  }
 }
 
 function initialAuthModalHtml(){
@@ -39138,6 +39158,7 @@ function wireEvents(){
       var regId = b.getAttribute('data-centerregion');
       var reg = REGIONAL_BIOMES.find(function(x){ return x.id === regId; });
       if (reg){
+        rememberSelectedRegion(reg.id);
         if (reg.id === 'germany'){
           GlobeEngine.rotateTo(reg.lat, reg.lon, function(){
             switchScreen('farm');
@@ -39209,6 +39230,7 @@ function wireEvents(){
     b.onclick = function(e){
       e.stopPropagation();
       var dest = b.getAttribute('data-enterfarm');
+      rememberSelectedRegion(dest === 'bavaria' || dest === 'saint_martin' ? dest : 'germany');
       if (dest === 'bavaria') { window.location.href = 'bavaria/alpenhof.html'; return; }
       if (dest === 'saint_martin') { window.location.href = 'saint-martin/blue-lab.html'; return; }
       if (dest === 'saint_martin') {
@@ -39404,6 +39426,13 @@ function wireEvents(){
   updateViewportScale();
   initGameTooltips();
 }
+
+// Learning Hub deep links: ?enter=farm and ?region=<biome id>
+try {
+  var hubParams = new URLSearchParams(location.search);
+  if (hubParams.get('enter') === 'farm') window.__pendingEnterFarm = true;
+  if (hubParams.get('region')) window.__pendingRegionFocus = hubParams.get('region');
+} catch (e) {}
 
 loadState();
 ApiClient.init();
