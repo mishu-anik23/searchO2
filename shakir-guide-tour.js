@@ -1,6 +1,6 @@
 /**
- * SearchO2 — Shakir CEO Guide Tour for Guest Users
- * Implements Shakir, SearchO2 Founder & CEO, as an interactive 3D Isometric Farm Guide.
+ * SearchO2 — Shakir (Co-Founder & CEO) Tour for Guest Users
+ * Implements Shakir, SearchO2 Co-Founder & CEO, as an interactive 3D Isometric Farm Guide.
  * 
  * Visuals grounded in C:\Users\AM\PycharmProjects\searchO2\shakir.html and shakir-img.jpg:
  * - 3D Anime messy spiky hair (#3D2314 with dimensional highlights)
@@ -47,7 +47,7 @@
       landmark: 'Plot 1',
       icon: '🌱',
       skyIcon: '🌱',
-      ceoGreeting: "👋 Hi there, Eco-Explorer! I'm Shakir, Founder & CEO of SearchO2! Welcome to our green farm! Look right here at Plot 1 — healthy living soil is full of microscopic helpers. When we loosen the earth and plant our first tree, it drinks in fresh rainwater and pumps pure oxygen into our atmosphere! Tap Plot 1 to till the soil and sow your first seedling!",
+      ceoGreeting: "👋 Hi there, Eco-Explorer! I'm Shakir, Co-Founder & CEO of SearchO2! Welcome to our green farm! Look right here at Plot 1 — healthy living soil is full of microscopic helpers. When we loosen the earth and plant our first tree, it drinks in fresh rainwater and pumps pure oxygen into our atmosphere! Tap Plot 1 to till the soil and sow your first seedling!",
       dialogSummary: "Plot 1 is your farm's starting soil bed. Till the soil to clear weeds and plant oxygen-giving trees!",
       funFact: "A single spoonful of healthy organic soil contains more helpful microbes than all humans on planet Earth!",
       actionTip: "Tap Plot 1 on the field to till the ground and plant a tree!"
@@ -839,7 +839,7 @@
     el.id = 's2ShakirGuide';
     el.setAttribute('tabindex', '0');
     el.setAttribute('role', 'button');
-    el.setAttribute('aria-label', 'Shakir - SearchO2 Founder & CEO');
+    el.setAttribute('aria-label', 'Shakir - SearchO2 Co-Founder & CEO');
 
     var posLeft = (at && typeof at.left === 'number') ? at.left : 48;
     var posTop = (at && typeof at.top === 'number') ? at.top : 42;
@@ -847,7 +847,7 @@
     el.style.top = posTop + '%';
 
     el.innerHTML =
-      '<div class="shakir-head-tag"><span>🧑‍💼 Shakir (CEO Guide)</span></div>' +
+      '<div class="shakir-head-tag"><span>🧑‍💼 Shakir (Co-Founder & CEO)</span></div>' +
       '<div class="shakir-speech-bubble" id="s2ShakirBubble">👋 Hi Explorer! I\'m Shakir, SearchO2 CEO! Let\'s tour our farm!</div>' +
       renderShakirFigureSvg({ w: 56, h: 104, unique: 'shakir_farm' });
 
@@ -1075,7 +1075,7 @@
       var tag = pill.querySelector('.scf-time-tag') || pill.querySelector('.scf-desc');
       if (tag) tag.textContent = '45s · Next Landmark';
       var title = pill.querySelector('.scf-title');
-      if (title) title.textContent = '🧑‍💼 Shakir CEO Guide';
+      if (title) title.textContent = '🧑‍💼 Shakir (Co-Founder & CEO)';
 
       pill.onclick = function (e) {
         e.stopPropagation();
@@ -1141,7 +1141,7 @@
 
       // 2. Sky Heading celebration
       showSkyHeading(
-        'Wonder Touch: Ch. ' + targetCh + ' ' + chData.title + ' · Shakir CEO Guide',
+        'Wonder Touch: Ch. ' + targetCh + ' ' + chData.title + ' · Shakir (Co-Founder & CEO)',
         targets.standPoint,
         chData.icon
       );
@@ -1258,7 +1258,7 @@
             renderShakirFigureSvg({ w: 48, h: 88, unique: 'shakir_head_preview' }) +
           '</div>' +
           '<div>' +
-            '<div class="shakir-modal-title">Shakir · SearchO2 CEO</div>' +
+            '<div class="shakir-modal-title">Shakir · Co-Founder & CEO of SearchO2</div>' +
             '<div class="shakir-modal-subtitle">CH. ' + ch + ': ' + chData.title.toUpperCase() + '</div>' +
           '</div>' +
         '</div>' +
@@ -1326,13 +1326,13 @@
           '</div>' +
           '<div>' +
             '<div class="shakir-modal-title">Welcome, Eco-Explorer!</div>' +
-            '<div class="shakir-modal-subtitle">MEET SHAKIR · FOUNDER & CEO OF SEARCHO2</div>' +
+            '<div class="shakir-modal-subtitle">MEET SHAKIR · CO-FOUNDER & CEO OF SEARCHO2</div>' +
           '</div>' +
         '</div>' +
 
         '<div class="shakir-modal-body">' +
           '<p style="margin:0 0 10px 0;font-size:0.95rem;font-weight:700;color:#0F172A;">' +
-            '👋 Hello! I\'m Shakir, Founder & CEO of SearchO2! I built this green planet simulation so explorers of all ages can learn how real nature, renewable energy, and smart technology restore clean oxygen to our atmosphere!' +
+            '👋 Hello! I\'m Shakir, Co-Founder & CEO of SearchO2! I built this green planet simulation so explorers of all ages can learn how real nature, renewable energy, and smart technology restore clean oxygen to our atmosphere!' +
           '</p>' +
           '<p style="margin:0;font-size:0.86rem;color:#334155;">' +
             'As my VIP guest, I will personally guide you across our Central European farm to discover all 8 ecological landmarks — from rich soil to solar arrays and space shuttles! Are you ready?' +
