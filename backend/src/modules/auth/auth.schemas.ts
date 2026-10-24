@@ -17,8 +17,18 @@ export const registerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: z.string().min(1, 'Email, phone, or username is required').max(255),
   password: z.string().min(1, 'Password is required'),
+});
+
+export const socialRegisterSchema = z.object({
+  provider: z.enum(['google', 'github', 'whatsapp']),
+  identifier: z.string().min(1, 'Identifier required').max(255),
+  displayName: z.string().min(1, 'Display name required').max(100),
+  password: z.string().min(6, 'Password must be at least 6 characters').max(128),
+  freshStart: z.boolean().optional().default(false),
+  guestId: z.string().optional(),
+  avatarUrl: z.string().optional(),
 });
 
 export const googleAuthSchema = z.object({

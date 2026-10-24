@@ -359,6 +359,53 @@
     tickTimer();
   }
 
+  function wirePwToggles(container) {
+    if (!container) return;
+    container.querySelectorAll('.s2-pw-toggle').forEach(function(btn) {
+      btn.onclick = function() {
+        var tid = btn.getAttribute('data-target');
+        var input = document.getElementById(tid);
+        if (input) {
+          if (input.type === 'password') {
+            input.type = 'text';
+            btn.textContent = '🔒';
+          } else {
+            input.type = 'password';
+            btn.textContent = '👁️';
+          }
+        }
+      };
+    });
+  }
+
+  function resetFreshFarmState() {
+    if (typeof state !== 'undefined' && state) {
+      state.money = 10000;
+      state.totalO2 = 0;
+      state.totalO2AllTime = 0;
+      if (state.plots) {
+        state.plots.forEach(function(p) {
+          p.status = 'barren';
+          p.treeType = null;
+          p.health = 100;
+          p.progress = 0;
+          p.harvestsDone = 0;
+        });
+      }
+    }
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && /searchO2.*(farm|state|plots|money)/i.test(k) && k !== 'searchO2_token' && k !== 'searchO2_user') {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch (e) {}
+    try {
+      if (typeof saveState === 'function') saveState();
+    } catch (e) {}
+  }
+
   function showOAuthConfigModal(provider) {
     var existing = document.getElementById('s2OauthModal');
     if (existing) existing.remove();
@@ -366,7 +413,7 @@
     el.id = 's2OauthModal';
     el.className = 's2-trial-lock';
     var isGoogle = provider === 'google';
-    var title = isGoogle ? 'Google Account Sign-In' : 'GitHub Account Sign-In';
+    var title = isGoogle ? 'Google Account Registration' : 'GitHub Account Registration';
     var icon = isGoogle ? '🔍' : '🐙';
     var envKey = isGoogle ? 'GOOGLE_CLIENT_ID' : 'GITHUB_CLIENT_ID';
     var storageKey = isGoogle ? 'searchO2_google_client_id' : 'searchO2_github_client_id';
@@ -374,47 +421,66 @@
     try { currentVal = localStorage.getItem(storageKey) || ''; } catch (e) {}
 
     var prevAccount = '';
+    var prevName = '';
     try {
       var savedU = localStorage.getItem('searchO2_user');
       if (savedU) {
         var pu = JSON.parse(savedU);
         if (isGoogle && pu.email) prevAccount = pu.email;
         else if (!isGoogle && (pu.username || pu.displayName)) prevAccount = pu.username || pu.displayName;
+        if (pu.displayName) prevName = pu.displayName;
       }
     } catch (e) {}
 
-    var directHtml = isGoogle
-      ? '<div style="background:#fff;border:1.5px solid #BBDEFB;border-radius:12px;padding:14px;margin-bottom:12px;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
-            '<span style="font-size:0.82rem;font-weight:800;color:#1565C0;">⚡ Instant 1-Click Google Sign-In</span>' +
-            '<span style="font-size:0.68rem;background:#E3F2FD;color:#1976D2;padding:2px 8px;border-radius:10px;font-weight:800;">No Client ID Needed</span>' +
+    var directHtml =
+      '<div style="background:#fff;border:1.5px solid ' + (isGoogle ? '#BBDEFB' : '#CFD8DC') + ';border-radius:12px;padding:14px;margin-bottom:12px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+          '<span style="font-size:0.82rem;font-weight:800;color:' + (isGoogle ? '#1565C0' : '#24292e') + ';">⚡ ' + (isGoogle ? 'Google Account Setup' : 'GitHub Account Setup') + '</span>' +
+          '<span style="font-size:0.68rem;background:' + (isGoogle ? '#E3F2FD' : '#ECEFF1') + ';color:' + (isGoogle ? '#1976D2' : '#37474F') + ';padding:2px 8px;border-radius:10px;font-weight:800;">Saved in DB</span>' +
+        '</div>' +
+        '<p style="font-size:0.75rem;color:#455A64;margin:0 0 8px;line-height:1.4;">' +
+          (isGoogle ? 'Enter your Google email, set a password for game sign-in, and choose your farm mode.' : 'Enter your GitHub username, set a password for game sign-in, and choose your farm mode.') +
+        '</p>' +
+        '<div style="margin-bottom:6px;">' +
+          '<label style="display:block;font-size:0.72rem;font-weight:800;color:#1B5E20;margin-bottom:2px;">' + (isGoogle ? 'Google Email:' : 'GitHub Username:') + '</label>' +
+          '<input type="' + (isGoogle ? 'email' : 'text') + '" id="s2DirectAccountInput" value="' + prevAccount.replace(/"/g, '&quot;') + '" placeholder="' + (isGoogle ? 'e.g. explorer@gmail.com' : 'e.g. mishu-anik23') + '" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid ' + (isGoogle ? '#90CAF9' : '#B0BEC5') + ';border-radius:8px;font-size:0.84rem;font-weight:700;background:#FAFAFA;" />' +
+        '</div>' +
+        '<div style="margin-bottom:6px;">' +
+          '<label style="display:block;font-size:0.72rem;font-weight:800;color:#1B5E20;margin-bottom:2px;">Display Name:</label>' +
+          '<input type="text" id="s2DirectDisplayName" value="' + prevName.replace(/"/g, '&quot;') + '" placeholder="e.g. EcoFarmer77" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid ' + (isGoogle ? '#90CAF9' : '#B0BEC5') + ';border-radius:8px;font-size:0.84rem;font-weight:700;background:#FAFAFA;" />' +
+        '</div>' +
+        '<div style="margin-bottom:6px;position:relative;">' +
+          '<label style="display:block;font-size:0.72rem;font-weight:800;color:#1B5E20;margin-bottom:2px;">Password (for game login):</label>' +
+          '<div style="position:relative;">' +
+            '<input type="password" id="s2DirectPassword" placeholder="Min 6 characters" style="width:100%;box-sizing:border-box;padding:8px 36px 8px 10px;border:1.5px solid ' + (isGoogle ? '#90CAF9' : '#B0BEC5') + ';border-radius:8px;font-size:0.84rem;font-weight:700;background:#FAFAFA;" />' +
+            '<button type="button" class="s2-pw-toggle" data-target="s2DirectPassword" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;padding:2px;" title="Show/Hide">👁️</button>' +
           '</div>' +
-          '<p style="font-size:0.77rem;color:#455A64;margin:0 0 8px;line-height:1.45;">' +
-            'Enter your Google account email to sign in instantly, save your German Farm progress, and unlock all biomes.' +
-          '</p>' +
-          '<input type="email" id="s2DirectAccountInput" value="' + prevAccount.replace(/"/g, '&quot;') + '" placeholder="e.g. yourname@gmail.com" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #90CAF9;border-radius:8px;font-size:0.86rem;font-weight:700;margin-bottom:8px;background:#FAFAFA;" />' +
-          '<button type="button" id="s2DirectAccountBtn" class="s2-btn-social google" style="width:100%;background:#4285F4;color:#fff;border:none;padding:10px;font-size:0.88rem;font-weight:800;box-shadow:0 3px 8px rgba(66,133,244,.3);">' +
-            '🌟 Connect with Google Account' +
-          '</button>' +
-        '</div>'
-      : '<div style="background:#fff;border:1.5px solid #CFD8DC;border-radius:12px;padding:14px;margin-bottom:12px;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
-            '<span style="font-size:0.82rem;font-weight:800;color:#24292e;">⚡ Instant 1-Click GitHub Sign-In</span>' +
-            '<span style="font-size:0.68rem;background:#ECEFF1;color:#37474F;padding:2px 8px;border-radius:10px;font-weight:800;">No Client ID Needed</span>' +
+        '</div>' +
+        '<div style="margin-bottom:10px;position:relative;">' +
+          '<label style="display:block;font-size:0.72rem;font-weight:800;color:#1B5E20;margin-bottom:2px;">Re-type Password to confirm:</label>' +
+          '<div style="position:relative;">' +
+            '<input type="password" id="s2DirectPasswordConfirm" placeholder="Re-type password" style="width:100%;box-sizing:border-box;padding:8px 36px 8px 10px;border:1.5px solid ' + (isGoogle ? '#90CAF9' : '#B0BEC5') + ';border-radius:8px;font-size:0.84rem;font-weight:700;background:#FAFAFA;" />' +
+            '<button type="button" class="s2-pw-toggle" data-target="s2DirectPasswordConfirm" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;padding:2px;" title="Show/Hide">👁️</button>' +
           '</div>' +
-          '<p style="font-size:0.77rem;color:#455A64;margin:0 0 8px;line-height:1.45;">' +
-            'Enter your GitHub username to link your profile avatar, save your farm, and sync achievements.' +
-          '</p>' +
-          '<input type="text" id="s2DirectAccountInput" value="' + prevAccount.replace(/"/g, '&quot;') + '" placeholder="e.g. mishu-anik23" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid #B0BEC5;border-radius:8px;font-size:0.86rem;font-weight:700;margin-bottom:8px;background:#FAFAFA;" />' +
-          '<button type="button" id="s2DirectAccountBtn" class="s2-btn-social github" style="width:100%;background:#24292e;color:#fff;border:none;padding:10px;font-size:0.88rem;font-weight:800;box-shadow:0 3px 8px rgba(0,0,0,.25);">' +
-            '🐙 Connect with GitHub Account' +
-          '</button>' +
-        '</div>';
+        '</div>' +
+        '<div style="margin-bottom:12px;background:#F1F8E9;border:1.2px solid #AED581;border-radius:10px;padding:8px 10px;">' +
+          '<div style="font-size:0.74rem;font-weight:800;color:#1B5E20;margin-bottom:4px;">Farm Setup Choice:</div>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:0.74rem;font-weight:700;color:#2E7D32;cursor:pointer;margin-bottom:4px;">' +
+            '<input type="radio" name="s2FarmMode" value="merge" checked /> 🌱 Merge Guest Farm (Keep progress, money &amp; oxygen)' +
+          '</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:0.74rem;font-weight:700;color:#2E7D32;cursor:pointer;">' +
+            '<input type="radio" name="s2FarmMode" value="fresh" /> ✨ Fresh Start (€10,000 Starter Grant, clean barren plots)' +
+          '</label>' +
+        '</div>' +
+        '<button type="button" id="s2DirectAccountBtn" class="s2-btn-social ' + (isGoogle ? 'google' : 'github') + '" style="width:100%;background:' + (isGoogle ? '#4285F4' : '#24292e') + ';color:#fff;border:none;padding:10px;font-size:0.86rem;font-weight:800;box-shadow:0 3px 8px rgba(0,0,0,.2);">' +
+          (isGoogle ? '🌟 Create Account &amp; Save to DB' : '🐙 Create Account &amp; Save to DB') +
+        '</button>' +
+      '</div>';
 
     var instructionsHtml = isGoogle
       ? '<details id="s2OauthDetails" style="background:#F1F8E9;border:1.2px solid #AED581;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:0.76rem;color:#2E7D32;">' +
           '<summary style="font-weight:800;cursor:pointer;user-select:none;outline:none;">' +
-            'ℹ️ How to obtain a Google Client ID (Step-by-Step Instructions)' +
+            'ℹ️ Advanced: Configure Google Client ID (Step-by-Step Instructions)' +
           '</summary>' +
           '<div style="margin-top:8px;color:#1B5E20;line-height:1.5;">' +
             '<ol style="margin:4px 0 8px 18px;padding:0;">' +
@@ -436,7 +502,7 @@
         '</details>'
       : '<details id="s2OauthDetails" style="background:#ECEFF1;border:1.2px solid #B0BEC5;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:0.76rem;color:#37474F;">' +
           '<summary style="font-weight:800;cursor:pointer;user-select:none;outline:none;">' +
-            'ℹ️ How to obtain a GitHub Client ID (Step-by-Step Instructions)' +
+            'ℹ️ Advanced: Configure GitHub Client ID (Step-by-Step Instructions)' +
           '</summary>' +
           '<div style="margin-top:8px;color:#263238;line-height:1.5;">' +
             '<ol style="margin:4px 0 8px 18px;padding:0;">' +
@@ -465,7 +531,7 @@
         '<span style="font-size:1.8rem;">' + icon + '</span>' +
         '<div>' +
           '<h3 style="margin:0;font-family:Baloo 2,sans-serif;font-size:1.15rem;color:#1B5E20;">' + title + '</h3>' +
-          '<div style="font-size:0.75rem;color:#558B2F;font-weight:700;">Account Authentication &amp; OAuth 2.0</div>' +
+          '<div style="font-size:0.75rem;color:#558B2F;font-weight:700;">Secure Database Account &amp; Password Setup</div>' +
         '</div>' +
       '</div>' +
       directHtml +
@@ -477,6 +543,7 @@
       '</div>' +
       '</div>';
     document.body.appendChild(el);
+    wirePwToggles(el);
 
     document.getElementById('s2OauthClose').onclick = function() { el.remove(); };
     document.getElementById('s2OauthWhatsApp').onclick = function() {
@@ -489,78 +556,85 @@
 
     directBtn.onclick = function() {
       var val = (directInput.value || '').trim();
+      var dName = (document.getElementById('s2DirectDisplayName').value || '').trim();
+      var pw = (document.getElementById('s2DirectPassword').value || '').trim();
+      var pwConfirm = (document.getElementById('s2DirectPasswordConfirm').value || '').trim();
+
       if (isGoogle) {
         if (!val || !/@/.test(val)) {
           alert('Please enter a valid Google email address (e.g. explorer@gmail.com).');
           return;
         }
-        directBtn.disabled = true;
-        directBtn.textContent = '⏳ Connecting Google Account...';
-        var namePart = val.split('@')[0];
-        var displayName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-        var googleUser = {
-          id: 'usr_g_' + btoa(val.toLowerCase()).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16),
-          email: val.toLowerCase(),
-          displayName: displayName + ' (Google)',
-          avatarUrl: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
-          role: 'user',
-          authProvider: 'google',
-          isGuest: false,
-          money: (typeof state !== 'undefined' && state && state.money) ? state.money : 10000,
-          totalO2: (typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0,
-        };
-        el.remove();
-        applyAuthSuccess({
-          accessToken: 's2_g_tok_' + Date.now(),
-          user: googleUser,
-        });
       } else {
         if (!val) {
           alert('Please enter your GitHub username (e.g. mishu-anik23).');
           return;
         }
-        directBtn.disabled = true;
-        directBtn.textContent = '⏳ Connecting GitHub Profile...';
-        fetch('https://api.github.com/users/' + encodeURIComponent(val))
-          .then(function(r) { return r.json(); })
-          .then(function(gh) {
-            var ghUser = {
-              id: 'usr_gh_' + (gh.id ? gh.id : val.toLowerCase()),
-              displayName: (gh.name || gh.login || val) + ' (@' + (gh.login || val) + ')',
-              username: gh.login || val,
-              email: gh.email || (val + '@users.noreply.github.com'),
-              avatarUrl: gh.avatar_url || ('https://github.com/' + encodeURIComponent(val) + '.png'),
-              role: 'user',
-              authProvider: 'github',
-              isGuest: false,
-              money: (typeof state !== 'undefined' && state && state.money) ? state.money : 10000,
-              totalO2: (typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0,
-            };
-            el.remove();
-            applyAuthSuccess({
-              accessToken: 's2_gh_tok_' + Date.now(),
-              user: ghUser,
-            });
-          })
-          .catch(function() {
-            var ghUser = {
-              id: 'usr_gh_' + val.toLowerCase(),
-              displayName: val + ' (@' + val + ')',
-              username: val,
-              avatarUrl: 'https://github.com/' + encodeURIComponent(val) + '.png',
-              role: 'user',
-              authProvider: 'github',
-              isGuest: false,
-              money: (typeof state !== 'undefined' && state && state.money) ? state.money : 10000,
-              totalO2: (typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0,
-            };
-            el.remove();
-            applyAuthSuccess({
-              accessToken: 's2_gh_tok_' + Date.now(),
-              user: ghUser,
-            });
-          });
       }
+
+      if (!pw || pw.length < 6) {
+        alert('Please create a password with at least 6 characters for this game login.');
+        return;
+      }
+      if (pw !== pwConfirm) {
+        alert('Passwords do not match! Please verify your re-typed password.');
+        return;
+      }
+
+      var farmModeRadios = document.querySelectorAll('input[name="s2FarmMode"]');
+      var farmMode = 'merge';
+      farmModeRadios.forEach(function(r) { if (r.checked) farmMode = r.value; });
+      var isFresh = (farmMode === 'fresh');
+
+      var guestId = '';
+      try {
+        var g = localStorage.getItem('searchO2_guest_user');
+        if (g) guestId = JSON.parse(g).id;
+      } catch (e) {}
+
+      directBtn.disabled = true;
+      directBtn.textContent = '⏳ Saving Account to Database...';
+
+      var defaultName = isGoogle ? (val.split('@')[0].charAt(0).toUpperCase() + val.split('@')[0].slice(1)) : val;
+      var finalName = dName || defaultName;
+
+      postAuth('/auth/social/register', {
+        provider: isGoogle ? 'google' : 'github',
+        identifier: val,
+        displayName: finalName,
+        password: pw,
+        freshStart: isFresh,
+        guestId: isFresh ? null : guestId,
+        avatarUrl: isGoogle ? 'https://lh3.googleusercontent.com/a/default-user=s96-c' : ('https://github.com/' + encodeURIComponent(val) + '.png')
+      })
+      .then(function(d) {
+        if (isFresh) {
+          resetFreshFarmState();
+        }
+        el.remove();
+        applyAuthSuccess(d);
+      })
+      .catch(function(err) {
+        // Fallback: If backend is offline on static hosting, preserve local user and state
+        var fallbackUser = {
+          id: isGoogle ? ('usr_g_' + btoa(val.toLowerCase()).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16)) : ('usr_gh_' + val.toLowerCase()),
+          email: isGoogle ? val.toLowerCase() : (val + '@users.noreply.github.com'),
+          displayName: finalName,
+          role: 'user',
+          authProvider: isGoogle ? 'google' : 'github',
+          avatarUrl: isGoogle ? 'https://lh3.googleusercontent.com/a/default-user=s96-c' : ('https://github.com/' + encodeURIComponent(val) + '.png'),
+          money: isFresh ? 10000 : ((typeof state !== 'undefined' && state && state.money) ? state.money : 10000),
+          totalO2: isFresh ? 0 : ((typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0),
+        };
+        if (isFresh) {
+          resetFreshFarmState();
+        }
+        el.remove();
+        applyAuthSuccess({
+          accessToken: 's2_tok_' + Date.now(),
+          user: fallbackUser,
+        });
+      });
     };
 
     var launchBtn = document.getElementById('s2OauthLaunch');
@@ -595,21 +669,21 @@
     el.id = 's2WhatsAppModal';
     el.className = 's2-trial-lock';
     el.innerHTML =
-      '<div class="s2-trial-lock-card" style="max-width:400px;text-align:left;position:relative;">' +
+      '<div class="s2-trial-lock-card" style="max-width:420px;text-align:left;position:relative;">' +
       '<button type="button" id="s2WaClose" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:#546E7A;font-weight:700;">✕</button>' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
         '<div style="width:38px;height:38px;border-radius:10px;background:#25D366;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3rem;">💬</div>' +
         '<div>' +
-          '<h3 style="margin:0;font-family:Baloo 2,sans-serif;font-size:1.15rem;color:#1B5E20;">WhatsApp Phone Sign-In</h3>' +
-          '<div style="font-size:0.75rem;color:#2E7D32;font-weight:700;">Fast 6-Digit OTP Verification</div>' +
+          '<h3 style="margin:0;font-family:Baloo 2,sans-serif;font-size:1.15rem;color:#1B5E20;">WhatsApp Phone Verification</h3>' +
+          '<div style="font-size:0.75rem;color:#2E7D32;font-weight:700;">Secure Mobile OTP &amp; Account Setup</div>' +
         '</div>' +
       '</div>' +
       '<div id="s2WaStep1">' +
-        '<p style="font-size:0.82rem;line-height:1.4;color:#2C4A32;margin:8px 0 12px;">' +
-          'Enter your mobile phone number with international country code to receive your 6-digit login code.' +
+        '<p style="font-size:0.8rem;line-height:1.4;color:#2C4A32;margin:8px 0 12px;">' +
+          'Enter your mobile phone number with international country code to receive your 6-digit verification code.' +
         '</p>' +
         '<div style="margin-bottom:12px;">' +
-          '<label style="display:block;font-size:0.75rem;font-weight:800;color:#1B5E20;margin-bottom:4px;">Phone Number (E.164):</label>' +
+          '<label style="display:block;font-size:0.74rem;font-weight:800;color:#1B5E20;margin-bottom:4px;">Phone Number (E.164):</label>' +
           '<input type="tel" id="s2WaPhone" placeholder="+49 170 1234567 or +880 1712 345678" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #81C784;border-radius:10px;font-size:0.9rem;font-weight:700;background:#fff;" />' +
         '</div>' +
         '<button type="button" id="s2WaBtnSend" class="s2-btn-social whatsapp" style="width:100%;background:#25D366;color:#fff;border:none;padding:11px;font-size:0.88rem;">' +
@@ -617,16 +691,39 @@
         '</button>' +
       '</div>' +
       '<div id="s2WaStep2" style="display:none;">' +
-        '<p style="font-size:0.82rem;line-height:1.4;color:#2C4A32;margin:8px 0 10px;">' +
-          'Enter the 6-digit code for <b id="s2WaTargetPhone" style="color:#1B5E20;"></b>:' +
+        '<p style="font-size:0.8rem;line-height:1.4;color:#2C4A32;margin:6px 0 8px;">' +
+          'Enter the 6-digit code sent to <b id="s2WaTargetPhone" style="color:#1B5E20;"></b>:' +
         '</p>' +
-        '<div id="s2WaDevNotice" style="display:none;background:#FFF9C4;border:1px solid #FBC02D;border-radius:8px;padding:8px 10px;font-size:0.78rem;color:#F57F17;font-weight:700;margin-bottom:10px;"></div>' +
-        '<div style="margin-bottom:12px;">' +
-          '<input type="text" id="s2WaCode" maxlength="6" placeholder="123456" style="width:100%;box-sizing:border-box;padding:10px 12px;text-align:center;letter-spacing:6px;font-size:1.3rem;font-weight:800;border:1.5px solid #25D366;border-radius:10px;background:#fff;" />' +
+        '<div id="s2WaDevNotice" style="display:none;background:#FFF9C4;border:1px solid #FBC02D;border-radius:8px;padding:6px 10px;font-size:0.76rem;color:#F57F17;font-weight:700;margin-bottom:8px;"></div>' +
+        '<div style="margin-bottom:10px;">' +
+          '<input type="text" id="s2WaCode" maxlength="6" placeholder="123456" style="width:100%;box-sizing:border-box;padding:9px 12px;text-align:center;letter-spacing:6px;font-size:1.25rem;font-weight:800;border:1.5px solid #25D366;border-radius:10px;background:#fff;" />' +
+        '</div>' +
+        '<div style="margin-bottom:6px;position:relative;">' +
+          '<label style="display:block;font-size:0.72rem;font-weight:800;color:#1B5E20;margin-bottom:2px;">Set Password (for future logins):</label>' +
+          '<div style="position:relative;">' +
+            '<input type="password" id="s2WaPassword" placeholder="Min 6 characters" style="width:100%;box-sizing:border-box;padding:8px 36px 8px 10px;border:1.5px solid #81C784;border-radius:8px;font-size:0.84rem;font-weight:700;background:#FAFAFA;" />' +
+            '<button type="button" class="s2-pw-toggle" data-target="s2WaPassword" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;padding:2px;" title="Show/Hide">👁️</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-bottom:8px;position:relative;">' +
+          '<label style="display:block;font-size:0.72rem;font-weight:800;color:#1B5E20;margin-bottom:2px;">Re-type Password to confirm:</label>' +
+          '<div style="position:relative;">' +
+            '<input type="password" id="s2WaPasswordConfirm" placeholder="Re-type password" style="width:100%;box-sizing:border-box;padding:8px 36px 8px 10px;border:1.5px solid #81C784;border-radius:8px;font-size:0.84rem;font-weight:700;background:#FAFAFA;" />' +
+            '<button type="button" class="s2-pw-toggle" data-target="s2WaPasswordConfirm" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;padding:2px;" title="Show/Hide">👁️</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-bottom:12px;background:#F1F8E9;border:1.2px solid #AED581;border-radius:10px;padding:8px 10px;">' +
+          '<div style="font-size:0.74rem;font-weight:800;color:#1B5E20;margin-bottom:4px;">Farm Setup Choice:</div>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:0.74rem;font-weight:700;color:#2E7D32;cursor:pointer;margin-bottom:4px;">' +
+            '<input type="radio" name="s2WaFarmMode" value="merge" checked /> 🌱 Merge Guest Farm (Keep progress, money &amp; oxygen)' +
+          '</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:0.74rem;font-weight:700;color:#2E7D32;cursor:pointer;">' +
+            '<input type="radio" name="s2WaFarmMode" value="fresh" /> ✨ Fresh Start (€10,000 Starter Grant, clean barren plots)' +
+          '</label>' +
         '</div>' +
         '<div style="display:flex;gap:8px;">' +
           '<button type="button" id="s2WaBtnVerify" class="s2-btn-social whatsapp" style="flex:2;background:#25D366;color:#fff;border:none;padding:11px;font-size:0.88rem;">' +
-            '✅ Verify &amp; Sign In' +
+            '✅ Verify &amp; Save to DB' +
           '</button>' +
           '<button type="button" id="s2WaBtnBack" class="s2-btn-social" style="flex:1;background:#ECEFF1;color:#37474F;border:none;padding:11px;font-size:0.8rem;">' +
             'Back' +
@@ -635,6 +732,7 @@
       '</div>' +
       '</div>';
     document.body.appendChild(el);
+    wirePwToggles(el);
 
     document.getElementById('s2WaClose').onclick = function() { el.remove(); };
 
@@ -657,7 +755,6 @@
         var devEl = document.getElementById('s2WaDevNotice');
         devEl.style.display = 'block';
         devEl.innerHTML = codeMsg || ('🔑 Verification Code: <b style="letter-spacing:2px;font-size:1rem;color:#1B5E20;">' + codeVal + '</b>');
-        document.getElementById('s2WaCode').value = codeVal;
       }
       document.getElementById('s2WaCode').focus();
     }
@@ -674,13 +771,13 @@
 
       postAuth('/auth/whatsapp/start', { phone: phone })
         .then(function(d) {
-          var code = (d && d.devCode) ? d.devCode : String(Math.floor(100000 + Math.random() * 900000));
-          var notice = (d && d.devCode) ? ('🔑 Verification Code: <b style="letter-spacing:2px;font-size:1.05rem;color:#1B5E20;">' + d.devCode + '</b>') : ('📱 Code sent to ' + phone + '.');
+          var code = (d && d.devCode) ? d.devCode : null;
+          var notice = (d && d.devCode) ? ('🔑 Demo Verification Code: <b style="letter-spacing:2px;font-size:1.05rem;color:#1B5E20;">' + d.devCode + '</b>') : ('📱 6-digit OTP code sent to ' + phone + '.');
           transitionToStep2(phone, notice, code);
         })
         .catch(function(err) {
           var fallbackCode = String(Math.floor(100000 + Math.random() * 900000));
-          var notice = '🔑 <b>Verification Code:</b> <span style="font-size:1.1rem;letter-spacing:2px;color:#1B5E20;font-weight:900;">' + fallbackCode + '</span><br/><span style="font-size:0.72rem;color:#558B2F;font-weight:bold;">Direct verification code generated (1-Click Auto-filled)</span>';
+          var notice = '🔑 <b>Verification Code:</b> <span style="font-size:1.05rem;letter-spacing:2px;color:#1B5E20;font-weight:900;">' + fallbackCode + '</span><br/><span style="font-size:0.72rem;color:#558B2F;">Enter this 6-digit code below to verify your phone number:</span>';
           transitionToStep2(phone, notice, fallbackCode);
         });
     };
@@ -692,10 +789,30 @@
 
     verifyBtn.onclick = function() {
       var code = (document.getElementById('s2WaCode').value || '').trim();
+      var pw = (document.getElementById('s2WaPassword').value || '').trim();
+      var pwConfirm = (document.getElementById('s2WaPasswordConfirm').value || '').trim();
+
       if (!code || code.length < 6) {
-        alert('Please enter the 6-digit verification code.');
+        alert('Please enter the 6-digit verification code sent to your phone.');
         return;
       }
+
+      if (pw) {
+        if (pw.length < 6) {
+          alert('Password must be at least 6 characters long.');
+          return;
+        }
+        if (pw !== pwConfirm) {
+          alert('Passwords do not match! Please verify your re-typed password.');
+          return;
+        }
+      }
+
+      var farmModeRadios = document.querySelectorAll('input[name="s2WaFarmMode"]');
+      var farmMode = 'merge';
+      farmModeRadios.forEach(function(r) { if (r.checked) farmMode = r.value; });
+      var isFresh = (farmMode === 'fresh');
+
       verifyBtn.disabled = true;
       verifyBtn.textContent = '⏳ Verifying...';
 
@@ -705,8 +822,17 @@
         if (g) guestId = JSON.parse(g).id;
       } catch (e) {}
 
-      postAuth('/auth/whatsapp/verify', { phone: currentPhone, code: code, guestId: guestId })
+      postAuth('/auth/whatsapp/verify', {
+        phone: currentPhone,
+        code: code,
+        password: pw || undefined,
+        freshStart: isFresh,
+        guestId: isFresh ? null : guestId
+      })
         .then(function(d) {
+          if (isFresh) {
+            resetFreshFarmState();
+          }
           el.remove();
           applyAuthSuccess(d);
         })
@@ -720,9 +846,12 @@
               role: 'user',
               authProvider: 'whatsapp',
               isGuest: false,
-              money: (typeof state !== 'undefined' && state && state.money) ? state.money : 10000,
-              totalO2: (typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0,
+              money: isFresh ? 10000 : ((typeof state !== 'undefined' && state && state.money) ? state.money : 10000),
+              totalO2: isFresh ? 0 : ((typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0),
             };
+            if (isFresh) {
+              resetFreshFarmState();
+            }
             el.remove();
             applyAuthSuccess({
               accessToken: 's2_wa_tok_' + Date.now(),
@@ -731,7 +860,7 @@
             return;
           }
           verifyBtn.disabled = false;
-          verifyBtn.textContent = '✅ Verify & Sign In';
+          verifyBtn.textContent = '✅ Verify & Save to DB';
           alert(err.message || 'Verification failed. Please check your 6-digit code.');
         });
     };

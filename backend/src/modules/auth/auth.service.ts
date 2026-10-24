@@ -163,36 +163,51 @@ export class AuthService {
   }
 
   async login(
-    email: string,
+    identifier: string,
     password: string,
     sessionMeta?: { ipAddress?: string; userAgent?: string }
-  ): Promise<AuthResult> {
+  ): Promise<AuthResult & { farmState?: { money: number; totalO2: number } }> {
+    const raw = (identifier || '').trim();
+    const idLower = raw.toLowerCase();
+    const cleanPhone = raw.replace(/[^\d+]/g, '');
+    const altPhone = cleanPhone ? (cleanPhone.startsWith('+') ? cleanPhone : ('+' + cleanPhone)) : '__none__';
+
     const userRes = await query(
-      `SELECT id, email, password_hash, display_name, role, auth_provider, avatar_url
-       FROM users WHERE email = $1`,
-      [email.toLowerCase()]
+      `SELECT id, email, password_hash, display_name, role, auth_provider, avatar_url, whatsapp_phone, github_id
+       FROM users
+       WHERE lower(email) = $1
+          OR (whatsapp_phone IS NOT NULL AND (whatsapp_phone = $1 OR whatsapp_phone = $2))
+          OR (github_id IS NOT NULL AND lower(github_id) = $1)
+          OR lower(display_name) = $1
+       LIMIT 1`,
+      [idLower, altPhone]
     );
 
     if (!userRes.rowCount || userRes.rowCount === 0) {
-      throw { statusCode: 401, message: 'Invalid email or password.' };
+      throw { statusCode: 401, message: 'Invalid credentials. User not found.' };
     }
 
     const user = userRes.rows[0];
     if (!user.password_hash) {
-      throw { statusCode: 400, message: 'Account was registered using Google. Please sign in with Google.' };
+      throw { statusCode: 400, message: 'Account was registered without a password. Please sign in via social provider.' };
     }
 
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
-      throw { statusCode: 401, message: 'Invalid email or password.' };
+      throw { statusCode: 401, message: 'Invalid password. Please check your password.' };
     }
 
-    const farmRes = await query(`SELECT id FROM farms WHERE user_id = $1 LIMIT 1`, [user.id]);
+    const farmRes = await query(`SELECT id, money, total_o2 FROM farms WHERE user_id = $1 LIMIT 1`, [user.id]);
     let farmId: string;
+    let farmState: { money: number; totalO2: number } = { money: 10000, totalO2: 0 };
     if (!farmRes.rowCount || farmRes.rowCount === 0) {
       farmId = await transaction(async (client) => this.createStarterFarm(client, user.id, `${user.display_name}'s Farm`));
     } else {
       farmId = farmRes.rows[0].id;
+      farmState = {
+        money: parseFloat(farmRes.rows[0].money || '10000'),
+        totalO2: parseFloat(farmRes.rows[0].total_o2 || '0'),
+      };
     }
 
     await query(`UPDATE users SET last_login_at = NOW(), updated_at = NOW() WHERE id = $1`, [user.id]);
@@ -220,6 +235,7 @@ export class AuthService {
       farmId,
       accessToken,
       refreshToken,
+      farmState,
     };
   }
 

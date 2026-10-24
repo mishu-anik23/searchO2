@@ -4,7 +4,7 @@
  */
 import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
-import { query } from '../../config/database';
+import { query, transaction } from '../../config/database';
 import { authService } from './auth.service';
 import { googleAuthService } from './google.service';
 import {
@@ -47,7 +47,7 @@ function extractSessionMeta(req: Request) {
   };
 }
 
-async function upsertSocialUser(profile: SocialProfile): Promise<string> {
+async function upsertSocialUser(profile: SocialProfile, password?: string): Promise<string> {
   const col =
     profile.provider === 'github'
       ? 'github_id'
@@ -64,14 +64,19 @@ async function upsertSocialUser(profile: SocialProfile): Promise<string> {
   const idVal =
     profile.provider === 'whatsapp' ? profile.phone || profile.providerUserId : profile.providerUserId;
 
+  let passwordHash: string | null = null;
+  if (password && password.length >= 6) {
+    passwordHash = await bcrypt.hash(password, 12);
+  }
+
   let existing = await query(
-    `SELECT id, email, display_name, role, auth_provider, avatar_url FROM users WHERE ${col} = $1 LIMIT 1`,
+    `SELECT id, email, display_name, role, auth_provider, avatar_url, password_hash FROM users WHERE ${col} = $1 LIMIT 1`,
     [idVal]
   );
 
   if (!existing.rowCount && profile.email) {
     existing = await query(
-      `SELECT id, email, display_name, role, auth_provider, avatar_url FROM users WHERE lower(email) = $1 LIMIT 1`,
+      `SELECT id, email, display_name, role, auth_provider, avatar_url, password_hash FROM users WHERE lower(email) = $1 LIMIT 1`,
       [profile.email.toLowerCase()]
     );
   }
@@ -83,9 +88,10 @@ async function upsertSocialUser(profile: SocialProfile): Promise<string> {
         display_name = COALESCE(NULLIF(display_name,''), $3),
         role = CASE WHEN role = 'guest' THEN 'user' ELSE role END,
         auth_provider = $4,
+        password_hash = COALESCE($5, password_hash),
         last_login_at = NOW(), updated_at = NOW()
-       WHERE id = $5`,
-      [idVal, profile.avatarUrl || null, profile.displayName, profile.provider, u.id]
+       WHERE id = $6`,
+      [idVal, profile.avatarUrl || null, profile.displayName, profile.provider, passwordHash, u.id]
     );
     return u.id as string;
   }
@@ -97,11 +103,12 @@ async function upsertSocialUser(profile: SocialProfile): Promise<string> {
       : `${profile.provider}_${profile.providerUserId}@users.searcho2.online`);
 
   const ins = await query(
-    `INSERT INTO users (email, display_name, role, auth_provider, ${col}, avatar_url, email_verified)
-     VALUES ($1, $2, 'user', $3, $4, $5, $6)
+    `INSERT INTO users (email, password_hash, display_name, role, auth_provider, ${col}, avatar_url, email_verified)
+     VALUES ($1, $2, $3, 'user', $4, $5, $6, $7)
      RETURNING id`,
     [
       email.toLowerCase(),
+      passwordHash,
       profile.displayName,
       profile.provider,
       idVal,
@@ -111,6 +118,116 @@ async function upsertSocialUser(profile: SocialProfile): Promise<string> {
   );
   return ins.rows[0].id as string;
 }
+
+// ---------- Social Register with Password & Fresh Start Choice ----------
+router.post('/social/register', authLimiter, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { provider, identifier, displayName, password, freshStart, guestId, avatarUrl } = req.body || {};
+    if (!provider || !identifier || !password) {
+      res.status(400).json({ error: 'provider, identifier, and password are required' });
+      return;
+    }
+    if (password.length < 6) {
+      res.status(400).json({ error: 'Password must be at least 6 characters' });
+      return;
+    }
+
+    const cleanIdentifier = String(identifier).trim();
+    const dName = String(displayName || cleanIdentifier.split('@')[0] || 'Player').trim();
+
+    let profile: SocialProfile;
+    if (provider === 'google') {
+      profile = {
+        provider: 'google',
+        providerUserId: cleanIdentifier.toLowerCase(),
+        email: cleanIdentifier.toLowerCase(),
+        displayName: dName,
+        avatarUrl: avatarUrl || 'https://lh3.googleusercontent.com/a/default-user=s96-c',
+      };
+    } else if (provider === 'github') {
+      profile = {
+        provider: 'github',
+        providerUserId: cleanIdentifier.toLowerCase(),
+        displayName: dName,
+        email: cleanIdentifier.includes('@') ? cleanIdentifier.toLowerCase() : `${cleanIdentifier.toLowerCase()}@users.noreply.github.com`,
+        avatarUrl: avatarUrl || `https://github.com/${cleanIdentifier}.png`,
+      };
+    } else if (provider === 'whatsapp') {
+      const cleanPhone = cleanIdentifier.replace(/[^\d+]/g, '');
+      profile = {
+        provider: 'whatsapp',
+        providerUserId: cleanPhone,
+        phone: cleanPhone,
+        displayName: dName,
+        email: `wa_${cleanPhone.replace(/\D/g, '')}@users.searcho2.online`,
+      };
+    } else {
+      res.status(400).json({ error: 'Unsupported provider' });
+      return;
+    }
+
+    const userId = await upsertSocialUser(profile, password);
+
+    let farmId: string;
+    let farmState: { money: number; totalO2: number } = { money: 10000, totalO2: 0 };
+    if (!freshStart && guestId && typeof guestId === 'string' && guestId.trim()) {
+      try {
+        const mergeResult = await guestMergeService.mergeGuestIntoUser(userId, guestId.trim(), false);
+        farmId = mergeResult.farmId;
+      } catch (err: any) {
+        farmId = await transaction(async (client) => {
+          return authService.createStarterFarm(client, userId, `${dName}'s Farm`);
+        });
+      }
+    } else {
+      const existingFarm = await query(`SELECT id FROM farms WHERE user_id = $1 LIMIT 1`, [userId]);
+      if (existingFarm.rowCount && existingFarm.rowCount > 0) {
+        farmId = existingFarm.rows[0].id;
+        if (freshStart) {
+          await transaction(async (client) => {
+            await client.query(
+              `UPDATE farms SET money = 10000.00, total_o2 = 0.00, total_o2_all_time = 0.00, updated_at = NOW() WHERE id = $1`,
+              [farmId]
+            );
+            await client.query(
+              `UPDATE plots SET status = 'barren', tree_type_id = NULL, health = 100.00, harvests_done = 0, planted_at = NULL, updated_at = NOW() WHERE farm_id = $1`,
+              [farmId]
+            );
+          });
+        }
+      } else {
+        farmId = await transaction(async (client) => {
+          return authService.createStarterFarm(client, userId, `${dName}'s Farm`);
+        });
+      }
+    }
+
+    const sessionRes = await issueSession(userId, req, res);
+
+    const userObj = {
+      id: userId,
+      email: profile.email || null,
+      displayName: dName,
+      role: 'user',
+      authProvider: provider,
+      avatarUrl: profile.avatarUrl || null,
+      money: freshStart ? 10000 : farmState.money,
+      totalO2: freshStart ? 0 : farmState.totalO2,
+    };
+
+    res.status(201).json({
+      message: freshStart
+        ? 'Account registered successfully with €10,000 starter grant!'
+        : 'Account registered and farm progress merged & saved!',
+      user: userObj,
+      farmId,
+      accessToken: sessionRes.accessToken,
+      freshStart: !!freshStart,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 async function issueSession(userId: string, req: Request, res: Response) {
   const result = await createSessionForUser(userId, extractSessionMeta(req));
@@ -366,19 +483,38 @@ router.post('/whatsapp/verify', authLimiter, async (req: Request, res: Response,
     }
     await query(`UPDATE auth_otp_challenges SET consumed_at = NOW() WHERE id = $1`, [ch.id]);
 
+    const password = req.body?.password;
+    const freshStart = !!req.body?.freshStart;
+    const displayName = req.body?.displayName;
+
     const profile: SocialProfile = {
       provider: 'whatsapp',
       providerUserId: phone,
       phone,
-      displayName: `WA ${phone.slice(-4)}`,
+      displayName: displayName || `WA ${phone.slice(-4)}`,
     };
-    const userId = await upsertSocialUser(profile);
+    const userId = await upsertSocialUser(profile, password);
 
-    if (guestId && typeof guestId === 'string' && guestId.trim()) {
+    if (!freshStart && guestId && typeof guestId === 'string' && guestId.trim()) {
       try {
         await guestMergeService.mergeGuestIntoUser(userId, guestId.trim(), false);
       } catch (err: any) {
         console.warn('Guest merge during WhatsApp login skipped:', err.message);
+      }
+    } else if (freshStart) {
+      const farmRes = await query(`SELECT id FROM farms WHERE user_id = $1 LIMIT 1`, [userId]);
+      if (farmRes.rowCount && farmRes.rowCount > 0) {
+        const farmId = farmRes.rows[0].id;
+        await transaction(async (client) => {
+          await client.query(
+            `UPDATE farms SET money = 10000.00, total_o2 = 0.00, total_o2_all_time = 0.00, updated_at = NOW() WHERE id = $1`,
+            [farmId]
+          );
+          await client.query(
+            `UPDATE plots SET status = 'barren', tree_type_id = NULL, health = 100.00, harvests_done = 0, planted_at = NULL, updated_at = NOW() WHERE farm_id = $1`,
+            [farmId]
+          );
+        });
       }
     }
 

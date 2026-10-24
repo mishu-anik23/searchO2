@@ -94,6 +94,7 @@ router.post(
         user: result.user,
         farmId: result.farmId,
         accessToken: result.accessToken,
+        farmState: result.farmState,
       });
     } catch (err) {
       next(err);

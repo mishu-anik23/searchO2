@@ -18944,15 +18944,24 @@ function initialAuthModalHtml(){
       '</button>' +
     '</div>' +
     '<div class="auth-tabs">' +
-      '<button class="auth-tab-btn ' + (!isReg ? 'active' : '') + '" data-authtab="signin">Email Sign In</button>' +
+      '<button class="auth-tab-btn ' + (!isReg ? 'active' : '') + '" data-authtab="signin">Sign In</button>' +
       '<button class="auth-tab-btn ' + (isReg ? 'active' : '') + '" data-authtab="register">Create Account</button>' +
     '</div>' +
     (isReg ? '<input type="text" id="initAuthDisplayName" class="auth-form-input" placeholder="Display Name (e.g. EcoFarmer77)" autocomplete="name">' : '') +
-    '<input type="email" id="initAuthEmail" class="auth-form-input" placeholder="Email Address" autocomplete="email">' +
-    '<input type="password" id="initAuthPassword" class="auth-form-input" placeholder="Password (min 8 chars)" autocomplete="current-password">' +
+    '<input type="text" id="initAuthEmail" class="auth-form-input" placeholder="' + (isReg ? 'Email Address' : 'Email, WhatsApp Phone, or Username') + '" autocomplete="' + (isReg ? 'email' : 'username') + '">' +
+    '<div style="position:relative;margin-bottom:8px;">' +
+      '<input type="password" id="initAuthPassword" class="auth-form-input" placeholder="Password (min 6 chars)" autocomplete="' + (isReg ? 'new-password' : 'current-password') + '" style="padding-right:42px;width:100%;box-sizing:border-box;">' +
+      '<button type="button" class="btn-toggle-pw" data-target="initAuthPassword" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px;" title="Show/Hide Password">👁️</button>' +
+    '</div>' +
+    (isReg ? (
+      '<div style="position:relative;margin-bottom:8px;">' +
+        '<input type="password" id="initAuthPasswordConfirm" class="auth-form-input" placeholder="Re-type Password to confirm" autocomplete="new-password" style="padding-right:42px;width:100%;box-sizing:border-box;">' +
+        '<button type="button" class="btn-toggle-pw" data-target="initAuthPasswordConfirm" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px;" title="Show/Hide Password">👁️</button>' +
+      '</div>'
+    ) : '') +
     regChoicesHtml +
     '<button class="primary" id="btnEmailAuth" style="width:100%;margin-top:4px;padding:11px;font-size:0.9rem;border-radius:12px;">' +
-      (isReg ? 'Create Account &amp; Start' : 'Sign In') +
+      (isReg ? 'Create Account &amp; Save to DB' : 'Sign In') +
     '</button>' +
     '<div style="text-align:center;font-size:0.7rem;color:var(--pine-soft);margin-top:12px;">' +
       '🔒 Safe for all ages · Strict privacy protection · Zero advertising' +
@@ -19026,6 +19035,22 @@ function wireInitialAuthEvents(){
     };
   });
 
+  document.querySelectorAll('.btn-toggle-pw').forEach(function(btn){
+    btn.onclick = function(){
+      var targetId = btn.getAttribute('data-target');
+      var input = document.getElementById(targetId);
+      if (input){
+        if (input.type === 'password'){
+          input.type = 'text';
+          btn.textContent = '🔒';
+        } else {
+          input.type = 'password';
+          btn.textContent = '👁️';
+        }
+      }
+    };
+  });
+
   document.querySelectorAll('input[name="authRegModeRadio"]').forEach(function(r){
     r.onchange = function(){
       authRegMode = r.value;
@@ -19050,8 +19075,11 @@ function wireInitialAuthEvents(){
       var em = (document.getElementById('initAuthEmail') || {}).value || '';
       var pw = (document.getElementById('initAuthPassword') || {}).value || '';
       if (authTab === 'register'){
+        var pwConfirm = (document.getElementById('initAuthPasswordConfirm') || {}).value || '';
         var dn = (document.getElementById('initAuthDisplayName') || {}).value || '';
         if (!em || !pw || !dn) return alert('Please fill in Display Name, Email, and Password');
+        if (pw.length < 6) return alert('Password must be at least 6 characters long.');
+        if (pw !== pwConfirm) return alert('Passwords do not match! Please verify your re-typed password.');
         var guestId = undefined;
         var recoveryCode = undefined;
         if (authRegMode === 'upgrade'){
@@ -19060,9 +19088,9 @@ function wireInitialAuthEvents(){
           recoveryCode = ((document.getElementById('initAuthRecoveryCode') || {}).value || '').trim();
           if (!recoveryCode) return alert('Please enter your Guest Recovery Code (e.g. GUEST-XXXX-XXXX-XXXX-XXXX)');
         }
-        ApiClient.register(em, pw, dn, guestId, recoveryCode).catch(function(err){ alert('Registration error: ' + err.message); });
+        ApiClient.register(em, pw, dn, guestId, recoveryCode, authRegMode === 'fresh').catch(function(err){ alert('Registration error: ' + err.message); });
       } else {
-        if (!em || !pw) return alert('Please enter Email and Password');
+        if (!em || !pw) return alert('Please enter Email, Phone, or Username and Password');
         ApiClient.login(em, pw).catch(function(err){ alert('Login error: ' + err.message); });
       }
     };
@@ -19155,8 +19183,9 @@ var ApiClient = {
       wsConnection.onclose = function(){ wsConnection = null; };
     } catch(e){}
   },
-  register: function(email, password, displayName, guestId, recoveryCode){
+  register: function(email, password, displayName, guestId, recoveryCode, isFreshStart){
     var self = this;
+    var fresh = !!(isFreshStart || (typeof authRegMode !== 'undefined' && authRegMode === 'fresh'));
     if (!backendOnline){
       apiUser = {
         id: 'user_' + Math.floor(1000 + Math.random()*9000),
@@ -19165,15 +19194,29 @@ var ApiClient = {
         role: 'user',
         authProvider: 'local'
       };
-      localStorage.setItem('searchO2_guest_user', JSON.stringify(apiUser));
+      localStorage.setItem('searchO2_user', JSON.stringify(apiUser));
+      localStorage.removeItem('searchO2_guest_user');
+
+      if (fresh && typeof state !== 'undefined' && state){
+        state.money = 10000;
+        state.totalO2 = 0;
+        state.totalO2AllTime = 0;
+        if (state.plots){
+          state.plots.forEach(function(p){
+            p.status = 'barren'; p.treeType = null; p.health = 100; p.harvestsDone = 0;
+          });
+        }
+        if (typeof saveState === 'function') saveState();
+      }
+
       showNotification('🎉', 'Welcome ' + apiUser.displayName + '! (Local Mode)', 'bank', null);
       closeModal();
       render();
       return Promise.resolve();
     }
     var body = { email: email, password: password, displayName: displayName };
-    if (guestId) body.guestId = guestId;
-    if (recoveryCode) body.recoveryCode = recoveryCode;
+    if (!fresh && guestId) body.guestId = guestId;
+    if (!fresh && recoveryCode) body.recoveryCode = recoveryCode;
 
     return fetch(API_BASE_URL + '/auth/register', {
       method: 'POST',
@@ -19186,7 +19229,29 @@ var ApiClient = {
       authToken = d.accessToken;
       apiUser = d.user;
       localStorage.setItem('searchO2_token', authToken);
+      localStorage.setItem('searchO2_user', JSON.stringify(d.user));
       localStorage.removeItem('searchO2_guest_user');
+
+      if (fresh && typeof state !== 'undefined' && state){
+        state.money = 10000;
+        state.totalO2 = 0;
+        state.totalO2AllTime = 0;
+        if (state.plots){
+          state.plots.forEach(function(p){
+            p.status = 'barren'; p.treeType = null; p.health = 100; p.harvestsDone = 0;
+          });
+        }
+        try {
+          for (var i = 0; i < localStorage.length; i++){
+            var k = localStorage.key(i);
+            if (k && /searchO2.*(farm|state|plots|money)/i.test(k) && k !== 'searchO2_token' && k !== 'searchO2_user'){
+              localStorage.removeItem(k);
+            }
+          }
+        } catch (e) {}
+        if (typeof saveState === 'function') saveState();
+      }
+
       showNotification('🎉', d.message || ('Welcome ' + d.user.displayName + '!'), 'bank', null);
       self.connectWs();
       closeModal();
@@ -19203,7 +19268,8 @@ var ApiClient = {
         role: 'user',
         authProvider: 'local'
       };
-      localStorage.setItem('searchO2_guest_user', JSON.stringify(apiUser));
+      localStorage.setItem('searchO2_user', JSON.stringify(apiUser));
+      localStorage.removeItem('searchO2_guest_user');
       showNotification('✅', 'Signed in as ' + apiUser.displayName + ' (Local Mode)', 'bank', null);
       closeModal();
       render();
@@ -19220,7 +19286,15 @@ var ApiClient = {
       authToken = d.accessToken;
       apiUser = d.user;
       localStorage.setItem('searchO2_token', authToken);
+      localStorage.setItem('searchO2_user', JSON.stringify(d.user));
       localStorage.removeItem('searchO2_guest_user');
+
+      if (d.farmState && typeof state !== 'undefined' && state){
+        if (typeof d.farmState.money === 'number') state.money = d.farmState.money;
+        if (typeof d.farmState.totalO2 === 'number') state.totalO2 = d.farmState.totalO2;
+        if (typeof saveState === 'function') saveState();
+      }
+
       showNotification('✅', 'Signed in as ' + d.user.displayName, 'bank', null);
       self.connectWs();
       closeModal();
