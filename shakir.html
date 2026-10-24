@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shakir - SearchO2 Game Character (Three.js)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: radial-gradient(circle, #e0f2fe 0%, #bae6fd 100%);
+            font-family: sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #0369a1;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 8px 12px;
+            border-radius: 8px;
+            pointer-events: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+    <!-- Import Three.js and OrbitControls -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="info">SearchO2: Shakir (Child Explorer) - 3D View</div>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- SCENE, CAMERA & RENDERER ---
+        const scene = new THREE.Scene();
+
+        // Isometric style orthographic camera
+        const aspect = window.innerWidth / window.innerHeight;
+        const d = 5;
+        const camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 1000);
+        
+        // Classic isometric view angles (30deg, 45deg)
+        camera.position.set(10, 10, 10);
+        camera.lookAt(0, 0.5, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableZoom = true;
+        controls.enablePan = false;
+        controls.minZoom = 0.5;
+        controls.maxZoom = 2;
+        controls.target.set(0, 0.8, 0);
+        controls.update();
+
+        // --- LIGHTS ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.55);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfffbeb, 1.25);
+        dirLight.position.set(12, 18, 8);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.left = -6;
+        dirLight.shadow.camera.right = 6;
+        dirLight.shadow.camera.top = 6;
+        dirLight.shadow.camera.bottom = -6;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 40;
+        dirLight.shadow.bias = -0.001;
+        scene.add(dirLight);
+
+        // Warm back/bounce light
+        const fillLight = new THREE.DirectionalLight(0xa5f3fc, 0.4);
+        fillLight.position.set(-8, 5, -8);
+        scene.add(fillLight);
+
+        // --- MATERIALS ---
+        const materials = {
+            skin: new THREE.MeshLambertMaterial({ color: 0xdfa07a }),
+            hair: new THREE.MeshLambertMaterial({ color: 0x3d2314 }),
+            shirtWhite: new THREE.MeshLambertMaterial({ color: 0xf3f4f6 }),
+            shirtGray: new THREE.MeshLambertMaterial({ color: 0x9ca3af }),
+            shorts: new THREE.MeshLambertMaterial({ color: 0x78350f }),
+            boots: new THREE.MeshLambertMaterial({ color: 0x3b2314 }),
+            bootsGreen: new THREE.MeshLambertMaterial({ color: 0x14532d }),
+            socks: new THREE.MeshLambertMaterial({ color: 0x1f2937 }),
+            bagBlue: new THREE.MeshLambertMaterial({ color: 0x1e3a8a }),
+            bagGray: new THREE.MeshLambertMaterial({ color: 0x4b5563 }),
+            badgeGreen: new THREE.MeshLambertMaterial({ color: 0x22c55e }),
+            badgeYellow: new THREE.MeshLambertMaterial({ color: 0xeab308 }),
+            gloves: new THREE.MeshLambertMaterial({ color: 0x374151 }),
+            device: new THREE.MeshLambertMaterial({ color: 0x0ea5e9 }),
+            deviceScreen: new THREE.MeshBasicMaterial({ color: 0x67e8f9 }),
+            islandTop: new THREE.MeshLambertMaterial({ color: 0x4caf50 }),
+            islandDirt: new THREE.MeshLambertMaterial({ color: 0x5c4033 }),
+            crop: new THREE.MeshLambertMaterial({ color: 0x2e7d32 }),
+            solar: new THREE.MeshLambertMaterial({ color: 0x1565c0 }),
+            metal: new THREE.MeshStandardMaterial({ color: 0x9e9e9e, roughness: 0.4 }),
+            white: new THREE.MeshLambertMaterial({ color: 0xffffff })
+        };
+
+        // --- CREATE ISOMETRIC WORLD CHUNK ---
+        const worldGroup = new THREE.Group();
+        scene.add(worldGroup);
+
+        // Ground / Floating Island Chunk
+        const islandGeo = new THREE.CylinderGeometry(3.5, 3.2, 0.6, 8);
+        const islandTopGeo = new THREE.CylinderGeometry(3.51, 3.51, 0.1, 8);
+        
+        const dirtMesh = new THREE.Mesh(islandGeo, materials.islandDirt);
+        dirtMesh.position.y = -0.3;
+        dirtMesh.receiveShadow = true;
+        worldGroup.add(dirtMesh);
+
+        const grassMesh = new THREE.Mesh(islandTopGeo, materials.islandTop);
+        grassMesh.position.y = 0.01;
+        grassMesh.receiveShadow = true;
+        worldGroup.add(grassMesh);
+
+        // Pathway
+        const pathGeo = new THREE.BoxGeometry(3.2, 0.012, 1.0);
+        const path = new THREE.Mesh(pathGeo, new THREE.MeshLambertMaterial({ color: 0x9a3412 }));
+        path.rotation.y = Math.PI / 4;
+        path.position.set(-0.2, 0.01, 0.8);
+        path.receiveShadow = true;
+        worldGroup.add(path);
+
+        // Tiny Solar Panel
+        const solarStructure = new THREE.Group();
+        solarStructure.position.set(-1.8, 0, -1.2);
+        const solarBase = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5), materials.metal);
+        solarBase.position.y = 0.25;
+        solarBase.castShadow = true;
+        solarStructure.add(solarBase);
+        const solarPanel = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.05, 0.6), materials.solar);
+        solarPanel.position.set(0, 0.5, 0);
+        solarPanel.rotation.x = 0.5;
+        solarPanel.castShadow = true;
+        solarStructure.add(solarPanel);
+        worldGroup.add(solarStructure);
+
+        // Small Crop patches
+        for (let i = 0; i < 4; i++) {
+            const crop = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.5), materials.islandDirt);
+            crop.position.set(1.5 + (i % 2) * 0.5, 0.05, -0.8 + Math.floor(i / 2) * 0.7);
+            crop.castShadow = true;
+            worldGroup.add(crop);
+
+            for (let j = -1; j <= 1; j += 2) {
+                const plant = new THREE.Mesh(new THREE.SphereGeometry(0.08, 4, 4), materials.crop);
+                plant.position.set(crop.position.x, 0.15, crop.position.z + j * 0.15);
+                plant.scale.set(1, 1.5, 1);
+                worldGroup.add(plant);
+            }
+        }
+
+        // --- CREATE CHARACTER: SHAKIR ---
+        const shakir = new THREE.Group();
+        shakir.position.set(0, 0.05, 0); // Positioned slightly on top
+        shakir.scale.set(1.1, 1.1, 1.1);
+        worldGroup.add(shakir);
+
+        // Shadow Anchor / Player Base Group
+        const charBase = new THREE.Group();
+        shakir.add(charBase);
+
+        // L_BOOT
+        const lBootGroup = new THREE.Group();
+        lBootGroup.position.set(-0.22, 0.15, 0);
+        const lSole = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.3), materials.boots);
+        lSole.castShadow = true;
+        const lBootUpper = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.18), materials.bootsGreen);
+        lBootUpper.position.set(0, 0.08, -0.02);
+        lBootUpper.castShadow = true;
+        lBootGroup.add(lSole, lBootUpper);
+        
+        // L_SOCK
+        const lSock = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.12), materials.socks);
+        lSock.position.set(-0.22, 0.3, -0.02);
+        lSock.castShadow = true;
+        charBase.add(lBootGroup, lSock);
+
+        // R_BOOT
+        const rBootGroup = new THREE.Group();
+        rBootGroup.position.set(0.22, 0.15, 0.1); // Shift forward for natural stance
+        const rSole = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.3), materials.boots);
+        rSole.castShadow = true;
+        const rBootUpper = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.18), materials.bootsGreen);
+        rBootUpper.position.set(0, 0.08, -0.02);
+        rBootUpper.castShadow = true;
+        rBootGroup.add(rSole, rBootUpper);
+
+        // R_SOCK
+        const rSock = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.12), materials.socks);
+        rSock.position.set(0.22, 0.3, 0.08);
+        rSock.castShadow = true;
+        charBase.add(rBootGroup, rSock);
+
+        // LEGS (Skin part)
+        const lLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.3), materials.skin);
+        lLeg.position.set(-0.22, 0.45, -0.02);
+        lLeg.castShadow = true;
+        const rLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.3), materials.skin);
+        rLeg.position.set(0.22, 0.45, 0.08);
+        rLeg.castShadow = true;
+        charBase.add(lLeg, rLeg);
+
+        // SHORTS (Farm brown shorts)
+        const shortsHip = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.28, 0.38), materials.shorts);
+        shortsHip.position.set(0, 0.65, 0.02);
+        shortsHip.castShadow = true;
+        const lShortsLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.18), materials.shorts);
+        lShortsLeg.position.set(-0.21, 0.54, -0.01);
+        lShortsLeg.castShadow = true;
+        const rShortsLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.18), materials.shorts);
+        rShortsLeg.position.set(0.21, 0.54, 0.05);
+        rShortsLeg.castShadow = true;
+        charBase.add(shortsHip, lShortsLeg, rShortsLeg);
+
+        // Extra Cargo pocket details
+        const rPocket = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.14), materials.shorts);
+        rPocket.position.set(0.3, 0.55, 0.05);
+        charBase.add(rPocket);
+
+        // TORSO (Shirt + layered shirt)
+        const torsoGroup = new THREE.Group();
+        torsoGroup.position.set(0, 0.95, 0.02);
+        const shirtWhite = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 0.32), materials.shirtWhite);
+        shirtWhite.castShadow = true;
+        torsoGroup.add(shirtWhite);
+
+        // Neck
+        const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.095, 0.1), materials.skin);
+        neck.position.y = 0.25;
+        torsoGroup.add(neck);
+        charBase.add(torsoGroup);
+
+        // BACKPACK
+        const backpackGroup = new THREE.Group();
+        backpackGroup.position.set(0, 0.96, -0.22);
+        const bagMain = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.54, 0.22), materials.bagBlue);
+        bagMain.castShadow = true;
+        const bagTopFlap = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.12, 0.23), materials.bagGray);
+        bagTopFlap.position.y = 0.26;
+        bagTopFlap.castShadow = true;
+        const bagOuterPocket = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.28, 0.08), materials.bagBlue);
+        bagOuterPocket.position.set(0, -0.08, -0.12);
+        bagOuterPocket.castShadow = true;
+        backpackGroup.add(bagMain, bagTopFlap, bagOuterPocket);
+
+        // Shoulder straps
+        const lStrap = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.42, 0.12), materials.bagGray);
+        lStrap.position.set(-0.2, 0.02, 0.12);
+        const rStrap = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.42, 0.12), materials.bagGray);
+        rStrap.position.set(0.2, 0.02, 0.12);
+        backpackGroup.add(lStrap, rStrap);
+
+        // Yellow/Green Badge on Straps
+        const badge = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.02), materials.badgeYellow);
+        badge.rotation.x = Math.PI / 2;
+        badge.position.set(0.2, 0.12, 0.18);
+        const badgeIn = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.022), materials.badgeGreen);
+        badgeIn.rotation.x = Math.PI / 2;
+        badgeIn.position.set(0.2, 0.12, 0.182);
+        backpackGroup.add(badge, badgeIn);
+        charBase.add(backpackGroup);
+
+        // ARMS (R is forward holding device, L is relaxed/angled)
+        // LEFT ARM (Relaxed Layered)
+        const lShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), materials.shirtWhite);
+        lShoulder.position.set(-0.31, 1.1, 0.02);
+        const lUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.07, 0.2), materials.shirtWhite);
+        lUpperArm.position.set(-0.35, 0.98, 0.02);
+        lUpperArm.rotation.z = 0.15;
+        lUpperArm.castShadow = true;
+        const lForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.06, 0.22), materials.shirtGray);
+        lForearm.position.set(-0.37, 0.81, 0.04);
+        lForearm.rotation.z = 0.08;
+        lForearm.castShadow = true;
+        // Glove / hand (Dark)
+        const lGlove = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.09), materials.gloves);
+        lGlove.position.set(-0.38, 0.68, 0.05);
+        lGlove.castShadow = true;
+        charBase.add(lShoulder, lUpperArm, lForearm, lGlove);
+
+        // RIGHT ARM (Holding Scanning Device)
+        const rShoulder = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), materials.shirtWhite);
+        rShoulder.position.set(0.31, 1.1, 0.02);
+        const rUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.07, 0.2), materials.shirtWhite);
+        rUpperArm.position.set(0.35, 0.98, 0.06);
+        rUpperArm.rotation.x = -0.3; // Swing forward slightly
+        rUpperArm.castShadow = true;
+        // Angle forearm up to hold gizmo
+        const rForearm = new THREE.Group();
+        rForearm.position.set(0.35, 0.86, 0.14);
+        rForearm.rotation.x = -0.7; // Tilted upward/forward
+        const rForearmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.06, 0.2), materials.shirtGray);
+        rForearmMesh.position.y = -0.05;
+        rForearmMesh.castShadow = true;
+        const rGlove = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.085, 0.1), materials.gloves);
+        rGlove.position.y = -0.15;
+        rGlove.castShadow = true;
+        rForearm.add(rForearmMesh, rGlove);
+
+        // Handheld Device/Tracker
+        const device = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.16), materials.device);
+        device.position.set(0, -0.21, 0.04);
+        const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.11), materials.deviceScreen);
+        screen.rotation.x = -Math.PI/2;
+        screen.position.set(0, -0.183, 0.04);
+        rForearm.add(device, screen);
+
+        charBase.add(rShoulder, rUpperArm, rForearm);
+
+        // HEAD & FACE
+        const headGroup = new THREE.Group();
+        headGroup.position.set(0, 1.34, 0.04);
+
+        // Main head sphere (stylized cartoon)
+        const headMesh = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.40, 0.38), materials.skin);
+        headMesh.castShadow = true;
+        headGroup.add(headMesh);
+
+        // Ears
+        const lEar = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 6), materials.skin);
+        lEar.position.set(-0.21, 0, -0.02);
+        const rEar = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 6), materials.skin);
+        rEar.position.set(0.21, 0, -0.02);
+        headGroup.add(lEar, rEar);
+
+        // EYES
+        const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.01), materials.socks); // using socks dark color for eyes
+        eyeL.position.set(-0.09, 0.03, 0.192);
+        const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.01), materials.socks);
+        eyeR.position.set(0.09, 0.03, 0.192);
+        headGroup.add(eyeL, eyeR);
+
+        // Mouth (Gentle Smile)
+        const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.015, 0.01), materials.hair);
+        mouth.position.set(0, -0.11, 0.193);
+        headGroup.add(mouth);
+
+        // Cute Nose
+        const nose = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.04), materials.skin);
+        nose.position.set(0, -0.02, 0.2);
+        headGroup.add(nose);
+
+        // HAIR (Volume/Messy Anime Boy Style)
+        const hairBaseGroup = new THREE.Group();
+        // Hair top
+        const hairTop = new THREE.Mesh(new THREE.BoxGeometry(0.43, 0.18, 0.42), materials.hair);
+        hairTop.position.y = 0.17;
+        const hairBack = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.3, 0.14), materials.hair);
+        hairBack.position.set(0, 0, -0.16);
+        hairBaseGroup.add(hairTop, hairBack);
+
+        // Individual spikes (representing his unique textured messy hair)
+        const spikePositions = [
+            [0.1, 0.25, 0.1], [-0.08, 0.24, 0.12], [0.01, 0.28, 0.02],
+            [0.14, 0.22, -0.05], [-0.13, 0.22, -0.03], [0, 0.26, -0.1],
+            [0.18, 0.08, 0.14], [-0.18, 0.08, 0.14], // Sides
+            [0.05, 0.18, 0.18], [-0.05, 0.21, 0.18] // Front Spikes
+        ];
+
+        spikePositions.forEach(pos => {
+            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.18, 4), materials.hair);
+            spike.position.set(pos[0], pos[1], pos[2]);
+            // Point spikes upward/outward
+            spike.rotation.x = 0.2 + (Math.random() * 0.2);
+            spike.rotation.z = (Math.random() - 0.5) * 0.4;
+            hairBaseGroup.add(spike);
+        });
+        headGroup.add(hairBaseGroup);
+
+        charBase.add(headGroup);
+
+        // Tiny environmental decoration on world chunk
+        const treeGroup = new THREE.Group();
+        treeGroup.position.set(-1.8, 0, 1.8);
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.6), materials.boots);
+        trunk.position.y = 0.3;
+        trunk.castShadow = true;
+        const leaves1 = new THREE.Mesh(new THREE.SphereGeometry(0.35, 6, 6), materials.crop);
+        leaves1.position.y = 0.65;
+        leaves1.castShadow = true;
+        const leaves2 = new THREE.Mesh(new THREE.SphereGeometry(0.25, 5, 5), materials.crop);
+        leaves2.position.set(0, 0.9, 0);
+        leaves2.castShadow = true;
+        treeGroup.add(trunk, leaves1, leaves2);
+        worldGroup.add(treeGroup);
+
+        // --- ANIMATION LOOP ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            // Slighting breathing / bobbing animation for the Explorer kid
+            shakir.position.y = 0.05 + Math.sin(elapsedTime * 2.2) * 0.018;
+            
+            // Subtly animate hands/head looking alive
+            headGroup.rotation.y = Math.sin(elapsedTime * 0.8) * 0.06;
+            headGroup.rotation.x = Math.cos(elapsedTime * 0.5) * 0.03;
+
+            // Soft arm sway
+            rForearm.rotation.x = -0.7 + Math.sin(elapsedTime * 2) * 0.04;
+            lUpperArm.rotation.z = 0.15 + Math.cos(elapsedTime * 1.5) * 0.03;
+
+            // Slow idle cinematic rotation of the whole world diorama
+            worldGroup.rotation.y = elapsedTime * 0.07;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- RESIZE HANDLER ---
+        window.addEventListener('resize', () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const aspect = width / height;
+
+            camera.left = -d * aspect;
+            camera.right = d * aspect;
+            camera.top = d;
+            camera.bottom = -d;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(width, height);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

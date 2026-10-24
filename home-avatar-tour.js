@@ -1648,7 +1648,27 @@
     }
   }
 
+  function isGuestMode() {
+    if (typeof global.apiUser !== 'undefined' && global.apiUser) {
+      return global.apiUser.role === 'guest';
+    }
+    if (typeof global.window !== 'undefined' && global.window.apiUser) {
+      return global.window.apiUser.role === 'guest';
+    }
+    try {
+      var saved = JSON.parse(localStorage.getItem('searchO2_user') || 'null');
+      if (saved && saved.role && saved.role !== 'guest') return false;
+    } catch (e) {}
+    return true;
+  }
+
   function showHomeOverlay() {
+    if (isGuestMode()) {
+      if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.openWelcomeOrProgressModal === 'function') {
+        global.SearchO2ShakirGuide.openWelcomeOrProgressModal();
+      }
+      return;
+    }
     var existing = document.getElementById('s2HomeOverlay');
     if (!existing) {
       var wrap = document.createElement('div');
@@ -2004,6 +2024,12 @@
   }
 
   function spawnWalker(av, at) {
+    if (isGuestMode()) {
+      if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.bootGuideOnFarm === 'function') {
+        return global.SearchO2ShakirGuide.bootGuideOnFarm();
+      }
+      return null;
+    }
     var layer = ensureWalkerLayer();
     if (!layer) return null;
     if (tourState.walkerEl && tourState.walkerEl.parentNode) {
@@ -2538,10 +2564,11 @@
       el.style.height = (spot.h || 16) + '%';
       el.setAttribute('data-object-key', obj.key);
       el.setAttribute('data-facility-key', obj.key);
+      var bpTag = isGuestMode() ? '' : '<span class="s2-ghost-blueprint-tag">📐 Blueprint</span>';
       el.innerHTML =
         '<div class="s2-ghost-structure s2-ghost-body">' +
           archSvg +
-          '<span class="s2-ghost-blueprint-tag">📐 Blueprint</span>' +
+          bpTag +
           '<span class="s2-ghost-lock">🔒</span>' +
         '</div>' +
         '<div class="s2-ghost-label">Ch. ' + ch + ' · ' + obj.name + '</div>';
@@ -3530,6 +3557,12 @@
     targetCh = parseInt(targetCh, 10);
     if (!targetCh || targetCh < 1 || targetCh > 8) return;
     hideHomeOverlay();
+    if (isGuestMode()) {
+      if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.walkToChapter === 'function') {
+        global.SearchO2ShakirGuide.walkToChapter(targetCh);
+        return;
+      }
+    }
     if (!tourState.active) {
       tourState.active = true;
       tourState.skipped = false;
@@ -3605,6 +3638,7 @@
   // Boot & Initialization Hook
   // ---------------------------------------------------------------------------
   function shouldShowHomeOverlay() {
+    if (isGuestMode()) return false;
     try {
       if (localStorage.getItem('searchO2_avatar_skipped') === '1') return false;
       if (localStorage.getItem('searchO2_selected_avatar')) return false;
@@ -3614,6 +3648,12 @@
   }
 
   function maybeResumeAvatarOnFarm() {
+    if (isGuestMode()) {
+      if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.bootGuideOnFarm === 'function') {
+        global.SearchO2ShakirGuide.bootGuideOnFarm();
+      }
+      return;
+    }
     var av = loadPersistedAvatar();
     if (!av) return;
     tourState.avatar = av;
@@ -3631,6 +3671,12 @@
 
   function bootIntegration() {
     setTimeout(function () {
+      if (isGuestMode()) {
+        if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.bootGuideOnFarm === 'function') {
+          global.SearchO2ShakirGuide.bootGuideOnFarm();
+        }
+        return;
+      }
       if (shouldShowHomeOverlay()) {
         showHomeOverlay();
       } else {
@@ -3649,15 +3695,34 @@
     startChapterTour: startChapterTour,
     endTour: endTour,
     boot: bootIntegration,
-    walkToNextScoutNow: walkToNextScoutNow,
-    skipScoutCooldown: walkToNextScoutNow,
+    walkToNextScoutNow: function () {
+      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.walkToNextChapter === 'function') {
+        return global.SearchO2ShakirGuide.walkToNextChapter();
+      }
+      return walkToNextScoutNow();
+    },
+    skipScoutCooldown: function () {
+      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.walkToNextChapter === 'function') {
+        return global.SearchO2ShakirGuide.walkToNextChapter();
+      }
+      return walkToNextScoutNow();
+    },
     isCooldownActive: function () {
+      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isCooldownActive === 'function') {
+        return global.SearchO2ShakirGuide.isCooldownActive();
+      }
       return !!(tourState.active && tourState.cooldownActive && tourState.cooldownRemaining > 0);
     },
     getCooldownRemaining: function () {
+      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.getCooldownRemaining === 'function') {
+        return global.SearchO2ShakirGuide.getCooldownRemaining();
+      }
       return tourState.cooldownRemaining;
     },
     getTourState: function () {
+      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.getGuideState === 'function') {
+        return global.SearchO2ShakirGuide.getGuideState();
+      }
       return tourState;
     },
     selectAvatar: function (id) {
@@ -3689,7 +3754,12 @@
     },
     dockTopCapsules: dockTopCapsules,
     walkToChapter: walkToChapter,
-    isTourActive: isTourActive,
+    isTourActive: function () {
+      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isTourActive === 'function') {
+        return global.SearchO2ShakirGuide.isTourActive();
+      }
+      return isTourActive();
+    },
     triggerJuteTarpDiggingSequence: triggerJuteTarpDiggingSequence,
     updateTourProgress: updateTourProgress,
     setAvatarRegionFilter: setAvatarRegionFilter,
