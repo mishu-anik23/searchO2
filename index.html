@@ -18960,7 +18960,11 @@ function initialAuthModalHtml(){
       '</div>'
     ) : '') +
     regChoicesHtml +
-    '<button class="primary" id="btnEmailAuth" style="width:100%;margin-top:4px;padding:11px;font-size:0.9rem;border-radius:12px;">' +
+    '<label style="display:flex;align-items:center;gap:8px;font-size:0.75rem;font-weight:700;color:var(--pine);margin:8px 0 10px;cursor:pointer;">' +
+      '<input type="checkbox" id="initAuthSavePassword" checked style="accent-color:var(--forest);width:16px;height:16px;cursor:pointer;">' +
+      '<span>💾 Save Password &amp; Auto-Login (Reloads farm session)</span>' +
+    '</label>' +
+    '<button class="primary" id="btnEmailAuth" style="width:100%;margin-top:2px;padding:11px;font-size:0.9rem;border-radius:12px;">' +
       (isReg ? 'Create Account &amp; Save to DB' : 'Sign In') +
     '</button>' +
     '<div style="text-align:center;font-size:0.7rem;color:var(--pine-soft);margin-top:12px;">' +
@@ -19069,15 +19073,27 @@ function wireInitialAuthEvents(){
     };
   });
 
+  try {
+    var saved = JSON.parse(localStorage.getItem('searchO2_saved_creds') || 'null');
+    if (saved && saved.identifier && authTab === 'signin') {
+      var emIn = document.getElementById('initAuthEmail');
+      var pwIn = document.getElementById('initAuthPassword');
+      if (emIn && !emIn.value) emIn.value = saved.identifier;
+      if (pwIn && !pwIn.value) pwIn.value = saved.password || '';
+    }
+  } catch(e){}
+
   var btnEmail = document.getElementById('btnEmailAuth');
   if (btnEmail){
     btnEmail.onclick = function(){
-      var em = (document.getElementById('initAuthEmail') || {}).value || '';
+      var em = ((document.getElementById('initAuthEmail') || {}).value || '').trim();
       var pw = (document.getElementById('initAuthPassword') || {}).value || '';
+      var shouldSave = !!(document.getElementById('initAuthSavePassword') && document.getElementById('initAuthSavePassword').checked);
+
       if (authTab === 'register'){
         var pwConfirm = (document.getElementById('initAuthPasswordConfirm') || {}).value || '';
-        var dn = (document.getElementById('initAuthDisplayName') || {}).value || '';
-        if (!em || !pw || !dn) return alert('Please fill in Display Name, Email, and Password');
+        var dn = ((document.getElementById('initAuthDisplayName') || {}).value || '').trim();
+        if (!em || !pw || !dn) return alert('Please fill in Display Name, Email/Phone, and Password');
         if (pw.length < 6) return alert('Password must be at least 6 characters long.');
         if (pw !== pwConfirm) return alert('Passwords do not match! Please verify your re-typed password.');
         var guestId = undefined;
@@ -19088,10 +19104,10 @@ function wireInitialAuthEvents(){
           recoveryCode = ((document.getElementById('initAuthRecoveryCode') || {}).value || '').trim();
           if (!recoveryCode) return alert('Please enter your Guest Recovery Code (e.g. GUEST-XXXX-XXXX-XXXX-XXXX)');
         }
-        ApiClient.register(em, pw, dn, guestId, recoveryCode, authRegMode === 'fresh').catch(function(err){ alert('Registration error: ' + err.message); });
+        ApiClient.register(em, pw, dn, guestId, recoveryCode, authRegMode === 'fresh', shouldSave).catch(function(err){ alert('Registration error: ' + err.message); });
       } else {
         if (!em || !pw) return alert('Please enter Email, Phone, or Username and Password');
-        ApiClient.login(em, pw).catch(function(err){ alert('Login error: ' + err.message); });
+        ApiClient.login(em, pw, shouldSave).catch(function(err){ alert('Login error: ' + err.message); });
       }
     };
   }
@@ -19113,6 +19129,73 @@ var apiUser = null;
 var authToken = null;
 var backendOnline = false;
 var wsConnection = null;
+
+var SearchO2Vault = {
+  _getKey: function(id) {
+    return (id || '').trim().toLowerCase();
+  },
+  _hash: async function(password, salt) {
+    var enc = new TextEncoder();
+    var combined = enc.encode((salt || 's2_salt_') + ':' + password);
+    var buf = await crypto.subtle.digest('SHA-256', combined);
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+  },
+  getUsers: function() {
+    try {
+      return JSON.parse(localStorage.getItem('searchO2_users_vault') || '{}');
+    } catch (e) {
+      return {};
+    }
+  },
+  saveUser: async function(identifier, password, userData) {
+    var vault = this.getUsers();
+    var salt = 'salt_' + Math.floor(Math.random() * 1e9);
+    var hash = password ? await this._hash(password, salt) : null;
+    var key = this._getKey(identifier);
+    var record = {
+      identifier: key,
+      salt: salt,
+      hash: hash,
+      user: userData,
+      updatedAt: new Date().toISOString()
+    };
+    vault[key] = record;
+    if (userData.email) vault[this._getKey(userData.email)] = record;
+    if (userData.displayName) vault[this._getKey(userData.displayName)] = record;
+    if (userData.phone) vault[this._getKey(userData.phone)] = record;
+    localStorage.setItem('searchO2_users_vault', JSON.stringify(vault));
+    return record;
+  },
+  verifyPassword: async function(identifier, password) {
+    var vault = this.getUsers();
+    var key = this._getKey(identifier);
+    var entry = vault[key];
+    if (!entry) {
+      var cur = null;
+      try { cur = JSON.parse(localStorage.getItem('searchO2_user') || 'null'); } catch(e){}
+      if (cur && (this._getKey(cur.email) === key || this._getKey(cur.displayName) === key || this._getKey(cur.id) === key)) {
+        entry = { user: cur, hash: null };
+      }
+    }
+    if (!entry) {
+      return { ok: false, notFound: true };
+    }
+    if (!entry.hash) {
+      var salt = 'salt_' + Math.floor(Math.random() * 1e9);
+      entry.salt = salt;
+      entry.hash = await this._hash(password, salt);
+      vault[key] = entry;
+      localStorage.setItem('searchO2_users_vault', JSON.stringify(vault));
+      return { ok: true, user: entry.user };
+    }
+    var testHash = await this._hash(password, entry.salt);
+    if (testHash === entry.hash) {
+      return { ok: true, user: entry.user };
+    }
+    return { ok: false, invalidPassword: true };
+  }
+};
+window.SearchO2Vault = SearchO2Vault;
 
 var ApiClient = {
   init: function(){
@@ -19183,19 +19266,18 @@ var ApiClient = {
       wsConnection.onclose = function(){ wsConnection = null; };
     } catch(e){}
   },
-  register: function(email, password, displayName, guestId, recoveryCode, isFreshStart){
+  register: function(email, password, displayName, guestId, recoveryCode, isFreshStart, shouldSavePassword){
     var self = this;
     var fresh = !!(isFreshStart || (typeof authRegMode !== 'undefined' && authRegMode === 'fresh'));
     if (!backendOnline){
       apiUser = {
         id: 'user_' + Math.floor(1000 + Math.random()*9000),
-        displayName: displayName || 'Eco Farmer',
+        displayName: displayName || email.split('@')[0] || 'Eco Farmer',
         email: email,
         role: 'user',
         authProvider: 'local'
       };
-      localStorage.setItem('searchO2_user', JSON.stringify(apiUser));
-      localStorage.removeItem('searchO2_guest_user');
+      SearchO2Vault.saveUser(email, password, apiUser);
 
       if (fresh && typeof state !== 'undefined' && state){
         state.money = 10000;
@@ -19209,10 +19291,7 @@ var ApiClient = {
         if (typeof saveState === 'function') saveState();
       }
 
-      showNotification('🎉', 'Welcome ' + apiUser.displayName + '! (Local Mode)', 'bank', null);
-      closeModal();
-      render();
-      return Promise.resolve();
+      return self._finalizeLogin(apiUser, null, shouldSavePassword, email, password, 'Welcome ' + apiUser.displayName + '! (Local Mode)');
     }
     var body = { email: email, password: password, displayName: displayName };
     if (!fresh && guestId) body.guestId = guestId;
@@ -19229,8 +19308,7 @@ var ApiClient = {
       authToken = d.accessToken;
       apiUser = d.user;
       localStorage.setItem('searchO2_token', authToken);
-      localStorage.setItem('searchO2_user', JSON.stringify(d.user));
-      localStorage.removeItem('searchO2_guest_user');
+      SearchO2Vault.saveUser(email, password, d.user);
 
       if (fresh && typeof state !== 'undefined' && state){
         state.money = 10000;
@@ -19252,54 +19330,93 @@ var ApiClient = {
         if (typeof saveState === 'function') saveState();
       }
 
-      showNotification('🎉', d.message || ('Welcome ' + d.user.displayName + '!'), 'bank', null);
-      self.connectWs();
-      closeModal();
-      render();
+      return self._finalizeLogin(d.user, null, shouldSavePassword, email, password, d.message || ('Welcome ' + d.user.displayName + '!'));
     });
   },
-  login: function(email, password){
+  login: function(email, password, shouldSavePassword){
     var self = this;
+    var cleanId = (email || '').trim();
+    var cleanPw = (password || '').trim();
+
+    if (!cleanId || !cleanPw) {
+      return Promise.reject(new Error('Please enter both email/phone/username and password.'));
+    }
+
     if (!backendOnline){
-      apiUser = {
-        id: 'user_' + Math.floor(1000 + Math.random()*9000),
-        displayName: email.split('@')[0],
-        email: email,
-        role: 'user',
-        authProvider: 'local'
-      };
-      localStorage.setItem('searchO2_user', JSON.stringify(apiUser));
-      localStorage.removeItem('searchO2_guest_user');
-      showNotification('✅', 'Signed in as ' + apiUser.displayName + ' (Local Mode)', 'bank', null);
+      return SearchO2Vault.verifyPassword(cleanId, cleanPw).then(function(res){
+        if (res.invalidPassword){
+          throw new Error('Invalid password. Please check your credentials.');
+        }
+        if (res.notFound){
+          var vault = SearchO2Vault.getUsers();
+          if (Object.keys(vault).length > 0){
+            throw new Error('User account not found. Please verify your email/phone or create an account.');
+          }
+          apiUser = {
+            id: 'user_' + Math.floor(1000 + Math.random()*9000),
+            displayName: cleanId.split('@')[0],
+            email: cleanId,
+            role: 'user',
+            authProvider: 'local'
+          };
+          return SearchO2Vault.saveUser(cleanId, cleanPw, apiUser).then(function(){
+            return self._finalizeLogin(apiUser, null, shouldSavePassword, cleanId, cleanPw, 'Signed in as ' + apiUser.displayName + ' (Local Mode)');
+          });
+        }
+        apiUser = res.user;
+        return self._finalizeLogin(apiUser, null, shouldSavePassword, cleanId, cleanPw, 'Signed in as ' + apiUser.displayName + ' (Local Mode)');
+      });
+    }
+
+    return fetch(API_BASE_URL + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: cleanId, password: cleanPw })
+    })
+    .then(function(r){
+      return r.text().then(function(t){
+        var d = null;
+        try { d = JSON.parse(t); } catch(e){}
+        if (!r.ok || !d || d.error){
+          throw new Error((d && (d.error || d.message)) || ('Login failed: invalid email or password.'));
+        }
+        return d;
+      });
+    })
+    .then(function(d){
+      authToken = d.accessToken;
+      apiUser = d.user;
+      localStorage.setItem('searchO2_token', authToken);
+      SearchO2Vault.saveUser(cleanId, cleanPw, d.user);
+      return self._finalizeLogin(d.user, d.farmState, shouldSavePassword, cleanId, cleanPw, d.message);
+    });
+  },
+  _finalizeLogin: function(user, farmState, shouldSave, identifier, password, msg){
+    var self = this;
+    apiUser = user;
+    localStorage.setItem('searchO2_user', JSON.stringify(user));
+    localStorage.removeItem('searchO2_guest_user');
+
+    if (farmState && typeof state !== 'undefined' && state){
+      if (typeof farmState.money === 'number') state.money = farmState.money;
+      if (typeof farmState.totalO2 === 'number') state.totalO2 = farmState.totalO2;
+      if (typeof saveState === 'function') saveState();
+    }
+
+    if (shouldSave){
+      localStorage.setItem('searchO2_saved_creds', JSON.stringify({ identifier: identifier, password: password }));
+      showNotification('💾', 'Password saved securely! Reloading farm...', 'bank', null);
+      closeModal();
+      setTimeout(function(){ location.reload(); }, 600);
+      return Promise.resolve();
+    } else {
+      localStorage.removeItem('searchO2_saved_creds');
+      showNotification('✅', msg || ('Signed in as ' + user.displayName), 'bank', null);
+      self.connectWs();
       closeModal();
       render();
       return Promise.resolve();
     }
-    return fetch(API_BASE_URL + '/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email, password: password })
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      if (d.error) throw new Error(d.error);
-      authToken = d.accessToken;
-      apiUser = d.user;
-      localStorage.setItem('searchO2_token', authToken);
-      localStorage.setItem('searchO2_user', JSON.stringify(d.user));
-      localStorage.removeItem('searchO2_guest_user');
-
-      if (d.farmState && typeof state !== 'undefined' && state){
-        if (typeof d.farmState.money === 'number') state.money = d.farmState.money;
-        if (typeof d.farmState.totalO2 === 'number') state.totalO2 = d.farmState.totalO2;
-        if (typeof saveState === 'function') saveState();
-      }
-
-      showNotification('✅', 'Signed in as ' + d.user.displayName, 'bank', null);
-      self.connectWs();
-      closeModal();
-      render();
-    });
   },
   loginGoogle: function(idToken){
     if (window.SearchO2AuthSocial){

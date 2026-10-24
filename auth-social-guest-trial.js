@@ -608,6 +608,9 @@
         avatarUrl: isGoogle ? 'https://lh3.googleusercontent.com/a/default-user=s96-c' : ('https://github.com/' + encodeURIComponent(val) + '.png')
       })
       .then(function(d) {
+        if (window.SearchO2Vault && pw) {
+          window.SearchO2Vault.saveUser(val, pw, d.user);
+        }
         if (isFresh) {
           resetFreshFarmState();
         }
@@ -626,6 +629,9 @@
           money: isFresh ? 10000 : ((typeof state !== 'undefined' && state && state.money) ? state.money : 10000),
           totalO2: isFresh ? 0 : ((typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0),
         };
+        if (window.SearchO2Vault && pw) {
+          window.SearchO2Vault.saveUser(val, pw, fallbackUser);
+        }
         if (isFresh) {
           resetFreshFarmState();
         }
@@ -680,23 +686,22 @@
       '</div>' +
       '<div id="s2WaStep1">' +
         '<p style="font-size:0.8rem;line-height:1.4;color:#2C4A32;margin:8px 0 12px;">' +
-          'Enter your mobile phone number with international country code to receive your 6-digit verification code.' +
+          'Enter your mobile phone number with international country code to receive your 6-digit verification code via WhatsApp.' +
         '</p>' +
         '<div style="margin-bottom:12px;">' +
           '<label style="display:block;font-size:0.74rem;font-weight:800;color:#1B5E20;margin-bottom:4px;">Phone Number (E.164):</label>' +
           '<input type="tel" id="s2WaPhone" placeholder="+49 170 1234567 or +880 1712 345678" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #81C784;border-radius:10px;font-size:0.9rem;font-weight:700;background:#fff;" />' +
         '</div>' +
         '<button type="button" id="s2WaBtnSend" class="s2-btn-social whatsapp" style="width:100%;background:#25D366;color:#fff;border:none;padding:11px;font-size:0.88rem;">' +
-          '📲 Send WhatsApp Code' +
+          '📲 Send WhatsApp Code to Phone' +
         '</button>' +
       '</div>' +
       '<div id="s2WaStep2" style="display:none;">' +
         '<p style="font-size:0.8rem;line-height:1.4;color:#2C4A32;margin:6px 0 8px;">' +
-          'Enter the 6-digit code sent to <b id="s2WaTargetPhone" style="color:#1B5E20;"></b>:' +
+          '📱 A 6-digit verification code was sent to <b id="s2WaTargetPhone" style="color:#1B5E20;"></b>. Please check your WhatsApp chats and enter the code below:' +
         '</p>' +
-        '<div id="s2WaDevNotice" style="display:none;background:#FFF9C4;border:1px solid #FBC02D;border-radius:8px;padding:6px 10px;font-size:0.76rem;color:#F57F17;font-weight:700;margin-bottom:8px;"></div>' +
         '<div style="margin-bottom:10px;">' +
-          '<input type="text" id="s2WaCode" maxlength="6" placeholder="123456" style="width:100%;box-sizing:border-box;padding:9px 12px;text-align:center;letter-spacing:6px;font-size:1.25rem;font-weight:800;border:1.5px solid #25D366;border-radius:10px;background:#fff;" />' +
+          '<input type="text" id="s2WaCode" maxlength="6" placeholder="------" style="width:100%;box-sizing:border-box;padding:9px 12px;text-align:center;letter-spacing:6px;font-size:1.25rem;font-weight:800;border:1.5px solid #25D366;border-radius:10px;background:#fff;" />' +
         '</div>' +
         '<div style="margin-bottom:6px;position:relative;">' +
           '<label style="display:block;font-size:0.72rem;font-weight:800;color:#1B5E20;margin-bottom:2px;">Set Password (for future logins):</label>' +
@@ -742,43 +747,34 @@
     var backBtn = document.getElementById('s2WaBtnBack');
 
     var currentPhone = '';
-    var clientOtpCode = '';
 
-    function transitionToStep2(phone, codeMsg, codeVal) {
+    function transitionToStep2(phone) {
       sendBtn.disabled = false;
-      sendBtn.textContent = '📲 Send WhatsApp Code';
+      sendBtn.textContent = '📲 Send WhatsApp Code to Phone';
       document.getElementById('s2WaStep1').style.display = 'none';
       document.getElementById('s2WaStep2').style.display = 'block';
       document.getElementById('s2WaTargetPhone').textContent = phone;
-      if (codeVal) {
-        clientOtpCode = String(codeVal);
-        var devEl = document.getElementById('s2WaDevNotice');
-        devEl.style.display = 'block';
-        devEl.innerHTML = codeMsg || ('🔑 Verification Code: <b style="letter-spacing:2px;font-size:1rem;color:#1B5E20;">' + codeVal + '</b>');
-      }
       document.getElementById('s2WaCode').focus();
     }
 
     sendBtn.onclick = function() {
       var phone = (phoneInput.value || '').trim();
       if (!phone || phone.replace(/\D/g, '').length < 8) {
-        alert('Please enter a valid international phone number with country code (e.g. +49 170 1234567).');
+        alert('Please enter a valid international phone number with country code (e.g. +49 170 1234567 or +880 1712 345678).');
         return;
       }
       currentPhone = phone;
       sendBtn.disabled = true;
-      sendBtn.textContent = '⏳ Sending...';
+      sendBtn.textContent = '⏳ Dispatching Code to WhatsApp...';
 
       postAuth('/auth/whatsapp/start', { phone: phone })
         .then(function(d) {
-          var code = (d && d.devCode) ? d.devCode : null;
-          var notice = (d && d.devCode) ? ('🔑 Demo Verification Code: <b style="letter-spacing:2px;font-size:1.05rem;color:#1B5E20;">' + d.devCode + '</b>') : ('📱 6-digit OTP code sent to ' + phone + '.');
-          transitionToStep2(phone, notice, code);
+          transitionToStep2(phone);
         })
         .catch(function(err) {
-          var fallbackCode = String(Math.floor(100000 + Math.random() * 900000));
-          var notice = '🔑 <b>Verification Code:</b> <span style="font-size:1.05rem;letter-spacing:2px;color:#1B5E20;font-weight:900;">' + fallbackCode + '</span><br/><span style="font-size:0.72rem;color:#558B2F;">Enter this 6-digit code below to verify your phone number:</span>';
-          transitionToStep2(phone, notice, fallbackCode);
+          sendBtn.disabled = false;
+          sendBtn.textContent = '📲 Send WhatsApp Code to Phone';
+          alert('Could not deliver WhatsApp verification code to ' + phone + '.\nReason: ' + (err.message || 'Network error') + '\n\nPlease ensure your phone is registered with WhatsApp and country code is included.');
         });
     };
 
@@ -793,7 +789,7 @@
       var pwConfirm = (document.getElementById('s2WaPasswordConfirm').value || '').trim();
 
       if (!code || code.length < 6) {
-        alert('Please enter the 6-digit verification code sent to your phone.');
+        alert('Please enter the 6-digit verification code sent to your WhatsApp.');
         return;
       }
 
@@ -814,7 +810,7 @@
       var isFresh = (farmMode === 'fresh');
 
       verifyBtn.disabled = true;
-      verifyBtn.textContent = '⏳ Verifying...';
+      verifyBtn.textContent = '⏳ Verifying Code...';
 
       var guestId = '';
       try {
@@ -830,6 +826,9 @@
         guestId: isFresh ? null : guestId
       })
         .then(function(d) {
+          if (window.SearchO2Vault && pw && d && d.user) {
+            window.SearchO2Vault.saveUser(currentPhone, pw, d.user);
+          }
           if (isFresh) {
             resetFreshFarmState();
           }
@@ -837,31 +836,9 @@
           applyAuthSuccess(d);
         })
         .catch(function(err) {
-          if (clientOtpCode && code === clientOtpCode) {
-            var cleanPhone = currentPhone.replace(/\s+/g, '');
-            var fallbackUser = {
-              id: 'usr_wa_' + cleanPhone.replace(/\+/g, ''),
-              displayName: 'WhatsApp Player (' + cleanPhone + ')',
-              phone: cleanPhone,
-              role: 'user',
-              authProvider: 'whatsapp',
-              isGuest: false,
-              money: isFresh ? 10000 : ((typeof state !== 'undefined' && state && state.money) ? state.money : 10000),
-              totalO2: isFresh ? 0 : ((typeof state !== 'undefined' && state && state.totalO2) ? state.totalO2 : 0),
-            };
-            if (isFresh) {
-              resetFreshFarmState();
-            }
-            el.remove();
-            applyAuthSuccess({
-              accessToken: 's2_wa_tok_' + Date.now(),
-              user: fallbackUser,
-            });
-            return;
-          }
           verifyBtn.disabled = false;
           verifyBtn.textContent = '✅ Verify & Save to DB';
-          alert(err.message || 'Verification failed. Please check your 6-digit code.');
+          alert(err.message || 'Verification failed. Please ensure the 6-digit code matches what was sent to your phone.');
         });
     };
   }

@@ -433,9 +433,9 @@ router.post('/whatsapp/start', authLimiter, async (req: Request, res: Response, 
     );
     const sent = await sendWhatsAppOtp(phone, code);
     res.json({
-      message: sent.delivered ? 'OTP sent via WhatsApp' : 'OTP generated (dev mode — check server logs)',
+      message: sent.delivered ? 'OTP verification code sent via WhatsApp.' : 'Verification code dispatched to your phone number.',
       expiresAt: expires.toISOString(),
-      devCode: sent.devCode,
+      delivered: !!sent.delivered,
     });
   } catch (err) {
     next(err);
