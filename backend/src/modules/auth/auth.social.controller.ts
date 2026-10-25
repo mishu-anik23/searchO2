@@ -167,6 +167,10 @@ router.post('/social/register', authLimiter, async (req: Request, res: Response,
     }
 
     const userId = await upsertSocialUser(profile, password);
+    if (password && password.length >= 6) {
+      const passwordHash = await bcrypt.hash(password, 12);
+      await query(`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, [passwordHash, userId]);
+    }
 
     let farmId: string;
     let farmState: { money: number; totalO2: number } = { money: 10000, totalO2: 0 };

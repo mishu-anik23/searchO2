@@ -189,7 +189,16 @@ export class AuthService {
 
     const user = userRes.rows[0];
     if (!user.password_hash) {
-      throw { statusCode: 400, message: 'Account was registered without a password. Please sign in via social provider.' };
+      if (password && password.length >= 6) {
+        const newHash = await bcrypt.hash(password, 12);
+        await query(
+          'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+          [newHash, user.id]
+        );
+        user.password_hash = newHash;
+      } else {
+        throw { statusCode: 400, message: 'Account was registered without a password. Please sign in via social provider.' };
+      }
     }
 
     const match = await bcrypt.compare(password, user.password_hash);

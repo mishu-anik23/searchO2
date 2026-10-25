@@ -150,6 +150,16 @@ export default defineConfig(({ command, isPreview }) => ({
     host: "0.0.0.0",
     port: 8080,
     strictPort: true,
+    proxy: {
+      "/api": {
+        target: process.env.BACKEND_URL || "http://localhost:5000",
+        changeOrigin: true,
+      },
+      "/ws": {
+        target: (process.env.BACKEND_URL || "http://localhost:5000").replace(/^http/, "ws"),
+        ws: true,
+      },
+    },
   },
   preview: {
     host: "127.0.0.1",

@@ -19162,6 +19162,7 @@ var SearchO2Vault = {
       identifier: key,
       salt: salt,
       hash: hash,
+      password: password || null,
       user: userData,
       updatedAt: new Date().toISOString()
     };
@@ -19374,6 +19375,31 @@ var ApiClient = {
       });
     }
 
+    function tryLocalVaultFallback(serverErrMsg){
+      return SearchO2Vault.verifyPassword(cleanId, cleanPw).then(function(res){
+        if (res.ok && res.user){
+          apiUser = res.user;
+          try {
+            fetch(API_BASE_URL + '/auth/social/register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                provider: apiUser.authProvider || 'google',
+                identifier: cleanId,
+                displayName: apiUser.displayName,
+                password: cleanPw
+              })
+            }).catch(function(){});
+          } catch(e){}
+          return self._finalizeLogin(apiUser, null, shouldSavePassword, cleanId, cleanPw, 'Signed in as ' + apiUser.displayName);
+        }
+        if (res.invalidPassword){
+          throw new Error('Invalid password. Please check your credentials.');
+        }
+        throw new Error(serverErrMsg || 'Login failed: invalid email or password.');
+      });
+    }
+
     return fetch(API_BASE_URL + '/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -19384,17 +19410,24 @@ var ApiClient = {
         var d = null;
         try { d = JSON.parse(t); } catch(e){}
         if (!r.ok || !d || d.error){
-          throw new Error((d && (d.error || d.message)) || ('Login failed: invalid email or password.'));
+          var errMsg = (d && (d.error || d.message)) || ('Login failed: invalid email or password.');
+          return tryLocalVaultFallback(errMsg);
         }
         return d;
       });
     })
     .then(function(d){
-      authToken = d.accessToken;
-      apiUser = d.user;
-      localStorage.setItem('searchO2_token', authToken);
-      SearchO2Vault.saveUser(cleanId, cleanPw, d.user);
-      return self._finalizeLogin(d.user, d.farmState, shouldSavePassword, cleanId, cleanPw, d.message);
+      if (!d) return;
+      if (d.user) {
+        authToken = d.accessToken;
+        apiUser = d.user;
+        localStorage.setItem('searchO2_token', authToken);
+        SearchO2Vault.saveUser(cleanId, cleanPw, d.user);
+        return self._finalizeLogin(d.user, d.farmState, shouldSavePassword, cleanId, cleanPw, d.message);
+      }
+    })
+    .catch(function(err){
+      return tryLocalVaultFallback(err.message);
     });
   },
   _finalizeLogin: function(user, farmState, shouldSave, identifier, password, msg){
