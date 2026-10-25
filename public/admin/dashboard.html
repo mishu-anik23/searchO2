@@ -885,6 +885,7 @@ button.btn-row-inspect:hover {
         </div>
       </div>
 
+      <div id="supabaseConnectBanner"></div>
       <div class="cards" id="statCards"></div>
 
       <div class="panel">
@@ -1275,6 +1276,8 @@ const MASTER_BOOTSTRAP_SHA256 = '825db2b5d3e3c883d07aaca7d358c4c9950d2f628dacf31
 const API_CANDIDATES = [
   (typeof window !== 'undefined' && window.SEARCHO2_API_BASE) || null,
   localStorage.getItem('searchO2_admin_api') || null,
+  'https://searcho2-backend.onrender.com/api',
+  (typeof location !== 'undefined' && location.origin ? location.origin + '/api' : null),
   '/api',
   'http://localhost:5000/api',
   'http://127.0.0.1:5000/api',
@@ -1915,6 +1918,51 @@ async function loadOverview(){
     : source === 'server' 
     ? '<span class="badge" style="background:#123328;color:var(--mint)">🟢 Supabase DB (via Express)</span>' 
     : '<span class="badge source-vault">💾 Local Bio-Vault</span>';
+
+  const bannerEl = document.getElementById('supabaseConnectBanner');
+  if (bannerEl) {
+    if (source === 'local') {
+      bannerEl.innerHTML = `
+        <div style="background:linear-gradient(135deg,rgba(15,23,42,0.96),rgba(30,41,59,0.96));border:1.5px solid var(--gold);border-radius:14px;padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;box-shadow:0 8px 24px rgba(0,0,0,0.35);">
+          <div style="flex:1;min-width:280px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:1.3rem;">⚠️</span>
+              <b style="color:var(--gold);font-size:0.95rem;">Supabase Cloud Database Not Connected</b>
+              <span class="badge source-vault">Local Vault Mode</span>
+            </div>
+            <div style="font-size:0.80rem;color:var(--text-dim);line-height:1.5;">
+              The dashboard is currently operating via local browser vaults. To stream live users, farms, and telemetry from <b>aws-1-eu-west-1.pooler.supabase.com:5432</b> directly on any browser, enter your Supabase key (anon or service_role) below or start the backend (<code class="mono" style="color:var(--mint);background:#0f172a;padding:2px 6px;border-radius:4px;">npm --prefix backend run dev</code>).
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input id="quickSupabaseKey" type="password" placeholder="Paste Supabase API Key" style="padding:8px 12px;background:#050c18;border:1px solid var(--line);border-radius:8px;font-size:0.82rem;color:#FFF;width:220px;" />
+            <button type="button" class="primary" id="btnQuickConnectSupabase" style="white-space:nowrap;padding:8px 16px;font-size:0.82rem;">⚡ Connect Supabase</button>
+          </div>
+        </div>
+      `;
+      const quickBtn = document.getElementById('btnQuickConnectSupabase');
+      if (quickBtn) {
+        quickBtn.onclick = async () => {
+          const k = (document.getElementById('quickSupabaseKey').value || '').trim();
+          if (!k) { alert('Please enter your Supabase anon or service_role key.'); return; }
+          state.supabaseKey = k;
+          localStorage.setItem('searchO2_supabase_key', k);
+          try {
+            const res = await supabaseRest('users?select=id&limit=1');
+            state.mode = 'supabase';
+            updateNavStatus();
+            renderDataSourceView();
+            loadOverview();
+            loadUsers();
+          } catch(e) {
+            alert('Supabase connection failed: ' + e.message);
+          }
+        };
+      }
+    } else {
+      bannerEl.innerHTML = '';
+    }
+  }
 
   document.getElementById('statCards').innerHTML = [
     ['Data Engine', badgeHtml],

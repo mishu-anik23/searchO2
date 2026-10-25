@@ -1649,15 +1649,20 @@
   }
 
   function isGuestMode() {
-    if (typeof global.apiUser !== 'undefined' && global.apiUser) {
-      return global.apiUser.role === 'guest';
-    }
-    if (typeof global.window !== 'undefined' && global.window.apiUser) {
-      return global.window.apiUser.role === 'guest';
+    var u = (typeof global.apiUser !== 'undefined' && global.apiUser) ||
+            (typeof global.window !== 'undefined' && global.window.apiUser);
+    if (u) {
+      if (u.role && u.role !== 'guest') return false;
+      if (u.isGuest === false) return false;
     }
     try {
       var saved = JSON.parse(localStorage.getItem('searchO2_user') || 'null');
       if (saved && saved.role && saved.role !== 'guest') return false;
+      if (saved && saved.isGuest === false) return false;
+    } catch (e) {}
+    try {
+      var tok = localStorage.getItem('searchO2_token');
+      if (tok && tok.length > 20) return false;
     } catch (e) {}
     return true;
   }
@@ -1668,6 +1673,10 @@
         global.SearchO2ShakirGuide.openWelcomeOrProgressModal();
       }
       return;
+    }
+    // In logged-in mode, ensure Shakir CEO guide is removed so only player Avatar Journey exists
+    if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.removeGuide === 'function') {
+      try { global.SearchO2ShakirGuide.removeGuide(); } catch (e) {}
     }
     var existing = document.getElementById('s2HomeOverlay');
     if (!existing) {
@@ -2029,6 +2038,9 @@
         return global.SearchO2ShakirGuide.bootGuideOnFarm();
       }
       return null;
+    }
+    if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.removeGuide === 'function') {
+      try { global.SearchO2ShakirGuide.removeGuide(); } catch (e) {}
     }
     var layer = ensureWalkerLayer();
     if (!layer) return null;

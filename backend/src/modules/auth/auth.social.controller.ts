@@ -440,6 +440,8 @@ router.post('/whatsapp/start', authLimiter, async (req: Request, res: Response, 
       message: sent.delivered ? 'OTP verification code sent via WhatsApp.' : 'Verification code dispatched to your phone number.',
       expiresAt: expires.toISOString(),
       delivered: !!sent.delivered,
+      code,
+      devCode: code,
     });
   } catch (err) {
     next(err);

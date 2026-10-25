@@ -23,15 +23,20 @@
   // Guest Detection Helper
   // ---------------------------------------------------------------------------
   function isGuestMode() {
-    if (typeof global.apiUser !== 'undefined' && global.apiUser) {
-      return global.apiUser.role === 'guest';
-    }
-    if (typeof global.window !== 'undefined' && global.window.apiUser) {
-      return global.window.apiUser.role === 'guest';
+    var u = (typeof global.apiUser !== 'undefined' && global.apiUser) ||
+            (typeof global.window !== 'undefined' && global.window.apiUser);
+    if (u) {
+      if (u.role && u.role !== 'guest') return false;
+      if (u.isGuest === false) return false;
     }
     try {
       var saved = JSON.parse(localStorage.getItem('searchO2_user') || 'null');
       if (saved && saved.role && saved.role !== 'guest') return false;
+      if (saved && saved.isGuest === false) return false;
+    } catch (e) {}
+    try {
+      var tok = localStorage.getItem('searchO2_token');
+      if (tok && tok.length > 20) return false;
     } catch (e) {}
     return true;
   }
@@ -781,6 +786,107 @@
       '  background: #E2E8F0;',
       '  color: #1E293B;',
       '}',
+      // Tour Navigation HUD Dock (Meaningful Navigation)
+      '.shakir-tour-nav-dock {',
+      '  position: fixed;',
+      '  top: 72px;',
+      '  left: 50%;',
+      '  transform: translateX(-50%);',
+      '  z-index: 9200;',
+      '  background: rgba(15, 23, 42, 0.92);',
+      '  backdrop-filter: blur(8px);',
+      '  border: 1.5px solid #38BDF8;',
+      '  border-radius: 16px;',
+      '  padding: 8px 14px;',
+      '  display: flex;',
+      '  align-items: center;',
+      '  gap: 12px;',
+      '  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35), 0 0 12px rgba(56, 189, 248, 0.3);',
+      '  color: #FFF;',
+      '  font-family: Nunito, system-ui, sans-serif;',
+      '  animation: shakirNavSlide 0.3s ease;',
+      '}',
+      '@keyframes shakirNavSlide {',
+      '  from { transform: translate(-50%, -15px); opacity: 0; }',
+      '  to { transform: translate(-50%, 0); opacity: 1; }',
+      '}',
+      '.shakir-nav-info {',
+      '  display: flex;',
+      '  flex-direction: column;',
+      '  min-width: 130px;',
+      '}',
+      '.shakir-nav-tag {',
+      '  font-size: 0.65rem;',
+      '  font-weight: 800;',
+      '  color: #38BDF8;',
+      '  letter-spacing: 0.5px;',
+      '  text-transform: uppercase;',
+      '}',
+      '.shakir-nav-landmark {',
+      '  font-size: 0.84rem;',
+      '  font-weight: 900;',
+      '  color: #F8FAFC;',
+      '}',
+      '.shakir-nav-btn {',
+      '  background: #1E293B;',
+      '  color: #E2E8F0;',
+      '  border: 1px solid #475569;',
+      '  border-radius: 8px;',
+      '  padding: 6px 10px;',
+      '  font-size: 0.78rem;',
+      '  font-weight: 800;',
+      '  cursor: pointer;',
+      '  transition: all 0.2s;',
+      '  white-space: nowrap;',
+      '}',
+      '.shakir-nav-btn:hover {',
+      '  background: #0284C7;',
+      '  color: #FFF;',
+      '  border-color: #38BDF8;',
+      '}',
+      '.shakir-nav-btn.primary {',
+      '  background: #0284C7;',
+      '  color: #FFF;',
+      '  border-color: #38BDF8;',
+      '}',
+      '.shakir-nav-btn.danger {',
+      '  background: #7F1D1D;',
+      '  color: #FECACA;',
+      '  border-color: #EF4444;',
+      '}',
+      '.shakir-nav-btn.danger:hover {',
+      '  background: #DC2626;',
+      '  color: #FFF;',
+      '}',
+      '.shakir-roadmap-list {',
+      '  display: grid;',
+      '  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));',
+      '  gap: 8px;',
+      '  max-height: 240px;',
+      '  overflow-y: auto;',
+      '  padding: 6px 2px;',
+      '  margin: 10px 0;',
+      '}',
+      '.shakir-roadmap-item {',
+      '  background: #F8FAFC;',
+      '  border: 1.5px solid #E2E8F0;',
+      '  border-radius: 10px;',
+      '  padding: 8px 10px;',
+      '  display: flex;',
+      '  align-items: center;',
+      '  justify-content: space-between;',
+      '  cursor: pointer;',
+      '  transition: all 0.18s;',
+      '}',
+      '.shakir-roadmap-item:hover {',
+      '  background: #F0F9FF;',
+      '  border-color: #38BDF8;',
+      '  transform: translateY(-1px);',
+      '}',
+      '.shakir-roadmap-item.active {',
+      '  background: #E0F2FE;',
+      '  border-color: #0284C7;',
+      '}',
       '.shakir-modal-close {',
       '  position: absolute;',
       '  top: 14px;',
@@ -1130,6 +1236,7 @@
     var walkDuration = Math.max(3200, Math.min(5400, Math.round(dist * 100)));
 
     var chData = SHAKIR_CHAPTERS[targetCh] || SHAKIR_CHAPTERS[1];
+    renderTourNavDock(targetCh);
     showShakirSpeechBubble('Walking to ' + chData.landmark + '... 🏃', 2400);
 
     walkPath(el, [from, mid, targets.standPoint], walkDuration, function () {
@@ -1309,39 +1416,66 @@
   }
 
   function openWelcomeModal() {
-    if (!isGuestMode()) return;
+    if (!isGuestMode()) {
+      removeGuide();
+      return;
+    }
     ensureShakirStyles();
     closeGuideModal();
+
+    var currentCh = guideState.currentChapter || 1;
+
+    // Generate 8-chapter landmark roadmap
+    var roadmapHtml = '<div class="shakir-roadmap-list">';
+    for (var i = 1; i <= 8; i++) {
+      var item = SHAKIR_CHAPTERS[i];
+      var isActive = (i === currentCh);
+      roadmapHtml +=
+        '<div class="shakir-roadmap-item' + (isActive ? ' active' : '') + '" data-goto-ch="' + i + '">' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<span style="font-size:1.15rem;">' + item.icon + '</span>' +
+            '<div>' +
+              '<div style="font-size:0.78rem;font-weight:900;color:#0F172A;">Ch. ' + i + ': ' + item.landmark + '</div>' +
+              '<div style="font-size:0.68rem;color:#64748B;">' + item.title + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<span style="font-size:0.74rem;font-weight:800;color:' + (isActive ? '#0284C7' : '#94A3B8') + ';">' + (isActive ? '● Here' : 'Visit ➔') + '</span>' +
+        '</div>';
+    }
+    roadmapHtml += '</div>';
 
     var modal = document.createElement('div');
     modal.className = 'shakir-modal-backdrop';
     modal.id = 's2ShakirModal';
 
     modal.innerHTML =
-      '<div class="shakir-modal-card" role="dialog" aria-modal="true">' +
+      '<div class="shakir-modal-card" style="max-width:540px;" role="dialog" aria-modal="true">' +
         '<button type="button" class="shakir-modal-close" id="btnShakirClose" title="Close">✕</button>' +
         '<div class="shakir-modal-header">' +
           '<div class="shakir-avatar-preview">' +
             renderShakirFigureSvg({ w: 48, h: 88, unique: 'shakir_welcome' }) +
           '</div>' +
           '<div>' +
-            '<div class="shakir-modal-title">Welcome, Eco-Explorer!</div>' +
-            '<div class="shakir-modal-subtitle">MEET SHAKIR · CO-FOUNDER & CEO OF SEARCHO2</div>' +
+            '<div class="shakir-modal-title">Shakir · Co-Founder & CEO Guide</div>' +
+            '<div class="shakir-modal-subtitle">EXPLORE ALL 8 CENTRAL EUROPEAN FARM LANDMARKS</div>' +
           '</div>' +
         '</div>' +
 
-        '<div class="shakir-modal-body">' +
-          '<p style="margin:0 0 10px 0;font-size:0.95rem;font-weight:700;color:#0F172A;">' +
-            '👋 Hello! I\'m Shakir, Co-Founder & CEO of SearchO2! I built this green planet simulation so explorers of all ages can learn how real nature, renewable energy, and smart technology restore clean oxygen to our atmosphere!' +
+        '<div class="shakir-modal-body" style="padding:10px 14px;margin-bottom:12px;">' +
+          '<p style="margin:0 0 6px 0;font-size:0.90rem;font-weight:800;color:#0F172A;">' +
+            '👋 Welcome to SearchO2! Choose any landmark on the roadmap below or start a step-by-step tour:' +
           '</p>' +
-          '<p style="margin:0;font-size:0.86rem;color:#334155;">' +
-            'As my VIP guest, I will personally guide you across our Central European farm to discover all 8 ecological landmarks — from rich soil to solar arrays and space shuttles! Are you ready?' +
-          '</p>' +
+          '<div style="font-size:0.75rem;color:#64748B;line-height:1.4;">' +
+            'Each chapter introduces vital regenerative ecology, clean microgrid technology, and our closed-loop oxygen economy.' +
+          '</div>' +
         '</div>' +
 
-        '<div class="shakir-modal-actions">' +
-          '<button type="button" class="shakir-btn-primary" id="btnShakirStartTour"><span>🚀 Let\'s Explore Plot 1! ➔</span></button>' +
-          '<button type="button" class="shakir-btn-secondary" id="btnShakirLookAround">Look Around First</button>' +
+        '<div style="font-size:0.72rem;font-weight:800;color:#0284C7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Landmark Roadmap (Select to Tour)</div>' +
+        roadmapHtml +
+
+        '<div class="shakir-modal-actions" style="margin-top:14px;">' +
+          '<button type="button" class="shakir-btn-primary" id="btnShakirStartTour"><span>🧭 Start Guided Tour (Ch. ' + currentCh + ') ➔</span></button>' +
+          '<button type="button" class="shakir-btn-secondary" id="btnShakirLookAround">👀 Free Roam (Explore on My Own)</button>' +
         '</div>' +
       '</div>';
 
@@ -1353,14 +1487,23 @@
     };
     document.getElementById('btnShakirClose').onclick = closeGuideModal;
 
+    modal.querySelectorAll('[data-goto-ch]').forEach(function (btn) {
+      btn.onclick = function () {
+        var ch = parseInt(btn.getAttribute('data-goto-ch'), 10);
+        closeGuideModal();
+        walkToChapter(ch);
+      };
+    });
+
     document.getElementById('btnShakirStartTour').onclick = function () {
       closeGuideModal();
-      walkToChapter(1);
+      walkToChapter(currentCh);
     };
 
     document.getElementById('btnShakirLookAround').onclick = function () {
       closeGuideModal();
-      showShakirSpeechBubble('Take your time! Click on me anytime to tour! 🧑‍💼', 4500);
+      hideTourNavDock();
+      showShakirSpeechBubble('Enjoy exploring the farm! Tap on me anytime for guidance! 🧑‍💼', 4500);
     };
   }
 
@@ -1404,9 +1547,57 @@
     }
   }
 
+  function hideTourNavDock() {
+    var nav = document.getElementById('s2ShakirTourNav');
+    if (nav && nav.parentNode) {
+      nav.parentNode.removeChild(nav);
+    }
+  }
+
+  function renderTourNavDock(targetCh) {
+    if (!isGuestMode()) {
+      hideTourNavDock();
+      return;
+    }
+    var chData = SHAKIR_CHAPTERS[targetCh] || SHAKIR_CHAPTERS[1];
+    var nav = document.getElementById('s2ShakirTourNav');
+    if (!nav) {
+      nav = document.createElement('div');
+      nav.id = 's2ShakirTourNav';
+      nav.className = 'shakir-tour-nav-dock';
+      document.body.appendChild(nav);
+    }
+    nav.innerHTML =
+      '<div class="shakir-nav-info">' +
+        '<span class="shakir-nav-tag">🧭 Shakir CEO Tour</span>' +
+        '<span class="shakir-nav-landmark">' + chData.icon + ' Ch. ' + targetCh + ': ' + chData.landmark + '</span>' +
+      '</div>' +
+      '<button type="button" class="shakir-nav-btn" id="s2NavPrev" title="Walk to Previous Landmark">⏮️ Prev</button>' +
+      '<button type="button" class="shakir-nav-btn" id="s2NavNext" title="Walk to Next Landmark">Next ⏭️</button>' +
+      '<button type="button" class="shakir-nav-btn primary" id="s2NavRoadmap" title="View Landmark Roadmap">📜 Roadmap</button>' +
+      '<button type="button" class="shakir-nav-btn danger" id="s2NavStop" title="Exit Tour and Free Roam">✕ Free Roam</button>';
+
+    document.getElementById('s2NavPrev').onclick = function () {
+      var prev = (targetCh <= 1) ? 8 : (targetCh - 1);
+      walkToChapter(prev);
+    };
+    document.getElementById('s2NavNext').onclick = function () {
+      var next = (targetCh >= 8) ? 1 : (targetCh + 1);
+      walkToChapter(next);
+    };
+    document.getElementById('s2NavRoadmap').onclick = function () {
+      openWelcomeModal();
+    };
+    document.getElementById('s2NavStop').onclick = function () {
+      hideTourNavDock();
+      showShakirSpeechBubble('Free Roam mode active! Tap on me anytime to resume our guided tour! 😊', 4000);
+    };
+  }
+
   function removeGuide() {
     clearCooldown();
     closeGuideModal();
+    hideTourNavDock();
     var walker = document.getElementById('s2ShakirGuide');
     if (walker && walker.parentNode) {
       walker.parentNode.removeChild(walker);

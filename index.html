@@ -18059,8 +18059,14 @@ function switchScreen(screenName){
       SoundTrackEngine.playTrackById('germany');
     }
     var isGuest = !apiUser || apiUser.role === 'guest';
-    if (isGuest && typeof SearchO2ShakirGuide !== 'undefined' && SearchO2ShakirGuide.bootGuideOnFarm) {
-      setTimeout(function(){ SearchO2ShakirGuide.bootGuideOnFarm(); }, 400);
+    if (isGuest) {
+      if (typeof SearchO2ShakirGuide !== 'undefined' && SearchO2ShakirGuide.bootGuideOnFarm) {
+        setTimeout(function(){ SearchO2ShakirGuide.bootGuideOnFarm(); }, 400);
+      }
+    } else {
+      if (typeof SearchO2ShakirGuide !== 'undefined' && SearchO2ShakirGuide.removeGuide) {
+        SearchO2ShakirGuide.removeGuide();
+      }
     }
   } else {
     if (rScreen) rScreen.style.display = 'block';
@@ -19219,9 +19225,15 @@ var ApiClient = {
             authToken = savedToken;
             self.fetchMe();
           } else {
-            var localGuest = localStorage.getItem('searchO2_guest_user');
-            if (localGuest){
-              try { apiUser = JSON.parse(localGuest); } catch(e){}
+            var savedUser = localStorage.getItem('searchO2_user');
+            if (savedUser){
+              try { apiUser = JSON.parse(savedUser); } catch(e){}
+            }
+            if (!apiUser) {
+              var localGuest = localStorage.getItem('searchO2_guest_user');
+              if (localGuest){
+                try { apiUser = JSON.parse(localGuest); } catch(e){}
+              }
             }
             render();
           }
@@ -19230,9 +19242,17 @@ var ApiClient = {
       .catch(function(err){
         backendOnline = false;
         console.log('ℹ️ Backend offline — running in local standalone mode');
-        var localGuest = localStorage.getItem('searchO2_guest_user');
-        if (localGuest){
-          try { apiUser = JSON.parse(localGuest); } catch(e){}
+        var savedToken = localStorage.getItem('searchO2_token');
+        if (savedToken) authToken = savedToken;
+        var savedUser = localStorage.getItem('searchO2_user');
+        if (savedUser){
+          try { apiUser = JSON.parse(savedUser); } catch(e){}
+        }
+        if (!apiUser) {
+          var localGuest = localStorage.getItem('searchO2_guest_user');
+          if (localGuest){
+            try { apiUser = JSON.parse(localGuest); } catch(e){}
+          }
         }
         render();
       });
