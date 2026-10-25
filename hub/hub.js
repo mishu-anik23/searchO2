@@ -146,7 +146,7 @@
   /* ------------------------------------------------------------------ *
    * Router
    * ------------------------------------------------------------------ */
-  var ROUTES = [
+    var ROUTES = [
     { id: '', label: 'Home', title: 'Learning Hub', render: pageHome },
     { id: 'start', label: 'Getting Started', title: 'Getting Started', render: pageStart },
     { id: 'components', label: 'Components', title: 'Components', render: pageComponents },
@@ -155,10 +155,29 @@
     { id: 'howto', label: 'How-to', title: 'How-to Guides', render: pageHowto },
     { id: 'player', label: 'Player Hub', title: 'Player Hub', render: pagePlayer },
     { id: 'help', label: 'Help & FAQ', title: 'Help & FAQ', render: pageHelp },
-    { id: 'feedback', label: 'Feedback', title: 'Send Feedback', render: pageFeedback },
+    {
+      id: 'feedback',
+      label: 'Feedback',
+      title: 'Feedback',
+      render: pageFeedback,
+      subroutes: [
+        { id: 'chapter', label: 'Chapter Feedback', title: 'Chapter Feedback' },
+        { id: 'playtest', label: 'Full Playtest Review', title: 'Full Playtest Review' }
+      ]
+    },
     { id: 'report', label: 'Report a Problem', title: 'Report a Problem', render: pageReport }
   ];
   $('#nav').innerHTML = ROUTES.map(function (r) {
+    if (r.subroutes) {
+      return '<div class="nav-dropdown" data-route="' + r.id + '">' +
+        '<a href="#/' + r.id + '" data-route="' + r.id + '" class="nav-dropdown-toggle">' + esc(r.label) + ' <span class="nav-caret" aria-hidden="true">▾</span></a>' +
+        '<div class="nav-dropdown-menu" role="menu">' +
+          r.subroutes.map(function (s) {
+            return '<a href="#/' + r.id + '/' + s.id + '" data-subroute="' + s.id + '" role="menuitem">' + esc(s.label) + '</a>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+    }
     return '<a href="#/' + r.id + '" data-route="' + r.id + '">' + esc(r.label) + '</a>';
   }).join('');
 
@@ -169,9 +188,23 @@
     var id = parts[0] || '', arg = parts[1] || '';
     var r = ROUTES.filter(function (x) { return x.id === id; })[0] || ROUTES[0];
     $$('#nav a').forEach(function (a) {
-      if (a.dataset.route === r.id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      if (a.dataset.route === r.id) {
+        a.setAttribute('aria-current', 'page');
+      } else if (!a.dataset.subroute) {
+        a.removeAttribute('aria-current');
+      }
+      if (a.dataset.subroute) {
+        var isCurrentSub = (r.id === id) && (a.dataset.subroute === arg || (!arg && a.dataset.subroute === 'chapter'));
+        if (isCurrentSub) a.setAttribute('aria-current', 'true');
+        else a.removeAttribute('aria-current');
+      }
     });
-    document.title = (r.id ? r.title + ' · ' : '') + 'searchO2 Learning Hub';
+    var pageTitle = r.title;
+    if (r.id === 'feedback') {
+      if (arg === 'playtest') pageTitle = 'Full Playtest Review';
+      else pageTitle = 'Chapter Feedback';
+    }
+    document.title = (r.id ? pageTitle + ' · ' : '') + 'searchO2 Learning Hub';
     main.innerHTML = '';
     r.render(arg);
     if (!arg) window.scrollTo(0, 0);
@@ -817,14 +850,31 @@
     paint('');
   }
 
-  /* ------------------------------------------------------------------ *
-   * FORMS: Feedback + Report a Problem
+    /* ------------------------------------------------------------------ *
+   * FORMS: Feedback (Chapter Feedback & Full Playtest) + Report a Problem
    * ------------------------------------------------------------------ */
   function diagnostics() {
     var b = biome(selectedId());
     return ['Page: ' + location.pathname + location.hash, 'Map selected: ' + b.id, 'Browser: ' + navigator.userAgent,
       'Screen: ' + screen.width + 'x' + screen.height + ', window ' + innerWidth + 'x' + innerHeight, 'Language: ' + navigator.language,
       'Time zone: ' + (Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown'), 'Hub version: ' + HUB_VERSION].join('\n');
+  }
+  function detectDeviceBrowser() {
+    var ua = navigator.userAgent || '';
+    var os = 'Device';
+    if (/Windows NT 10|Windows/i.test(ua)) os = 'Windows';
+    else if (/Macintosh|Mac OS/i.test(ua)) os = 'macOS';
+    else if (/Android/i.test(ua)) os = 'Android';
+    else if (/iPhone|iPad|iPod/i.test(ua)) os = 'iOS';
+    else if (/Linux/i.test(ua)) os = 'Linux';
+
+    var br = 'Browser';
+    if (/Edg\//i.test(ua)) br = 'Edge';
+    else if (/Chrome\//i.test(ua)) br = 'Chrome';
+    else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) br = 'Safari';
+    else if (/Firefox\//i.test(ua)) br = 'Firefox';
+
+    return os + ' · ' + br;
   }
   function fieldErr(el, msg) {
     var f = el.closest('.field'); if (!f) return;
@@ -833,56 +883,340 @@
   function clearErr(form) { $$('.field.bad', form).forEach(function (f) { f.classList.remove('bad'); }); }
   function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
 
-  function pageFeedback() {
-    main.innerHTML = '<div class="page-head"><h1>Send Feedback</h1><p>What do you like? What would make the game or this hub better? It takes a minute.</p></div>' +
+  function feedbackSubnav(currentSub) {
+    return '<div class="feedback-subnav-container">' +
+      '<nav class="feedback-subnav" role="tablist" aria-label="Feedback submenus">' +
+        '<a href="#/feedback/chapter" role="tab" class="subnav-tab' + (currentSub === 'chapter' ? ' active' : '') + '" aria-selected="' + (currentSub === 'chapter') + '">' +
+          '<span class="subnav-tab-icon">📖</span><span class="subnav-tab-label">Chapter Feedback</span><span class="subnav-tab-badge">Submenu 1</span>' +
+        '</a>' +
+        '<a href="#/feedback/playtest" role="tab" class="subnav-tab' + (currentSub === 'playtest' ? ' active' : '') + '" aria-selected="' + (currentSub === 'playtest') + '">' +
+          '<span class="subnav-tab-icon">🎮</span><span class="subnav-tab-label">Full Playtest Review</span><span class="subnav-tab-badge">Submenu 2</span>' +
+        '</a>' +
+      '</nav>' +
+    '</div>';
+  }
+
+  function pageFeedback(arg) {
+    var sub = arg === 'playtest' ? 'playtest' : 'chapter';
+    if (sub === 'playtest') {
+      pagePlaytestReview();
+    } else {
+      pageChapterFeedback();
+    }
+  }
+
+  /* 1. Chapter Feedback (SearchO2_Forms_Chapter_Feedback.docx) */
+  function pageChapterFeedback() {
+    main.innerHTML = '<div class="page-head">' +
+      '<div class="form-badge"><span class="badge-icon">📖</span> Submenu 1 · Chapter Experience</div>' +
+      '<h1>SearchO₂ Chapter Feedback</h1>' +
+      '<p class="form-intro">Tell us about the chapter you just played. This takes about two minutes and helps us improve clarity, difficulty and progression.</p>' +
+      '</div>' +
+      feedbackSubnav('chapter') +
       '<form class="form" id="fbForm" novalidate>' +
-      '<fieldset class="field"><legend>How is searchO2 for you right now?</legend><div class="faces" id="fbRate">' +
-      [['1', '😞', 'Very bad'], ['2', '🙁', 'Bad'], ['3', '😐', 'Okay'], ['4', '🙂', 'Good'], ['5', '😍', 'Great']].map(function (r) {
-        return '<label><input type="radio" name="rating" value="' + r[0] + '"><span title="' + r[2] + '" aria-hidden="true">' + r[1] + '</span><span class="sr-only">' + r[2] + '</span></label>';
-      }).join('') + '</div><div class="err" role="alert"></div></fieldset>' +
-      '<fieldset class="field"><legend>What is it about?</legend><div class="radios" id="fbTopic">' +
-      ['Gameplay', 'Learning content', 'Look and feel', 'Something else'].map(function (t, i) {
-        return '<label><input type="radio" name="topic" value="' + t + '"' + (i === 0 ? ' checked' : '') + '><span>' + t + '</span></label>';
-      }).join('') + '</div></fieldset>' +
-      '<div class="field"><label class="lbl" for="fbMsg">Your feedback</label><textarea id="fbMsg" name="message" maxlength="2000" aria-describedby="fbMsgH"></textarea>' +
-      '<div class="hint" id="fbMsgH">Tell us what happened or what you would change. Up to 2000 characters.</div><div class="err" role="alert"></div></div>' +
-      '<div class="field"><label class="lbl" for="fbEmail">Email (optional)</label><input type="email" id="fbEmail" name="email" autocomplete="email" aria-describedby="fbEmailH">' +
-      '<div class="hint" id="fbEmailH">Only add it if you want a reply. We use it for that and nothing else.</div><div class="err" role="alert"></div></div>' +
-      '<label class="check"><input type="checkbox" name="withMap" checked><span>Include which map I have selected (' + esc(biome(selectedId()).title) + ')</span></label>' +
-      '<div><button class="btn" type="submit" id="fbSend">Send feedback</button></div><div id="fbOut" aria-live="polite"></div></form>' + outboxHtml();
+        '<div class="form-section-card">' +
+          '<h2 class="form-section-heading"><span class="form-section-num">1</span> Your play session</h2>' +
+          '<fieldset class="field"><legend class="lbl">1. Which SearchO₂ game version or build did you play?</legend>' +
+            '<div class="radios">' +
+              ['Current test version', 'Previous test version', 'I’m not sure'].map(function (v, i) {
+                return '<label><input type="radio" name="gameVersion" value="' + v + '"' + (i === 0 ? ' checked' : '') + '><span>' + v + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+          '<fieldset class="field"><legend class="lbl">2. Which chapter are you reviewing?</legend>' +
+            '<div class="radios">' +
+              ['Chapter 1', 'Chapter 2', 'Chapter 3', 'Another chapter', 'I’m not sure'].map(function (c, i) {
+                return '<label><input type="radio" name="chapter" value="' + c + '"' + (i === 0 ? ' checked' : '') + '><span>' + c + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+          '<fieldset class="field"><legend class="lbl">3. Were you able to complete this chapter?</legend>' +
+            '<div class="radios">' +
+              ['Yes, without help', 'Yes, with help', 'Not yet — I got stuck', 'I stopped for another reason'].map(function (co, i) {
+                return '<label><input type="radio" name="completed" value="' + co + '"' + (i === 0 ? ' checked' : '') + '><span>' + co + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+        '</div>' +
+        '<div class="form-section-card">' +
+          '<h2 class="form-section-heading"><span class="form-section-num">2</span> Chapter experience</h2>' +
+          '<fieldset class="field" id="chClarityField">' +
+            '<legend class="lbl">4. How clear was what you needed to do? <span class="req">*</span></legend>' +
+            '<div class="scale-5-group" id="fbRate">' +
+              '<label class="scale-5-item"><input type="radio" name="clarityRating" value="1"><span class="scale-pill"><span class="scale-num">1</span><span class="scale-label">1 — Not clear at all</span></span></label>' +
+              '<label class="scale-5-item"><input type="radio" name="clarityRating" value="2"><span class="scale-pill"><span class="scale-num">2</span><span class="scale-label">2</span></span></label>' +
+              '<label class="scale-5-item"><input type="radio" name="clarityRating" value="3"><span class="scale-pill"><span class="scale-num">3</span><span class="scale-label">3</span></span></label>' +
+              '<label class="scale-5-item"><input type="radio" name="clarityRating" value="4"><span class="scale-pill"><span class="scale-num">4</span><span class="scale-label">4</span></span></label>' +
+              '<label class="scale-5-item"><input type="radio" name="clarityRating" value="5" checked><span class="scale-pill"><span class="scale-num">5</span><span class="scale-label">5 — Completely clear</span></span></label>' +
+            '</div>' +
+            '<div class="err" role="alert"></div>' +
+          '</fieldset>' +
+          '<fieldset class="field"><legend class="lbl">5. How did the difficulty feel?</legend>' +
+            '<div class="radios">' +
+              ['Much too easy', 'A little too easy', 'About right', 'A little too difficult', 'Much too difficult'].map(function (d, i) {
+                return '<label><input type="radio" name="difficulty" value="' + d + '"' + (i === 2 ? ' checked' : '') + '><span>' + d + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+          '<fieldset class="field"><legend class="lbl">6. What was the main source of confusion or frustration?</legend>' +
+            '<div class="radios">' +
+              ['Finding the objective', 'Understanding the controls', 'Knowing which action to take', 'Understanding O₂', 'Earning or spending EUR', 'Reading the screen', 'A technical problem', 'Nothing was confusing', 'Other'].map(function (cf, i) {
+                return '<label><input type="radio" name="confusionSource" value="' + cf + '"' + (i === 7 ? ' checked' : '') + '><span>' + cf + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+          '<div class="field"><label class="lbl" for="chClarityFb">7. What happened, or what would make it clearer?</label>' +
+            '<textarea id="chClarityFb" name="clarityFeedback" maxlength="3000" rows="3" placeholder="Share your experience or suggestion for improvement..."></textarea>' +
+            '<div class="err" role="alert"></div>' +
+          '</div>' +
+          '<fieldset class="field"><legend class="lbl">8. Did you want to continue playing afterward?</legend>' +
+            '<div class="radios">' +
+              ['Definitely yes', 'Probably yes', 'Not sure', 'Probably not', 'Definitely not'].map(function (cp, i) {
+                return '<label><input type="radio" name="continueIntent" value="' + cp + '"' + (i === 0 ? ' checked' : '') + '><span>' + cp + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+          '<div class="field"><label class="lbl" for="chEmail">Optional email address if you would like a reply or follow-up</label>' +
+            '<input type="email" id="chEmail" name="email" autocomplete="email" placeholder="name@example.com">' +
+            '<div class="hint">Only if you agree that Artifactz may contact you about this feedback.</div>' +
+            '<div class="err" role="alert"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div><button class="btn gold" type="submit" id="fbSend"><span class="btn-icon">🌿</span> Send chapter feedback</button></div>' +
+        '<div id="fbOut" aria-live="polite"></div>' +
+      '</form>' + outboxHtml();
+
     wireOutbox();
     var form = $('#fbForm');
     form.addEventListener('submit', function (e) {
       e.preventDefault(); clearErr(form);
       var d = new FormData(form), bad = false;
-      if (!d.get('rating')) { fieldErr($('#fbRate'), 'Pick a face so we know how you feel.'); bad = true; }
-      var msg = String(d.get('message') || '').trim();
-      if (msg.length < 10) { fieldErr($('#fbMsg'), msg ? 'Add a little more detail. At least 10 characters.' : 'Write a few words about your experience.'); bad = true; }
+      var clarity = d.get('clarityRating');
+      if (!clarity) { fieldErr($('#chClarityField'), 'Please rate how clear the chapter was (1 to 5).'); bad = true; }
       var em = String(d.get('email') || '').trim();
-      if (em && !validEmail(em)) { fieldErr($('#fbEmail'), 'That email address does not look right. Check it or leave it empty.'); bad = true; }
+      if (em && !validEmail(em)) { fieldErr($('#chEmail'), 'That email address does not look right. Check it or leave it empty.'); bad = true; }
       if (bad) { var first = $('.field.bad input, .field.bad textarea', form); if (first) first.focus(); return; }
-      submit({ type: 'feedback', rating: Number(d.get('rating')), topic: d.get('topic'), message: msg, email: em || null, map: d.get('withMap') ? selectedId() : null }, form, $('#fbSend'), $('#fbOut'));
+      submit({
+        type: 'chapter_feedback',
+        gameVersion: d.get('gameVersion') || null,
+        chapter: d.get('chapter') || 'Chapter 1',
+        completed: d.get('completed') || null,
+        clarityRating: Number(clarity),
+        difficulty: d.get('difficulty') || null,
+        confusionSource: d.get('confusionSource') || null,
+        clarityFeedback: String(d.get('clarityFeedback') || '').trim() || null,
+        continueIntent: d.get('continueIntent') || null,
+        email: em || null,
+        map: selectedId()
+      }, form, $('#fbSend'), $('#fbOut'));
     });
   }
 
+  /* 2. Full Playtest Review (SearchO2_Forms_Full_Playtest_Review.docx) */
+  function pagePlaytestReview() {
+    var likertOpts = ['Very poor', 'Poor', 'Neither good nor poor', 'Good', 'Very good'];
+    function likertField(name, qText, defIdx) {
+      return '<fieldset class="field"><legend class="lbl">' + esc(qText) + '</legend>' +
+        '<div class="radios">' +
+          likertOpts.map(function (opt, i) {
+            return '<label><input type="radio" name="' + name + '" value="' + opt + '"' + (i === (defIdx != null ? defIdx : 3) ? ' checked' : '') + '><span>' + opt + '</span></label>';
+          }).join('') +
+        '</div>' +
+      '</fieldset>';
+    }
+
+    var npsButtons = [];
+    for (var n = 0; n <= 10; n++) {
+      npsButtons.push('<label><input type="radio" name="npsRecommend" value="' + n + '"' + (n === 10 ? ' checked' : '') + '><span class="nps-box">' + n + '</span></label>');
+    }
+
+    main.innerHTML = '<div class="page-head">' +
+      '<div class="form-badge"><span class="badge-icon">🎮</span> Submenu 2 · Playtest Review</div>' +
+      '<h1>SearchO₂ Full Playtest Review</h1>' +
+      '<p class="form-intro">For players who have completed more than one SearchO₂ play session. This takes about four minutes.</p>' +
+      '</div>' +
+      feedbackSubnav('playtest') +
+      '<form class="form" id="ptForm" novalidate>' +
+        '<div class="form-section-card">' +
+          '<h2 class="form-section-heading"><span class="form-section-num">1</span> Player context</h2>' +
+          '<fieldset class="field"><legend class="lbl">1. Which SearchO₂ game version or build did you play most recently?</legend>' +
+            '<div class="radios">' +
+              ['Current test version', 'Previous test version', 'I’m not sure'].map(function (v, i) {
+                return '<label><input type="radio" name="gameVersion" value="' + v + '"' + (i === 0 ? ' checked' : '') + '><span>' + v + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+          '<fieldset class="field"><legend class="lbl">2. How often do you play simulation or management games?</legend>' +
+            '<div class="radios">' +
+              ['Never', 'Occasionally', 'Monthly', 'Weekly or more'].map(function (f, i) {
+                return '<label><input type="radio" name="genreFrequency" value="' + f + '"' + (i === 1 ? ' checked' : '') + '><span>' + f + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+        '</div>' +
+        '<div class="form-section-card">' +
+          '<h2 class="form-section-heading"><span class="form-section-num">2</span> Overall experience</h2>' +
+          likertField('rateEaseOfLearning', '3. How would you rate the ease of learning?', 3) +
+          likertField('rateNavigation', '4. How would you rate the navigation?', 3) +
+          likertField('rateVisualReadability', '5. How would you rate the visual readability?', 3) +
+          likertField('rateClarityOfObjectives', '6. How would you rate the clarity of objectives?', 3) +
+          likertField('rateUnderstandingO2', '7. How would you rate your understanding of the O₂ system?', 3) +
+          likertField('rateEnjoyment', '8. How would you rate your enjoyment?', 3) +
+          likertField('rateGameStability', '9. How would you rate the game stability?', 3) +
+          '<fieldset class="field"><legend class="lbl">10. Did any visual element make the game difficult to use?</legend>' +
+            '<div class="radios">' +
+              ['Yes', 'No', 'Not sure'].map(function (vo, i) {
+                return '<label><input type="radio" name="visualDifficulty" value="' + vo + '"' + (i === 1 ? ' checked' : '') + '><span>' + vo + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+          '<fieldset class="field"><legend class="lbl">11. Which visual element most needs improvement?</legend>' +
+            '<div class="radios">' +
+              ['Text size', 'Contrast or colours', 'Map', 'O₂ display', 'EUR/resources display', 'Missions/objectives', 'Menus', 'Region screen', 'Other'].map(function (ve, i) {
+                return '<label><input type="radio" name="visualElementImprovement" value="' + ve + '"' + (i === 8 ? ' checked' : '') + '><span>' + ve + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+        '</div>' +
+        '<div class="form-section-card">' +
+          '<h2 class="form-section-heading"><span class="form-section-num">3</span> Value and return intent</h2>' +
+          '<div class="field"><label class="lbl" for="ptStrongest">12. What is the strongest part of SearchO₂?</label>' +
+            '<textarea id="ptStrongest" name="strongestPart" maxlength="3000" rows="3" placeholder="What did you enjoy most or find most compelling?"></textarea>' +
+          '</div>' +
+          '<div class="field"><label class="lbl" for="ptChange">13. If you could change only one thing, what would it be?</label>' +
+            '<textarea id="ptChange" name="changeOneThing" maxlength="3000" rows="3" placeholder="One feature, mechanic or change you would prioritize..."></textarea>' +
+          '</div>' +
+          '<fieldset class="field"><legend class="lbl">14. How disappointed would you be if SearchO₂ were no longer available?</legend>' +
+            '<div class="radios">' +
+              ['Very disappointed', 'Somewhat disappointed', 'Not disappointed', 'I haven’t played enough to say'].map(function (dis, i) {
+                return '<label><input type="radio" name="disappointmentLevel" value="' + dis + '"' + (i === 1 ? ' checked' : '') + '><span>' + dis + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+          '<fieldset class="field"><legend class="lbl">15. How likely are you to recommend SearchO₂ to someone interested in simulation, science or sustainability?</legend>' +
+            '<div class="nps-container">' +
+              '<div class="scale-grid">' + npsButtons.join('') + '</div>' +
+              '<div class="nps-labels"><span>0 — Not at all likely</span><span>10 — Extremely likely</span></div>' +
+            '</div>' +
+          '</fieldset>' +
+          '<div class="field"><label class="lbl" for="ptEmail">Optional email address if you agree that Artifactz may contact you about this review.</label>' +
+            '<input type="email" id="ptEmail" name="email" autocomplete="email" placeholder="name@example.com">' +
+            '<div class="hint">Only if you agree that Artifactz may contact you about this review.</div>' +
+            '<div class="err" role="alert"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div><button class="btn gold" type="submit" id="ptSend"><span class="btn-icon">🌟</span> Send playtest review</button></div>' +
+        '<div id="ptOut" aria-live="polite"></div>' +
+      '</form>' + outboxHtml();
+
+    wireOutbox();
+    var form = $('#ptForm');
+    form.addEventListener('submit', function (e) {
+      e.preventDefault(); clearErr(form);
+      var d = new FormData(form), bad = false;
+      var em = String(d.get('email') || '').trim();
+      if (em && !validEmail(em)) { fieldErr($('#ptEmail'), 'That email address does not look right. Check it or leave it empty.'); bad = true; }
+      if (bad) { var first = $('.field.bad input, .field.bad textarea', form); if (first) first.focus(); return; }
+      submit({
+        type: 'playtest_review',
+        gameVersion: d.get('gameVersion') || null,
+        genreFrequency: d.get('genreFrequency') || null,
+        rateEaseOfLearning: d.get('rateEaseOfLearning') || null,
+        rateNavigation: d.get('rateNavigation') || null,
+        rateVisualReadability: d.get('rateVisualReadability') || null,
+        rateClarityOfObjectives: d.get('rateClarityOfObjectives') || null,
+        rateUnderstandingO2: d.get('rateUnderstandingO2') || null,
+        rateEnjoyment: d.get('rateEnjoyment') || null,
+        rateGameStability: d.get('rateGameStability') || null,
+        visualDifficulty: d.get('visualDifficulty') || null,
+        visualElementImprovement: d.get('visualElementImprovement') || null,
+        strongestPart: String(d.get('strongestPart') || '').trim() || null,
+        changeOneThing: String(d.get('changeOneThing') || '').trim() || null,
+        disappointmentLevel: d.get('disappointmentLevel') || null,
+        npsRecommend: d.get('npsRecommend') != null && d.get('npsRecommend') !== '' ? Number(d.get('npsRecommend')) : null,
+        email: em || null,
+        map: selectedId()
+      }, form, $('#ptSend'), $('#ptOut'));
+    });
+  }
+
+  /* 3. Report a Problem (SearchO2_Forms_Report_a_Problem.docx) */
   function pageReport() {
-    main.innerHTML = '<div class="page-head"><h1>Report a Problem</h1><p>Tell us what went wrong. A clear description and the steps to repeat it help us fix it quickly.</p></div>' +
+    main.innerHTML = '<div class="page-head">' +
+      '<div class="form-badge"><span class="badge-icon">🛠️</span> Support &amp; Issue Tracking</div>' +
+      '<h1>SearchO₂ Report a Problem</h1>' +
+      '<p class="form-intro">Use this form when something does not work as expected. Do not include passwords, payment details or other sensitive information.</p>' +
+      '</div>' +
       '<form class="form" id="rpForm" novalidate>' +
-      '<div class="field"><label class="lbl" for="rpArea">Where did it happen?</label><select id="rpArea" name="area"><option value="">Choose one</option>' +
-      ['Farm game (Central Europe)', 'World globe and map', 'Alpenhof Journey', 'Saint Martin Blue Lab', 'OxyForge and space', 'Library or quiz', 'Sign-in or save', 'This Learning Hub', 'Somewhere else'].map(function (a) { return '<option>' + a + '</option>'; }).join('') +
-      '</select><div class="err" role="alert"></div></div>' +
-      '<fieldset class="field"><legend>How bad is it?</legend><div class="radios">' +
-      [['blocker', 'I cannot continue'], ['broken', 'Something is broken'], ['visual', 'Looks wrong'], ['minor', 'Small annoyance']].map(function (s, i) {
-        return '<label><input type="radio" name="severity" value="' + s[0] + '"' + (i === 1 ? ' checked' : '') + '><span>' + s[1] + '</span></label>';
-      }).join('') + '</div></fieldset>' +
-      '<div class="field"><label class="lbl" for="rpTitle">Short summary</label><input type="text" id="rpTitle" name="title" maxlength="120"><div class="err" role="alert"></div></div>' +
-      '<div class="field"><label class="lbl" for="rpWhat">What happened?</label><textarea id="rpWhat" name="what" maxlength="2000"></textarea><div class="err" role="alert"></div></div>' +
-      '<div class="field"><label class="lbl" for="rpSteps">How can we repeat it? (optional)</label><textarea id="rpSteps" name="steps" maxlength="2000" aria-describedby="rpStepsH"></textarea><div class="hint" id="rpStepsH">For example: 1. Open the globe. 2. Click Bavaria. 3. The page stays blank.</div></div>' +
-      '<div class="field"><label class="lbl" for="rpExp">What did you expect? (optional)</label><textarea id="rpExp" name="expected" maxlength="1000" style="min-height:80px"></textarea></div>' +
-      '<div class="field"><label class="lbl" for="rpEmail">Email (optional)</label><input type="email" id="rpEmail" name="email" autocomplete="email" aria-describedby="rpEmailH"><div class="hint" id="rpEmailH">Only if you want us to reply about this report.</div><div class="err" role="alert"></div></div>' +
-      '<div><label class="check"><input type="checkbox" name="diag" id="rpDiag" checked><span>Add technical details to help us find the cause</span></label>' +
-      '<p class="hint" style="margin:8px 0 6px">This is exactly what will be sent. It does not include your save, name or email.</p><div class="diag" id="rpDiagBox"></div></div>' +
-      '<div><button class="btn" type="submit" id="rpSend">Send report</button></div><div id="rpOut" aria-live="polite"></div></form>' + outboxHtml();
+        '<div class="form-section-card">' +
+          '<h2 class="form-section-heading"><span class="form-section-num">1</span> Problem details</h2>' +
+          '<div class="field"><label class="lbl" for="rpTitle">1. Short title for the problem <span class="req">*</span></label>' +
+            '<input type="text" id="rpTitle" name="title" maxlength="255" placeholder="Brief summary of what went wrong..." required>' +
+            '<div class="err" role="alert"></div>' +
+          '</div>' +
+          '<fieldset class="field"><legend class="lbl">2. Which SearchO₂ game version or build were you using?</legend>' +
+            '<div class="radios">' +
+              ['Current test version', 'Previous test version', 'I’m not sure'].map(function (v, i) {
+                return '<label><input type="radio" name="gameVersion" value="' + v + '"' + (i === 0 ? ' checked' : '') + '><span>' + v + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+          '<fieldset class="field"><legend class="lbl">3. Where did the problem happen? <span class="req">*</span></legend>' +
+            '<div class="radios" id="rpAreaRadios">' +
+              ['Getting started or account', 'Chapter 1', 'Chapter 2', 'Chapter 3', 'Saint Martin', 'Menus or settings', 'Another location', 'I’m not sure'].map(function (a, i) {
+                return '<label><input type="radio" name="area" value="' + a + '"' + (i === 1 ? ' checked' : '') + '><span>' + a + '</span></label>';
+              }).join('') +
+            '</div>' +
+            '<div class="err" role="alert"></div>' +
+          '</fieldset>' +
+          '<div class="field"><label class="lbl" for="rpTrying">4. What were you trying to do?</label>' +
+            '<textarea id="rpTrying" name="tryingToDo" maxlength="2000" rows="3" placeholder="Describe the goal or action you were attempting..."></textarea>' +
+            '<div class="err" role="alert"></div>' +
+          '</div>' +
+          '<div class="field"><label class="lbl" for="rpWhat">5. What happened? <span class="req">*</span></label>' +
+            '<textarea id="rpWhat" name="whatHappened" maxlength="3000" rows="4" placeholder="Describe what actually happened or went wrong..." required></textarea>' +
+            '<div class="err" role="alert"></div>' +
+          '</div>' +
+          '<div class="field"><label class="lbl" for="rpExp">6. What did you expect to happen?</label>' +
+            '<textarea id="rpExp" name="expected" maxlength="2000" rows="3" placeholder="Describe what should have occurred instead..."></textarea>' +
+            '<div class="err" role="alert"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="form-section-card">' +
+          '<h2 class="form-section-heading"><span class="form-section-num">2</span> Reproduction and impact</h2>' +
+          '<fieldset class="field"><legend class="lbl">7. Can you reproduce the problem?</legend>' +
+            '<div class="radios">' +
+              ['Every time', 'Sometimes', 'Only once', 'I haven’t tried again'].map(function (r, i) {
+                return '<label><input type="radio" name="reproduce" value="' + r + '"' + (i === 0 ? ' checked' : '') + '><span>' + r + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+          '<fieldset class="field"><legend class="lbl">8. How much did the problem affect your play?</legend>' +
+            '<div class="radios">' +
+              ['Minor inconvenience', 'Made gameplay difficult', 'Blocked my progress', 'Made the game unusable'].map(function (im, i) {
+                return '<label><input type="radio" name="impact" value="' + im + '"' + (i === 1 ? ' checked' : '') + '><span>' + im + '</span></label>';
+              }).join('') +
+            '</div>' +
+          '</fieldset>' +
+          '<div class="field"><label class="lbl" for="rpDevice">9. Which device and browser were you using?</label>' +
+            '<input type="text" id="rpDevice" name="deviceBrowser" maxlength="255" value="' + esc(detectDeviceBrowser()) + '" placeholder="e.g. Windows 11 · Chrome 129 / iPhone 15 · Safari">' +
+            '<div class="hint">Automatically detected from your current browser, editable if reporting for another device.</div>' +
+          '</div>' +
+          '<div class="field"><label class="lbl" for="rpEmail">10. Optional email address if you agree that Artifactz may contact you about this report.</label>' +
+            '<input type="email" id="rpEmail" name="email" autocomplete="email" placeholder="name@example.com">' +
+            '<div class="hint">Only if you agree that Artifactz may contact you about this report.</div>' +
+            '<div class="err" role="alert"></div>' +
+          '</div>' +
+          '<div>' +
+            '<label class="check"><input type="checkbox" name="diag" id="rpDiag" checked><span>Add technical diagnostics to help us isolate the cause</span></label>' +
+            '<p class="hint" style="margin:8px 0 6px">This includes your screen resolution, browser user agent, and selected region. No passwords or personal data are included.</p>' +
+            '<div class="diag" id="rpDiagBox"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div><button class="btn gold" type="submit" id="rpSend"><span class="btn-icon">🚀</span> Send report</button></div>' +
+        '<div id="rpOut" aria-live="polite"></div>' +
+      '</form>' + outboxHtml();
+
     wireOutbox();
     var form = $('#rpForm'), box = $('#rpDiagBox');
     box.textContent = diagnostics();
@@ -890,18 +1224,29 @@
     form.addEventListener('submit', function (e) {
       e.preventDefault(); clearErr(form);
       var d = new FormData(form), bad = false;
-      if (!d.get('area')) { fieldErr($('#rpArea'), 'Choose where the problem happened.'); bad = true; }
       var title = String(d.get('title') || '').trim();
-      if (title.length < 5) { fieldErr($('#rpTitle'), 'Give it a short summary, at least 5 characters.'); bad = true; }
-      var what = String(d.get('what') || '').trim();
-      if (what.length < 15) { fieldErr($('#rpWhat'), 'Describe what happened in a sentence or two.'); bad = true; }
+      if (title.length < 3) { fieldErr($('#rpTitle'), 'Give the problem a short title, at least 3 characters.'); bad = true; }
+      var what = String(d.get('whatHappened') || '').trim();
+      if (what.length < 5) { fieldErr($('#rpWhat'), 'Describe what happened, at least 5 characters.'); bad = true; }
       var em = String(d.get('email') || '').trim();
       if (em && !validEmail(em)) { fieldErr($('#rpEmail'), 'That email address does not look right. Check it or leave it empty.'); bad = true; }
-      if (bad) { var first = $('.field.bad select, .field.bad input, .field.bad textarea', form); if (first) first.focus(); return; }
+      if (bad) { var first = $('.field.bad input, .field.bad textarea', form); if (first) first.focus(); return; }
       submit({
-        type: 'problem', area: d.get('area'), severity: d.get('severity'), title: title, what: what,
-        steps: String(d.get('steps') || '').trim() || null, expected: String(d.get('expected') || '').trim() || null,
-        email: em || null, map: selectedId(), diagnostics: d.get('diag') ? diagnostics() : null
+        type: 'problem',
+        title: title,
+        gameVersion: d.get('gameVersion') || null,
+        area: d.get('area') || null,
+        tryingToDo: String(d.get('tryingToDo') || '').trim() || null,
+        whatHappened: what,
+        what: what,
+        expected: String(d.get('expected') || '').trim() || null,
+        reproduce: d.get('reproduce') || null,
+        impact: d.get('impact') || null,
+        severity: d.get('impact') || null,
+        deviceBrowser: String(d.get('deviceBrowser') || '').trim() || null,
+        email: em || null,
+        map: selectedId(),
+        diagnostics: d.get('diag') ? diagnostics() : null
       }, form, $('#rpSend'), $('#rpOut'));
     });
   }
@@ -936,11 +1281,49 @@
     }).then(function () { btn.disabled = false; btn.textContent = label; out.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
   }
   function formatPayload(p) {
-    var lines = [p.type === 'problem' ? 'PROBLEM REPORT: ' + p.title : 'FEEDBACK (' + p.rating + '/5, ' + p.topic + ')'];
-    if (p.area) lines.push('Area: ' + p.area); if (p.severity) lines.push('Severity: ' + p.severity);
-    lines.push('', p.message || p.what || '');
-    if (p.steps) lines.push('', 'Steps: ' + p.steps); if (p.expected) lines.push('Expected: ' + p.expected);
-    if (p.map) lines.push('Map: ' + p.map); if (p.email) lines.push('Reply to: ' + p.email);
+    var lines = [];
+    if (p.type === 'problem') {
+      lines.push('SEARCHO2 PROBLEM REPORT: ' + (p.title || 'Untitled'));
+      if (p.gameVersion) lines.push('Game Version: ' + p.gameVersion);
+      if (p.area) lines.push('Where: ' + p.area);
+      if (p.tryingToDo) lines.push('Trying to do: ' + p.tryingToDo);
+      lines.push('What happened: ' + (p.whatHappened || p.what || ''));
+      if (p.expected) lines.push('Expected: ' + p.expected);
+      if (p.reproduce) lines.push('Reproduce: ' + p.reproduce);
+      if (p.impact || p.severity) lines.push('Impact: ' + (p.impact || p.severity));
+      if (p.deviceBrowser) lines.push('Device/Browser: ' + p.deviceBrowser);
+    } else if (p.type === 'chapter_feedback') {
+      lines.push('SEARCHO2 CHAPTER FEEDBACK: Chapter ' + (p.chapter || ''));
+      if (p.gameVersion) lines.push('Game Version: ' + p.gameVersion);
+      if (p.completed) lines.push('Completed: ' + p.completed);
+      if (p.clarityRating) lines.push('Clarity: ' + p.clarityRating + ' / 5');
+      if (p.difficulty) lines.push('Difficulty: ' + p.difficulty);
+      if (p.confusionSource) lines.push('Confusion: ' + p.confusionSource);
+      if (p.clarityFeedback) lines.push('Feedback: ' + p.clarityFeedback);
+      if (p.continueIntent) lines.push('Continue intent: ' + p.continueIntent);
+    } else if (p.type === 'playtest_review') {
+      lines.push('SEARCHO2 FULL PLAYTEST REVIEW');
+      if (p.gameVersion) lines.push('Game Version: ' + p.gameVersion);
+      if (p.genreFrequency) lines.push('Genre frequency: ' + p.genreFrequency);
+      if (p.rateEaseOfLearning) lines.push('Ease of learning: ' + p.rateEaseOfLearning);
+      if (p.rateNavigation) lines.push('Navigation: ' + p.rateNavigation);
+      if (p.rateVisualReadability) lines.push('Visual readability: ' + p.rateVisualReadability);
+      if (p.rateClarityOfObjectives) lines.push('Clarity of objectives: ' + p.rateClarityOfObjectives);
+      if (p.rateUnderstandingO2) lines.push('Understanding O2: ' + p.rateUnderstandingO2);
+      if (p.rateEnjoyment) lines.push('Enjoyment: ' + p.rateEnjoyment);
+      if (p.rateGameStability) lines.push('Game stability: ' + p.rateGameStability);
+      if (p.visualDifficulty) lines.push('Visual difficulty: ' + p.visualDifficulty);
+      if (p.visualElementImprovement) lines.push('Improve visual: ' + p.visualElementImprovement);
+      if (p.strongestPart) lines.push('Strongest: ' + p.strongestPart);
+      if (p.changeOneThing) lines.push('Change one thing: ' + p.changeOneThing);
+      if (p.disappointmentLevel) lines.push('Disappointment: ' + p.disappointmentLevel);
+      if (p.npsRecommend != null) lines.push('Recommend (0-10): ' + p.npsRecommend);
+    } else {
+      lines.push('FEEDBACK (' + (p.rating || '') + '/5, ' + (p.topic || '') + ')');
+      lines.push('', p.message || '');
+    }
+    if (p.map) lines.push('Map: ' + p.map);
+    if (p.email) lines.push('Reply to: ' + p.email);
     if (p.diagnostics) lines.push('', p.diagnostics);
     return lines.join('\n');
   }
@@ -951,7 +1334,12 @@
     if (!box.length) { host.innerHTML = ''; return; }
     host.innerHTML = '<h2>Saved on this device</h2><p class="muted">These did not send yet.</p><ul>' + box.map(function (o) {
       var p = o.payload;
-      return '<li><span style="flex:1"><b>' + (p.type === 'problem' ? 'Problem' : 'Feedback') + ':</b> ' + esc((p.title || p.message || '').slice(0, 70)) + '</span>' +
+      var title = 'Feedback';
+      if (p.type === 'problem') title = 'Problem: ' + (p.title || 'Untitled');
+      else if (p.type === 'chapter_feedback') title = 'Chapter Feedback: ' + (p.chapter || 'Survey');
+      else if (p.type === 'playtest_review') title = 'Playtest Review: ' + (p.strongestPart || 'Survey');
+      else if (p.type === 'feedback') title = 'Feedback: ' + (p.message || 'Feedback');
+      return '<li><span style="flex:1"><b>' + esc(title.slice(0, 70)) + '</b></span>' +
         '<button class="btn ghost" type="button" data-act="retry" data-id="' + o.id + '">Retry</button> ' +
         '<button class="btn ghost" type="button" data-act="copy" data-id="' + o.id + '">Copy</button> ' +
         '<button class="btn ghost" type="button" data-act="del" data-id="' + o.id + '" aria-label="Delete this saved message">Delete</button></li>';
