@@ -31,21 +31,22 @@
       '#so2LogoutRoot {',
       '  position: fixed;',
       '  inset: 0;',
-      '  z-index: 99995;',
+      '  z-index: 999999;',
       '  background: radial-gradient(circle at 50% 40%, #1e1e38 0%, #0d0c1d 100%);',
       '  color: #f8fafc;',
       '  font-family: Inter, system-ui, -apple-system, sans-serif;',
       '  overflow: hidden;',
       '  user-select: none;',
       '}',
-      '#so2LogoutCanvas {',
+      '#so2LogoutCanvasContainer {',
       '  position: absolute;',
       '  inset: 0;',
-      '  width: 100vw;',
-      '  height: 100vh;',
+      '  width: 100%;',
+      '  height: 100%;',
       '  display: block;',
       '  z-index: 1;',
-      '  outline: none;',
+      '  overflow: hidden;',
+      '  pointer-events: auto;',
       '}',
       '.so2-logout-header {',
       '  position: absolute;',
@@ -93,15 +94,6 @@
       '  gap: 8px;',
       '}',
       '.so2-logout-brand-title span.cyan { color: #38bdf8; }',
-      '.so2-logout-brand-badge {',
-      '  font-size: 0.68rem;',
-      '  padding: 2px 8px;',
-      '  border-radius: 999px;',
-      '  background: rgba(16, 185, 129, 0.2);',
-      '  color: #34d399;',
-      '  border: 1px solid rgba(16, 185, 129, 0.35);',
-      '  font-family: monospace;',
-      '}',
       '.so2-logout-brand-sub {',
       '  font-size: 0.72rem;',
       '  color: #94a3b8;',
@@ -441,23 +433,54 @@
   }
 
   // Load Three.js module and OrbitControls
-  async function loadThree() {
+  function loadThree() {
     if (window.THREE && window.THREE.OrbitControls) {
-      return { THREE: window.THREE, OrbitControls: window.THREE.OrbitControls };
+      return Promise.resolve({ THREE: window.THREE, OrbitControls: window.THREE.OrbitControls });
     }
-    var threeMod;
-    try {
-      threeMod = await import('https://unpkg.com/three@0.160.0/build/three.module.js');
-    } catch (e) {
-      threeMod = await import('./node_modules/three/build/three.module.js');
+    if (window.SO2_THREE && window.SO2_THREE.THREE && window.SO2_THREE.OrbitControls) {
+      window.THREE = window.SO2_THREE.THREE;
+      window.THREE.OrbitControls = window.SO2_THREE.OrbitControls;
+      return Promise.resolve({ THREE: window.THREE, OrbitControls: window.THREE.OrbitControls });
     }
-    var controlsMod;
-    try {
-      controlsMod = await import('https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js');
-    } catch (e2) {
-      controlsMod = await import('./node_modules/three/examples/jsm/controls/OrbitControls.js');
-    }
-    return { THREE: threeMod, OrbitControls: controlsMod.OrbitControls };
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'three.bundle.js?v=20261025';
+      s.onload = function () {
+        var t = window.THREE || (window.SO2_THREE && window.SO2_THREE.THREE);
+        var oc = (window.THREE && window.THREE.OrbitControls) || (window.SO2_THREE && window.SO2_THREE.OrbitControls);
+        if (t && oc) {
+          window.THREE = t;
+          window.THREE.OrbitControls = oc;
+          resolve({ THREE: t, OrbitControls: oc });
+        } else {
+          fallbackCdn(resolve, reject);
+        }
+      };
+      s.onerror = function () {
+        fallbackCdn(resolve, reject);
+      };
+      document.head.appendChild(s);
+    });
+  }
+
+  function fallbackCdn(resolve, reject) {
+    var cdn1 = document.createElement('script');
+    cdn1.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+    cdn1.onload = function () {
+      var cdn2 = document.createElement('script');
+      cdn2.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+      cdn2.onload = function () {
+        resolve({ THREE: window.THREE, OrbitControls: window.THREE.OrbitControls });
+      };
+      cdn2.onerror = function () {
+        resolve({ THREE: window.THREE, OrbitControls: function () { this.update = function () {}; this.target = { set: function () {} }; } });
+      };
+      document.head.appendChild(cdn2);
+    };
+    cdn1.onerror = function (err) {
+      reject(new Error('Failed to load Three.js from bundle and CDN'));
+    };
+    document.head.appendChild(cdn1);
   }
 
   function SearchO2LogoutCinematic() {
@@ -476,8 +499,15 @@
   }
 
   SearchO2LogoutCinematic.prototype.open = async function () {
+    this.isDestroyed = false;
     if (this.root) {
       this.root.style.display = 'block';
+      if (!this.renderer) {
+        try {
+          var libs = await loadThree();
+          this._initThree(libs.THREE, libs.OrbitControls);
+        } catch (e) {}
+      }
       return;
     }
 
@@ -489,8 +519,7 @@
 
     // Structure HTML
     root.innerHTML = [
-      '<div id="so2LogoutCanvasContainer" style="position:absolute;inset:0;"></div>',
-      '<canvas id="so2LogoutCanvas"></canvas>',
+      '<div id="so2LogoutCanvasContainer" style="position:absolute;inset:0;width:100%;height:100%;z-index:1;overflow:hidden;pointer-events:auto;"></div>',
       // Top bar
       '<header class="so2-logout-header">',
       '  <div class="so2-logout-brand">',
@@ -498,7 +527,6 @@
       '    <div>',
       '      <div class="so2-logout-brand-title">',
       '        Search<span class="cyan">O₂</span> : Power Nap Alert',
-      '        <span class="so2-logout-brand-badge">Isometric 3D</span>',
       '      </div>',
       '      <div class="so2-logout-brand-sub">Atmospheric biostation enters standby mode while active lifeforms stimulate system reactivation.</div>',
       '    </div>',
@@ -612,8 +640,9 @@
 
   SearchO2LogoutCinematic.prototype._initThree = function (THREE, OrbitControls) {
     var self = this;
-    var canvas = document.getElementById('so2LogoutCanvas');
-    if (!canvas) return;
+    var container = document.getElementById('so2LogoutCanvasContainer');
+    if (!container) return;
+    container.innerHTML = '';
 
     var scene = new THREE.Scene();
     scene.background = new THREE.Color(0x131326);
@@ -632,7 +661,6 @@
     camera.lookAt(-0.35, 1.15, 0.15);
 
     var renderer = new THREE.WebGLRenderer({
-      canvas: canvas,
       antialias: true,
       powerPreference: 'high-performance'
     });
@@ -642,6 +670,13 @@
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.inset = '0';
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+    renderer.domElement.style.display = 'block';
+    renderer.domElement.style.outline = 'none';
+    container.appendChild(renderer.domElement);
     this.renderer = renderer;
 
     var controls = new OrbitControls(camera, renderer.domElement);
