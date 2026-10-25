@@ -4596,6 +4596,11 @@
       max-width: 100vw !important;
       border-radius: 24px 24px 0 0 !important;
       padding: 20px 16px !important;
+      max-height: calc(100dvh - 20px) !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      overscroll-behavior: contain !important;
+      box-sizing: border-box !important;
     }
   }
 
@@ -5317,12 +5322,20 @@
     background: rgba(18, 35, 22, 0.45);
     backdrop-filter: blur(4px);
     transition: opacity 0.4s ease, visibility 0.4s ease;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
   }
   .initial-auth-overlay.hidden{
     opacity:0; visibility:hidden; pointer-events:none;
   }
   .initial-auth-card{
     background: var(--cream); border-radius:26px; max-width:480px; width:100%;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    box-sizing: border-box;
     padding:28px 24px; box-shadow: 0 28px 70px rgba(0,0,0,0.4);
     border: 2px solid rgba(255,255,255,0.85); position:relative;
     animation: popInModal 0.35s cubic-bezier(0.16, 1, 0.3, 1);
@@ -18682,6 +18695,11 @@ function renderRegionScreen(){
     return;
   }
 
+  // If container previously had registered dashboard or non-guest content, force full fresh re-render
+  if (container.querySelector('.registered-command-header') || container.querySelector('.registered-command-title')) {
+    container.innerHTML = '';
+  }
+
   // GUEST MODE HOME EXPERIENCE
   var userDisplay = (apiUser && apiUser.displayName) ? apiUser.displayName : 'Guest Explorer';
   var totalO2 = state ? state.totalO2.toFixed(1) : '0.0';
@@ -19493,19 +19511,32 @@ var ApiClient = {
     }
   },
   startLocalGuest: function(){
+    if (window.SearchO2LogoutCinematic && window.SearchO2LogoutCinematic.close) {
+      window.SearchO2LogoutCinematic.close();
+    }
     apiUser = {
       id: 'guest_' + Math.floor(1000 + Math.random()*9000),
-      displayName: 'Guest Farmer #' + Math.floor(1000 + Math.random()*9000),
+      displayName: 'Guest Explorer',
       role: 'guest',
       authProvider: 'local_guest'
     };
     localStorage.setItem('searchO2_guest_user', JSON.stringify(apiUser));
+    localStorage.removeItem('searchO2_user');
+    if (state) {
+      state.userName = 'Guest Explorer';
+    }
     showNotification('🌱', 'Guest session active (Central Europe / Germany)', 'bank', null);
+    currentScreen = 'region_select';
+    var regContent = document.getElementById('regionScreenContent');
+    if (regContent) regContent.innerHTML = '';
     closeModal();
     render();
   },
   loginGuest: function(){
     var self = this;
+    if (window.SearchO2LogoutCinematic && window.SearchO2LogoutCinematic.close) {
+      window.SearchO2LogoutCinematic.close();
+    }
     if (backendOnline){
       return fetch(API_BASE_URL + '/auth/guest', { method: 'POST' })
       .then(function(r){ return r.json(); })
@@ -19515,8 +19546,15 @@ var ApiClient = {
         apiUser = d.user;
         localStorage.setItem('searchO2_token', authToken);
         localStorage.removeItem('searchO2_guest_user');
+        localStorage.removeItem('searchO2_user');
+        if (state) {
+          state.userName = apiUser.displayName || 'Guest Explorer';
+        }
         showNotification('🌱', 'Welcome ' + d.user.displayName + '! Connected to PostgreSQL 18.', 'bank', null);
         self.connectWs();
+        currentScreen = 'region_select';
+        var regContent = document.getElementById('regionScreenContent');
+        if (regContent) regContent.innerHTML = '';
         closeModal();
         render();
       })
@@ -19557,12 +19595,25 @@ var ApiClient = {
     authToken = null;
     apiUser = null;
     localStorage.removeItem('searchO2_token');
+    localStorage.removeItem('searchO2_user');
     localStorage.removeItem('searchO2_guest_user');
+    if (state) {
+      state.userName = 'Guest Explorer';
+      state.playerAvatar = null;
+    }
     if (wsConnection) { wsConnection.close(); wsConnection = null; }
+    if (window.SearchO2ShakirGuide && window.SearchO2ShakirGuide.removeGuide) {
+      window.SearchO2ShakirGuide.removeGuide();
+    }
     showNotification('👋', 'Signed out', 'bank', null);
     currentScreen = 'region_select';
+    var regContent = document.getElementById('regionScreenContent');
+    if (regContent) regContent.innerHTML = '';
     closeModal();
     render();
+    if (window.SearchO2LogoutCinematic && window.SearchO2LogoutCinematic.open) {
+      window.SearchO2LogoutCinematic.open();
+    }
   },
   syncFarm: function(){
     if (!authToken || !backendOnline) return;
@@ -40804,5 +40855,6 @@ try {
 <script src="auth-social-guest-trial.js?v=20261023c"></script>
 <script src="shakir-guide-tour.js?v=20261024"></script>
 <script src="home-avatar-tour.js?v=20261023c"></script>
+<script src="logout-cinematic.js?v=20261025"></script>
 </body>
 </html>

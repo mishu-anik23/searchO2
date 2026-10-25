@@ -169,8 +169,9 @@
       '.s2-btn-social.github{background:#24292f;color:#fff;border-color:#24292f;}' +
       '.s2-btn-social.facebook{background:#1877F2;color:#fff;border-color:#1877F2;}' +
       '.s2-btn-social.whatsapp{background:#25D366;color:#fff;border-color:#1ebe57;}' +
-      '.s2-trial-lock{position:fixed;inset:0;z-index:9600;background:rgba(11,31,42,.72);display:flex;align-items:center;justify-content:center;padding:16px;}' +
-      '.s2-trial-lock-card{background:#FBF6EC;border-radius:18px;border:2px solid #E8785A;max-width:420px;padding:22px;text-align:center;color:#1B5E20;font-family:Nunito,sans-serif;}' +
+      '.s2-trial-lock{position:fixed;inset:0;z-index:9600;background:rgba(11,31,42,.72);display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch;box-sizing:border-box;}' +
+      '.s2-trial-lock-card{background:#FBF6EC;border-radius:18px;border:2px solid #E8785A;max-width:420px;width:100%;max-height:calc(100dvh - 32px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;box-sizing:border-box;padding:22px;text-align:center;color:#1B5E20;font-family:Nunito,sans-serif;}' +
+      '@media(max-width:640px){.s2-trial-lock{padding:8px;align-items:flex-start;}.s2-trial-lock-card{padding:16px 12px;border-radius:14px;max-height:calc(100dvh - 16px);margin:auto 0;}}' +
       '#g_id_onload,#btnGoogleGis{min-height:40px;}';
     document.head.appendChild(style);
   }

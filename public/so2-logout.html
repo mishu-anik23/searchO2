@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SearchO2 - The Cat Nap & The Cheeky Mouse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      user-select: none;
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at 50% 40%, #1e1e38 0%, #0d0c1d 100%);
+    }
+    .font-fredoka {
+      font-family: 'Fredoka', cursive, sans-serif;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      outline: none;
+    }
+    /* Custom scrollbar-less look & soft glow */
+    .glow-searcho2 {
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.7);
+    }
+    .phase-pill.active {
+      background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 100%);
+      color: #ffffff;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body class="relative w-screen h-screen">
+
+  <!-- 3D Canvas Container -->
+  <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+  <!-- Top Header / Title Bar -->
+  <header class="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-10">
+    <div class="bg-slate-900/80 backdrop-blur-md border border-slate-700/60 rounded-2xl px-5 py-3 shadow-2xl flex items-center gap-3 pointer-events-auto">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-400 flex items-center justify-center text-xl shadow-md">
+        🌱
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-fredoka text-lg text-white font-bold tracking-wide">Search<span class="text-cyan-400">O₂</span> : Power Nap Alert</h1>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono border border-emerald-500/30">Isometric 3D</span>
+        </div>
+        <p class="text-xs text-slate-400">Atmospheric biostation enters standby mode while active lifeforms stimulate system reactivation.</p>
+      </div>
+    </div>
+
+    <!-- Quick Camera & Angle Presets -->
+    <div class="flex items-center gap-2 pointer-events-auto">
+      <button id="btn-camera-iso" class="bg-slate-900/80 hover:bg-slate-800 text-slate-200 text-xs font-medium px-3 py-2 rounded-xl border border-slate-700 shadow-md backdrop-blur-md transition-all active:scale-95 flex items-center gap-1.5">
+        <span>📐</span> Isometric
+      </button>
+      <button id="btn-camera-front" class="bg-slate-900/80 hover:bg-slate-800 text-slate-200 text-xs font-medium px-3 py-2 rounded-xl border border-slate-700 shadow-md backdrop-blur-md transition-all active:scale-95 flex items-center gap-1.5">
+        <span>👀</span> Desk View
+      </button>
+      <button id="btn-camera-closeup" class="bg-slate-900/80 hover:bg-slate-800 text-slate-200 text-xs font-medium px-3 py-2 rounded-xl border border-slate-700 shadow-md backdrop-blur-md transition-all active:scale-95 flex items-center gap-1.5">
+        <span>🔍</span> Focus View
+      </button>
+      <button id="btn-light-toggle" class="bg-slate-900/80 hover:bg-slate-800 text-amber-300 text-xs font-medium px-3 py-2 rounded-xl border border-slate-700 shadow-md backdrop-blur-md transition-all active:scale-95 flex items-center gap-1.5">
+        <span>💡</span> Lamp
+      </button>
+      <button id="btn-toggle-modal" class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5">
+        <span>🔑</span> Sign In
+      </button>
+    </div>
+  </header>
+
+  <!-- Storyline Narrative Phase Indicator (Abstract Planetary Standby Meaning) -->
+  <div class="absolute top-20 left-6 z-10 pointer-events-none w-full max-w-xl px-2">
+    <div class="bg-slate-900/85 backdrop-blur-md border border-slate-800 rounded-2xl p-2.5 shadow-2xl flex items-center justify-between gap-1 pointer-events-auto">
+      <div id="phase-0" class="phase-pill active flex-1 text-center py-1.5 px-2 rounded-xl text-xs font-semibold text-slate-400 transition-all border border-transparent">
+        💤 Ecosystem Hibernation
+      </div>
+      <div id="phase-1" class="phase-pill flex-1 text-center py-1.5 px-2 rounded-xl text-xs font-semibold text-slate-400 transition-all border border-transparent">
+        ⚡ Atmospheric Pulse Alert
+      </div>
+      <div id="phase-2" class="phase-pill flex-1 text-center py-1.5 px-2 rounded-xl text-xs font-semibold text-slate-400 transition-all border border-transparent">
+        👁️ Custodian Awareness
+      </div>
+      <div id="phase-3" class="phase-pill flex-1 text-center py-1.5 px-2 rounded-xl text-xs font-semibold text-slate-400 transition-all border border-transparent">
+        🌱 Deep Regenerative Standby
+      </div>
+    </div>
+    <!-- Live Narrative Caption -->
+    <div id="story-caption" class="text-left mt-2 px-3 py-1.5 rounded-xl bg-slate-900/70 border border-slate-800/80 text-xs font-medium text-cyan-200 tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+      Planetary biostation enters dormant energy-saving equilibrium.
+    </div>
+  </div>
+
+  <!-- Right Docked Glassmorphism Login Modal (Matches Cat & Mouse Twilight Navy, Cyan, Emerald & Amber Palette) -->
+  <div id="login-modal-dock" class="absolute top-20 right-6 z-20 w-96 max-h-[calc(100vh-100px)] overflow-y-auto bg-gradient-to-br from-slate-900/95 via-indigo-950/95 to-slate-950/95 backdrop-blur-xl border border-cyan-500/30 rounded-3xl p-5 shadow-[0_24px_60px_rgba(0,0,0,0.85),0_0_24px_rgba(56,189,248,0.15)] flex flex-col pointer-events-auto">
+    <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center gap-2">
+        <span class="text-xl">🌱</span>
+        <h2 class="font-fredoka text-lg text-white font-bold tracking-wide">Search<span class="text-cyan-400">O₂</span> Biome Access</h2>
+      </div>
+      <button id="btn-close-modal-dock" class="text-slate-400 hover:text-white text-sm font-bold p-1">✕</button>
+    </div>
+    <p class="text-xs text-slate-400 mb-3 leading-relaxed">Session suspended. Reconnect credentials to synchronize planetary biomes or continue exploring as guest:</p>
+    
+    <button type="button" onclick="window.location.href='index.html'" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-bold text-sm shadow-lg shadow-emerald-500/25 transition-all active:scale-95 flex flex-col items-center justify-center mb-3">
+      <span>🌿 Continue as Guest Explorer ➔</span>
+      <span class="text-[10px] text-emerald-100 font-normal">Instant entry to German Biome Farm · No signup needed</span>
+    </button>
+
+    <div class="flex bg-slate-950/80 rounded-xl p-1 border border-cyan-500/20 mb-3">
+      <button type="button" id="tab-signin" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow">Sign In</button>
+      <button type="button" id="tab-register" class="flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white">Create Account</button>
+    </div>
+
+    <div class="space-y-2 mb-3">
+      <div id="field-display-name" class="hidden">
+        <input type="text" placeholder="Display Name (e.g. EcoFarmer77)" class="w-full bg-slate-950/80 border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 outline-none transition">
+      </div>
+      <div>
+        <input type="text" placeholder="Email, WhatsApp Phone, or Username" class="w-full bg-slate-950/80 border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 outline-none transition">
+      </div>
+      <div class="relative">
+        <input id="input-password" type="password" placeholder="Password (min 6 chars)" class="w-full bg-slate-950/80 border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 outline-none transition pr-9">
+        <button type="button" id="btn-toggle-pw" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">👁️</button>
+      </div>
+      <div id="field-confirm-pw" class="hidden">
+        <input type="password" placeholder="Confirm Password" class="w-full bg-slate-950/80 border border-slate-700/80 focus:border-cyan-400 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 outline-none transition">
+      </div>
+      <label class="flex items-center gap-2 text-[11px] text-slate-400 cursor-pointer pt-1">
+        <input type="checkbox" checked class="accent-emerald-400 w-3.5 h-3.5">
+        <span>💾 Save password and auto-restore farm session</span>
+      </label>
+    </div>
+
+    <button type="button" id="btn-submit-auth" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 font-bold text-xs shadow-md transition active:scale-95">
+      Sign In to Station
+    </button>
+
+    <div class="flex items-center gap-2 mt-3 pt-3 border-t border-slate-800">
+      <button type="button" class="flex-1 py-1.5 px-2 bg-slate-900/90 hover:bg-slate-800 border border-blue-500/30 rounded-lg text-[11px] text-slate-300 font-medium transition flex items-center justify-center gap-1">
+        🔍 Google
+      </button>
+      <button type="button" class="flex-1 py-1.5 px-2 bg-slate-900/90 hover:bg-slate-800 border border-emerald-500/30 rounded-lg text-[11px] text-emerald-300 font-medium transition flex items-center justify-center gap-1">
+        💬 WhatsApp
+      </button>
+      <button type="button" class="flex-1 py-1.5 px-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-700 rounded-lg text-[11px] text-slate-300 font-medium transition flex items-center justify-center gap-1">
+        🐙 GitHub
+      </button>
+    </div>
+  </div>
+
+  <!-- Bottom Interactive Floating Control Dock -->
+  <div class="absolute bottom-5 left-6 z-10 flex items-center gap-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-2xl px-5 py-3 shadow-2xl">
+    <!-- Play/Pause Toggle -->
+    <button id="btn-toggle-play" class="w-10 h-10 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold flex items-center justify-center shadow-lg transition-transform active:scale-90" title="Play / Pause Animation">
+      <svg id="icon-pause" class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+      <svg id="icon-play" class="w-5 h-5 fill-current hidden" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+
+    <!-- Speed Slider -->
+    <div class="flex items-center gap-2 pl-2 border-l border-slate-700">
+      <span class="text-xs text-slate-400 font-mono">Speed</span>
+      <input id="slider-speed" type="range" min="0.3" max="2.2" step="0.1" value="1.0" class="w-24 accent-cyan-400 cursor-pointer h-1.5 bg-slate-700 rounded-lg">
+      <span id="speed-label" class="text-xs text-cyan-400 font-mono w-8">1.0x</span>
+    </div>
+
+    <!-- Timeline Scrubber -->
+    <div class="flex items-center gap-2 pl-2 border-l border-slate-700">
+      <span class="text-xs text-slate-400 font-mono">Loop</span>
+      <input id="slider-timeline" type="range" min="0" max="1" step="0.002" value="0" class="w-32 md:w-44 accent-emerald-400 cursor-pointer h-1.5 bg-slate-700 rounded-lg">
+    </div>
+
+    <!-- Trigger Pulse Button -->
+    <button id="btn-nudge-mouse" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white text-xs font-semibold shadow-md transition-all active:scale-95 flex items-center gap-1.5">
+      <span>⚡</span> Trigger Pulse
+    </button>
+  </div>
+
+  <!-- Instruction Tooltip -->
+  <div class="absolute bottom-5 right-5 hidden md:flex items-center gap-2 bg-slate-900/60 backdrop-blur-sm border border-slate-800 rounded-xl px-3 py-1.5 text-[11px] text-slate-400 pointer-events-none">
+    <span>🖱️ Drag to Orbit</span>
+    <span>•</span>
+    <span>Scroll to Zoom</span>
+  </div>
+
+  <!-- Main Three.js Application Script -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ----------------------------------------------------
+    // GLOBAL STATE & TIMING
+    // ----------------------------------------------------
+    const STATE = {
+      isPlaying: true,
+      timeScale: 1.0,
+      loopDuration: 10.0,
+      currentLoopTime: 0,
+      lampOn: true
+    };
+
+    const PHASES = [
+      { start: 0.0, end: 3.2, text: 'Planetary biostation enters dormant energy-saving equilibrium.' },
+      { start: 3.2, end: 6.0, text: 'Kinetic signal detected: micro-custodian triggers urgent atmospheric login probe!' },
+      { start: 6.0, end: 8.2, text: 'Sensors awaken behind polarized lenses; biological surveillance verifies the incoming request.' },
+      { start: 8.2, end: 10.0, text: 'System registers standby protocol; restorative biostimulation cycles resume until your next command.' }
+    ];
+
+    // ----------------------------------------------------
+    // THREE.JS SETUP: SCENE, ORTHOGRAPHIC ISOMETRIC CAMERA
+    // ----------------------------------------------------
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x131326);
+    scene.fog = new THREE.FogExp2(0x131326, 0.035);
+
+    const aspect = window.innerWidth / window.innerHeight;
+    const viewSize = 4.8;
+    const camera = new THREE.OrthographicCamera(
+      -viewSize * aspect, viewSize * aspect,
+      viewSize, -viewSize,
+      -30, 100
+    );
+
+    // Position camera so cat, desk, and provoking mouse remain centered in view
+    camera.position.set(11, 10, 11);
+    camera.lookAt(-0.35, 1.15, 0.15);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.target.set(-0.35, 1.15, 0.15);
+    controls.maxPolarAngle = Math.PI / 2.05;
+    controls.minZoom = 0.55;
+    controls.maxZoom = 2.4;
+
+    // ----------------------------------------------------
+    // LIGHTING: COZY ISOMETRIC ROOM & SPOTLIGHT ON MOUSE
+    // ----------------------------------------------------
+    const ambientLight = new THREE.AmbientLight(0x7682a8, 0.95);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff1dc, 1.6);
+    sunLight.position.set(12, 20, 9);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.left = -6;
+    sunLight.shadow.camera.right = 6;
+    sunLight.shadow.camera.top = 6;
+    sunLight.shadow.camera.bottom = -6;
+    sunLight.shadow.camera.near = 1;
+    sunLight.shadow.camera.far = 40;
+    sunLight.shadow.bias = -0.0006;
+    scene.add(sunLight);
+
+    const rimLight = new THREE.DirectionalLight(0x4a77b8, 0.85);
+    rimLight.position.set(-10, 12, -10);
+    scene.add(rimLight);
+
+    // Warm Desk Lamp Light
+    const deskLampLight = new THREE.PointLight(0xff9944, 2.8, 4.5, 1.8);
+    deskLampLight.position.set(-1.1, 2.3, -0.4);
+    deskLampLight.castShadow = true;
+    deskLampLight.shadow.bias = -0.001;
+    deskLampLight.shadow.mapSize.set(512, 512);
+    scene.add(deskLampLight);
+
+    // Monitor Soft Blue-Green Glow
+    const monitorGlow = new THREE.PointLight(0x38bdf8, 1.5, 3.2, 2);
+    monitorGlow.position.set(-0.2, 1.9, -0.7);
+    scene.add(monitorGlow);
+
+    // Dedicated Mouse Spotlight to make mouse unmistakably visible and pop
+    const mouseSpotlight = new THREE.SpotLight(0xffeedd, 2.2, 4.0, Math.PI / 5, 0.4, 1.5);
+    mouseSpotlight.position.set(1.0, 3.0, 0.5);
+    scene.add(mouseSpotlight);
+
+    // ----------------------------------------------------
+    // PALETTE & STYLIZED MATERIALS
+    // ----------------------------------------------------
+    const M = {
+      roomFloor: new THREE.MeshStandardMaterial({ color: 0x824b2b, roughness: 0.55 }),
+      roomBase: new THREE.MeshStandardMaterial({ color: 0x222034, roughness: 0.8 }),
+      wallPastel: new THREE.MeshStandardMaterial({ color: 0x4a5472, roughness: 0.7 }),
+      rug: new THREE.MeshStandardMaterial({ color: 0x3d7078, roughness: 0.9 }),
+      woodDesk: new THREE.MeshStandardMaterial({ color: 0x935b36, roughness: 0.45 }),
+      deskLegs: new THREE.MeshStandardMaterial({ color: 0x261e19, roughness: 0.6 }),
+      chairFabric: new THREE.MeshStandardMaterial({ color: 0xa84838, roughness: 0.6 }),
+      chairPlastic: new THREE.MeshStandardMaterial({ color: 0x23272e, roughness: 0.35 }),
+      
+      // Cat Materials
+      catFurMain: new THREE.MeshStandardMaterial({ color: 0xd97736, roughness: 0.65 }),
+      catFurCream: new THREE.MeshStandardMaterial({ color: 0xffe6cb, roughness: 0.7 }),
+      catSweater: new THREE.MeshStandardMaterial({ color: 0x29606d, roughness: 0.8 }),
+      catNose: new THREE.MeshStandardMaterial({ color: 0xee7f8a, roughness: 0.4 }),
+      glassesFrame: new THREE.MeshStandardMaterial({ color: 0x09090d, roughness: 0.2, metalness: 0.2 }),
+      glassesLens: new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, roughness: 0.1, transmission: 0.8 }),
+      catEyeGold: new THREE.MeshBasicMaterial({ color: 0xfbbf24 }),
+      catEyeGreen: new THREE.MeshBasicMaterial({ color: 0x34d399 }),
+      catPupil: new THREE.MeshBasicMaterial({ color: 0x050508 }),
+      
+      // Vibrant, cute Mouse Materials (Warm caramel/beige + bright pink ears)
+      mouseFur: new THREE.MeshStandardMaterial({ color: 0xf5cf96, roughness: 0.5 }), // Warm Honey Caramel
+      mouseBelly: new THREE.MeshStandardMaterial({ color: 0xfff3e0, roughness: 0.6 }),
+      mousePink: new THREE.MeshStandardMaterial({ color: 0xff708f, roughness: 0.4, emissive: 0x44111f, emissiveIntensity: 0.2 }), // Bright candy pink
+      mouseEye: new THREE.MeshBasicMaterial({ color: 0x111111 }),
+      mouseWhiskers: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+      questCard: new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x10b981, emissiveIntensity: 0.6 }),
+      
+      // Computer & Props
+      compCase: new THREE.MeshStandardMaterial({ color: 0xdfe3e6, roughness: 0.4 }),
+      compStand: new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.3, metalness: 0.3 }),
+      lampBrass: new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.3, metalness: 0.6 }),
+      lampShade: new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.4 }),
+      mugCeramic: new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.3 }),
+      coffeeLiquid: new THREE.MeshStandardMaterial({ color: 0x2c1d11, roughness: 0.2 })
+    };
+
+    // ----------------------------------------------------
+    // BUILD ROOM DIORAMA SLAB & WALLS
+    // ----------------------------------------------------
+    const dioramaGroup = new THREE.Group();
+    scene.add(dioramaGroup);
+
+    const slabSize = 5.6;
+    const slabHeight = 0.5;
+    const baseGeo = new THREE.BoxGeometry(slabSize, slabHeight, slabSize);
+    const baseMesh = new THREE.Mesh(baseGeo, M.roomBase);
+    baseMesh.position.y = -slabHeight / 2;
+    baseMesh.receiveShadow = true;
+    dioramaGroup.add(baseMesh);
+
+    const floorPlankGeo = new THREE.BoxGeometry(slabSize - 0.05, 0.02, slabSize - 0.05);
+    const floorMesh = new THREE.Mesh(floorPlankGeo, M.roomFloor);
+    floorMesh.position.y = 0.01;
+    floorMesh.receiveShadow = true;
+    dioramaGroup.add(floorMesh);
+
+    const rugGeo = new THREE.CylinderGeometry(1.6, 1.6, 0.02, 32);
+    const rugMesh = new THREE.Mesh(rugGeo, M.rug);
+    rugMesh.position.set(0.1, 0.02, 0.4);
+    rugMesh.receiveShadow = true;
+    dioramaGroup.add(rugMesh);
+
+    const wallHeight = 3.6;
+    const wallThick = 0.25;
+
+    const wallL = new THREE.Mesh(new THREE.BoxGeometry(wallThick, wallHeight, slabSize), M.wallPastel);
+    wallL.position.set(-slabSize / 2 + wallThick / 2, wallHeight / 2, 0);
+    wallL.receiveShadow = true;
+    dioramaGroup.add(wallL);
+
+    const wallR = new THREE.Mesh(new THREE.BoxGeometry(slabSize, wallHeight, wallThick), M.wallPastel);
+    wallR.position.set(0, wallHeight / 2, -slabSize / 2 + wallThick / 2);
+    wallR.receiveShadow = true;
+    dioramaGroup.add(wallR);
+
+    // SearchO2 Poster
+    const posterGeo = new THREE.BoxGeometry(1.2, 1.6, 0.04);
+    const posterCanvas = document.createElement('canvas');
+    posterCanvas.width = 256;
+    posterCanvas.height = 340;
+    const pctx = posterCanvas.getContext('2d');
+    pctx.fillStyle = '#0f172a';
+    pctx.fillRect(0, 0, 256, 340);
+    pctx.fillStyle = '#10b981';
+    pctx.beginPath();
+    pctx.arc(128, 140, 60, 0, Math.PI * 2);
+    pctx.fill();
+    pctx.fillStyle = '#ffffff';
+    pctx.font = 'bold 30px sans-serif';
+    pctx.textAlign = 'center';
+    pctx.fillText('SearchO₂', 128, 240);
+    pctx.fillStyle = '#38bdf8';
+    pctx.font = '16px sans-serif';
+    pctx.fillText('Clean Green World', 128, 270);
+    const posterTex = new THREE.CanvasTexture(posterCanvas);
+    const posterMat = new THREE.MeshBasicMaterial({ map: posterTex });
+    const posterMesh = new THREE.Mesh(posterGeo, posterMat);
+    posterMesh.position.set(0.6, 2.3, -slabSize / 2 + wallThick + 0.02);
+    dioramaGroup.add(posterMesh);
+
+    // Bookshelf
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 1.8), M.woodDesk);
+    shelf.position.set(-slabSize/2 + wallThick + 0.15, 2.6, 0.1);
+    shelf.castShadow = true;
+    dioramaGroup.add(shelf);
+
+    const bookColors = [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6];
+    bookColors.forEach((col, i) => {
+      const bGeo = new THREE.BoxGeometry(0.2, 0.35 + (i%3)*0.06, 0.1);
+      const bMat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.5 });
+      const bMesh = new THREE.Mesh(bGeo, bMat);
+      bMesh.position.set(-slabSize/2 + wallThick + 0.15, 2.6 + 0.04 + 0.2, -0.6 + i * 0.14);
+      bMesh.castShadow = true;
+      dioramaGroup.add(bMesh);
+    });
+
+    // ----------------------------------------------------
+    // THE WOODEN OFFICE DESK & CHAIR
+    // ----------------------------------------------------
+    const deskGroup = new THREE.Group();
+    deskGroup.position.set(0, 0, -0.3);
+    dioramaGroup.add(deskGroup);
+
+    const deskTopGeo = new THREE.BoxGeometry(3.0, 0.12, 1.6);
+    const deskTop = new THREE.Mesh(deskTopGeo, M.woodDesk);
+    deskTop.position.set(0, 1.35, 0);
+    deskTop.castShadow = true;
+    deskTop.receiveShadow = true;
+    deskGroup.add(deskTop);
+
+    const sideLeft = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.35, 1.4), M.deskLegs);
+    sideLeft.position.set(-1.38, 1.35 / 2, 0);
+    sideLeft.castShadow = true;
+    const sideRight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.35, 1.4), M.deskLegs);
+    sideRight.position.set(1.38, 1.35 / 2, 0);
+    sideRight.castShadow = true;
+    deskGroup.add(sideLeft, sideRight);
+
+    const drawerBlock = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 1.3), M.woodDesk);
+    drawerBlock.position.set(0.95, 0.9 / 2 + 0.45, 0);
+    drawerBlock.castShadow = true;
+    deskGroup.add(drawerBlock);
+
+    const matGeo = new THREE.BoxGeometry(2.0, 0.015, 0.95);
+    const deskMat = new THREE.Mesh(matGeo, new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 }));
+    deskMat.position.set(-0.1, 1.415, 0.1);
+    deskMat.receiveShadow = true;
+    deskGroup.add(deskMat);
+
+    // Coffee Mug
+    const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.18, 16), M.mugCeramic);
+    mug.position.set(1.1, 1.5, 0.35);
+    mug.castShadow = true;
+    const coffee = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.02, 16), M.coffeeLiquid);
+    coffee.position.set(1.1, 1.58, 0.35);
+    deskGroup.add(mug, coffee);
+
+    // Banker's Desk Lamp
+    const lampGroup = new THREE.Group();
+    lampGroup.position.set(-1.15, 1.41, -0.4);
+    const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.04, 16), M.lampBrass);
+    lampBase.castShadow = true;
+    const lampStem = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.65, 8), M.lampBrass);
+    lampStem.position.set(0, 0.34, 0);
+    lampStem.castShadow = true;
+    const lampHead = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.36, 16, 1, false, 0, Math.PI), M.lampShade);
+    lampHead.rotation.z = Math.PI / 2;
+    lampHead.rotation.y = Math.PI / 4;
+    lampHead.position.set(0.12, 0.65, 0.1);
+    lampHead.castShadow = true;
+    lampGroup.add(lampBase, lampStem, lampHead);
+    deskGroup.add(lampGroup);
+
+    // Potted Succulent Plant on desk
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.09, 0.15, 12), M.compCase);
+    pot.position.set(-1.1, 1.48, 0.3);
+    const plant = new THREE.Mesh(new THREE.DodecahedronGeometry(0.11), new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.6 }));
+    plant.position.set(-1.1, 1.6, 0.3);
+    deskGroup.add(pot, plant);
+
+    // Office Chair (Sitting facing the desk towards -Z)
+    const chairGroup = new THREE.Group();
+    chairGroup.position.set(0.0, 0, 0.85);
+    dioramaGroup.add(chairGroup);
+
+    const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.16, 1.0), M.chairFabric);
+    chairSeat.position.set(0, 0.82, 0);
+    chairSeat.castShadow = true;
+    chairGroup.add(chairSeat);
+
+    // Chair Back is behind the cat (+Z)
+    const chairBack = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.1, 0.18), M.chairFabric);
+    chairBack.position.set(0, 1.4, 0.45);
+    chairBack.rotation.x = 0.08;
+    chairBack.castShadow = true;
+    chairGroup.add(chairBack);
+
+    const chairStem = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.65, 12), M.chairPlastic);
+    chairStem.position.set(0, 0.4, 0);
+    chairStem.castShadow = true;
+    chairGroup.add(chairStem);
+
+    for (let c = 0; c < 5; c++) {
+      const legAngle = (c / 5) * Math.PI * 2;
+      const cLeg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.06, 0.48), M.chairPlastic);
+      cLeg.position.set(Math.sin(legAngle) * 0.24, 0.1, Math.cos(legAngle) * 0.24);
+      cLeg.rotation.y = legAngle;
+      chairGroup.add(cLeg);
+    }
+
+    // ----------------------------------------------------
+    // SEARCHO2 MONITOR WITH PULSATING LOGIN QUEST
+    // ----------------------------------------------------
+    const monitorGroup = new THREE.Group();
+    monitorGroup.position.set(-0.25, 1.41, -0.45);
+    // Monitor screen faces towards +Z (towards cat and user)
+    deskGroup.add(monitorGroup);
+
+    const monitorStand = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.03, 16), M.compStand);
+    const monitorPole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 12), M.compStand);
+    monitorPole.position.y = 0.2;
+    const monitorBezel = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.95, 0.08), M.compCase);
+    monitorBezel.position.set(0, 0.62, 0);
+    monitorBezel.castShadow = true;
+    monitorGroup.add(monitorStand, monitorPole, monitorBezel);
+
+    const screenCanvas = document.createElement('canvas');
+    screenCanvas.width = 512;
+    screenCanvas.height = 320;
+    const sctx = screenCanvas.getContext('2d');
+    const screenTexture = new THREE.CanvasTexture(screenCanvas);
+    const screenMat = new THREE.MeshBasicMaterial({ map: screenTexture });
+    const screenPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.85), screenMat);
+    screenPlane.position.set(0, 0.62, 0.042);
+    monitorGroup.add(screenPlane);
+
+    // Keyboard & Mouse
+    const keyboard = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.03, 0.3), M.compCase);
+    keyboard.position.set(-0.25, 1.43, -0.05);
+    keyboard.castShadow = true;
+    deskGroup.add(keyboard);
+
+    function updateScreenCanvas(time) {
+      const grad = sctx.createLinearGradient(0, 0, 512, 320);
+      grad.addColorStop(0, '#06283d');
+      grad.addColorStop(1, '#1363df');
+      sctx.fillStyle = grad;
+      sctx.fillRect(0, 0, 512, 320);
+
+      sctx.fillStyle = '#0f172a';
+      sctx.fillRect(0, 0, 512, 48);
+
+      sctx.fillStyle = '#22c55e';
+      sctx.beginPath();
+      sctx.arc(36, 24, 14, 0, Math.PI * 2);
+      sctx.fill();
+
+      // Little leaf icon
+      sctx.fillStyle = '#ffffff';
+      sctx.font = 'bold 22px Fredoka, sans-serif';
+      sctx.textAlign = 'left';
+      sctx.fillText('SearchO₂ Live Station', 62, 31);
+
+      sctx.fillStyle = 'rgba(255,255,255,0.12)';
+      sctx.beginPath();
+      if (sctx.roundRect) {
+        sctx.roundRect(24, 64, 464, 168, 12);
+      } else {
+        sctx.fillRect(24, 64, 464, 168);
+      }
+      sctx.fill();
+
+      const pulse = (Math.sin(time * 4) + 1) * 0.5;
+      sctx.fillStyle = '#38bdf8';
+      sctx.font = '15px Inter, sans-serif';
+      sctx.fillText('⚡ Oxygen Grid Status: 42% (Warning)', 42, 98);
+
+      sctx.fillStyle = '#0f172a';
+      sctx.fillRect(42, 110, 420, 16);
+      sctx.fillStyle = '#10b981';
+      sctx.fillRect(44, 112, 220 + pulse * 70, 12);
+
+      // Pulsing Urgent "LOGIN TO START" button
+      const btnGlow = Math.sin(time * 6) * 4;
+      sctx.fillStyle = '#f59e0b';
+      sctx.beginPath();
+      if (sctx.roundRect) {
+        sctx.roundRect(110 - btnGlow/2, 145 - btnGlow/2, 290 + btnGlow, 52 + btnGlow, 14);
+      } else {
+        sctx.fillRect(110, 145, 290, 52);
+      }
+      sctx.fill();
+
+      sctx.fillStyle = '#ffffff';
+      sctx.font = 'bold 20px Inter, sans-serif';
+      sctx.textAlign = 'center';
+      sctx.fillText('⚡ ENTER CREDENTIALS / LOGIN NOW!', 256, 178);
+
+      sctx.fillStyle = '#cbd5e1';
+      sctx.font = '13px Inter, sans-serif';
+      sctx.fillText('Active Quest: Planetary Bio-Network • Awaiting Custodian Login...', 256, 275);
+
+      screenTexture.needsUpdate = true;
+    }
+
+    // ----------------------------------------------------
+    // THE WISE CAT (CORRECT ORIENTATION: FACING DESK & -Z)
+    // ----------------------------------------------------
+    // Cat sits on chair at (0.0, 0.85, 0.7) and is naturally facing towards desk (-Z).
+    // All front face components (eyes, nose, muzzle, glasses) are placed at -Z
+    // so the Cat looks directly towards the desk, screen, and mouse!
+    const catRoot = new THREE.Group();
+    catRoot.position.set(0.0, 0.85, 0.7);
+    dioramaGroup.add(catRoot);
+
+    const catTorso = new THREE.Group();
+    catTorso.position.set(0, 0.35, 0);
+    catRoot.add(catTorso);
+
+    const sweaterBody = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.65, 0.85, 20), M.catSweater);
+    sweaterBody.castShadow = true;
+    sweaterBody.scale.set(1.1, 1, 0.95);
+    catTorso.add(sweaterBody);
+
+    // Belly patch is on anterior (-Z), facing the desk
+    const bellyPatch = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), M.catFurCream);
+    bellyPatch.position.set(0, -0.05, -0.42);
+    bellyPatch.scale.set(1, 1.2, 0.3);
+    catTorso.add(bellyPatch);
+
+    // Cat Tail is posterior (+Z), dangling behind chair back
+    const catTail = new THREE.Group();
+    catTail.position.set(0, -0.25, 0.42);
+    for (let t = 0; t < 5; t++) {
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.16, 10), (t === 4 ? M.catFurCream : M.catFurMain));
+      seg.position.set(0, -t * 0.12, t * 0.08);
+      seg.rotation.x = 0.4;
+      catTail.add(seg);
+    }
+    catTorso.add(catTail);
+
+    // Left Arm (Resting peacefully across the desk top towards -Z)
+    const leftArmGroup = new THREE.Group();
+    leftArmGroup.position.set(-0.48, 0.28, -0.15);
+    catTorso.add(leftArmGroup);
+
+    const lSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.52, 12), M.catSweater);
+    lSleeve.position.set(-0.12, 0.08, -0.22);
+    lSleeve.rotation.x = Math.PI / 3.2; // reach forward to desk
+    lSleeve.rotation.z = 0.3;
+    leftArmGroup.add(lSleeve);
+
+    const lPaw = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 12), M.catFurCream);
+    lPaw.position.set(-0.22, 0.25, -0.5);
+    lPaw.scale.set(1.1, 0.7, 1.2);
+    lPaw.castShadow = true;
+    leftArmGroup.add(lPaw);
+
+    // Right Arm (THE TARGET ARM EXTENDED ON DESK RIGHT NEXT TO MOUSE)
+    const rightArmGroup = new THREE.Group();
+    rightArmGroup.position.set(0.42, 0.28, -0.12);
+    catTorso.add(rightArmGroup);
+
+    const rUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.44, 12), M.catSweater);
+    rUpperArm.position.set(0.1, 0.06, -0.16);
+    rUpperArm.rotation.x = Math.PI / 3.4;
+    rUpperArm.rotation.z = -0.25;
+    rUpperArm.castShadow = true;
+    rightArmGroup.add(rUpperArm);
+
+    // Right Forearm & Resting Paw (On desk pad at (0.35, 1.42, -0.4))
+    const rForearmGroup = new THREE.Group();
+    rForearmGroup.position.set(0.18, 0.23, -0.36);
+    rightArmGroup.add(rForearmGroup);
+
+    const rForearmSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.38, 12), M.catSweater);
+    rForearmSleeve.position.set(0, 0, -0.14);
+    rForearmSleeve.rotation.x = Math.PI / 2.3;
+    rForearmGroup.add(rForearmSleeve);
+
+    const rPaw = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 14), M.catFurCream);
+    rPaw.position.set(0.02, 0.02, -0.35);
+    rPaw.scale.set(1.2, 0.75, 1.3);
+    rPaw.castShadow = true;
+    rForearmGroup.add(rPaw);
+
+    // Pink Toe Jellybean Pads on paw
+    for (let p = -1; p <= 1; p++) {
+      const toePad = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 8), M.catNose);
+      toePad.position.set(0.02 + p * 0.07, 0.06, -0.4);
+      rForearmGroup.add(toePad);
+    }
+
+    // CAT HEAD & NECK (Facing desk -Z, anterior features at -Z)
+    const catNeck = new THREE.Group();
+    catNeck.position.set(0, 0.52, -0.05);
+    catTorso.add(catNeck);
+
+    const catHeadGroup = new THREE.Group();
+    catNeck.add(catHeadGroup);
+
+    // Head Base Sphere
+    const headSphere = new THREE.Mesh(new THREE.SphereGeometry(0.55, 24, 24), M.catFurMain);
+    headSphere.scale.set(1.15, 0.95, 1.05);
+    headSphere.castShadow = true;
+    catHeadGroup.add(headSphere);
+
+    // Muzzle & Cheeks (Placed on anterior -Z facing desk)
+    const lMuzzle = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), M.catFurCream);
+    lMuzzle.position.set(-0.14, -0.15, -0.42);
+    lMuzzle.scale.set(1.1, 0.85, 0.8);
+    const rMuzzle = new THREE.Mesh(new THREE.SphereGeometry(0.2, 14, 14), M.catFurCream);
+    rMuzzle.position.set(0.14, -0.15, -0.42);
+    rMuzzle.scale.set(1.1, 0.85, 0.8);
+    catHeadGroup.add(lMuzzle, rMuzzle);
+
+    // Cute Pink Cat Nose (Points towards -Z)
+    const catNose = new THREE.Mesh(new THREE.ConeGeometry(0.065, 0.06, 4), M.catNose);
+    catNose.position.set(0, -0.08, -0.54);
+    catNose.rotation.x = 0;
+    catHeadGroup.add(catNose);
+
+    // Whiskers (White whiskers on sides of muzzle)
+    const whiskerMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    [-1, 1].forEach(side => {
+      for (let w = -1; w <= 1; w++) {
+        const whisker = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.004, 0.4), whiskerMat);
+        whisker.position.set(side * 0.32, -0.14 + w * 0.04, -0.46);
+        whisker.rotation.z = Math.PI / 2 + side * 0.15 + w * 0.2;
+        whisker.rotation.y = -side * 0.25;
+        catHeadGroup.add(whisker);
+      }
+    });
+
+    // Cat Ears (Ears tilt slightly forward)
+    const leftEar = new THREE.Group();
+    leftEar.position.set(-0.35, 0.46, -0.05);
+    leftEar.rotation.z = 0.28;
+    const lEarOuter = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.46, 4), M.catFurMain);
+    const lEarInner = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.36, 4), M.catNose);
+    lEarInner.position.set(0, 0, -0.04);
+    leftEar.add(lEarOuter, lEarInner);
+    catHeadGroup.add(leftEar);
+
+    const rightEar = new THREE.Group();
+    rightEar.position.set(0.35, 0.46, -0.05);
+    rightEar.rotation.z = -0.28;
+    const rEarOuter = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.46, 4), M.catFurMain);
+    const rEarInner = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.36, 4), M.catNose);
+    rEarInner.position.set(0, 0, -0.04);
+    rightEar.add(rEarOuter, rEarInner);
+    catHeadGroup.add(rightEar);
+
+    // OPEN EYES (Facing -Z towards desk/monitor)
+    const openEyesGroup = new THREE.Group();
+    openEyesGroup.position.set(0, 0.04, -0.48);
+    catHeadGroup.add(openEyesGroup);
+
+    [-0.2, 0.2].forEach(posX => {
+      const eyeBall = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 16), M.catEyeGold);
+      eyeBall.position.set(posX, 0, 0);
+      eyeBall.scale.set(1.1, 0.95, 0.6);
+      const pupil = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.026, 0.18, 8), M.catPupil);
+      pupil.position.set(posX, 0, -0.08);
+      openEyesGroup.add(eyeBall, pupil);
+    });
+
+    // CLOSED SLEEPY EYELIDS (Facing -Z)
+    const closedEyesGroup = new THREE.Group();
+    closedEyesGroup.position.set(0, 0.04, -0.52);
+    catHeadGroup.add(closedEyesGroup);
+
+    [-0.2, 0.2].forEach(posX => {
+      const sleepyArc = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.024, 8, 16, Math.PI), M.glassesFrame);
+      sleepyArc.position.set(posX, 0.02, 0);
+      // Inverted arc for sleeping slit
+      sleepyArc.rotation.z = 0;
+      closedEyesGroup.add(sleepyArc);
+    });
+
+    // ICONIC BLACK-FRAMED GLASSES (Firmly positioned on front -Z face)
+    const glassesGroup = new THREE.Group();
+    glassesGroup.position.set(0, 0.05, -0.52);
+    catHeadGroup.add(glassesGroup);
+
+    const rimL = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.034, 10, 24), M.glassesFrame);
+    rimL.position.set(-0.22, 0, 0);
+    const rimR = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.034, 10, 24), M.glassesFrame);
+    rimR.position.set(0.22, 0, 0);
+
+    const lensL = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.015, 16), M.glassesLens);
+    lensL.position.set(-0.22, 0, 0);
+    lensL.rotation.x = Math.PI / 2;
+    const lensR = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.015, 16), M.glassesLens);
+    lensR.position.set(0.22, 0, 0);
+    lensR.rotation.x = Math.PI / 2;
+
+    const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.03), M.glassesFrame);
+    bridge.position.set(0, 0.05, 0);
+
+    const templeL = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.48), M.glassesFrame);
+    templeL.position.set(-0.42, 0.04, 0.24);
+    const templeR = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.48), M.glassesFrame);
+    templeR.position.set(0.42, 0.04, 0.24);
+
+    glassesGroup.add(rimL, rimR, lensL, lensR, bridge, templeL, templeR);
+
+    // ----------------------------------------------------
+    // THE PROMINENT CUTE MOUSE (HIGH VISIBILITY & ACTIVE TUGGING)
+    // ----------------------------------------------------
+    // Placed proudly on the desk right next to the resting paw:
+    // World coordinates on desk top: X: 0.65, Y: 1.42, Z: -0.2
+    const mouseRoot = new THREE.Group();
+    mouseRoot.position.set(0.68, 1.42, -0.25);
+    mouseRoot.scale.set(1.45, 1.45, 1.45); // Made 45% larger for crisp visibility
+    dioramaGroup.add(mouseRoot);
+
+    // Mouse Spotlight target
+    mouseSpotlight.target = mouseRoot;
+
+    // Mouse Body (Warm Golden Caramel + Cream Tummy)
+    const mouseBody = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16), M.mouseFur);
+    mouseBody.position.set(0, 0.16, 0);
+    mouseBody.scale.set(0.95, 1.25, 0.9);
+    mouseBody.castShadow = true;
+    mouseRoot.add(mouseBody);
+
+    const mouseBellyMesh = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 14), M.mouseBelly);
+    mouseBellyMesh.position.set(-0.04, 0.15, 0.02);
+    mouseBellyMesh.scale.set(0.7, 1.1, 0.5);
+    mouseRoot.add(mouseBellyMesh);
+
+    // Mouse Head Group (Rotates and looks between paw & cat's face)
+    const mouseHead = new THREE.Group();
+    mouseHead.position.set(0, 0.32, 0.04);
+    mouseRoot.add(mouseHead);
+
+    const mHeadMesh = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.22, 16), M.mouseFur);
+    mHeadMesh.rotation.x = -Math.PI / 2.3;
+    mHeadMesh.castShadow = true;
+    mouseHead.add(mHeadMesh);
+
+    const mNose = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), M.mousePink);
+    mNose.position.set(0, -0.02, 0.18);
+    mouseHead.add(mNose);
+
+    // Big Vibrant Round Ears with glowing pink inside
+    [-0.13, 0.13].forEach((x, i) => {
+      const earOuter = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.025, 16), M.mouseFur);
+      earOuter.position.set(x, 0.12, -0.02);
+      earOuter.rotation.x = Math.PI / 4;
+      earOuter.rotation.z = (i === 0 ? 0.3 : -0.3);
+      const earInner = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.03, 16), M.mousePink);
+      earInner.position.set(x, 0.12, -0.01);
+      earInner.rotation.copy(earOuter.rotation);
+      mouseHead.add(earOuter, earInner);
+    });
+
+    // Cute Big Cartoon Mouse Eyes
+    [-0.075, 0.075].forEach(x => {
+      const mEye = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 10), M.mouseEye);
+      mEye.position.set(x, 0.04, 0.11);
+      const glint = new THREE.Mesh(new THREE.SphereGeometry(0.009, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      glint.position.set(x + 0.01, 0.05, 0.135);
+      mouseHead.add(mEye, glint);
+    });
+
+    // Tiny Mouse Whiskers
+    [-1, 1].forEach(side => {
+      for (let mw = -1; mw <= 1; mw++) {
+        const mWhisk = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.002, 0.16), M.mouseWhiskers);
+        mWhisk.position.set(side * 0.08, -0.03 + mw * 0.02, 0.15);
+        mWhisk.rotation.z = Math.PI / 2 + side * 0.2 + mw * 0.15;
+        mouseHead.add(mWhisk);
+      }
+    });
+
+    // Mouse Left Arm (Tugging / Knocking Arm reaching towards Cat's Paw on -X)
+    const mArmL = new THREE.Group();
+    mArmL.position.set(-0.1, 0.22, 0.05);
+    mouseRoot.add(mArmL);
+
+    const mArmLMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.024, 0.22, 8), M.mouseFur);
+    mArmLMesh.position.set(-0.06, 0.0, -0.04);
+    mArmLMesh.rotation.z = Math.PI / 3;
+    mArmLMesh.rotation.y = -Math.PI / 4;
+    const mPawL = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), M.mousePink);
+    mPawL.position.set(-0.14, -0.05, -0.08);
+    mArmL.add(mArmLMesh, mPawL);
+
+    // Mouse Right Arm (Holding Glowing SearchO2 Quest Login Card)
+    const mArmR = new THREE.Group();
+    mArmR.position.set(0.1, 0.22, 0.05);
+    mouseRoot.add(mArmR);
+
+    const mArmRMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.024, 0.22, 8), M.mouseFur);
+    mArmRMesh.position.set(0.06, 0.05, 0.06);
+    mArmRMesh.rotation.z = -Math.PI / 4;
+    mArmRMesh.rotation.x = -Math.PI / 4;
+    mArmR.add(mArmRMesh);
+
+    // Glowing Green Mini Quest Card / Badge held in hand
+    const questCard = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.13, 0.015), M.questCard);
+    questCard.position.set(0.12, 0.16, 0.12);
+    questCard.rotation.y = -0.4;
+    mArmR.add(questCard);
+
+    // Mouse Feet
+    const mFootL = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.035, 0.12), M.mousePink);
+    mFootL.position.set(-0.07, 0.018, 0.02);
+    const mFootR = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.035, 0.12), M.mousePink);
+    mFootR.position.set(0.07, 0.018, 0.02);
+    mouseRoot.add(mFootL, mFootR);
+
+    // Expressive Curly Mouse Tail
+    const mouseTailGroup = new THREE.Group();
+    mouseTailGroup.position.set(0, 0.08, -0.1);
+    for (let mt = 0; mt < 6; mt++) {
+      const tailSeg = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.09, 6), M.mousePink);
+      tailSeg.position.set(0, mt * 0.055, -mt * 0.065);
+      tailSeg.rotation.x = 0.5 + mt * 0.1;
+      mouseTailGroup.add(tailSeg);
+    }
+    mouseRoot.add(mouseTailGroup);
+
+    // Alert Exclamation Bubble (!)
+    const alertBubble = new THREE.Group();
+    alertBubble.position.set(0, 0.68, 0);
+    const bubbleGeo = new THREE.SphereGeometry(0.14, 12, 12);
+    const bubbleMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+    const bubbleMesh = new THREE.Mesh(bubbleGeo, bubbleMat);
+    const exclMark = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.11, 0.02), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+    exclMark.position.set(0, 0.02, 0.13);
+    const exclDot = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, 0.02), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+    exclDot.position.set(0, -0.07, 0.13);
+    alertBubble.add(bubbleMesh, exclMark, exclDot);
+    alertBubble.scale.set(0, 0, 0);
+    mouseHead.add(alertBubble);
+
+    // ----------------------------------------------------
+    // FLOATING "Z Z Z" SLEEP PARTICLES
+    // ----------------------------------------------------
+    const zGroup = new THREE.Group();
+    dioramaGroup.add(zGroup);
+
+    const zParticles = [];
+    const zMat = new THREE.MeshBasicMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.85 });
+
+    function createZMesh() {
+      const zG = new THREE.Group();
+      const top = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.02), zMat);
+      top.position.y = 0.06;
+      const diag = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.02), zMat);
+      diag.rotation.z = -0.7;
+      const bot = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.02), zMat);
+      bot.position.y = -0.06;
+      zG.add(top, diag, bot);
+      return zG;
+    }
+
+    for (let i = 0; i < 4; i++) {
+      const zMesh = createZMesh();
+      zGroup.add(zMesh);
+      zParticles.push({
+        mesh: zMesh,
+        phaseOffset: i * 0.25,
+        basePos: new THREE.Vector3(0.0, 1.85, 0.25)
+      });
+    }
+
+    // ----------------------------------------------------
+    // PRECISE NARRATIVE TIMELINE & INTERPOLATION LOGIC
+    // ----------------------------------------------------
+    const clock = new THREE.Clock();
+
+    function updateAnimation(timeInLoop) {
+      const t = timeInLoop;
+
+      let activeIndex = 0;
+      for (let i = 0; i < PHASES.length; i++) {
+        if (t >= PHASES[i].start && t < PHASES[i].end) {
+          activeIndex = i;
+          break;
+        }
+      }
+
+      for (let i = 0; i < 4; i++) {
+        const pill = document.getElementById(`phase-${i}`);
+        if (i === activeIndex) {
+          pill.classList.add('active');
+        } else {
+          pill.classList.remove('active');
+        }
+      }
+      document.getElementById('story-caption').innerText = PHASES[activeIndex].text;
+
+      // --------------------------------------------------
+      // PHASE 1: CAT NAPPING (0.0 -> 3.2s)
+      // Cat's head is slumped down against desk, facing forward/down onto paws. Eyes shut.
+      // --------------------------------------------------
+      if (t < 3.2) {
+        const pProgress = t / 3.2;
+        const breathe = Math.sin(t * 3.0);
+
+        // Torso leans over desk (-Z tilt)
+        catTorso.position.set(0, 0.35 + breathe * 0.02, 0);
+        catTorso.rotation.set(-0.25 - breathe * 0.03, 0, 0);
+
+        // Head slumped down toward desk top facing -Z
+        catHeadGroup.position.set(0, 0.58, -0.15);
+        catHeadGroup.rotation.set(-0.35 - breathe * 0.04, -0.08, -0.05);
+
+        // Glasses slightly loose on sleeping snout
+        glassesGroup.position.set(0, 0.03, -0.52);
+
+        // Eyes firmly shut
+        openEyesGroup.visible = false;
+        closedEyesGroup.visible = true;
+
+        // Limp relaxed paws on desk
+        rForearmGroup.position.set(0.18, 0.23, -0.36);
+        rForearmGroup.rotation.set(0, 0, 0);
+        rightArmGroup.rotation.set(0, 0, 0);
+
+        // Mouse tiptoeing eagerly around the paw, waiting to strike
+        mouseRoot.position.set(0.68, 1.42, -0.28 + Math.sin(t * 4) * 0.02);
+        // Mouse faces the cat paw (-X direction)
+        mouseRoot.rotation.y = -Math.PI / 2.2;
+        mouseRoot.rotation.x = 0;
+        mouseHead.rotation.set(0.1, 0, 0);
+        alertBubble.scale.set(0, 0, 0);
+
+        // Zzz snoring particles floating up
+        zGroup.visible = true;
+        zParticles.forEach(zp => {
+          const zt = (t * 0.6 + zp.phaseOffset) % 1.0;
+          zp.mesh.position.set(
+            zp.basePos.x + Math.sin(zt * 5 + zp.phaseOffset * 10) * 0.18,
+            zp.basePos.y + zt * 0.7,
+            zp.basePos.z - zt * 0.3
+          );
+          const sc = 0.5 + zt * 0.6;
+          zp.mesh.scale.set(sc, sc, sc);
+          zMat.opacity = Math.sin(zt * Math.PI) * 0.9;
+        });
+      }
+
+      // --------------------------------------------------
+      // PHASE 2: MOUSE TUGGING & KNOCKING CAT'S PAW (3.2 -> 6.0s)
+      // Mouse jumps up and down, grabs and shakes the cat's arm, waving card!
+      // --------------------------------------------------
+      else if (t < 6.0) {
+        const pTime = t - 3.2; // 0.0 -> 2.8s
+        zGroup.visible = false;
+
+        const knockFreq = 16.0;
+        const knock = Math.sin(pTime * knockFreq);
+        const tugPull = Math.max(0, knock);
+
+        // Mouse is aggressively tugging and jumping on desk
+        mouseRoot.position.set(
+          0.66 + tugPull * 0.05,
+          1.42 + Math.abs(Math.sin(pTime * 12)) * 0.08, // energetic jumping!
+          -0.25 - tugPull * 0.04
+        );
+        // Angled directly facing the resting cat's paw (-X)
+        mouseRoot.rotation.y = -Math.PI / 2.2;
+        mouseRoot.rotation.x = 0.25 + tugPull * 0.2; // leaning back while tugging
+
+        // Head bobbing and pointing towards the glowing monitor
+        mouseHead.rotation.y = -0.3 + Math.sin(pTime * 8) * 0.2;
+
+        // Knocking / tugging arm vigorously yanks the cat paw
+        mArmL.rotation.set(0, 0, knock * 0.5);
+        mArmR.rotation.set(Math.sin(pTime * 10) * 0.4, 0, -0.4);
+
+        // Pop exclamation bubble
+        alertBubble.scale.set(1, 1, 1);
+        alertBubble.rotation.z = Math.sin(pTime * 14) * 0.2;
+
+        // Cat's arm and paw react physically to the tugging!
+        rForearmGroup.position.set(0.18 + tugPull * 0.06, 0.23, -0.36 + tugPull * 0.03);
+        rForearmGroup.rotation.z = tugPull * 0.15;
+        rightArmGroup.rotation.y = -tugPull * 0.1;
+
+        // Cat starts stirring: ear twitches
+        leftEar.rotation.z = 0.28 + Math.sin(pTime * 14) * 0.15;
+        rightEar.rotation.z = -0.28 - Math.sin(pTime * 12) * 0.15;
+
+        // Head slowly begins to tilt up
+        catTorso.rotation.x = -0.25 + (pTime / 2.8) * 0.1;
+        catHeadGroup.rotation.x = -0.35 + (pTime / 2.8) * 0.15;
+
+        if (pTime > 2.4) {
+          openEyesGroup.visible = true;
+          closedEyesGroup.visible = false;
+          openEyesGroup.scale.set(1, 0.35, 1); // squinting open
+        } else {
+          openEyesGroup.visible = false;
+          closedEyesGroup.visible = true;
+        }
+      }
+
+      // --------------------------------------------------
+      // PHASE 3: CAT LIFTS HEAD, EYES POP OPEN, GLARES DOWN (6.0 -> 8.2s)
+      // Head lifts upright, rotates sideways (+X direction) to stare directly down at mouse!
+      // --------------------------------------------------
+      else if (t < 8.2) {
+        const pTime = t - 6.0; // 0.0 -> 2.2s
+        zGroup.visible = false;
+
+        const sitUp = Math.min(1, pTime * 1.6);
+        catTorso.rotation.set(-0.15 + sitUp * 0.15, 0, 0); // straight wise posture
+        catTorso.position.y = 0.35 + sitUp * 0.04;
+
+        // Cat head lifts and turns toward the right (+X) where the mouse is standing
+        catHeadGroup.position.set(0, 0.65 + sitUp * 0.06, -0.05);
+        catHeadGroup.rotation.set(
+          -0.12, // looking slightly down at desk
+          0.48,  // TURNS DIRECTLY TOWARDS THE MOUSE (+X)!
+          0.05
+        );
+
+        // Push glasses properly up
+        glassesGroup.position.set(0, 0.05, -0.52);
+
+        // Eyes wide open with glowing amber iris staring down
+        openEyesGroup.visible = true;
+        closedEyesGroup.visible = false;
+        openEyesGroup.scale.set(1.15, 1.1, 1.0);
+
+        // Whisker twitch of stern contemplation
+        catNose.position.z = -0.54 - Math.sin(pTime * 6) * 0.01;
+
+        // Mouse freezes in place, standing on tiptoes, caught red-handed!
+        alertBubble.scale.set(0, 0, 0);
+        mouseRoot.position.set(0.68, 1.42, -0.25);
+        mouseRoot.rotation.x = -0.15; // rigid guilty pose
+        mouseRoot.rotation.y = -Math.PI / 2.4;
+
+        // Mouse enthusiastically points glowing quest card at SearchO2 screen
+        mArmR.rotation.set(-Math.PI / 2.5, 0, -0.5); // pointing at screen
+        mArmL.rotation.set(0.2, 0, 0.3); // paw on chest
+        mouseHead.rotation.set(-0.25, 0.3, 0); // looking sheepishly up into cat's glasses
+      }
+
+      // --------------------------------------------------
+      // PHASE 4: TIRED SLOW BLINK & FALLING ASLEEP AGAIN (8.2 -> 10.0s)
+      // Cat slow blinks, sighs, head slumps back down to cozy nap position
+      // --------------------------------------------------
+      else {
+        const pTime = t - 8.2; // 0.0 -> 1.8s
+
+        if (pTime < 0.65) {
+          // Slow tired blink
+          const blinkProgress = pTime / 0.65;
+          openEyesGroup.scale.set(1.1, Math.max(0.05, 1.0 - blinkProgress * 1.6), 1.0);
+          openEyesGroup.visible = true;
+          closedEyesGroup.visible = false;
+          catHeadGroup.rotation.y = 0.48 - blinkProgress * 0.2;
+        } else {
+          // Eyes close and head slumps back to nap pose
+          openEyesGroup.visible = false;
+          closedEyesGroup.visible = true;
+
+          const slump = (pTime - 0.65) / 1.15;
+          catTorso.rotation.set(-slump * 0.25, 0, 0);
+          catTorso.position.y = 0.39 - slump * 0.04;
+
+          catHeadGroup.position.set(0, 0.71 - slump * 0.13, -0.05 - slump * 0.1);
+          catHeadGroup.rotation.set(-0.12 - slump * 0.23, 0.28 - slump * 0.36, -slump * 0.05);
+
+          glassesGroup.position.set(0, 0.05 - slump * 0.02, -0.52);
+        }
+
+        // Paw settles back on resting spot
+        rForearmGroup.position.set(0.18, 0.23, -0.36);
+        rForearmGroup.rotation.set(0, 0, 0);
+        rightArmGroup.rotation.set(0, 0, 0);
+
+        // Mouse drops ears in humorous facepalm / disbelief
+        mArmL.rotation.set(0.4, 0, 0.2);
+        mArmR.rotation.set(0.4, 0, -0.2);
+        mouseHead.rotation.set(0.3, 0, 0);
+        mouseRoot.rotation.x = 0.1;
+
+        // Snoring Zzz resumes
+        if (pTime > 1.1) {
+          zGroup.visible = true;
+          const zProgress = (pTime - 1.1) / 0.7;
+          zParticles[0].mesh.position.set(0.0, 1.85 + zProgress * 0.4, 0.25 - zProgress * 0.2);
+          zMat.opacity = zProgress * 0.85;
+        } else {
+          zGroup.visible = false;
+        }
+      }
+
+      // Continuous subtle tail swish for cat
+      catTail.rotation.y = Math.sin(t * 2.5) * 0.2;
+      catTail.rotation.z = Math.cos(t * 2.0) * 0.12;
+
+      // Mouse tail twitch
+      mouseTailGroup.rotation.z = Math.sin(t * 12) * 0.25;
+    }
+
+    // ----------------------------------------------------
+    // MAIN RENDER LOOP
+    // ----------------------------------------------------
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+
+      if (STATE.isPlaying) {
+        STATE.currentLoopTime = (STATE.currentLoopTime + delta * STATE.timeScale) % STATE.loopDuration;
+        document.getElementById('slider-timeline').value = STATE.currentLoopTime / STATE.loopDuration;
+      }
+
+      updateScreenCanvas(STATE.currentLoopTime);
+      updateAnimation(STATE.currentLoopTime);
+
+      dioramaGroup.position.y = Math.sin(clock.getElapsedTime() * 0.8) * 0.02;
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('load', () => {
+      animate();
+    });
+
+    // ----------------------------------------------------
+    // UI & CONTROLS INTERACTION
+    // ----------------------------------------------------
+    const btnPlay = document.getElementById('btn-toggle-play');
+    const iconPause = document.getElementById('icon-pause');
+    const iconPlay = document.getElementById('icon-play');
+
+    btnPlay.addEventListener('click', () => {
+      STATE.isPlaying = !STATE.isPlaying;
+      if (STATE.isPlaying) {
+        iconPause.classList.remove('hidden');
+        iconPlay.classList.add('hidden');
+      } else {
+        iconPause.classList.add('hidden');
+        iconPlay.classList.remove('hidden');
+      }
+    });
+
+    const speedSlider = document.getElementById('slider-speed');
+    const speedLabel = document.getElementById('speed-label');
+    speedSlider.addEventListener('input', (e) => {
+      STATE.timeScale = parseFloat(e.target.value);
+      speedLabel.innerText = `${STATE.timeScale.toFixed(1)}x`;
+    });
+
+    const timelineSlider = document.getElementById('slider-timeline');
+    timelineSlider.addEventListener('input', (e) => {
+      STATE.currentLoopTime = parseFloat(e.target.value) * STATE.loopDuration;
+    });
+
+    PHASES.forEach((p, idx) => {
+      const pill = document.getElementById(`phase-${idx}`);
+      pill.addEventListener('click', () => {
+        STATE.currentLoopTime = p.start + 0.05;
+        timelineSlider.value = STATE.currentLoopTime / STATE.loopDuration;
+      });
+    });
+
+    const btnNudge = document.getElementById('btn-nudge-mouse');
+    btnNudge.addEventListener('click', () => {
+      STATE.currentLoopTime = 3.3;
+      timelineSlider.value = 3.3 / STATE.loopDuration;
+      if (!STATE.isPlaying) {
+        STATE.isPlaying = true;
+        iconPause.classList.remove('hidden');
+        iconPlay.classList.add('hidden');
+      }
+    });
+
+    // Camera Presets (Optimal Diorama Orientation)
+    document.getElementById('btn-camera-iso').addEventListener('click', () => {
+      camera.position.set(11, 10, 11);
+      camera.zoom = 1.0;
+      camera.updateProjectionMatrix();
+      controls.target.set(-0.35, 1.15, 0.15);
+    });
+
+    document.getElementById('btn-camera-front').addEventListener('click', () => {
+      camera.position.set(2.0, 4.5, -9.5);
+      camera.zoom = 1.25;
+      camera.updateProjectionMatrix();
+      controls.target.set(-0.1, 1.35, -0.2);
+    });
+
+    document.getElementById('btn-camera-closeup').addEventListener('click', () => {
+      camera.position.set(5.0, 4.0, 3.5);
+      camera.zoom = 2.0;
+      camera.updateProjectionMatrix();
+      controls.target.set(0.45, 1.45, -0.25);
+    });
+
+    document.getElementById('btn-light-toggle').addEventListener('click', (e) => {
+      STATE.lampOn = !STATE.lampOn;
+      deskLampLight.intensity = STATE.lampOn ? 2.8 : 0.0;
+      e.currentTarget.classList.toggle('text-amber-300', STATE.lampOn);
+      e.currentTarget.classList.toggle('text-slate-400', !STATE.lampOn);
+    });
+
+    // Login Modal Toggle and Tabs
+    const modalDock = document.getElementById('login-modal-dock');
+    const btnToggleModal = document.getElementById('btn-toggle-modal');
+    const btnCloseModalDock = document.getElementById('btn-close-modal-dock');
+    if (btnToggleModal && modalDock) {
+      btnToggleModal.addEventListener('click', () => {
+        modalDock.classList.toggle('hidden');
+      });
+    }
+    if (btnCloseModalDock && modalDock) {
+      btnCloseModalDock.addEventListener('click', () => {
+        modalDock.classList.add('hidden');
+      });
+    }
+    const tabSignin = document.getElementById('tab-signin');
+    const tabRegister = document.getElementById('tab-register');
+    const fieldDisplay = document.getElementById('field-display-name');
+    const fieldConfirm = document.getElementById('field-confirm-pw');
+    const btnSubmitAuth = document.getElementById('btn-submit-auth');
+    if (tabSignin && tabRegister) {
+      tabSignin.addEventListener('click', () => {
+        tabSignin.className = 'flex-1 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow';
+        tabRegister.className = 'flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white';
+        fieldDisplay.classList.add('hidden');
+        fieldConfirm.classList.add('hidden');
+        btnSubmitAuth.innerText = 'Sign In to Station';
+      });
+      tabRegister.addEventListener('click', () => {
+        tabRegister.className = 'flex-1 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow';
+        tabSignin.className = 'flex-1 py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white';
+        fieldDisplay.classList.remove('hidden');
+        fieldConfirm.classList.remove('hidden');
+        btnSubmitAuth.innerText = 'Create Custodian Account & Save';
+      });
+    }
+    const btnTogglePw = document.getElementById('btn-toggle-pw');
+    const inputPw = document.getElementById('input-password');
+    if (btnTogglePw && inputPw) {
+      btnTogglePw.addEventListener('click', () => {
+        const isText = inputPw.type === 'text';
+        inputPw.type = isText ? 'password' : 'text';
+        btnTogglePw.innerText = isText ? '👁️' : '🔒';
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const asp = w / h;
+
+      camera.left = -viewSize * asp;
+      camera.right = viewSize * asp;
+      camera.top = viewSize;
+      camera.bottom = -viewSize;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(w, h);
+    });
+  </script>
+</body>
+</html>
