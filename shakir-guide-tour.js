@@ -479,6 +479,7 @@
     cooldownActive: false,
     cooldownRemaining: 0,
     cooldownTimer: null,
+    experienceUpdateTimer: null,
     walkerEl: null,
     speechBubbleEl: null,
     currentWalkToken: 0,
@@ -835,6 +836,11 @@
       '  font-weight: 900;',
       '  color: #F8FAFC;',
       '}',
+      '.shakir-nav-btn-group {',
+      '  display: flex;',
+      '  align-items: center;',
+      '  gap: 8px;',
+      '}',
       '.shakir-nav-btn {',
       '  background: #1E293B;',
       '  color: #E2E8F0;',
@@ -846,6 +852,9 @@
       '  cursor: pointer;',
       '  transition: all 0.2s;',
       '  white-space: nowrap;',
+      '  display: inline-flex;',
+      '  align-items: center;',
+      '  gap: 4px;',
       '}',
       '.shakir-nav-btn:hover {',
       '  background: #0284C7;',
@@ -866,31 +875,11 @@
       '  background: #DC2626;',
       '  color: #FFF;',
       '}',
-      '.shakir-retrigger-pill {',
-      '  position: fixed;',
-      '  bottom: 24px;',
-      '  right: 24px;',
-      '  z-index: 9190;',
-      '  background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);',
-      '  color: #FFF;',
-      '  border: 1.5px solid #38BDF8;',
-      '  border-radius: 9999px;',
-      '  padding: 8px 16px;',
-      '  display: flex;',
-      '  align-items: center;',
-      '  gap: 8px;',
-      '  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.45);',
-      '  font-family: Nunito, system-ui, sans-serif;',
-      '  font-size: 0.82rem;',
-      '  font-weight: 800;',
-      '  cursor: pointer;',
-      '  transition: all 0.2s ease;',
-      '  user-select: none;',
+      '.shakir-nav-ch-badge {',
+      '  display: none;',
       '}',
-      '.shakir-retrigger-pill:hover {',
-      '  transform: translateY(-2px) scale(1.02);',
-      '  box-shadow: 0 12px 28px rgba(2, 132, 199, 0.6);',
-      '  border-color: #BAE6FD;',
+      '.shakir-retrigger-pill {',
+      '  display: none !important;',
       '}',
       '.shakir-roadmap-list {',
       '  display: grid;',
@@ -940,38 +929,181 @@
       '  align-items: center;',
       '  justify-content: center;',
       '}',
-      '@media (max-width: 640px) {',
+      '@media (max-width: 640px), (max-height: 520px) {',
       '  .shakir-modal-backdrop {',
-      '    padding: 10px 8px;',
-      '    align-items: flex-start;',
-      '    justify-content: center;',
-      '    overflow-y: auto;',
-      '    -webkit-overflow-scrolling: touch;',
+      '    padding: 6px 8px !important;',
+      '    align-items: center !important;',
+      '    justify-content: center !important;',
+      '    overflow-y: auto !important;',
+      '    -webkit-overflow-scrolling: touch !important;',
       '  }',
       '  .shakir-modal-card {',
-      '    padding: 16px 14px 24px;',
-      '    border-radius: 18px;',
-      '    max-height: calc(100dvh - 20px);',
-      '    margin: 8px auto;',
-      '    overflow-y: auto;',
-      '    -webkit-overflow-scrolling: touch;',
-      '    overscroll-behavior: contain;',
-      '    width: 100%;',
+      '    padding: 12px 14px 16px !important;',
+      '    border-radius: 16px !important;',
+      '    max-width: min(94vw, 420px) !important;',
+      '    max-height: calc(100dvh - 20px) !important;',
+      '    margin: auto !important;',
+      '    overflow-y: auto !important;',
+      '    -webkit-overflow-scrolling: touch !important;',
+      '    overscroll-behavior: contain !important;',
+      '    box-sizing: border-box !important;',
+      '    width: 100% !important;',
+      '  }',
+      '  .shakir-modal-header {',
+      '    margin-bottom: 8px !important;',
+      '    gap: 8px !important;',
+      '  }',
+      '  .shakir-avatar-preview {',
+      '    width: 36px !important;',
+      '    height: 36px !important;',
+      '  }',
+      '  .shakir-avatar-preview svg {',
+      '    width: 30px !important;',
+      '    height: 54px !important;',
+      '  }',
+      '  .shakir-modal-title {',
+      '    font-size: 0.88rem !important;',
+      '    line-height: 1.2 !important;',
+      '  }',
+      '  .shakir-modal-subtitle {',
+      '    font-size: 0.65rem !important;',
+      '  }',
+      '  .shakir-modal-body {',
+      '    padding: 8px 10px !important;',
+      '    margin-bottom: 8px !important;',
+      '    font-size: 0.74rem !important;',
+      '    line-height: 1.35 !important;',
+      '    border-radius: 12px !important;',
+      '  }',
+      '  .shakir-modal-body p {',
+      '    font-size: 0.78rem !important;',
+      '    margin: 0 0 4px 0 !important;',
+      '  }',
+      '  .shakir-fun-fact-box {',
+      '    padding: 6px 8px !important;',
+      '    margin-bottom: 8px !important;',
+      '    font-size: 0.70rem !important;',
+      '    line-height: 1.3 !important;',
+      '    border-radius: 10px !important;',
+      '    gap: 6px !important;',
       '  }',
       '  .shakir-roadmap-list {',
-      '    grid-template-columns: 1fr;',
-      '    max-height: 220px;',
-      '    overflow-y: auto;',
-      '    -webkit-overflow-scrolling: touch;',
-      '    touch-action: pan-y;',
+      '    grid-template-columns: 1fr !important;',
+      '    gap: 5px !important;',
+      '    max-height: 180px !important;',
+      '    margin: 6px 0 !important;',
+      '    padding: 2px !important;',
+      '    overflow-y: auto !important;',
+      '    -webkit-overflow-scrolling: touch !important;',
+      '    touch-action: pan-y !important;',
       '  }',
+      '  .shakir-roadmap-item {',
+      '    padding: 6px 8px !important;',
+      '    border-radius: 8px !important;',
+      '    gap: 6px !important;',
+      '    display: flex !important;',
+      '    align-items: center !important;',
+      '    justify-content: space-between !important;',
+      '  }',
+      '  .shakir-roadmap-item .roadmap-item-title {',
+      '    font-size: 0.74rem !important;',
+      '    font-weight: 800 !important;',
+      '    line-height: 1.2 !important;',
+      '    word-break: break-word !important;',
+      '  }',
+      '  .shakir-roadmap-item .roadmap-item-desc {',
+      '    font-size: 0.64rem !important;',
+      '    line-height: 1.25 !important;',
+      '    display: -webkit-box !important;',
+      '    -webkit-line-clamp: 2 !important;',
+      '    -webkit-box-orient: vertical !important;',
+      '    overflow: hidden !important;',
+      '  }',
+      '  .shakir-roadmap-item .roadmap-item-action {',
+      '    font-size: 0.66rem !important;',
+      '    white-space: nowrap !important;',
+      '    flex-shrink: 0 !important;',
+      '  }',
+      '  .shakir-modal-actions {',
+      '    display: flex !important;',
+      '    flex-wrap: wrap !important;',
+      '    gap: 6px !important;',
+      '    margin-top: 8px !important;',
+      '  }',
+      '  .shakir-btn-primary {',
+      '    padding: 8px 12px !important;',
+      '    font-size: 0.76rem !important;',
+      '    border-radius: 10px !important;',
+      '    min-width: 110px !important;',
+      '    flex: 1 !important;',
+      '  }',
+      '  .shakir-btn-secondary {',
+      '    padding: 7px 10px !important;',
+      '    font-size: 0.74rem !important;',
+      '    border-radius: 10px !important;',
+      '  }',
+      '  .shakir-modal-close {',
+      '    width: 28px !important;',
+      '    height: 28px !important;',
+      '    font-size: 0.85rem !important;',
+      '    top: 8px !important;',
+      '    right: 8px !important;',
+      '  }',
+      '  /* Mobile tour navigation: Icon-based horizontal bar right on top of cooldown icon floater */',
       '  .shakir-tour-nav-dock {',
-      '    width: calc(100% - 16px);',
-      '    left: 8px;',
-      '    transform: none;',
-      '    top: 56px;',
-      '    padding: 5px 8px;',
-      '    gap: 6px;',
+      '    position: fixed !important;',
+      '    top: auto !important;',
+      '    left: auto !important;',
+      '    right: 12px !important;',
+      '    bottom: 146px !important;',
+      '    transform: none !important;',
+      '    width: auto !important;',
+      '    max-width: calc(100vw - 24px) !important;',
+      '    padding: 3px 6px !important;',
+      '    gap: 4px !important;',
+      '    border-radius: 9999px !important;',
+      '    background: rgba(15, 23, 42, 0.94) !important;',
+      '    border: 1.5px solid #38BDF8 !important;',
+      '    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 10px rgba(56, 189, 248, 0.3) !important;',
+      '    z-index: 99998 !important;',
+      '    animation: none !important;',
+      '    display: flex !important;',
+      '    align-items: center !important;',
+      '  }',
+      '  .shakir-nav-info {',
+      '    display: none !important;',
+      '  }',
+      '  .shakir-tour-nav-dock .nav-text {',
+      '    display: none !important;',
+      '  }',
+      '  .shakir-nav-btn-group {',
+      '    display: flex !important;',
+      '    align-items: center !important;',
+      '    gap: 3px !important;',
+      '  }',
+      '  .shakir-nav-btn {',
+      '    padding: 4px 6px !important;',
+      '    font-size: 0.76rem !important;',
+      '    min-width: 28px !important;',
+      '    height: 28px !important;',
+      '    border-radius: 8px !important;',
+      '    display: inline-flex !important;',
+      '    align-items: center !important;',
+      '    justify-content: center !important;',
+      '  }',
+      '  .shakir-nav-ch-badge {',
+      '    display: inline-flex !important;',
+      '    align-items: center !important;',
+      '    justify-content: center !important;',
+      '    background: rgba(56, 189, 248, 0.2) !important;',
+      '    border: 1px solid rgba(56, 189, 248, 0.4) !important;',
+      '    border-radius: 6px !important;',
+      '    padding: 2px 5px !important;',
+      '    font-size: 0.68rem !important;',
+      '    font-weight: 900 !important;',
+      '    color: #38BDF8 !important;',
+      '    white-space: nowrap !important;',
+      '    height: 24px !important;',
       '  }',
       '  .s2-shakir-guide {',
       '    transform: translate(-50%, -85%) scale(0.88);',
@@ -988,10 +1120,32 @@
       '    bottom: 102%;',
       '  }',
       '  .shakir-retrigger-pill {',
-      '    bottom: 68px;',
-      '    right: 10px;',
-      '    padding: 6px 12px;',
-      '    font-size: 0.74rem;',
+      '    display: none !important;',
+      '  }',
+      '}',
+      '@media (max-height: 520px) and (orientation: landscape) {',
+      '  .shakir-tour-nav-dock {',
+      '    bottom: 82px !important;',
+      '    right: 10px !important;',
+      '  }',
+      '  .shakir-modal-card {',
+      '    max-height: calc(100dvh - 12px) !important;',
+      '    padding: 8px 12px 12px !important;',
+      '  }',
+      '  .shakir-roadmap-list {',
+      '    grid-template-columns: repeat(2, 1fr) !important;',
+      '    max-height: 105px !important;',
+      '    gap: 4px !important;',
+      '  }',
+      '  .shakir-modal-body {',
+      '    padding: 6px 8px !important;',
+      '    margin-bottom: 6px !important;',
+      '    font-size: 0.70rem !important;',
+      '  }',
+      '  .shakir-fun-fact-box {',
+      '    padding: 4px 6px !important;',
+      '    margin-bottom: 6px !important;',
+      '    font-size: 0.66rem !important;',
       '  }',
       '}'
     ].join('\n');
@@ -1324,6 +1478,14 @@
 
     ensureFarmScreenActive();
     renderShakirReTriggerPill();
+    if (guideState.experienceUpdateTimer) {
+      clearTimeout(guideState.experienceUpdateTimer);
+      guideState.experienceUpdateTimer = null;
+    }
+    if (typeof global.closeModal === 'function') {
+      try { global.closeModal(); } catch (e) {}
+    }
+    closeGuideModal();
     guideState.active = true;
     guideState.currentChapter = targetCh;
     clearCooldown();
@@ -1401,9 +1563,9 @@
         } catch (e) {}
       }
 
-      // 4. Mark Chapter Exploration & Award XP
+      // 4. Mark Chapter Exploration & Award XP (pass skipRoadmapModal=true so CEO modal opens first)
       if (typeof global.exploreChapterObject === 'function') {
-        try { global.exploreChapterObject(chData.key); } catch (e) {}
+        try { global.exploreChapterObject(chData.key, true); } catch (e) {}
       }
       if (typeof global.state !== 'undefined' && global.state) {
         global.state.exploredChapters = global.state.exploredChapters || {};
@@ -1413,9 +1575,23 @@
         if (typeof global.state.xp === 'number' && global.state.xp === 0) global.state.xp = 5;
       }
 
-      // 5. Open Shakir's Welcoming CEO Dialogue for this landmark
+      // 5. Open Shakir's Welcoming CEO Dialogue for this landmark first
       setTimeout(function () {
         openGuideDialog(targetCh);
+
+        // 6. Sequential Modals: After 10s, smoothly close CEO modal and pop up green modal as experience update
+        if (guideState.experienceUpdateTimer) {
+          clearTimeout(guideState.experienceUpdateTimer);
+          guideState.experienceUpdateTimer = null;
+        }
+        guideState.experienceUpdateTimer = setTimeout(function () {
+          closeGuideModal();
+          if (typeof global.openChapterRoadmapForObject === 'function') {
+            try {
+              global.openChapterRoadmapForObject(chData.key, true);
+            } catch (err) {}
+          }
+        }, 10000);
       }, 400);
 
       // 6. Complete Wonder Touch and start Cooldown
@@ -1582,14 +1758,14 @@
       var isActive = (i === currentCh);
       roadmapHtml +=
         '<div class="shakir-roadmap-item' + (isActive ? ' active' : '') + '" data-goto-ch="' + i + '">' +
-          '<div style="display:flex;align-items:center;gap:8px;">' +
-            '<span style="font-size:1.15rem;">' + item.icon + '</span>' +
-            '<div>' +
-              '<div style="font-size:0.78rem;font-weight:900;color:#0F172A;">Ch. ' + i + ': ' + item.landmark + '</div>' +
-              '<div style="font-size:0.68rem;color:#64748B;">' + item.title + '</div>' +
+          '<div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;">' +
+            '<span style="font-size:1.1rem;flex-shrink:0;">' + item.icon + '</span>' +
+            '<div style="min-width:0;flex:1;">' +
+              '<div class="roadmap-item-title" style="font-size:0.76rem;font-weight:900;color:#0F172A;word-break:break-word;">Ch. ' + i + ': ' + item.landmark + '</div>' +
+              '<div class="roadmap-item-desc" style="font-size:0.66rem;color:#64748B;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">' + item.title + '</div>' +
             '</div>' +
           '</div>' +
-          '<span style="font-size:0.74rem;font-weight:800;color:' + (isActive ? '#0284C7' : '#94A3B8') + ';">' + (isActive ? '● Here' : 'Visit ➔') + '</span>' +
+          '<span class="roadmap-item-action" style="font-size:0.70rem;font-weight:800;color:' + (isActive ? '#0284C7' : '#94A3B8') + ';flex-shrink:0;white-space:nowrap;">' + (isActive ? '● Here' : 'Visit ➔') + '</span>' +
         '</div>';
     }
     roadmapHtml += '</div>';
@@ -1667,29 +1843,10 @@
   // Floating CEO Tour Re-Trigger Pill & Return Modal
   // ---------------------------------------------------------------------------
   function renderShakirReTriggerPill() {
-    if (!isGuestMode()) {
-      var old = document.getElementById('s2ShakirReTriggerBtn');
-      if (old && old.parentNode) old.parentNode.removeChild(old);
-      return;
-    }
-    var pill = document.getElementById('s2ShakirReTriggerBtn');
-    if (!pill) {
-      pill = document.createElement('button');
-      pill.type = 'button';
-      pill.id = 's2ShakirReTriggerBtn';
-      pill.className = 'shakir-retrigger-pill';
-      pill.setAttribute('title', 'Shakir · Co-Founder & CEO Tour (Click to explore)');
-      pill.innerHTML =
-        '<span style="font-size:1.15rem;line-height:1;">🧑‍💼</span>' +
-        '<span>Shakir CEO Tour</span>';
-      document.body.appendChild(pill);
-
-      pill.onclick = function (e) {
-        e.stopPropagation();
-        openReTriggerModal();
-      };
-    }
-    pill.style.display = 'flex';
+    // As per user specification: CEO tour guide will ONLY be visible in guest mode login home globe page.
+    // Completely remove sticky pill from the farm and from mobile view.
+    var old = document.getElementById('s2ShakirReTriggerBtn');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
   }
 
   function openReTriggerModal() {
@@ -1706,14 +1863,14 @@
       var isActive = (i === currentCh);
       roadmapHtml +=
         '<div class="shakir-roadmap-item' + (isActive ? ' active' : '') + '" data-retrigger-ch="' + i + '">' +
-          '<div style="display:flex;align-items:center;gap:8px;">' +
-            '<span style="font-size:1.15rem;">' + item.icon + '</span>' +
-            '<div>' +
-              '<div style="font-size:0.78rem;font-weight:900;color:#0F172A;">Ch. ' + i + ': ' + item.landmark + '</div>' +
-              '<div style="font-size:0.68rem;color:#64748B;">' + item.title + '</div>' +
+          '<div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;">' +
+            '<span style="font-size:1.1rem;flex-shrink:0;">' + item.icon + '</span>' +
+            '<div style="min-width:0;flex:1;">' +
+              '<div class="roadmap-item-title" style="font-size:0.76rem;font-weight:900;color:#0F172A;word-break:break-word;">Ch. ' + i + ': ' + item.landmark + '</div>' +
+              '<div class="roadmap-item-desc" style="font-size:0.66rem;color:#64748B;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">' + item.title + '</div>' +
             '</div>' +
           '</div>' +
-          '<span style="font-size:0.74rem;font-weight:800;color:' + (isActive ? '#0284C7' : '#94A3B8') + ';">' + (isActive ? '● Current' : 'Walk Here ➔') + '</span>' +
+          '<span class="roadmap-item-action" style="font-size:0.70rem;font-weight:800;color:' + (isActive ? '#0284C7' : '#94A3B8') + ';flex-shrink:0;white-space:nowrap;">' + (isActive ? '● Current' : 'Walk Here ➔') + '</span>' +
         '</div>';
     }
     roadmapHtml += '</div>';
@@ -1854,10 +2011,13 @@
         '<span class="shakir-nav-tag">🧭 Shakir CEO Tour</span>' +
         '<span class="shakir-nav-landmark">' + chData.icon + ' Ch. ' + targetCh + ': ' + chData.landmark + '</span>' +
       '</div>' +
-      '<button type="button" class="shakir-nav-btn" id="s2NavPrev" title="Walk to Previous Landmark">⏮️ Prev</button>' +
-      '<button type="button" class="shakir-nav-btn" id="s2NavNext" title="Walk to Next Landmark">Next ⏭️</button>' +
-      '<button type="button" class="shakir-nav-btn primary" id="s2NavRoadmap" title="View Landmark Roadmap">📜 Roadmap</button>' +
-      '<button type="button" class="shakir-nav-btn danger" id="s2NavStop" title="Exit Tour and Free Roam">✕ Free Roam</button>';
+      '<div class="shakir-nav-btn-group">' +
+        '<button type="button" class="shakir-nav-btn" id="s2NavPrev" title="Walk to Previous Landmark"><span class="nav-icon">⏮️</span><span class="nav-text"> Prev</span></button>' +
+        '<span class="shakir-nav-ch-badge" id="s2NavChBadge" title="Current Landmark: ' + chData.landmark + '">' + chData.icon + ' Ch. ' + targetCh + '</span>' +
+        '<button type="button" class="shakir-nav-btn" id="s2NavNext" title="Walk to Next Landmark"><span class="nav-text">Next </span><span class="nav-icon">⏭️</span></button>' +
+        '<button type="button" class="shakir-nav-btn primary" id="s2NavRoadmap" title="View Landmark Roadmap"><span class="nav-icon">📜</span><span class="nav-text"> Roadmap</span></button>' +
+        '<button type="button" class="shakir-nav-btn danger" id="s2NavStop" title="Exit Tour and Free Roam"><span class="nav-icon">✕</span><span class="nav-text"> Free Roam</span></button>' +
+      '</div>';
 
     document.getElementById('s2NavPrev').onclick = function () {
       var prev = (targetCh <= 1) ? 8 : (targetCh - 1);
@@ -1873,7 +2033,7 @@
     document.getElementById('s2NavStop').onclick = function () {
       hideTourNavDock();
       renderShakirReTriggerPill();
-      showShakirSpeechBubble('Free Roam mode active! Tap the CEO Tour button anytime to resume! 😊', 4000);
+      showShakirSpeechBubble('Free Roam mode active! Tap on Shakir or visit the home globe anytime to resume! 😊', 4000);
     };
   }
 
@@ -1908,7 +2068,7 @@
     openGuideDialog: openGuideDialog,
     openWelcomeOrProgressModal: function () {
       if (guideState.currentChapter && guideState.currentChapter > 1) {
-        openGuideDialog(guideState.currentChapter);
+        openReTriggerModal();
       } else {
         openWelcomeModal();
       }
