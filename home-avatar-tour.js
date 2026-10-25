@@ -559,7 +559,7 @@
       name: 'Global Biome Eco-Passport Hub',
       icon: '🌍',
       chapter: 7,
-      cost: 'Free Blueprint',
+      cost: 'Free Exploration Milestone',
       prereq: 'Chapter 7 unlocked ("World Regenerative Network")',
       steps: [
         '1. Advance to Chapter 7 after establishing your community eco-village.',
@@ -571,7 +571,7 @@
       name: 'Artemis Bioregenerative Launchpad',
       icon: '🚀',
       chapter: 8,
-      cost: 'Free Blueprint',
+      cost: 'Free Exploration Milestone',
       prereq: 'Chapter 8 unlocked ("Beyond Earth: The Living Cosmos")',
       steps: [
         '1. Advance to Chapter 8 after mastering planetary bioregenerative closed loops.',
@@ -2483,9 +2483,7 @@
             '<div class="ohm-badge">Ch. ' + chNum + ' · ' + chTitle + '</div>' +
           '</div>' +
         '</div>' +
-        (isTouchTrigger
-          ? '<button type="button" class="ohm-close-btn" id="s2OhmCloseBtn" onclick="if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.hideObjectHoverModal(); event.stopPropagation();" title="Close">✕</button>'
-          : '<span class="ohm-status-tag">📐 Blueprint</span>') +
+        '<button type="button" class="ohm-close-btn" id="s2OhmCloseBtn" onclick="if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.hideObjectHoverModal(); event.stopPropagation();" title="Close">✕</button>' +
       '</div>' +
       '<div class="ohm-preview-card">' +
         '<div class="ohm-preview-svg">' + miniSvg + '</div>' +
@@ -2576,7 +2574,7 @@
       el.style.height = (spot.h || 16) + '%';
       el.setAttribute('data-object-key', obj.key);
       el.setAttribute('data-facility-key', obj.key);
-      var bpTag = isGuestMode() ? '' : '<span class="s2-ghost-blueprint-tag">📐 Blueprint</span>';
+      var bpTag = '';
       el.innerHTML =
         '<div class="s2-ghost-structure s2-ghost-body">' +
           archSvg +
@@ -2688,8 +2686,8 @@
 
     card.innerHTML =
       '<span class="guide-pulse-dot"></span>' +
-      '<span class="tm-icon" title="' + (names || 'Blueprint Unlocked') + '">' + (def.icon || '🧭') + '</span>' +
-      '<span class="tm-text" title="Chapter ' + ch + ': ' + (def.title || '') + ' — Blueprint Unlocked"><b>Ch. ' + ch + ': ' + (def.title || 'Scout') + '</b></span>' +
+      '<span class="tm-icon" title="' + (names || 'Milestone Reached') + '">' + (def.icon || '🧭') + '</span>' +
+      '<span class="tm-text" title="Chapter ' + ch + ': ' + (def.title || '') + ' — Landmark Milestone"><b>Ch. ' + ch + ': ' + (def.title || 'Scout') + '</b></span>' +
       '<button type="button" class="s2-btn-primary tm-next-btn" id="s2TourContinue" title="Mark explored and continue tour">✓ Next ➔</button>' +
       '<button type="button" class="s2-modal-close-btn" id="s2TourModalClose" title="Close guidance capsule">✕</button>';
 

@@ -17,10 +17,10 @@
   var instance = null;
 
   var PHASES = [
-    { start: 0.0, end: 3.2, title: '💤 Ecosystem Hibernation', text: 'Planetary biostation enters dormant energy-saving equilibrium.' },
-    { start: 3.2, end: 6.0, title: '⚡ Atmospheric Pulse Alert', text: 'Kinetic signal detected: micro-custodian triggers urgent atmospheric login probe!' },
-    { start: 6.0, end: 8.2, title: '👁️ Custodian Awareness', text: 'Sensors awaken behind polarized lenses; biological surveillance verifies the incoming request.' },
-    { start: 8.2, end: 10.0, title: '🌱 Deep Regenerative Standby', text: 'System registers standby protocol; restorative biostimulation cycles resume until your next command.' }
+    { start: 0.0, end: 1.8, title: '💤 Ecosystem Hibernation', text: 'Planetary biostation enters dormant energy-saving equilibrium.' },
+    { start: 1.8, end: 4.2, title: '⚡ Atmospheric Pulse Alert', text: 'Kinetic signal detected: micro-custodian triggers urgent atmospheric login probe!' },
+    { start: 4.2, end: 5.6, title: '👁️ Custodian Awareness', text: 'Sensors awaken behind polarized lenses; biological surveillance verifies the incoming request.' },
+    { start: 5.6, end: 7.0, title: '🌱 Deep Regenerative Standby', text: 'System registers standby protocol; restorative biostimulation cycles resume until your next command.' }
   ];
 
   function ensureStyles() {
@@ -491,7 +491,7 @@
     this.state = {
       isPlaying: true,
       timeScale: 1.0,
-      loopDuration: 10.0,
+      loopDuration: 7.0,
       currentLoopTime: 0,
       lampOn: true,
       authTab: 'signin'
@@ -947,7 +947,13 @@
     keyboard.castShadow = true;
     deskGroup.add(keyboard);
 
+    var lastScreenUpdateSec = -1;
     function updateScreenCanvas(time) {
+      if (lastScreenUpdateSec >= 0 && (time - lastScreenUpdateSec >= 0 && time - lastScreenUpdateSec < 0.08)) {
+        return;
+      }
+      lastScreenUpdateSec = time;
+
       var grad = sctx.createLinearGradient(0, 0, 512, 320);
       grad.addColorStop(0, '#06283d');
       grad.addColorStop(1, '#1363df');
@@ -1344,9 +1350,9 @@
       var captionEl = document.getElementById('so2StoryCaption');
       if (captionEl) captionEl.innerText = PHASES[activeIndex].text;
 
-      // Phase 1: Ecosystem Hibernation (0 -> 3.2s)
-      if (t < 3.2) {
-        var breathe = Math.sin(t * 3.0);
+      // Phase 1: Ecosystem Hibernation (0 -> 1.8s)
+      if (t < 1.8) {
+        var breathe = Math.sin(t * 3.5);
         catTorso.position.set(0, 0.35 + breathe * 0.02, 0);
         catTorso.rotation.set(-0.25 - breathe * 0.03, 0, 0);
 
@@ -1361,15 +1367,15 @@
         rForearmGroup.rotation.set(0, 0, 0);
         rightArmGroup.rotation.set(0, 0, 0);
 
-        mouseRoot.position.set(0.68, 1.42, -0.28 + Math.sin(t * 4) * 0.02);
+        mouseRoot.position.set(0.68, 1.42, -0.28 + Math.sin(t * 3.5) * 0.015);
         mouseRoot.rotation.y = -Math.PI / 2.2;
         mouseRoot.rotation.x = 0;
-        mouseHead.rotation.set(0.1, 0, 0);
+        mouseHead.rotation.set(0.08, 0, 0);
         alertBubble.scale.set(0, 0, 0);
 
         zGroup.visible = true;
         zParticles.forEach(function (zp) {
-          var zt = (t * 0.6 + zp.phaseOffset) % 1.0;
+          var zt = (t * 0.75 + zp.phaseOffset) % 1.0;
           zp.mesh.position.set(
             zp.basePos.x + Math.sin(zt * 5 + zp.phaseOffset * 10) * 0.18,
             zp.basePos.y + zt * 0.7,
@@ -1380,55 +1386,69 @@
           zMat.opacity = Math.sin(zt * Math.PI) * 0.9;
         });
       }
-      // Phase 2: Atmospheric Pulse Alert (3.2 -> 6.0s)
-      else if (t < 6.0) {
-        var pTime = t - 3.2;
+      // Phase 2: Atmospheric Pulse Alert - Charming Bouncy Mouse (1.8 -> 4.2s)
+      else if (t < 4.2) {
+        var pTime = t - 1.8;
         zGroup.visible = false;
 
-        var knockFreq = 16.0;
-        var knock = Math.sin(pTime * knockFreq);
-        var tugPull = Math.max(0, knock);
+        // Charming bouncy kinematics (joyful hops, cuddly paw tug, cheerful quest wave)
+        var hop = Math.abs(Math.sin(pTime * 6.0)) * 0.07;
+        var sway = Math.sin(pTime * 6.0) * 0.03;
+        var tugCycle = Math.sin(pTime * 3.5);
+        var tugPull = Math.max(0, tugCycle) * 0.06;
 
         mouseRoot.position.set(
-          0.66 + tugPull * 0.05,
-          1.42 + Math.abs(Math.sin(pTime * 12)) * 0.08,
-          -0.25 - tugPull * 0.04
+          0.66 + sway,
+          1.42 + hop,
+          -0.26 - tugPull
         );
-        mouseRoot.rotation.y = -Math.PI / 2.2;
-        mouseRoot.rotation.x = 0.25 + tugPull * 0.2;
+        mouseRoot.rotation.y = -Math.PI / 2.2 + Math.sin(pTime * 4.0) * 0.1;
+        mouseRoot.rotation.x = 0.15 + tugPull * 0.15;
 
-        mouseHead.rotation.y = -0.3 + Math.sin(pTime * 8) * 0.2;
-        mArmL.rotation.set(0, 0, knock * 0.5);
-        mArmR.rotation.set(Math.sin(pTime * 10) * 0.4, 0, -0.4);
+        // Charming head tilt & curious gaze
+        mouseHead.rotation.set(
+          0.1 + Math.sin(pTime * 6.0) * 0.15,
+          -0.2 + Math.sin(pTime * 3.5) * 0.15,
+          0.1
+        );
 
-        alertBubble.scale.set(1, 1, 1);
-        alertBubble.rotation.z = Math.sin(pTime * 14) * 0.2;
+        // Right arm waves glowing quest card excitedly; Left arm affectionately tugs cat's paw
+        mArmR.rotation.set(-0.7 + Math.sin(pTime * 6.0) * 0.35, 0, -0.3 + Math.cos(pTime * 6.0) * 0.15);
+        mArmL.rotation.set(0.3 + tugPull * 0.8, 0, 0.3 + tugPull * 0.4);
 
-        rForearmGroup.position.set(0.18 + tugPull * 0.06, 0.23, -0.36 + tugPull * 0.03);
-        rForearmGroup.rotation.z = tugPull * 0.15;
-        rightArmGroup.rotation.y = -tugPull * 0.1;
+        // Alert bubble with playful soft bounce
+        var bBounce = 1.0 + Math.sin(pTime * 6.0) * 0.12;
+        alertBubble.scale.set(bBounce, bBounce, bBounce);
+        alertBubble.rotation.z = Math.sin(pTime * 5.0) * 0.1;
 
-        leftEar.rotation.z = 0.28 + Math.sin(pTime * 14) * 0.15;
-        rightEar.rotation.z = -0.28 - Math.sin(pTime * 12) * 0.15;
+        // Cat's resting arm responds gently to the sweet tug
+        rForearmGroup.position.set(0.18 + tugPull * 0.04, 0.23, -0.36 + tugPull * 0.02);
+        rForearmGroup.rotation.z = tugPull * 0.12;
+        rightArmGroup.rotation.y = -tugPull * 0.08;
 
-        catTorso.rotation.x = -0.25 + (pTime / 2.8) * 0.1;
-        catHeadGroup.rotation.x = -0.35 + (pTime / 2.8) * 0.15;
+        // Ears twitch with curiosity
+        leftEar.rotation.z = 0.28 + Math.sin(pTime * 8.0) * 0.08;
+        rightEar.rotation.z = -0.28 - Math.sin(pTime * 7.0) * 0.08;
 
-        if (pTime > 2.4) {
+        catTorso.rotation.x = -0.25 + (pTime / 2.4) * 0.1;
+        catHeadGroup.rotation.x = -0.35 + (pTime / 2.4) * 0.15;
+
+        // Cat stirs and squints open eyes toward the end of Phase 2
+        if (pTime > 1.9) {
           openEyesGroup.visible = true;
           closedEyesGroup.visible = false;
-          openEyesGroup.scale.set(1, 0.35, 1);
+          openEyesGroup.scale.set(1.0, Math.min(1.0, (pTime - 1.9) / 0.5), 1.0);
         } else {
           openEyesGroup.visible = false;
           closedEyesGroup.visible = true;
         }
       }
-      // Phase 3: Custodian Awareness (6.0 -> 8.2s)
-      else if (t < 8.2) {
-        var pTime3 = t - 6.0;
+      // Phase 3: Custodian Awareness (4.2 -> 5.6s)
+      else if (t < 5.6) {
+        var pTime3 = t - 4.2;
         zGroup.visible = false;
 
-        var sitUp = Math.min(1, pTime3 * 1.6);
+        var sitUp = Math.min(1, pTime3 * 2.0);
         catTorso.rotation.set(-0.15 + sitUp * 0.15, 0, 0);
         catTorso.position.y = 0.35 + sitUp * 0.04;
 
@@ -1441,23 +1461,26 @@
         closedEyesGroup.visible = false;
         openEyesGroup.scale.set(1.15, 1.1, 1.0);
 
-        catNose.position.z = -0.54 - Math.sin(pTime3 * 6) * 0.01;
+        catNose.position.z = -0.54 - Math.sin(pTime3 * 4) * 0.01;
 
         alertBubble.scale.set(0, 0, 0);
-        mouseRoot.position.set(0.68, 1.42, -0.25);
-        mouseRoot.rotation.x = -0.15;
-        mouseRoot.rotation.y = -Math.PI / 2.4;
 
-        mArmR.rotation.set(-Math.PI / 2.5, 0, -0.5);
-        mArmL.rotation.set(0.2, 0, 0.3);
-        mouseHead.rotation.set(-0.25, 0.3, 0);
+        // Mouse happy victory hop
+        var victoryHop = Math.abs(Math.sin(pTime3 * 7.0)) * 0.08;
+        mouseRoot.position.set(0.68, 1.42 + victoryHop, -0.25);
+        mouseRoot.rotation.x = -0.1;
+        mouseRoot.rotation.y = -Math.PI / 2.3;
+
+        mArmR.rotation.set(-Math.PI / 2.6, 0, -0.4);
+        mArmL.rotation.set(0.2, 0, 0.2);
+        mouseHead.rotation.set(-0.2, 0.25, 0);
       }
-      // Phase 4: Deep Regenerative Standby (8.2 -> 10.0s)
+      // Phase 4: Deep Regenerative Standby (5.6 -> 7.0s)
       else {
-        var pTime4 = t - 8.2;
+        var pTime4 = t - 5.6;
 
-        if (pTime4 < 0.65) {
-          var blinkProgress = pTime4 / 0.65;
+        if (pTime4 < 0.6) {
+          var blinkProgress = pTime4 / 0.6;
           openEyesGroup.scale.set(1.1, Math.max(0.05, 1.0 - blinkProgress * 1.6), 1.0);
           openEyesGroup.visible = true;
           closedEyesGroup.visible = false;
@@ -1466,7 +1489,7 @@
           openEyesGroup.visible = false;
           closedEyesGroup.visible = true;
 
-          var slump = (pTime4 - 0.65) / 1.15;
+          var slump = (pTime4 - 0.6) / 0.8;
           catTorso.rotation.set(-slump * 0.25, 0, 0);
           catTorso.position.y = 0.39 - slump * 0.04;
 
@@ -1480,14 +1503,14 @@
         rForearmGroup.rotation.set(0, 0, 0);
         rightArmGroup.rotation.set(0, 0, 0);
 
-        mArmL.rotation.set(0.4, 0, 0.2);
-        mArmR.rotation.set(0.4, 0, -0.2);
-        mouseHead.rotation.set(0.3, 0, 0);
-        mouseRoot.rotation.x = 0.1;
+        mArmL.rotation.set(0.3, 0, 0.15);
+        mArmR.rotation.set(0.3, 0, -0.15);
+        mouseHead.rotation.set(0.1, 0, 0);
+        mouseRoot.rotation.x = 0.05;
 
-        if (pTime4 > 1.1) {
+        if (pTime4 > 0.8) {
           zGroup.visible = true;
-          var zProgress = (pTime4 - 1.1) / 0.7;
+          var zProgress = (pTime4 - 0.8) / 0.6;
           zParticles[0].mesh.position.set(0.0, 1.85 + zProgress * 0.4, 0.25 - zProgress * 0.2);
           zMat.opacity = zProgress * 0.85;
         } else {
@@ -1684,8 +1707,8 @@
     var btnPulse = document.getElementById('btnPulseTrigger');
     if (btnPulse) {
       btnPulse.addEventListener('click', function () {
-        self.state.currentLoopTime = 3.3;
-        if (sliderTimeline) sliderTimeline.value = 3.3 / self.state.loopDuration;
+        self.state.currentLoopTime = 1.9;
+        if (sliderTimeline) sliderTimeline.value = 1.9 / self.state.loopDuration;
         if (!self.state.isPlaying) {
           self.state.isPlaying = true;
           if (btnPlay) btnPlay.innerText = '⏸️';

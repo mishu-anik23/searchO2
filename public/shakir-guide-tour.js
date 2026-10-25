@@ -866,12 +866,40 @@
       '  background: #DC2626;',
       '  color: #FFF;',
       '}',
+      '.shakir-retrigger-pill {',
+      '  position: fixed;',
+      '  bottom: 24px;',
+      '  right: 24px;',
+      '  z-index: 9190;',
+      '  background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);',
+      '  color: #FFF;',
+      '  border: 1.5px solid #38BDF8;',
+      '  border-radius: 9999px;',
+      '  padding: 8px 16px;',
+      '  display: flex;',
+      '  align-items: center;',
+      '  gap: 8px;',
+      '  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.45);',
+      '  font-family: Nunito, system-ui, sans-serif;',
+      '  font-size: 0.82rem;',
+      '  font-weight: 800;',
+      '  cursor: pointer;',
+      '  transition: all 0.2s ease;',
+      '  user-select: none;',
+      '}',
+      '.shakir-retrigger-pill:hover {',
+      '  transform: translateY(-2px) scale(1.02);',
+      '  box-shadow: 0 12px 28px rgba(2, 132, 199, 0.6);',
+      '  border-color: #BAE6FD;',
+      '}',
       '.shakir-roadmap-list {',
       '  display: grid;',
       '  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));',
       '  gap: 8px;',
       '  max-height: 240px;',
       '  overflow-y: auto;',
+      '  -webkit-overflow-scrolling: touch;',
+      '  touch-action: pan-y;',
       '  padding: 6px 2px;',
       '  margin: 10px 0;',
       '}',
@@ -914,25 +942,56 @@
       '}',
       '@media (max-width: 640px) {',
       '  .shakir-modal-backdrop {',
-      '    padding: 8px;',
+      '    padding: 10px 8px;',
       '    align-items: flex-start;',
+      '    justify-content: center;',
+      '    overflow-y: auto;',
+      '    -webkit-overflow-scrolling: touch;',
       '  }',
       '  .shakir-modal-card {',
-      '    padding: 16px 14px;',
+      '    padding: 16px 14px 24px;',
       '    border-radius: 18px;',
-      '    max-height: calc(100dvh - 16px);',
-      '    margin: auto 0;',
+      '    max-height: calc(100dvh - 20px);',
+      '    margin: 8px auto;',
+      '    overflow-y: auto;',
+      '    -webkit-overflow-scrolling: touch;',
+      '    overscroll-behavior: contain;',
+      '    width: 100%;',
       '  }',
       '  .shakir-roadmap-list {',
       '    grid-template-columns: 1fr;',
-      '    max-height: 200px;',
+      '    max-height: 220px;',
+      '    overflow-y: auto;',
+      '    -webkit-overflow-scrolling: touch;',
+      '    touch-action: pan-y;',
       '  }',
       '  .shakir-tour-nav-dock {',
-      '    width: calc(100% - 20px);',
-      '    left: 10px;',
+      '    width: calc(100% - 16px);',
+      '    left: 8px;',
       '    transform: none;',
-      '    top: 60px;',
+      '    top: 56px;',
+      '    padding: 5px 8px;',
+      '    gap: 6px;',
+      '  }',
+      '  .s2-shakir-guide {',
+      '    transform: translate(-50%, -85%) scale(0.88);',
+      '  }',
+      '  .shakir-head-tag {',
+      '    top: -22px;',
+      '    font-size: 0.60rem;',
+      '    padding: 2px 7px;',
+      '  }',
+      '  .shakir-speech-bubble {',
+      '    font-size: 0.70rem;',
       '    padding: 6px 10px;',
+      '    max-width: 210px;',
+      '    bottom: 102%;',
+      '  }',
+      '  .shakir-retrigger-pill {',
+      '    bottom: 68px;',
+      '    right: 10px;',
+      '    padding: 6px 12px;',
+      '    font-size: 0.74rem;',
       '  }',
       '}'
     ].join('\n');
@@ -1235,42 +1294,88 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Ensure Farm Screen is Active & Visible (Immediate transition from Guest Mode)
+  // ---------------------------------------------------------------------------
+  function ensureFarmScreenActive() {
+    if (typeof global.switchScreen === 'function') {
+      try { global.switchScreen('farm'); } catch (e) {}
+    } else if (typeof window !== 'undefined' && typeof window.switchScreen === 'function') {
+      try { window.switchScreen('farm'); } catch (e) {}
+    }
+    var fScreen = document.getElementById('farmScreen');
+    var rScreen = document.getElementById('regionScreen');
+    if (rScreen) rScreen.style.display = 'none';
+    if (fScreen) fScreen.style.display = 'block';
+    if (typeof global.currentScreen !== 'undefined') global.currentScreen = 'farm';
+  }
+
+  function isMobileViewport() {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth <= 860 || window.innerHeight <= 520 ||
+      (window.matchMedia && window.matchMedia('(max-width: 860px), (max-height: 520px), (pointer: coarse)').matches);
+  }
+
+  // ---------------------------------------------------------------------------
   // Walk to Chapter Guided Tour
   // ---------------------------------------------------------------------------
   function walkToChapter(targetCh) {
     targetCh = parseInt(targetCh, 10);
     if (!targetCh || targetCh < 1 || targetCh > 8) targetCh = 1;
 
+    ensureFarmScreenActive();
+    renderShakirReTriggerPill();
     guideState.active = true;
     guideState.currentChapter = targetCh;
     clearCooldown();
     hideShakirSpeechBubble();
 
-    var el = guideState.walkerEl;
-    if (!el || !el.parentNode) {
-      el = spawnShakirWalker(getInitialCoordinates(targetCh));
-    }
-
-    // Retrieve target coordinates from avatar system or fallbacks
+    // Target coordinates & Waypoints
     var targets = getTargetCoordinates(targetCh);
-    var from = {
-      left: parseFloat(el.style.left) || 48,
-      top: parseFloat(el.style.top) || 42
-    };
+    var gatePos = { left: 92.5, top: 52.0 };
+    var meadowPos = { left: 70.0, top: 48.0 };
 
-    var mid = {
-      left: (from.left + targets.standPoint.left) / 2 + (Math.random() * 2 - 1),
-      top: (from.top + targets.standPoint.top) / 2 + (Math.random() * 2 - 1)
-    };
+    var el = guideState.walkerEl;
+    var waypoints = [];
+    var walkDuration = 3600;
 
-    var dist = Math.hypot(targets.standPoint.left - from.left, targets.standPoint.top - from.top);
-    var walkDuration = Math.max(3200, Math.min(5400, Math.round(dist * 100)));
+    if (targetCh === 1) {
+      // Start Chapter 1: visually spawn outside Main Gate, walk into Plot 1!
+      if (!el || !el.parentNode) {
+        el = spawnShakirWalker(gatePos);
+      } else {
+        el.style.left = gatePos.left + '%';
+        el.style.top = gatePos.top + '%';
+      }
+      waypoints = [gatePos, meadowPos, targets.standPoint];
+      walkDuration = 3800;
+      showSkyHeading('Shakir enters through Main Gate ⛩️', { left: 92.5, top: 45.0 }, '⛩️');
+      showShakirSpeechBubble('👋 Welcome to our farm! Walking through the main gate to Plot 1! ⛩️', 3400);
+    } else {
+      if (!el || !el.parentNode) {
+        el = spawnShakirWalker(gatePos);
+        waypoints = [gatePos, meadowPos, targets.standPoint];
+        walkDuration = 4200;
+      } else {
+        var from = {
+          left: parseFloat(el.style.left) || 48,
+          top: parseFloat(el.style.top) || 42
+        };
+        var mid = {
+          left: (from.left + targets.standPoint.left) / 2 + (Math.random() * 2 - 1),
+          top: (from.top + targets.standPoint.top) / 2 + (Math.random() * 2 - 1)
+        };
+        var dist = Math.hypot(targets.standPoint.left - from.left, targets.standPoint.top - from.top);
+        walkDuration = Math.max(3000, Math.min(5200, Math.round(dist * 95)));
+        waypoints = [from, mid, targets.standPoint];
+      }
+      var chDataInit = SHAKIR_CHAPTERS[targetCh] || SHAKIR_CHAPTERS[1];
+      showShakirSpeechBubble('Walking to ' + chDataInit.landmark + '... 🏃', 2400);
+    }
 
     var chData = SHAKIR_CHAPTERS[targetCh] || SHAKIR_CHAPTERS[1];
     renderTourNavDock(targetCh);
-    showShakirSpeechBubble('Walking to ' + chData.landmark + '... 🏃', 2400);
 
-    walkPath(el, [from, mid, targets.standPoint], walkDuration, function () {
+    walkPath(el, waypoints, walkDuration, function () {
       if (!guideState.active) return;
 
       // 1. Wonder Touch: Arm reaches up with cyan scanning device!
@@ -1341,6 +1446,20 @@
         var res = global.SearchO2HomeAvatar.getScoutMarkerTouchTarget(ch);
         if (res && res.standPoint && res.touchPoint) return res;
       } catch (e) {}
+    }
+
+    if (isMobileViewport()) {
+      var mobileCalibrated = {
+        1: { standPoint: { left: 42.0, top: 38.0 }, touchPoint: { left: 42.0, top: 30.0 } },
+        2: { standPoint: { left: 18.0, top: 72.0 }, touchPoint: { left: 16.0, top: 64.0 } },
+        3: { standPoint: { left: 40.0, top: 82.0 }, touchPoint: { left: 40.0, top: 72.0 } },
+        4: { standPoint: { left: 42.0, top: 40.0 }, touchPoint: { left: 42.0, top: 32.0 } },
+        5: { standPoint: { left: 10.0, top: 74.0 }, touchPoint: { left: 8.0, top: 66.0 } },
+        6: { standPoint: { left: 66.0, top: 82.0 }, touchPoint: { left: 66.0, top: 72.0 } },
+        7: { standPoint: { left: 80.0, top: 40.0 }, touchPoint: { left: 80.0, top: 32.0 } },
+        8: { standPoint: { left: 80.0, top: 82.0 }, touchPoint: { left: 80.0, top: 72.0 } }
+      };
+      if (mobileCalibrated[ch]) return mobileCalibrated[ch];
     }
 
     var calibrated = {
@@ -1534,13 +1653,144 @@
     document.getElementById('btnShakirLookAround').onclick = function () {
       closeGuideModal();
       hideTourNavDock();
-      showShakirSpeechBubble('Enjoy exploring the farm! Tap on me anytime for guidance! 🧑‍💼', 4500);
+      renderShakirReTriggerPill();
+      showShakirSpeechBubble('Enjoy exploring the farm! Tap on me or the CEO Tour button anytime! 🧑‍💼', 4500);
     };
   }
 
   function openShakirDialogue() {
     if (!isGuestMode()) return;
     openGuideDialog(guideState.currentChapter);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Floating CEO Tour Re-Trigger Pill & Return Modal
+  // ---------------------------------------------------------------------------
+  function renderShakirReTriggerPill() {
+    if (!isGuestMode()) {
+      var old = document.getElementById('s2ShakirReTriggerBtn');
+      if (old && old.parentNode) old.parentNode.removeChild(old);
+      return;
+    }
+    var pill = document.getElementById('s2ShakirReTriggerBtn');
+    if (!pill) {
+      pill = document.createElement('button');
+      pill.type = 'button';
+      pill.id = 's2ShakirReTriggerBtn';
+      pill.className = 'shakir-retrigger-pill';
+      pill.setAttribute('title', 'Shakir · Co-Founder & CEO Tour (Click to explore)');
+      pill.innerHTML =
+        '<span style="font-size:1.15rem;line-height:1;">🧑‍💼</span>' +
+        '<span>Shakir CEO Tour</span>';
+      document.body.appendChild(pill);
+
+      pill.onclick = function (e) {
+        e.stopPropagation();
+        openReTriggerModal();
+      };
+    }
+    pill.style.display = 'flex';
+  }
+
+  function openReTriggerModal() {
+    if (!isGuestMode()) return;
+    ensureShakirStyles();
+    closeGuideModal();
+
+    var currentCh = guideState.currentChapter || 1;
+
+    // Generate 8-chapter landmark roadmap
+    var roadmapHtml = '<div class="shakir-roadmap-list">';
+    for (var i = 1; i <= 8; i++) {
+      var item = SHAKIR_CHAPTERS[i];
+      var isActive = (i === currentCh);
+      roadmapHtml +=
+        '<div class="shakir-roadmap-item' + (isActive ? ' active' : '') + '" data-retrigger-ch="' + i + '">' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<span style="font-size:1.15rem;">' + item.icon + '</span>' +
+            '<div>' +
+              '<div style="font-size:0.78rem;font-weight:900;color:#0F172A;">Ch. ' + i + ': ' + item.landmark + '</div>' +
+              '<div style="font-size:0.68rem;color:#64748B;">' + item.title + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<span style="font-size:0.74rem;font-weight:800;color:' + (isActive ? '#0284C7' : '#94A3B8') + ';">' + (isActive ? '● Current' : 'Walk Here ➔') + '</span>' +
+        '</div>';
+    }
+    roadmapHtml += '</div>';
+
+    var modal = document.createElement('div');
+    modal.className = 'shakir-modal-backdrop';
+    modal.id = 's2ShakirModal';
+
+    modal.innerHTML =
+      '<div class="shakir-modal-card" style="max-width:540px;" role="dialog" aria-modal="true">' +
+        '<button type="button" class="shakir-modal-close" id="btnShakirClose" title="Close">✕</button>' +
+        '<div class="shakir-modal-header">' +
+          '<div class="shakir-avatar-preview">' +
+            renderShakirFigureSvg({ w: 48, h: 88, unique: 'shakir_retrigger' }) +
+          '</div>' +
+          '<div>' +
+            '<div class="shakir-modal-title">Shakir · Co-Founder & CEO Guide</div>' +
+            '<div class="shakir-modal-subtitle">GERMAN FARM EXPLORATION ROADMAP</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="shakir-modal-body" style="padding:12px 14px;margin-bottom:12px;background:#F0F9FF;border:1.5px solid #BAE6FD;border-radius:14px;">' +
+          '<p style="margin:0 0 6px 0;font-size:0.92rem;font-weight:800;color:#0369A1;">' +
+            '👋 Welcome back! Thanks for choosing to explore our farm together again!' +
+          '</p>' +
+          '<div style="font-size:0.76rem;color:#475569;line-height:1.45;">' +
+            'Where would you like to visit next? Choose any landmark on the roadmap below to start a direct guided walk, or restart the tour from the beginning:' +
+          '</div>' +
+        '</div>' +
+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+          '<span style="font-size:0.72rem;font-weight:800;color:#0284C7;text-transform:uppercase;letter-spacing:0.5px;">Landmark Roadmap (Select to Walk)</span>' +
+        '</div>' +
+        roadmapHtml +
+
+        '<div class="shakir-modal-actions" style="margin-top:14px;">' +
+          '<button type="button" class="shakir-btn-primary" id="btnShakirRestartBeginning">' +
+            '<span>🔄 Restart from Beginning (Chapter 1) ➔</span>' +
+          '</button>' +
+          (currentCh > 1 && currentCh <= 8 ?
+            '<button type="button" class="shakir-btn-secondary" id="btnShakirContinueCurrent">' +
+              'Continue Tour (Ch. ' + currentCh + ') ➔' +
+            '</button>' : '') +
+          '<button type="button" class="shakir-btn-secondary" id="btnShakirCloseRetrigger">Close</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(modal);
+    guideState.dialogOpen = true;
+
+    modal.onclick = function (e) {
+      if (e.target === modal) closeGuideModal();
+    };
+    document.getElementById('btnShakirClose').onclick = closeGuideModal;
+    var btnCloseRetrigger = document.getElementById('btnShakirCloseRetrigger');
+    if (btnCloseRetrigger) btnCloseRetrigger.onclick = closeGuideModal;
+
+    modal.querySelectorAll('[data-retrigger-ch]').forEach(function (btn) {
+      btn.onclick = function () {
+        var ch = parseInt(btn.getAttribute('data-retrigger-ch'), 10);
+        closeGuideModal();
+        walkToChapter(ch);
+      };
+    });
+
+    document.getElementById('btnShakirRestartBeginning').onclick = function () {
+      closeGuideModal();
+      walkToChapter(1);
+    };
+
+    var btnContinue = document.getElementById('btnShakirContinueCurrent');
+    if (btnContinue) {
+      btnContinue.onclick = function () {
+        closeGuideModal();
+        walkToChapter(currentCh);
+      };
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1552,6 +1802,7 @@
       return;
     }
     ensureShakirStyles();
+    renderShakirReTriggerPill();
 
     // Prevent regular avatar system from launching avatar selection overlay
     if (global.SearchO2HomeAvatar) {
@@ -1621,7 +1872,8 @@
     };
     document.getElementById('s2NavStop').onclick = function () {
       hideTourNavDock();
-      showShakirSpeechBubble('Free Roam mode active! Tap on me anytime to resume our guided tour! 😊', 4000);
+      renderShakirReTriggerPill();
+      showShakirSpeechBubble('Free Roam mode active! Tap the CEO Tour button anytime to resume! 😊', 4000);
     };
   }
 
@@ -1632,6 +1884,10 @@
     var walker = document.getElementById('s2ShakirGuide');
     if (walker && walker.parentNode) {
       walker.parentNode.removeChild(walker);
+    }
+    var pill = document.getElementById('s2ShakirReTriggerBtn');
+    if (pill && pill.parentNode) {
+      pill.parentNode.removeChild(pill);
     }
     guideState.active = false;
     guideState.walkerEl = null;
@@ -1647,6 +1903,8 @@
     walkToChapter: walkToChapter,
     walkToNextChapter: walkToNextChapter,
     openWelcomeModal: openWelcomeModal,
+    openReTriggerModal: openReTriggerModal,
+    renderShakirReTriggerPill: renderShakirReTriggerPill,
     openGuideDialog: openGuideDialog,
     openWelcomeOrProgressModal: function () {
       if (guideState.currentChapter && guideState.currentChapter > 1) {

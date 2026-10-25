@@ -210,16 +210,16 @@
     const STATE = {
       isPlaying: true,
       timeScale: 1.0,
-      loopDuration: 10.0,
+      loopDuration: 7.0,
       currentLoopTime: 0,
       lampOn: true
     };
 
     const PHASES = [
-      { start: 0.0, end: 3.2, text: 'Planetary biostation enters dormant energy-saving equilibrium.' },
-      { start: 3.2, end: 6.0, text: 'Kinetic signal detected: micro-custodian triggers urgent atmospheric login probe!' },
-      { start: 6.0, end: 8.2, text: 'Sensors awaken behind polarized lenses; biological surveillance verifies the incoming request.' },
-      { start: 8.2, end: 10.0, text: 'System registers standby protocol; restorative biostimulation cycles resume until your next command.' }
+      { start: 0.0, end: 1.8, text: 'Planetary biostation enters dormant energy-saving equilibrium.' },
+      { start: 1.8, end: 4.2, text: 'Kinetic signal detected: micro-custodian triggers urgent atmospheric login probe!' },
+      { start: 4.2, end: 5.6, text: 'Sensors awaken behind polarized lenses; biological surveillance verifies the incoming request.' },
+      { start: 5.6, end: 7.0, text: 'System registers standby protocol; restorative biostimulation cycles resume until your next command.' }
     ];
 
     // ----------------------------------------------------
@@ -548,7 +548,13 @@
     keyboard.castShadow = true;
     deskGroup.add(keyboard);
 
+    let lastScreenUpdateSec = -1;
     function updateScreenCanvas(time) {
+      if (lastScreenUpdateSec >= 0 && (time - lastScreenUpdateSec >= 0 && time - lastScreenUpdateSec < 0.08)) {
+        return;
+      }
+      lastScreenUpdateSec = time;
+
       const grad = sctx.createLinearGradient(0, 0, 512, 320);
       grad.addColorStop(0, '#06283d');
       grad.addColorStop(1, '#1363df');
@@ -1031,17 +1037,17 @@
         rightArmGroup.rotation.set(0, 0, 0);
 
         // Mouse tiptoeing eagerly around the paw, waiting to strike
-        mouseRoot.position.set(0.68, 1.42, -0.28 + Math.sin(t * 4) * 0.02);
+        mouseRoot.position.set(0.68, 1.42, -0.28 + Math.sin(t * 3.5) * 0.015);
         // Mouse faces the cat paw (-X direction)
         mouseRoot.rotation.y = -Math.PI / 2.2;
         mouseRoot.rotation.x = 0;
-        mouseHead.rotation.set(0.1, 0, 0);
+        mouseHead.rotation.set(0.08, 0, 0);
         alertBubble.scale.set(0, 0, 0);
 
         // Zzz snoring particles floating up
         zGroup.visible = true;
         zParticles.forEach(zp => {
-          const zt = (t * 0.6 + zp.phaseOffset) % 1.0;
+          const zt = (t * 0.75 + zp.phaseOffset) % 1.0;
           zp.mesh.position.set(
             zp.basePos.x + Math.sin(zt * 5 + zp.phaseOffset * 10) * 0.18,
             zp.basePos.y + zt * 0.7,
@@ -1054,55 +1060,58 @@
       }
 
       // --------------------------------------------------
-      // PHASE 2: MOUSE TUGGING & KNOCKING CAT'S PAW (3.2 -> 6.0s)
-      // Mouse jumps up and down, grabs and shakes the cat's arm, waving card!
+      // PHASE 2: CHARMING, BOUNCY MOUSE TUGGING & COAXING (1.8 -> 4.2s)
+      // Playful hops, cuddly paw tug, cheerful quest wave
       // --------------------------------------------------
-      else if (t < 6.0) {
-        const pTime = t - 3.2; // 0.0 -> 2.8s
+      else if (t < 4.2) {
+        const pTime = t - 1.8;
         zGroup.visible = false;
 
-        const knockFreq = 16.0;
-        const knock = Math.sin(pTime * knockFreq);
-        const tugPull = Math.max(0, knock);
+        const hop = Math.abs(Math.sin(pTime * 6.0)) * 0.07;
+        const sway = Math.sin(pTime * 6.0) * 0.03;
+        const tugCycle = Math.sin(pTime * 3.5);
+        const tugPull = Math.max(0, tugCycle) * 0.06;
 
-        // Mouse is aggressively tugging and jumping on desk
         mouseRoot.position.set(
-          0.66 + tugPull * 0.05,
-          1.42 + Math.abs(Math.sin(pTime * 12)) * 0.08, // energetic jumping!
-          -0.25 - tugPull * 0.04
+          0.66 + sway,
+          1.42 + hop,
+          -0.26 - tugPull
         );
-        // Angled directly facing the resting cat's paw (-X)
-        mouseRoot.rotation.y = -Math.PI / 2.2;
-        mouseRoot.rotation.x = 0.25 + tugPull * 0.2; // leaning back while tugging
+        mouseRoot.rotation.y = -Math.PI / 2.2 + Math.sin(pTime * 4.0) * 0.1;
+        mouseRoot.rotation.x = 0.15 + tugPull * 0.15;
 
-        // Head bobbing and pointing towards the glowing monitor
-        mouseHead.rotation.y = -0.3 + Math.sin(pTime * 8) * 0.2;
+        // Charming head tilt & curious gaze
+        mouseHead.rotation.set(
+          0.1 + Math.sin(pTime * 6.0) * 0.15,
+          -0.2 + Math.sin(pTime * 3.5) * 0.15,
+          0.1
+        );
 
-        // Knocking / tugging arm vigorously yanks the cat paw
-        mArmL.rotation.set(0, 0, knock * 0.5);
-        mArmR.rotation.set(Math.sin(pTime * 10) * 0.4, 0, -0.4);
+        // Right arm waves glowing quest card excitedly; Left arm affectionately tugs cat's paw
+        mArmR.rotation.set(-0.7 + Math.sin(pTime * 6.0) * 0.35, 0, -0.3 + Math.cos(pTime * 6.0) * 0.15);
+        mArmL.rotation.set(0.3 + tugPull * 0.8, 0, 0.3 + tugPull * 0.4);
 
-        // Pop exclamation bubble
-        alertBubble.scale.set(1, 1, 1);
-        alertBubble.rotation.z = Math.sin(pTime * 14) * 0.2;
+        // Alert bubble with playful soft bounce
+        const bBounce = 1.0 + Math.sin(pTime * 6.0) * 0.12;
+        alertBubble.scale.set(bBounce, bBounce, bBounce);
+        alertBubble.rotation.z = Math.sin(pTime * 5.0) * 0.1;
 
-        // Cat's arm and paw react physically to the tugging!
-        rForearmGroup.position.set(0.18 + tugPull * 0.06, 0.23, -0.36 + tugPull * 0.03);
-        rForearmGroup.rotation.z = tugPull * 0.15;
-        rightArmGroup.rotation.y = -tugPull * 0.1;
+        // Cat's resting arm responds gently to the sweet tug
+        rForearmGroup.position.set(0.18 + tugPull * 0.04, 0.23, -0.36 + tugPull * 0.02);
+        rForearmGroup.rotation.z = tugPull * 0.12;
+        rightArmGroup.rotation.y = -tugPull * 0.08;
 
-        // Cat starts stirring: ear twitches
-        leftEar.rotation.z = 0.28 + Math.sin(pTime * 14) * 0.15;
-        rightEar.rotation.z = -0.28 - Math.sin(pTime * 12) * 0.15;
+        // Ears twitch with curiosity
+        leftEar.rotation.z = 0.28 + Math.sin(pTime * 8.0) * 0.08;
+        rightEar.rotation.z = -0.28 - Math.sin(pTime * 7.0) * 0.08;
 
-        // Head slowly begins to tilt up
-        catTorso.rotation.x = -0.25 + (pTime / 2.8) * 0.1;
-        catHeadGroup.rotation.x = -0.35 + (pTime / 2.8) * 0.15;
+        catTorso.rotation.x = -0.25 + (pTime / 2.4) * 0.1;
+        catHeadGroup.rotation.x = -0.35 + (pTime / 2.4) * 0.15;
 
-        if (pTime > 2.4) {
+        if (pTime > 1.9) {
           openEyesGroup.visible = true;
           closedEyesGroup.visible = false;
-          openEyesGroup.scale.set(1, 0.35, 1); // squinting open
+          openEyesGroup.scale.set(1.0, Math.min(1.0, (pTime - 1.9) / 0.5), 1.0);
         } else {
           openEyesGroup.visible = false;
           closedEyesGroup.visible = true;
@@ -1110,68 +1119,61 @@
       }
 
       // --------------------------------------------------
-      // PHASE 3: CAT LIFTS HEAD, EYES POP OPEN, GLARES DOWN (6.0 -> 8.2s)
-      // Head lifts upright, rotates sideways (+X direction) to stare directly down at mouse!
+      // PHASE 3: CAT LIFTS HEAD, EYES POP OPEN, GLARES DOWN (4.2 -> 5.6s)
       // --------------------------------------------------
-      else if (t < 8.2) {
-        const pTime = t - 6.0; // 0.0 -> 2.2s
+      else if (t < 5.6) {
+        const pTime = t - 4.2;
         zGroup.visible = false;
 
-        const sitUp = Math.min(1, pTime * 1.6);
-        catTorso.rotation.set(-0.15 + sitUp * 0.15, 0, 0); // straight wise posture
+        const sitUp = Math.min(1, pTime * 2.0);
+        catTorso.rotation.set(-0.15 + sitUp * 0.15, 0, 0);
         catTorso.position.y = 0.35 + sitUp * 0.04;
 
-        // Cat head lifts and turns toward the right (+X) where the mouse is standing
         catHeadGroup.position.set(0, 0.65 + sitUp * 0.06, -0.05);
         catHeadGroup.rotation.set(
-          -0.12, // looking slightly down at desk
-          0.48,  // TURNS DIRECTLY TOWARDS THE MOUSE (+X)!
+          -0.12,
+          0.48,
           0.05
         );
 
-        // Push glasses properly up
         glassesGroup.position.set(0, 0.05, -0.52);
 
-        // Eyes wide open with glowing amber iris staring down
         openEyesGroup.visible = true;
         closedEyesGroup.visible = false;
         openEyesGroup.scale.set(1.15, 1.1, 1.0);
 
-        // Whisker twitch of stern contemplation
-        catNose.position.z = -0.54 - Math.sin(pTime * 6) * 0.01;
+        catNose.position.z = -0.54 - Math.sin(pTime * 4) * 0.01;
 
-        // Mouse freezes in place, standing on tiptoes, caught red-handed!
         alertBubble.scale.set(0, 0, 0);
-        mouseRoot.position.set(0.68, 1.42, -0.25);
-        mouseRoot.rotation.x = -0.15; // rigid guilty pose
-        mouseRoot.rotation.y = -Math.PI / 2.4;
 
-        // Mouse enthusiastically points glowing quest card at SearchO2 screen
-        mArmR.rotation.set(-Math.PI / 2.5, 0, -0.5); // pointing at screen
-        mArmL.rotation.set(0.2, 0, 0.3); // paw on chest
-        mouseHead.rotation.set(-0.25, 0.3, 0); // looking sheepishly up into cat's glasses
+        // Mouse happy victory hop
+        const victoryHop = Math.abs(Math.sin(pTime * 7.0)) * 0.08;
+        mouseRoot.position.set(0.68, 1.42 + victoryHop, -0.25);
+        mouseRoot.rotation.x = -0.1;
+        mouseRoot.rotation.y = -Math.PI / 2.3;
+
+        mArmR.rotation.set(-Math.PI / 2.6, 0, -0.4);
+        mArmL.rotation.set(0.2, 0, 0.2);
+        mouseHead.rotation.set(-0.2, 0.25, 0);
       }
 
       // --------------------------------------------------
-      // PHASE 4: TIRED SLOW BLINK & FALLING ASLEEP AGAIN (8.2 -> 10.0s)
-      // Cat slow blinks, sighs, head slumps back down to cozy nap position
+      // PHASE 4: TIRED SLOW BLINK & FALLING ASLEEP AGAIN (5.6 -> 7.0s)
       // --------------------------------------------------
       else {
-        const pTime = t - 8.2; // 0.0 -> 1.8s
+        const pTime = t - 5.6;
 
-        if (pTime < 0.65) {
-          // Slow tired blink
-          const blinkProgress = pTime / 0.65;
+        if (pTime < 0.6) {
+          const blinkProgress = pTime / 0.6;
           openEyesGroup.scale.set(1.1, Math.max(0.05, 1.0 - blinkProgress * 1.6), 1.0);
           openEyesGroup.visible = true;
           closedEyesGroup.visible = false;
           catHeadGroup.rotation.y = 0.48 - blinkProgress * 0.2;
         } else {
-          // Eyes close and head slumps back to nap pose
           openEyesGroup.visible = false;
           closedEyesGroup.visible = true;
 
-          const slump = (pTime - 0.65) / 1.15;
+          const slump = (pTime - 0.6) / 0.8;
           catTorso.rotation.set(-slump * 0.25, 0, 0);
           catTorso.position.y = 0.39 - slump * 0.04;
 
@@ -1181,21 +1183,18 @@
           glassesGroup.position.set(0, 0.05 - slump * 0.02, -0.52);
         }
 
-        // Paw settles back on resting spot
         rForearmGroup.position.set(0.18, 0.23, -0.36);
         rForearmGroup.rotation.set(0, 0, 0);
         rightArmGroup.rotation.set(0, 0, 0);
 
-        // Mouse drops ears in humorous facepalm / disbelief
-        mArmL.rotation.set(0.4, 0, 0.2);
-        mArmR.rotation.set(0.4, 0, -0.2);
-        mouseHead.rotation.set(0.3, 0, 0);
-        mouseRoot.rotation.x = 0.1;
+        mArmL.rotation.set(0.3, 0, 0.15);
+        mArmR.rotation.set(0.3, 0, -0.15);
+        mouseHead.rotation.set(0.1, 0, 0);
+        mouseRoot.rotation.x = 0.05;
 
-        // Snoring Zzz resumes
-        if (pTime > 1.1) {
+        if (pTime > 0.8) {
           zGroup.visible = true;
-          const zProgress = (pTime - 1.1) / 0.7;
+          const zProgress = (pTime - 0.8) / 0.6;
           zParticles[0].mesh.position.set(0.0, 1.85 + zProgress * 0.4, 0.25 - zProgress * 0.2);
           zMat.opacity = zProgress * 0.85;
         } else {
@@ -1277,8 +1276,8 @@
 
     const btnNudge = document.getElementById('btn-nudge-mouse');
     btnNudge.addEventListener('click', () => {
-      STATE.currentLoopTime = 3.3;
-      timelineSlider.value = 3.3 / STATE.loopDuration;
+      STATE.currentLoopTime = 1.9;
+      timelineSlider.value = 1.9 / STATE.loopDuration;
       if (!STATE.isPlaying) {
         STATE.isPlaying = true;
         iconPause.classList.remove('hidden');

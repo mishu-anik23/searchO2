@@ -559,7 +559,7 @@
       name: 'Global Biome Eco-Passport Hub',
       icon: '🌍',
       chapter: 7,
-      cost: 'Free Blueprint',
+      cost: 'Free Exploration Milestone',
       prereq: 'Chapter 7 unlocked ("World Regenerative Network")',
       steps: [
         '1. Advance to Chapter 7 after establishing your community eco-village.',
@@ -571,7 +571,7 @@
       name: 'Artemis Bioregenerative Launchpad',
       icon: '🚀',
       chapter: 8,
-      cost: 'Free Blueprint',
+      cost: 'Free Exploration Milestone',
       prereq: 'Chapter 8 unlocked ("Beyond Earth: The Living Cosmos")',
       steps: [
         '1. Advance to Chapter 8 after mastering planetary bioregenerative closed loops.',
@@ -1648,7 +1648,36 @@
     }
   }
 
+  function isGuestMode() {
+    var u = (typeof global.apiUser !== 'undefined' && global.apiUser) ||
+            (typeof global.window !== 'undefined' && global.window.apiUser);
+    if (u) {
+      if (u.role && u.role !== 'guest') return false;
+      if (u.isGuest === false) return false;
+    }
+    try {
+      var saved = JSON.parse(localStorage.getItem('searchO2_user') || 'null');
+      if (saved && saved.role && saved.role !== 'guest') return false;
+      if (saved && saved.isGuest === false) return false;
+    } catch (e) {}
+    try {
+      var tok = localStorage.getItem('searchO2_token');
+      if (tok && tok.length > 20) return false;
+    } catch (e) {}
+    return true;
+  }
+
   function showHomeOverlay() {
+    if (isGuestMode()) {
+      if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.openWelcomeOrProgressModal === 'function') {
+        global.SearchO2ShakirGuide.openWelcomeOrProgressModal();
+      }
+      return;
+    }
+    // In logged-in mode, ensure Shakir CEO guide is removed so only player Avatar Journey exists
+    if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.removeGuide === 'function') {
+      try { global.SearchO2ShakirGuide.removeGuide(); } catch (e) {}
+    }
     var existing = document.getElementById('s2HomeOverlay');
     if (!existing) {
       var wrap = document.createElement('div');
@@ -2004,6 +2033,15 @@
   }
 
   function spawnWalker(av, at) {
+    if (isGuestMode()) {
+      if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.bootGuideOnFarm === 'function') {
+        return global.SearchO2ShakirGuide.bootGuideOnFarm();
+      }
+      return null;
+    }
+    if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.removeGuide === 'function') {
+      try { global.SearchO2ShakirGuide.removeGuide(); } catch (e) {}
+    }
     var layer = ensureWalkerLayer();
     if (!layer) return null;
     if (tourState.walkerEl && tourState.walkerEl.parentNode) {
@@ -2445,9 +2483,7 @@
             '<div class="ohm-badge">Ch. ' + chNum + ' · ' + chTitle + '</div>' +
           '</div>' +
         '</div>' +
-        (isTouchTrigger
-          ? '<button type="button" class="ohm-close-btn" id="s2OhmCloseBtn" onclick="if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.hideObjectHoverModal(); event.stopPropagation();" title="Close">✕</button>'
-          : '<span class="ohm-status-tag">📐 Blueprint</span>') +
+        '<button type="button" class="ohm-close-btn" id="s2OhmCloseBtn" onclick="if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.hideObjectHoverModal(); event.stopPropagation();" title="Close">✕</button>' +
       '</div>' +
       '<div class="ohm-preview-card">' +
         '<div class="ohm-preview-svg">' + miniSvg + '</div>' +
@@ -2538,10 +2574,11 @@
       el.style.height = (spot.h || 16) + '%';
       el.setAttribute('data-object-key', obj.key);
       el.setAttribute('data-facility-key', obj.key);
+      var bpTag = '';
       el.innerHTML =
         '<div class="s2-ghost-structure s2-ghost-body">' +
           archSvg +
-          '<span class="s2-ghost-blueprint-tag">📐 Blueprint</span>' +
+          bpTag +
           '<span class="s2-ghost-lock">🔒</span>' +
         '</div>' +
         '<div class="s2-ghost-label">Ch. ' + ch + ' · ' + obj.name + '</div>';
@@ -2649,8 +2686,8 @@
 
     card.innerHTML =
       '<span class="guide-pulse-dot"></span>' +
-      '<span class="tm-icon" title="' + (names || 'Blueprint Unlocked') + '">' + (def.icon || '🧭') + '</span>' +
-      '<span class="tm-text" title="Chapter ' + ch + ': ' + (def.title || '') + ' — Blueprint Unlocked"><b>Ch. ' + ch + ': ' + (def.title || 'Scout') + '</b></span>' +
+      '<span class="tm-icon" title="' + (names || 'Milestone Reached') + '">' + (def.icon || '🧭') + '</span>' +
+      '<span class="tm-text" title="Chapter ' + ch + ': ' + (def.title || '') + ' — Landmark Milestone"><b>Ch. ' + ch + ': ' + (def.title || 'Scout') + '</b></span>' +
       '<button type="button" class="s2-btn-primary tm-next-btn" id="s2TourContinue" title="Mark explored and continue tour">✓ Next ➔</button>' +
       '<button type="button" class="s2-modal-close-btn" id="s2TourModalClose" title="Close guidance capsule">✕</button>';
 
@@ -3530,6 +3567,12 @@
     targetCh = parseInt(targetCh, 10);
     if (!targetCh || targetCh < 1 || targetCh > 8) return;
     hideHomeOverlay();
+    if (isGuestMode()) {
+      if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.walkToChapter === 'function') {
+        global.SearchO2ShakirGuide.walkToChapter(targetCh);
+        return;
+      }
+    }
     if (!tourState.active) {
       tourState.active = true;
       tourState.skipped = false;
@@ -3605,6 +3648,7 @@
   // Boot & Initialization Hook
   // ---------------------------------------------------------------------------
   function shouldShowHomeOverlay() {
+    if (isGuestMode()) return false;
     try {
       if (localStorage.getItem('searchO2_avatar_skipped') === '1') return false;
       if (localStorage.getItem('searchO2_selected_avatar')) return false;
@@ -3614,6 +3658,12 @@
   }
 
   function maybeResumeAvatarOnFarm() {
+    if (isGuestMode()) {
+      if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.bootGuideOnFarm === 'function') {
+        global.SearchO2ShakirGuide.bootGuideOnFarm();
+      }
+      return;
+    }
     var av = loadPersistedAvatar();
     if (!av) return;
     tourState.avatar = av;
@@ -3631,6 +3681,12 @@
 
   function bootIntegration() {
     setTimeout(function () {
+      if (isGuestMode()) {
+        if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.bootGuideOnFarm === 'function') {
+          global.SearchO2ShakirGuide.bootGuideOnFarm();
+        }
+        return;
+      }
       if (shouldShowHomeOverlay()) {
         showHomeOverlay();
       } else {
@@ -3649,15 +3705,34 @@
     startChapterTour: startChapterTour,
     endTour: endTour,
     boot: bootIntegration,
-    walkToNextScoutNow: walkToNextScoutNow,
-    skipScoutCooldown: walkToNextScoutNow,
+    walkToNextScoutNow: function () {
+      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.walkToNextChapter === 'function') {
+        return global.SearchO2ShakirGuide.walkToNextChapter();
+      }
+      return walkToNextScoutNow();
+    },
+    skipScoutCooldown: function () {
+      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.walkToNextChapter === 'function') {
+        return global.SearchO2ShakirGuide.walkToNextChapter();
+      }
+      return walkToNextScoutNow();
+    },
     isCooldownActive: function () {
+      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isCooldownActive === 'function') {
+        return global.SearchO2ShakirGuide.isCooldownActive();
+      }
       return !!(tourState.active && tourState.cooldownActive && tourState.cooldownRemaining > 0);
     },
     getCooldownRemaining: function () {
+      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.getCooldownRemaining === 'function') {
+        return global.SearchO2ShakirGuide.getCooldownRemaining();
+      }
       return tourState.cooldownRemaining;
     },
     getTourState: function () {
+      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.getGuideState === 'function') {
+        return global.SearchO2ShakirGuide.getGuideState();
+      }
       return tourState;
     },
     selectAvatar: function (id) {
@@ -3689,7 +3764,12 @@
     },
     dockTopCapsules: dockTopCapsules,
     walkToChapter: walkToChapter,
-    isTourActive: isTourActive,
+    isTourActive: function () {
+      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isTourActive === 'function') {
+        return global.SearchO2ShakirGuide.isTourActive();
+      }
+      return isTourActive();
+    },
     triggerJuteTarpDiggingSequence: triggerJuteTarpDiggingSequence,
     updateTourProgress: updateTourProgress,
     setAvatarRegionFilter: setAvatarRegionFilter,
