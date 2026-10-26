@@ -109,7 +109,7 @@ export const feedbackService = {
   async list(opts: { kind?: string; status?: string; search?: string; limit: number }) {
     const searchPattern = opts.search ? `%${opts.search.toLowerCase()}%` : null;
     const res = await query(
-      `SELECT id, kind, rating, topic, area, severity, title, message, steps, expected,
+      `SELECT id, user_id, kind, rating, topic, area, severity, title, message, steps, expected,
               email, region_id, diagnostics, hub_version, status, created_at,
               game_version, chapter, trying_to_do, what_happened, reproduce, impact,
               device_browser, completed, difficulty, confusion_source, continue_intent,

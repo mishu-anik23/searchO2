@@ -316,9 +316,15 @@ export class AuthService {
     });
   }
 
-  async createGuestSession(sessionMeta?: { ipAddress?: string; userAgent?: string }): Promise<AuthResult> {
+  async createGuestSession(
+    sessionMeta?: { ipAddress?: string; userAgent?: string },
+    guestMeta?: { farmName?: string; landName?: string; stateName?: string; coords?: any }
+  ): Promise<AuthResult> {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    const displayName = `Guest Farmer #${randomSuffix}`;
+    const farmName = (guestMeta?.farmName || '').trim().slice(0, 9);
+    const landName = (guestMeta?.landName || '').trim();
+    const displayName = farmName ? (farmName + (landName ? ' · ' + landName : '')) : `Guest Farmer #${randomSuffix}`;
+    const starterFarmTitle = farmName ? (farmName + ' · ' + (landName || 'Alpenhof Eco-Estate')) : (displayName + `'s Plot`);
 
     return transaction(async (client) => {
       const userRes = await client.query(
@@ -329,7 +335,7 @@ export class AuthService {
       );
       const user = userRes.rows[0];
 
-      const farmId = await this.createStarterFarm(client, user.id, displayName + `'s Plot`);
+      const farmId = await this.createStarterFarm(client, user.id, starterFarmTitle);
 
       const authPayload: AuthUserPayload = {
         userId: user.id,

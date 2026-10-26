@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>searchO2 Hub - Isometric 3D Diorama</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      user-select: none;
+      font-family: 'Inter', sans-serif;
+      background: #0d0714;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+    .comic-font {
+      font-family: 'Fredoka', cursive, sans-serif;
+    }
+    .mono-font {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Subtle glow pulse */
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.4), 0 0 40px rgba(6, 182, 212, 0.3); }
+      50% { box-shadow: 0 0 35px rgba(16, 185, 129, 0.8), 0 0 65px rgba(6, 182, 212, 0.6); }
+    }
+    .neon-card-glow {
+      animation: pulseGlow 2.5s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="relative text-white">
+
+  <!-- 3D WebGL Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Top Navigation & Title Bar -->
+  <header class="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none z-20">
+    <div class="flex items-center gap-3 bg-slate-900/80 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-amber-500/30 shadow-xl pointer-events-auto">
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-400 flex items-center justify-center font-bold text-slate-900 shadow-md shadow-emerald-500/40">
+        O₂
+      </div>
+      <div>
+        <h1 class="text-sm font-bold tracking-wide text-amber-200 comic-font flex items-center gap-2">
+          searchO2 Archives <span class="bg-cyan-500/20 text-cyan-300 text-[10px] px-1.5 py-0.5 rounded-full border border-cyan-400/30 mono-font">VR ISO v2.4</span>
+        </h1>
+        <p class="text-[11px] text-slate-300">Planetary Eco-Restoration Dispatch</p>
+      </div>
+    </div>
+
+    <!-- Quick Camera & Mode Controls -->
+    <div class="flex items-center gap-2 pointer-events-auto">
+      <button id="btn-camera-iso" class="bg-slate-900/85 hover:bg-slate-800 text-xs px-3.5 py-2 rounded-xl border border-slate-700/70 hover:border-amber-400/60 shadow-lg transition flex items-center gap-1.5 text-slate-200">
+        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+        Reset ISO
+      </button>
+      <button id="btn-dialogue" class="bg-slate-900/85 hover:bg-slate-800 text-xs px-3.5 py-2 rounded-xl border border-slate-700/70 hover:border-cyan-400/60 shadow-lg transition flex items-center gap-1.5 text-slate-200">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        Dialogues: ON
+      </button>
+      <button id="btn-theme" class="bg-slate-900/85 hover:bg-slate-800 text-xs px-3.5 py-2 rounded-xl border border-slate-700/70 hover:border-amber-400/60 shadow-lg transition flex items-center gap-1.5 text-slate-200">
+        <span id="theme-icon">✨</span> Warm Golden
+      </button>
+    </div>
+  </header>
+
+  <!-- Interactive 2D Screen Overlay for 3D Dialogue Bubbles -->
+  <div id="speech-cat" class="absolute pointer-events-auto z-10 transition-transform duration-100 ease-out max-w-[270px] bg-amber-50/95 text-slate-900 p-3.5 rounded-2xl shadow-2xl border-2 border-amber-300 backdrop-blur-sm comic-font" style="display:none; transform: translate(-50%, -100%);">
+    <div class="flex items-center gap-1.5 text-amber-900 font-bold text-xs uppercase tracking-wider mb-1">
+      <span>🐱 Professor Whisker Puff</span>
+    </div>
+    <p class="text-xs font-semibold leading-snug">"A gateway to deeper truth?! Squeak-a-Link, where does this cosmic link lead?!"</p>
+    <!-- Little speech tail -->
+    <div class="w-3 h-3 bg-amber-50 border-r-2 border-b-2 border-amber-300 absolute left-8 -bottom-2 rotate-45"></div>
+  </div>
+
+  <div id="speech-mouse" class="absolute pointer-events-auto z-10 transition-transform duration-100 ease-out max-w-[250px] bg-cyan-900/95 text-cyan-100 p-3.5 rounded-2xl shadow-2xl border-2 border-cyan-400 backdrop-blur-sm comic-font" style="display:none; transform: translate(-50%, -100%);">
+    <div class="flex items-center gap-1.5 text-cyan-300 font-bold text-xs uppercase tracking-wider mb-1">
+      <span>🐭 Pip Squeak-a-Link</span>
+    </div>
+    <p class="text-xs font-medium leading-snug">"No time to explain! Click the <span class="text-emerald-300 font-bold underline cursor-pointer hover:text-white" onclick="triggerCardModal()">searchO2 Hub</span> card for the Motherlode! *(squeak)*"</p>
+    <!-- Little speech tail -->
+    <div class="w-3 h-3 bg-cyan-900 border-r-2 border-b-2 border-cyan-400 absolute right-8 -bottom-2 rotate-45"></div>
+  </div>
+
+  <!-- Bottom Floating HUD & Quick Hint -->
+  <footer class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-slate-950/80 backdrop-blur-lg px-5 py-2.5 rounded-full border border-slate-700/80 shadow-2xl z-20 pointer-events-auto text-xs text-slate-300">
+    <div class="flex items-center gap-2">
+      <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+      <span class="text-slate-200">Orbit: <strong class="text-amber-300">Left Drag</strong></span>
+      <span class="text-slate-500">•</span>
+      <span class="text-slate-200">Zoom: <strong class="text-amber-300">Scroll</strong></span>
+      <span class="text-slate-500">•</span>
+      <button onclick="triggerCardModal()" class="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold px-3 py-1 rounded-full shadow-md shadow-emerald-500/30 transition transform hover:scale-105 active:scale-95">
+        Inspect searchO2 Card
+      </button>
+    </div>
+  </footer>
+
+  <!-- Holographic Deep-Dive Modal (Activated by 3D Card Click) -->
+  <div id="hub-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="bg-gradient-to-b from-slate-900 via-slate-900 to-emerald-950/70 border-2 border-cyan-400/80 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative neon-card-glow transform scale-95 transition-transform duration-300" id="hub-modal-card">
+      <button onclick="closeCardModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 p-2 rounded-full w-8 h-8 flex items-center justify-center transition">✕</button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-400 to-emerald-400 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg">
+          O₂
+        </div>
+        <div>
+          <span class="text-[10px] tracking-widest uppercase font-mono text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">Direct Link Verified</span>
+          <h2 class="text-xl font-bold text-white comic-font">searchO2 Hub : Terra Matrix</h2>
+        </div>
+      </div>
+
+      <div class="space-y-3.5 text-xs text-slate-300">
+        <p class="leading-relaxed bg-slate-800/50 p-3 rounded-xl border border-slate-700/60">
+          <strong class="text-emerald-300">Planetary Eco Restoration Docket #409:</strong> Whisker Puff discovered the synthesis protocol! Our atmospheric rebalancing indices indicate a 340% increase in biome carbon-sink resonance across planetary quadrants.
+        </p>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl">
+            <span class="text-[10px] text-emerald-400 block font-mono">BIOME REPAIR RATE</span>
+            <span class="text-base font-bold text-emerald-200 font-mono">+89.4% YoY</span>
+          </div>
+          <div class="p-3 bg-cyan-950/40 border border-cyan-500/30 rounded-xl">
+            <span class="text-[10px] text-cyan-400 block font-mono">CANOPY SEEDING</span>
+            <span class="text-base font-bold text-cyan-200 font-mono">Active (12 Sectors)</span>
+          </div>
+        </div>
+
+        <div class="bg-slate-950/60 p-3 rounded-xl border border-cyan-500/20 font-mono text-[11px] text-cyan-300 flex items-center justify-between">
+          <span class="truncate">https://searcho2.hub/planetary-eco-restoration</span>
+          <span class="text-emerald-400 text-xs font-bold animate-pulse">● CONNECTED</span>
+        </div>
+      </div>
+
+      <div class="mt-6 flex gap-3">
+        <button onclick="celebrateKnowledgeExtract()" class="flex-1 bg-gradient-to-r from-emerald-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 text-slate-950 font-bold py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2">
+          <span>🌿 Extract Deep Knowledge</span>
+        </button>
+        <button onclick="closeCardModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl font-semibold text-slate-300 transition">
+          Return to Diorama
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 bg-emerald-500/90 text-slate-950 px-5 py-2 rounded-full font-bold text-xs shadow-2xl transition-all duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-2 border border-emerald-300">
+    <span>✨</span> <span id="toast-msg">Knowledge Extracted to Whisker Puff's Archive!</span>
+  </div>
+
+  <script>
+    // --- Application State ---
+    let scene, camera, renderer, controls;
+    let cardMesh, cardCanvas, cardCtx, cardTexture;
+    let catGroup, mouseGroup;
+    let tailCat, tailMouse, headCat, rightPawCat, mouseCardPivot;
+    let planetaryOrbGroup, ringMesh, holoRings = [];
+    let sparkles, sparkleGeo, sparkleCount = 180;
+    let showDialogues = true;
+    let isNightMode = false;
+    let warmAmbientLight, mainDirectionalLight, cardHoloLight, bookGlowLight;
+    const clock = new THREE.Clock();
+
+    // Projected 2D anchors for comic dialogue bubbles
+    const catHeadPos = new THREE.Vector3();
+    const mouseHeadPos = new THREE.Vector3();
+    const tempVec = new THREE.Vector3();
+
+    // --- Dynamic Card Canvas Generator ---
+    function createHolographicCardTexture() {
+      cardCanvas = document.createElement('canvas');
+      cardCanvas.width = 512;
+      cardCanvas.height = 320;
+      cardCtx = cardCanvas.getContext('2d');
+      updateCardCanvas(0);
+      cardTexture = new THREE.CanvasTexture(cardCanvas);
+      cardTexture.anisotropy = 4;
+      return cardTexture;
+    }
+
+    function updateCardCanvas(time) {
+      if (!cardCtx) return;
+      const w = cardCanvas.width;
+      const h = cardCanvas.height;
+
+      // Dark cyber eco background
+      const grad = cardCtx.createLinearGradient(0, 0, w, h);
+      grad.addColorStop(0, '#042220');
+      grad.addColorStop(0.5, '#063836');
+      grad.addColorStop(1, '#021319');
+      cardCtx.fillStyle = grad;
+      cardCtx.fillRect(0, 0, w, h);
+
+      // Cyber Grid lines
+      cardCtx.strokeStyle = 'rgba(6, 182, 212, 0.12)';
+      cardCtx.lineWidth = 1;
+      for (let x = 0; x < w; x += 32) {
+        cardCtx.beginPath(); cardCtx.moveTo(x, 0); cardCtx.lineTo(x, h); cardCtx.stroke();
+      }
+      for (let y = 0; y < h; y += 32) {
+        cardCtx.beginPath(); cardCtx.moveTo(0, y); cardCtx.lineTo(w, y); cardCtx.stroke();
+      }
+
+      // Glowing border
+      cardCtx.strokeStyle = '#10b981';
+      cardCtx.lineWidth = 8;
+      cardCtx.strokeRect(4, 4, w - 8, h - 8);
+
+      cardCtx.strokeStyle = '#38bdf8';
+      cardCtx.lineWidth = 2;
+      cardCtx.strokeRect(10, 10, w - 20, h - 20);
+
+      // Header Bar
+      cardCtx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+      cardCtx.fillRect(12, 12, w - 24, 44);
+
+      // Window dots
+      cardCtx.fillStyle = '#ef4444';
+      cardCtx.beginPath(); cardCtx.arc(28, 34, 5, 0, Math.PI * 2); cardCtx.fill();
+      cardCtx.fillStyle = '#f59e0b';
+      cardCtx.beginPath(); cardCtx.arc(44, 34, 5, 0, Math.PI * 2); cardCtx.fill();
+      cardCtx.fillStyle = '#10b981';
+      cardCtx.beginPath(); cardCtx.arc(60, 34, 5, 0, Math.PI * 2); cardCtx.fill();
+
+      // Title
+      cardCtx.fillStyle = '#a7f3d0';
+      cardCtx.font = 'bold 22px Fredoka, sans-serif';
+      cardCtx.fillText('searchO2 Hub', 82, 41);
+
+      cardCtx.fillStyle = '#38bdf8';
+      cardCtx.font = '12px JetBrains Mono, monospace';
+      cardCtx.fillText('[ DIRECT ACCESS ]', 370, 40);
+
+      // Dynamic Hologram Icon in Card (Pulsating Eco Planet)
+      const planetPulse = 38 + Math.sin(time * 4) * 3;
+      const pX = 100, pY = 160;
+      const radGrad = cardCtx.createRadialGradient(pX, pY, 5, pX, pY, planetPulse);
+      radGrad.addColorStop(0, '#67e8f9');
+      radGrad.addColorStop(0.5, '#059669');
+      radGrad.addColorStop(1, 'rgba(4, 34, 32, 0)');
+      cardCtx.fillStyle = radGrad;
+      cardCtx.beginPath(); cardCtx.arc(pX, pY, planetPulse, 0, Math.PI*2); cardCtx.fill();
+
+      // Planetary rings
+      cardCtx.strokeStyle = 'rgba(167, 243, 208, 0.8)';
+      cardCtx.lineWidth = 3;
+      cardCtx.beginPath();
+      cardCtx.ellipse(pX, pY, planetPulse * 1.35, 12, Math.sin(time * 2) * 0.2, 0, Math.PI * 2);
+      cardCtx.stroke();
+
+      // Main CTA
+      cardCtx.fillStyle = '#ffffff';
+      cardCtx.font = 'bold 26px Fredoka, sans-serif';
+      cardCtx.fillText('PLANETARY ECO HUB', 170, 140);
+
+      cardCtx.fillStyle = '#6ee7b7';
+      cardCtx.font = '15px Inter, sans-serif';
+      cardCtx.fillText('Click to unlock full data archives!', 170, 172);
+
+      // Pulsing Button on Card
+      const btnAlpha = 0.85 + Math.sin(time * 6) * 0.15;
+      cardCtx.fillStyle = `rgba(16, 185, 129, ${btnAlpha})`;
+      cardCtx.beginPath();
+      cardCtx.roundRect(170, 200, 240, 48, [12]);
+      cardCtx.fill();
+
+      cardCtx.fillStyle = '#062820';
+      cardCtx.font = 'bold 16px Inter, sans-serif';
+      cardCtx.fillText('⚡ EXPLORE RECOVERY', 190, 230);
+
+      // Animated Pointer Cursor
+      const cursorOffset = Math.sin(time * 8) * 8;
+      const cX = 390 + cursorOffset;
+      const cY = 224;
+      cardCtx.fillStyle = '#ffffff';
+      cardCtx.beginPath();
+      cardCtx.moveTo(cX, cY);
+      cardCtx.lineTo(cX + 18, cY + 12);
+      cardCtx.lineTo(cX + 10, cY + 16);
+      cardCtx.lineTo(cX + 14, cY + 26);
+      cardCtx.lineTo(cX + 9, cY + 28);
+      cardCtx.lineTo(cX + 5, cY + 18);
+      cardCtx.lineTo(cX, cY + 22);
+      cardCtx.closePath();
+      cardCtx.fill();
+      cardCtx.strokeStyle = '#022c22';
+      cardCtx.lineWidth = 1.5;
+      cardCtx.stroke();
+
+      // Micro footer URL
+      cardCtx.fillStyle = '#94a3b8';
+      cardCtx.font = '12px JetBrains Mono, monospace';
+      cardCtx.fillText('link: searchO2.hub/planetary-eco-restorations', 30, 295);
+
+      if (cardTexture) cardTexture.needsUpdate = true;
+    }
+
+    // --- Scene Initialization ---
+    function init() {
+      const container = document.getElementById('canvas-container');
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+
+      // 1. Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0e0817);
+      scene.fog = new THREE.FogExp2(0x0e0817, 0.024);
+
+      // 2. Isometric Orthographic Camera for classic Isometric View
+      const aspect = width / height;
+      const d = 10;
+      camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 1, 100);
+      setCameraIsometric();
+
+      // 3. Renderer with soft shadows
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+      container.appendChild(renderer.domElement);
+
+      // 4. Orbit Controls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2.05; // Keep above floor
+      controls.minDistance = 6;
+      controls.maxDistance = 25;
+      controls.target.set(0, 1.2, 0);
+
+      // 5. Lighting
+      setupLighting();
+
+      // 6. Build Isometric Diorama Environment
+      buildDioramaRoom();
+
+      // 7. Characters & Hologram
+      buildCatCharacter();
+      buildMouseCharacter();
+      buildHolographicCard();
+      buildFloatingPlanetaryGlobes();
+      buildSparkles();
+
+      // 8. Event Listeners
+      setupInteractionEvents();
+
+      // 9. Resize Handling
+      window.addEventListener('resize', onWindowResize, false);
+    }
+
+    function setCameraIsometric() {
+      // True 35.264° / 45° Isometric angle
+      const distance = 16;
+      camera.position.set(distance, distance * 0.9, distance);
+      camera.lookAt(0, 1.2, 0);
+      if (controls) controls.target.set(0, 1.2, 0);
+    }
+
+    function setupLighting() {
+      // Warm ambient base
+      warmAmbientLight = new THREE.AmbientLight(0xffecd1, 0.85);
+      scene.add(warmAmbientLight);
+
+      // Key Warm Sunbeam / Library Chandelier Light
+      mainDirectionalLight = new THREE.DirectionalLight(0xffdfa9, 1.6);
+      mainDirectionalLight.position.set(12, 18, 8);
+      mainDirectionalLight.castShadow = true;
+      mainDirectionalLight.shadow.mapSize.width = 2048;
+      mainDirectionalLight.shadow.mapSize.height = 2048;
+      mainDirectionalLight.shadow.camera.near = 0.5;
+      mainDirectionalLight.shadow.camera.far = 40;
+      const dLight = 12;
+      mainDirectionalLight.shadow.camera.left = -dLight;
+      mainDirectionalLight.shadow.camera.right = dLight;
+      mainDirectionalLight.shadow.camera.top = dLight;
+      mainDirectionalLight.shadow.camera.bottom = -dLight;
+      mainDirectionalLight.shadow.bias = -0.0005;
+      scene.add(mainDirectionalLight);
+
+      // Holographic Cyan / Emerald Point Light emitted by the Card
+      cardHoloLight = new THREE.PointLight(0x38bdf8, 2.5, 9);
+      cardHoloLight.position.set(0.6, 2.0, 1.0);
+      scene.add(cardHoloLight);
+
+      // Soft Warm Golden Rim Light
+      const rimLight = new THREE.DirectionalLight(0xe0a96d, 0.7);
+      rimLight.position.set(-10, 8, -10);
+      scene.add(rimLight);
+
+      // Shelf Accent Glow
+      bookGlowLight = new THREE.PointLight(0x34d399, 1.2, 6);
+      bookGlowLight.position.set(-3.5, 4.0, -1.5);
+      scene.add(bookGlowLight);
+    }
+
+    // --- Build Diorama Room (Walls, Mahogany Floor, Rug, Bookshelf) ---
+    function buildDioramaRoom() {
+      const roomGroup = new THREE.Group();
+
+      // 1. Mahogany Wood Floor
+      const floorGeo = new THREE.BoxGeometry(13, 0.6, 13);
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: 0x422114,
+        roughness: 0.35,
+        metalness: 0.1
+      });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.position.y = -0.3;
+      floor.receiveShadow = true;
+      roomGroup.add(floor);
+
+      // Floor Planks Accent
+      for (let i = -6; i <= 6; i += 1.3) {
+        const plankLineGeo = new THREE.BoxGeometry(0.04, 0.05, 13);
+        const plankMat = new THREE.MeshBasicMaterial({ color: 0x220e06 });
+        const plank = new THREE.Mesh(plankLineGeo, plankMat);
+        plank.position.set(i, 0.01, 0);
+        roomGroup.add(plank);
+      }
+
+      // 2. Persian / Velvet Ornate Rug with Gold Trim
+      const rugBaseGeo = new THREE.BoxGeometry(7.8, 0.06, 6.2);
+      const rugBaseMat = new THREE.MeshStandardMaterial({
+        color: 0x801b2c, // Rich wine velvet
+        roughness: 0.85
+      });
+      const rug = new THREE.Mesh(rugBaseGeo, rugBaseMat);
+      rug.position.set(0.2, 0.03, 0.5);
+      rug.receiveShadow = true;
+      roomGroup.add(rug);
+
+      // Gold Rug Border
+      const rugBorderGeo = new THREE.BoxGeometry(7.5, 0.07, 5.9);
+      const rugBorderMat = new THREE.MeshStandardMaterial({
+        color: 0xd4af37, // Golden trim
+        roughness: 0.4,
+        metalness: 0.5
+      });
+      const rugBorder = new THREE.Mesh(rugBorderGeo, rugBorderMat);
+      rugBorder.position.set(0.2, 0.035, 0.5);
+      roomGroup.add(rugBorder);
+
+      // Inner medallion
+      const innerRugGeo = new THREE.BoxGeometry(6.6, 0.08, 5.0);
+      const innerRugMat = new THREE.MeshStandardMaterial({
+        color: 0x611020,
+        roughness: 0.9
+      });
+      const innerRug = new THREE.Mesh(innerRugGeo, innerRugMat);
+      innerRug.position.set(0.2, 0.04, 0.5);
+      roomGroup.add(innerRug);
+
+      // 3. Back Left Wooden Bookshelf Wall
+      buildBookshelf(roomGroup, -5.2, 0, -2.5, 0);
+      buildBookshelf(roomGroup, -2.5, 0, -5.2, Math.PI / 2);
+
+      // 4. Cozy Ivy Vines hanging down from shelves
+      for (let i = 0; i < 9; i++) {
+        const ivyGeo = new THREE.SphereGeometry(0.18 + Math.random() * 0.1, 7, 7);
+        const ivyMat = new THREE.MeshStandardMaterial({
+          color: i % 2 === 0 ? 0x2d6a4f : 0x52b788,
+          roughness: 0.5
+        });
+        const ivy = new THREE.Mesh(ivyGeo, ivyMat);
+        ivy.position.set(-4.5 + (i * 0.4), 4.8 - (Math.sin(i) * 0.6), -4.8 + Math.random() * 0.4);
+        roomGroup.add(ivy);
+      }
+
+      // 5. Open Reading Books on the Rug (cat study area)
+      buildOpenBook(roomGroup, -1.6, 0.12, 1.8, 0.25);
+      buildOpenBook(roomGroup, -2.6, 0.12, 0.9, -0.4);
+
+      // Rolled scrolls
+      for (let s = 0; s < 3; s++) {
+        const scrollGeo = new THREE.CylinderGeometry(0.15, 0.15, 1.1, 12);
+        const scrollMat = new THREE.MeshStandardMaterial({ color: 0xede0d4, roughness: 0.6 });
+        const scroll = new THREE.Mesh(scrollGeo, scrollMat);
+        scroll.position.set(-3.4, 0.15, 2.5 + s * 0.35);
+        scroll.rotation.x = Math.PI / 2;
+        scroll.rotation.z = s * 0.4;
+        roomGroup.add(scroll);
+      }
+
+      scene.add(roomGroup);
+    }
+
+    function buildBookshelf(parent, x, y, z, rotY) {
+      const shelfGroup = new THREE.Group();
+      shelfGroup.position.set(x, y, z);
+      shelfGroup.rotation.y = rotY;
+
+      const woodMat = new THREE.MeshStandardMaterial({
+        color: 0x2f150c,
+        roughness: 0.45
+      });
+
+      // Frame
+      const backWallGeo = new THREE.BoxGeometry(5.5, 7.5, 0.4);
+      const backWall = new THREE.Mesh(backWallGeo, woodMat);
+      backWall.position.set(0, 3.75, -0.7);
+      shelfGroup.add(backWall);
+
+      // Shelf levels
+      const shelfLevels = [0.2, 1.8, 3.4, 5.0, 6.6];
+      shelfLevels.forEach((levelY) => {
+        const plank = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.2, 1.6), woodMat);
+        plank.position.set(0, levelY, 0);
+        plank.receiveShadow = true;
+        shelfGroup.add(plank);
+
+        // Populate with books
+        if (levelY < 6.0) {
+          let curX = -2.3;
+          while (curX < 2.1) {
+            const bookWidth = 0.16 + Math.random() * 0.16;
+            const bookHeight = 0.8 + Math.random() * 0.55;
+            const bookDepth = 0.9 + Math.random() * 0.3;
+            const bookColors = [0x991b1b, 0x1e3a8a, 0x065f46, 0x854d0e, 0x581c87, 0x0f766e, 0xd97706];
+            const bookColor = bookColors[Math.floor(Math.random() * bookColors.length)];
+
+            const bookGeo = new THREE.BoxGeometry(bookWidth, bookHeight, bookDepth);
+            const bookMat = new THREE.MeshStandardMaterial({
+              color: bookColor,
+              roughness: 0.5
+            });
+            const book = new THREE.Mesh(bookGeo, bookMat);
+            book.position.set(curX + bookWidth / 2, levelY + bookHeight / 2 + 0.1, 0.05);
+            // Slight tilt sometimes
+            if (Math.random() > 0.75) {
+              book.rotation.z = (Math.random() - 0.5) * 0.18;
+            }
+            book.castShadow = true;
+            shelfGroup.add(book);
+            curX += bookWidth + 0.04;
+          }
+        }
+      });
+
+      parent.add(shelfGroup);
+    }
+
+    function buildOpenBook(parent, x, y, z, rotY) {
+      const bookGroup = new THREE.Group();
+      bookGroup.position.set(x, y, z);
+      bookGroup.rotation.y = rotY;
+
+      // Cover
+      const coverMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.6 });
+      const coverLeft = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 1.1), coverMat);
+      coverLeft.position.set(-0.4, 0.02, 0);
+      coverLeft.rotation.z = 0.1;
+      bookGroup.add(coverLeft);
+
+      const coverRight = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.04, 1.1), coverMat);
+      coverRight.position.set(0.4, 0.02, 0);
+      coverRight.rotation.z = -0.1;
+      bookGroup.add(coverRight);
+
+      // Pages
+      const pageMat = new THREE.MeshStandardMaterial({ color: 0xfaf5ee, roughness: 0.8 });
+      const pagesLeft = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.06, 1.05), pageMat);
+      pagesLeft.position.set(-0.38, 0.06, 0);
+      pagesLeft.rotation.z = 0.1;
+      bookGroup.add(pagesLeft);
+
+      const pagesRight = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.06, 1.05), pageMat);
+      pagesRight.position.set(0.38, 0.06, 0);
+      pagesRight.rotation.z = -0.1;
+      bookGroup.add(pagesRight);
+
+      // Cyan holographic glowing study glyph in the center of the book
+      const glyph = new THREE.Mesh(
+        new THREE.RingGeometry(0.12, 0.22, 16),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide })
+      );
+      glyph.rotation.x = -Math.PI / 2;
+      glyph.position.set(0, 0.11, 0);
+      bookGroup.add(glyph);
+
+      parent.add(bookGroup);
+    }
+
+    // --- Build Cat Character ('Professor Whisker Puff') ---
+    function buildCatCharacter() {
+      catGroup = new THREE.Group();
+      catGroup.position.set(-1.0, 0.2, -0.2);
+      catGroup.rotation.y = 0.35;
+
+      const gingerFurMat = new THREE.MeshStandardMaterial({ color: 0xde7d34, roughness: 0.65 });
+      const whiteFurMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+      const darkPatchMat = new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.65 });
+      const blackGlassesMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.2, metalness: 0.8 });
+      const goldTieMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4 });
+
+      // Plump Calico Body
+      const bodyGeo = new THREE.SphereGeometry(1.25, 24, 24);
+      bodyGeo.scale(1.1, 1.25, 1.05);
+      const catBody = new THREE.Mesh(bodyGeo, gingerFurMat);
+      catBody.position.set(0, 1.2, 0);
+      catBody.castShadow = true;
+      catGroup.add(catBody);
+
+      // White Chest & Tummy bib
+      const chestBibGeo = new THREE.SphereGeometry(1.1, 20, 20);
+      chestBibGeo.scale(0.9, 1.15, 0.65);
+      const chestBib = new THREE.Mesh(chestBibGeo, whiteFurMat);
+      chestBib.position.set(0.2, 1.15, 0.58);
+      catGroup.add(chestBib);
+
+      // Collar and Scholar Necktie
+      const collar = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.08, 12, 24), goldTieMat);
+      collar.rotation.x = Math.PI / 2.2;
+      collar.position.set(0.1, 2.05, 0.3);
+      catGroup.add(collar);
+
+      const tie = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.65, 4), goldTieMat);
+      tie.rotation.x = 0.3;
+      tie.position.set(0.15, 1.7, 0.95);
+      catGroup.add(tie);
+
+      // Cat Head (Parented for animation/tilting)
+      headCat = new THREE.Group();
+      headCat.position.set(0.1, 2.5, 0.4);
+
+      const headGeo = new THREE.SphereGeometry(0.98, 24, 24);
+      headGeo.scale(1.15, 1.0, 1.05);
+      const headMesh = new THREE.Mesh(headGeo, gingerFurMat);
+      headMesh.castShadow = true;
+      headCat.add(headMesh);
+
+      // Calico forehead dark patch
+      const patchGeo = new THREE.SphereGeometry(0.5, 16, 16);
+      patchGeo.scale(0.9, 0.8, 0.4);
+      const calicoPatch = new THREE.Mesh(patchGeo, darkPatchMat);
+      calicoPatch.position.set(-0.35, 0.4, 0.7);
+      headCat.add(calicoPatch);
+
+      // Snout / Muzzle
+      const muzzleGeo = new THREE.SphereGeometry(0.42, 16, 16);
+      muzzleGeo.scale(1.2, 0.85, 0.9);
+      const muzzle = new THREE.Mesh(muzzleGeo, whiteFurMat);
+      muzzle.position.set(0.0, -0.22, 0.85);
+      headCat.add(muzzle);
+
+      // Pink Nose
+      const nose = new THREE.Mesh(
+        new THREE.ConeGeometry(0.09, 0.12, 3),
+        new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.4 })
+      );
+      nose.rotation.z = Math.PI;
+      nose.rotation.x = 0.4;
+      nose.position.set(0.0, -0.15, 1.25);
+      headCat.add(nose);
+
+      // Cat Ears
+      const earGeo = new THREE.ConeGeometry(0.38, 0.65, 4);
+      const earMat = gingerFurMat;
+      const earInnerMat = new THREE.MeshStandardMaterial({ color: 0xfbcfe8, roughness: 0.8 });
+
+      // Left Ear
+      const leftEar = new THREE.Mesh(earGeo, earMat);
+      leftEar.position.set(-0.62, 0.9, 0.1);
+      leftEar.rotation.z = 0.35;
+      leftEar.rotation.x = -0.15;
+      headCat.add(leftEar);
+
+      // Right Ear
+      const rightEar = new THREE.Mesh(earGeo, darkPatchMat);
+      rightEar.position.set(0.62, 0.9, 0.1);
+      rightEar.rotation.z = -0.35;
+      rightEar.rotation.x = -0.15;
+      headCat.add(rightEar);
+
+      // Big Curious Eyes
+      const eyeGeo = new THREE.SphereGeometry(0.24, 16, 16);
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.1 }); // Golden iris
+      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x020617 });
+
+      [-0.34, 0.34].forEach((eyeX, idx) => {
+        const eye = new THREE.Mesh(eyeGeo, eyeMat);
+        eye.position.set(eyeX, 0.05, 0.92);
+
+        // Pupil
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), pupilMat);
+        pupil.scale.set(0.7, 1.2, 0.5);
+        pupil.position.set(0, 0, 0.2);
+        eye.add(pupil);
+
+        // Eye Catchlight Sparkle
+        const catchlight = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        catchlight.position.set(0.05, 0.06, 0.23);
+        eye.add(catchlight);
+
+        headCat.add(eye);
+      });
+
+      // Signature Thick Black-Rimmed Glasses
+      const glassGroup = new THREE.Group();
+      glassGroup.position.set(0, 0.05, 0.98);
+
+      const frameGeo = new THREE.TorusGeometry(0.32, 0.055, 12, 32);
+      const leftRim = new THREE.Mesh(frameGeo, blackGlassesMat);
+      leftRim.position.set(-0.35, 0, 0);
+      glassGroup.add(leftRim);
+
+      const rightRim = new THREE.Mesh(frameGeo, blackGlassesMat);
+      rightRim.position.set(0.35, 0, 0);
+      glassGroup.add(rightRim);
+
+      // Glasses bridge & temple arms
+      const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.35), blackGlassesMat);
+      bridge.rotation.z = Math.PI / 2;
+      bridge.position.set(0, 0.05, 0.02);
+      glassGroup.add(bridge);
+
+      // Glass lens reflections
+      const lensMat = new THREE.MeshPhysicalMaterial({
+        color: 0x88ccff,
+        transparent: true,
+        opacity: 0.25,
+        roughness: 0.1,
+        reflectivity: 0.9
+      });
+      const leftLens = new THREE.Mesh(new THREE.CircleGeometry(0.28, 24), lensMat);
+      leftLens.position.set(-0.35, 0, 0.02);
+      glassGroup.add(leftLens);
+
+      const rightLens = new THREE.Mesh(new THREE.CircleGeometry(0.28, 24), lensMat);
+      rightLens.position.set(0.35, 0, 0.02);
+      glassGroup.add(rightLens);
+
+      headCat.add(glassGroup);
+      catGroup.add(headCat);
+
+      // Rounded Paws
+      // Left resting paw
+      const leftPaw = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), whiteFurMat);
+      leftPaw.scale.set(1.2, 0.7, 1.3);
+      leftPaw.position.set(-0.7, 0.2, 0.85);
+      catGroup.add(leftPaw);
+
+      // Right Inquisitive Paw (Gesturing eagerly towards the card)
+      rightPawCat = new THREE.Group();
+      rightPawCat.position.set(0.7, 0.9, 0.4);
+
+      const pawArm = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.9), gingerFurMat);
+      pawArm.rotation.x = 1.0;
+      pawArm.rotation.z = -0.4;
+      pawArm.position.set(0.3, 0.2, 0.35);
+      rightPawCat.add(pawArm);
+
+      const rPawHand = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), whiteFurMat);
+      rPawHand.position.set(0.55, 0.45, 0.75);
+      rightPawCat.add(rPawHand);
+
+      catGroup.add(rightPawCat);
+
+      // Animated Fluffy Tail
+      tailCat = new THREE.Group();
+      tailCat.position.set(-0.1, 0.4, -1.0);
+
+      const tailSegments = 5;
+      let prevPart = tailCat;
+      for (let t = 0; t < tailSegments; t++) {
+        const seg = new THREE.Mesh(
+          new THREE.SphereGeometry(0.26 - t * 0.02, 12, 12),
+          t === tailSegments - 1 ? whiteFurMat : (t % 2 === 0 ? gingerFurMat : darkPatchMat)
+        );
+        seg.position.set(0, 0.22, -0.22);
+        prevPart.add(seg);
+        prevPart = seg;
+      }
+      catGroup.add(tailCat);
+
+      scene.add(catGroup);
+    }
+
+    // --- Build Naughty Mouse Character ('Pip Squeak-a-Link') ---
+    function buildMouseCharacter() {
+      mouseGroup = new THREE.Group();
+      mouseGroup.position.set(1.8, 0.1, 1.2);
+      mouseGroup.rotation.y = -1.15; // Facing towards Cat
+
+      const mouseFurMat = new THREE.MeshStandardMaterial({ color: 0x9c7a5b, roughness: 0.7 });
+      const mousePinkMat = new THREE.MeshStandardMaterial({ color: 0xf9a8d4, roughness: 0.6 });
+
+      // Plump energetic tiny body
+      const mBodyGeo = new THREE.SphereGeometry(0.48, 16, 16);
+      mBodyGeo.scale(0.85, 1.25, 0.85);
+      const mBody = new THREE.Mesh(mBodyGeo, mouseFurMat);
+      mBody.position.set(0, 0.55, 0);
+      mBody.castShadow = true;
+      mouseGroup.add(mBody);
+
+      // Light tummy patch
+      const mTummy = new THREE.Mesh(new THREE.SphereGeometry(0.38, 14, 14), new THREE.MeshStandardMaterial({ color: 0xd6c7b2 }));
+      mTummy.scale.set(0.8, 1.1, 0.5);
+      mTummy.position.set(0, 0.55, 0.22);
+      mouseGroup.add(mTummy);
+
+      // Mouse Head
+      const mHead = new THREE.Group();
+      mHead.position.set(0, 1.1, 0.15);
+
+      const mHeadGeo = new THREE.ConeGeometry(0.38, 0.75, 16);
+      mHeadGeo.scale(1.0, 1.0, 0.9);
+      const mHeadMesh = new THREE.Mesh(mHeadGeo, mouseFurMat);
+      mHeadMesh.rotation.x = 1.25;
+      mHead.add(mHeadMesh);
+
+      // Pink Snout Tip
+      const mNose = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), mousePinkMat);
+      mNose.position.set(0, -0.05, 0.56);
+      mHead.add(mNose);
+
+      // Giant Round Mouse Ears
+      const earOuterGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.05, 16);
+      const earInnerGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.06, 16);
+
+      // Left Ear
+      const mEarL = new THREE.Group();
+      mEarL.position.set(-0.35, 0.35, -0.05);
+      mEarL.rotation.set(0.2, 0.3, -0.5);
+      mEarL.add(new THREE.Mesh(earOuterGeo, mouseFurMat));
+      mEarL.add(new THREE.Mesh(earInnerGeo, mousePinkMat));
+      mHead.add(mEarL);
+
+      // Right Ear
+      const mEarR = new THREE.Group();
+      mEarR.position.set(0.35, 0.35, -0.05);
+      mEarR.rotation.set(0.2, -0.3, 0.5);
+      mEarR.add(new THREE.Mesh(earOuterGeo, mouseFurMat));
+      mEarR.add(new THREE.Mesh(earInnerGeo, mousePinkMat));
+      mHead.add(mEarR);
+
+      // Tiny Beady Black Eyes
+      const mEyeMat = new THREE.MeshBasicMaterial({ color: 0x050505 });
+      [-0.18, 0.18].forEach(x => {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), mEyeMat);
+        eye.position.set(x, 0.1, 0.32);
+
+        // Catchlight
+        const glint = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        glint.position.set(0.02, 0.03, 0.05);
+        eye.add(glint);
+        mHead.add(eye);
+      });
+
+      mouseGroup.add(mHead);
+
+      // Mouse Tiny Paws holding onto the web card
+      const pawGeo = new THREE.SphereGeometry(0.12, 10, 10);
+      const mPawL = new THREE.Mesh(pawGeo, mousePinkMat);
+      mPawL.position.set(-0.25, 0.85, 0.42);
+      mouseGroup.add(mPawL);
+
+      const mPawR = new THREE.Mesh(pawGeo, mousePinkMat);
+      mPawR.position.set(0.25, 0.85, 0.42);
+      mouseGroup.add(mPawR);
+
+      // Long curled pink tail
+      tailMouse = new THREE.Group();
+      tailMouse.position.set(0, 0.2, -0.4);
+
+      let mTailPrev = tailMouse;
+      for (let s = 0; s < 8; s++) {
+        const seg = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.05 - s * 0.004, 0.055 - s * 0.004, 0.24, 8),
+          mousePinkMat
+        );
+        seg.position.set(0, 0.08, -0.16);
+        seg.rotation.x = -0.3 + (s * 0.05);
+        mTailPrev.add(seg);
+        mTailPrev = seg;
+      }
+      mouseGroup.add(tailMouse);
+
+      // Tiny mouse feet
+      const footGeo = new THREE.BoxGeometry(0.18, 0.08, 0.32);
+      const mFootL = new THREE.Mesh(footGeo, mousePinkMat);
+      mFootL.position.set(-0.22, 0.04, 0.1);
+      mouseGroup.add(mFootL);
+
+      const mFootR = new THREE.Mesh(footGeo, mousePinkMat);
+      mFootR.position.set(0.22, 0.04, 0.1);
+      mouseGroup.add(mFootR);
+
+      scene.add(mouseGroup);
+    }
+
+    // --- Build Holographic Translucent searchO2 Hub Card ---
+    function buildHolographicCard() {
+      const cardTex = createHolographicCardTexture();
+
+      // Card Geometry
+      const cardGeo = new THREE.PlaneGeometry(2.1, 1.32);
+
+      // Front translucent futuristic card material
+      const cardMat = new THREE.MeshPhysicalMaterial({
+        map: cardTex,
+        transparent: true,
+        opacity: 0.94,
+        roughness: 0.15,
+        transmission: 0.35, // Glassy holographic look
+        ior: 1.4,
+        side: THREE.DoubleSide,
+        emissive: 0x059669,
+        emissiveIntensity: 0.45,
+        emissiveMap: cardTex
+      });
+
+      cardMesh = new THREE.Mesh(cardGeo, cardMat);
+      // Place between Cat and Mouse
+      cardMesh.position.set(0.45, 1.45, 0.85);
+      cardMesh.rotation.y = -0.65;
+      cardMesh.rotation.x = -0.15;
+      cardMesh.castShadow = true;
+
+      // Outer Glowing Hologram Bezel
+      const borderGeo = new THREE.BoxGeometry(2.18, 1.4, 0.04);
+      const borderMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x06b6d4,
+        emissiveIntensity: 0.8,
+        roughness: 0.2,
+        metalness: 0.9
+      });
+      const cardBorder = new THREE.Mesh(borderGeo, borderMat);
+      cardBorder.position.z = -0.02;
+      cardMesh.add(cardBorder);
+
+      // Animated Cyber Hologram Corner Nodes
+      const nodeGeo = new THREE.SphereGeometry(0.06, 12, 12);
+      const nodeMat = new THREE.MeshBasicMaterial({ color: 0x34d399 });
+      const offsets = [
+        [-1.05, 0.66], [1.05, 0.66],
+        [-1.05, -0.66], [1.05, -0.66]
+      ];
+      offsets.forEach(([nx, ny]) => {
+        const node = new THREE.Mesh(nodeGeo, nodeMat);
+        node.position.set(nx, ny, 0.02);
+        cardMesh.add(node);
+      });
+
+      scene.add(cardMesh);
+    }
+
+    // --- Floating Miniature Planetary Eco-Globes with Orbit Rings ---
+    function buildFloatingPlanetaryGlobes() {
+      planetaryOrbGroup = new THREE.Group();
+      planetaryOrbGroup.position.set(-3.2, 3.2, -1.8);
+
+      // Eco Planet Sphere
+      const globeGeo = new THREE.SphereGeometry(0.7, 32, 32);
+      const globeMat = new THREE.MeshStandardMaterial({
+        color: 0x0284c7, // Ocean cyan
+        roughness: 0.4,
+        metalness: 0.2,
+        emissive: 0x047857, // Bio glow
+        emissiveIntensity: 0.35
+      });
+      const globe = new THREE.Mesh(globeGeo, globeMat);
+      planetaryOrbGroup.add(globe);
+
+      // Planetary Continent Details
+      for (let i = 0; i < 7; i++) {
+        const continent = new THREE.Mesh(
+          new THREE.SphereGeometry(0.24 + Math.random() * 0.15, 12, 12),
+          new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.8 })
+        );
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.random() * Math.PI;
+        continent.position.set(
+          0.68 * Math.sin(phi) * Math.cos(theta),
+          0.68 * Math.cos(phi),
+          0.68 * Math.sin(phi) * Math.sin(theta)
+        );
+        planetaryOrbGroup.add(continent);
+      }
+
+      // Orbital Hologram Rings
+      for (let r = 0; r < 2; r++) {
+        const ringGeo = new THREE.RingGeometry(1.05 + r * 0.28, 1.15 + r * 0.28, 48);
+        const ringM = new THREE.MeshBasicMaterial({
+          color: r === 0 ? 0x67e8f9 : 0x34d399,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.75
+        });
+        const ring = new THREE.Mesh(ringGeo, ringM);
+        ring.rotation.x = Math.PI / 2 + (r * 0.35);
+        ring.rotation.y = r * 0.4;
+        holoRings.push(ring);
+        planetaryOrbGroup.add(ring);
+      }
+
+      // Small secondary orb floating near books
+      const miniOrb = new THREE.Mesh(
+        new THREE.SphereGeometry(0.28, 20, 20),
+        new THREE.MeshStandardMaterial({ color: 0xa855f7, emissive: 0x9333ea, emissiveIntensity: 0.5 })
+      );
+      miniOrb.position.set(-1.8, 4.2, -3.2);
+      scene.add(miniOrb);
+
+      scene.add(planetaryOrbGroup);
+    }
+
+    // --- Floating Magical Sparkle Particles ---
+    function buildSparkles() {
+      sparkleGeo = new THREE.BufferGeometry();
+      const positions = new Float32Array(sparkleCount * 3);
+      const scales = new Float32Array(sparkleCount);
+
+      for (let i = 0; i < sparkleCount; i++) {
+        positions[i * 3 + 0] = (Math.random() - 0.5) * 11;
+        positions[i * 3 + 1] = 0.5 + Math.random() * 6.5;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 11;
+        scales[i] = Math.random();
+      }
+
+      sparkleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+      // Particle texture
+      const pCanvas = document.createElement('canvas');
+      pCanvas.width = 32;
+      pCanvas.height = 32;
+      const pCtx = pCanvas.getContext('2d');
+      const grad = pCtx.createRadialGradient(16, 16, 0, 16, 16, 16);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, '#38bdf8');
+      grad.addColorStop(0.7, '#10b981');
+      grad.addColorStop(1, 'transparent');
+      pCtx.fillStyle = grad;
+      pCtx.fillRect(0, 0, 32, 32);
+      const pTex = new THREE.CanvasTexture(pCanvas);
+
+      const sparkleMat = new THREE.PointsMaterial({
+        size: 0.22,
+        map: pTex,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+      sparkles = new THREE.Points(sparkleGeo, sparkleMat);
+      scene.add(sparkles);
+    }
+
+    // --- 2D Dialogue Speech Bubble Tracker ---
+    function updateDialogueBubbles() {
+      const catBubble = document.getElementById('speech-cat');
+      const mouseBubble = document.getElementById('speech-mouse');
+
+      if (!showDialogues) {
+        catBubble.style.display = 'none';
+        mouseBubble.style.display = 'none';
+        return;
+      }
+
+      // Cat Head World Position -> Screen Space
+      if (headCat) {
+        headCat.getWorldPosition(catHeadPos);
+        catHeadPos.y += 1.4; // Offset above cat's ears
+        tempVec.copy(catHeadPos).project(camera);
+
+        const x = (tempVec.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-(tempVec.y * 0.5) + 0.5) * window.innerHeight;
+
+        catBubble.style.display = 'block';
+        catBubble.style.left = `${x}px`;
+        catBubble.style.top = `${y}px`;
+      }
+
+      // Mouse Head World Position -> Screen Space
+      if (mouseGroup) {
+        mouseGroup.getWorldPosition(mouseHeadPos);
+        mouseHeadPos.y += 1.35; // Offset above mouse ears
+        tempVec.copy(mouseHeadPos).project(camera);
+
+        const mx = (tempVec.x * 0.5 + 0.5) * window.innerWidth;
+        const my = (-(tempVec.y * 0.5) + 0.5) * window.innerHeight;
+
+        mouseBubble.style.display = 'block';
+        mouseBubble.style.left = `${mx}px`;
+        mouseBubble.style.top = `${my}px`;
+      }
+    }
+
+    // --- Interactive Raycasting on 3D Card ---
+    const raycaster = new THREE.Raycaster();
+    const mouseCoord = new THREE.Vector2();
+
+    function setupInteractionEvents() {
+      window.addEventListener('pointerdown', (e) => {
+        // Prevent click when dragging controls
+        mouseCoord.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouseCoord.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouseCoord, camera);
+        if (cardMesh) {
+          const intersects = raycaster.intersectObject(cardMesh, true);
+          if (intersects.length > 0) {
+            triggerCardModal();
+          }
+        }
+      });
+
+      // Controls buttons
+      document.getElementById('btn-camera-iso').addEventListener('click', () => {
+        setCameraIsometric();
+      });
+
+      document.getElementById('btn-dialogue').addEventListener('click', function() {
+        showDialogues = !showDialogues;
+        this.innerHTML = showDialogues
+          ? `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Dialogues: ON`
+          : `<span class="w-2 h-2 rounded-full bg-slate-500"></span> Dialogues: OFF`;
+      });
+
+      document.getElementById('btn-theme').addEventListener('click', function() {
+        isNightMode = !isNightMode;
+        if (isNightMode) {
+          this.innerHTML = `🌙 Cyber Night`;
+          scene.background.set(0x060611);
+          scene.fog.color.set(0x060611);
+          warmAmbientLight.color.set(0x38bdf8);
+          warmAmbientLight.intensity = 0.45;
+          mainDirectionalLight.intensity = 0.6;
+          cardHoloLight.intensity = 4.2;
+        } else {
+          this.innerHTML = `✨ Warm Golden`;
+          scene.background.set(0x0e0817);
+          scene.fog.color.set(0x0e0817);
+          warmAmbientLight.color.set(0xffecd1);
+          warmAmbientLight.intensity = 0.85;
+          mainDirectionalLight.intensity = 1.6;
+          cardHoloLight.intensity = 2.5;
+        }
+      });
+    }
+
+    // --- UI Modals & Actions ---
+    function triggerCardModal() {
+      const modal = document.getElementById('hub-modal');
+      const card = document.getElementById('hub-modal-card');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+
+      // Card quick celebration audio tone using Web Audio API
+      playChime(660, 880);
+    }
+
+    function closeCardModal() {
+      const modal = document.getElementById('hub-modal');
+      const card = document.getElementById('hub-modal-card');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+    }
+
+    function celebrateKnowledgeExtract() {
+      closeCardModal();
+      showToast("🌿 Planetary restoration archives loaded! Whisker Puff purrs with joy!");
+      playChime(523.25, 1046.5);
+
+      // Trigger card pulse
+      if (cardMesh) {
+        cardMesh.scale.set(1.25, 1.25, 1.25);
+        setTimeout(() => cardMesh.scale.set(1, 1, 1), 350);
+      }
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      toastMsg.textContent = message;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 3400);
+    }
+
+    // Simple procedural synthesizer chime (No external sound file needed)
+    function playChime(freq1, freq2) {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(freq1, audioCtx.currentTime);
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(freq2, audioCtx.currentTime);
+
+        gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.65);
+
+        osc1.connect(gainNode);
+        osc2.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(audioCtx.currentTime + 0.7);
+        osc2.stop(audioCtx.currentTime + 0.7);
+      } catch (e) {
+        // AudioContext restricted before gesture
+      }
+    }
+
+    function onWindowResize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const aspect = width / height;
+      const d = 10;
+
+      camera.left = -d * aspect;
+      camera.right = d * aspect;
+      camera.top = d;
+      camera.bottom = -d;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(width, height);
+    }
+
+    // --- Main Procedural Animation Loop ---
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const elapsedTime = clock.getElapsedTime();
+
+      // 1. Update Card Texture Graphic Animations
+      updateCardCanvas(elapsedTime);
+
+      // 2. Holographic Card Idle Bobbing & Hover
+      if (cardMesh) {
+        cardMesh.position.y = 1.45 + Math.sin(elapsedTime * 2.8) * 0.08;
+        cardMesh.rotation.z = Math.sin(elapsedTime * 1.8) * 0.03;
+        cardMesh.rotation.y = -0.65 + Math.cos(elapsedTime * 1.5) * 0.04;
+      }
+
+      // 3. Cat 'Whisker Puff' Procedural Idle:
+      // Breathing & Ear/Head tilts
+      if (headCat) {
+        headCat.rotation.z = Math.sin(elapsedTime * 1.4) * 0.08; // Curious head tilt
+        headCat.rotation.x = Math.sin(elapsedTime * 2.1) * 0.04 + 0.05;
+        headCat.rotation.y = Math.cos(elapsedTime * 1.1) * 0.06;
+      }
+      if (rightPawCat) {
+        // Inquisitive paw reaching towards card
+        rightPawCat.rotation.x = Math.sin(elapsedTime * 2.8) * 0.09;
+        rightPawCat.rotation.z = -0.4 + Math.cos(elapsedTime * 2.0) * 0.05;
+      }
+      if (tailCat) {
+        tailCat.rotation.y = Math.sin(elapsedTime * 3.2) * 0.35;
+        tailCat.rotation.z = Math.cos(elapsedTime * 2.4) * 0.15;
+      }
+
+      // 4. Mouse 'Pip Squeak-a-Link' Bouncy Fidget & Sniffing
+      if (mouseGroup) {
+        mouseGroup.position.y = 0.1 + Math.abs(Math.sin(elapsedTime * 6.0)) * 0.04; // Naughty quick hops
+      }
+      if (tailMouse) {
+        tailMouse.rotation.y = Math.sin(elapsedTime * 8.0) * 0.45;
+        tailMouse.rotation.x = Math.cos(elapsedTime * 5.0) * 0.2;
+      }
+
+      // 5. Planetary Eco Globe Rotation
+      if (planetaryOrbGroup) {
+        planetaryOrbGroup.rotation.y = elapsedTime * 0.35;
+        planetaryOrbGroup.position.y = 3.2 + Math.sin(elapsedTime * 1.5) * 0.12;
+      }
+      holoRings.forEach((ring, idx) => {
+        ring.rotation.z = elapsedTime * (idx === 0 ? 0.7 : -0.5);
+      });
+
+      // 6. Magical Floating Sparkles Drift
+      if (sparkles) {
+        const positions = sparkleGeo.attributes.position.array;
+        for (let i = 0; i < sparkleCount; i++) {
+          positions[i * 3 + 1] += Math.sin(elapsedTime + i) * 0.003;
+          if (positions[i * 3 + 1] > 7.0) positions[i * 3 + 1] = 0.5;
+        }
+        sparkleGeo.attributes.position.needsUpdate = true;
+      }
+
+      // 7. Update Dialogue Bubble 2D Screen Positions
+      updateDialogueBubbles();
+
+      // 8. Render Frame
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // Initialize application on window load
+    window.onload = function () {
+      init();
+      animate();
+    };
+  </script>
+</body>
+</html>

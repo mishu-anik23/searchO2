@@ -1283,7 +1283,13 @@ button.btn-row-inspect:hover {
           <h3>📋 Submission Profile</h3>
           <div class="meta-item"><span class="meta-label">Received</span><span class="meta-val mono" id="mfCreatedAt">—</span></div>
           <div class="meta-item"><span class="meta-label">Reply Email</span><span class="meta-val mono" id="mfEmail" style="color:var(--mint)">—</span></div>
-          <div class="meta-item"><span class="meta-label">User / Session ID</span><span class="meta-val mono" id="mfUserId">—</span></div>
+          <div class="meta-item">
+            <span class="meta-label">User / Session ID</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="meta-val mono" id="mfUserId">—</span>
+              <button class="ghost btn-sm" id="btnMfOpenUser360" style="padding:2px 8px;font-size:0.72rem" title="Open 360° User Modal">👤 360° Profile</button>
+            </div>
+          </div>
           <div class="meta-item"><span class="meta-label">Region / Map</span><span class="meta-val" id="mfRegion">—</span></div>
         </div>
         <div class="meta-card">
@@ -1367,6 +1373,7 @@ button.btn-row-inspect:hover {
         <div class="meta-card">
           <h3>🌿 Farm Infrastructure</h3>
           <div class="meta-item"><span class="meta-label">Farm Identifier</span><span class="meta-val mono" id="mValFarmId">—</span></div>
+          <div class="meta-item"><span class="meta-label">German State &amp; Land</span><span class="meta-val" id="mValGermanState" style="color:var(--gold);font-weight:700">🏔️ Alpenhof (Bavaria)</span></div>
           <div class="meta-item"><span class="meta-label">Farm Level</span><span class="meta-val" id="mValFarmLevel">Level 1 (Seedling)</span></div>
           <div class="meta-item"><span class="meta-label">Active Soil Plots</span><span class="meta-val" id="mValPlots">6 plots</span></div>
           <div class="meta-item"><span class="meta-label">Oxygen Generation</span><span class="meta-val" style="color:var(--mint)" id="mValO2Rate">120 kg O₂ / hr</span></div>
@@ -2209,6 +2216,20 @@ function getLocalVaultUsers(){
     if(u) pushUser(Object.assign({ source: 'Local Session' }, u));
     const g = JSON.parse(localStorage.getItem('searchO2_guest_user') || 'null');
     if(g) pushUser(Object.assign({ role: 'guest', source: 'Guest Trial' }, g));
+    const gp = JSON.parse(localStorage.getItem('searchO2_guest_farm_profile') || 'null');
+    if (gp) {
+      pushUser({
+        id: 'guest_farm_' + (gp.name || 'alpen').toLowerCase(),
+        displayName: 'Guest: ' + (gp.name || 'AlpenO2'),
+        role: 'guest',
+        auth_provider: 'guest',
+        source: 'Guest Trial (' + ((gp.coords && gp.coords.landName) || (gp.coords && gp.coords.region) || 'Alpenhof') + ')',
+        farm_id: gp.name || 'AlpenO2',
+        farmName: gp.name || 'AlpenO2',
+        germanState: (gp.coords && gp.coords.landName) ? (gp.coords.landName + ' · ' + (gp.coords.region || 'Bavaria')) : ((gp.coords && gp.coords.region) || 'Bavaria · Alpenhof Eco-Estate'),
+        coords: gp.coords
+      });
+    }
   } catch(_){}
 
   // 4. Admin account
@@ -2267,6 +2288,22 @@ async function loadFeedback() {
       items = [];
     }
   }
+
+  // Merge local submissions cache so newest hub submissions appear immediately
+  try {
+    const localSaved = JSON.parse(localStorage.getItem('searchO2_feedback_submissions') || '[]');
+    const seenIds = new Set(items.map(x => x.id));
+    localSaved.forEach(ls => {
+      if (!seenIds.has(ls.id)) {
+        if (!kindFilter || ls.kind === kindFilter) {
+          if (!statusFilter || (ls.status || 'new') === statusFilter) {
+            items.unshift(ls);
+            seenIds.add(ls.id);
+          }
+        }
+      }
+    });
+  } catch(_) {}
 
   currentFeedbackItems = items;
 
@@ -2358,7 +2395,10 @@ async function loadFeedback() {
         <td style="white-space:nowrap;font-size:0.78rem" class="mono">${dateStr}</td>
         <td>${statusBadge}</td>
         <td>
-          <button class="ghost btn-sm" onclick="openFeedbackDetail('${item.id}')">🔍 Inspect</button>
+          <div style="display:flex;gap:6px">
+            <button class="ghost btn-sm" onclick="openFeedbackDetail('${item.id}')">🔍 Inspect</button>
+            <button class="ghost btn-sm" onclick="inspectUser360FromFeedback('${item.id}')" title="Inspect user profile in 360° modal">👤 360°</button>
+          </div>
         </td>
       </tr>
     `;
@@ -2485,6 +2525,28 @@ function openFeedbackDetail(id) {
   document.getElementById('mfRawJson').textContent = JSON.stringify(item, null, 2);
 
   modal.classList.remove('hidden');
+}
+
+function inspectUser360FromFeedback(feedbackId) {
+  const item = currentFeedbackItems.find(x => x.id === feedbackId);
+  if (!item) return;
+  const p = item.payload || {};
+  const uid = item.user_id || p.userId || p.user_id || (item.email ? 'usr_' + item.email.split('@')[0] : ('guest_' + item.id.slice(0, 8)));
+  const existing = state.cachedUsers.find(x => (x.id && x.id === uid) || (x.email && x.email === item.email));
+  const fallbackUser = existing || {
+    id: uid,
+    displayName: p.userName || (item.email ? item.email.split('@')[0] : 'Guest Explorer'),
+    email: item.email || null,
+    role: (uid && uid.startsWith('usr_')) ? 'user' : 'guest',
+    auth_provider: p.authProvider || (item.email ? 'email' : 'guest'),
+    created_at: item.created_at,
+    farm_id: p.farmName || 'AlpenO2',
+    farmName: p.farmName || 'AlpenO2',
+    germanState: p.landName ? (p.landName + ' · ' + (p.stateName || 'Bavaria')) : (item.region_id === 'bavaria' ? 'Bavaria · Alpenhof Eco-Estate' : (item.region_id || 'Bavaria · Alpenhof Eco-Estate')),
+    device_browser: item.device_browser || p.deviceBrowser,
+    source: 'Feedback Telemetry (' + (item.kind || 'submission') + ')'
+  };
+  inspectUser360(fallbackUser.id, fallbackUser);
 }
 
 async function updateFeedbackItemStatus(id, newStatus) {
@@ -2742,8 +2804,8 @@ document.getElementById('btnResetFilters').onclick = ()=>{
 };
 
 /* ---------- 360° Row Visualizer Modal Controller ---------- */
-async function inspectUser360(id){
-  const u = state.cachedUsers.find(x => x.id === id) || { id, display_name: 'Player', role: 'user' };
+async function inspectUser360(id, overrideUser){
+  const u = overrideUser || state.cachedUsers.find(x => x.id === id) || { id, display_name: 'Player', role: 'user' };
   state.activeUserDetail = u;
 
   const modal = document.getElementById('modalUser360');
@@ -2789,6 +2851,8 @@ async function inspectUser360(id){
 
   // Tab 2: Farm
   document.getElementById('mValFarmId').textContent = u.farm_id || ('farm_' + (u.id||'').slice(0,6));
+  const stEl = document.getElementById('mValGermanState');
+  if (stEl) stEl.textContent = u.germanState || ((u.coords && u.coords.landName) ? (u.coords.landName + ' · ' + (u.coords.region || 'Bavaria')) : '🏔️ Alpenhof (Bavaria)');
   const level = u.farm_level || u.level || 1;
   document.getElementById('mValFarmLevel').textContent = 'Level ' + level + ' (Ecosystem Pioneer)';
   document.getElementById('mValPlots').textContent = (6 + (level * 2)) + ' Organic Plots';

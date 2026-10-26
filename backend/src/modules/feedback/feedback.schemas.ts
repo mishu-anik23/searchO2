@@ -14,6 +14,14 @@ const common = {
     .refine((v) => v === null || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v), 'Invalid email address'),
   map: optionalText(64),
   hubVersion: optionalText(32),
+  userId: optionalText(128),
+  userName: optionalText(128),
+  userRole: optionalText(64),
+  authProvider: optionalText(64),
+  farmName: optionalText(128),
+  stateName: optionalText(128),
+  landName: optionalText(128),
+  submittedAt: optionalText(64),
   payload: z.record(z.any()).optional(),
 };
 
@@ -29,7 +37,7 @@ export const problemSchema = z.object({
   expected: optionalText(2000), // Q6. What did you expect to happen?
   reproduce: optionalText(64), // Q7. Can you reproduce the problem?
   impact: optionalText(64), // Q8. How much did the problem affect your play?
-  severity: optionalText(64), // legacy alias for impact
+  severity: z.enum(['blocker', 'broken', 'visual', 'minor', 'suggestion', 'cosmetic', 'crash', 'Minor inconvenience', 'Made gameplay difficult', 'Blocked my progress', 'Made the game unusable']).optional().nullish().transform((v) => (v ? v : null)), // legacy alias for impact
   deviceBrowser: optionalText(255), // Q9. Which device and browser were you using?
   steps: optionalText(2000), // optional reproduction steps
   diagnostics: optionalText(3000),
@@ -76,7 +84,7 @@ export const legacyFeedbackSchema = z.object({
   type: z.literal('feedback'),
   rating: z.coerce.number().int().min(1).max(5).nullish(),
   topic: optionalText(64),
-  message: optionalText(3000),
+  message: text(10, 3000),
   ...common,
 });
 

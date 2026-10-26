@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SearchO2 - Deep Terraced Open-Pit Mine & Industrial Facility</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      user-select: none;
+      background-color: #0b0f14;
+      font-family: 'Inter', sans-serif;
+    }
+    .font-hud {
+      font-family: 'Chakra Petch', monospace, sans-serif;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      outline: none;
+    }
+    .hud-glass {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .active-mode-btn {
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      color: #ffffff !important;
+      border-color: #38bdf8 !important;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.45);
+    }
+    .drone-vignette {
+      background: radial-gradient(circle at center, transparent 55%, rgba(5, 11, 20, 0.78) 100%),
+                  repeating-linear-gradient(0deg, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px, transparent 1px, transparent 2px);
+      pointer-events: none;
+    }
+  </style>
+
+  <!-- Three.js + Addons via ES Importmap -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body class="relative w-screen h-screen">
+
+  <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+  <!-- FPV Drone Flight Telemetry HUD -->
+  <div id="drone-overlay" class="absolute inset-0 z-10 drone-vignette hidden pointer-events-none">
+    <div class="absolute top-6 left-1/2 -translate-x-1/2 font-hud text-cyan-300 flex items-center gap-6 px-6 py-2.5 hud-glass rounded-2xl shadow-2xl">
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="tracking-widest font-bold">FPV MINE RECON // 4K</span>
+      </div>
+      <div>ALT: <span id="hud-alt" class="font-bold text-white">38.0m</span></div>
+      <div>SPD: <span id="hud-speed" class="font-bold text-white">0 km/h</span></div>
+      <div>BATTERY: <span class="text-emerald-400 font-bold">98%</span></div>
+      <div>O₂ AIR DENSITY: <span class="text-amber-400 font-bold">POOR (MINE FLOOR)</span></div>
+    </div>
+
+    <!-- Drone Targeting Crosshair -->
+    <div class="absolute inset-0 flex items-center justify-center">
+      <div class="relative w-28 h-28 border border-cyan-400/40 rounded-full flex items-center justify-center">
+        <div class="w-1.5 h-1.5 bg-cyan-300 rounded-full"></div>
+        <div class="absolute top-0 w-3 h-0.5 bg-cyan-400"></div>
+        <div class="absolute bottom-0 w-3 h-0.5 bg-cyan-400"></div>
+        <div class="absolute left-0 h-3 w-0.5 bg-cyan-400"></div>
+        <div class="absolute right-0 h-3 w-0.5 bg-cyan-400"></div>
+        <div class="absolute -bottom-7 font-hud text-[11px] text-cyan-300/80 tracking-wider">GEOLOGICAL SCANNER ENGAGED</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header & Mode Navigator -->
+  <header class="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+    <div class="hud-glass rounded-2xl px-5 py-3 shadow-2xl flex items-center gap-3.5 pointer-events-auto">
+      <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-600 via-orange-500 to-yellow-400 flex items-center justify-center text-2xl shadow-lg border border-amber-300/30">
+        ⛏️
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-hud font-bold text-lg text-white tracking-wider">Search<span class="text-cyan-400">O₂</span> : Open-Pit Mine</h1>
+          <span class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">Terraced Quarry</span>
+        </div>
+        <p class="text-xs text-slate-300">Downhill Strata Benches, Spiral Haul Roads & Processing Refinery</p>
+      </div>
+    </div>
+
+    <!-- View & Mode Toggles -->
+    <div class="flex items-center gap-1.5 pointer-events-auto bg-slate-950/85 p-1.5 rounded-2xl hud-glass shadow-2xl">
+      <button id="btn-zoom-1x" class="mode-btn active-mode-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 transition-all font-hud border border-slate-700/60 flex items-center gap-1.5">
+        <span>🌐</span> 1x Overview
+      </button>
+      <button id="btn-zoom-2x" class="mode-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition-all font-hud border border-slate-700/60 flex items-center gap-1.5">
+        <span>🏭</span> 2x Refinery
+      </button>
+      <button id="btn-zoom-5x" class="mode-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white transition-all font-hud border border-slate-700/60 flex items-center gap-1.5">
+        <span>🔬</span> 5x Pit Deep Floor
+      </button>
+      <div class="w-[1px] h-6 bg-slate-700 mx-1"></div>
+      <button id="btn-mode-drone" class="mode-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-cyan-300 hover:text-white transition-all font-hud border border-cyan-800/60 flex items-center gap-1.5">
+        <span>🛸</span> FPV Drone
+      </button>
+      <button id="btn-mode-shakir" class="mode-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-300 hover:text-white transition-all font-hud border border-emerald-800/60 flex items-center gap-1.5">
+        <span>🚶</span> Explore Shakir
+      </button>
+    </div>
+  </header>
+
+  <!-- Bottom Navigation & Focus Hotspots -->
+  <footer class="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex flex-wrap items-center justify-center gap-3 pointer-events-auto max-w-[95vw]">
+    <div class="hud-glass rounded-2xl px-5 py-2.5 flex items-center gap-5 shadow-2xl">
+      <div class="flex items-center gap-2.5">
+        <span id="status-icon" class="text-xl">🌐</span>
+        <div>
+          <div id="status-title" class="font-hud text-xs font-bold text-white uppercase tracking-wider">1X MACRO ISOMETRIC VIEW</div>
+          <div id="status-hint" class="text-[11px] text-slate-400">Left Drag: Orbit • Right Drag: Pan • Scroll: Zoom • Select hotspots to navigate</div>
+        </div>
+      </div>
+      
+      <div class="h-8 w-[1px] bg-slate-700"></div>
+
+      <!-- Hotspot Camera Focus -->
+      <div class="flex items-center gap-1.5">
+        <button id="btn-focus-hauler" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-amber-300 font-hud border border-slate-600 transition-all">
+          🚜 Haul Convoy
+        </button>
+        <button id="btn-focus-barracks" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-cyan-300 font-hud border border-slate-600 transition-all">
+          🏘️ Worker Camp
+        </button>
+        <button id="btn-focus-excavator" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-orange-300 font-hud border border-slate-600 transition-all">
+          🏗️ Cable Shovel
+        </button>
+        <button id="btn-focus-shakir" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-emerald-300 font-hud border border-slate-600 transition-all">
+          👦 Locate Shakir
+        </button>
+        <button id="btn-sun-toggle" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-yellow-300 font-hud border border-slate-600 transition-all">
+          ☀️ Sun Angle
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Mini GPS Radar (Bottom Right) -->
+  <div class="absolute bottom-5 right-5 z-20 w-36 h-36 hud-glass rounded-2xl p-2 hidden sm:flex flex-col items-center justify-between pointer-events-none shadow-2xl">
+    <div class="w-full flex justify-between items-center px-1">
+      <span class="text-[9px] font-hud text-cyan-400 font-bold tracking-wider">PIT RADAR</span>
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+    </div>
+    <div class="relative w-28 h-28 border border-slate-700 rounded-full bg-slate-950/80 overflow-hidden flex items-center justify-center">
+      <div class="absolute inset-0 border border-slate-800/80 rounded-full scale-75"></div>
+      <div class="absolute inset-0 border border-slate-800/80 rounded-full scale-50"></div>
+      <div class="absolute w-full h-[1px] bg-slate-800"></div>
+      <div class="absolute h-full w-[1px] bg-slate-800"></div>
+      <!-- Terraced crater blip -->
+      <div class="absolute w-14 h-12 rounded-full border border-amber-500/60 bg-amber-950/30 -translate-x-2 -translate-y-2"></div>
+      <!-- Plant blip -->
+      <div class="absolute w-6 h-5 border border-orange-500/50 bg-orange-950/40 translate-x-5 -translate-y-4"></div>
+      <!-- Shakir Blip (Green) -->
+      <div id="radar-shakir" class="absolute w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] transition-all"></div>
+      <!-- Camera/Drone Blip (Cyan) -->
+      <div id="radar-cam" class="absolute w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#38bdf8] transition-all"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { VRButton } from 'three/addons/webxr/VRButton.js';
+
+    // ----------------------------------------------------
+    // SYSTEM APP CONFIG & STATE
+    // ----------------------------------------------------
+    const APP_STATE = {
+      mode: '1x',
+      sunTime: 0.38,
+      keys: { w: false, a: false, s: false, d: false, space: false, shift: false, q: false, e: false },
+      drone: {
+        pos: new THREE.Vector3(12, 16, 14),
+        rot: new THREE.Euler(0, -Math.PI / 4, 0, 'YXZ'),
+        speed: 0
+      },
+      shakir: {
+        pos: new THREE.Vector3(2.5, 0.05, 6.2),
+        rotation: -0.6,
+        speed: 4.0,
+        isMoving: false,
+        camYaw: -0.6,
+        camPitch: 0.28,
+        camDist: 5.2
+      }
+    };
+
+    // ----------------------------------------------------
+    // SCENE & DUAL CAMERAS (ISOMETRIC ORTHO + PERSPECTIVE)
+    // ----------------------------------------------------
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xd6e5f3); // Desert haze atmosphere
+    scene.fog = new THREE.FogExp2(0xd6e5f3, 0.009);
+
+    const aspect = window.innerWidth / window.innerHeight;
+    const isoFrustum = 26;
+    const orthoCam = new THREE.OrthographicCamera(
+      -isoFrustum * aspect, isoFrustum * aspect,
+      isoFrustum, -isoFrustum,
+      -100, 400
+    );
+    orthoCam.position.set(42, 38, 42);
+    orthoCam.lookAt(-1, 0, 0);
+
+    // High fidelity perspective camera with safe near/far planes
+    const perspCam = new THREE.PerspectiveCamera(65, aspect, 0.2, 2000);
+    perspCam.position.set(10, 8, 10);
+
+    let activeCam = orthoCam;
+
+    // WebGLRenderer with logarithmicDepthBuffer to completely eliminate z-fighting
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: false,
+      powerPreference: 'high-performance',
+      logarithmicDepthBuffer: true
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    renderer.xr.enabled = true;
+    container.appendChild(renderer.domElement);
+
+    document.body.appendChild(VRButton.createButton(renderer));
+
+    const controls = new OrbitControls(orthoCam, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.target.set(-1, 0, 0);
+    controls.maxPolarAngle = Math.PI / 2.05;
+
+    // ----------------------------------------------------
+    // LIGHTING & ATMOSPHERE
+    // ----------------------------------------------------
+    const ambientLight = new THREE.AmbientLight(0xe2e8f0, 0.85);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfffaea, 2.5);
+    sunLight.position.set(42, 55, 32);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 4096;
+    sunLight.shadow.mapSize.height = 4096;
+    sunLight.shadow.camera.left = -45;
+    sunLight.shadow.camera.right = 45;
+    sunLight.shadow.camera.top = 45;
+    sunLight.shadow.camera.bottom = -45;
+    sunLight.shadow.camera.near = 10;
+    sunLight.shadow.camera.far = 170;
+    sunLight.shadow.bias = -0.0003;
+    scene.add(sunLight);
+
+    const fillHaze = new THREE.DirectionalLight(0x8cb1d4, 0.6);
+    fillHaze.position.set(-30, 20, -30);
+    scene.add(fillHaze);
+
+    const pitBottomPoint = new THREE.PointLight(0xff9944, 0.6, 25);
+    pitBottomPoint.position.set(-7, -7, -2);
+    scene.add(pitBottomPoint);
+
+    // ----------------------------------------------------
+    // TEXTURED MATERIALS PALETTE
+    // ----------------------------------------------------
+    function createNoiseTexture(colorA, colorB, grain = 0.15) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = colorA;
+      ctx.fillRect(0, 0, 128, 128);
+      for (let i = 0; i < 4000; i++) {
+        ctx.fillStyle = colorB;
+        ctx.globalAlpha = Math.random() * grain;
+        ctx.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+      }
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    }
+
+    // Material definitions with robust depth parameters
+    function makeSolidMat(opts) {
+      return new THREE.MeshStandardMaterial({
+        side: THREE.DoubleSide,
+        depthWrite: true,
+        ...opts
+      });
+    }
+
+    const M = {
+      surfacePlateau: makeSolidMat({ color: 0xdeb47a, roughness: 0.95, map: createNoiseTexture('#deb47a', '#78350f', 0.25) }),
+      strataRimGold: makeSolidMat({ color: 0xdfb45f, roughness: 0.9 }),
+      strataUpperOchre: makeSolidMat({ color: 0xca964b, roughness: 0.88 }),
+      strataMidRust: makeSolidMat({ color: 0xa66038, roughness: 0.85 }),
+      strataIronstone: makeSolidMat({ color: 0x7c432b, roughness: 0.85 }),
+      strataLowerSlate: makeSolidMat({ color: 0x4f4f53, roughness: 0.85 }),
+      strataPitCoal: makeSolidMat({ color: 0x1e1c20, roughness: 0.92, map: createNoiseTexture('#1e1c20', '#3b3b40', 0.3) }),
+      haulRoad: makeSolidMat({ color: 0xb78d59, roughness: 0.96 }),
+
+      // Industrial Metals
+      rustWall: makeSolidMat({ color: 0x8a3a22, roughness: 0.75, metalness: 0.4 }),
+      rustedRoof: makeSolidMat({ color: 0xa84828, roughness: 0.65, metalness: 0.35 }),
+      siloMetal: makeSolidMat({ color: 0xb55734, roughness: 0.55, metalness: 0.45 }),
+      frameworkSteel: makeSolidMat({ color: 0x5a2d20, roughness: 0.6, metalness: 0.5 }),
+      conveyorBlack: makeSolidMat({ color: 0x222226, roughness: 0.9 }),
+
+      // Machinery & Vehicles
+      truckOrange: makeSolidMat({ color: 0xcb6424, roughness: 0.4, metalness: 0.25 }),
+      truckYellow: makeSolidMat({ color: 0xd9771e, roughness: 0.4, metalness: 0.2 }),
+      wheelRubber: makeSolidMat({ color: 0x141416, roughness: 0.9 }),
+      cabGlass: new THREE.MeshStandardMaterial({ color: 0x93c5fd, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.75 }),
+      craneRust: makeSolidMat({ color: 0x943d22, roughness: 0.65, metalness: 0.35 }),
+
+      // Worker Camp
+      barracksCyan: makeSolidMat({ color: 0x5eead4, roughness: 0.55 }),
+      barracksWhite: makeSolidMat({ color: 0xd6d3d1, roughness: 0.6 }),
+
+      // Foliage & Details
+      scrubFoliage: makeSolidMat({ color: 0x506634, roughness: 0.95 }),
+
+      // Shakir Materials
+      skin: new THREE.MeshLambertMaterial({ color: 0xdfa07a }),
+      hair: new THREE.MeshLambertMaterial({ color: 0x3d2314 }),
+      shirtWhite: new THREE.MeshLambertMaterial({ color: 0xf3f4f6 }),
+      shirtGray: new THREE.MeshLambertMaterial({ color: 0x9ca3af }),
+      shorts: new THREE.MeshLambertMaterial({ color: 0x78350f }),
+      boots: new THREE.MeshLambertMaterial({ color: 0x3b2314 }),
+      bagBlue: new THREE.MeshLambertMaterial({ color: 0x1e3a8a }),
+      sproutGreen: new THREE.MeshBasicMaterial({ color: 0x22c55e }),
+      scannerBlue: new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.4 }),
+      screenCyan: new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+    };
+
+    // ----------------------------------------------------
+    // WATERTIGHT CONTINUOUS TERRACED PIT & BENCH MESH
+    // ----------------------------------------------------
+    const mineWorld = new THREE.Group();
+    scene.add(mineWorld);
+
+    // Open Pit Parameters matching reference geometry
+    const pitOrigin = new THREE.Vector3(-7.5, 0, -2.5);
+    const numBenches = 13;
+    const pitRadiusX = 18.5;
+    const pitRadiusZ = 14.5;
+    const totalPitDepth = 11.2;
+
+    const strataPalette = [
+      M.strataRimGold,
+      M.strataRimGold,
+      M.strataUpperOchre,
+      M.strataUpperOchre,
+      M.strataMidRust,
+      M.strataMidRust,
+      M.strataIronstone,
+      M.strataIronstone,
+      M.strataLowerSlate,
+      M.strataLowerSlate,
+      M.strataLowerSlate,
+      M.strataPitCoal,
+      M.strataPitCoal
+    ];
+
+    // Main Plateau Base with hollow pit cut-out using Shape/Extrude
+    const plateauShape = new THREE.Shape();
+    plateauShape.moveTo(-38, -38);
+    plateauShape.lineTo(38, -38);
+    plateauShape.lineTo(38, 38);
+    plateauShape.lineTo(-38, 38);
+    plateauShape.closePath();
+
+    // Create elliptical hole for the open pit rim
+    const holePath = new THREE.Path();
+    const segments = 48;
+    for (let i = 0; i <= segments; i++) {
+      const theta = (i / segments) * Math.PI * 2;
+      const hx = pitOrigin.x + Math.cos(theta) * pitRadiusX;
+      const hz = pitOrigin.z + Math.sin(theta) * pitRadiusZ;
+      if (i === 0) holePath.moveTo(hx, hz);
+      else holePath.lineTo(hx, hz);
+    }
+    plateauShape.holes.push(holePath);
+
+    const plateauGeo = new THREE.ExtrudeGeometry(plateauShape, {
+      depth: 2.5,
+      bevelEnabled: false
+    });
+    plateauGeo.rotateX(Math.PI / 2);
+    const plateauMesh = new THREE.Mesh(plateauGeo, M.surfacePlateau);
+    plateauMesh.position.y = 0;
+    plateauMesh.receiveShadow = true;
+    mineWorld.add(plateauMesh);
+
+    // Build Continuous Watertight Solid Stepped Benches down the slopes
+    for (let i = 0; i < numBenches; i++) {
+      const frac0 = i / numBenches;
+      const frac1 = (i + 1) / numBenches;
+
+      const yTop = -frac0 * totalPitDepth;
+      const yBottom = -frac1 * totalPitDepth;
+
+      const rTopX = pitRadiusX * (1 - frac0 * 0.74);
+      const rTopZ = pitRadiusZ * (1 - frac0 * 0.72);
+
+      const rStepX = pitRadiusX * (1 - (frac0 * 0.74 + 0.045));
+      const rStepZ = pitRadiusZ * (1 - (frac0 * 0.72 + 0.042));
+
+      const rBottomX = pitRadiusX * (1 - frac1 * 0.74);
+      const rBottomZ = pitRadiusZ * (1 - frac1 * 0.72);
+
+      const benchMat = strataPalette[i];
+
+      // 1. Horizontal Flat Road Shelf/Bench Step (Tread)
+      const treadSegments = 40;
+      const treadGeo = new THREE.BufferGeometry();
+      const treadPositions = [];
+      const treadNormals = [];
+
+      for (let s = 0; s < treadSegments; s++) {
+        const a1 = (s / treadSegments) * Math.PI * 2;
+        const a2 = ((s + 1) / treadSegments) * Math.PI * 2;
+
+        const x1_o = pitOrigin.x + Math.cos(a1) * rTopX;
+        const z1_o = pitOrigin.z + Math.sin(a1) * rTopZ;
+        const x2_o = pitOrigin.x + Math.cos(a2) * rTopX;
+        const z2_o = pitOrigin.z + Math.sin(a2) * rTopZ;
+
+        const x1_i = pitOrigin.x + Math.cos(a1) * rStepX;
+        const z1_i = pitOrigin.z + Math.sin(a1) * rStepZ;
+        const x2_i = pitOrigin.x + Math.cos(a2) * rStepX;
+        const z2_i = pitOrigin.z + Math.sin(a2) * rStepZ;
+
+        // Two triangles for quad step
+        treadPositions.push(
+          x1_o, yTop, z1_o,
+          x1_i, yTop, z1_i,
+          x2_o, yTop, z2_o,
+
+          x2_o, yTop, z2_o,
+          x1_i, yTop, z1_i,
+          x2_i, yTop, z2_i
+        );
+
+        for (let k = 0; k < 6; k++) {
+          treadNormals.push(0, 1, 0);
+        }
+      }
+
+      treadGeo.setAttribute('position', new THREE.Float32BufferAttribute(treadPositions, 3));
+      treadGeo.setAttribute('normal', new THREE.Float32BufferAttribute(treadNormals, 3));
+      const treadMesh = new THREE.Mesh(treadGeo, benchMat);
+      treadMesh.receiveShadow = true;
+      mineWorld.add(treadMesh);
+
+      // 2. Downhill Sloped Riser Wall
+      const wallGeo = new THREE.BufferGeometry();
+      const wallPositions = [];
+
+      for (let s = 0; s < treadSegments; s++) {
+        const a1 = (s / treadSegments) * Math.PI * 2;
+        const a2 = ((s + 1) / treadSegments) * Math.PI * 2;
+
+        const x1_t = pitOrigin.x + Math.cos(a1) * rStepX;
+        const z1_t = pitOrigin.z + Math.sin(a1) * rStepZ;
+        const x2_t = pitOrigin.x + Math.cos(a2) * rStepX;
+        const z2_t = pitOrigin.z + Math.sin(a2) * rStepZ;
+
+        const x1_b = pitOrigin.x + Math.cos(a1) * rBottomX;
+        const z1_b = pitOrigin.z + Math.sin(a1) * rBottomZ;
+        const x2_b = pitOrigin.x + Math.cos(a2) * rBottomX;
+        const z2_b = pitOrigin.z + Math.sin(a2) * rBottomZ;
+
+        wallPositions.push(
+          x1_t, yTop, z1_t,
+          x1_b, yBottom, z1_b,
+          x2_t, yTop, z2_t,
+
+          x2_t, yTop, z2_t,
+          x1_b, yBottom, z1_b,
+          x2_b, yBottom, z2_b
+        );
+      }
+
+      wallGeo.setAttribute('position', new THREE.Float32BufferAttribute(wallPositions, 3));
+      wallGeo.computeVertexNormals();
+      const wallMesh = new THREE.Mesh(wallGeo, benchMat);
+      wallMesh.receiveShadow = true;
+      wallMesh.castShadow = true;
+      mineWorld.add(wallMesh);
+    }
+
+    // Excavation Coal/Ore Slag Basin Pit Floor
+    const basinGeo = new THREE.CylinderGeometry(pitRadiusX * 0.28, pitRadiusX * 0.32, 0.4, 32);
+    const basinMesh = new THREE.Mesh(basinGeo, M.strataPitCoal);
+    basinMesh.position.set(pitOrigin.x, -totalPitDepth, pitOrigin.z);
+    basinMesh.scale.set(1, 1, pitRadiusZ / pitRadiusX);
+    basinMesh.receiveShadow = true;
+    mineWorld.add(basinMesh);
+
+    // Spiraling Downhill Haul Road cutting across the terraced benches
+    const rampPts = [];
+    const turns = 2.6;
+    for (let p = 0; p <= 90; p++) {
+      const progress = p / 90;
+      const angle = progress * Math.PI * 2 * turns - 0.35;
+      const rx = (pitRadiusX + 0.1) * (1 - progress * 0.7);
+      const rz = (pitRadiusZ + 0.1) * (1 - progress * 0.67);
+      const y = -progress * (totalPitDepth - 0.2) + 0.08;
+      rampPts.push(new THREE.Vector3(
+        pitOrigin.x + Math.cos(angle) * rx,
+        y,
+        pitOrigin.z + Math.sin(angle) * rz
+      ));
+    }
+    const haulRoadCurve = new THREE.CatmullRomCurve3(rampPts);
+    const haulRoadGeo = new THREE.TubeGeometry(haulRoadCurve, 90, 0.92, 6, false);
+    const haulRoadMesh = new THREE.Mesh(haulRoadGeo, M.haulRoad);
+    haulRoadMesh.scale.set(1, 0.18, 1);
+    haulRoadMesh.receiveShadow = true;
+    mineWorld.add(haulRoadMesh);
+
+    // Surface Dirt Roads Connecting Upper Ground Infrastructure
+    const surfaceRoads = [
+      [new THREE.Vector3(12, 0.03, 14), new THREE.Vector3(5, 0.03, 5), new THREE.Vector3(0, 0.03, 3), new THREE.Vector3(-6, 0.03, 7)],
+      [new THREE.Vector3(5, 0.03, 5), new THREE.Vector3(13, 0.03, -4), new THREE.Vector3(16, 0.03, -9)],
+      [new THREE.Vector3(5, 0.03, 5), new THREE.Vector3(10, 0.03, 9), new THREE.Vector3(17, 0.03, 10)]
+    ];
+    surfaceRoads.forEach(roadPoints => {
+      const curve = new THREE.CatmullRomCurve3(roadPoints);
+      const geo = new THREE.TubeGeometry(curve, 24, 1.4, 4, false);
+      const mesh = new THREE.Mesh(geo, M.haulRoad);
+      mesh.scale.set(1, 0.02, 1);
+      mesh.receiveShadow = true;
+      mineWorld.add(mesh);
+    });
+
+    // Height sampler helper for smooth ground contact and collision
+    function getTerrainHeight(x, z) {
+      const dx = (x - pitOrigin.x) / pitRadiusX;
+      const dz = (z - pitOrigin.z) / pitRadiusZ;
+      const dist = Math.hypot(dx, dz);
+
+      if (dist >= 1.0) {
+        return 0.0; // Flat plateau
+      } else if (dist <= 0.28) {
+        return -totalPitDepth; // Basin floor
+      } else {
+        // Continuous stepped slope representation
+        const frac = (1.0 - dist) / (1.0 - 0.28);
+        return -frac * totalPitDepth;
+      }
+    }
+
+    // ----------------------------------------------------
+    // INDUSTRIAL PROCESSING REFINERY COMPLEX (RIGHT SIDE)
+    // ----------------------------------------------------
+    const refinery = new THREE.Group();
+    refinery.position.set(16, 0, -5.5);
+    mineWorld.add(refinery);
+
+    // Multi-tier Heavy Crushing Tower
+    const towerTier1 = new THREE.Mesh(new THREE.BoxGeometry(3.8, 5.2, 3.4), M.rustWall);
+    towerTier1.position.y = 2.6;
+    towerTier1.castShadow = true;
+    towerTier1.receiveShadow = true;
+
+    const towerTier2 = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.2, 2.4), M.rustWall);
+    towerTier2.position.set(-0.3, 6.3, 0.1);
+    towerTier2.castShadow = true;
+    refinery.add(towerTier1, towerTier2);
+
+    // Steel Girder Framework Scaffolding
+    for (let g = 0; g < 4; g++) {
+      const girder = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 6.8), M.frameworkSteel);
+      girder.position.set(2.0 * (g % 2 === 0 ? 1 : -1), 3.4, 1.8 * (g < 2 ? 1 : -1));
+      refinery.add(girder);
+    }
+
+    // Cylindrical Ore Silos / Hoppers
+    const silos = [
+      { x: 4.0, z: -1.2, h: 5.8, r: 1.15 },
+      { x: 6.2, z: -1.0, h: 5.4, r: 1.1 }
+    ];
+    silos.forEach(s => {
+      const silo = new THREE.Mesh(new THREE.CylinderGeometry(s.r, s.r, s.h, 24), M.siloMetal);
+      silo.position.set(s.x, s.h / 2, s.z);
+      silo.castShadow = true;
+      silo.receiveShadow = true;
+
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(s.r, 0.85, 20), M.rustWall);
+      cone.position.set(s.x, s.h + 0.42, s.z);
+      refinery.add(silo, cone);
+    });
+
+    // Elevated Angled Conveyor Bridges
+    function buildConveyor(p1, p2) {
+      const len = p1.distanceTo(p2);
+      const mid = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+      const conv = new THREE.Group();
+      conv.position.copy(mid);
+      conv.lookAt(p2);
+
+      const truss = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.45, len), M.rustWall);
+      truss.castShadow = true;
+      conv.add(truss);
+
+      const legH = mid.y;
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, legH), M.frameworkSteel);
+      leg.position.set(0, -legH / 2, 0);
+      leg.rotation.x = Math.PI / 2;
+      conv.add(leg);
+
+      return conv;
+    }
+    refinery.add(buildConveyor(new THREE.Vector3(0, 4.8, 0), new THREE.Vector3(-4.6, 2.0, 3.4)));
+    refinery.add(buildConveyor(new THREE.Vector3(0, 5.0, 0), new THREE.Vector3(4.0, 4.4, -1.2)));
+    refinery.add(buildConveyor(new THREE.Vector3(4.0, 4.4, -1.2), new THREE.Vector3(8.0, 2.1, 1.6)));
+
+    // Weathered Corrugated Maintenance Workshop
+    const workshop = new THREE.Group();
+    workshop.position.set(6.0, 0, 5.4);
+    const shopShed = new THREE.Mesh(new THREE.BoxGeometry(4.4, 2.3, 3.2), M.rustWall);
+    shopShed.position.y = 1.15;
+    shopShed.castShadow = true;
+    shopShed.receiveShadow = true;
+
+    const shopRoof = new THREE.Mesh(new THREE.ConeGeometry(2.4, 0.95, 4), M.rustedRoof);
+    shopRoof.rotation.y = Math.PI / 4;
+    shopRoof.scale.set(1.4, 1, 0.95);
+    shopRoof.position.y = 2.75;
+    workshop.add(shopShed, shopRoof);
+    refinery.add(workshop);
+
+    // ----------------------------------------------------
+    // WORKER BARRACKS / MOBILE SHIPPING CONTAINER TOWN
+    // ----------------------------------------------------
+    const camp = new THREE.Group();
+    camp.position.set(11.0, 0, 10.5);
+    mineWorld.add(camp);
+
+    const rows = 4;
+    const cols = 4;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const trailer = new THREE.Group();
+        const w = 1.9, h = 0.88, d = 0.95;
+        const isCyan = (r + c) % 3 === 0;
+
+        const base = new THREE.Mesh(
+          new THREE.BoxGeometry(w, h, d),
+          isCyan ? M.barracksCyan : M.barracksWhite
+        );
+        base.position.y = h / 2;
+        base.castShadow = true;
+        base.receiveShadow = true;
+
+        const roof = new THREE.Mesh(
+          new THREE.BoxGeometry(w + 0.1, 0.08, d + 0.1),
+          M.rustedRoof
+        );
+        roof.position.y = h + 0.04;
+        roof.castShadow = true;
+
+        trailer.add(base, roof);
+        trailer.position.set(c * 2.3 - (cols * 2.3) / 2, 0, r * 1.55 - (rows * 1.55) / 2);
+        trailer.rotation.y = (Math.random() - 0.5) * 0.1;
+        camp.add(trailer);
+      }
+    }
+
+    // Weathered "DANGER: MINE" Billboard Sign
+    const signGroup = new THREE.Group();
+    signGroup.position.set(2.0, 0, 4.8);
+    const postA = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.5), M.frameworkSteel);
+    postA.position.set(-0.7, 0.75, 0);
+    const postB = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.5), M.frameworkSteel);
+    postB.position.set(0.7, 0.75, 0);
+
+    const board = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.75, 0.06), M.rustWall);
+    board.position.set(0, 1.1, 0);
+
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 256;
+    signCanvas.height = 128;
+    const sctx = signCanvas.getContext('2d');
+    sctx.fillStyle = '#652312';
+    sctx.fillRect(0, 0, 256, 128);
+    sctx.strokeStyle = '#f59e0b';
+    sctx.lineWidth = 6;
+    sctx.strokeRect(6, 6, 244, 116);
+    sctx.fillStyle = '#fef3c7';
+    sctx.font = 'bold 26px Chakra Petch, sans-serif';
+    sctx.textAlign = 'center';
+    sctx.fillText('DANGER MINE', 128, 48);
+    sctx.fillStyle = '#38bdf8';
+    sctx.font = 'bold 18px Chakra Petch, sans-serif';
+    sctx.fillText('SearchO₂ Sector Pit-7', 128, 86);
+
+    const labelMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.6, 0.7),
+      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(signCanvas) })
+    );
+    labelMesh.position.set(0, 1.1, 0.035);
+
+    signGroup.add(postA, postB, board, labelMesh);
+    signGroup.rotation.y = Math.PI / 4.2;
+    mineWorld.add(signGroup);
+
+    // ----------------------------------------------------
+    // HEAVY MACHINERY FLEET (HAUL TRUCKS, SHOVELS, DOZERS)
+    // ----------------------------------------------------
+    function createHaulTruck(colorMat) {
+      const truck = new THREE.Group();
+      // Chassis Frame
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.7, 1.65), M.frameworkSteel);
+      chassis.position.y = 0.95;
+      chassis.castShadow = true;
+      truck.add(chassis);
+
+      // Heavy 6-Wheel Configuration
+      const tireGeo = new THREE.CylinderGeometry(0.58, 0.58, 0.44, 18);
+      const tireCoords = [
+        [-0.85, 0.58, 1.0], [-0.85, 0.58, -1.0],
+        [0.85, 0.58, 1.0], [0.85, 0.58, -1.0],
+        [0.85, 0.58, 0.54], [0.85, 0.58, -0.54]
+      ];
+      tireCoords.forEach(pos => {
+        const tire = new THREE.Mesh(tireGeo, M.wheelRubber);
+        tire.rotation.x = Math.PI / 2;
+        tire.position.set(pos[0], pos[1], pos[2]);
+        tire.castShadow = true;
+        truck.add(tire);
+      });
+
+      // Forward Operator Cab
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.75, 0.65), colorMat);
+      cab.position.set(-0.8, 1.6, 0.48);
+      const windowGlass = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.38, 0.55), M.cabGlass);
+      windowGlass.position.set(-0.8, 1.7, 0.48);
+      truck.add(cab, windowGlass);
+
+      // Dump Cargo Bed
+      const bed = new THREE.Group();
+      bed.position.set(0.25, 1.4, 0);
+      const bedFloor = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.3, 1.9), colorMat);
+      const bedL = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.75, 0.16), colorMat);
+      bedL.position.set(0, 0.45, 0.9);
+      const bedR = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.75, 0.16), colorMat);
+      bedR.position.set(0, 0.45, -0.9);
+      const bedFront = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.95, 1.9), colorMat);
+      bedFront.position.set(-1.1, 0.5, 0);
+
+      bed.add(bedFloor, bedL, bedR, bedFront);
+      bed.rotation.z = -0.12;
+      bed.castShadow = true;
+      truck.add(bed);
+
+      truck.scale.set(0.85, 0.85, 0.85);
+      return truck;
+    }
+
+    // Haul Truck 1 (Roadside Entrance)
+    const truck1 = createHaulTruck(M.truckYellow);
+    truck1.position.set(-2.8, 0.05, 5.8);
+    truck1.rotation.y = -Math.PI / 3.6;
+    mineWorld.add(truck1);
+
+    // Haul Truck 2 (Refinery Ramp)
+    const truck2 = createHaulTruck(M.truckOrange);
+    truck2.position.set(3.4, 0.05, 5.2);
+    truck2.rotation.y = Math.PI / 4.2;
+    mineWorld.add(truck2);
+
+    // Haul Truck 3 (Deep Down Spiral Ramp)
+    const truck3 = createHaulTruck(M.truckYellow);
+    truck3.position.set(-15.0, -5.2, -4.2);
+    truck3.rotation.y = Math.PI / 1.25;
+    truck3.scale.set(0.68, 0.68, 0.68);
+    mineWorld.add(truck3);
+
+    // Cable Shovel / Lattice Boom Excavator
+    function createCableShovel() {
+      const shovel = new THREE.Group();
+      const trackL = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.55, 0.48), M.frameworkSteel);
+      trackL.position.set(0, 0.28, 0.62);
+      const trackR = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.55, 0.48), M.frameworkSteel);
+      trackR.position.set(0, 0.28, -0.62);
+      shovel.add(trackL, trackR);
+
+      const house = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.25, 1.35), M.craneRust);
+      house.position.set(-0.25, 1.0, 0);
+      house.castShadow = true;
+      shovel.add(house);
+
+      const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 3.4), M.frameworkSteel);
+      boom.position.set(1.15, 1.9, 0);
+      boom.rotation.z = -Math.PI / 3.1;
+      boom.castShadow = true;
+
+      const bucket = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.65, 0.65), M.frameworkSteel);
+      bucket.position.set(2.35, 0.85, 0);
+      bucket.castShadow = true;
+
+      shovel.add(boom, bucket);
+      shovel.scale.set(0.85, 0.85, 0.85);
+      return shovel;
+    }
+
+    const shovelFloor = createCableShovel();
+    shovelFloor.position.set(-7.8, -10.9, -3.2); // Core pit floor
+    shovelFloor.rotation.y = Math.PI / 2.8;
+    mineWorld.add(shovelFloor);
+
+    const shovelUpper = createCableShovel();
+    shovelUpper.position.set(14.5, 0.05, -15.5);
+    shovelUpper.rotation.y = -Math.PI / 3.8;
+    mineWorld.add(shovelUpper);
+
+    // Bulldozer
+    const dozer = new THREE.Group();
+    const dozerBody = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.8, 0.95), M.truckYellow);
+    dozerBody.position.y = 0.5;
+    const dozerBlade = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.62, 1.25), M.frameworkSteel);
+    dozerBlade.position.set(0.78, 0.36, 0);
+    dozer.add(dozerBody, dozerBlade);
+    dozer.position.set(7.0, 0.05, 5.4);
+    dozer.rotation.y = -Math.PI / 2.7;
+    dozer.scale.set(0.75, 0.75, 0.75);
+    mineWorld.add(dozer);
+
+    // Scrub Foliage and Ore Slag Dumps
+    const scrubGeo = new THREE.DodecahedronGeometry(0.3, 1);
+    for (let s = 0; s < 130; s++) {
+      const scrub = new THREE.Mesh(scrubGeo, M.scrubFoliage);
+      const angle = Math.random() * Math.PI * 2;
+      const rad = 7.5 + Math.random() * 25;
+      const x = Math.cos(angle) * rad;
+      const z = Math.sin(angle) * rad;
+
+      // Keep outside the crater opening
+      if (Math.hypot(x - pitOrigin.x, z - pitOrigin.z) > pitRadiusX * 1.05) {
+        scrub.position.set(x, 0.16, z);
+        scrub.scale.set(
+          0.8 + Math.random() * 0.6,
+          0.6 + Math.random() * 0.5,
+          0.8 + Math.random() * 0.6
+        );
+        scrub.castShadow = true;
+        mineWorld.add(scrub);
+      }
+    }
+
+    // ----------------------------------------------------
+    // CHARACTER: SHAKIR (VOLUMETRIC REPLICATION)
+    // ----------------------------------------------------
+    const shakirGroup = new THREE.Group();
+    shakirGroup.position.copy(APP_STATE.shakir.pos);
+    shakirGroup.rotation.y = APP_STATE.shakir.rotation;
+    shakirGroup.scale.set(0.7, 0.7, 0.7);
+    mineWorld.add(shakirGroup);
+
+    const shakirTorso = new THREE.Group();
+    shakirTorso.position.y = 0.85;
+    shakirGroup.add(shakirTorso);
+
+    const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.48, 0.32), M.shirtWhite);
+    shirt.castShadow = true;
+    shakirTorso.add(shirt);
+
+    const sprout = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 12), M.sproutGreen);
+    sprout.rotation.x = Math.PI / 2;
+    sprout.position.set(0, 0.05, 0.165);
+    shakirTorso.add(sprout);
+
+    const backpack = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.52, 0.22), M.bagBlue);
+    backpack.position.set(0, 0.02, -0.22);
+    backpack.castShadow = true;
+    shakirTorso.add(backpack);
+
+    const headGroup = new THREE.Group();
+    headGroup.position.set(0, 0.44, 0);
+    shakirTorso.add(headGroup);
+
+    const face = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.4, 0.36), M.skin);
+    face.castShadow = true;
+    headGroup.add(face);
+
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
+    [-0.09, 0.09].forEach(x => {
+      const eye = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.02), eyeMat);
+      eye.position.set(x, 0.03, 0.185);
+      headGroup.add(eye);
+    });
+
+    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.22, 0.42), M.hair);
+    hair.position.y = 0.18;
+    headGroup.add(hair);
+
+    const lArm = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.06, 0.42), M.shirtGray);
+    lArm.position.set(-0.35, -0.05, 0);
+    lArm.castShadow = true;
+    shakirTorso.add(lArm);
+
+    const rArmGroup = new THREE.Group();
+    rArmGroup.position.set(0.35, 0.1, 0);
+    const rArm = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.06, 0.42), M.shirtGray);
+    rArm.position.y = -0.15;
+    rArmGroup.add(rArm);
+    rArmGroup.rotation.x = -Math.PI / 4;
+
+    const scanner = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.18), M.scannerBlue);
+    scanner.position.set(0, -0.32, 0.08);
+    const scannerScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.13), M.screenCyan);
+    scannerScreen.rotation.x = -Math.PI / 2;
+    scannerScreen.position.set(0, -0.29, 0.08);
+    rArmGroup.add(scanner, scannerScreen);
+    shakirTorso.add(rArmGroup);
+
+    const shortsHips = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.26, 0.34), M.shorts);
+    shortsHips.position.y = 0.58;
+    shortsHips.castShadow = true;
+    shakirGroup.add(shortsHips);
+
+    const lLegGroup = new THREE.Group();
+    lLegGroup.position.set(-0.16, 0.45, 0);
+    const lLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.35), M.skin);
+    lLegMesh.position.y = -0.16;
+    const lBoot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.26), M.boots);
+    lBoot.position.set(0, -0.38, 0.04);
+    lBoot.castShadow = true;
+    lLegGroup.add(lLegMesh, lBoot);
+    shakirGroup.add(lLegGroup);
+
+    const rLegGroup = new THREE.Group();
+    rLegGroup.position.set(0.16, 0.45, 0);
+    const rLegMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.35), M.skin);
+    rLegMesh.position.y = -0.16;
+    const rBoot = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.26), M.boots);
+    rBoot.position.set(0, -0.38, 0.04);
+    rBoot.castShadow = true;
+    rLegGroup.add(rLegMesh, rBoot);
+    shakirGroup.add(rLegGroup);
+
+    // ----------------------------------------------------
+    // FPV DRONE MODEL
+    // ----------------------------------------------------
+    const droneGroup = new THREE.Group();
+    const droneBody = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.08, 0.42), M.scannerBlue);
+    droneGroup.add(droneBody);
+
+    const propGeo = new THREE.BoxGeometry(0.26, 0.01, 0.03);
+    const props = [];
+    const propPos = [[-0.25, 0.06, -0.25], [0.25, 0.06, -0.25], [-0.25, 0.06, 0.25], [0.25, 0.06, 0.25]];
+    propPos.forEach(p => {
+      const pm = new THREE.Mesh(propGeo, M.frameworkSteel);
+      pm.position.set(p[0], p[1], p[2]);
+      droneGroup.add(pm);
+      props.push(pm);
+    });
+
+    const lens = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), M.cabGlass);
+    lens.position.set(0, -0.04, -0.21);
+    droneGroup.add(lens);
+    mineWorld.add(droneGroup);
+
+    // ----------------------------------------------------
+    // INPUT LISTENERS & MOUSE STEERING (WITH ROBUST SHAKIR ORBIT)
+    // ----------------------------------------------------
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      if (k === 'w') APP_STATE.keys.w = true;
+      if (k === 's') APP_STATE.keys.s = true;
+      if (k === 'a') APP_STATE.keys.a = true;
+      if (k === 'd') APP_STATE.keys.d = true;
+      if (k === ' ') { APP_STATE.keys.space = true; e.preventDefault(); }
+      if (k === 'shift') APP_STATE.keys.shift = true;
+      if (k === 'q') APP_STATE.keys.q = true;
+      if (k === 'e') APP_STATE.keys.e = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const k = e.key.toLowerCase();
+      if (k === 'w') APP_STATE.keys.w = false;
+      if (k === 's') APP_STATE.keys.s = false;
+      if (k === 'a') APP_STATE.keys.a = false;
+      if (k === 'd') APP_STATE.keys.d = false;
+      if (k === ' ') APP_STATE.keys.space = false;
+      if (k === 'shift') APP_STATE.keys.shift = false;
+      if (k === 'q') APP_STATE.keys.q = false;
+      if (k === 'e') APP_STATE.keys.e = false;
+    });
+
+    let isMouseDown = false;
+    let prevMouse = { x: 0, y: 0 };
+    window.addEventListener('mousedown', (e) => {
+      if (e.button === 0) isMouseDown = true;
+      prevMouse.x = e.clientX;
+      prevMouse.y = e.clientY;
+    });
+    window.addEventListener('mouseup', () => { isMouseDown = false; });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isMouseDown) return;
+      const dx = e.clientX - prevMouse.x;
+      const dy = e.clientY - prevMouse.y;
+      prevMouse.x = e.clientX;
+      prevMouse.y = e.clientY;
+
+      if (APP_STATE.mode === 'drone') {
+        APP_STATE.drone.rot.y -= dx * 0.004;
+        APP_STATE.drone.rot.x = Math.max(-1.1, Math.min(1.1, APP_STATE.drone.rot.x - dy * 0.003));
+      } else if (APP_STATE.mode === 'shakir') {
+        // Smooth third-person orbital rotation around Shakir
+        APP_STATE.shakir.camYaw -= dx * 0.006;
+        // Pitch clamped between ~ -0.15 rad (avoid ground clip) and 1.25 rad (high angle)
+        APP_STATE.shakir.camPitch = Math.max(-0.15, Math.min(1.25, APP_STATE.shakir.camPitch + dy * 0.005));
+      }
+    });
+
+    window.addEventListener('wheel', (e) => {
+      if (APP_STATE.mode === 'shakir') {
+        APP_STATE.shakir.camDist = Math.max(2.5, Math.min(10.0, APP_STATE.shakir.camDist + e.deltaY * 0.005));
+      }
+    });
+
+    // ----------------------------------------------------
+    // MODE CONTROLS & CAMERA PRESETS
+    // ----------------------------------------------------
+    const btn1x = document.getElementById('btn-zoom-1x');
+    const btn2x = document.getElementById('btn-zoom-2x');
+    const btn5x = document.getElementById('btn-zoom-5x');
+    const btnDrone = document.getElementById('btn-mode-drone');
+    const btnShakir = document.getElementById('btn-mode-shakir');
+    const modeBtns = [btn1x, btn2x, btn5x, btnDrone, btnShakir];
+
+    const droneOverlay = document.getElementById('drone-overlay');
+    const statusIcon = document.getElementById('status-icon');
+    const statusTitle = document.getElementById('status-title');
+    const statusHint = document.getElementById('status-hint');
+
+    function setViewMode(mode) {
+      APP_STATE.mode = mode;
+      modeBtns.forEach(b => b.classList.remove('active-mode-btn'));
+
+      if (mode === '1x') {
+        btn1x.classList.add('active-mode-btn');
+        activeCam = orthoCam;
+        controls.enabled = true;
+        controls.target.set(-1, 0, 0);
+        orthoCam.zoom = 1.0;
+        orthoCam.updateProjectionMatrix();
+        droneOverlay.classList.add('hidden');
+        statusIcon.innerText = '🌐';
+        statusTitle.innerText = '1X MACRO ISOMETRIC VIEW';
+        statusHint.innerText = 'Full terraced pit, industrial plant and worker town visible simultaneously.';
+      } else if (mode === '2x') {
+        btn2x.classList.add('active-mode-btn');
+        activeCam = orthoCam;
+        controls.enabled = true;
+        controls.target.set(15, 1.8, -4.5);
+        orthoCam.zoom = 2.3;
+        orthoCam.updateProjectionMatrix();
+        droneOverlay.classList.add('hidden');
+        statusIcon.innerText = '🏭';
+        statusTitle.innerText = '2X MID FOCUS: PROCESSING REFINERY';
+        statusHint.innerText = 'Observing ore silos, crushing tower, structural scaffolding, and conveyors.';
+      } else if (mode === '5x') {
+        btn5x.classList.add('active-mode-btn');
+        activeCam = orthoCam;
+        controls.enabled = true;
+        controls.target.set(-7.8, -10.5, -3.0);
+        orthoCam.zoom = 5.2;
+        orthoCam.updateProjectionMatrix();
+        droneOverlay.classList.add('hidden');
+        statusIcon.innerText = '🔬';
+        statusTitle.innerText = '5X MICRO DETAIL: QUARRY PIT BASIN';
+        statusHint.innerText = 'Micro inspection: deepest strata beds, cable shovel, and slag floor.';
+      } else if (mode === 'drone') {
+        btnDrone.classList.add('active-mode-btn');
+        activeCam = perspCam;
+        controls.enabled = false;
+        droneOverlay.classList.remove('hidden');
+        statusIcon.innerText = '🛸';
+        statusTitle.innerText = 'FPV DRONE RECON SIMULATOR';
+        statusHint.innerText = 'WASD: Fly Horizontally • Space/Shift: Alt • Mouse Drag: Look • Q/E: Yaw';
+      } else if (mode === 'shakir') {
+        btnShakir.classList.add('active-mode-btn');
+        activeCam = perspCam;
+        controls.enabled = false;
+        droneOverlay.classList.add('hidden');
+        statusIcon.innerText = '🚶';
+        statusTitle.innerText = 'THIRD-PERSON: SHAKIR EXPLORATION';
+        statusHint.innerText = 'WASD: Walk relative to camera • Mouse Drag: Smooth 360° orbit without underground clipping';
+      }
+    }
+
+    btn1x.addEventListener('click', () => setViewMode('1x'));
+    btn2x.addEventListener('click', () => setViewMode('2x'));
+    btn5x.addEventListener('click', () => setViewMode('5x'));
+    btnDrone.addEventListener('click', () => setViewMode('drone'));
+    btnShakir.addEventListener('click', () => setViewMode('shakir'));
+
+    document.getElementById('btn-focus-hauler').addEventListener('click', () => {
+      setViewMode('2x');
+      controls.target.set(-2.8, 0.6, 5.8);
+      orthoCam.zoom = 3.2;
+      orthoCam.updateProjectionMatrix();
+    });
+
+    document.getElementById('btn-focus-barracks').addEventListener('click', () => {
+      setViewMode('2x');
+      controls.target.set(11.0, 0.6, 10.5);
+      orthoCam.zoom = 2.8;
+      orthoCam.updateProjectionMatrix();
+    });
+
+    document.getElementById('btn-focus-excavator').addEventListener('click', () => {
+      setViewMode('5x');
+    });
+
+    document.getElementById('btn-focus-shakir').addEventListener('click', () => {
+      setViewMode('shakir');
+    });
+
+    document.getElementById('btn-sun-toggle').addEventListener('click', () => {
+      APP_STATE.sunTime = (APP_STATE.sunTime + 0.22) % 1.0;
+      const angle = APP_STATE.sunTime * Math.PI * 2;
+      sunLight.position.set(Math.cos(angle) * 55, 48, Math.sin(angle) * 45);
+    });
+
+    // ----------------------------------------------------
+    // SIMULATION TICK
+    // ----------------------------------------------------
+    const clock = new THREE.Clock();
+    const radarShakir = document.getElementById('radar-shakir');
+    const radarCam = document.getElementById('radar-cam');
+    const hudAlt = document.getElementById('hud-alt');
+    const hudSpeed = document.getElementById('hud-speed');
+
+    function animate() {
+      renderer.setAnimationLoop(() => {
+        const delta = clock.getDelta();
+        const elapsed = clock.getElapsedTime();
+
+        // 1. Shakir Kinematic Walk Simulation with Camera-Relative Direction
+        if (APP_STATE.mode === 'shakir') {
+          // Camera forward & right vectors on XZ plane
+          const camForward = new THREE.Vector3(-Math.sin(APP_STATE.shakir.camYaw), 0, -Math.cos(APP_STATE.shakir.camYaw)).normalize();
+          const camRight = new THREE.Vector3(camForward.z, 0, -camForward.x).normalize();
+
+          const moveDir = new THREE.Vector3();
+          if (APP_STATE.keys.w) moveDir.add(camForward);
+          if (APP_STATE.keys.s) moveDir.sub(camForward);
+          if (APP_STATE.keys.d) moveDir.add(camRight);
+          if (APP_STATE.keys.a) moveDir.sub(camRight);
+
+          APP_STATE.shakir.isMoving = moveDir.lengthSq() > 0.01;
+
+          if (APP_STATE.shakir.isMoving) {
+            moveDir.normalize();
+            APP_STATE.shakir.pos.addScaledVector(moveDir, APP_STATE.shakir.speed * delta);
+
+            const targetAngle = Math.atan2(moveDir.x, moveDir.z);
+            shakirGroup.rotation.y = targetAngle;
+
+            const stride = Math.sin(elapsed * 11) * 0.45;
+            lLegGroup.rotation.x = stride;
+            rLegGroup.rotation.x = -stride;
+            lArm.rotation.x = -stride * 0.8;
+            shakirTorso.position.y = 0.85 + Math.abs(Math.sin(elapsed * 11)) * 0.04;
+          } else {
+            lLegGroup.rotation.x = 0;
+            rLegGroup.rotation.x = 0;
+            lArm.rotation.x = 0;
+            shakirTorso.position.y = 0.85 + Math.sin(elapsed * 2.2) * 0.015;
+            headGroup.rotation.y = Math.sin(elapsed * 0.8) * 0.12;
+          }
+
+          // Sample terrain height so Shakir walks seamlessly along terraced benches & pit slopes
+          const groundY = getTerrainHeight(APP_STATE.shakir.pos.x, APP_STATE.shakir.pos.z);
+          APP_STATE.shakir.pos.y = groundY + 0.05;
+
+          scannerScreen.material.color.setHSL(0.53, 0.9, 0.45 + Math.sin(elapsed * 6) * 0.15);
+          shakirGroup.position.copy(APP_STATE.shakir.pos);
+
+          // Smooth Third-Person Orbit Camera clamped strictly above ground level
+          const charTarget = new THREE.Vector3(
+            APP_STATE.shakir.pos.x,
+            APP_STATE.shakir.pos.y + 0.8,
+            APP_STATE.shakir.pos.z
+          );
+
+          const r = APP_STATE.shakir.camDist;
+          const pitch = APP_STATE.shakir.camPitch;
+          const yaw = APP_STATE.shakir.camYaw;
+
+          const cx = charTarget.x + r * Math.sin(yaw) * Math.cos(pitch);
+          const cy = charTarget.y + r * Math.sin(pitch);
+          const cz = charTarget.z + r * Math.cos(yaw) * Math.cos(pitch);
+
+          // Enforce minimum height relative to terrain at camera position (no clipping underground)
+          const camGroundY = getTerrainHeight(cx, cz);
+          const safeY = Math.max(cy, camGroundY + 0.45);
+
+          perspCam.position.set(cx, safeY, cz);
+          perspCam.lookAt(charTarget.x, charTarget.y + 0.2, charTarget.z);
+        }
+
+        // 2. FPV Drone Physics & Controls
+        if (APP_STATE.mode === 'drone') {
+          props.forEach(p => p.rotation.y += 0.85);
+
+          const forward = new THREE.Vector3(0, 0, -1).applyEuler(APP_STATE.drone.rot);
+          const right = new THREE.Vector3(1, 0, 0).applyEuler(APP_STATE.drone.rot);
+          const droneMove = new THREE.Vector3();
+
+          if (APP_STATE.keys.w) droneMove.add(forward);
+          if (APP_STATE.keys.s) droneMove.sub(forward);
+          if (APP_STATE.keys.a) droneMove.sub(right);
+          if (APP_STATE.keys.d) droneMove.add(right);
+          if (APP_STATE.keys.space) droneMove.y += 1.0;
+          if (APP_STATE.keys.shift) droneMove.y -= 1.0;
+          if (APP_STATE.keys.q) APP_STATE.drone.rot.y += delta * 1.5;
+          if (APP_STATE.keys.e) APP_STATE.drone.rot.y -= delta * 1.5;
+
+          if (droneMove.lengthSq() > 0.01) {
+            droneMove.normalize();
+            APP_STATE.drone.pos.addScaledVector(droneMove, 12.5 * delta);
+          }
+
+          // Enforce ground collision boundary for drone
+          const dGround = getTerrainHeight(APP_STATE.drone.pos.x, APP_STATE.drone.pos.z);
+          if (APP_STATE.drone.pos.y < dGround + 0.4) {
+            APP_STATE.drone.pos.y = dGround + 0.4;
+          }
+
+          droneGroup.position.copy(APP_STATE.drone.pos);
+          droneGroup.rotation.copy(APP_STATE.drone.rot);
+
+          perspCam.position.copy(APP_STATE.drone.pos);
+          perspCam.rotation.copy(APP_STATE.drone.rot);
+
+          hudAlt.innerText = `${Math.max(1, (APP_STATE.drone.pos.y + 11.2) * 3.8).toFixed(1)}m`;
+          hudSpeed.innerText = `${(droneMove.lengthSq() * 19).toFixed(0)} km/h`;
+        }
+
+        // 3. Mini Radar Sync
+        const rScale = 45 / 32;
+        radarShakir.style.transform = `translate(${APP_STATE.shakir.pos.x * rScale}px, ${APP_STATE.shakir.pos.z * rScale}px)`;
+        const camPos = (activeCam === perspCam) ? perspCam.position : orthoCam.position;
+        radarCam.style.transform = `translate(${camPos.x * rScale * 0.45}px, ${camPos.z * rScale * 0.45}px)`;
+
+        if (controls.enabled) {
+          controls.update();
+        }
+
+        renderer.render(scene, activeCam);
+      });
+    }
+
+    animate();
+
+    // ----------------------------------------------------
+    // WINDOW RESIZE
+    // ----------------------------------------------------
+    window.addEventListener('resize', () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const asp = w / h;
+
+      orthoCam.left = -isoFrustum * asp;
+      orthoCam.right = isoFrustum * asp;
+      orthoCam.top = isoFrustum;
+      orthoCam.bottom = -isoFrustum;
+      orthoCam.updateProjectionMatrix();
+
+      perspCam.aspect = asp;
+      perspCam.updateProjectionMatrix();
+
+      renderer.setSize(w, h);
+    });
+  </script>
+</body>
+</html>

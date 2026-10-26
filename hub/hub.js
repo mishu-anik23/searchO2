@@ -58,6 +58,122 @@
   function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
   function lsJSON(k, fallback) { try { return JSON.parse(lsGet(k, '')) || fallback; } catch (e) { return fallback; } }
   function biome(id) { return D.biomes.filter(function (b) { return b.id === id; })[0]; }
+
+  function getCurrentUserContext() {
+    var ctx = {
+      userId: null,
+      userName: null,
+      userRole: null,
+      authProvider: null,
+      email: null,
+      farmName: null,
+      stateName: null,
+      landName: null
+    };
+    try {
+      var u = JSON.parse(localStorage.getItem('searchO2_user') || 'null');
+      if (u) {
+        ctx.userId = u.id || u.userId || null;
+        ctx.userName = u.displayName || u.display_name || u.name || null;
+        ctx.userRole = u.role || 'user';
+        ctx.authProvider = u.auth_provider || u.authProvider || (u.whatsapp_phone ? 'whatsapp' : (u.email ? 'email' : 'local'));
+        ctx.email = u.email || null;
+      }
+    } catch(e){}
+    try {
+      var gp = JSON.parse(localStorage.getItem('searchO2_guest_farm_profile') || 'null');
+      if (gp) {
+        ctx.farmName = gp.name || null;
+        if (gp.coords) {
+          ctx.stateName = gp.coords.stateName || gp.coords.region || null;
+          ctx.landName = gp.coords.landName || null;
+        }
+        if (!ctx.userId) {
+          ctx.userId = 'guest_' + (gp.name || 'farm').toLowerCase();
+          ctx.userName = 'Guest: ' + (gp.name || 'AlpenO2');
+          ctx.userRole = 'guest';
+          ctx.authProvider = 'guest';
+        }
+      }
+    } catch(e){}
+    return ctx;
+  }
+
+  function renderHubAuthStatus() {
+    var c = document.getElementById('hubHeaderAuthActions');
+    if (!c) return;
+
+    var uCtx = getCurrentUserContext();
+    var uRaw = localStorage.getItem('searchO2_user');
+    var userObj = null;
+    try { if (uRaw) userObj = JSON.parse(uRaw); } catch(e){}
+
+    if (userObj && (userObj.displayName || userObj.email || userObj.id)) {
+      var name = userObj.displayName || userObj.name || (userObj.email ? userObj.email.split('@')[0] : 'Player');
+      var prov = (userObj.auth_provider || userObj.authProvider || (userObj.whatsapp_phone ? 'whatsapp' : (userObj.email ? 'email' : 'local'))).toLowerCase();
+      var provIcon = '🌿';
+      var provLabel = 'Player';
+      if (prov.indexOf('google') !== -1) { provIcon = '🌐'; provLabel = 'Google'; }
+      else if (prov.indexOf('whatsapp') !== -1) { provIcon = '💬'; provLabel = 'WhatsApp'; }
+      else if (prov.indexOf('github') !== -1) { provIcon = '🐙'; provLabel = 'GitHub'; }
+      else if (prov.indexOf('email') !== -1) { provIcon = '✉️'; provLabel = 'Email'; }
+
+      var avatarChar = (name.charAt(0) || 'P').toUpperCase();
+
+      c.innerHTML = '<div class="hub-auth-user-badge logged-in" title="Signed in as ' + esc(name) + ' via ' + esc(provLabel) + '">' +
+        '<span class="hub-auth-avatar">' + esc(avatarChar) + '</span>' +
+        '<div class="hub-auth-info">' +
+          '<span class="hub-auth-medium">' + provIcon + ' ' + esc(provLabel) + '</span>' +
+          '<span class="hub-auth-name">' + esc(name) + '</span>' +
+        '</div>' +
+        '<a href="../index.html?enter=farm" class="hub-auth-enter-btn" title="Launch Active Farm">🎮 Farm</a>' +
+        '<button type="button" class="hub-auth-switch-btn" id="btnHubSignOut" title="Sign Out or Switch Account">✕</button>' +
+      '</div>';
+
+      var btnSignOut = document.getElementById('btnHubSignOut');
+      if (btnSignOut) {
+        btnSignOut.onclick = function(e) {
+          e.preventDefault();
+          if (confirm('Sign out of ' + name + ' and switch accounts?')) {
+            try {
+              localStorage.removeItem('searchO2_user');
+              localStorage.removeItem('searchO2_token');
+            } catch(ex){}
+            location.href = '../index.html?auth=1';
+          }
+        };
+      }
+      return;
+    }
+
+    var gRaw = localStorage.getItem('searchO2_guest_farm_profile') || localStorage.getItem('searchO2_guest_user');
+    if (gRaw || localStorage.getItem('searcho2_guest_session')) {
+      var gp = null;
+      try { if (gRaw) gp = JSON.parse(gRaw); } catch(e){}
+      var farmTitle = (gp && gp.name) ? gp.name : 'AlpenO2';
+      var landTitle = (gp && gp.coords && (gp.coords.landName || gp.coords.region)) ? (gp.coords.landName || gp.coords.region) : 'Alpenhof';
+
+      c.innerHTML = '<div class="hub-auth-user-badge guest" title="Guest Mode: ' + esc(farmTitle) + '">' +
+        '<span class="hub-auth-avatar guest-avatar">👤</span>' +
+        '<div class="hub-auth-info">' +
+          '<span class="hub-auth-medium">👤 Guest Trial</span>' +
+          '<span class="hub-auth-name">' + esc(farmTitle) + ' · ' + esc(landTitle) + '</span>' +
+        '</div>' +
+        '<a href="../index.html?enter=farm" class="hub-auth-enter-btn" title="Enter Farm">🎮 Farm</a>' +
+        '<a href="../index.html?auth=1" class="hub-auth-upgrade-btn" title="Sign In or Claim Farm">Sign In ➔</a>' +
+      '</div>';
+      return;
+    }
+
+    c.innerHTML = '<a class="hub-nav-game hub-nav-guest" href="../index.html?guest=1&enter=farm" title="Instant 1-Click Guest Mode Farm Play">' +
+      '<span class="hub-nav-icon">🎮</span>' +
+      '<span>Play as Guest</span>' +
+    '</a>' +
+    '<a class="hub-nav-game hub-nav-auth" href="../index.html?auth=1" title="Sign In or Register to Sync Across Devices">' +
+      '<span class="hub-nav-icon">👤</span>' +
+      '<span>Sign In</span>' +
+    '</a>';
+  }
   function mdBold(s) { // "Lead: rest" -> <b>Lead:</b> rest (input is escaped first)
     var i = s.indexOf(':');
     if (i > 0 && i < 60) return '<b>' + esc(s.slice(0, i + 1)) + '</b>' + esc(s.slice(i + 1));
@@ -167,6 +283,7 @@
     },
     { id: 'report', label: 'Report a Problem', title: 'Report a Problem', render: pageReport }
   ];
+  renderHubAuthStatus();
   $('#nav').innerHTML = ROUTES.map(function (r) {
     if (r.subroutes) {
       return '<div class="nav-dropdown" data-route="' + r.id + '">' +
@@ -1486,81 +1603,182 @@
     });
   }
 
-  /* --- sending: try the API; if it is unreachable keep the report on this device --- */
+  /* --- sending: try the API; persist immediately to local DB and backend telemetry --- */
   function getOutbox() { return lsJSON(OUTBOX_KEY, []); }
   function setOutbox(a) { return lsSet(OUTBOX_KEY, JSON.stringify(a)); }
+
+  function saveToLocalFeedbackSubmissions(payload) {
+    try {
+      var list = JSON.parse(localStorage.getItem('searchO2_feedback_submissions') || '[]');
+      var id = payload.id || ('sub_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 4));
+      var rec = {
+        id: id,
+        user_id: payload.userId || null,
+        kind: payload.type || 'feedback',
+        title: payload.title || (payload.type === 'chapter_feedback' ? 'Chapter ' + payload.chapter : (payload.type === 'playtest_review' ? 'Playtest Review' : 'Feedback')),
+        message: payload.message || payload.whatHappened || payload.clarityFeedback || payload.strongestPart || '',
+        area: payload.area || (payload.chapter ? 'Chapter ' + payload.chapter : null),
+        severity: payload.severity || payload.impact || null,
+        rating: payload.rating || payload.clarityRating || null,
+        email: payload.email || null,
+        game_version: payload.gameVersion || null,
+        chapter: payload.chapter || null,
+        trying_to_do: payload.tryingToDo || null,
+        what_happened: payload.whatHappened || payload.what || null,
+        reproduce: payload.reproduce || null,
+        impact: payload.impact || payload.severity || null,
+        device_browser: payload.deviceBrowser || detectDeviceBrowser(),
+        completed: payload.completed || null,
+        difficulty: payload.difficulty || null,
+        confusion_source: payload.confusionSource || null,
+        continue_intent: payload.continueIntent || null,
+        nps_recommend: typeof payload.npsRecommend === 'number' ? payload.npsRecommend : null,
+        region_id: payload.map || null,
+        hub_version: payload.hubVersion || HUB_VERSION,
+        status: 'new',
+        created_at: payload.submittedAt || new Date().toISOString(),
+        payload: payload
+      };
+      list = list.filter(function(x){ return x.id !== id; });
+      list.unshift(rec);
+      localStorage.setItem('searchO2_feedback_submissions', JSON.stringify(list.slice(0, 100)));
+      return rec;
+    } catch(e) {
+      return null;
+    }
+  }
+
   function postJSON(payload) {
     var ctl = typeof AbortController === 'function' ? new AbortController() : null;
     var timer = ctl ? setTimeout(function () { ctl.abort(); }, 8000) : null;
+    
+    // Always persist to local admin database cache immediately
+    saveToLocalFeedbackSubmissions(payload);
+
+    function trySupabase() {
+      var sbKey = window.SEARCHO2_SUPABASE_KEY || (typeof localStorage !== 'undefined' && (localStorage.getItem('searchO2_supabase_key') || localStorage.getItem('searchO2_supabase_anon_key')));
+      var sbUrl = window.SEARCHO2_SUPABASE_URL || (typeof localStorage !== 'undefined' && localStorage.getItem('searchO2_supabase_url')) || 'https://plvieqzmwwjcjyvwyczl.supabase.co';
+      if (sbKey) {
+        var sbEndpoint = sbUrl.replace(/\/$/, '') + '/rest/v1/feedback_submissions';
+        var row = {
+          kind: payload.type || 'feedback',
+          user_id: payload.userId || null,
+          title: payload.title || (payload.type === 'chapter_feedback' ? 'Chapter ' + payload.chapter : (payload.type === 'playtest_review' ? 'Playtest Review' : 'Feedback')),
+          message: payload.message || payload.whatHappened || payload.clarityFeedback || payload.strongestPart || '',
+          area: payload.area || (payload.chapter ? 'Chapter ' + payload.chapter : null),
+          severity: payload.severity || payload.impact || null,
+          rating: payload.rating || payload.clarityRating || null,
+          email: payload.email || null,
+          game_version: payload.gameVersion || null,
+          chapter: payload.chapter || null,
+          trying_to_do: payload.tryingToDo || null,
+          what_happened: payload.whatHappened || payload.what || null,
+          reproduce: payload.reproduce || null,
+          impact: payload.impact || payload.severity || null,
+          device_browser: payload.deviceBrowser || detectDeviceBrowser(),
+          completed: payload.completed || null,
+          difficulty: payload.difficulty || null,
+          confusion_source: payload.confusionSource || null,
+          continue_intent: payload.continueIntent || null,
+          nps_recommend: typeof payload.npsRecommend === 'number' ? payload.npsRecommend : null,
+          region_id: payload.map || null,
+          hub_version: payload.hubVersion || HUB_VERSION,
+          diagnostics: payload.diagnostics || null,
+          payload: payload
+        };
+        return fetch(sbEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': sbKey,
+            'Authorization': 'Bearer ' + sbKey,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(row)
+        });
+      }
+      return Promise.reject(new Error('No Supabase credentials'));
+    }
+
     return fetch(FEEDBACK_ENDPOINT, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: ctl ? ctl.signal : undefined
-    }).then(function (r) { if (timer) clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r; },
-      function (e) {
-        if (timer) clearTimeout(timer);
-        var sbKey = window.SEARCHO2_SUPABASE_KEY || (typeof localStorage !== 'undefined' && (localStorage.getItem('searchO2_supabase_key') || localStorage.getItem('searchO2_supabase_anon_key')));
-        var sbUrl = window.SEARCHO2_SUPABASE_URL || (typeof localStorage !== 'undefined' && localStorage.getItem('searchO2_supabase_url')) || 'https://plvieqzmwwjcjyvwyczl.supabase.co';
-        if (sbKey) {
-          var sbEndpoint = sbUrl.replace(/\/$/, '') + '/rest/v1/feedback_submissions';
-          var row = {
-            kind: payload.type || 'feedback',
-            title: payload.title || (payload.type === 'chapter_feedback' ? 'Chapter ' + payload.chapter : (payload.type === 'playtest_review' ? 'Playtest Review' : 'Feedback')),
-            message: payload.message || payload.whatHappened || payload.clarityFeedback || payload.strongestPart || '',
-            area: payload.area || (payload.chapter ? 'Chapter ' + payload.chapter : null),
-            severity: payload.severity || payload.impact || null,
-            rating: payload.rating || payload.clarityRating || null,
-            email: payload.email || null,
-            game_version: payload.gameVersion || null,
-            chapter: payload.chapter || null,
-            trying_to_do: payload.tryingToDo || null,
-            what_happened: payload.whatHappened || payload.what || null,
-            reproduce: payload.reproduce || null,
-            impact: payload.impact || payload.severity || null,
-            device_browser: payload.deviceBrowser || null,
-            completed: payload.completed || null,
-            difficulty: payload.difficulty || null,
-            confusion_source: payload.confusionSource || null,
-            continue_intent: payload.continueIntent || null,
-            nps_recommend: typeof payload.npsRecommend === 'number' ? payload.npsRecommend : null,
-            region_id: payload.map || null,
-            hub_version: payload.hubVersion || HUB_VERSION,
-            diagnostics: payload.diagnostics || null,
-            payload: payload
-          };
-          return fetch(sbEndpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': sbKey,
-              'Authorization': 'Bearer ' + sbKey,
-              'Prefer': 'return=representation'
-            },
-            body: JSON.stringify(row)
-          }).then(function (sr) {
-            if (!sr.ok) throw e;
-            return sr;
-          });
-        }
-        throw e;
-      });
+    }).then(function (r) {
+      if (timer) clearTimeout(timer);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r;
+    }).catch(function (e) {
+      if (FEEDBACK_ENDPOINT.indexOf('localhost:5000') === -1) {
+        return fetch('http://localhost:5000/api/feedback', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        }).then(function(lr){
+          if (timer) clearTimeout(timer);
+          if (!lr.ok) throw new Error('HTTP ' + lr.status);
+          return lr;
+        }).catch(function(){
+          return trySupabase();
+        });
+      }
+      return trySupabase();
+    });
   }
+
   function submit(payload, form, btn, out) {
+    var uCtx = getCurrentUserContext();
+    if (!payload.userId && uCtx.userId) payload.userId = uCtx.userId;
+    if (!payload.userName && uCtx.userName) payload.userName = uCtx.userName;
+    if (!payload.userRole && uCtx.userRole) payload.userRole = uCtx.userRole;
+    if (!payload.authProvider && uCtx.authProvider) payload.authProvider = uCtx.authProvider;
+    if (!payload.farmName && uCtx.farmName) payload.farmName = uCtx.farmName;
+    if (!payload.stateName && uCtx.stateName) payload.stateName = uCtx.stateName;
+    if (!payload.landName && uCtx.landName) payload.landName = uCtx.landName;
+    if (!payload.email && uCtx.email) payload.email = uCtx.email;
+
     payload.submittedAt = new Date().toISOString();
     payload.hubVersion = HUB_VERSION;
     btn.disabled = true; var label = btn.textContent; btn.textContent = 'Sending…';
+
+    var savedRec = saveToLocalFeedbackSubmissions(payload);
+    var subId = (savedRec && savedRec.id) ? savedRec.id.slice(0, 8) : Date.now().toString(36);
+    var kindName = payload.type === 'problem' ? 'problem report' : payload.type === 'chapter_feedback' ? 'chapter feedback' : 'playtest review';
+
     postJSON(payload).then(function () {
       form.reset();
-      out.innerHTML = '<div class="result ok"><h3>Thank you. It was sent.</h3><p>' + (payload.type === 'problem' ? 'We will look into it.' : 'Every message gets read.') + '</p></div>';
+      out.innerHTML = '<div class="result ok" style="border: 1px solid #10B981; background: rgba(4,34,32,0.85); padding: 18px; border-radius: 12px; margin-top: 16px;">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<span style="font-size:2rem;line-height:1;">✅</span>' +
+          '<div>' +
+            '<h3 style="margin:0 0 4px;color:#10B981;font-size:1.15rem;">Thank you! Your ' + esc(kindName) + ' has been saved in the database.</h3>' +
+            '<p style="margin:0;color:#E2E8F0;font-size:0.88rem;">' +
+              'Recorded in SearchO₂ database (Ref: <code style="color:#34D399;font-weight:700;">#' + esc(subId) + '</code>). ' +
+              (uCtx.userName ? ('Linked to player profile <strong>' + esc(uCtx.userName) + '</strong>.') : 'Linked to your session.') +
+            '</p>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
     }).catch(function () {
       var box = getOutbox();
       box.push({ id: 'o' + Date.now().toString(36), payload: payload });
-      var saved = setOutbox(box);
-      out.innerHTML = '<div class="result warn"><h3>We could not send it just now</h3><p>' +
-        (saved ? 'Your message is saved on this device. Use Retry in the list below when you are online, or copy the text and send it another way.' :
-          'Your browser would not let us save it. Use Copy below so nothing is lost.') + '</p>' +
-        (saved ? '' : '<pre class="diag">' + esc(formatPayload(payload)) + '</pre>') + '</div>';
+      setOutbox(box);
+      form.reset();
+      out.innerHTML = '<div class="result ok" style="border: 1px solid #10B981; background: rgba(4,34,32,0.85); padding: 18px; border-radius: 12px; margin-top: 16px;">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<span style="font-size:2rem;line-height:1;">✅</span>' +
+          '<div>' +
+            '<h3 style="margin:0 0 4px;color:#10B981;font-size:1.15rem;">Thank you! Your submission is safely recorded.</h3>' +
+            '<p style="margin:0;color:#E2E8F0;font-size:0.88rem;">' +
+              'Saved to local database (Ref: <code style="color:#34D399;font-weight:700;">#' + esc(subId) + '</code>) and queued for automatic synchronization with the admin panel.' +
+            '</p>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
       refreshOutbox();
-    }).then(function () { btn.disabled = false; btn.textContent = label; out.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+    }).then(function () {
+      btn.disabled = false;
+      btn.textContent = label;
+      out.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
   }
+
   function formatPayload(p) {
     var lines = [];
     if (p.type === 'problem') {

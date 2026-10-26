@@ -141,7 +141,7 @@ router.post(
   authLimiter,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const result = await authService.createGuestSession(extractSessionMeta(req));
+      const result = await authService.createGuestSession(extractSessionMeta(req), req.body);
       setAuthCookies(res, result.accessToken, result.refreshToken);
       res.status(201).json({
         message: 'Anonymous guest session created.',
