@@ -42,3 +42,29 @@ ALTER TABLE feedback_submissions ADD COLUMN IF NOT EXISTS payload JSONB DEFAULT 
 CREATE INDEX IF NOT EXISTS idx_feedback_game_version ON feedback_submissions(game_version);
 CREATE INDEX IF NOT EXISTS idx_feedback_chapter ON feedback_submissions(chapter);
 CREATE INDEX IF NOT EXISTS idx_feedback_payload ON feedback_submissions USING gin (payload);
+
+-- Allow anon and authenticated users to submit feedback directly via Supabase PostgREST (insert-only)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'GRANT INSERT ON TABLE feedback_submissions TO anon';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'GRANT INSERT ON TABLE feedback_submissions TO authenticated';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'feedback_submissions' AND policyname = 'Allow anon insert feedback'
+  ) THEN
+    CREATE POLICY "Allow anon insert feedback" ON feedback_submissions FOR INSERT TO anon WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'feedback_submissions' AND policyname = 'Allow authenticated insert feedback'
+  ) THEN
+    CREATE POLICY "Allow authenticated insert feedback" ON feedback_submissions FOR INSERT TO authenticated WITH CHECK (true);
+  END IF;
+END $$;
+

@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { validate } from '../../middleware/validation';
 import { feedbackLimiter } from '../../middleware/rateLimiter';
 import { authenticate, requireAuth, requireAdmin } from '../../middleware/auth';
-import { submissionSchema, listQuerySchema } from './feedback.schemas';
+import { submissionSchema, listQuerySchema, updateFeedbackStatusSchema } from './feedback.schemas';
 import { feedbackService } from './feedback.service';
 
 export const feedbackRouter = Router();
@@ -32,8 +32,29 @@ feedbackRouter.get(
   validate({ query: listQuerySchema }),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const q = req.query as unknown as { kind?: string; status?: string; limit: number };
+      const q = req.query as unknown as { kind?: string; status?: string; search?: string; limit: number };
       res.json({ items: await feedbackService.list(q) });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/** PATCH /api/feedback/admin/:id/status: update submission status, admins only. */
+feedbackRouter.patch(
+  '/admin/:id/status',
+  authenticate,
+  requireAuth,
+  requireAdmin,
+  validate({ body: updateFeedbackStatusSchema }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const updated = await feedbackService.updateStatus(req.params.id, req.body.status);
+      if (!updated) {
+        res.status(404).json({ error: 'Feedback submission not found' });
+        return;
+      }
+      res.json({ ok: true, submission: updated });
     } catch (err) {
       next(err);
     }

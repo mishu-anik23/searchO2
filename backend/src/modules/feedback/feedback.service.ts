@@ -106,7 +106,8 @@ export const feedbackService = {
     return { id: res.rows[0].id, createdAt: res.rows[0].created_at };
   },
 
-  async list(opts: { kind?: string; status?: string; limit: number }) {
+  async list(opts: { kind?: string; status?: string; search?: string; limit: number }) {
+    const searchPattern = opts.search ? `%${opts.search.toLowerCase()}%` : null;
     const res = await query(
       `SELECT id, kind, rating, topic, area, severity, title, message, steps, expected,
               email, region_id, diagnostics, hub_version, status, created_at,
@@ -114,11 +115,28 @@ export const feedbackService = {
               device_browser, completed, difficulty, confusion_source, continue_intent,
               nps_recommend, payload
          FROM feedback_submissions
-        WHERE ($1::text IS NULL OR kind = $1) AND ($2::text IS NULL OR status = $2)
+        WHERE ($1::text IS NULL OR kind = $1)
+          AND ($2::text IS NULL OR status = $2)
+          AND ($3::text IS NULL OR (
+            LOWER(COALESCE(title, '')) LIKE $3 OR
+            LOWER(COALESCE(message, '')) LIKE $3 OR
+            LOWER(COALESCE(area, '')) LIKE $3 OR
+            LOWER(COALESCE(email, '')) LIKE $3 OR
+            LOWER(COALESCE(game_version, '')) LIKE $3 OR
+            LOWER(COALESCE(chapter, '')) LIKE $3
+          ))
         ORDER BY created_at DESC
-        LIMIT $3`,
-      [opts.kind ?? null, opts.status ?? null, opts.limit]
+        LIMIT $4`,
+      [opts.kind ?? null, opts.status ?? null, searchPattern, opts.limit]
     );
     return res.rows;
+  },
+
+  async updateStatus(id: string, status: 'new' | 'seen' | 'resolved') {
+    const res = await query<{ id: string; status: string }>(
+      `UPDATE feedback_submissions SET status = $1 WHERE id = $2 RETURNING id, status`,
+      [status, id]
+    );
+    return res.rows[0] || null;
   },
 };

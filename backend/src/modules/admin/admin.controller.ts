@@ -1,3 +1,5 @@
+import { feedbackService } from '../feedback/feedback.service';
+import { listQuerySchema, updateFeedbackStatusSchema } from '../feedback/feedback.schemas';
 import { Router, Request, Response, NextFunction } from 'express';
 import { adminService } from './admin.service';
 import { authenticate, requireAuth, requireAdmin } from '../../middleware/auth';
@@ -122,6 +124,32 @@ router.get('/audit-logs', async (req: Request, res: Response, next: NextFunction
     const limit = parseInt(req.query.limit as string, 10) || 20;
     const result = await adminService.getAuditLogs(page, limit);
     res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+
+// GET /api/admin/feedback - Query feedback submissions
+router.get('/feedback', validate({ query: listQuerySchema }), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const q = req.query as unknown as { kind?: string; status?: string; search?: string; limit: number };
+    const items = await feedbackService.list(q);
+    res.json({ items });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/admin/feedback/:id/status - Update feedback status
+router.patch('/feedback/:id/status', validate({ body: updateFeedbackStatusSchema }), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const updated = await feedbackService.updateStatus(req.params.id, req.body.status);
+    if (!updated) {
+      res.status(404).json({ error: 'Feedback submission not found' });
+      return;
+    }
+    res.json({ ok: true, submission: updated });
   } catch (err) {
     next(err);
   }

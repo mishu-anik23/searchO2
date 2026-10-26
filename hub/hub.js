@@ -216,33 +216,253 @@
   /* ------------------------------------------------------------------ *
    * HOME: growth demo + map + doors
    * ------------------------------------------------------------------ */
-  function treeSVGInner(sp) {
-    var c = sp.canopy || '#4E8F52', t = sp.trunk || '#6E4429', d = sp.dotColor;
-    var dots = function (pts) {
-      return d ? pts.map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="5" fill="' + d + '"/>'; }).join('') : '';
-    };
-    switch (sp.shape) {
-      case 'conifer':
-        return '<rect x="-7" y="-44" width="14" height="44" fill="' + t + '"/>' +
-          '<polygon points="0,-190 -58,-90 58,-90" fill="' + c + '"/>' +
-          '<polygon points="0,-150 -72,-48 72,-48" fill="' + c + '" opacity=".92"/>' +
-          '<polygon points="0,-110 -84,-20 84,-20" fill="' + c + '" opacity=".85"/>';
-      case 'tallRound':
-        return '<rect x="-7" y="-70" width="14" height="70" fill="' + t + '"/>' +
-          '<ellipse cx="0" cy="-130" rx="46" ry="82" fill="' + c + '"/>' + dots([[-18, -150], [22, -110], [0, -178]]);
-      case 'umbrella':
-        return '<rect x="-6" y="-100" width="12" height="100" fill="' + t + '"/>' +
-          '<ellipse cx="0" cy="-112" rx="104" ry="34" fill="' + c + '"/>' + dots([[-50, -108], [40, -118]]);
-      case 'bush':
-        return '<circle cx="-34" cy="-30" r="34" fill="' + c + '"/><circle cx="34" cy="-30" r="34" fill="' + c + '" opacity=".95"/>' +
-          '<circle cx="0" cy="-48" r="42" fill="' + c + '"/>' + dots([[-30, -34], [30, -26], [4, -66], [-2, -22]]);
-      default:
-        return '<rect x="-8" y="-84" width="16" height="84" fill="' + t + '"/>' +
-          '<circle cx="0" cy="-132" r="74" fill="' + c + '"/><circle cx="-38" cy="-108" r="46" fill="' + c + '" opacity=".92"/>' +
-          '<circle cx="40" cy="-110" r="44" fill="' + c + '" opacity=".92"/>' + dots([[-36, -128], [30, -150], [48, -104], [-4, -96]]);
-    }
+
+  /* ------------------------------------------------------------------ *
+   * 3D VOLUMETRIC TREE ENGINE & 3D CRISP FLAGS
+   * ------------------------------------------------------------------ */
+  function adjustColor(col, amt) {
+    if (!col) return '#888888';
+    var str = String(col).trim();
+    if (str.charAt(0) === '#') str = str.slice(1);
+    if (str.length === 3) str = str.charAt(0)+str.charAt(0)+str.charAt(1)+str.charAt(1)+str.charAt(2)+str.charAt(2);
+    var num = parseInt(str, 16);
+    if (isNaN(num)) return col;
+    var r = Math.min(255, Math.max(0, (num >> 16) + amt));
+    var g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amt));
+    var b = Math.min(255, Math.max(0, (num & 0x0000FF) + amt));
+    return '#' + ('000000' + ((r << 16) | (g << 8) | b).toString(16)).slice(-6);
   }
-  function stageScale(i, n) { return n < 2 ? 1 : 0.16 + 0.84 * (i / (n - 1)); }
+
+  var flagIdCounter = 0;
+  function get3DCountryFlagSvg(codeOrId, width, height) {
+    var w = width || 28;
+    var h = height || 20;
+    var id = (codeOrId || '').toLowerCase();
+    flagIdCounter++;
+    var uid = flagIdCounter;
+
+    // Germany
+    if (id === 'germany' || id === 'de') {
+      return '<svg class="s2-volumetric-flag" viewBox="0 0 28 20" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs><linearGradient id="fGlossDE_' + uid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.32"/><stop offset="100%" stop-color="#000" stop-opacity="0.18"/></linearGradient></defs>' +
+        '<clipPath id="fcDE_' + uid + '"><rect width="28" height="20" rx="3.5"/></clipPath>' +
+        '<g clip-path="url(#fcDE_' + uid + ')">' +
+          '<rect width="28" height="6.67" fill="#1A1A1A"/>' +
+          '<rect y="6.67" width="28" height="6.67" fill="#D32F2F"/>' +
+          '<rect y="13.34" width="28" height="6.67" fill="#FFC107"/>' +
+          '<rect width="28" height="20" fill="url(#fGlossDE_' + uid + ')"/>' +
+        '</g>' +
+      '</svg>';
+    }
+
+    // Bavaria
+    if (id === 'bavaria' || id === 'by') {
+      return '<svg class="s2-volumetric-flag" viewBox="0 0 28 20" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs>' +
+          '<linearGradient id="fGlossBY_' + uid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.32"/><stop offset="100%" stop-color="#000" stop-opacity="0.18"/></linearGradient>' +
+          '<pattern id="bavLozPatt_' + uid + '" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">' +
+            '<rect width="8" height="4" fill="#0080FF"/>' +
+            '<rect y="4" width="8" height="4" fill="#FFFFFF"/>' +
+          '</pattern>' +
+        '</defs>' +
+        '<clipPath id="fcBY_' + uid + '"><rect width="28" height="20" rx="3.5"/></clipPath>' +
+        '<g clip-path="url(#fcBY_' + uid + ')">' +
+          '<rect width="28" height="20" fill="url(#bavLozPatt_' + uid + ')"/>' +
+          '<rect width="28" height="20" fill="url(#fGlossBY_' + uid + ')"/>' +
+        '</g>' +
+      '</svg>';
+    }
+
+    // Bangladesh (Saint Martin's Island)
+    if (id === 'saint_martin' || id === 'bangladesh' || id === 'bd') {
+      return '<svg class="s2-volumetric-flag" viewBox="0 0 28 20" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs><linearGradient id="fGlossBD_' + uid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.32"/><stop offset="100%" stop-color="#000" stop-opacity="0.18"/></linearGradient></defs>' +
+        '<clipPath id="fcBD_' + uid + '"><rect width="28" height="20" rx="3.5"/></clipPath>' +
+        '<g clip-path="url(#fcBD_' + uid + ')">' +
+          '<rect width="28" height="20" fill="#006A4E"/>' +
+          '<circle cx="12.5" cy="10" r="5.6" fill="#F42A41"/>' +
+          '<rect width="28" height="20" fill="url(#fGlossBD_' + uid + ')"/>' +
+        '</g>' +
+      '</svg>';
+    }
+
+    // Brazil
+    if (id === 'brazil' || id === 'br') {
+      return '<svg class="s2-volumetric-flag" viewBox="0 0 28 20" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs><linearGradient id="fGlossBR_' + uid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.32"/><stop offset="100%" stop-color="#000" stop-opacity="0.18"/></linearGradient></defs>' +
+        '<clipPath id="fcBR_' + uid + '"><rect width="28" height="20" rx="3.5"/></clipPath>' +
+        '<g clip-path="url(#fcBR_' + uid + ')">' +
+          '<rect width="28" height="20" fill="#009739"/>' +
+          '<polygon points="14,2 25.5,10 14,18 2.5,10" fill="#FEDD00"/>' +
+          '<circle cx="14" cy="10" r="4.2" fill="#012169"/>' +
+          '<path d="M10.2,10.6 Q14,9 17.8,11.2" stroke="#FFF" stroke-width="0.8" fill="none"/>' +
+          '<rect width="28" height="20" fill="url(#fGlossBR_' + uid + ')"/>' +
+        '</g>' +
+      '</svg>';
+    }
+
+    // Sweden
+    if (id === 'sweden' || id === 'se') {
+      return '<svg class="s2-volumetric-flag" viewBox="0 0 28 20" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs><linearGradient id="fGlossSE_' + uid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.32"/><stop offset="100%" stop-color="#000" stop-opacity="0.18"/></linearGradient></defs>' +
+        '<clipPath id="fcSE_' + uid + '"><rect width="28" height="20" rx="3.5"/></clipPath>' +
+        '<g clip-path="url(#fcSE_' + uid + ')">' +
+          '<rect width="28" height="20" fill="#006AA7"/>' +
+          '<rect x="7.5" width="4" height="20" fill="#FECC00"/>' +
+          '<rect y="8" width="28" height="4" fill="#FECC00"/>' +
+          '<rect width="28" height="20" fill="url(#fGlossSE_' + uid + ')"/>' +
+        '</g>' +
+      '</svg>';
+    }
+
+    // Spain
+    if (id === 'spain' || id === 'es') {
+      return '<svg class="s2-volumetric-flag" viewBox="0 0 28 20" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg">' +
+        '<defs><linearGradient id="fGlossES_' + uid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.32"/><stop offset="100%" stop-color="#000" stop-opacity="0.18"/></linearGradient></defs>' +
+        '<clipPath id="fcES_' + uid + '"><rect width="28" height="20" rx="3.5"/></clipPath>' +
+        '<g clip-path="url(#fcES_' + uid + ')">' +
+          '<rect width="28" height="5" fill="#AA151B"/>' +
+          '<rect y="5" width="28" height="10" fill="#F1BF00"/>' +
+          '<rect y="15" width="28" height="5" fill="#AA151B"/>' +
+          '<rect width="28" height="20" fill="url(#fGlossES_' + uid + ')"/>' +
+        '</g>' +
+      '</svg>';
+    }
+
+    return '<svg class="s2-volumetric-flag" viewBox="0 0 28 20" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg"><rect width="28" height="20" rx="3.5" fill="#2E7D32"/><circle cx="14" cy="10" r="6" fill="#81C784"/></svg>';
+  }
+
+  function renderVolumetric3DTreeInner(sp) {
+    var c = sp.canopy || '#4E8F52', t = sp.trunk || '#6E4429', d = sp.dotColor, shape = sp.shape || 'round';
+    var litCol = adjustColor(c, 24);
+    var shadeCol = adjustColor(c, -26);
+    var deepCol = adjustColor(c, -44);
+    var sunCol = adjustColor(c, 42);
+
+    var trunkLit = adjustColor(t, 22);
+    var trunkShade = adjustColor(t, -25);
+
+    var groundShadow = '<ellipse cx="0" cy="2" rx="48" ry="12" fill="rgba(20,40,24,0.28)"/>';
+    var trunk = '';
+    var canopy = '';
+    var dots = '';
+
+    if (shape === 'bush') {
+      groundShadow = '<ellipse cx="0" cy="2" rx="42" ry="11" fill="rgba(20,40,24,0.28)"/>';
+      canopy = '<g>' +
+        '<ellipse cx="0" cy="-6" rx="44" ry="14" fill="' + deepCol + '"/>' +
+        '<circle cx="-24" cy="-28" r="28" fill="' + litCol + '"/>' +
+        '<circle cx="24" cy="-28" r="28" fill="' + shadeCol + '"/>' +
+        '<circle cx="0" cy="-44" r="34" fill="' + c + '"/>' +
+        '<circle cx="-8" cy="-52" r="16" fill="' + sunCol + '"/>' +
+        '<circle cx="12" cy="-40" r="14" fill="' + litCol + '"/>' +
+      '</g>';
+      if (d) {
+        dots = '<g fill="' + d + '" stroke="' + adjustColor(d, -30) + '" stroke-width="0.8">' +
+          '<circle cx="-22" cy="-28" r="4.2"/><circle cx="20" cy="-24" r="4.2"/><circle cx="-2" cy="-48" r="4.5"/><circle cx="12" cy="-56" r="3.8"/>' +
+        '</g>';
+      }
+    } else if (shape === 'conifer') {
+      var trunkH = 46;
+      trunk = '<g>' +
+        '<polygon points="-14,0 -10,-8 10,-8 14,0" fill="' + trunkShade + '"/>' +
+        '<polygon points="-7,-' + trunkH + ' 0,-' + trunkH + ' 0,0 -8,0" fill="' + trunkLit + '"/>' +
+        '<polygon points="0,-' + trunkH + ' 7,-' + trunkH + ' 8,0 0,0" fill="' + trunkShade + '"/>' +
+        '<line x1="-3" y1="-' + (trunkH - 4) + '" x2="-3" y2="-2" stroke="' + adjustColor(t, 32) + '" stroke-width="0.9" opacity="0.6"/>' +
+      '</g>';
+
+      canopy = '<g>' +
+        '<polygon points="0,-130 -62,-52 0,-47" fill="' + litCol + '"/>' +
+        '<polygon points="0,-130 0,-47 62,-52" fill="' + shadeCol + '"/>' +
+        '<path d="M-62,-52 Q0,-44 62,-52 L0,-47 Z" fill="' + deepCol + '"/>' +
+        '<polygon points="0,-170 -50,-102 0,-97" fill="' + litCol + '"/>' +
+        '<polygon points="0,-170 0,-97 50,-102" fill="' + shadeCol + '"/>' +
+        '<path d="M-50,-102 Q0,-94 50,-102 L0,-97 Z" fill="' + deepCol + '"/>' +
+        '<polygon points="0,-205 -36,-148 0,-144" fill="' + sunCol + '"/>' +
+        '<polygon points="0,-205 0,-144 36,-148" fill="' + shadeCol + '"/>' +
+        '<line x1="0" y1="-205" x2="0" y2="-47" stroke="' + adjustColor(c, 36) + '" stroke-width="0.9" opacity="0.45"/>' +
+      '</g>';
+    } else if (shape === 'umbrella') {
+      var trunkH = 80;
+      trunk = '<g>' +
+        '<polygon points="-12,0 -9,-8 9,-8 12,0" fill="' + trunkShade + '"/>' +
+        '<rect x="-6" y="-' + trunkH + '" width="6" height="' + trunkH + '" fill="' + trunkLit + '"/>' +
+        '<rect x="0" y="-' + trunkH + '" width="6" height="' + trunkH + '" fill="' + trunkShade + '"/>' +
+        '<path d="M-2,-' + trunkH + ' L-42,-' + (trunkH + 20) + ' M2,-' + trunkH + ' L42,-' + (trunkH + 20) + ' M0,-' + trunkH + ' L0,-' + (trunkH + 24) + '" stroke="' + t + '" stroke-width="3.5" stroke-linecap="round"/>' +
+      '</g>';
+
+      canopy = '<g>' +
+        '<ellipse cx="0" cy="-' + (trunkH + 18) + '" rx="76" ry="24" fill="' + deepCol + '"/>' +
+        '<ellipse cx="3" cy="-' + (trunkH + 24) + '" rx="80" ry="28" fill="' + shadeCol + '"/>' +
+        '<ellipse cx="-4" cy="-' + (trunkH + 26) + '" rx="72" ry="25" fill="' + litCol + '"/>' +
+        '<ellipse cx="-12" cy="-' + (trunkH + 30) + '" rx="42" ry="14" fill="' + sunCol + '"/>' +
+      '</g>';
+
+      if (d) {
+        dots = '<g fill="' + d + '" stroke="' + adjustColor(d, -30) + '" stroke-width="0.8">' +
+          '<circle cx="-38" cy="-' + (trunkH + 24) + '" r="4.5"/><circle cx="34" cy="-' + (trunkH + 22) + '" r="4.5"/><circle cx="-8" cy="-' + (trunkH + 34) + '" r="4.2"/>' +
+        '</g>';
+      }
+    } else if (shape === 'tallRound') {
+      var trunkH = 65;
+      trunk = '<g>' +
+        '<polygon points="-12,0 -8,-7 8,-7 12,0" fill="' + trunkShade + '"/>' +
+        '<rect x="-6" y="-' + trunkH + '" width="6" height="' + trunkH + '" fill="' + trunkLit + '"/>' +
+        '<rect x="0" y="-' + trunkH + '" width="6" height="' + trunkH + '" fill="' + trunkShade + '"/>' +
+      '</g>';
+
+      canopy = '<g>' +
+        '<ellipse cx="0" cy="-' + (trunkH + 40) + '" rx="34" ry="26" fill="' + deepCol + '"/>' +
+        '<ellipse cx="3" cy="-' + (trunkH + 72) + '" rx="38" ry="76" fill="' + shadeCol + '"/>' +
+        '<ellipse cx="-4" cy="-' + (trunkH + 74) + '" rx="34" ry="74" fill="' + litCol + '"/>' +
+        '<ellipse cx="-5" cy="-' + (trunkH + 110) + '" rx="22" ry="34" fill="' + sunCol + '"/>' +
+      '</g>';
+
+      if (d) {
+        dots = '<g fill="' + d + '" stroke="' + adjustColor(d, -30) + '" stroke-width="0.8">' +
+          '<circle cx="-16" cy="-' + (trunkH + 60) + '" r="4.5"/><circle cx="16" cy="-' + (trunkH + 85) + '" r="4.5"/><circle cx="-2" cy="-' + (trunkH + 120) + '" r="4.2"/>' +
+        '</g>';
+      }
+    } else {
+      var trunkH = 68;
+      trunk = '<g>' +
+        '<polygon points="-15,0 -10,-8 10,-8 15,0" fill="' + trunkShade + '"/>' +
+        '<polygon points="-8,-' + trunkH + ' 0,-' + trunkH + ' 0,0 -10,0" fill="' + trunkLit + '"/>' +
+        '<polygon points="0,-' + trunkH + ' 8,-' + trunkH + ' 10,0 0,0" fill="' + trunkShade + '"/>' +
+        '<line x1="-3" y1="-' + (trunkH - 6) + '" x2="-3" y2="-2" stroke="' + adjustColor(t, 32) + '" stroke-width="0.9" opacity="0.6"/>' +
+      '</g>';
+
+      canopy = '<g>' +
+        '<ellipse cx="2" cy="-' + (trunkH + 30) + '" rx="60" ry="24" fill="' + deepCol + '"/>' +
+        '<circle cx="28" cy="-' + (trunkH + 46) + '" r="44" fill="' + shadeCol + '"/>' +
+        '<circle cx="0" cy="-' + (trunkH + 58) + '" r="58" fill="' + c + '"/>' +
+        '<circle cx="-26" cy="-' + (trunkH + 54) + '" r="46" fill="' + litCol + '"/>' +
+        '<ellipse cx="-16" cy="-' + (trunkH + 82) + '" rx="28" ry="20" fill="' + sunCol + '"/>' +
+        '<ellipse cx="18" cy="-' + (trunkH + 74) + '" rx="18" ry="14" fill="' + litCol + '"/>' +
+      '</g>';
+
+      if (d) {
+        dots = '<g fill="' + d + '" stroke="' + adjustColor(d, -30) + '" stroke-width="0.8">' +
+          '<circle cx="-28" cy="-' + (trunkH + 54) + '" r="4.5"/><circle cx="26" cy="-' + (trunkH + 46) + '" r="4.5"/><circle cx="-4" cy="-' + (trunkH + 90) + '" r="4.2"/><circle cx="34" cy="-' + (trunkH + 78) + '" r="4.0"/>' +
+        '</g>';
+      }
+    }
+
+    return groundShadow + trunk + canopy + dots;
+  }
+
+  function renderVolumetricTreeSvg(sp, width, height) {
+    var w = width || 112;
+    var h = height || 92;
+    return '<svg class="s2-volumetric-tree" viewBox="-90 -220 180 230" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="' + esc(sp.label || 'Plant') + '">' +
+      renderVolumetric3DTreeInner(sp) +
+    '</svg>';
+  }
+
+  function treeSVGInner(sp) {
+    return renderVolumetric3DTreeInner(sp);
+  }
+    function stageScale(i, n) { return n < 2 ? 1 : 0.16 + 0.84 * (i / (n - 1)); }
 
   function growDemo() {
     var pool = D.species.filter(function (s) { return s.o2AtStage.some(function (v) { return v > 0; }); });
@@ -538,8 +758,10 @@
       '<button class="btn gold" id="quizBtn" type="button">Take a quiz</button></div>' +
       '<div class="toolbar" id="catChips" role="group" aria-label="Plant type"><button class="chip" aria-pressed="true" data-v="all">All types</button>' +
       cats.map(function (c) { return '<button class="chip" aria-pressed="false" data-v="' + esc(c) + '">' + esc(c) + '</button>'; }).join('') + '</div>' +
-      '<div class="toolbar" id="regChips" role="group" aria-label="Biome"><button class="chip" aria-pressed="true" data-v="all">All biomes</button>' +
-      Object.keys(REGION_LABEL).map(function (r) { return '<button class="chip" aria-pressed="false" data-v="' + r + '">' + REGION_LABEL[r] + '</button>'; }).join('') + '</div>' +
+      '<div class="toolbar" id="regChips" role="group" aria-label="Biome">' +
+        '<button class="chip" aria-pressed="true" data-v="all"><span class="chip-flag-icon">🌍</span> All biomes</button>' +
+        Object.keys(REGION_LABEL).map(function (r) { return '<button class="chip" aria-pressed="false" data-v="' + r + '">' + get3DCountryFlagSvg(r, 18, 12) + ' ' + REGION_LABEL[r] + '</button>'; }).join('') +
+      '</div>' +
       '<p class="muted" id="libCount" aria-live="polite"></p><div class="packets" id="packets"></div>';
     function paint() {
       var q = f.q.toLowerCase();
@@ -550,7 +772,15 @@
       $('#libCount').textContent = list.length + ' of ' + D.species.length + ' plants';
       $('#packets').innerHTML = list.map(function (s) {
         return '<button class="packet" type="button" data-key="' + s.key + '" style="--c:' + esc(s.canopy || '#6FA85A') + '">' +
-          '<div class="top"></div><div class="ic" aria-hidden="true">' + s.icon + '</div><b>' + esc(s.label) + '</b><i>' + esc(s.sciName || '') + '</i><span class="cat">' + esc(s.category) + '</span></button>';
+          '<div class="top"></div>' +
+          '<div class="packet-3d-box" aria-hidden="true">' + renderVolumetricTreeSvg(s, 112, 92) + '</div>' +
+          '<b>' + esc(s.label) + '</b>' +
+          '<i>' + esc(s.sciName || '') + '</i>' +
+          '<div class="packet-tags">' +
+            '<span class="cat">' + esc(s.category) + '</span>' +
+            '<span class="packet-region-tag" title="' + esc(REGION_LABEL[(s.regions && s.regions[0]) || 'germany'] || '') + '">' + get3DCountryFlagSvg((s.regions && s.regions[0]) || 'germany', 18, 12) + ' <span>' + esc(REGION_LABEL[(s.regions && s.regions[0]) || 'germany'] || (s.regions && s.regions[0]) || 'germany') + '</span></span>' +
+          '</div>' +
+        '</button>';
       }).join('') || '<div class="empty" style="grid-column:1/-1">No plants match. Try a different word or clear a filter.</div>';
     }
     $('#libQ').addEventListener('input', function (e) { f.q = e.target.value; paint(); });
@@ -590,9 +820,13 @@
     } else {
       facts = '<p class="muted">This plant does not have an encyclopedia entry in the game yet.</p>';
     }
-    openDrawer('<h2 id="drawerTitle"><span aria-hidden="true">' + s.icon + '</span> ' + esc(s.label) + '</h2>' +
+    var regionTags = s.regions.map(function (r) {
+      return '<span class="pill pill-flag">' + get3DCountryFlagSvg(r, 22, 15) + ' <span>' + esc(REGION_LABEL[r] || r) + '</span></span>';
+    }).join('');
+    openDrawer('<div class="species-3d-hero">' + renderVolumetricTreeSvg(s, 220, 160) + '</div>' +
+      '<h2 id="drawerTitle"><span aria-hidden="true">' + s.icon + '</span> ' + esc(s.label) + '</h2>' +
       '<p class="muted"><i>' + esc(s.sciName || '') + '</i> · ' + esc(s.category) + (s.cost ? ' · €' + s.cost + ' to plant' : '') + '</p>' +
-      '<div class="tags">' + s.regions.map(function (r) { return '<span class="pill">' + esc(REGION_LABEL[r] || r) + '</span>'; }).join('') + '</div>' +
+      '<div class="tags">' + regionTags + '</div>' +
       (s.fact ? '<p>' + esc(s.fact) + '</p>' : '') +
       '<h3>Oxygen made at each stage (O₂/hr)</h3><div class="bars">' + bars + '</div>' + facts +
       '<a class="btn ghost" href="#/" data-grow="' + s.key + '">See it grow on the home page</a>',
@@ -1261,7 +1495,53 @@
     return fetch(FEEDBACK_ENDPOINT, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: ctl ? ctl.signal : undefined
     }).then(function (r) { if (timer) clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r; },
-      function (e) { if (timer) clearTimeout(timer); throw e; });
+      function (e) {
+        if (timer) clearTimeout(timer);
+        var sbKey = window.SEARCHO2_SUPABASE_KEY || (typeof localStorage !== 'undefined' && (localStorage.getItem('searchO2_supabase_key') || localStorage.getItem('searchO2_supabase_anon_key')));
+        var sbUrl = window.SEARCHO2_SUPABASE_URL || (typeof localStorage !== 'undefined' && localStorage.getItem('searchO2_supabase_url')) || 'https://plvieqzmwwjcjyvwyczl.supabase.co';
+        if (sbKey) {
+          var sbEndpoint = sbUrl.replace(/\/$/, '') + '/rest/v1/feedback_submissions';
+          var row = {
+            kind: payload.type || 'feedback',
+            title: payload.title || (payload.type === 'chapter_feedback' ? 'Chapter ' + payload.chapter : (payload.type === 'playtest_review' ? 'Playtest Review' : 'Feedback')),
+            message: payload.message || payload.whatHappened || payload.clarityFeedback || payload.strongestPart || '',
+            area: payload.area || (payload.chapter ? 'Chapter ' + payload.chapter : null),
+            severity: payload.severity || payload.impact || null,
+            rating: payload.rating || payload.clarityRating || null,
+            email: payload.email || null,
+            game_version: payload.gameVersion || null,
+            chapter: payload.chapter || null,
+            trying_to_do: payload.tryingToDo || null,
+            what_happened: payload.whatHappened || payload.what || null,
+            reproduce: payload.reproduce || null,
+            impact: payload.impact || payload.severity || null,
+            device_browser: payload.deviceBrowser || null,
+            completed: payload.completed || null,
+            difficulty: payload.difficulty || null,
+            confusion_source: payload.confusionSource || null,
+            continue_intent: payload.continueIntent || null,
+            nps_recommend: typeof payload.npsRecommend === 'number' ? payload.npsRecommend : null,
+            region_id: payload.map || null,
+            hub_version: payload.hubVersion || HUB_VERSION,
+            diagnostics: payload.diagnostics || null,
+            payload: payload
+          };
+          return fetch(sbEndpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': sbKey,
+              'Authorization': 'Bearer ' + sbKey,
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(row)
+          }).then(function (sr) {
+            if (!sr.ok) throw e;
+            return sr;
+          });
+        }
+        throw e;
+      });
   }
   function submit(payload, form, btn, out) {
     payload.submittedAt = new Date().toISOString();

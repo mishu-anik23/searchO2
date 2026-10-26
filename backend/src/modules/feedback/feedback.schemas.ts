@@ -92,5 +92,10 @@ export type Submission = z.infer<typeof submissionSchema>;
 export const listQuerySchema = z.object({
   kind: z.enum(['feedback', 'problem', 'chapter_feedback', 'playtest_review']).optional(),
   status: z.enum(['new', 'seen', 'resolved']).optional(),
+  search: z.string().trim().max(100).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
+});
+
+export const updateFeedbackStatusSchema = z.object({
+  status: z.enum(['new', 'seen', 'resolved']),
 });
