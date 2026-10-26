@@ -381,6 +381,7 @@
           '<div class="game-highlights-strip">' +
             '<div class="gh-item"><span class="gh-ico">🌿</span> <b>' + c.species + '+</b> Botanical Species</div>' +
             '<div class="gh-item"><span class="gh-ico">🌍</span> <b>' + c.biomes + '</b> Living Biomes</div>' +
+            '<div class="gh-item"><span class="gh-ico">🗺️</span> <b>3D OpenStreetMap</b> Custom German Coordinates</div>' +
             '<div class="gh-item"><span class="gh-ico">🔬</span> <b>IPCC</b> Carbon Physics</div>' +
             '<div class="gh-item"><span class="gh-ico">🧑‍💼</span> <b>Shakir</b> Co-Founder &amp; CEO</div>' +
             '<div class="gh-item"><span class="gh-ico">🎮</span> <b>100% Free</b> · Kids &amp; Schools</div>' +
@@ -388,7 +389,7 @@
           '<div class="hero-game-ctas">' +
             '<a class="btn-game btn-game-primary" href="../index.html?guest=1&amp;enter=farm" title="Instant 1-Click Guest Access">' +
               '<span class="cta-game-icon">🎮</span>' +
-              '<span class="cta-game-text"><strong>Play Free as Guest</strong><small>1-Click Instant Enter · Central Europe Farm</small></span>' +
+              '<span class="cta-game-text"><strong>Play Free as Guest</strong><small>1-Click Instant Enter · Pick 3D OpenStreetMap Location &amp; Custom Banner</small></span>' +
               '<span class="cta-game-arrow">➔</span>' +
             '</a>' +
             '<a class="btn-game btn-game-secondary" href="../index.html?auth=1" title="Sign In or Register with Google, GitHub, or Password">' +
@@ -413,7 +414,7 @@
         '<div class="ceo-info-col">' +
           '<div class="ceo-badge"><span class="pill gold">🧑‍💼 Leadership &amp; Farm Guide</span></div>' +
           '<h2>Meet Shakir · Co-Founder &amp; CEO of SearchO2</h2>' +
-          '<p class="ceo-quote">"👋 Hello Eco-Explorers! I am Shakir, Co-Founder &amp; CEO of SearchO2. I built this green planet simulation so explorers of all ages can heal biomes through real search-driven tree planting. In our guest mode, I will walk alongside you step-by-step through our Central Europe farm, explaining soil microbiology, carbon capture, and canopy design. Let us grow a greener planet together!"</p>' +
+          '<p class="ceo-quote">"👋 Hello Eco-Explorers! I am Shakir, Co-Founder &amp; CEO of SearchO2. I built this green planet simulation so explorers of all ages can heal biomes through real search-driven tree planting. In our guest mode, establish your basic farm anywhere in Germany with our interactive 3D OpenStreetMap locator, christen your official farm name (max 9 letters) on our volumetric 3D isometric gate banner, and I will walk alongside you from traditional Bavarian Alpine farming, cattling, dairy, and vineyards to our Coral Reef Ranger journey on Saint Martin! Let us grow a greener planet together!"</p>' +
           '<div class="ceo-actions">' +
             '<a class="btn gold" href="../index.html?guest=1&amp;enter=farm">🚜 Meet Shakir on the Farm (Guest Tour) ➔</a>' +
             '<a class="btn ghost" href="#/start">🌱 View Chapter Guides</a>' +
