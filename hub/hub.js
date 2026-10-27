@@ -693,7 +693,7 @@
     if (window.SearchO2ShakirGuide && typeof window.SearchO2ShakirGuide.renderShakirFigureSvg === 'function') {
       return window.SearchO2ShakirGuide.renderShakirFigureSvg({ w: 84, h: 148, unique: 'hub_spotlight' });
     }
-    return '<svg viewBox="0 0 72 108" width="84" height="148" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Shakir - SearchO2 Co-Founder &amp; CEO">' +
+    return '<svg viewBox="0 0 72 108" width="84" height="148" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Shakir - SearchO2 OxyEco Forger">' +
       '<circle cx="36" cy="22" r="16" fill="#F5C7A9"/>' +
       '<path d="M20 20 Q36 6 52 20 Q36 12 20 20 Z" fill="#3D2314"/>' +
       '<circle cx="31" cy="22" r="2.5" fill="#1E293B"/><circle cx="41" cy="22" r="2.5" fill="#1E293B"/>' +
@@ -720,7 +720,7 @@
             '<div class="gh-item"><span class="gh-ico">🌍</span> <b>' + c.biomes + '</b> Living Biomes</div>' +
             '<div class="gh-item"><span class="gh-ico">🗺️</span> <b>3D OpenStreetMap</b> Custom German Coordinates</div>' +
             '<div class="gh-item"><span class="gh-ico">🔬</span> <b>IPCC</b> Carbon Physics</div>' +
-            '<div class="gh-item"><span class="gh-ico">🧑‍💼</span> <b>Shakir</b> Co-Founder &amp; CEO</div>' +
+            '<div class="gh-item"><span class="gh-ico">🧑‍🌾</span> <b>Shakir</b> OxyEco Forger</div>' +
             '<div class="gh-item"><span class="gh-ico">🎮</span> <b>100% Free</b> · Kids &amp; Schools</div>' +
           '</div>' +
           '<div class="hero-game-ctas">' +
@@ -749,11 +749,11 @@
           renderShakirSpotlightSvg() +
         '</div>' +
         '<div class="ceo-info-col">' +
-          '<div class="ceo-badge"><span class="pill gold">🧑‍💼 Leadership &amp; Farm Guide</span></div>' +
-          '<h2>Meet Shakir · Co-Founder &amp; CEO of SearchO2</h2>' +
-          '<p class="ceo-quote">"👋 Hello Eco-Explorers! I am Shakir, Co-Founder &amp; CEO of SearchO2. I built this green planet simulation so explorers of all ages can heal biomes through real search-driven tree planting. In our guest mode, establish your basic farm anywhere in Germany with our interactive 3D OpenStreetMap locator, christen your official farm name (max 9 letters) on our volumetric 3D isometric gate banner, and I will walk alongside you from traditional Bavarian Alpine farming, cattling, dairy, and vineyards to our Coral Reef Ranger journey on Saint Martin! Let us grow a greener planet together!"</p>' +
+          '<div class="ceo-badge"><span class="pill gold">🧑‍🌾 Living Biome Master &amp; OxyEco Forger</span></div>' +
+          '<h2>Meet Shakir · OxyEco Forger of SearchO2</h2>' +
+          '<p class="ceo-quote">"👋 Hello Eco-Explorers! I am Shakir, OxyEco Forger of SearchO2. I forged this green planet simulation so explorers of all ages can regenerate living biomes through real search-driven tree planting. In our guest mode, establish your basic farm anywhere in Germany with our interactive 3D OpenStreetMap locator, christen your official farm name (max 9 letters) on our volumetric 3D isometric gate banner, and I will guide you through our masterplan — from traditional Bavarian Alpine farming and vineyards to our Coral Reef Ranger journey on Saint Martin! Let us forge a greener planet together!"</p>' +
           '<div class="ceo-actions">' +
-            '<a class="btn gold" href="../index.html?guest=1&amp;enter=farm">🚜 Meet Shakir on the Farm (Guest Tour) ➔</a>' +
+            '<a class="btn gold" href="../index.html?guest=1&amp;enter=farm">🚜 Meet Shakir on the Farm (OxyEco Forger Tour) ➔</a>' +
             '<a class="btn ghost" href="#/start">🌱 View Chapter Guides</a>' +
             '<a class="btn ghost" href="#/feedback">💬 Share Feedback with Shakir</a>' +
           '</div>' +

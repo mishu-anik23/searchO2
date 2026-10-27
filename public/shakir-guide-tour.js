@@ -1,6 +1,6 @@
 /**
- * SearchO2 — Shakir (Co-Founder & CEO) Tour for Guest Users
- * Implements Shakir, SearchO2 Co-Founder & CEO, as an interactive 3D Isometric Farm Guide.
+ * SearchO2 — Shakir (OxyEco Forger) Chapter Scouting Tour for Guest Users
+ * Implements Shakir, SearchO2 OxyEco Forger, as an interactive 3D Isometric Farm Guide.
  * 
  * Visuals grounded in C:\Users\AM\PycharmProjects\searchO2\shakir.html and shakir-img.jpg:
  * - 3D Anime messy spiky hair (#3D2314 with dimensional highlights)
@@ -48,50 +48,58 @@
     1: {
       chapter: 1,
       key: 'plot',
-      title: 'The Living Soil & Seed Planting',
+      title: 'The Living Soil & First Sprout',
       landmark: 'Plot 1',
       icon: '🌱',
       skyIcon: '🌱',
-      ceoGreeting: "👋 Hi there, Eco-Explorer! I'm Shakir, Co-Founder & CEO of SearchO2! Welcome to our green farm! Look right here at Plot 1 — healthy living soil is full of microscopic helpers. When we loosen the earth and plant our first tree, it drinks in fresh rainwater and pumps pure oxygen into our atmosphere! Tap Plot 1 to till the soil and sow your first seedling!",
+      forgerGreeting: "🌱 Greetings, Eco-Explorer! I am Shakir, your OxyEco Forger! Welcome to our virgin bedrock estate. Healthy living soil is teeming with microscopic life waiting to be awakened. When we aerate the earth and plant our first tree, it draws carbon from the sky and breathes the first fresh oxygen into our atmosphere! Tap Plot 1 to till the soil and sow your first seedling!",
+      ceoGreeting: "🌱 Greetings, Eco-Explorer! I am Shakir, your OxyEco Forger! Welcome to our virgin bedrock estate. Healthy living soil is teeming with microscopic life waiting to be awakened. When we aerate the earth and plant our first tree, it draws carbon from the sky and breathes the first fresh oxygen into our atmosphere! Tap Plot 1 to till the soil and sow your first seedling!",
       dialogSummary: "Plot 1 is your farm's starting soil bed. Till the soil to clear weeds and plant oxygen-giving trees!",
       funFact: "A single spoonful of healthy organic soil contains more helpful microbes than all humans on planet Earth!",
-      actionTip: "Tap Plot 1 on the field to till the ground and plant a tree!"
+      actionTip: "Aerate Plot 1 with your spade to forge fertile living humus!",
+      dreamMessage: "💭 As your OxyEco Forger, I dream of breathing living humus into virgin bedrock. Every single root we anchor will draw carbon from the skies and forge the first fresh oxygen for our planet!"
     },
     2: {
       chapter: 2,
       key: 'crew_shed',
-      title: 'Crew Headquarters & Teamwork',
+      title: 'Crew Headquarters & Workshop',
       landmark: 'Crew Shed',
       icon: '🏡',
       skyIcon: '🏡',
-      ceoGreeting: "🏡 Welcome to our Crew Headquarters! Growing an entire green forest takes wonderful teamwork! Here, caring eco-workers join our mission. When you hire workers, they help weed, water seedlings, and harvest produce while you take a break!",
+      forgerGreeting: "🏡 Welcome to our Craftsman Workshop! Forging an entire living forest requires skilled hands and community harmony. Here, dedicated eco-workers join our mission to tend trees, gather harvests, and build sustainable shelters!",
+      ceoGreeting: "🏡 Welcome to our Craftsman Workshop! Forging an entire living forest requires skilled hands and community harmony. Here, dedicated eco-workers join our mission to tend trees, gather harvests, and build sustainable shelters!",
       dialogSummary: "The Crew Shed houses your farming crew. Hired workers automate weeding, watering, and harvesting!",
       funFact: "Working together in eco-teams makes tree planting 3x faster and keeps our community thriving!",
-      actionTip: "Visit the Crew Shed to hire eco-caretakers and automate your farm!"
+      actionTip: "Recruit dedicated field laborers to accelerate your regenerative estate!",
+      dreamMessage: "💭 I dream of a bustling ecological guild where skilled eco-craftsmen forge sustainable tools, shelter field crews, and multiply our restorative power across the meadows!"
     },
     3: {
       chapter: 3,
       key: 'garden',
-      title: 'Biodiversity Garden & Pollinator Friends',
+      title: 'Biodiversity Garden & Pollinator Sanctuary',
       landmark: 'Bio-Garden',
       icon: '🌸',
       skyIcon: '🌸',
-      ceoGreeting: "🌸 Bzzz! Can you hear our friendly bees? This is our Biodiversity Garden! Blooming roses and nectar flowers attract gentle bees and colorful butterflies. They pollinate our orchard so our trees grow bigger, stronger, and full of sweet fruit!",
+      forgerGreeting: "🌸 Listen closely! Hear the gentle hum of native pollinators? This is our Biodiversity Sanctuary. Fragrant blossoms and nectar corridors nourish honeybees and butterflies that cross-pollinate our orchards so every canopy flourishes!",
+      ceoGreeting: "🌸 Listen closely! Hear the gentle hum of native pollinators? This is our Biodiversity Sanctuary. Fragrant blossoms and nectar corridors nourish honeybees and butterflies that cross-pollinate our orchards so every canopy flourishes!",
       dialogSummary: "The Bio-Garden attracts pollinators that boost fruit yield and improve farm reputation!",
       funFact: "One out of every three bites of food we eat depends directly on pollinating bees and butterflies!",
-      actionTip: "Keep the garden blooming to attract pollinators and boost farm stars!"
+      actionTip: "Plant native flowering hedgerows to invite companion pollinators!",
+      dreamMessage: "💭 I dream of thousands of gentle native pollinators humming between wildflower corridors, carrying life between orchards and forging resilient biological diversity!"
     },
     4: {
       chapter: 4,
       key: 'pond',
-      title: 'Crystal Eco-Pond & Fresh Water',
+      title: 'Hydrological Eco-Pond & Reservoir',
       landmark: 'Eco-Pond',
       icon: '💧',
       skyIcon: '💧',
-      ceoGreeting: "💧 Splash! Water is pure magic for growing trees! Our eco-pond collects clean rainwater runoff from the meadows. With fresh water always ready, our seedlings will never get thirsty, even on the hottest summer afternoons!",
+      forgerGreeting: "💧 Pure mountain water is life! Our natural hydrological pond captures clean rain and snowmelt runoff. Filtered through gravel and aquatic reeds, it provides drought-resilient hydration so seedlings never thirst!",
+      ceoGreeting: "💧 Pure mountain water is life! Our natural hydrological pond captures clean rain and snowmelt runoff. Filtered through gravel and aquatic reeds, it provides drought-resilient hydration so seedlings never thirst!",
       dialogSummary: "The Eco-Pond stores fresh rainwater to irrigate all 6 farm plots throughout the seasons.",
       funFact: "Trees drink water from underground and gently evaporate moisture from their leaves to help create fresh rain clouds!",
-      actionTip: "Build irrigation channels from the pond to automatically water your plots!"
+      actionTip: "Conserve seasonal rainwater to nourish your botanical seedlings year-round!",
+      dreamMessage: "💭 I dream of pure mountain rainfall gathered in natural wetland basins, cooling the microclimate and quenching our growing canopies even under the summer sun!"
     },
     5: {
       chapter: 5,
@@ -100,52 +108,57 @@
       landmark: 'Solar & Wind BESS',
       icon: '⚡',
       skyIcon: '⚡',
-      ceoGreeting: "⚡ High-tech green energy! Look at our battery storage and solar panels! All our water pumps and farm equipment run on 100% clean solar and wind energy. Zero smoke, zero pollution — pure green power for a brighter future!",
+      forgerGreeting: "⚡ Clean kinetic energy! Look up at our silent wind turbines and bio-storage banks! All our irrigation pumps and estate equipment operate on 100% renewable wind and solar power — zero smoke, zero emissions!",
+      ceoGreeting: "⚡ Clean kinetic energy! Look up at our silent wind turbines and bio-storage banks! All our irrigation pumps and estate equipment operate on 100% renewable wind and solar power — zero smoke, zero emissions!",
       dialogSummary: "The BESS (Battery Energy Storage System) stores clean solar and wind power for zero-emission farming.",
       funFact: "In just 60 minutes, the sun provides enough clean solar energy to power our entire world for a full year!",
-      actionTip: "Store daylight solar energy in your battery to power night operations without brownouts!"
+      actionTip: "Harness natural mountain winds to power all estate irrigation pumps cleanly!",
+      dreamMessage: "💭 I dream of catching mountain breezes with silent aero-turbines, powering clean irrigation with 100% renewable energy and leaving zero smoke behind!"
     },
     6: {
       chapter: 6,
       key: 'juice_bar',
-      title: 'Organic Juice Bar & Healthy Harvest',
+      title: 'Organic Grove Press & Artisan Kiosk',
       landmark: 'Juice Bar',
       icon: '🍎',
       skyIcon: '🍎',
-      ceoGreeting: "🍎 Yum! Cheers to healthy eating! When our fruit trees ripen, our organic juice bar turns sweet apples and berries into nutritious juices. Friendly villagers come by to enjoy healthy treats and support your farm with golden coins!",
+      forgerGreeting: "🍎 Crisp, healthy abundance! When our fruit trees mature, our grove press transforms crisp apples and berries into nutrient-rich artisan juices. Friendly local neighbors visit our pavilion, supporting your farm with golden coins!",
+      ceoGreeting: "🍎 Crisp, healthy abundance! When our fruit trees mature, our grove press transforms crisp apples and berries into nutrient-rich artisan juices. Friendly local neighbors visit our pavilion, supporting your farm with golden coins!",
       dialogSummary: "The Juice Bar transforms farm produce into artisan recipes, attracting eco-tourists and earning treasury income.",
       funFact: "Eating fresh locally grown organic fruit reduces food transportation carbon emissions to nearly zero!",
-      actionTip: "Harvest ripe fruit from your trees to mix delicious artisan juice recipes!"
+      actionTip: "Process fresh organic fruit to earn sustainable estate revenue!",
+      dreamMessage: "💭 I dream of branches laden with heritage apples and berries, crushed into vibrant, vitamin-rich juices that nourish our community and sustain our farm!"
     },
     7: {
       chapter: 7,
       key: 'eco_passport',
-      title: 'Global Eco-Passport & Planetary Biomes',
+      title: 'Global Biome Gateway & Eco-Passport',
       landmark: 'Eco-Passport',
       icon: '🌍',
       skyIcon: '🌍',
-      ceoGreeting: "🌍 Behold your official SearchO2 Eco-Passport! Our German farm is just the start of your global journey. As your farm thrives, you'll stamp your passport and unlock breathtaking biomes — from snowy Bavarian mountain meadows to tropical coral reefs in Saint Martin!",
+      forgerGreeting: "🌍 Behold your official SearchO2 Eco-Passport! Our German farm is just the threshold of a worldwide planetary restoration. As your estate flourishes, you will journey to protect the fragile coral reefs of Saint Martin and reforest degraded biomes!",
+      ceoGreeting: "🌍 Behold your official SearchO2 Eco-Passport! Our German farm is just the threshold of a worldwide planetary restoration. As your estate flourishes, you will journey to protect the fragile coral reefs of Saint Martin and reforest degraded biomes!",
       dialogSummary: "Your Eco-Passport tracks global restoration milestones and unlocks new planetary biomes across the globe.",
       funFact: "Earth has 14 diverse biomes, and every single one plays a vital role in balancing planetary climate!",
-      actionTip: "Earn oxygen and reputation to unlock flights to Bavaria and Saint Martin!"
+      actionTip: "Earn exploration stamps to unlock worldwide planetary conservation biomes!",
+      dreamMessage: "💭 I dream beyond our German meadows — stamping your Eco-Passport as we restore coral reefs in Saint Martin and reforest degraded biomes across Earth!"
     },
     8: {
       chapter: 8,
       key: 'space_mission',
-      title: 'Orbital Oxygen Shuttle & Terraforming',
+      title: 'Orbital Oxygen Shuttle & Biosphere',
       landmark: 'Space Shuttle',
       icon: '🚀',
       skyIcon: '🚀',
-      ceoGreeting: "🚀 3... 2... 1... Liftoff! When our farm generates surplus clean oxygen, we compress canisters of pure atmospheric air onto orbital shuttles to supply space stations and help build green biodomes on the Moon and Mars! You are officially an Honorary Biosphere Custodian!",
+      forgerGreeting: "🚀 3... 2... 1... Atmospheric liftoff! When our farm generates surplus clean oxygen, we compress canisters of pure breathable air aboard shuttle transports to supply orbital stations and seed living green biodomes across the cosmos!",
+      ceoGreeting: "🚀 3... 2... 1... Atmospheric liftoff! When our farm generates surplus clean oxygen, we compress canisters of pure breathable air aboard shuttle transports to supply orbital stations and seed living green biodomes across the cosmos!",
       dialogSummary: "The Orbital Shuttle exports compressed oxygen canisters to space habitats, contributing to interplanetary terraforming.",
       funFact: "Scientists study closed-loop plant biospheres right now to prepare for human missions to Mars!",
-      actionTip: "Maximize clean oxygen production to launch high-altitude eco-shuttle missions!"
+      actionTip: "Supply clean compressed oxygen to support off-world orbital biospheres!",
+      dreamMessage: "💭 I dream of pure atmospheric oxygen compressed into orbital canisters, launching aboard ecological shuttles to seed living biodomes across the stars!"
     }
   };
 
-  // ---------------------------------------------------------------------------
-  // Shakir 3D Isometric SVG Generator (Matching shakir.html & shakir-img.jpg)
-  // ---------------------------------------------------------------------------
   function renderShakirFigureSvg(opts) {
     opts = opts || {};
     var w = opts.w || 56;
@@ -250,12 +263,26 @@
             '<stop offset="100%" stop-color="#15803D"/>' +
           '</radialGradient>' +
 
-          // 9. Charcoal Technical Gloves
+'          // 9. Charcoal Technical Gloves' +
           '<linearGradient id="shG_' + uid + '_glove" x1="0" y1="0" x2="1" y2="1">' +
             '<stop offset="0%" stop-color="#475569"/>' +
             '<stop offset="50%" stop-color="#334155"/>' +
             '<stop offset="100%" stop-color="#1E293B"/>' +
           '</linearGradient>' +
+
+          // 10. Wonder Stick Gradients (Forging Rod / Eco-Wand)
+          '<linearGradient id="shG_' + uid + '_stickShaft" x1="0" y1="0" x2="1" y2="1">' +
+            '<stop offset="0%" stop-color="#FDE047"/>' +
+            '<stop offset="35%" stop-color="#F59E0B"/>' +
+            '<stop offset="85%" stop-color="#D97706"/>' +
+            '<stop offset="100%" stop-color="#92400E"/>' +
+          '</linearGradient>' +
+          '<radialGradient id="shG_' + uid + '_stickOrb" cx="40%" cy="40%" r="65%">' +
+            '<stop offset="0%" stop-color="#A7F3D0"/>' +
+            '<stop offset="40%" stop-color="#34D399"/>' +
+            '<stop offset="85%" stop-color="#059669"/>' +
+            '<stop offset="100%" stop-color="#064E3B"/>' +
+          '</radialGradient>' +
         '</defs>' +
 
         // 1. Soft Volumetric Ground Shadow
@@ -387,6 +414,17 @@
             // Antenna / Sensor Lens
             '<rect x="4.5" y="0" width="3" height="2.5" rx="1" fill="#38BDF8"/>' +
             '<circle cx="6" cy="1" r="0.75" fill="#67E8F9"/>' +
+          '</g>' +
+
+          // Wonder Stick (Forging Rod / Eco-Wand for OxyEco Forger)
+          '<g class="shakir-wonder-stick" transform="translate(54, 46)">' +
+            '<rect x="-1.8" y="-24" width="3.6" height="34" rx="1.8" fill="url(#shG_' + uid + '_stickShaft)" stroke="#B45309" stroke-width="0.6"/>' +
+            '<path d="M-1.8 -20 Q1.8 -16 -1.8 -12 Q1.8 -8 -1.8 -4 Q1.8 0 -1.8 4" fill="none" stroke="#10B981" stroke-width="1.1" stroke-linecap="round"/>' +
+            '<polygon points="-3.5,-24 3.5,-24 2.8,-27 -2.8,-27" fill="#F59E0B" stroke="#B45309" stroke-width="0.5"/>' +
+            '<circle cx="0" cy="-30" r="5" fill="url(#shG_' + uid + '_stickOrb)" stroke="#34D399" stroke-width="1.2" filter="drop-shadow(0 0 5px #10B981)"/>' +
+            '<polygon points="0,-33 1.2,-31 3.2,-31 1.6,-29.5 2.2,-27.5 0,-28.8 -2.2,-27.5 -1.6,-29.5 -3.2,-31 -1.2,-31" fill="#FFFFFF"/>' +
+            '<circle cx="-4" cy="-28" r="0.75" fill="#FDE047" opacity="0.9"/>' +
+            '<circle cx="4" cy="-32" r="0.75" fill="#67E8F9" opacity="0.9"/>' +
           '</g>' +
         '</g>' +
 
@@ -929,25 +967,36 @@
       '  align-items: center;',
       '  justify-content: center;',
       '}',
-      '@media (max-width: 640px), (max-height: 520px) {',
+      '@media (max-width: 860px), (max-height: 520px) {',
       '  .shakir-modal-backdrop {',
-      '    padding: 6px 8px !important;',
-      '    align-items: center !important;',
-      '    justify-content: center !important;',
-      '    overflow-y: auto !important;',
-      '    -webkit-overflow-scrolling: touch !important;',
+      '    background: transparent !important;',
+      '    backdrop-filter: none !important;',
+      '    pointer-events: none !important;',
+      '    padding: 0 !important;',
+      '    position: fixed !important;',
+      '    inset: 0 !important;',
+      '    display: block !important;',
+      '    z-index: 99990 !important;',
       '  }',
       '  .shakir-modal-card {',
-      '    padding: 12px 14px 16px !important;',
+      '    pointer-events: auto !important;',
+      '    position: fixed !important;',
+      '    bottom: 12px !important;',
+      '    left: 12px !important;',
+      '    top: auto !important;',
+      '    right: auto !important;',
+      '    margin: 0 !important;',
+      '    width: auto !important;',
+      '    max-width: min(340px, calc(100vw - 84px)) !important;',
+      '    max-height: 220px !important;',
       '    border-radius: 16px !important;',
-      '    max-width: min(94vw, 420px) !important;',
-      '    max-height: calc(100dvh - 20px) !important;',
-      '    margin: auto !important;',
+      '    padding: 10px 14px 12px !important;',
+      '    border: 2px solid #38BDF8 !important;',
+      '    background: rgba(255, 255, 255, 0.96) !important;',
+      '    backdrop-filter: blur(8px) !important;',
+      '    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 12px rgba(56, 189, 248, 0.3) !important;',
       '    overflow-y: auto !important;',
       '    -webkit-overflow-scrolling: touch !important;',
-      '    overscroll-behavior: contain !important;',
-      '    box-sizing: border-box !important;',
-      '    width: 100% !important;',
       '  }',
       '  .shakir-modal-header {',
       '    margin-bottom: 8px !important;',
@@ -1189,7 +1238,7 @@
     el.id = 's2ShakirGuide';
     el.setAttribute('tabindex', '0');
     el.setAttribute('role', 'button');
-    el.setAttribute('aria-label', 'Shakir - SearchO2 Co-Founder & CEO');
+    el.setAttribute('aria-label', 'Shakir - SearchO2 OxyEco Forger (CEO Guide)');
 
     var posLeft = (at && typeof at.left === 'number') ? at.left : 48;
     var posTop = (at && typeof at.top === 'number') ? at.top : 42;
@@ -1197,8 +1246,8 @@
     el.style.top = posTop + '%';
 
     el.innerHTML =
-      '<div class="shakir-head-tag"><span>🧑‍💼 Shakir (Co-Founder & CEO)</span></div>' +
-      '<div class="shakir-speech-bubble" id="s2ShakirBubble">👋 Hi Explorer! I\'m Shakir, SearchO2 CEO! Let\'s tour our farm!</div>' +
+      '<div class="shakir-head-tag"><span>🧑‍🌾 Shakir (OxyEco Forger)</span></div>' +
+      '<div class="shakir-speech-bubble" id="s2ShakirBubble">👋 Greetings Explorer! I\'m Shakir, your OxyEco Forger! Let\'s scout our masterplan!</div>' +
       renderShakirFigureSvg({ w: 56, h: 104, unique: 'shakir_farm' });
 
     layer.appendChild(el);
@@ -1472,6 +1521,74 @@
   // ---------------------------------------------------------------------------
   // Walk to Chapter Guided Tour
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Wonder Stick Directing Beam & Dream Cloud Renderer
+  // ---------------------------------------------------------------------------
+  function spawnDirectingBeam(from, to) {
+    var scene = document.getElementById('fieldScene');
+    if (!scene) return;
+    var beam = document.createElement('div');
+    beam.className = 'shakir-wonder-beam';
+    var dx = (to.left - from.left);
+    var dy = (to.top - from.top);
+    var dist = Math.hypot(dx, dy);
+    var angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    beam.style.left = from.left + '%';
+    beam.style.top = from.top + '%';
+    beam.style.width = dist + '%';
+    beam.style.transform = 'rotate(' + angle + 'deg)';
+    scene.appendChild(beam);
+    setTimeout(function () {
+      if (beam && beam.parentNode) beam.parentNode.removeChild(beam);
+    }, 700);
+  }
+
+  function renderShakirDreamCloud(ch, standPoint) {
+    hideShakirDreamCloud();
+    var scene = document.getElementById('fieldScene');
+    if (!scene) return;
+    var chData = SHAKIR_CHAPTERS[ch] || SHAKIR_CHAPTERS[1];
+    var dreamIsoIcon = '';
+    if (typeof global.getChapterIsometric3DIcon === 'function') {
+      try {
+        dreamIsoIcon = global.getChapterIsometric3DIcon(ch, chData.key);
+      } catch (e) {}
+    }
+
+    var cloud = document.createElement('div');
+    cloud.id = 's2ShakirDreamCloud';
+    cloud.className = 'shakir-dream-cloud';
+    cloud.style.left = standPoint.left + '%';
+    cloud.style.top = (standPoint.top - 16) + '%';
+
+    cloud.innerHTML =
+      '<div class="dream-cloud-content">' +
+        '<div class="dream-cloud-tag">💭 OxyEco Forger Dream · Ch. ' + ch + '</div>' +
+        '<div class="dream-cloud-body">' +
+          (dreamIsoIcon ? '<div class="dream-cloud-iso">' + dreamIsoIcon + '</div>' : '') +
+          '<div class="dream-cloud-text">' +
+            '<div class="dream-cloud-title">' + chData.icon + ' ' + chData.landmark + '</div>' +
+            '<div class="dream-cloud-quote">' + chData.dreamMessage + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="dream-cloud-tail">💭</div>';
+
+    cloud.onclick = function (e) {
+      e.stopPropagation();
+      if (typeof onGotItClicked === 'function') onGotItClicked();
+    };
+
+    scene.appendChild(cloud);
+  }
+
+  function hideShakirDreamCloud() {
+    var cloud = document.getElementById('s2ShakirDreamCloud');
+    if (cloud && cloud.parentNode) {
+      cloud.parentNode.removeChild(cloud);
+    }
+  }
+
   function walkToChapter(targetCh) {
     targetCh = parseInt(targetCh, 10);
     if (!targetCh || targetCh < 1 || targetCh > 8) targetCh = 1;
@@ -1509,7 +1626,7 @@
         el.style.top = gatePos.top + '%';
       }
       waypoints = [gatePos, meadowPos, targets.standPoint];
-      walkDuration = 3800;
+      walkDuration = 3200;
       showSkyHeading('Shakir enters through Main Gate ⛩️', { left: 92.5, top: 45.0 }, '⛩️');
       showShakirSpeechBubble('👋 Welcome to our farm! Walking through the main gate to Plot 1! ⛩️', 3400);
     } else {
@@ -1540,77 +1657,158 @@
     walkPath(el, waypoints, walkDuration, function () {
       if (!guideState.active) return;
 
-      // 1. Wonder Touch: Arm reaches up with cyan scanning device!
-      el.classList.add('wonder-touching');
+      // 1. Wonder Stick Materialization: Indicating animation when reaching chapter spot!
+      el.classList.add('wonder-touching', 'has-wonder-stick', 'wonder-stick-manifest');
       spawnTouchRipple(targets.touchPoint);
 
-      // 2. Sky Heading celebration
-      showSkyHeading(
-        'Wonder Touch: Ch. ' + targetCh + ' ' + chData.title + ' · Shakir (Co-Founder & CEO)',
-        targets.standPoint,
-        chData.icon
-      );
-
-      // Play Sound Effect
       if (typeof global.SoundTrackEngine !== 'undefined') {
         try { global.SoundTrackEngine.playSFX('task'); } catch (e) {}
       }
 
-      // 3. Reveal Cyan 3D Blueprints WITHOUT BLUEPRINT TEXT
-      if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.showChapterGhosts === 'function') {
-        try {
-          global.SearchO2HomeAvatar.showChapterGhosts(targetCh, true);
-        } catch (e) {}
-      }
+      showSkyHeading(
+        'Wonder Stick: Ch. ' + targetCh + ' ' + chData.title + ' · Shakir (OxyEco Forger)',
+        targets.standPoint,
+        chData.icon
+      );
 
-      // 4. Mark Chapter Exploration & Award XP (pass skipRoadmapModal=true so CEO modal opens first)
-      if (typeof global.exploreChapterObject === 'function') {
-        try { global.exploreChapterObject(chData.key, true); } catch (e) {}
-      }
-      if (typeof global.state !== 'undefined' && global.state) {
-        global.state.exploredChapters = global.state.exploredChapters || {};
-        global.state.exploredChapters[targetCh] = true;
-        global.state.exploredChapterObjects = global.state.exploredChapterObjects || {};
-        global.state.exploredChapterObjects[chData.key] = true;
-        if (typeof global.state.xp === 'number' && global.state.xp === 0) global.state.xp = 5;
-      }
-
-      // 5. Open Shakir's Welcoming CEO Dialogue for this landmark first
+      // 2. Direct stick to position: After receiving wonder stick, he directs that stick to position!
       setTimeout(function () {
-        openGuideDialog(targetCh);
+        if (!guideState.active) return;
+        el.classList.add('wonder-stick-directing');
+        spawnDirectingBeam(targets.standPoint, targets.touchPoint);
 
-        // 6. Sequential Modals: After 10s, smoothly close CEO modal and pop up green modal as experience update
-        if (guideState.experienceUpdateTimer) {
-          clearTimeout(guideState.experienceUpdateTimer);
-          guideState.experienceUpdateTimer = null;
-        }
-        guideState.experienceUpdateTimer = setTimeout(function () {
-          closeGuideModal();
-          if (typeof global.openChapterRoadmapForObject === 'function') {
+        // 3. Cyan Blueprint appears!
+        setTimeout(function () {
+          if (!guideState.active) return;
+          if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.showChapterGhosts === 'function') {
             try {
-              global.openChapterRoadmapForObject(chData.key, true);
-            } catch (err) {}
+              global.SearchO2HomeAvatar.showChapterGhosts(targetCh, true);
+            } catch (e) {}
           }
-        }, 10000);
-      }, 400);
+          if (typeof global.SoundTrackEngine !== 'undefined') {
+            try { global.SoundTrackEngine.playSFX('achieve'); } catch (e) {}
+          }
 
-      // 6. Complete Wonder Touch and start Cooldown
+          // 4. First chapter object displayed as Dream Shakir message!
+          renderShakirDreamCloud(targetCh, targets.standPoint);
+
+          // Mark Chapter Exploration & Award XP (pass skipRoadmapModal=true)
+          if (typeof global.exploreChapterObject === 'function') {
+            try { global.exploreChapterObject(chData.key, true); } catch (e) {}
+          }
+          if (typeof global.state !== 'undefined' && global.state) {
+            global.state.exploredChapters = global.state.exploredChapters || {};
+            global.state.exploredChapters[targetCh] = true;
+            global.state.exploredChapterObjects = global.state.exploredChapterObjects || {};
+            global.state.exploredChapterObjects[chData.key] = true;
+            if (typeof global.state.xp === 'number' && global.state.xp === 0) global.state.xp = 5;
+          }
+
+          // Open small guide dialog (small size, laid down bottom-left beside marketplace on mobile)
+          openGuideDialog(targetCh);
+
+          // 5. Open green experience & explore chapter modals box
+          setTimeout(function () {
+            if (!guideState.active) return;
+            if (typeof global.openChapterRoadmapForObject === 'function') {
+              try {
+                global.openChapterRoadmapForObject(chData.key, true);
+              } catch (err) {}
+            }
+          }, 200);
+
+        }, 250);
+      }, 250);
+
+      // Start cooldown and complete arrival posture
       setTimeout(function () {
-        if (el) el.classList.remove('wonder-touching');
+        if (el) {
+          el.classList.remove('wonder-touching');
+          el.classList.remove('wonder-stick-directing');
+        }
 
         if (targetCh >= 8) {
-          showShakirSpeechBubble('🎉 Full farm surveyed! You are an honorary Custodian!', 6000);
+          showShakirSpeechBubble('🎉 Full farm scouted! Ready to return through the gate!', 6000);
         } else {
           startCooldown(targetCh, targetCh + 1);
         }
-      }, 750);
+      }, 650);
     });
   }
 
   function walkToNextChapter() {
-    var nextCh = (guideState.currentChapter >= 8) ? 1 : (guideState.currentChapter + 1);
+    var cur = guideState.currentChapter || 1;
     closeGuideModal();
-    walkToChapter(nextCh);
+    hideShakirDreamCloud();
+    if (cur >= 8) {
+      walkOutThroughGate();
+    } else {
+      walkToChapter(cur + 1);
+    }
+  }
+
+  function onGotItClicked() {
+    walkToNextChapter();
+  }
+
+  function walkOutThroughGate(onComplete) {
+    ensureFarmScreenActive();
+    closeGuideModal();
+    hideShakirDreamCloud();
+    hideTourNavDock();
+    clearCooldown();
+
+    var gatePos = { left: 92.5, top: 52.0 };
+    var outsidePos = { left: 98.0, top: 52.0 };
+    var el = guideState.walkerEl;
+    if (!el) {
+      if (onComplete) onComplete();
+      return;
+    }
+
+    // Cancel in-flight walk to cleanly take over gate departure
+    var myWalkToken = ++guideState.currentWalkToken;
+    el.__walkToken = myWalkToken;
+
+    showShakirSpeechBubble('🎉 All 8 Chapters Scouted! The masterplan is forged! Returning through the gate — now uncover the ancient Jute Tarpaulin tool cache! ⛩️', 5500);
+    showSkyHeading('Masterplan Survey Complete · Shakir Exits Through Main Gate ⛩️', gatePos, '⛩️');
+
+    var from = {
+      left: parseFloat(el.style.left) || 80,
+      top: parseFloat(el.style.top) || 72
+    };
+
+    walkPath(el, [from, gatePos, outsidePos], 2400, function () {
+      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%, -85%) scale(0.6)';
+
+      setTimeout(function () {
+        if (el && el.parentNode) el.parentNode.removeChild(el);
+        guideState.walkerEl = null;
+        guideState.active = false;
+
+        // Mark all chapters explored
+        if (typeof global.state !== 'undefined' && global.state) {
+          global.state.allChaptersExplored = true;
+          global.state.exploredChapters = global.state.exploredChapters || {};
+          for (var i = 1; i <= 8; i++) global.state.exploredChapters[i] = true;
+        }
+        if (typeof global.render === 'function') global.render();
+        if (typeof global.requestSave === 'function') global.requestSave();
+
+        // Next unlock task: Jute Tarpaulin explore modal pops up!
+        if (typeof global.openJuteTarpModal === 'function') {
+          global.openJuteTarpModal();
+        }
+
+        if (typeof global.showNotification === 'function') {
+          global.showNotification('✨', 'All 8 Chapters Scouted! The hidden jute tarpaulin tool cache is ready to uncover!', 'achievement');
+        }
+
+        if (onComplete) onComplete();
+      }, 500);
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -1691,7 +1889,7 @@
             renderShakirFigureSvg({ w: 48, h: 88, unique: 'shakir_head_preview' }) +
           '</div>' +
           '<div>' +
-            '<div class="shakir-modal-title">Shakir · Co-Founder & CEO of SearchO2</div>' +
+            '<div class="shakir-modal-title">Shakir · OxyEco Forger</div>' +
             '<div class="shakir-modal-subtitle">CH. ' + ch + ': ' + chData.title.toUpperCase() + '</div>' +
           '</div>' +
         '</div>' +
@@ -1699,7 +1897,7 @@
         '<div class="shakir-modal-body">' +
           '<p style="margin:0 0 10px 0;font-size:0.92rem;font-weight:700;color:#0F172A;">' + chData.ceoGreeting + '</p>' +
           '<div style="font-size:0.80rem;color:#0284C7;font-weight:800;display:flex;align-items:center;gap:6px;">' +
-            '<span>💡 CEO Tip:</span> <span>' + chData.actionTip + '</span>' +
+            '<span>⚒️ Forger Tip:</span> <span>' + chData.actionTip + '</span>' +
           '</div>' +
         '</div>' +
 
@@ -1782,7 +1980,7 @@
             renderShakirFigureSvg({ w: 48, h: 88, unique: 'shakir_welcome' }) +
           '</div>' +
           '<div>' +
-            '<div class="shakir-modal-title">Shakir · Co-Founder & CEO Guide</div>' +
+            '<div class="shakir-modal-title">Shakir · OxyEco Forger Guide</div>' +
             '<div class="shakir-modal-subtitle">EXPLORE ALL 8 CENTRAL EUROPEAN FARM LANDMARKS</div>' +
           '</div>' +
         '</div>' +
@@ -1887,7 +2085,7 @@
             renderShakirFigureSvg({ w: 48, h: 88, unique: 'shakir_retrigger' }) +
           '</div>' +
           '<div>' +
-            '<div class="shakir-modal-title">Shakir · Co-Founder & CEO Guide</div>' +
+            '<div class="shakir-modal-title">Shakir · OxyEco Forger Guide</div>' +
             '<div class="shakir-modal-subtitle">GERMAN FARM EXPLORATION ROADMAP</div>' +
           '</div>' +
         '</div>' +
@@ -1971,6 +2169,11 @@
     var scene = document.getElementById('fieldScene');
     if (!scene) return;
 
+    var existing = document.getElementById('s2ShakirGuide');
+    if (existing && (guideState.active || guideState.isWalking)) {
+      return;
+    }
+
     var curCoords = getInitialCoordinates(guideState.currentChapter || 1);
     spawnShakirWalker(curCoords);
 
@@ -2008,7 +2211,7 @@
     }
     nav.innerHTML =
       '<div class="shakir-nav-info">' +
-        '<span class="shakir-nav-tag">🧭 Shakir CEO Tour</span>' +
+        '<span class="shakir-nav-tag">🧭 OxyEco Forger Tour</span>' +
         '<span class="shakir-nav-landmark">' + chData.icon + ' Ch. ' + targetCh + ': ' + chData.landmark + '</span>' +
       '</div>' +
       '<div class="shakir-nav-btn-group">' +
@@ -2062,6 +2265,10 @@
     removeGuide: removeGuide,
     walkToChapter: walkToChapter,
     walkToNextChapter: walkToNextChapter,
+    onGotItClicked: onGotItClicked,
+    walkOutThroughGate: walkOutThroughGate,
+    renderShakirDreamCloud: renderShakirDreamCloud,
+    hideShakirDreamCloud: hideShakirDreamCloud,
     openWelcomeModal: openWelcomeModal,
     openReTriggerModal: openReTriggerModal,
     renderShakirReTriggerPill: renderShakirReTriggerPill,

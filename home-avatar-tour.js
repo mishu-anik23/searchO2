@@ -3178,16 +3178,9 @@
   // 3D Soil Digging & Jute Tarpaulin Tool Equipment Sequence
   // ---------------------------------------------------------------------------
   function triggerJuteTarpDiggingSequence(onComplete) {
-    var scene = document.getElementById('fieldScene');
-    if (!scene) return;
-
-    // 1. Remove all star icons from field scene
-    var stars = document.querySelectorAll('.chapter-explore-tick, .s2-field-survey-tick, .tick-star');
-    stars.forEach(function (s) {
-      if (s && s.parentNode) s.parentNode.removeChild(s);
-    });
-
-    // 2. Hide any leftover tour modals or floaters
+    // All automated avatar activities for exploring jute tarpaulin and aerating plots
+    // have been removed as per user specification. Jute tarpaulin and Chapter 1 tasks
+    // are executed directly by the user like the older commit version.
     clearScoutCooldown();
     hideScoutCountdownFloater();
     var modal = document.getElementById('s2TourModal');
@@ -3195,98 +3188,12 @@
     var progress = document.getElementById('s2TourProgress');
     if (progress) progress.style.display = 'none';
 
-    // 3. Locate or spawn avatar
-    var el = tourState.walkerEl || document.getElementById('s2PlayerAvatar');
-    if (!el) {
-      var av = loadPersistedAvatar() || AVATAR_ROSTER[0];
-      el = spawnWalker(av, meadowEntryPoint());
+    if (typeof global.openJuteTarpModal === 'function') {
+      try { global.openJuteTarpModal(); } catch (e) {}
     }
-    if (!el) return;
-
-    var currentLeft = parseFloat(el.style.left) || 28;
-    var currentTop = parseFloat(el.style.top) || 25;
-    var tarpSpot = { left: 14.2, top: 78.5 };
-
-    showSkyHeading('Walking to Jute Tarpaulin to equip hand tools...', tarpSpot, '⛏️');
-
-    // Step A: Natural biological walk to Jute Tarpaulin Cache
-    var distToTarp = Math.hypot(tarpSpot.left - currentLeft, tarpSpot.top - currentTop);
-    var walkDurToTarp = Math.max(2800, Math.min(4200, Math.round(distToTarp * 105)));
-
-    walkPath(el, [{ left: currentLeft, top: currentTop }, tarpSpot], walkDurToTarp, function () {
-      el.classList.remove('walking');
-      el.classList.add('idle-standing');
-
-      // Step B: Uncover Jute Tarpaulin & Equip Hand Instrument
-      if (typeof state !== 'undefined' && state) {
-        state.juteTarpUncovered = true;
-        state.basicToolsDiscovered = true;
-        state.equipment = state.equipment || { owned: {}, leased: {} };
-        state.equipment.owned = state.equipment.owned || {};
-        state.equipment.owned['spade'] = true;
-      }
-      if (typeof render === 'function') render();
-
-      // Avatar physically equips 3D hand instrument
-      el.classList.add('has-instrument', 'has-tool-spade');
-      spawnTouchRipple(tarpSpot);
-      showSkyHeading('Equipped Hand-Forged Spade & Broadfork!', tarpSpot, '✨');
-      if (typeof showNotification === 'function') {
-        showNotification('⛏️', 'Equipped Traditional Hand Spade! Walking to Plot 1...', 'achievement');
-      }
-
-      // Step C: Realistic biological walk with spade squarely to Plot 0 soil terrace
-      setTimeout(function () {
-        var plotTarget = getPlotWorkSpot(0);
-        showSkyHeading('Heading to Plot 1 to aerate bedrock and dig soil...', plotTarget, '🌱');
-        var distToPlot = Math.hypot(plotTarget.left - tarpSpot.left, plotTarget.top - tarpSpot.top);
-        var walkDurToPlot = Math.max(3000, Math.min(4500, Math.round(distToPlot * 105)));
-
-        walkPath(el, [tarpSpot, plotTarget], walkDurToPlot, function () {
-          el.classList.remove('walking');
-          el.classList.remove('facing-south', 'facing-west');
-          el.classList.add('facing-north', 'facing-east');
-          el.style.transform = 'translate(-50%, -85%) scaleX(1)';
-
-          // Step D: 3D Visual Digging Animation squarely on soil bed
-          el.classList.add('is-digging');
-
-          var bursts = 0;
-          var dirtTimer = setInterval(function () {
-            if (!el || !el.classList.contains('is-digging')) {
-              clearInterval(dirtTimer);
-              return;
-            }
-            spawnDirtParticles(plotTarget);
-            bursts++;
-            if (bursts >= 10) {
-              clearInterval(dirtTimer);
-            }
-          }, 350);
-
-          // Step E: Update Task State to Digging / Soil Preparation
-          if (typeof state !== 'undefined' && state && state.plots && state.plots[0]) {
-            state.plots[0].status = 'preparing';
-            state.plots[0].taskHours = 0.5;
-          }
-          if (typeof updateTaskCarouselDOM === 'function') updateTaskCarouselDOM();
-          if (typeof render === 'function') render();
-          if (typeof requestSave === 'function') requestSave();
-
-          showSkyHeading('Plot 1 Tillage Underway · Hand Spade Aeration', plotTarget, '🌱');
-          if (typeof showNotification === 'function') {
-            showNotification('🌱', 'Avatar started manual digging on Plot 1! Bedrock aerated.', 'plot', 0);
-          }
-
-          if (onComplete) onComplete();
-        });
-      }, 900);
-    });
+    if (onComplete) onComplete();
   }
 
-  // ---------------------------------------------------------------------------
-  // Top-Layer Avatar Farm Task Operations (Farmer & Labourer Tasks)
-  // ---------------------------------------------------------------------------
   var currentAvatarTask = null;
   var avatarTaskInterval = null;
 
@@ -3307,79 +3214,9 @@
   }
 
   function joinPlotTask(plotId, taskKind, onDone) {
-    plotId = parseInt(plotId, 10) || 0;
-    var el = tourState.walkerEl || document.getElementById('s2PlayerAvatar');
-    if (!el) {
-      var av = loadPersistedAvatar() || AVATAR_ROSTER[0];
-      el = spawnWalker(av, meadowEntryPoint());
-    }
-    if (!el) return;
-
-    clearAvatarTask();
-
-    var spot = getPlotWorkSpot(plotId);
-    var from = {
-      left: parseFloat(el.style.left) || 28,
-      top: parseFloat(el.style.top) || 25
-    };
-
-    var dist = Math.hypot(spot.left - from.left, spot.top - from.top);
-    var dur = Math.max(2200, Math.min(4200, Math.round(dist * 105)));
-
-    var av = tourState.avatar || loadPersistedAvatar() || AVATAR_ROSTER[0];
-    showSkyHeading(av.name + ' walking to Plot ' + (plotId + 1) + '...', spot, '🥾');
-
-    walkPath(el, [from, spot], dur, function () {
-      el.classList.remove('walking', 'idle-standing');
-      currentAvatarTask = { plotId: plotId, taskKind: taskKind };
-
-      var toolClass = 'has-tool-spade';
-      var actionClass = 'is-digging';
-      var headingText = av.name + ' · Tilling Soil';
-      var icon = '⛏️';
-
-      if (taskKind === 'watering' || taskKind === 'water') {
-        toolClass = 'has-tool-watercan';
-        actionClass = 'is-watering';
-        headingText = av.name + ' · Irrigating Bed';
-        icon = '💧';
-      } else if (taskKind === 'planting' || taskKind === 'plant') {
-        toolClass = 'has-tool-seedbag';
-        actionClass = 'is-planting';
-        headingText = av.name + ' · Sowing Seeds';
-        icon = '🌱';
-      } else if (taskKind === 'harvesting' || taskKind === 'harvest') {
-        toolClass = 'has-tool-basket';
-        actionClass = 'is-harvesting';
-        headingText = av.name + ' · Harvesting Produce';
-        icon = '🧺';
-      } else if (taskKind === 'clearing' || taskKind === 'clear') {
-        toolClass = 'has-tool-scythe';
-        actionClass = 'is-clearing';
-        headingText = av.name + ' · Clearing Brush';
-        icon = '🌾';
-      }
-
-      el.classList.add(toolClass, actionClass);
-      showSkyHeading(headingText, spot, icon);
-
-      // Continuous rhythmic particle emitter while working
-      function emitParticles() {
-        if (!currentAvatarTask || !el) {
-          if (avatarTaskInterval) clearInterval(avatarTaskInterval);
-          return;
-        }
-        if (actionClass === 'is-digging') spawnDirtParticles(spot);
-        else if (actionClass === 'is-watering') spawnWaterParticles(spot);
-        else if (actionClass === 'is-planting') spawnSeedParticles(spot);
-        else if (actionClass === 'is-harvesting') spawnHarvestParticles(spot);
-        else if (actionClass === 'is-clearing') spawnDirtParticles(spot);
-      }
-      emitParticles();
-      avatarTaskInterval = setInterval(emitParticles, 750);
-
-      if (onDone) onDone();
-    });
+    // Automated avatar tasks on plots have been disabled as per specification.
+    // Tasks are executed directly by the user.
+    if (onDone) onDone();
   }
 
   function leavePlotTask() {
