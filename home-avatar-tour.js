@@ -3588,6 +3588,7 @@
     renderScoutCountdownFloater: renderScoutCountdownFloater,
     renderExploredFieldBadge: renderExploredFieldBadge,
     showChapterGhosts: showChapterGhosts,
+    clearGhosts: clearGhosts,
     showObjectHoverModal: showObjectHoverModal,
     hideObjectHoverModal: hideObjectHoverModal,
     bindFarmObjectsHoverModal: bindFarmObjectsHoverModal,

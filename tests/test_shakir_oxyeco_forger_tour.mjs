@@ -119,73 +119,110 @@ async function run() {
     throw new Error(`Standalone map icons still visible in guest mode: ${farmElements.mapIconCount}`);
   }
 
-  // --- 3. Walking, Wonder Stick, Directing Beam, Blueprint & Dream Cloud ---
-  console.log('\n--- 3. Testing Wonder Stick Indicating Animation, Blueprint & Dream Cloud ---');
+  // --- 3. Walking, Wonder Stick, Directing Beam, Cooldown & Sequential Modal Timing ---
+  console.log('\n--- 3. Testing Wonder Stick, Immediate Cooldown, 3s/5s/2s Sequential Modal Timing ---');
   await page.evaluate(() => {
     if (window.SearchO2ShakirGuide) {
       window.SearchO2ShakirGuide.walkToChapter(1);
     }
   });
 
-  // Wait for walk completion (3200ms) and wonder stick/directing/blueprint/dream animations (700ms)
-  await page.waitForTimeout(4600);
+  // Wait for walk completion (3200ms) + wonder stick manifest & beam (500ms) -> arrival at t=0
+  // Wait until walk completes and cooldown activates
+  await page.waitForFunction(() => {
+    return window.SearchO2ShakirGuide && window.SearchO2ShakirGuide.isCooldownActive();
+  }, { timeout: 8000 });
 
-  const scoutState = await page.evaluate(() => {
-    const shakir = document.getElementById('s2ShakirGuide');
-    const hasWonderStick = shakir?.classList.contains('has-wonder-stick');
-    const wonderStickSvg = shakir?.querySelector('.shakir-wonder-stick');
+  // Check: Cooldown timer should be IMMEDIATELY ACTIVE right after wonder touch
+  const immediateCooldown = await page.evaluate(() => {
+    const isCdActive = window.SearchO2ShakirGuide ? window.SearchO2ShakirGuide.isCooldownActive() : false;
+    const cdRemaining = window.SearchO2ShakirGuide ? window.SearchO2ShakirGuide.getCooldownRemaining() : 0;
+    const floaterPill = document.getElementById('s2CooldownIconPill');
+    const isPillVisible = floaterPill && !floaterPill.classList.contains('hidden');
     const ghostObjs = document.querySelectorAll('.s2-ghost-obj');
-    const dreamCloud = document.getElementById('s2ShakirDreamCloud');
-    const dreamTitle = dreamCloud?.querySelector('.dream-cloud-tag')?.textContent || '';
-    const dreamQuote = dreamCloud?.querySelector('.dream-cloud-quote')?.textContent || '';
-    const dialogModal = document.getElementById('s2ShakirModal');
-    const dialogTitle = dialogModal?.querySelector('.shakir-modal-title')?.textContent || '';
-    const roadmapModal = document.querySelector('.cartoon-roadmap-modal');
+    const hasShakirModalBefore3s = !!document.getElementById('s2ShakirModal');
 
     return {
-      hasWonderStick,
-      hasWonderStickSvg: !!wonderStickSvg,
+      isCdActive,
+      cdRemaining,
+      isPillVisible: !!isPillVisible,
       ghostCount: ghostObjs.length,
-      hasDreamCloud: !!dreamCloud,
-      dreamTitle,
-      dreamQuote,
-      hasDialogModal: !!dialogModal,
-      dialogTitle,
-      hasRoadmapModal: !!roadmapModal
+      hasShakirModalBefore3s
     };
   });
 
-  console.log('Shakir has wonder stick class?', scoutState.hasWonderStick);
-  console.log('Wonder stick SVG rendered?', scoutState.hasWonderStickSvg);
-  console.log('Ghost blueprints count:', scoutState.ghostCount);
-  console.log('Dream cloud visible?', scoutState.hasDreamCloud);
-  console.log('Dream cloud tag:', scoutState.dreamTitle);
-  console.log('Dream cloud quote preview:', scoutState.dreamQuote);
-  console.log('Dialog modal title:', scoutState.dialogTitle);
-  console.log('Green explore roadmap modal present?', scoutState.hasRoadmapModal);
+  console.log('Cooldown active immediately after wonder touch?', immediateCooldown.isCdActive);
+  console.log('Cooldown remaining seconds (around 20s):', immediateCooldown.cdRemaining);
+  console.log('Floater pill visible?', immediateCooldown.isPillVisible);
+  console.log('Cyan ghost blueprints visible?', immediateCooldown.ghostCount);
+  console.log('Shakir modal opened before 3s (should be false)?', immediateCooldown.hasShakirModalBefore3s);
 
-  if (scoutState.hasWonderStick && scoutState.hasWonderStickSvg) {
-    console.log('✅ PASS: Wonder stick appeared in Shakir\'s hand with indicating animation');
+  if (immediateCooldown.isCdActive && immediateCooldown.cdRemaining > 0) {
+    console.log('✅ PASS: Cooldown timer is immediately active after wonder touch');
   } else {
-    throw new Error('Wonder stick was not found on Shakir walker');
+    throw new Error(`Cooldown timer was not active immediately: active=${immediateCooldown.isCdActive}, rem=${immediateCooldown.cdRemaining}`);
   }
 
-  if (scoutState.ghostCount > 0) {
-    console.log('✅ PASS: Cyan 3D blueprint appeared after stick directing animation');
+  if (immediateCooldown.ghostCount > 0) {
+    console.log('✅ PASS: Cyan 3D blueprint appeared after wonder touch directing animation');
   } else {
     throw new Error('Cyan blueprint was not displayed');
   }
 
-  if (scoutState.hasDreamCloud && scoutState.dreamQuote.includes('OxyEco Forger')) {
-    console.log('✅ PASS: Dream Shakir message cloud displayed with 3D dream preview & quote');
+  if (!immediateCooldown.hasShakirModalBefore3s) {
+    console.log('✅ PASS: Shakir modal did NOT pop up prematurely (waiting 3s smoothly)');
   } else {
-    throw new Error(`Dream cloud not properly rendered: quote="${scoutState.dreamQuote}"`);
+    throw new Error('Shakir modal opened immediately instead of waiting 3s');
   }
 
-  // --- 4. Mobile Viewport Layout & Bottom-Left Positioning beside Marketplace ---
+  // Wait ~3200ms to test 3s later: Shakir modal opens and Dream cloud appears!
+  await page.waitForTimeout(3200);
+
+  const at3sState = await page.evaluate(() => {
+    const shakirModal = document.getElementById('s2ShakirModal');
+    const dreamCloud = document.getElementById('s2ShakirDreamCloud');
+    const dreamTitle = dreamCloud?.querySelector('.dream-cloud-tag')?.textContent || '';
+    const dreamQuote = dreamCloud?.querySelector('.dream-cloud-quote')?.textContent || '';
+    const roadmapModal = document.querySelector('.cartoon-roadmap-modal');
+    const cdRemaining = window.SearchO2ShakirGuide ? window.SearchO2ShakirGuide.getCooldownRemaining() : 0;
+
+    return {
+      hasShakirModal: !!shakirModal,
+      hasDreamCloud: !!dreamCloud,
+      dreamTitle,
+      dreamQuote,
+      hasRoadmapModal: !!roadmapModal,
+      cdRemaining
+    };
+  });
+
+  console.log('Shakir modal open 3s later?', at3sState.hasShakirModal);
+  console.log('Dream cloud visible?', at3sState.hasDreamCloud);
+  console.log('Green roadmap modal visible yet (should be false)?', at3sState.hasRoadmapModal);
+  console.log('Cooldown remaining at 3s mark:', at3sState.cdRemaining);
+
+  if (at3sState.hasShakirModal) {
+    console.log('✅ PASS: Shakir modal opened 3s after wonder touch');
+  } else {
+    throw new Error('Shakir modal did not open 3s after wonder touch');
+  }
+
+  if (at3sState.hasDreamCloud && at3sState.dreamQuote.includes('OxyEco Forger')) {
+    console.log('✅ PASS: Dream Shakir message cloud displayed with 3D dream preview & quote');
+  } else {
+    throw new Error(`Dream cloud not properly rendered: quote="${at3sState.dreamQuote}"`);
+  }
+
+  if (!at3sState.hasRoadmapModal) {
+    console.log('✅ PASS: Green experience progression modal is not yet open (smooth delay)');
+  } else {
+    throw new Error('Green experience modal opened prematurely during Shakir modal display');
+  }
+
+  // --- 4. Mobile Viewport Layout Check during Shakir Modal Display ---
   console.log('\n--- 4. Testing Mobile Viewport & Guide Modal Bottom-Left Layout ---');
   await page.setViewportSize({ width: 375, height: 667 });
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(400);
 
   const mobileMetrics = await page.evaluate(() => {
     const card = document.querySelector('.shakir-modal-card');
@@ -210,66 +247,186 @@ async function run() {
 
   // Reset to desktop viewport
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.waitForTimeout(400);
 
-  // --- 5. Sequential Chapter Scouting (Got It Click Progression) ---
-  console.log('\n--- 5. Testing Sequential Advancement on "Got It" Click ---');
-  // Click got it to advance to chapter 2
-  await page.evaluate(() => {
-    if (window.SearchO2ShakirGuide) {
-      window.SearchO2ShakirGuide.onGotItClicked();
-    }
+  // Now wait remaining time for Shakir modal to auto-close (5s later) and green modal to open (2s later)
+  // We already waited ~400ms above, so wait ~5200ms + ~2100ms
+  console.log('\n--- 4b. Testing Shakir Modal 5s Auto-Close & 2s Green Roadmap Modal Popup ---');
+  await page.waitForTimeout(6800);
+
+  const at10sState = await page.evaluate(() => {
+    const shakirModal = document.getElementById('s2ShakirModal');
+    const dreamCloud = document.getElementById('s2ShakirDreamCloud');
+    const roadmapModal = document.querySelector('.cartoon-roadmap-modal');
+    const cdRemaining = window.SearchO2ShakirGuide ? window.SearchO2ShakirGuide.getCooldownRemaining() : 0;
+    const gotItTimerSpan = document.getElementById('s2RoadmapGotItTimer')?.textContent || '';
+
+    return {
+      hasShakirModal: !!shakirModal,
+      hasDreamCloud: !!dreamCloud,
+      hasRoadmapModal: !!roadmapModal,
+      cdRemaining,
+      gotItTimerSpan
+    };
   });
 
-  const nextCh = await page.evaluate(() => {
-    return window.SearchO2ShakirGuide ? window.SearchO2ShakirGuide.getGuideState().currentChapter : null;
-  });
+  console.log('Shakir modal auto-closed?', !at10sState.hasShakirModal);
+  console.log('Dream cloud auto-closed?', !at10sState.hasDreamCloud);
+  console.log('Green experience roadmap modal popped up?', at10sState.hasRoadmapModal);
+  console.log('Cooldown remaining seconds (should have seconds remaining):', at10sState.cdRemaining);
+  console.log('Got It button timer tag:', at10sState.gotItTimerSpan);
 
-  console.log('Current chapter after first Got It click:', nextCh);
-  if (nextCh === 2) {
-    console.log('✅ PASS: Shakir advanced to Chapter 2 upon clicking "Got It"');
+  if (!at10sState.hasShakirModal) {
+    console.log('✅ PASS: Shakir modal auto-closed 5s later');
   } else {
-    throw new Error(`Expected Chapter 2 but got: ${nextCh}`);
+    throw new Error('Shakir modal did not auto-close after 5s');
   }
 
-  // Wait for walk transition
-  await page.waitForTimeout(1000);
+  if (at10sState.hasRoadmapModal) {
+    console.log('✅ PASS: Green experience chapter progression modal popped up 2s later');
+  } else {
+    throw new Error('Green experience chapter progression modal did not open 2s later');
+  }
 
-  // --- 6. Completion & Shakir Walking Out Through Gate to Unlock Jute Tarp ---
-  console.log('\n--- 6. Testing Final Walk Out Through Gate & Jute Tarpaulin Task Popup ---');
-  // Simulate reaching chapter 8 and clicking Got It to finish scouting
+  if (at10sState.cdRemaining > 0) {
+    console.log(`✅ PASS: Cooldown timer still has ${at10sState.cdRemaining}s remaining while user views Got It modal`);
+  } else {
+    throw new Error(`Cooldown timer expired prematurely: ${at10sState.cdRemaining}`);
+  }
+
+  // --- 5. Got It Click Directly Starts Walking & Clears Previous Cyan Ghosts ---
+  console.log('\n--- 5. Testing Got It Button: Directly Starts Walking & Clears Previous Cyan Ghosts ---');
   await page.evaluate(() => {
     if (window.SearchO2ShakirGuide) {
-      const state = window.SearchO2ShakirGuide.getGuideState();
-      state.currentChapter = 8;
       window.SearchO2ShakirGuide.onGotItClicked();
     }
   });
 
+  const advanceCheck = await page.evaluate(() => {
+    const nextCh = window.SearchO2ShakirGuide ? window.SearchO2ShakirGuide.getGuideState().currentChapter : null;
+    const ghostObjs = document.querySelectorAll('.s2-ghost-obj');
+    const isWalking = window.SearchO2ShakirGuide ? window.SearchO2ShakirGuide.getGuideState().isWalking : false;
+    const roadmapModal = document.querySelector('.cartoon-roadmap-modal');
+
+    return {
+      nextCh,
+      ghostCount: ghostObjs.length,
+      isWalking,
+      hasRoadmapModal: !!roadmapModal
+    };
+  });
+
+  console.log('Chapter after Got It click:', advanceCheck.nextCh);
+  console.log('Cyan ghost objects remaining before new chapter arrival (should be 0):', advanceCheck.ghostCount);
+  console.log('Did Shakir directly start walking?', advanceCheck.isWalking);
+  console.log('Roadmap modal closed immediately?', !advanceCheck.hasRoadmapModal);
+
+  if (advanceCheck.nextCh === 2) {
+    console.log('✅ PASS: Shakir advanced to Chapter 2 on Got It click');
+  } else {
+    throw new Error(`Expected Chapter 2 but got: ${advanceCheck.nextCh}`);
+  }
+
+  if (advanceCheck.ghostCount === 0) {
+    console.log('✅ PASS: All previous cyan ondream exploration objects closed before walking to next chapter');
+  } else {
+    throw new Error(`Previous cyan ghost objects were not closed: ${advanceCheck.ghostCount} remaining`);
+  }
+
+  // --- 6. Chapter 8 Scouting, Rocket Cyan Ghost, Gate Departure & Complete Ghost Cleanup ---
+  console.log('\n--- 6. Testing Chapter 8 Scouting, Rocket Cyan Ghost Cleanup & Exit Gate ---');
+  // Walk to Chapter 8
+  await page.evaluate(() => {
+    if (window.SearchO2ShakirGuide) {
+      window.SearchO2ShakirGuide.walkToChapter(8);
+    }
+  });
+
+  // Wait until Chapter 8 walk completes and rocket blueprint is revealed
+  await page.waitForFunction(() => {
+    const ghosts = document.querySelectorAll('.s2-ghost-obj');
+    return Array.from(ghosts).some(el => el.getAttribute('data-facility-key') === 'space_mission' || el.textContent.includes('🚀'));
+  }, { timeout: 12000 });
+
+  const ch8Blueprint = await page.evaluate(() => {
+    const ghostObjs = document.querySelectorAll('.s2-ghost-obj');
+    const rocketGhost = Array.from(ghostObjs).find(el => el.getAttribute('data-facility-key') === 'space_mission' || el.textContent.includes('🚀'));
+    return {
+      ghostCount: ghostObjs.length,
+      hasRocketGhost: !!rocketGhost
+    };
+  });
+
+  console.log('Chapter 8 ghost count:', ch8Blueprint.ghostCount);
+  console.log('Rocket cyan ghost object visible at Chapter 8?', ch8Blueprint.hasRocketGhost);
+
+  if (ch8Blueprint.hasRocketGhost) {
+    console.log('✅ PASS: Artemis Space rocket cyan blueprint object appeared at Chapter 8');
+  } else {
+    throw new Error('Chapter 8 rocket blueprint was not rendered');
+  }
+
+  // Now click Got It to finish Chapter 8 and walk out through gate
+  console.log('Advancing from Chapter 8 through the gate...');
+  await page.evaluate(() => {
+    if (window.SearchO2ShakirGuide) {
+      window.SearchO2ShakirGuide.onGotItClicked();
+    }
+  });
+
+  // Immediately verify that rocket cyan object and ALL ghosts are closed/cleared as Shakir walks through gate
+  const duringGateWalk = await page.evaluate(() => {
+    const ghostObjs = document.querySelectorAll('.s2-ghost-obj');
+    const rocketGhost = Array.from(ghostObjs).find(el => el.getAttribute('data-facility-key') === 'space_mission' || el.textContent.includes('🚀'));
+    return {
+      ghostCount: ghostObjs.length,
+      hasRocketGhost: !!rocketGhost
+    };
+  });
+
+  console.log('Cyan ghost objects while walking through gate (should be 0):', duringGateWalk.ghostCount);
+  console.log('Rocket cyan object still present (should be false):', duringGateWalk.hasRocketGhost);
+
+  if (duringGateWalk.ghostCount === 0 && !duringGateWalk.hasRocketGhost) {
+    console.log('✅ PASS: Rocket cyan object and all ghost objects cleanly removed when leaving farm through gate');
+  } else {
+    throw new Error(`Rocket cyan object still remained when leaving farm: ${duringGateWalk.ghostCount} ghosts remaining`);
+  }
+
   // Wait for walk out through gate (2400ms walk + 500ms exit + buffer)
-  await page.waitForTimeout(3800);
+  await page.waitForFunction(() => {
+    return !document.getElementById('s2ShakirGuide');
+  }, { timeout: 8000 });
 
   const postSurvey = await page.evaluate(() => {
     const shakir = document.getElementById('s2ShakirGuide');
     const allExplored = window.state ? window.state.allChaptersExplored : false;
     const activeModalType = window.activeModal ? window.activeModal.type : null;
     const overlay = document.getElementById('modalOverlay');
+    const ghostObjs = document.querySelectorAll('.s2-ghost-obj');
     return {
       shakirStillPresent: !!shakir,
       allExplored,
       activeModalType,
-      overlayVisible: !!overlay
+      overlayVisible: !!overlay,
+      ghostCount: ghostObjs.length
     };
   });
 
   console.log('Shakir still on farm scene (should be false):', postSurvey.shakirStillPresent);
   console.log('State allChaptersExplored:', postSurvey.allExplored);
   console.log('Active modal popped up:', postSurvey.activeModalType);
+  console.log('Total cyan ghost blueprints remaining on farm (must be 0):', postSurvey.ghostCount);
 
   if (!postSurvey.shakirStillPresent) {
     console.log('✅ PASS: Shakir completed walk out through the main gate and exited the farm');
   } else {
     throw new Error('Shakir walker is still present on the farm scene');
+  }
+
+  if (postSurvey.ghostCount === 0) {
+    console.log('✅ PASS: Zero cyan ghost blueprint objects remain lingering on the farm after Shakir leaves');
+  } else {
+    throw new Error(`Lingering ghost blueprint objects found on farm: ${postSurvey.ghostCount}`);
   }
 
   if (postSurvey.allExplored) {

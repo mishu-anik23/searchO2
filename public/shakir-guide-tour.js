@@ -521,8 +521,59 @@
     walkerEl: null,
     speechBubbleEl: null,
     currentWalkToken: 0,
-    dialogOpen: false
+    dialogOpen: false,
+    sequenceTimers: []
   };
+
+    // ---------------------------------------------------------------------------
+  // Sequence Timers & Cleanup Helpers
+  // ---------------------------------------------------------------------------
+  function clearSequenceTimers() {
+    if (guideState.sequenceTimers && guideState.sequenceTimers.length) {
+      guideState.sequenceTimers.forEach(function (t) {
+        clearTimeout(t);
+      });
+      guideState.sequenceTimers = [];
+    }
+    if (guideState.experienceUpdateTimer) {
+      clearTimeout(guideState.experienceUpdateTimer);
+      guideState.experienceUpdateTimer = null;
+    }
+  }
+
+  function addSequenceTimer(fn, delay) {
+    var t = setTimeout(fn, delay);
+    guideState.sequenceTimers.push(t);
+    return t;
+  }
+
+  function clearChapterGhosts() {
+    hideShakirDreamCloud();
+    var ghosts = document.querySelectorAll('.s2-ghost-obj');
+    ghosts.forEach(function (g) {
+      if (g && g.parentNode) {
+        g.parentNode.removeChild(g);
+      }
+    });
+    var layer = document.getElementById('s2GhostLayer');
+    if (layer) {
+      layer.innerHTML = '';
+    }
+    if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.clearGhosts === 'function') {
+      try {
+        global.SearchO2HomeAvatar.clearGhosts(false);
+      } catch (e) {}
+    }
+    if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.hideObjectHoverModal === 'function') {
+      try {
+        global.SearchO2HomeAvatar.hideObjectHoverModal();
+      } catch (e) {}
+    }
+    var hoverModal = document.getElementById('s2ObjectHoverModal');
+    if (hoverModal) {
+      hoverModal.classList.add('hidden');
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Ensure DOM Styles for Shakir & CEO Dialogs
@@ -1433,17 +1484,19 @@
     if (pill) pill.classList.add('hidden');
     var popModal = document.getElementById('s2CooldownPopModal');
     if (popModal) popModal.classList.add('hidden');
+    var roadmapBtnTimer = document.getElementById('s2RoadmapGotItTimer');
+    if (roadmapBtnTimer) roadmapBtnTimer.textContent = '';
   }
 
   function startCooldown(fromCh, nextCh) {
     clearCooldown();
     guideState.cooldownActive = true;
-    guideState.cooldownRemaining = 45;
+    guideState.cooldownRemaining = 20;
 
-    // Use or build floater pill
+    // Use or build floater pill (20s duration)
     if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.renderScoutCountdownFloater === 'function') {
       try {
-        global.SearchO2HomeAvatar.renderScoutCountdownFloater(fromCh, nextCh, 45);
+        global.SearchO2HomeAvatar.renderScoutCountdownFloater(20, nextCh);
       } catch (e) {}
     }
 
@@ -1456,7 +1509,13 @@
 
       if (rem <= 0) {
         clearCooldown();
-        showShakirSpeechBubble('Ready for our next adventure! Tap to walk! ➔', 4000);
+        clearSequenceTimers();
+        if (typeof global.closeModal === 'function') {
+          try { global.closeModal(); } catch (e) {}
+        }
+        closeGuideModal();
+        clearChapterGhosts();
+        walkToNextChapter();
       }
     }, 1000);
   }
@@ -1465,20 +1524,20 @@
     var pill = document.getElementById('s2CooldownIconPill');
     if (!pill) {
       if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.renderScoutCountdownFloater === 'function') {
-        global.SearchO2HomeAvatar.renderScoutCountdownFloater(fromCh, nextCh, 45);
+        global.SearchO2HomeAvatar.renderScoutCountdownFloater(20, nextCh);
         pill = document.getElementById('s2CooldownIconPill');
       }
     }
     if (pill) {
       pill.classList.remove('hidden');
       var tag = pill.querySelector('.scf-time-tag') || pill.querySelector('.scf-desc');
-      if (tag) tag.textContent = '45s · Next Landmark';
+      if (tag) tag.textContent = '20s · Ch. ' + (nextCh <= 8 ? nextCh : 1);
       var title = pill.querySelector('.scf-title');
-      if (title) title.textContent = '🧑‍💼 Shakir (Co-Founder & CEO)';
+      if (title) title.textContent = '🧑‍🌾 Shakir (OxyEco Forger)';
 
       pill.onclick = function (e) {
         e.stopPropagation();
-        walkToNextChapter();
+        onGotItClicked();
       };
     }
   }
@@ -1493,6 +1552,12 @@
     if (popModal) {
       var timerVal = popModal.querySelector('#s2CooldownTimerVal');
       if (timerVal) timerVal.textContent = rem + 's';
+    }
+    var secSpan = document.getElementById('s2ScoutCountdownSec');
+    if (secSpan) secSpan.textContent = rem + 's';
+    var roadmapBtnTimer = document.getElementById('s2RoadmapGotItTimer');
+    if (roadmapBtnTimer) {
+      roadmapBtnTimer.textContent = '(' + rem + 's)';
     }
   }
 
@@ -1595,17 +1660,15 @@
 
     ensureFarmScreenActive();
     renderShakirReTriggerPill();
-    if (guideState.experienceUpdateTimer) {
-      clearTimeout(guideState.experienceUpdateTimer);
-      guideState.experienceUpdateTimer = null;
-    }
+    clearSequenceTimers();
+    clearCooldown();
+    clearChapterGhosts();
     if (typeof global.closeModal === 'function') {
       try { global.closeModal(); } catch (e) {}
     }
     closeGuideModal();
     guideState.active = true;
     guideState.currentChapter = targetCh;
-    clearCooldown();
     hideShakirSpeechBubble();
 
     // Target coordinates & Waypoints
@@ -1672,14 +1735,16 @@
       );
 
       // 2. Direct stick to position: After receiving wonder stick, he directs that stick to position!
-      setTimeout(function () {
+      addSequenceTimer(function () {
         if (!guideState.active) return;
         el.classList.add('wonder-stick-directing');
         spawnDirectingBeam(targets.standPoint, targets.touchPoint);
 
-        // 3. Cyan Blueprint appears!
-        setTimeout(function () {
+        // 3. Cyan Blueprint appears! Wonder touch completed!
+        addSequenceTimer(function () {
           if (!guideState.active) return;
+
+          // Reveal 3D Cyan Ghost Blueprint for target chapter
           if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.showChapterGhosts === 'function') {
             try {
               global.SearchO2HomeAvatar.showChapterGhosts(targetCh, true);
@@ -1688,9 +1753,6 @@
           if (typeof global.SoundTrackEngine !== 'undefined') {
             try { global.SoundTrackEngine.playSFX('achieve'); } catch (e) {}
           }
-
-          // 4. First chapter object displayed as Dream Shakir message!
-          renderShakirDreamCloud(targetCh, targets.standPoint);
 
           // Mark Chapter Exploration & Award XP (pass skipRoadmapModal=true)
           if (typeof global.exploreChapterObject === 'function') {
@@ -1704,42 +1766,60 @@
             if (typeof global.state.xp === 'number' && global.state.xp === 0) global.state.xp = 5;
           }
 
-          // Open small guide dialog (small size, laid down bottom-left beside marketplace on mobile)
-          openGuideDialog(targetCh);
+          // Return arm to normal posture
+          if (el) {
+            el.classList.remove('wonder-touching');
+            el.classList.remove('wonder-stick-directing');
+          }
 
-          // 5. Open green experience & explore chapter modals box
-          setTimeout(function () {
+          // =========================================================================
+          // IMMEDIATELY ACTIVATE COOLDOWN TIMER
+          // "after wonder touch cooldown timer will immidiately active all modals
+          // time elapse will be in between. when user click got it modal then some
+          // seconds will remain. if user still does not click then, green chapter
+          // progression modal will automatically close and shakir will start walking to next chapter."
+          // =========================================================================
+          var nextCh = (targetCh >= 8 ? 8 : targetCh + 1);
+          startCooldown(targetCh, nextCh);
+
+          // 1. Shakir modal opens 3s later (at t = 3000ms):
+          addSequenceTimer(function () {
             if (!guideState.active) return;
-            if (typeof global.openChapterRoadmapForObject === 'function') {
-              try {
-                global.openChapterRoadmapForObject(chData.key, true);
-              } catch (err) {}
-            }
-          }, 200);
+            openGuideDialog(targetCh);
+            renderShakirDreamCloud(targetCh, targets.standPoint);
+
+            // 2. 5s later (at t = 8000ms from wonder touch): Shakir modal auto-closes smoothly!
+            addSequenceTimer(function () {
+              if (!guideState.active) return;
+              closeGuideModal();
+              hideShakirDreamCloud();
+
+              // 3. 2s later (at t = 10000ms from wonder touch): Green experience chapter progression modal pops up!
+              addSequenceTimer(function () {
+                if (!guideState.active) return;
+                if (typeof global.openChapterRoadmapForObject === 'function') {
+                  try {
+                    global.openChapterRoadmapForObject(chData.key, true);
+                  } catch (err) {}
+                }
+              }, 2000); // 2s later
+            }, 5000); // 5s later
+          }, 3000); // 3s later
 
         }, 250);
       }, 250);
-
-      // Start cooldown and complete arrival posture
-      setTimeout(function () {
-        if (el) {
-          el.classList.remove('wonder-touching');
-          el.classList.remove('wonder-stick-directing');
-        }
-
-        if (targetCh >= 8) {
-          showShakirSpeechBubble('🎉 Full farm scouted! Ready to return through the gate!', 6000);
-        } else {
-          startCooldown(targetCh, targetCh + 1);
-        }
-      }, 650);
     });
   }
 
   function walkToNextChapter() {
     var cur = guideState.currentChapter || 1;
+    clearSequenceTimers();
+    clearCooldown();
+    clearChapterGhosts();
     closeGuideModal();
-    hideShakirDreamCloud();
+    if (typeof global.closeModal === 'function') {
+      try { global.closeModal(); } catch (e) {}
+    }
     if (cur >= 8) {
       walkOutThroughGate();
     } else {
@@ -1748,15 +1828,27 @@
   }
 
   function onGotItClicked() {
+    clearSequenceTimers();
+    clearCooldown();
+    clearChapterGhosts();
+    if (typeof global.closeModal === 'function') {
+      try { global.closeModal(); } catch (e) {}
+    }
+    closeGuideModal();
     walkToNextChapter();
   }
 
   function walkOutThroughGate(onComplete) {
     ensureFarmScreenActive();
+    clearSequenceTimers();
+    clearCooldown();
+    clearChapterGhosts(); // Clean up rocket and all ghost blueprints
     closeGuideModal();
     hideShakirDreamCloud();
     hideTourNavDock();
-    clearCooldown();
+    if (typeof global.closeModal === 'function') {
+      try { global.closeModal(); } catch (e) {}
+    }
 
     var gatePos = { left: 92.5, top: 52.0 };
     var outsidePos = { left: 98.0, top: 52.0 };
@@ -1787,6 +1879,9 @@
         if (el && el.parentNode) el.parentNode.removeChild(el);
         guideState.walkerEl = null;
         guideState.active = false;
+
+        // Ensure ghost layer is clean
+        clearChapterGhosts();
 
         // Mark all chapters explored
         if (typeof global.state !== 'undefined' && global.state) {
@@ -2266,6 +2361,7 @@
     walkToChapter: walkToChapter,
     walkToNextChapter: walkToNextChapter,
     onGotItClicked: onGotItClicked,
+    clearChapterGhosts: clearChapterGhosts,
     walkOutThroughGate: walkOutThroughGate,
     renderShakirDreamCloud: renderShakirDreamCloud,
     hideShakirDreamCloud: hideShakirDreamCloud,
