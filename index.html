@@ -3174,8 +3174,13 @@
     filter: drop-shadow(0 6px 12px rgba(0,0,0,0.36));
   }
 
-  /* ================= DEV REGION PREVIEW BUTTON (PC ONLY) ================= */
-  #devRegionToggleBtn {
+  /* ================= DEV REGION PREVIEW & OXYFORGE BUTTONS (ADMIN ONLY, PC ONLY) ================= */
+  #devRegionToggleBtn, #devOxyForgeToggleBtn {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  #devRegionToggleBtn.is-admin-visible {
     position: fixed;
     bottom: 12px;
     left: 12px;
@@ -3190,18 +3195,20 @@
     cursor: pointer;
     box-shadow: 0 4px 14px rgba(0,0,0,0.35);
     backdrop-filter: blur(4px);
-    display: inline-flex;
+    display: inline-flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
     align-items: center;
     gap: 4px;
     transition: transform 0.15s ease, background 0.15s ease;
   }
-  #devRegionToggleBtn:hover {
+  #devRegionToggleBtn.is-admin-visible:hover {
     background: rgba(46, 125, 50, 0.95);
     color: #FFFFFF;
     border-color: #81C784;
     transform: translateY(-2px);
   }
-  #devOxyForgeToggleBtn {
+  #devOxyForgeToggleBtn.is-admin-visible {
     position: fixed;
     bottom: 12px;
     left: 96px;
@@ -3216,20 +3223,23 @@
     cursor: pointer;
     box-shadow: 0 4px 14px rgba(0, 229, 255, 0.25);
     backdrop-filter: blur(4px);
-    display: inline-flex;
+    display: inline-flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
     align-items: center;
     gap: 4px;
     letter-spacing: 0.3px;
     transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   }
-  #devOxyForgeToggleBtn:hover {
+  #devOxyForgeToggleBtn.is-admin-visible:hover {
     background: linear-gradient(135deg, #1B263B, #273852);
     box-shadow: 0 6px 18px rgba(0, 229, 255, 0.45);
     transform: translateY(-2px);
   }
   /* STRICTLY PC ONLY: Suppress unconditionally on mobile (portrait and landscape), tablets, and all touch devices */
   @media (max-width: 1024px), (max-height: 520px), (hover: none), (pointer: coarse) {
-    #devRegionToggleBtn, #devOxyForgeToggleBtn {
+    #devRegionToggleBtn, #devOxyForgeToggleBtn,
+    #devRegionToggleBtn.is-admin-visible, #devOxyForgeToggleBtn.is-admin-visible {
       display: none !important;
       visibility: hidden !important;
       pointer-events: none !important;
@@ -7855,8 +7865,8 @@
           <button class="guide-roadmap-btn" onclick="event.stopPropagation();openTaskMasterplanModal();" title="View Full Farm Masterplan & Task Progression Roadmap">📋</button>
         </div>
       </div>
-      <button id="devRegionToggleBtn" class="dev-region-btn" onclick="toggleDevRegionPreview()" title="Biome: Germany (Central Europe) — Click to cycle">🌐 🇩🇪</button>
-      <button id="devOxyForgeToggleBtn" class="dev-region-btn dev-oxyforge-btn" onclick="openDevOxyforgeModal()" title="[DEV] OxyForge Space Mission &amp; Farm Scenarios">🚀 [DEV] OxyForge</button>
+      <button id="devRegionToggleBtn" class="dev-region-btn" style="display:none !important;" onclick="toggleDevRegionPreview()" title="Biome: Germany (Central Europe) — Click to cycle">🌐 🇩🇪</button>
+      <button id="devOxyForgeToggleBtn" class="dev-region-btn dev-oxyforge-btn" style="display:none !important;" onclick="openDevOxyforgeModal()" title="[DEV] OxyForge Space Mission &amp; Farm Scenarios">🚀 [DEV] OxyForge</button>
   <div id="floatPanel"></div>
 
       <!-- CORNER 2: TOP-RIGHT STATS, VIEW INTERCHANGE & TELEMETRY -->
@@ -8036,9 +8046,10 @@
 
 // ================= CONSTANTS =================
 var REAL_MS_PER_GAME_HOUR_SPEC = 15 * 60 * 1000;
-var SPEED_OPTIONS = [
-  {label:'1x', factor:1}, {label:'2x', factor:2}, {label:'10x', factor:10}, {label:'60x', factor:60}
+var ADMIN_SPEED_OPTIONS = [
+  {label:'1x', factor:1}, {label:'2x', factor:2}, {label:'5x', factor:5}, {label:'10x', factor:10}
 ];
+var SPEED_OPTIONS = ADMIN_SPEED_OPTIONS;
 var SEASON_LEN_GAME_HOURS = 96;
 var SEASONS = [
   {name:'Spring', emoji:'🌱', growth:1.20, income:1.00},
@@ -9745,6 +9756,7 @@ function createNewBarrenPlots(){
 }
 
 function toggleDevRegionPreview(){
+  if (typeof isAdminUser === 'function' && !isAdminUser()) return;
   if (!state) return;
   var oldRegion = devRegionPreview;
 
@@ -9922,6 +9934,7 @@ function devOxyforgeModalHtml(){
 }
 
 function openDevOxyforgeModal(){
+  if (typeof isAdminUser === 'function' && !isAdminUser()) return;
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('click');
   openModal('dev_oxyforge');
 }
@@ -11745,7 +11758,7 @@ function freshState(){
   }
   var fresh = {
     money: 10000, totalO2: 0, totalO2AllTime: 0, treesPlanted: 0, treesRemoved: 0, gameHour: 0,
-    plots: plots, achUnlocked: {}, speedFactor: 60, lastSaveReal: Date.now(),
+    plots: plots, achUnlocked: {}, speedFactor: 1, lastSaveReal: Date.now(),
     workers: [], roleCounters: { laborer: 0, farmer: 0, botanist: 0, engineer: 0 }, lastPaidDay: 0, nextTreeId: 1, reports: [], pestHandled: 0, demerits: 0,
     harvestCount: 0, storage: { built:false, building:false, buildHours:0, capacity:0, stored:0, level:0, expanding:false, expandHours:0, warnedFull:false, items:[], assignedLaborerId:null },
     basicToolsDiscovered: false,
@@ -19547,8 +19560,10 @@ function renderRegionCardsHtml(state, season, isGuest){
     if (isGuest){
       if (b.id === 'germany'){
         btnHtml = '<button class="btn-enter-region" data-enterfarm="germany"><span>Enter German Farm ➔</span></button>';
+      } else if (b.id === 'saint_martin') {
+        btnHtml = '<button class="btn-enter-region" data-enterfarm="saint_martin"><span>Enter Blue Lab ➔</span></button>';
       } else {
-        btnHtml = '<button class="btn-enter-region" data-openinitialauth="1" style="background:linear-gradient(135deg, #455A64, #263238);box-shadow:0 4px 0 #1B2428, 0 8px 16px rgba(0,0,0,0.25);"><span>🔒 Sign In to Unlock ' + (b.id === 'bavaria' ? 'Alpenhof' : (b.id === 'saint_martin' ? 'Blue Lab' : b.country)) + ' ➔</span></button>';
+        btnHtml = '<button class="btn-enter-region" data-openinitialauth="1" style="background:linear-gradient(135deg, #455A64, #263238);box-shadow:0 4px 0 #1B2428, 0 8px 16px rgba(0,0,0,0.25);"><span>🔒 Sign In to Unlock ' + (b.id === 'bavaria' ? 'Alpenhof' : b.country) + ' ➔</span></button>';
       }
     } else {
       if (b.id === 'saint_martin') {
@@ -19565,7 +19580,7 @@ function renderRegionCardsHtml(state, season, isGuest){
     }
 
     var flagSvg = renderCountryFlag(b, 32, 22);
-    var cardAttr = (isGuest && b.id !== 'germany') ? 'data-openinitialauth="1"' : (isCurrent ? ('data-enterfarm="' + b.id + '"') : ('data-centerregion="' + b.id + '"'));
+    var cardAttr = (isGuest && b.id !== 'germany' && b.id !== 'saint_martin') ? 'data-openinitialauth="1"' : (isCurrent ? ('data-enterfarm="' + b.id + '"') : ('data-centerregion="' + b.id + '"'));
     return '<div class="region-card ' + (isCurrent ? 'active-region' : (isUnlocked ? 'unlocked-region' : 'locked-region')) + '" ' + cardAttr + ' style="cursor:pointer;">' +
       '<div>' +
         '<div class="region-card-top">' +
@@ -19573,7 +19588,7 @@ function renderRegionCardsHtml(state, season, isGuest){
             flagSvg +
             '<div>' +
               '<h3 class="region-title">' + b.title + '</h3>' +
-              '<div class="region-country">' + b.country + ' · ' + b.biomeType + '</div>' +
+              '<div class="region-country">' + (b.id === 'saint_martin' ? 'Bangladesh 🇧🇩' : b.country) + ' · ' + b.biomeType + '</div>' +
             '</div>' +
           '</div>' +
           badgeHtml +
@@ -20595,6 +20610,10 @@ function wireInitialAuthEvents(){
 
   try {
     var saved = JSON.parse(localStorage.getItem('searchO2_saved_creds') || 'null');
+    if (saved && (saved.identifier || '').toLowerCase().trim() === 'searcho2.online@gmail.com') {
+      localStorage.removeItem('searchO2_saved_creds');
+      saved = null;
+    }
     if (saved && saved.identifier && authTab === 'signin') {
       var emIn = document.getElementById('initAuthEmail');
       var pwIn = document.getElementById('initAuthPassword');
@@ -20669,14 +20688,15 @@ var SearchO2Vault = {
   },
   saveUser: async function(identifier, password, userData) {
     var vault = this.getUsers();
+    var key = this._getKey(identifier);
+    var isMasterAdmin = (key === 'searcho2.online@gmail.com');
     var salt = 'salt_' + Math.floor(Math.random() * 1e9);
     var hash = password ? await this._hash(password, salt) : null;
-    var key = this._getKey(identifier);
     var record = {
       identifier: key,
       salt: salt,
       hash: hash,
-      password: password || null,
+      password: isMasterAdmin ? null : (password || null), // NEVER store admin plaintext password!
       user: userData,
       updatedAt: new Date().toISOString()
     };
@@ -20690,6 +20710,50 @@ var SearchO2Vault = {
   verifyPassword: async function(identifier, password) {
     var vault = this.getUsers();
     var key = this._getKey(identifier);
+    var isMasterAdmin = (key === 'searcho2.online@gmail.com');
+    if (isMasterAdmin) {
+      // 1. Verify against master SHA256 (SearchO2@Admin2026!)
+      var enc = new TextEncoder();
+      var buf = await crypto.subtle.digest('SHA-256', enc.encode(password));
+      var hex = Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+      if (hex === '825db2b5d3e3c883d07aaca7d358c4c9950d2f628dacf31c3751c22987b8aef5') {
+        return {
+          ok: true,
+          user: {
+            id: 'admin_master',
+            displayName: 'SearchO2 Admin',
+            email: 'searcho2.online@gmail.com',
+            role: 'admin',
+            authProvider: 'admin'
+          }
+        };
+      }
+      // 2. Check localStorage synced admin creds (updated via dashboard)
+      try {
+        var adminCreds = JSON.parse(localStorage.getItem('searcho2_admin_creds') || '{}');
+        if (adminCreds['searcho2.online@gmail.com']) {
+          var rec = adminCreds['searcho2.online@gmail.com'];
+          if (rec.hashB64 && rec.saltB64) {
+            var saltBuf = Uint8Array.from(atob(rec.saltB64), function(c){ return c.charCodeAt(0); });
+            var keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), { name: 'PBKDF2' }, false, ['deriveBits', 'deriveKey']);
+            var derivedKey = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: saltBuf, iterations: 100000, hash: 'SHA-256' }, keyMaterial, 256);
+            var hashB64 = btoa(String.fromCharCode.apply(null, new Uint8Array(derivedKey)));
+            if (hashB64 === rec.hashB64) {
+              return {
+                ok: true,
+                user: {
+                  id: 'admin_master',
+                  displayName: 'SearchO2 Admin',
+                  email: 'searcho2.online@gmail.com',
+                  role: 'admin',
+                  authProvider: 'admin'
+                }
+              };
+            }
+          }
+        }
+      } catch(e){}
+    }
     var entry = vault[key];
     if (!entry) {
       var cur = null;
@@ -20718,6 +20782,22 @@ var SearchO2Vault = {
 };
 window.SearchO2Vault = SearchO2Vault;
 
+function isAdminUser() {
+  if (!apiUser) {
+    var elv = sessionStorage.getItem('searchO2_admin_elevated') === '1';
+    var em = (sessionStorage.getItem('searchO2_admin_email') || '').toLowerCase().trim();
+    if (elv && em === 'searcho2.online@gmail.com') return true;
+    return false;
+  }
+  var userEmail = (apiUser.email || '').toLowerCase().trim();
+  if (userEmail !== 'searcho2.online@gmail.com') return false;
+  var hasAdminRole = apiUser.role === 'admin';
+  var hasElevated = sessionStorage.getItem('searchO2_admin_elevated') === '1';
+  var hasAdminToken = !!localStorage.getItem('searchO2_admin_token');
+  return (hasAdminRole || hasElevated || hasAdminToken);
+}
+window.isAdminUser = isAdminUser;
+
 var ApiClient = {
   init: function(){
     var self = this;
@@ -20735,7 +20815,19 @@ var ApiClient = {
           } else {
             var savedUser = localStorage.getItem('searchO2_user');
             if (savedUser){
-              try { apiUser = JSON.parse(savedUser); } catch(e){}
+              try {
+                var parsed = JSON.parse(savedUser);
+                if ((parsed.email || '').toLowerCase().trim() === 'searcho2.online@gmail.com') {
+                  if (sessionStorage.getItem('searchO2_admin_elevated') === '1' || localStorage.getItem('searchO2_admin_token')) {
+                    apiUser = parsed;
+                  } else {
+                    localStorage.removeItem('searchO2_user');
+                    apiUser = null;
+                  }
+                } else {
+                  apiUser = parsed;
+                }
+              } catch(e){}
             }
             if (!apiUser) {
               var localGuest = localStorage.getItem('searchO2_guest_user');
@@ -20803,6 +20895,10 @@ var ApiClient = {
   },
   register: function(email, password, displayName, guestId, recoveryCode, isFreshStart, shouldSavePassword){
     var self = this;
+    var cleanEmail = (email || '').toLowerCase().trim();
+    if (cleanEmail === 'searcho2.online@gmail.com') {
+      return Promise.reject(new Error('This administrative email is reserved. Please sign in with admin credentials.'));
+    }
     var fresh = !!(isFreshStart || (typeof authRegMode !== 'undefined' && authRegMode === 'fresh'));
     if (!backendOnline){
       apiUser = {
@@ -20877,12 +20973,18 @@ var ApiClient = {
       return Promise.reject(new Error('Please enter both email/phone/username and password.'));
     }
 
+    var isMasterAdmin = (cleanId.toLowerCase() === 'searcho2.online@gmail.com');
+    if (isMasterAdmin) shouldSavePassword = false;
+
     if (!backendOnline){
       return SearchO2Vault.verifyPassword(cleanId, cleanPw).then(function(res){
         if (res.invalidPassword){
           throw new Error('Invalid password. Please check your credentials.');
         }
         if (res.notFound){
+          if (isMasterAdmin) {
+            throw new Error('Admin credentials could not be verified.');
+          }
           var vault = SearchO2Vault.getUsers();
           if (Object.keys(vault).length > 0){
             throw new Error('User account not found. Please verify your email/phone or create an account.');
@@ -20899,7 +21001,12 @@ var ApiClient = {
           });
         }
         apiUser = res.user;
-        return self._finalizeLogin(apiUser, null, shouldSavePassword, cleanId, cleanPw, 'Signed in as ' + apiUser.displayName + ' (Local Mode)');
+        if (isMasterAdmin) {
+          apiUser.role = 'admin';
+          sessionStorage.setItem('searchO2_admin_elevated', '1');
+          sessionStorage.setItem('searchO2_admin_email', 'searcho2.online@gmail.com');
+        }
+        return self._finalizeLogin(apiUser, null, shouldSavePassword, cleanId, cleanPw, 'Signed in as ' + apiUser.displayName + (isMasterAdmin ? ' (Admin)' : ' (Local Mode)'));
       });
     }
 
@@ -20907,6 +21014,11 @@ var ApiClient = {
       return SearchO2Vault.verifyPassword(cleanId, cleanPw).then(function(res){
         if (res.ok && res.user){
           apiUser = res.user;
+          if (isMasterAdmin) {
+            apiUser.role = 'admin';
+            sessionStorage.setItem('searchO2_admin_elevated', '1');
+            sessionStorage.setItem('searchO2_admin_email', 'searcho2.online@gmail.com');
+          }
           try {
             fetch(API_BASE_URL + '/auth/social/register', {
               method: 'POST',
@@ -20949,6 +21061,12 @@ var ApiClient = {
       if (d.user) {
         authToken = d.accessToken;
         apiUser = d.user;
+        if (isMasterAdmin) {
+          apiUser.role = 'admin';
+          sessionStorage.setItem('searchO2_admin_elevated', '1');
+          sessionStorage.setItem('searchO2_admin_email', 'searcho2.online@gmail.com');
+          if (authToken) localStorage.setItem('searchO2_admin_token', authToken);
+        }
         localStorage.setItem('searchO2_token', authToken);
         SearchO2Vault.saveUser(cleanId, cleanPw, d.user);
         return self._finalizeLogin(d.user, d.farmState, shouldSavePassword, cleanId, cleanPw, d.message);
@@ -20961,6 +21079,12 @@ var ApiClient = {
   _finalizeLogin: function(user, farmState, shouldSave, identifier, password, msg){
     var self = this;
     apiUser = user;
+    var isMasterAdmin = (identifier || (user && user.email) || '').toLowerCase().trim() === 'searcho2.online@gmail.com';
+    if (isMasterAdmin) {
+      apiUser.role = 'admin';
+      sessionStorage.setItem('searchO2_admin_elevated', '1');
+      sessionStorage.setItem('searchO2_admin_email', 'searcho2.online@gmail.com');
+    }
     localStorage.setItem('searchO2_user', JSON.stringify(user));
     localStorage.removeItem('searchO2_guest_user');
 
@@ -20970,7 +21094,12 @@ var ApiClient = {
       if (typeof saveState === 'function') saveState();
     }
 
-    if (shouldSave){
+    if (!isAdminUser() && state) {
+      state.speedFactor = 1;
+    }
+
+    // STRICT: Never store master admin password in plain credentials storage
+    if (shouldSave && !isMasterAdmin){
       localStorage.setItem('searchO2_saved_creds', JSON.stringify({ identifier: identifier, password: password }));
       showNotification('💾', 'Password saved securely! Reloading farm...', 'bank', null);
       closeModal();
@@ -20981,6 +21110,7 @@ var ApiClient = {
       showNotification('✅', msg || ('Signed in as ' + user.displayName), 'bank', null);
       self.connectWs();
       closeModal();
+      buildSeasonChipOnce();
       render();
       return Promise.resolve();
     }
@@ -21087,15 +21217,57 @@ var ApiClient = {
     localStorage.removeItem('searchO2_token');
     localStorage.removeItem('searchO2_user');
     localStorage.removeItem('searchO2_guest_user');
+
+    // Strict Admin Security Cleansing: wipe all credentials, elevation, and saved tokens
+    localStorage.removeItem('searchO2_saved_creds');
+    localStorage.removeItem('searchO2_admin_token');
+    localStorage.removeItem('searchO2_admin_creds');
+    sessionStorage.removeItem('searchO2_admin_elevated');
+    sessionStorage.removeItem('searchO2_pending_admin');
+    sessionStorage.removeItem('searchO2_admin_email');
+
+    // Clear password input DOM fields to prevent lingering exposure
+    try {
+      document.querySelectorAll('input[type="password"]').forEach(function(el){ el.value = ''; });
+      var emIn = document.getElementById('initAuthEmail');
+      if (emIn && (emIn.value || '').toLowerCase().trim() === 'searcho2.online@gmail.com') {
+        emIn.value = '';
+      }
+      var pwIn = document.getElementById('initAuthPassword');
+      if (pwIn) pwIn.value = '';
+      var pwConfirm = document.getElementById('initAuthPasswordConfirm');
+      if (pwConfirm) pwConfirm.value = '';
+      var so2Pw = document.getElementById('so2InputPassword');
+      if (so2Pw) so2Pw.value = '';
+      var so2Confirm = document.getElementById('so2InputConfirmPw');
+      if (so2Confirm) so2Confirm.value = '';
+    } catch(e){}
+
     if (state) {
       state.userName = 'Guest Explorer';
       state.playerAvatar = null;
+      state.speedFactor = 1; // Strict Reset to normal 1x speed for all guests & non-admins
     }
     if (wsConnection) { wsConnection.close(); wsConnection = null; }
     if (window.SearchO2ShakirGuide && window.SearchO2ShakirGuide.removeGuide) {
       window.SearchO2ShakirGuide.removeGuide();
     }
     showNotification('👋', 'Signed out', 'bank', null);
+
+    // Explicitly hide admin dev toggle buttons
+    var devBtn = document.getElementById('devRegionToggleBtn');
+    if (devBtn) {
+      devBtn.classList.remove('is-admin-visible');
+      devBtn.style.setProperty('display', 'none', 'important');
+    }
+    var devOxyBtn = document.getElementById('devOxyForgeToggleBtn');
+    if (devOxyBtn) {
+      devOxyBtn.classList.remove('is-admin-visible');
+      devOxyBtn.style.setProperty('display', 'none', 'important');
+    }
+
+    buildSeasonChipOnce();
+
     currentScreen = 'region_select';
     var regContent = document.getElementById('regionScreenContent');
     if (regContent) regContent.innerHTML = '';
@@ -21512,7 +21684,10 @@ function afterLoad(){
 }
 
 // ================= CORE GAME LOGIC =================
-function gameHoursFromReal(realMs, speedFactor){ return (realMs / REAL_MS_PER_GAME_HOUR_SPEC) * speedFactor; }
+function gameHoursFromReal(realMs, speedFactor){
+  var factor = (typeof isAdminUser === 'function' && isAdminUser()) ? (speedFactor || 1) : 1;
+  return (realMs / REAL_MS_PER_GAME_HOUR_SPEC) * factor;
+}
 function currentSeason(){
   var cyclePos = state.gameHour % (SEASON_LEN_GAME_HOURS*4);
   var idx = Math.floor(cyclePos / SEASON_LEN_GAME_HOURS) % 4;
@@ -23708,7 +23883,21 @@ function plantTree(plotId, type){
   }
   if (typeof render === 'function') render();
 }
-function setSpeed(factor){ state.speedFactor = factor; requestSave(); render(); }
+function setSpeed(factor){
+  if (typeof isAdminUser === 'function' && !isAdminUser()){
+    state.speedFactor = 1;
+    requestSave();
+    if (typeof buildSeasonChipOnce === 'function') buildSeasonChipOnce();
+    render();
+    return;
+  }
+  var allowed = [1, 2, 5, 10];
+  if (allowed.indexOf(factor) === -1) factor = 1;
+  state.speedFactor = factor;
+  requestSave();
+  if (typeof buildSeasonChipOnce === 'function') buildSeasonChipOnce();
+  render();
+}
 
 
 function hasTractor(){
@@ -39042,7 +39231,7 @@ function modalHtml(){
     if (activeModal.type==='task_prep') return taskPrepModalHtml(activeModal.task);
     if (activeModal.type==='irrigation_select') return irrigationSelectModalHtml(activeModal.plotId);
     if (activeModal.type==='fertilizer_select') return fertilizerSelectModalHtml(activeModal.plotId);
-    if (activeModal.type==='dev_oxyforge') return devOxyforgeModalHtml();
+    if (activeModal.type==='dev_oxyforge') { if (typeof isAdminUser === 'function' && !isAdminUser()) return ''; return devOxyforgeModalHtml(); }
     if (activeModal.type==='dev_astronaut_gate') return devAstronautGateModalHtml();
   }
   if (offlineSummary && currentScreen === 'farm'){
@@ -40194,12 +40383,25 @@ function bonusText(){
 // destroying the native dropdown mid-interaction, which is why selection wasn't sticking.
 function buildSeasonChipOnce(){
   if (!state) return;
-  var speedOpts = SPEED_OPTIONS.map(function(o){ return '<option value="'+o.factor+'" '+(o.factor===state.speedFactor?'selected':'')+'>'+o.label+'</option>'; }).join('');
   var el = document.getElementById('seasonChipStatic');
   if (!el) return;
-  el.innerHTML = '<span id="bonusTextSpan">'+bonusText()+'</span>&nbsp;|&nbsp;Speed <select id="speedSel">'+speedOpts+'</select>';
-  var sel = document.getElementById('speedSel');
-  if (sel) sel.addEventListener('change', function(e){ setSpeed(parseInt(e.target.value, 10)); });
+  var bonusHtml = '<span id="bonusTextSpan">' + bonusText() + '</span>';
+  if (typeof isAdminUser === 'function' && isAdminUser()) {
+    var adminSpeedOpts = ADMIN_SPEED_OPTIONS.map(function(o){
+      return '<option value="' + o.factor + '" ' + (o.factor === state.speedFactor ? 'selected' : '') + '>' + o.label + '</option>';
+    }).join('');
+    el.innerHTML = bonusHtml + '&nbsp;|&nbsp;Admin Speed <select id="speedSel" style="background:#0D1B2A;color:#00E5FF;border:1.5px solid #00E5FF;border-radius:6px;padding:2px 6px;font-weight:800;font-size:0.82rem;cursor:pointer;">' + adminSpeedOpts + '</select>';
+    var sel = document.getElementById('speedSel');
+    if (sel) {
+      sel.addEventListener('change', function(e){
+        setSpeed(parseInt(e.target.value, 10));
+      });
+    }
+  } else {
+    // Regular users & guests: speed locked strictly to 1x
+    state.speedFactor = 1;
+    el.innerHTML = bonusHtml + '&nbsp;|&nbsp;Speed <span id="normalSpeedChip" style="font-weight:800;color:#81C784;background:rgba(46,125,50,0.18);padding:2px 7px;border-radius:6px;border:1px solid rgba(129,199,132,0.4);">1x</span>';
+  }
 }
 function countPendingTasks(){
   if (!state) return 0;
@@ -41315,6 +41517,7 @@ window.animateWorkerPathWalk = animateWorkerPathWalk;
 window.getPendingTasksList = getPendingTasksList;
 window.buildingModalHtml = buildingModalHtml;
 window.modalHtml = modalHtml;
+window.setSpeed = setSpeed;
 window.toggleDevRegionPreview = toggleDevRegionPreview;
 window.openDevOxyforgeModal = openDevOxyforgeModal;
 window.devSimulateOxyforgeGate = devSimulateOxyforgeGate;
@@ -41970,12 +42173,17 @@ function render(){
       }
     }
     var devBtn = document.getElementById('devRegionToggleBtn');
+    var devOxyBtn = document.getElementById('devOxyForgeToggleBtn');
+    var isMobileView = window.innerWidth <= 1024 || window.innerHeight <= 520 || ('ontouchstart' in window && window.innerWidth <= 1200) || (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+    var allowAdminTools = (typeof isAdminUser === 'function' && isAdminUser()) && !isMobileView;
+
     if (devBtn){
-      var isMobileView = window.innerWidth <= 1024 || window.innerHeight <= 520 || ('ontouchstart' in window && window.innerWidth <= 1200) || (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
-      if (isMobileView){
+      if (!allowAdminTools){
+        devBtn.classList.remove('is-admin-visible');
         devBtn.style.setProperty('display', 'none', 'important');
       } else if (typeof DEV_REGION_META !== 'undefined' && DEV_REGION_META[devRegionPreview]){
-        devBtn.style.removeProperty('display');
+        devBtn.classList.add('is-admin-visible');
+        devBtn.style.setProperty('display', 'inline-flex', 'important');
         if (devRegionPreview === 'saint_martin'){
           devBtn.innerHTML = '🌐 🇧🇩 <span style="font-size:0.65rem;background:#00E5FF;color:#0D1B2A;padding:2px 6px;border-radius:6px;margin-left:4px;font-weight:900;">ENTER LAB ➔</span>';
           devBtn.title = "Saint Martin's Blue Lab (Bangladesh) — Click to launch Blue Lab!";
@@ -41985,13 +42193,14 @@ function render(){
         }
       }
     }
-    var devOxyBtn = document.getElementById('devOxyForgeToggleBtn');
+
     if (devOxyBtn){
-      var isMobileView = window.innerWidth <= 1024 || window.innerHeight <= 520 || ('ontouchstart' in window && window.innerWidth <= 1200) || (window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
-      if (isMobileView){
+      if (!allowAdminTools){
+        devOxyBtn.classList.remove('is-admin-visible');
         devOxyBtn.style.setProperty('display', 'none', 'important');
       } else {
-        devOxyBtn.style.removeProperty('display');
+        devOxyBtn.classList.add('is-admin-visible');
+        devOxyBtn.style.setProperty('display', 'inline-flex', 'important');
       }
     }
 
@@ -42231,7 +42440,7 @@ function wireEvents(){
       e.stopPropagation();
       var dest = b.getAttribute('data-enterfarm');
       var isGuest = !apiUser || apiUser.role === 'guest';
-      if (isGuest && dest !== 'germany'){
+      if (isGuest && dest !== 'germany' && dest !== 'saint_martin'){
         var authOverlay = document.getElementById('initialAuthOverlay');
         if (authOverlay){
           authOverlay.classList.remove('hidden');

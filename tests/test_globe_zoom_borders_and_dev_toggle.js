@@ -44,16 +44,31 @@ const assert = require('assert');
   });
   await page.waitForTimeout(200);
 
-  // 2. Switch to Farm Screen where Dev Region Toggle Button is active
+  // 2. Verify Dev Region Toggle is HIDDEN for guest, then login as verified admin
   await page.evaluate(() => {
     switchScreen('farm');
   });
   await page.waitForTimeout(300);
 
+  const guestHidden = await page.evaluate(() => {
+    var el = document.getElementById('devRegionToggleBtn');
+    return !el || window.getComputedStyle(el).display === 'none';
+  });
+  assert(guestHidden, 'Dev region toggle must be strictly hidden for guest/non-admin');
+  console.log('[✓ PASSED] Dev Region Toggle is strictly hidden for guest user');
+
+  // Authenticate as SearchO2 Admin (searcho2.online@gmail.com)
+  await page.evaluate(async () => {
+    await ApiClient.login('searcho2.online@gmail.com', 'SearchO2@Admin2026!');
+    switchScreen('farm');
+    render();
+  });
+  await page.waitForTimeout(400);
+
   const devBtn = await page.$('#devRegionToggleBtn');
   assert(devBtn, '#devRegionToggleBtn must exist in farm screen');
   let btnText = await page.evaluate(() => document.getElementById('devRegionToggleBtn').innerText);
-  console.log('Initial Dev Button Text:', btnText);
+  console.log('Admin Dev Button Text:', btnText);
   assert(btnText.includes('🇩🇪'), 'Initial dev button must show Germany flag');
 
   // 3. Cycle Dev Region Toggle until Saint Martin (BD)
@@ -86,13 +101,18 @@ const assert = require('assert');
   assert(currentUrl.includes('blue-lab.html'), 'Clicking Dev BD Button must navigate to blue-lab.html');
   console.log('[✓ PASSED] Dev BD Toggle navigates directly to Saint Martin Blue Lab');
 
-  // 5. Return to index.html and test Regional View, 3D Globe & Regional Card
+  // 5. Return to index.html to test Regional View, 3D Globe & Regional Card
   console.log('Returning to index.html to test Regional View & 3D Globe...');
   await page.goto(indexUrl, { waitUntil: 'load' });
   await page.waitForTimeout(500);
 
-  // Switch to Regional Screen
+  // Switch to Regional Screen as guest
   await page.evaluate(() => {
+    sessionStorage.removeItem('searchO2_admin_elevated');
+    sessionStorage.removeItem('searchO2_admin_email');
+    localStorage.removeItem('searchO2_user');
+    localStorage.removeItem('searchO2_admin_token');
+    if (window.apiUser) window.apiUser = null;
     var overlay = document.getElementById('initialAuthOverlay');
     if (overlay) {
       overlay.classList.add('hidden');
