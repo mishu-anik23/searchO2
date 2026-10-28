@@ -49,10 +49,13 @@ export const chapterFeedbackSchema = z.object({
   type: z.literal('chapter_feedback'),
   gameVersion: optionalText(64), // Q1. Which SearchO2 game version or build did you play?
   chapter: text(1, 64), // Q2. Which chapter are you reviewing?
-  completed: optionalText(64), // Q3. Were you able to complete this chapter?
-  clarityRating: z.coerce.number().int().min(1).max(5).nullish(), // Q4. How clear was what you needed to do? (1-5)
-  difficulty: optionalText(64), // Q5. How did the difficulty feel?
-  confusionSource: optionalText(255), // Q6. What was the main source of confusion or frustration?
+  completed: optionalText(64), // Q2. Were you able to complete this chapter?
+  completedOther: optionalText(255), // Q2. Other write-in box
+  clarityRating: z.coerce.number().int().min(1).max(5).nullish(), // Q3. How clear was what you needed to do? (1-5)
+  difficultyRating: z.coerce.number().int().min(1).max(5).nullish(), // Q4. How did the difficulty feel? (1-5)
+  difficulty: optionalText(64), // Q4. Difficulty rating label
+  confusionSource: optionalText(255), // Q5. What was the main source of confusion or frustration?
+  confusionSourceOther: optionalText(255), // Q5. Other write-in box
   clarityFeedback: optionalText(3000), // Q7. What happened, or what would make it clearer?
   continueIntent: optionalText(64), // Q8. Did you want to continue playing afterward?
   ...common,
@@ -72,6 +75,7 @@ export const playtestReviewSchema = z.object({
   rateGameStability: optionalText(64), // Q9. Game stability
   visualDifficulty: optionalText(64), // Q10. Did any visual element make game difficult? (Yes / No / Not sure)
   visualElementImprovement: optionalText(128), // Q11. Which visual element most needs improvement?
+  visualElementImprovementOther: optionalText(255), // Q11. Other write-in box
   strongestPart: optionalText(3000), // Q12. What is the strongest part of SearchO2?
   changeOneThing: optionalText(3000), // Q13. If you could change only one thing?
   disappointmentLevel: optionalText(64), // Q14. How disappointed if no longer available?

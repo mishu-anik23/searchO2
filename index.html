@@ -8114,9 +8114,9 @@ var BUILDING_TYPES = {
     desc:'A tended botanical flower garden situated on the south curb opposite the pond.' },
   pond:        { label:'Pond',             icon:'🏞️', cost:400, buildHours:5, category:'decorative',     reputationBonus:10,
     desc:'A serene duck and fish pond on the north curb opposite the botanical flower garden.' },
-  coffee_shop: { label:'Coffee Shop',      icon:'☕', cost:800, buildHours:8, category:'revenue',        reputationBonus:5, requiresRoad:true,
+  coffee_shop: { label:'Village Restaurant', icon:'☕', cost:800, buildHours:8, category:'revenue',        reputationBonus:5, requiresRoad:true,
     upkeep:15, processRate:6, conversionRate:1.8,
-    desc:'Artisan coffee house on the north curb opposite the juice bar. Needs a Road.' },
+    desc:'Artisan restaurant and café on the north curb opposite the juice bar. Needs a Road.' },
   juice_bar:   { label:'Juice Bar',        icon:'🧃', cost:700, buildHours:7, category:'revenue',        reputationBonus:5, requiresRoad:true,
     upkeep:12, processRate:5, conversionRate:1.6,
     desc:'Fresh juice & ice bar on the south curb opposite the coffee shop. Needs a Road.' },
@@ -10490,7 +10490,7 @@ function generateDwellReaction(destObj){
     } else if (curCh === 6) {
       var ch6Remarks = [
         'This fresh cold-pressed apple juice from the orchard is heavenly! 🧃',
-        'The village coffee house is buzzing with community life! ☕',
+        'The village restaurant is buzzing with community life! 🍽️☕',
         'Real farm-to-table organic goods supporting our regional schools! 🏘️',
         'A bustling eco-village where economy and nature thrive together! 🏛️'
       ];
@@ -12024,8 +12024,8 @@ var CHAPTER_DEFINITIONS = [
     icon: '🏘️',
     title: 'Build an Eco-Village',
     fantasy: 'People depend on my system.',
-    desc: 'Open the Village Juice Bar & Coffee House, craft artisan farm recipes, and welcome eco-tourist visitors.',
-    keySystems: ['Organic Juice Bar', 'Fairtrade Coffee House', 'Eco-Tourism Footfall', 'Artisan Commerce'],
+    desc: 'Open the Village Juice Bar & Restaurant, craft artisan farm recipes, and welcome eco-tourist visitors.',
+    keySystems: ['Organic Juice Bar', 'Village Restaurant', 'Eco-Tourism Footfall', 'Artisan Commerce'],
     unlockReward: 'Regional Export Contracts & Curbside Farm Stand',
     isUnlocked: function(s) { return CHAPTER_DEFINITIONS[4].isComplete(s); },
     isComplete: function(s) {
@@ -12146,7 +12146,7 @@ var OBJECT_CHAPTER_UNLOCKS = {
   engineer: { chapter: 5, name: 'Certified Electrical Engineer', icon: '👨‍🔧', desc: 'Specialist engineer supervising electrical microgrid and turbine safety.' },
   energy_storage: { chapter: 5, name: 'BESS Battery Energy Storage Substation', icon: '🔋', desc: '500 kWh industrial battery substation buffering renewable intermittency.' },
   juice_bar: { chapter: 6, name: 'Artisan Village Juice Bar', icon: '🧃', desc: 'Fresh cold-pressed orchard juice bar welcoming eco-tourist visitors.' },
-  coffee_shop: { chapter: 6, name: 'Fairtrade Village Coffee House', icon: '☕', desc: 'Artisan coffee house serving warm beverages and roasted farm blends.' },
+  coffee_shop: { chapter: 6, name: 'Village Restaurant', icon: '☕', desc: 'Artisan restaurant and café serving warm meals, beverages, and roasted farm blends.' },
   market_promenade: { chapter: 6, name: 'Marketplace Promenade', icon: '🏛️', desc: 'Terracotta brick boulevard connecting village cafés and farm stands.' },
   eco_passport: { chapter: 7, name: 'Global Eco-Passport Biome Travel', icon: '🌍', desc: 'International travel clearance to Sweden, Spain, Brazil, and Madagascar.' },
   space_mission: { chapter: 8, name: 'Artemis Off-Earth Life Support & FPV', icon: '🚀', desc: 'Closed-loop space hydroponics, Moon base mission control, and 3D FPV flight.' }
@@ -13032,7 +13032,7 @@ var CHAPTER_CHALLENGES = {
         return !!(s.plots && s.plots.some(function(p){ return p.status === 'growing' || (p.harvestsDone || 0) > 0; }));
       },
       isComplete: function(s) {
-        return (s.totalO2AllTime || 0) > 0 || (s.plots && s.plots.some(function(p){ return (p.o2Produced && p.o2Produced > 0) || (p.waterHours && p.waterHours > 0) || (p.harvestsDone || 0) > 0; }));
+        return (s.totalO2AllTime || 0) > 0 || (s.plots && s.plots.some(function(p){ return (p.o2Produced && p.o2Produced > 0) || (p.waterHours && p.waterHours > 0) || (p.accessories && p.accessories.irrigation) || (p.harvestsDone || 0) > 0; }));
       },
       getActionHtml: function(s) {
         if (this.isComplete(s)) {
@@ -13041,7 +13041,7 @@ var CHAPTER_CHALLENGES = {
         if (!this.isUnlocked(s)) {
           return '<button class="secondary mini-btn" onclick="showNotification(\'🔒\',\'Plant a seedling first!\',\'task\')" style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Seedling</button>';
         }
-        return '<button class="claim-btn active" onclick="closePanel();openModal(\'plot\',0);" style="font-size:0.75rem;padding:5px 10px;">💧 Water Plot 1</button>';
+        return '<button class="claim-btn active" onclick="closePanel();openIrrigationSelectModal(0);" style="font-size:0.75rem;padding:5px 10px;">💧 Water Plot 1</button>';
       }
     }
   ],
@@ -13503,10 +13503,18 @@ var CHAPTER_CHALLENGES = {
       whyTopic: 'value_added_agriculture',
       whyLabel: 'Why Value-Added Products?',
       reward: '+20 Knowledge XP · Artisan Commerce',
-      isUnlocked: function(s) { return true; },
+      isUnlocked: function(s) {
+        if (!s) return false;
+        if ((s.currentChapter || 1) < 6) return false;
+        if (typeof isObjectUnlockedByChapter === 'function') {
+          return isObjectUnlockedByChapter('juice_bar', s);
+        }
+        return !!(s.buildings && s.buildings.road && s.buildings.road.built);
+      },
       isComplete: function(s) { return !!(s.buildings && s.buildings.juice_bar && s.buildings.juice_bar.built); },
       getActionHtml: function(s) {
         if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Serving Guests</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Ch. 6 &amp; Road</button>';
         return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'juice_bar\');" ' + (s.money < 650 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Juice Bar (€650)</button>';
       }
     },
@@ -13514,16 +13522,24 @@ var CHAPTER_CHALLENGES = {
       id: 'ch6_coffee_shop',
       icon: '☕',
       title: 'The Community Hearth',
-      shortTitle: 'Village Coffee House',
-      subtitle: 'Open an ethical fairtrade coffee house to serve warm beverages and foster civic knowledge exchange among visitors.',
+      shortTitle: 'Village Restaurant',
+      subtitle: 'Open an ethical fairtrade restaurant to serve warm meals, beverages, and foster civic knowledge exchange among visitors.',
       whyTopic: 'third_places',
       whyLabel: 'Why Third Places?',
       reward: '+20 Knowledge XP · Social Hub',
-      isUnlocked: function(s) { return true; },
+      isUnlocked: function(s) {
+        if (!s) return false;
+        if ((s.currentChapter || 1) < 6) return false;
+        if (typeof isObjectUnlockedByChapter === 'function') {
+          return isObjectUnlockedByChapter('coffee_shop', s);
+        }
+        return !!(s.buildings && s.buildings.road && s.buildings.road.built);
+      },
       isComplete: function(s) { return !!(s.buildings && s.buildings.coffee_shop && s.buildings.coffee_shop.built); },
       getActionHtml: function(s) {
-        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Open & Roasted</span>';
-        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'coffee_shop\');" ' + (s.money < 750 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Café (€750)</button>';
+        if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Open &amp; Serving</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Ch. 6 &amp; Road</button>';
+        return '<button class="claim-btn active" onclick="closePanel();openModal(\'building\',\'coffee_shop\');" ' + (s.money < 750 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Build Restaurant (€750)</button>';
       }
     },
     {
@@ -13535,10 +13551,15 @@ var CHAPTER_CHALLENGES = {
       whyTopic: 'pedestrianized_commerce',
       whyLabel: 'Why Walkable Promenades?',
       reward: '+15 Knowledge XP · Pedestrian Avenue',
-      isUnlocked: function(s) { return !!(s.buildings && s.buildings.road && s.buildings.road.built); },
+      isUnlocked: function(s) {
+        if (!s) return false;
+        if ((s.currentChapter || 1) < 6) return false;
+        return !!(s.buildings && s.buildings.road && s.buildings.road.built);
+      },
       isComplete: function(s) { return !!(s.roads && s.roads.market_promenade && s.roads.market_promenade.built); },
       getActionHtml: function(s) {
         if (this.isComplete(s)) return '<span style="color:#2E7D32;font-weight:800;font-size:0.74rem;background:#E8F5E9;padding:3px 8px;border-radius:6px;">✓ Paved</span>';
+        if (!this.isUnlocked(s)) return '<button class="secondary mini-btn" disabled style="font-size:0.72rem;padding:4px 8px;">🔒 Needs Ch. 6 &amp; Road</button>';
         return '<button class="claim-btn active" onclick="startBuildRoadSegment(\'market_promenade\')" ' + (s.money < 200 ? 'disabled' : '') + ' style="font-size:0.75rem;padding:5px 10px;">Pave Promenade (€200)</button>';
       }
     }
@@ -13981,7 +14002,7 @@ var WHY_TOPICS = {
     id: 'third_places',
     title: 'The Village Social Commons',
     icon: '☕',
-    quickFact: 'A village coffee house and gathering space builds social trust, civic resilience, and grassroots knowledge exchange.',
+    quickFact: 'A village restaurant and gathering space builds social trust, civic resilience, and grassroots knowledge exchange.',
     learnMore: 'Sociologist Ray Oldenburg defined "third places" as social anchors beyond home and work where community bonds solidify through casual conversation and ethical commerce.',
     deepDive: 'High local social capital correlates with 40% faster adoption of regenerative farming innovations and mutual aid resilience during climate or economic disruptions.',
     libraryLink: 'community',
@@ -24902,6 +24923,10 @@ function buyAccessory(plotId, kind){
 }
 function waterPlot(plotId){
   var p = state.plots[plotId]; if (p.status!=='growing') return;
+  if ((state.currentChapter || 1) === 1 && plotId === 0 && (!p.accessories || !p.accessories.irrigation)) {
+    openIrrigationSelectModal(0);
+    return;
+  }
   var def = TREE_TYPES[p.treeType]; var cost = CARE_COST.water[def.category];
   if (state.money<cost) return;
   state.money -= cost; p.health = Math.min(100, p.health+30);
@@ -27643,6 +27668,28 @@ var IRRIGATION_TIERS = {
   }
 };
 
+function isIrrigationTierUnlocked(tierKey, s) {
+  s = s || (typeof state !== 'undefined' ? state : null);
+  if (!s) return tierKey === 'sprinkler' || tierKey === 1;
+  var tier = (typeof IRRIGATION_TIERS !== 'undefined' && IRRIGATION_TIERS[tierKey]) ? IRRIGATION_TIERS[tierKey] : null;
+  var tierNum = tier ? tier.tier : (tierKey === 'sprinkler' ? 1 : (tierKey === 'drip' ? 2 : (tierKey === 'solar' ? 3 : 1)));
+
+  // Tier 1: Always available from Chapter 1
+  if (tierNum === 1) return true;
+
+  // Tier 2: Active after pond activation (so in Chapter 4 when pond is fully active, Tier 2 is active)
+  if (tierNum === 2) {
+    return !!(s.buildings && s.buildings.pond && s.buildings.pond.built);
+  }
+
+  // Tier 3: Active after BESS activation (so after Chapter 5 when BESS is functional, Tier 3 is active)
+  if (tierNum === 3) {
+    return !!(s.buildings && s.buildings.energy_storage && s.buildings.energy_storage.built);
+  }
+
+  return true;
+}
+
 var FERTILIZER_TIERS = {
   compost: {
     key: 'compost',
@@ -28231,12 +28278,12 @@ var OPTIONAL_CREDIBILITY_BUILDINGS = {
   coffee_shop: {
     key: 'coffee_shop',
     icon: '☕',
-    title: 'Artisanal Farm-to-Cup Café',
+    title: 'Village Restaurant & Café',
     cost: 800,
-    benefit: '+5 Farm Reputation · Visitor hospitality & roasted bean revenue',
+    benefit: '+5 Farm Reputation · Visitor hospitality & farm-to-table dining',
     prereqStep: 2,
-    afterWhich: 'Unlocks in Chapter 7 (The Living Market & Community Commerce) after Main Road brings visitors.',
-    howTo: '1. Pave the Main Road (Step 2) to invite village visitors.\n2. Click the North Promenade commercial plot.\n3. Build the Coffee Shop (€800) to serve espresso and roasted beans to estate tourists (+5 Rep).'
+    afterWhich: 'Unlocks in Chapter 6 (Build an Eco-Village) after Main Road brings visitors.',
+    howTo: '1. Pave the Main Road (Step 2) to invite village visitors.\n2. Click the North Promenade commercial plot.\n3. Build the Village Restaurant (€800) to serve meals, warm beverages, and roasted blends to estate tourists (+5 Rep).'
   },
   juice_bar: {
     key: 'juice_bar',
@@ -28380,7 +28427,7 @@ function showLockedStepPopup(stepNum, optKey){
     wind_turbine: '4-corner perimeter aerodynamic wind turbines capturing kinetic atmospheric energy, generating 12 kWh/h clean zero-emission electricity.',
     energy_storage: 'Industrial 500 kWh LFP battery substation buffering intermittent renewable generation, powering 24/7 night loads and exporting surplus power to the municipal grid.',
     engineer: 'Certified electrical systems engineer possessing high-voltage safety credentials required to supervise turbine grid synchronization and BESS operations.',
-    coffee_shop: 'Artisanal farm-to-cup café roasting estate-grown beans and welcoming village tourists, driving high-margin hospitality commerce.',
+    coffee_shop: 'Artisanal farm-to-table restaurant and café serving meals, roasted blends, and welcoming village tourists, driving high-margin hospitality commerce.',
     juice_bar: 'Cold-pressed organic orchard juice and cider bar converting freshly harvested fruits into value-added beverages with +25% direct visitor markup.'
   };
   var purposeText = whyPurposes[key] || info.desc || 'Vital ecological and economic component of the SearchO2 regenerative estate.';
@@ -28567,7 +28614,7 @@ function getFarmProgressionGuide(){
     } else {
       compactLabel = 'Water Seedling';
       icon = '💧';
-      actionType = 'open_plot';
+      actionType = 'open_irrigation';
       targetType = 'plot';
       targetId = 0;
     }
@@ -28702,6 +28749,10 @@ function handleStartingTaskGuideClick(){
     return;
   }
   // Open corresponding task modal
+  if (guide.actionType === 'open_irrigation'){
+    openIrrigationSelectModal(guide.targetId !== undefined ? guide.targetId : 0);
+    return;
+  }
   if (guide.actionType === 'build_storage'){
     openModal('storage', null);
   } else if (guide.actionType === 'open_modal'){
@@ -32057,7 +32108,7 @@ function plotSpotHtml(p, layout){
     p.status==='dead' ? '💀 Dead #'+p.treeId :
     p.status==='removing' ? 'Removing…' :
     p.status==='ready' ? 'Tap to plant' :
-    (p.health<=0 ? '💤 Stalled #'+p.treeId : stageInfo.name+' #'+p.treeId);
+    (p.health<=0 ? '💤 Stalled #'+p.treeId : (stageInfo ? stageInfo.name : 'Growing')+' #'+p.treeId);
 
   var icon = def ? def.icon :
     (isBarren ? (isPlotUnlockedFlag ? (p.id+1) : get3dIsoLockHtml(15)) :
@@ -38782,26 +38833,40 @@ function irrigationSelectModalHtml(plotId){
     var tier = IRRIGATION_TIERS[tk];
     var isCurrent = (currentTier === tk || (tk === 'sprinkler' && currentTier === true));
     var canAfford = (state.money >= tier.cost);
+    var isUnlocked = (typeof isIrrigationTierUnlocked === 'function') ? isIrrigationTierUnlocked(tk, state) : (tier.tier === 1);
 
-    html += '<div style="background:#FFF;padding:12px;border-radius:10px;border:1px solid ' + (isCurrent ? '#2E7D32' : 'rgba(44,74,50,0.18)') + ';background:' + (isCurrent ? '#F1F8E9' : '#FFF') + ';">' +
+    var cardBorder = isCurrent ? '#2E7D32' : (isUnlocked ? 'rgba(44,74,50,0.18)' : '#CFD8DC');
+    var cardBg = isCurrent ? '#F1F8E9' : (isUnlocked ? '#FFF' : '#F8F9FA');
+
+    html += '<div style="background:' + cardBg + ';padding:12px;border-radius:10px;border:1px solid ' + cardBorder + ';' + (!isUnlocked ? 'border-style:dashed;' : '') + '">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;">' +
         '<div style="display:flex;align-items:center;gap:8px;">' +
-          '<span style="font-size:1.5rem;">' + tier.icon + '</span>' +
+          '<span style="font-size:1.5rem;' + (!isUnlocked ? 'filter:grayscale(0.6);opacity:0.75;' : '') + '">' + tier.icon + '</span>' +
           '<div>' +
-            '<b style="font-size:0.92rem;color:#1B5E20;">Tier ' + tier.tier + ': ' + tier.label + '</b>' +
+            '<b style="font-size:0.92rem;color:' + (isUnlocked ? '#1B5E20' : '#546E7A') + ';">Tier ' + tier.tier + ': ' + tier.label + '</b>' +
             (isCurrent ? '<span style="margin-left:6px;font-size:0.70rem;background:#2E7D32;color:#FFF;padding:2px 6px;border-radius:6px;font-weight:700;">INSTALLED</span>' : '') +
+            (!isUnlocked ? '<span style="margin-left:6px;font-size:0.70rem;background:#ECEFF1;color:#546E7A;padding:2px 6px;border-radius:6px;font-weight:700;">🔒 LOCKED</span>' : '') +
           '</div>' +
         '</div>' +
-        '<b style="font-size:0.90rem;color:#D97706;">€' + tier.cost + '</b>' +
+        '<b style="font-size:0.90rem;color:' + (isUnlocked ? '#D97706' : '#78909C') + ';">€' + tier.cost + '</b>' +
       '</div>' +
-      '<div style="font-size:0.76rem;color:#546E7A;margin-top:4px;">' + tier.desc + '</div>' +
+      '<div style="font-size:0.76rem;color:' + (isUnlocked ? '#546E7A' : '#78909C') + ';margin-top:4px;">' + tier.desc + '</div>' +
+      (!isUnlocked ?
+        '<div style="font-size:0.72rem;color:#E65100;font-weight:700;margin-top:5px;background:#FFF3E0;padding:4px 8px;border-radius:6px;border:1px solid #FFE0B2;">' +
+          (tier.tier === 2 ? '🔒 Activates in Chapter 4 once the Aquatic Pond is fully active.' : '🔒 Activates after Chapter 5 once the BESS Substation is functional.') +
+        '</div>' : '') +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">' +
         '<span style="font-size:0.72rem;color:#78909C;">Growth Speed: <b>+' + Math.round((tier.growthMult - 1) * 100) + '%</b>' + (tier.powerDrawKW ? ' · Power: <b>' + tier.powerDrawKW + ' kW</b>' : '') + '</span>' +
         (isCurrent ?
           '<span style="font-size:0.76rem;color:#2E7D32;font-weight:700;">✓ Active on Plot</span>' :
-          '<button class="primary mini-btn" onclick="installIrrigationTier(' + plotId + ',\'' + tk + '\')" ' + (!canAfford ? 'disabled' : '') + ' style="padding:5px 12px;font-size:0.78rem;">' +
-            'Install (€' + tier.cost + ')' +
-          '</button>'
+          (!isUnlocked ?
+            '<button class="secondary mini-btn" disabled style="padding:5px 12px;font-size:0.78rem;background:#ECEFF1;color:#78909C;border:1px solid #CFD8DC;cursor:not-allowed;">' +
+              (tier.tier === 2 ? '🔒 Needs Active Pond (Ch. 4)' : '🔒 Needs BESS (Ch. 5)') +
+            '</button>' :
+            '<button class="primary mini-btn" onclick="installIrrigationTier(' + plotId + ',\'' + tk + '\')" ' + (!canAfford ? 'disabled' : '') + ' style="padding:5px 12px;font-size:0.78rem;">' +
+              'Install (€' + tier.cost + ')' +
+            '</button>'
+          )
         ) +
       '</div>' +
     '</div>';
@@ -38817,6 +38882,13 @@ function installIrrigationTier(plotId, tierKey){
   var p = state.plots[plotId];
   var tier = IRRIGATION_TIERS[tierKey];
   if (!p || !tier) return;
+  if (typeof isIrrigationTierUnlocked === 'function' && !isIrrigationTierUnlocked(tierKey, state)){
+    var lockMsg = tier.tier === 2
+      ? 'Tier 2 Micro Drip Irrigation requires an active Aquatic Pond (Chapter 4)!'
+      : 'Tier 3 Smart Solar Irrigation requires a functional BESS Substation (Chapter 5)!';
+    showNotification('🔒', lockMsg, 'plot', plotId);
+    return;
+  }
   if (state.money < tier.cost){
     showNotification('⚠️', 'Insufficient funds for ' + tier.label, 'plot', plotId);
     return;
@@ -38824,6 +38896,8 @@ function installIrrigationTier(plotId, tierKey){
   state.money -= tier.cost;
   p.accessories = p.accessories || {};
   p.accessories.irrigation = tierKey;
+  p.waterHours = Math.max(p.waterHours || 0, 2.0);
+  if ((p.health || 0) < 100) p.health = Math.min(100, (p.health || 70) + 30);
   pushReport('💧 Installed ' + tier.label + ' on Plot ' + (plotId + 1) + ' (Growth +' + Math.round((tier.growthMult - 1) * 100) + '%).');
   showNotification('💧', 'Installed ' + tier.label + '!', 'plot', plotId);
   if (typeof SoundTrackEngine !== 'undefined') SoundTrackEngine.playSFX('brew');
@@ -40968,7 +41042,7 @@ function chapter5CompleteModalHtml(){
         '</div>' +
         '<div style="background:#FFF9C4;border:1px solid #FFF176;border-radius:12px;padding:12px;margin-bottom:16px;font-size:0.78rem;color:#795548;line-height:1.45;">' +
           '<b>🏘️ Chapter 6 Unlocked: "Build an Eco-Village &amp; Commerce"</b><br>' +
-          'Open the Artisan Juice Bar &amp; Coffee House, pave the terracotta Walkable Promenade, craft gourmet recipes from farm produce, and welcome strolling tourists!' +
+          'Open the Artisan Juice Bar &amp; Village Restaurant, pave the terracotta Walkable Promenade, craft gourmet recipes from farm produce, and welcome strolling tourists!' +
         '</div>' +
         '<div style="display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #ECEFF1;padding-top:14px;">' +
           '<button class="primary" onclick="closeModal();selectChapterTab(6);if(typeof render===\'function\')render();" style="padding:10px 22px;font-size:0.92rem;background:linear-gradient(135deg,#2E7D32,#1B5E20);box-shadow:0 4px 12px rgba(46,125,50,0.35);font-weight:800;border:none;border-radius:10px;cursor:pointer;color:#fff;">🏘️ Advance to Chapter 6: Build an Eco-Village &amp; Commerce ➔</button>' +
@@ -41307,6 +41381,7 @@ window.openTaskPrepDialog = openTaskPrepDialog;
 window.confirmDispatchTask = confirmDispatchTask;
 window.openIrrigationSelectModal = openIrrigationSelectModal;
 window.installIrrigationTier = installIrrigationTier;
+window.isIrrigationTierUnlocked = isIrrigationTierUnlocked;
 window.openFertilizerSelectModal = openFertilizerSelectModal;
 window.applyFertilizerTier = applyFertilizerTier;
 window.setHarvestDestination = setHarvestDestination;
@@ -41630,6 +41705,7 @@ globalThis.initGameTooltips = initGameTooltips;
   globalThis.confirmDispatchTask = confirmDispatchTask;
   globalThis.openIrrigationSelectModal = openIrrigationSelectModal;
   globalThis.installIrrigationTier = installIrrigationTier;
+  globalThis.isIrrigationTierUnlocked = isIrrigationTierUnlocked;
   globalThis.openFertilizerSelectModal = openFertilizerSelectModal;
   globalThis.applyFertilizerTier = applyFertilizerTier;
   globalThis.setHarvestDestination = setHarvestDestination;
@@ -42434,7 +42510,8 @@ try {
   var urlParams = new URLSearchParams(window.location.search);
   var isGuestParam = urlParams.has('guest') || urlParams.get('mode') === 'guest';
   var isAuthParam = urlParams.has('auth') || urlParams.has('login');
-  var isEnterFarm = urlParams.get('enter') === 'farm' || isGuestParam;
+  var isHomeParam = urlParams.get('mode') === 'home' || urlParams.has('home') || urlParams.get('screen') === 'home';
+  var isEnterFarm = (urlParams.get('enter') === 'farm' || isGuestParam) && !isHomeParam;
 
   if (isGuestParam) {
     if (!apiUser || apiUser.role !== 'guest') {
@@ -42446,6 +42523,13 @@ try {
   }
   if (isAuthParam) {
     setTimeout(function(){ openModal('auth', null); }, 250);
+  }
+  if (isHomeParam) {
+    setTimeout(function(){
+      if (typeof SearchO2HomeAvatar !== 'undefined' && SearchO2HomeAvatar.showHomeOverlay) {
+        SearchO2HomeAvatar.showHomeOverlay();
+      }
+    }, 200);
   }
 } catch(e) {}
 })();

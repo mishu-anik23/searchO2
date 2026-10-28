@@ -587,7 +587,7 @@ const assert = require('assert');
   console.log('[✓ PASSED] 1x zoom mode reset');
 
   // 13. Capture High-Resolution Visual Screenshots
-  const scratchDir = 'C:\\Users\\AM\\.gemini\\antigravity\\brain\\d0f09cad-1638-4e2c-b505-333cd232aacf\\scratch';
+  const scratchDir = path.join(process.cwd(), 'tests', 'screenshots');
   if (!fs.existsSync(scratchDir)) fs.mkdirSync(scratchDir, { recursive: true });
 
   await page.screenshot({ path: path.join(scratchDir, 'screenshot_alpenhof_overview.png'), fullPage: true });

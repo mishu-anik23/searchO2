@@ -108,6 +108,17 @@
     var userObj = null;
     try { if (uRaw) userObj = JSON.parse(uRaw); } catch(e){}
 
+    var brand = document.querySelector('.brand');
+    if (brand) {
+      var isRealUser = !!(userObj && (userObj.displayName || userObj.email || userObj.id) && userObj.role !== 'guest' && userObj.isGuest !== true);
+      var brandDest = isRealUser ? '../index.html?mode=home' : '../index.html?guest=1&enter=farm';
+      brand.setAttribute('href', brandDest);
+      brand.onclick = function (e) {
+        e.preventDefault();
+        window.location.href = brandDest;
+      };
+    }
+
     if (userObj && (userObj.displayName || userObj.email || userObj.id)) {
       var name = userObj.displayName || userObj.name || (userObj.email ? userObj.email.split('@')[0] : 'Player');
       var prov = (userObj.auth_provider || userObj.authProvider || (userObj.whatsapp_phone ? 'whatsapp' : (userObj.email ? 'email' : 'local'))).toLowerCase();
@@ -271,30 +282,11 @@
     { id: 'howto', label: 'How-to', title: 'How-to Guides', render: pageHowto },
     { id: 'player', label: 'Player Hub', title: 'Player Hub', render: pagePlayer },
     { id: 'help', label: 'Help & FAQ', title: 'Help & FAQ', render: pageHelp },
-    {
-      id: 'feedback',
-      label: 'Feedback',
-      title: 'Feedback',
-      render: pageFeedback,
-      subroutes: [
-        { id: 'chapter', label: 'Chapter Feedback', title: 'Chapter Feedback' },
-        { id: 'playtest', label: 'Full Playtest Review', title: 'Full Playtest Review' }
-      ]
-    },
+    { id: 'feedback', label: 'Feedback', title: 'Feedback', render: pageFeedback },
     { id: 'report', label: 'Report a Problem', title: 'Report a Problem', render: pageReport }
   ];
   renderHubAuthStatus();
   $('#nav').innerHTML = ROUTES.map(function (r) {
-    if (r.subroutes) {
-      return '<div class="nav-dropdown" data-route="' + r.id + '">' +
-        '<a href="#/' + r.id + '" data-route="' + r.id + '" class="nav-dropdown-toggle">' + esc(r.label) + ' <span class="nav-caret" aria-hidden="true">▾</span></a>' +
-        '<div class="nav-dropdown-menu" role="menu">' +
-          r.subroutes.map(function (s) {
-            return '<a href="#/' + r.id + '/' + s.id + '" data-subroute="' + s.id + '" role="menuitem">' + esc(s.label) + '</a>';
-          }).join('') +
-        '</div>' +
-      '</div>';
-    }
     return '<a href="#/' + r.id + '" data-route="' + r.id + '">' + esc(r.label) + '</a>';
   }).join('');
 
@@ -307,13 +299,8 @@
     $$('#nav a').forEach(function (a) {
       if (a.dataset.route === r.id) {
         a.setAttribute('aria-current', 'page');
-      } else if (!a.dataset.subroute) {
+      } else {
         a.removeAttribute('aria-current');
-      }
-      if (a.dataset.subroute) {
-        var isCurrentSub = (r.id === id) && (a.dataset.subroute === arg || (!arg && a.dataset.subroute === 'chapter'));
-        if (isCurrentSub) a.setAttribute('aria-current', 'true');
-        else a.removeAttribute('aria-current');
       }
     });
     var pageTitle = r.title;
@@ -769,8 +756,9 @@
       door('howto', '🧭', 'How-to Guides', 'Step-by-step help with the parts of the game that trip people up.') +
       door('player', '🏅', 'Player Hub', 'Your level, badges and buildings from the save in this browser.', 'gold') +
       door('help', '❓', 'Help & FAQ', 'Quick answers to common questions.') +
-      door('feedback', '💬', 'Feedback', 'Tell us what you liked and what to improve.') +
-      door('report', '🐞', 'Report a Problem', 'Something broken? Send us the details.') +
+      door('feedback/chapter', '📖', 'Chapter Feedback', 'Rate difficulty, clarity and progression for Base Farm Chapters 1–8.') +
+      door('feedback/playtest', '🎮', 'Full Playtest Review', 'Deep dive mechanics, visual readability, game stability and 0–10 NPS rating.') +
+      door('report', '🐞', 'Report a Problem', 'Something broken? Send us technical bug reports with automatic device diagnostics.') +
       '</nav>';
     bindGrow(); bindMap();
   }
@@ -1235,14 +1223,142 @@
   function clearErr(form) { $$('.field.bad', form).forEach(function (f) { f.classList.remove('bad'); }); }
   function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
 
+    /* ------------------------------------------------------------------ *
+   * PUFF & PIP ANIMATED CHARACTERS & STORY-DRIVEN GUIDANCE
+   * Puff: Wise O₂ Mentor Spirit · Pip: Curious Player Explorer Sprout
+   * ------------------------------------------------------------------ */
+  function puffSvg(size) {
+    var s = size || 80;
+    return '<svg class="puff-avatar-svg" viewBox="0 0 100 100" width="' + s + '" height="' + s + '" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs>' +
+        '<radialGradient id="puffGrad" cx="35%" cy="35%" r="65%">' +
+          '<stop offset="0%" stop-color="#FFFFFF"/>' +
+          '<stop offset="65%" stop-color="#E0F2FE"/>' +
+          '<stop offset="100%" stop-color="#BAE6FD"/>' +
+        '</radialGradient>' +
+        '<filter id="puffGlowFilt" x="-20%" y="-20%" width="140%" height="140%">' +
+          '<feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#38BDF8" flood-opacity="0.35"/>' +
+        '</filter>' +
+      '</defs>' +
+      '<g class="puff-cloud-body" filter="url(#puffGlowFilt)">' +
+        '<circle cx="50" cy="54" r="28" fill="url(#puffGrad)"/>' +
+        '<circle cx="30" cy="58" r="20" fill="url(#puffGrad)"/>' +
+        '<circle cx="70" cy="58" r="20" fill="url(#puffGrad)"/>' +
+        '<circle cx="39" cy="40" r="22" fill="url(#puffGrad)"/>' +
+        '<circle cx="61" cy="40" r="22" fill="url(#puffGrad)"/>' +
+      '</g>' +
+      '<rect x="36" y="21" width="28" height="15" rx="7.5" fill="#10B981"/>' +
+      '<text x="50" y="32" font-size="10" font-weight="900" fill="#FFFFFF" text-anchor="middle" font-family="system-ui,sans-serif">O₂</text>' +
+      '<ellipse cx="43" cy="53" rx="3.2" ry="4.2" fill="#0369A1"/>' +
+      '<ellipse cx="57" cy="53" rx="3.2" ry="4.2" fill="#0369A1"/>' +
+      '<circle cx="44.5" cy="51.5" r="1.3" fill="#FFFFFF"/>' +
+      '<circle cx="58.5" cy="51.5" r="1.3" fill="#FFFFFF"/>' +
+      '<ellipse cx="36" cy="58" rx="4" ry="2.2" fill="#FDA4AF" opacity="0.85"/>' +
+      '<ellipse cx="64" cy="58" rx="4" ry="2.2" fill="#FDA4AF" opacity="0.85"/>' +
+      '<path d="M 46 57 Q 50 62 54 57" stroke="#0369A1" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+    '</svg>';
+  }
+
+  function pipSvg(size) {
+    var s = size || 80;
+    return '<svg class="pip-avatar-svg" viewBox="0 0 100 100" width="' + s + '" height="' + s + '" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs>' +
+        '<linearGradient id="pipBodyGrad" x1="0%" y1="0%" x2="100%" y2="100%">' +
+          '<stop offset="0%" stop-color="#FFEDD5"/>' +
+          '<stop offset="100%" stop-color="#FB923C"/>' +
+        '</linearGradient>' +
+        '<linearGradient id="pipLeafGrad" x1="0%" y1="0%" x2="100%" y2="100%">' +
+          '<stop offset="0%" stop-color="#4ADE80"/>' +
+          '<stop offset="100%" stop-color="#15803D"/>' +
+        '</linearGradient>' +
+        '<filter id="pipGlowFilt" x="-20%" y="-20%" width="140%" height="140%">' +
+          '<feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#15803D" flood-opacity="0.3"/>' +
+        '</filter>' +
+      '</defs>' +
+      '<g class="pip-body-group" filter="url(#pipGlowFilt)">' +
+        '<ellipse cx="50" cy="62" rx="25" ry="23" fill="url(#pipBodyGrad)"/>' +
+        '<path d="M 26 60 C 26 46, 74 46, 74 60 C 74 77, 26 77, 26 60 Z" fill="url(#pipBodyGrad)"/>' +
+      '</g>' +
+      '<g class="pip-leaves-group">' +
+        '<path d="M 50 44 Q 50 31 50 26" stroke="#15803D" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
+        '<path d="M 50 30 C 38 22, 30 27, 32 35 C 34 40, 48 37, 50 30 Z" fill="url(#pipLeafGrad)"/>' +
+        '<path d="M 50 28 C 62 18, 70 23, 68 31 C 66 37, 52 35, 50 28 Z" fill="url(#pipLeafGrad)"/>' +
+      '</g>' +
+      '<ellipse cx="42" cy="58" rx="4.2" ry="5.8" fill="#1C1917"/>' +
+      '<ellipse cx="58" cy="58" rx="4.2" ry="5.8" fill="#1C1917"/>' +
+      '<circle cx="43.5" cy="55.5" r="1.8" fill="#FFFFFF"/>' +
+      '<circle cx="59.5" cy="55.5" r="1.8" fill="#FFFFFF"/>' +
+      '<ellipse cx="33" cy="63" rx="3.8" ry="2" fill="#FB7185" opacity="0.85"/>' +
+      '<ellipse cx="67" cy="63" rx="3.8" ry="2" fill="#FB7185" opacity="0.85"/>' +
+      '<path d="M 47 64 Q 50 68 53 64" stroke="#7C2D12" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+      '<path d="M 28 69 Q 50 77 72 69" stroke="#10B981" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
+    '</svg>';
+  }
+
+  function puffPipHero(badgeText, title, introText, puffQuote, pipQuote) {
+    return '<div class="puff-pip-mentor-card">' +
+      '<div class="puff-pip-header-bar">' +
+        '<div class="form-badge">' + badgeText + '</div>' +
+        '<div class="mentor-sync-tag">✨ Mentor Guidance System</div>' +
+      '</div>' +
+      '<h1>' + esc(title) + '</h1>' +
+      '<p class="form-intro">' + esc(introText) + '</p>' +
+      '<div class="puff-pip-characters">' +
+        '<div class="puff-char-wrap" title="Puff: Wise O₂ Mentor Spirit">' +
+          puffSvg(82) +
+          '<div class="char-caption">☁️ <strong>Puff</strong><small>O₂ Eco Mentor</small></div>' +
+        '</div>' +
+        '<div class="dialogue-cloud">' +
+          '<div class="dialogue-bubble puff-bubble">' +
+            '<div class="speaker-tag">☁️ <strong>Puff asks Pip:</strong></div>' +
+            '<p class="speaker-text">“' + esc(puffQuote) + '”</p>' +
+          '</div>' +
+          '<div class="dialogue-bubble pip-bubble">' +
+            '<div class="speaker-tag">🌱 <strong>Pip reflects &amp; shares:</strong></div>' +
+            '<p class="speaker-text">“' + esc(pipQuote) + '”</p>' +
+          '</div>' +
+          '<div class="dialogue-footer-hint">💡 <em>Puff helps Pip articulate gameplay insights with guidelines so the game development team can build an even better game!</em></div>' +
+        '</div>' +
+        '<div class="pip-char-wrap" title="Pip: Curious Player Explorer Sprout">' +
+          pipSvg(82) +
+          '<div class="char-caption">🌱 <strong>Pip</strong><small>Explorer Sprout</small></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function puffGuide(prompt, guideline) {
+    return '<div class="puff-guidance">' +
+      '<div class="puff-guide-badge"><span class="guide-icon">☁️</span><strong>Puff’s Guide:</strong></div>' +
+      '<div class="puff-guide-content">' +
+        '<p class="puff-prompt"><strong>Probable Question:</strong> ' + esc(prompt) + '</p>' +
+        (guideline ? '<p class="puff-guideline"><strong>Guidelines for Options:</strong> ' + esc(guideline) + '</p>' : '') +
+      '</div>' +
+    '</div>';
+  }
+
+  function pipHandoffCard(summaryText) {
+    return '<div class="pip-handoff-card">' +
+      '<div class="pip-handoff-avatar">' + pipSvg(54) + '</div>' +
+      '<div class="pip-handoff-text">' +
+        '<strong>🌱 Pip’s Feedback Scroll Ready!</strong>' +
+        '<p>' + esc(summaryText) + '</p>' +
+      '</div>' +
+      '<div class="pip-handoff-puff">' + puffSvg(48) + '</div>' +
+    '</div>';
+  }
+
   function feedbackSubnav(currentSub) {
     return '<div class="feedback-subnav-container">' +
       '<nav class="feedback-subnav" role="tablist" aria-label="Feedback submenus">' +
         '<a href="#/feedback/chapter" role="tab" class="subnav-tab' + (currentSub === 'chapter' ? ' active' : '') + '" aria-selected="' + (currentSub === 'chapter') + '">' +
-          '<span class="subnav-tab-icon">📖</span><span class="subnav-tab-label">Chapter Feedback</span><span class="subnav-tab-badge">Submenu 1</span>' +
+          '<span class="subnav-tab-icon">📖</span><span class="subnav-tab-label">Chapter Feedback</span><span class="subnav-tab-badge">Base Farm</span>' +
         '</a>' +
         '<a href="#/feedback/playtest" role="tab" class="subnav-tab' + (currentSub === 'playtest' ? ' active' : '') + '" aria-selected="' + (currentSub === 'playtest') + '">' +
-          '<span class="subnav-tab-icon">🎮</span><span class="subnav-tab-label">Full Playtest Review</span><span class="subnav-tab-badge">Submenu 2</span>' +
+          '<span class="subnav-tab-icon">🎮</span><span class="subnav-tab-label">Full Playtest Review</span><span class="subnav-tab-badge">Overall &amp; NPS</span>' +
+        '</a>' +
+        '<a href="#/report" role="tab" class="subnav-tab' + (currentSub === 'report' ? ' active' : '') + '" aria-selected="' + (currentSub === 'report') + '">' +
+          '<span class="subnav-tab-icon">🐞</span><span class="subnav-tab-label">Report a Problem</span><span class="subnav-tab-badge">Issues</span>' +
         '</a>' +
       '</nav>' +
     '</div>';
@@ -1259,87 +1375,118 @@
 
   /* 1. Chapter Feedback (SearchO2_Forms_Chapter_Feedback.docx) */
   function pageChapterFeedback() {
-    main.innerHTML = '<div class="page-head">' +
-      '<div class="form-badge"><span class="badge-icon">📖</span> Submenu 1 · Chapter Experience</div>' +
-      '<h1>SearchO₂ Chapter Feedback</h1>' +
-      '<p class="form-intro">Tell us about the chapter you just played. This takes about two minutes and helps us improve clarity, difficulty and progression.</p>' +
+    main.innerHTML = puffPipHero(
+      '<span class="badge-icon">📖</span> Form 1 · Chapter Experience',
+      'SearchO₂ Chapter Feedback',
+      'Tell us about the chapter you just played. This takes about two minutes and helps us improve clarity, difficulty and progression.',
+      'Hey Pip! How did your journey through Base Farm feel? Let me know so we can tune the soil, crops, and O₂ flow!',
+      'Here is what happened on my plot, Puff! I want to share my honest thoughts so the dev team can make our next chapter even better.'
+    ) +
+    feedbackSubnav('chapter') +
+    '<form class="form" id="fbForm" novalidate>' +
+      '<div class="form-section-card">' +
+        '<h2 class="form-section-heading"><span class="form-section-num">1</span> Your play session</h2>' +
+        '<fieldset class="field">' +
+          '<legend class="lbl">1. Which chapter are you reviewing from Base Farm?</legend>' +
+          puffGuide('Which chapter plot did you just cultivate in Base Farm?', 'Select the chapter (1 to 8) so our dev team can target that specific stage.') +
+          '<div class="radios">' +
+            ['Chapter 1', 'Chapter 2', 'Chapter 3', 'Chapter 4', 'Chapter 5', 'Chapter 6', 'Chapter 7', 'Chapter 8'].map(function (c, i) {
+              return '<label><input type="radio" name="chapter" value="' + c + '"' + (i === 0 ? ' checked' : '') + '><span>' + c + '</span></label>';
+            }).join('') +
+          '</div>' +
+        '</fieldset>' +
+        '<fieldset class="field">' +
+          '<legend class="lbl">2. Were you able to complete this chapter?</legend>' +
+          puffGuide('Were you able to bring this chapter to harvest?', 'Choose whether you finished without help, needed a guide/hint, got stuck on a puzzle/resource, or had another experience.') +
+          '<div class="radios">' +
+            ['Yes, without help', 'Yes, with help', 'Not yet — I got stuck', 'Other'].map(function (co, i) {
+              return '<label><input type="radio" name="completed" value="' + co + '"' + (i === 0 ? ' checked' : '') + '><span>' + co + '</span></label>';
+            }).join('') +
+          '</div>' +
+          '<div id="chCompletedOtherWrap" style="margin-top:10px;display:none;">' +
+            '<input type="text" name="completedOther" id="chCompletedOther" placeholder="Please specify your completion status..." maxlength="255">' +
+          '</div>' +
+        '</fieldset>' +
       '</div>' +
-      feedbackSubnav('chapter') +
-      '<form class="form" id="fbForm" novalidate>' +
-        '<div class="form-section-card">' +
-          '<h2 class="form-section-heading"><span class="form-section-num">1</span> Your play session</h2>' +
-          '<fieldset class="field"><legend class="lbl">1. Which SearchO₂ game version or build did you play?</legend>' +
-            '<div class="radios">' +
-              ['Current test version', 'Previous test version', 'I’m not sure'].map(function (v, i) {
-                return '<label><input type="radio" name="gameVersion" value="' + v + '"' + (i === 0 ? ' checked' : '') + '><span>' + v + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-          '<fieldset class="field"><legend class="lbl">2. Which chapter are you reviewing?</legend>' +
-            '<div class="radios">' +
-              ['Chapter 1', 'Chapter 2', 'Chapter 3', 'Another chapter', 'I’m not sure'].map(function (c, i) {
-                return '<label><input type="radio" name="chapter" value="' + c + '"' + (i === 0 ? ' checked' : '') + '><span>' + c + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-          '<fieldset class="field"><legend class="lbl">3. Were you able to complete this chapter?</legend>' +
-            '<div class="radios">' +
-              ['Yes, without help', 'Yes, with help', 'Not yet — I got stuck', 'I stopped for another reason'].map(function (co, i) {
-                return '<label><input type="radio" name="completed" value="' + co + '"' + (i === 0 ? ' checked' : '') + '><span>' + co + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-        '</div>' +
-        '<div class="form-section-card">' +
-          '<h2 class="form-section-heading"><span class="form-section-num">2</span> Chapter experience</h2>' +
-          '<fieldset class="field" id="chClarityField">' +
-            '<legend class="lbl">4. How clear was what you needed to do? <span class="req">*</span></legend>' +
-            '<div class="scale-5-group" id="fbRate">' +
-              '<label class="scale-5-item"><input type="radio" name="clarityRating" value="1"><span class="scale-pill"><span class="scale-num">1</span><span class="scale-label">1 — Not clear at all</span></span></label>' +
-              '<label class="scale-5-item"><input type="radio" name="clarityRating" value="2"><span class="scale-pill"><span class="scale-num">2</span><span class="scale-label">2</span></span></label>' +
-              '<label class="scale-5-item"><input type="radio" name="clarityRating" value="3"><span class="scale-pill"><span class="scale-num">3</span><span class="scale-label">3</span></span></label>' +
-              '<label class="scale-5-item"><input type="radio" name="clarityRating" value="4"><span class="scale-pill"><span class="scale-num">4</span><span class="scale-label">4</span></span></label>' +
-              '<label class="scale-5-item"><input type="radio" name="clarityRating" value="5" checked><span class="scale-pill"><span class="scale-num">5</span><span class="scale-label">5 — Completely clear</span></span></label>' +
-            '</div>' +
-            '<div class="err" role="alert"></div>' +
-          '</fieldset>' +
-          '<fieldset class="field"><legend class="lbl">5. How did the difficulty feel?</legend>' +
-            '<div class="radios">' +
-              ['Much too easy', 'A little too easy', 'About right', 'A little too difficult', 'Much too difficult'].map(function (d, i) {
-                return '<label><input type="radio" name="difficulty" value="' + d + '"' + (i === 2 ? ' checked' : '') + '><span>' + d + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-          '<fieldset class="field"><legend class="lbl">6. What was the main source of confusion or frustration?</legend>' +
-            '<div class="radios">' +
-              ['Finding the objective', 'Understanding the controls', 'Knowing which action to take', 'Understanding O₂', 'Earning or spending EUR', 'Reading the screen', 'A technical problem', 'Nothing was confusing', 'Other'].map(function (cf, i) {
-                return '<label><input type="radio" name="confusionSource" value="' + cf + '"' + (i === 7 ? ' checked' : '') + '><span>' + cf + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-          '<div class="field"><label class="lbl" for="chClarityFb">7. What happened, or what would make it clearer?</label>' +
-            '<textarea id="chClarityFb" name="clarityFeedback" maxlength="3000" rows="3" placeholder="Share your experience or suggestion for improvement..."></textarea>' +
-            '<div class="err" role="alert"></div>' +
+      '<div class="form-section-card">' +
+        '<h2 class="form-section-heading"><span class="form-section-num">2</span> Chapter experience</h2>' +
+        '<fieldset class="field" id="chClarityField">' +
+          '<legend class="lbl">3. How clear was what you needed to do? <span class="req">*</span></legend>' +
+          puffGuide('How clear was your objective path on screen?', 'Rate from 1 (foggy & confused) to 5 (crystal clear like alpine spring water).') +
+          '<div class="scale-5-group" id="fbRate">' +
+            '<label class="scale-5-item"><input type="radio" name="clarityRating" value="1"><span class="scale-pill"><span class="scale-num">1</span><span class="scale-label">1 — Not clear at all</span></span></label>' +
+            '<label class="scale-5-item"><input type="radio" name="clarityRating" value="2"><span class="scale-pill"><span class="scale-num">2</span><span class="scale-label">2</span></span></label>' +
+            '<label class="scale-5-item"><input type="radio" name="clarityRating" value="3"><span class="scale-pill"><span class="scale-num">3</span><span class="scale-label">3</span></span></label>' +
+            '<label class="scale-5-item"><input type="radio" name="clarityRating" value="4"><span class="scale-pill"><span class="scale-num">4</span><span class="scale-label">4</span></span></label>' +
+            '<label class="scale-5-item"><input type="radio" name="clarityRating" value="5" checked><span class="scale-pill"><span class="scale-num">5</span><span class="scale-label">5 — Completely clear</span></span></label>' +
           '</div>' +
-          '<fieldset class="field"><legend class="lbl">8. Did you want to continue playing afterward?</legend>' +
-            '<div class="radios">' +
-              ['Definitely yes', 'Probably yes', 'Not sure', 'Probably not', 'Definitely not'].map(function (cp, i) {
-                return '<label><input type="radio" name="continueIntent" value="' + cp + '"' + (i === 0 ? ' checked' : '') + '><span>' + cp + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-          '<div class="field"><label class="lbl" for="chEmail">Optional email address if you would like a reply or follow-up</label>' +
-            '<input type="email" id="chEmail" name="email" autocomplete="email" placeholder="name@example.com">' +
-            '<div class="hint">Only if you agree that Artifactz may contact you about this feedback.</div>' +
-            '<div class="err" role="alert"></div>' +
+          '<div class="err" role="alert"></div>' +
+        '</fieldset>' +
+        '<fieldset class="field">' +
+          '<legend class="lbl">4. How did the difficulty feel?</legend>' +
+          puffGuide('How did the gameplay difficulty and pacing feel?', '1 = Much too easy, 3 = balanced rhythm, 5 = Much too difficult. Help us tune the challenge!') +
+          '<div class="scale-5-group" id="fbDiffRate">' +
+            '<label class="scale-5-item"><input type="radio" name="difficulty" value="1 — Much too easy"><span class="scale-pill"><span class="scale-num">1</span><span class="scale-label">1 — Much too easy</span></span></label>' +
+            '<label class="scale-5-item"><input type="radio" name="difficulty" value="2"><span class="scale-pill"><span class="scale-num">2</span><span class="scale-label">2</span></span></label>' +
+            '<label class="scale-5-item"><input type="radio" name="difficulty" value="3" checked><span class="scale-pill"><span class="scale-num">3</span><span class="scale-label">3</span></span></label>' +
+            '<label class="scale-5-item"><input type="radio" name="difficulty" value="4"><span class="scale-pill"><span class="scale-num">4</span><span class="scale-label">4</span></span></label>' +
+            '<label class="scale-5-item"><input type="radio" name="difficulty" value="5 — Much too difficult"><span class="scale-pill"><span class="scale-num">5</span><span class="scale-label">5 — Much too difficult</span></span></label>' +
           '</div>' +
+        '</fieldset>' +
+        '<fieldset class="field">' +
+          '<legend class="lbl">5. What was the main source of confusion or frustration?</legend>' +
+          puffGuide('What was the main friction point that slowed Pip down?', 'Identify what was puzzling: finding objectives, controls, action choice, O₂ mechanics, coins/EUR, reading screen text, technical glitches, or smooth sailing.') +
+          '<div class="radios">' +
+            ['Finding the objective', 'Understanding the controls', 'Knowing which action to take', 'Understanding O₂', 'Earning or spending EUR', 'Reading the screen', 'A technical problem', 'Nothing was confusing', 'Other'].map(function (cf, i) {
+              return '<label><input type="radio" name="confusionSource" value="' + cf + '"' + (i === 7 ? ' checked' : '') + '><span>' + cf + '</span></label>';
+            }).join('') +
+          '</div>' +
+          '<div id="chConfusionOtherWrap" style="margin-top:10px;display:none;">' +
+            '<input type="text" name="confusionSourceOther" id="chConfusionOther" placeholder="Please describe other source of confusion..." maxlength="255">' +
+          '</div>' +
+        '</fieldset>' +
+        '<div class="field">' +
+          '<label class="lbl" for="chClarityFb">6. What happened, or what would make it clearer?</label>' +
+          puffGuide('What happened on your plot, or what would make it clearer?', 'Share your direct player perspective or feature suggestions with Puff and the engineers!') +
+          '<textarea id="chClarityFb" name="clarityFeedback" maxlength="3000" rows="3" placeholder="Share your experience or suggestion for improvement..."></textarea>' +
+          '<div class="err" role="alert"></div>' +
         '</div>' +
-        '<div><button class="btn gold" type="submit" id="fbSend"><span class="btn-icon">🌿</span> Send chapter feedback</button></div>' +
-        '<div id="fbOut" aria-live="polite"></div>' +
-      '</form>' + outboxHtml();
+        '<fieldset class="field">' +
+          '<legend class="lbl">7. Did you want to continue playing afterward?</legend>' +
+          puffGuide('Did completing this chapter leave you excited for the next chapter?', 'Tell us how eager you feel to continue your journey across SearchO₂.') +
+          '<div class="radios">' +
+            ['Definitely yes', 'Probably yes', 'Not sure', 'Probably not', 'Definitely not'].map(function (cp, i) {
+              return '<label><input type="radio" name="continueIntent" value="' + cp + '"' + (i === 0 ? ' checked' : '') + '><span>' + cp + '</span></label>';
+            }).join('') +
+          '</div>' +
+        '</fieldset>' +
+        '<div class="field">' +
+          '<label class="lbl" for="chEmail">Optional email address if you agree that Artifactz may contact you about this feedback.</label>' +
+          '<input type="email" id="chEmail" name="email" autocomplete="email" placeholder="name@example.com">' +
+          '<div class="hint">Only if you agree that Artifactz may contact you about this feedback.</div>' +
+          '<div class="err" role="alert"></div>' +
+        '</div>' +
+      '</div>' +
+      pipHandoffCard('Pip has packaged your chapter feedback for the SearchO₂ development team. Click send to deliver your experience!') +
+      '<div><button class="btn gold" type="submit" id="fbSend"><span class="btn-icon">🌿</span> Send chapter feedback</button></div>' +
+      '<div id="fbOut" aria-live="polite"></div>' +
+    '</form>' + outboxHtml();
 
     wireOutbox();
     var form = $('#fbForm');
+    form.querySelectorAll('input[name="completed"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        var wrap = $('#chCompletedOtherWrap');
+        if (wrap) wrap.style.display = (r.value === 'Other' && r.checked) ? 'block' : 'none';
+      });
+    });
+    form.querySelectorAll('input[name="confusionSource"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        var wrap = $('#chConfusionOtherWrap');
+        if (wrap) wrap.style.display = (r.value === 'Other' && r.checked) ? 'block' : 'none';
+      });
+    });
+
     form.addEventListener('submit', function (e) {
       e.preventDefault(); clearErr(form);
       var d = new FormData(form), bad = false;
@@ -1348,14 +1495,24 @@
       var em = String(d.get('email') || '').trim();
       if (em && !validEmail(em)) { fieldErr($('#chEmail'), 'That email address does not look right. Check it or leave it empty.'); bad = true; }
       if (bad) { var first = $('.field.bad input, .field.bad textarea', form); if (first) first.focus(); return; }
+      var compVal = d.get('completed') || null;
+      var compOther = String(d.get('completedOther') || '').trim();
+      var confVal = d.get('confusionSource') || null;
+      var confOther = String(d.get('confusionSourceOther') || '').trim();
+      var diffVal = d.get('difficulty') || null;
+      var diffNum = diffVal ? parseInt(diffVal, 10) : null;
       submit({
         type: 'chapter_feedback',
-        gameVersion: d.get('gameVersion') || null,
         chapter: d.get('chapter') || 'Chapter 1',
-        completed: d.get('completed') || null,
+        completed: compVal,
+        completedOther: compOther || null,
+        completedWithOther: (compVal === 'Other' && compOther) ? ('Other: ' + compOther) : compVal,
         clarityRating: Number(clarity),
-        difficulty: d.get('difficulty') || null,
-        confusionSource: d.get('confusionSource') || null,
+        difficulty: diffVal,
+        difficultyRating: isNaN(diffNum) ? null : diffNum,
+        confusionSource: confVal,
+        confusionSourceOther: confOther || null,
+        confusionSourceWithOther: (confVal === 'Other' && confOther) ? ('Other: ' + confOther) : confVal,
         clarityFeedback: String(d.get('clarityFeedback') || '').trim() || null,
         continueIntent: d.get('continueIntent') || null,
         email: em || null,
@@ -1366,112 +1523,138 @@
 
   /* 2. Full Playtest Review (SearchO2_Forms_Full_Playtest_Review.docx) */
   function pagePlaytestReview() {
-    var likertOpts = ['Very poor', 'Poor', 'Neither good nor poor', 'Good', 'Very good'];
+    var likertOpts = ['1 — Very poor', '2', '3', '4', '5 — Very good'];
     function likertField(name, qText, defIdx) {
       return '<fieldset class="field"><legend class="lbl">' + esc(qText) + '</legend>' +
-        '<div class="radios">' +
+        '<div class="scale-5-group">' +
           likertOpts.map(function (opt, i) {
-            return '<label><input type="radio" name="' + name + '" value="' + opt + '"' + (i === (defIdx != null ? defIdx : 3) ? ' checked' : '') + '><span>' + opt + '</span></label>';
+            var num = i + 1;
+            return '<label class="scale-5-item"><input type="radio" name="' + name + '" value="' + opt + '"' + (i === (defIdx != null ? defIdx : 2) ? ' checked' : '') + '><span class="scale-pill"><span class="scale-num">' + num + '</span><span class="scale-label">' + esc(opt) + '</span></span></label>';
           }).join('') +
         '</div>' +
       '</fieldset>';
     }
 
     var npsButtons = [];
-    for (var n = 0; n <= 10; n++) {
-      npsButtons.push('<label><input type="radio" name="npsRecommend" value="' + n + '"' + (n === 10 ? ' checked' : '') + '><span class="nps-box">' + n + '</span></label>');
+    for (var i = 0; i <= 10; i++) {
+      npsButtons.push('<label><input type="radio" name="npsRecommend" value="' + i + '"' + (i === 10 ? ' checked' : '') + '><span class="nps-box">' + i + '</span></label>');
     }
 
-    main.innerHTML = '<div class="page-head">' +
-      '<div class="form-badge"><span class="badge-icon">🎮</span> Submenu 2 · Playtest Review</div>' +
-      '<h1>SearchO₂ Full Playtest Review</h1>' +
-      '<p class="form-intro">For players who have completed more than one SearchO₂ play session. This takes about four minutes.</p>' +
+    main.innerHTML = puffPipHero(
+      '<span class="badge-icon">🎮</span> Form 2 · Full Playtest Review',
+      'SearchO₂ Full Playtest Review',
+      'For players who have completed more than one SearchO₂ play session. This takes about four minutes.',
+      'Look how tall you\'ve grown, Pip! You\'ve spent multiple sessions exploring our world. Help me evaluate the mechanics, visuals, and stability so we can cultivate an even richer planetary ecosystem!',
+      'I\'ve seen the whole ecosystem in action, Puff! Let\'s grade the game elements and share my honest feedback to help the devs build the ultimate eco-farming universe.'
+    ) +
+    feedbackSubnav('playtest') +
+    '<form class="form" id="ptForm" novalidate>' +
+      '<div class="form-section-card">' +
+        '<h2 class="form-section-heading"><span class="form-section-num">1</span> Player context</h2>' +
+        '<fieldset class="field">' +
+          '<legend class="lbl">1. How often do you play simulation or management games?</legend>' +
+          puffGuide('How often do you play simulation or management games?', 'Tells our balance team whether you are a brand new seedling or a seasoned agro-forestry master!') +
+          '<div class="radios">' +
+            ['Never', 'Occasionally', 'Monthly', 'Weekly or more'].map(function (f, i) {
+              return '<label><input type="radio" name="genreFrequency" value="' + f + '"' + (i === 1 ? ' checked' : '') + '><span>' + f + '</span></label>';
+            }).join('') +
+          '</div>' +
+        '</fieldset>' +
       '</div>' +
-      feedbackSubnav('playtest') +
-      '<form class="form" id="ptForm" novalidate>' +
-        '<div class="form-section-card">' +
-          '<h2 class="form-section-heading"><span class="form-section-num">1</span> Player context</h2>' +
-          '<fieldset class="field"><legend class="lbl">1. Which SearchO₂ game version or build did you play most recently?</legend>' +
-            '<div class="radios">' +
-              ['Current test version', 'Previous test version', 'I’m not sure'].map(function (v, i) {
-                return '<label><input type="radio" name="gameVersion" value="' + v + '"' + (i === 0 ? ' checked' : '') + '><span>' + v + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-          '<fieldset class="field"><legend class="lbl">2. How often do you play simulation or management games?</legend>' +
-            '<div class="radios">' +
-              ['Never', 'Occasionally', 'Monthly', 'Weekly or more'].map(function (f, i) {
-                return '<label><input type="radio" name="genreFrequency" value="' + f + '"' + (i === 1 ? ' checked' : '') + '><span>' + f + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-        '</div>' +
-        '<div class="form-section-card">' +
-          '<h2 class="form-section-heading"><span class="form-section-num">2</span> Overall experience</h2>' +
-          likertField('rateEaseOfLearning', '3. How would you rate the ease of learning?', 3) +
-          likertField('rateNavigation', '4. How would you rate the navigation?', 3) +
-          likertField('rateVisualReadability', '5. How would you rate the visual readability?', 3) +
-          likertField('rateClarityOfObjectives', '6. How would you rate the clarity of objectives?', 3) +
-          likertField('rateUnderstandingO2', '7. How would you rate your understanding of the O₂ system?', 3) +
-          likertField('rateEnjoyment', '8. How would you rate your enjoyment?', 3) +
-          likertField('rateGameStability', '9. How would you rate the game stability?', 3) +
-          '<fieldset class="field"><legend class="lbl">10. Did any visual element make the game difficult to use?</legend>' +
-            '<div class="radios">' +
-              ['Yes', 'No', 'Not sure'].map(function (vo, i) {
-                return '<label><input type="radio" name="visualDifficulty" value="' + vo + '"' + (i === 1 ? ' checked' : '') + '><span>' + vo + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-          '<fieldset class="field"><legend class="lbl">11. Which visual element most needs improvement?</legend>' +
-            '<div class="radios">' +
-              ['Text size', 'Contrast or colours', 'Map', 'O₂ display', 'EUR/resources display', 'Missions/objectives', 'Menus', 'Region screen', 'Other'].map(function (ve, i) {
-                return '<label><input type="radio" name="visualElementImprovement" value="' + ve + '"' + (i === 8 ? ' checked' : '') + '><span>' + ve + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-        '</div>' +
-        '<div class="form-section-card">' +
-          '<h2 class="form-section-heading"><span class="form-section-num">3</span> Value and return intent</h2>' +
-          '<div class="field"><label class="lbl" for="ptStrongest">12. What is the strongest part of SearchO₂?</label>' +
-            '<textarea id="ptStrongest" name="strongestPart" maxlength="3000" rows="3" placeholder="What did you enjoy most or find most compelling?"></textarea>' +
+      '<div class="form-section-card">' +
+        '<h2 class="form-section-heading"><span class="form-section-num">2</span> Overall experience</h2>' +
+        puffGuide('How would you grade your overall gameplay experience?', 'Scale: 1 = Very poor (needs urgent work), 3 = Acceptable, 5 = Very good (delightful, polished and rewarding).') +
+        likertField('rateEaseOfLearning', '2. How would you rate the ease of learning?', 3) +
+        likertField('rateNavigation', '4. How would you rate the navigation?', 3) +
+        likertField('rateVisualReadability', '5. How would you rate the visual readability?', 3) +
+        likertField('rateClarityOfObjectives', '6. How would you rate the clarity of objectives?', 3) +
+        likertField('rateUnderstandingO2', '7. How would you rate your understanding of the O₂ system?', 3) +
+        likertField('rateEnjoyment', '8. How would you rate your enjoyment?', 3) +
+        likertField('rateGameStability', '9. How would you rate the game stability?', 3) +
+        '<fieldset class="field">' +
+          '<legend class="lbl">10. Did any visual element make the game difficult to use?</legend>' +
+          puffGuide('Did any visual element make the game difficult to use?', 'Did colors, contrast, fonts, or icons strain your eyes or feel hard to locate?') +
+          '<div class="radios">' +
+            ['Yes', 'No', 'Not sure'].map(function (vo, i) {
+              return '<label><input type="radio" name="visualDifficulty" value="' + vo + '"' + (i === 1 ? ' checked' : '') + '><span>' + vo + '</span></label>';
+            }).join('') +
           '</div>' +
-          '<div class="field"><label class="lbl" for="ptChange">13. If you could change only one thing, what would it be?</label>' +
-            '<textarea id="ptChange" name="changeOneThing" maxlength="3000" rows="3" placeholder="One feature, mechanic or change you would prioritize..."></textarea>' +
+        '</fieldset>' +
+        '<fieldset class="field">' +
+          '<legend class="lbl">11. Which visual element most needs improvement?</legend>' +
+          puffGuide('Which visual element most needs improvement?', 'Pinpoint which screen element our artists and UI designers should refine first.') +
+          '<div class="radios">' +
+            ['Text size', 'Contrast or colours', 'Map', 'O₂ display', 'EUR/resources display', 'Missions/objectives', 'Menus', 'Region screen', 'Other'].map(function (ve, i) {
+              return '<label><input type="radio" name="visualElementImprovement" value="' + ve + '"' + (i === 8 ? ' checked' : '') + '><span>' + ve + '</span></label>';
+            }).join('') +
           '</div>' +
-          '<fieldset class="field"><legend class="lbl">14. How disappointed would you be if SearchO₂ were no longer available?</legend>' +
-            '<div class="radios">' +
-              ['Very disappointed', 'Somewhat disappointed', 'Not disappointed', 'I haven’t played enough to say'].map(function (dis, i) {
-                return '<label><input type="radio" name="disappointmentLevel" value="' + dis + '"' + (i === 1 ? ' checked' : '') + '><span>' + dis + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-          '<fieldset class="field"><legend class="lbl">15. How likely are you to recommend SearchO₂ to someone interested in simulation, science or sustainability?</legend>' +
-            '<div class="nps-container">' +
-              '<div class="scale-grid">' + npsButtons.join('') + '</div>' +
-              '<div class="nps-labels"><span>0 — Not at all likely</span><span>10 — Extremely likely</span></div>' +
-            '</div>' +
-          '</fieldset>' +
-          '<div class="field"><label class="lbl" for="ptEmail">Optional email address if you agree that Artifactz may contact you about this review.</label>' +
-            '<input type="email" id="ptEmail" name="email" autocomplete="email" placeholder="name@example.com">' +
-            '<div class="hint">Only if you agree that Artifactz may contact you about this review.</div>' +
-            '<div class="err" role="alert"></div>' +
+          '<div id="ptVisualImprovementOtherWrap" style="margin-top:10px;display:none;">' +
+            '<input type="text" name="visualElementImprovementOther" id="ptVisualImprovementOther" placeholder="Please specify visual element..." maxlength="255">' +
           '</div>' +
+        '</fieldset>' +
+      '</div>' +
+      '<div class="form-section-card">' +
+        '<h2 class="form-section-heading"><span class="form-section-num">3</span> Value and return intent</h2>' +
+        '<div class="field">' +
+          '<label class="lbl" for="ptStrongest">12. What is the strongest part of SearchO₂?</label>' +
+          puffGuide('What is the strongest part of SearchO₂?', 'What mechanic, visual, or moment felt most rewarding and memorable to Pip?') +
+          '<textarea id="ptStrongest" name="strongestPart" maxlength="3000" rows="3" placeholder="What worked best, felt most engaging, or was most memorable?"></textarea>' +
+          '<div class="err" role="alert"></div>' +
         '</div>' +
-        '<div><button class="btn gold" type="submit" id="ptSend"><span class="btn-icon">🌟</span> Send playtest review</button></div>' +
-        '<div id="ptOut" aria-live="polite"></div>' +
-      '</form>' + outboxHtml();
+        '<div class="field">' +
+          '<label class="lbl" for="ptChange">13. If you could change only one thing, what would it be?</label>' +
+          puffGuide('If you could change only one thing, what would it be?', 'The single highest-priority improvement or addition you wish for.') +
+          '<textarea id="ptChange" name="changeOneThing" maxlength="3000" rows="3" placeholder="The single most important improvement or adjustment..."></textarea>' +
+          '<div class="err" role="alert"></div>' +
+        '</div>' +
+        '<fieldset class="field">' +
+          '<legend class="lbl">14. How disappointed would you be if SearchO₂ were no longer available?</legend>' +
+          puffGuide('How would you feel if SearchO₂ were no longer available?', 'Helps us measure player connection and attachment to the game world.') +
+          '<div class="radios">' +
+            ['Very disappointed', 'Somewhat disappointed', 'Not disappointed', 'I haven’t played enough to say'].map(function (dl, i) {
+              return '<label><input type="radio" name="disappointmentLevel" value="' + dl + '"' + (i === 0 ? ' checked' : '') + '><span>' + dl + '</span></label>';
+            }).join('') +
+          '</div>' +
+        '</fieldset>' +
+        '<fieldset class="field">' +
+          '<legend class="lbl">15. How likely are you to recommend SearchO₂ to someone interested in simulation, science or sustainability?</legend>' +
+          puffGuide('How likely are you to recommend SearchO₂ to a friend?', 'NPS scale from 0 (Not at all likely) to 10 (Extremely likely).') +
+          '<div class="nps-container">' +
+            '<div class="scale-grid">' + npsButtons.join('') + '</div>' +
+            '<div class="nps-labels"><span>0 — Not at all likely</span><span>10 — Extremely likely</span></div>' +
+          '</div>' +
+        '</fieldset>' +
+        '<div class="field">' +
+          '<label class="lbl" for="ptEmail">Optional email address if you agree that Artifactz may contact you about this review.</label>' +
+          '<input type="email" id="ptEmail" name="email" autocomplete="email" placeholder="name@example.com">' +
+          '<div class="hint">Only if you agree that Artifactz may contact you about this review.</div>' +
+          '<div class="err" role="alert"></div>' +
+        '</div>' +
+      '</div>' +
+      pipHandoffCard('Pip has packaged your full playtest review. Every rating helps the game grow greener and stronger!') +
+      '<div><button class="btn gold" type="submit" id="ptSend"><span class="btn-icon">🌟</span> Send playtest review</button></div>' +
+      '<div id="ptOut" aria-live="polite"></div>' +
+    '</form>' + outboxHtml();
 
     wireOutbox();
     var form = $('#ptForm');
+    form.querySelectorAll('input[name="visualElementImprovement"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        var wrap = $('#ptVisualImprovementOtherWrap');
+        if (wrap) wrap.style.display = (r.value === 'Other' && r.checked) ? 'block' : 'none';
+      });
+    });
+
     form.addEventListener('submit', function (e) {
       e.preventDefault(); clearErr(form);
       var d = new FormData(form), bad = false;
       var em = String(d.get('email') || '').trim();
       if (em && !validEmail(em)) { fieldErr($('#ptEmail'), 'That email address does not look right. Check it or leave it empty.'); bad = true; }
       if (bad) { var first = $('.field.bad input, .field.bad textarea', form); if (first) first.focus(); return; }
+      var visVal = d.get('visualElementImprovement') || null;
+      var visOther = String(d.get('visualElementImprovementOther') || '').trim();
       submit({
         type: 'playtest_review',
-        gameVersion: d.get('gameVersion') || null,
         genreFrequency: d.get('genreFrequency') || null,
         rateEaseOfLearning: d.get('rateEaseOfLearning') || null,
         rateNavigation: d.get('rateNavigation') || null,
@@ -1481,7 +1664,9 @@
         rateEnjoyment: d.get('rateEnjoyment') || null,
         rateGameStability: d.get('rateGameStability') || null,
         visualDifficulty: d.get('visualDifficulty') || null,
-        visualElementImprovement: d.get('visualElementImprovement') || null,
+        visualElementImprovement: visVal,
+        visualElementImprovementOther: visOther || null,
+        visualElementImprovementWithOther: (visVal === 'Other' && visOther) ? ('Other: ' + visOther) : visVal,
         strongestPart: String(d.get('strongestPart') || '').trim() || null,
         changeOneThing: String(d.get('changeOneThing') || '').trim() || null,
         disappointmentLevel: d.get('disappointmentLevel') || null,
@@ -1494,80 +1679,97 @@
 
   /* 3. Report a Problem (SearchO2_Forms_Report_a_Problem.docx) */
   function pageReport() {
-    main.innerHTML = '<div class="page-head">' +
-      '<div class="form-badge"><span class="badge-icon">🛠️</span> Support &amp; Issue Tracking</div>' +
-      '<h1>SearchO₂ Report a Problem</h1>' +
-      '<p class="form-intro">Use this form when something does not work as expected. Do not include passwords, payment details or other sensitive information.</p>' +
+    var curMap = selectedId();
+    var defaultArea = curMap === 'bavaria' ? 'Bavaria - Alpenhof' : curMap === 'saint_martin' ? 'Saint Martin - BlueLab' : 'Base Farm - Chapter 1';
+    var defaultAreas = ['Getting started or account', 'Base Farm - Chapter 1', 'Base Farm - Chapter 2', 'Base Farm - Chapter 3', 'Base Farm - Chapter 4', 'Base Farm - Chapter 5', 'Base Farm - Chapter 6', 'Base Farm - Chapter 7', 'Base Farm - Chapter 8', 'Saint Martin - BlueLab', 'Bavaria - Alpenhof', 'Menus or settings', 'Another location', 'I’m not sure'];
+
+    main.innerHTML = puffPipHero(
+      '<span class="badge-icon">🛠️</span> Support &amp; Issue Tracking',
+      'SearchO₂ Report a Problem',
+      'Use this form when something does not work as expected. Do not include passwords, payment details or other sensitive information.',
+      'Uh oh, Pip! Did a glitch sprout in your garden or did a screen freeze? Don\'t worry—let\'s trace your steps together so the game dev team can fix it right away!',
+      'Thanks for having my back, Puff! Something wasn\'t working right on my screen. Let me show you where it happened so our engineers can squash the bug!'
+    ) +
+    feedbackSubnav('report') +
+    '<form class="form" id="rpForm" novalidate>' +
+      '<div class="form-section-card">' +
+        '<h2 class="form-section-heading"><span class="form-section-num">1</span> Problem details</h2>' +
+        '<div class="field">' +
+          '<label class="lbl" for="rpTitle">1. Short title for the problem <span class="req">*</span></label>' +
+          puffGuide('Short title for the problem', 'A concise summary so developers can categorize the issue at a glance.') +
+          '<input type="text" id="rpTitle" name="title" maxlength="255" placeholder="Brief summary of what went wrong..." required>' +
+          '<div class="err" role="alert"></div>' +
+        '</div>' +
+        '<fieldset class="field">' +
+          '<legend class="lbl">2. Where did the problem happen? <span class="req">*</span></legend>' +
+          puffGuide('Where did the problem happen?', 'Choose the exact chapter, region (like Bavaria - Alpenhof or Saint Martin - BlueLab), or menu.') +
+          '<div class="radios" id="rpAreaRadios">' +
+            defaultAreas.map(function (a) {
+              return '<label><input type="radio" name="area" value="' + a + '"' + (a === defaultArea ? ' checked' : '') + '><span>' + a + '</span></label>';
+            }).join('') +
+          '</div>' +
+          '<div class="err" role="alert"></div>' +
+        '</fieldset>' +
+        '<div class="field">' +
+          '<label class="lbl" for="rpTrying">4. What were you trying to do?</label>' +
+          puffGuide('What was Pip trying to do?', 'Describe the harvest, building, menu, or movement action you initiated.') +
+          '<textarea id="rpTrying" name="tryingToDo" maxlength="2000" rows="3" placeholder="Describe the goal or action you were attempting..."></textarea>' +
+          '<div class="err" role="alert"></div>' +
+        '</div>' +
+        '<div class="field">' +
+          '<label class="lbl" for="rpWhat">5. What happened? <span class="req">*</span></label>' +
+          puffGuide('What actually happened?', 'Describe the glitch, error message, freeze, or visual defect that appeared.') +
+          '<textarea id="rpWhat" name="whatHappened" maxlength="3000" rows="4" placeholder="Describe what actually happened or went wrong..." required></textarea>' +
+          '<div class="err" role="alert"></div>' +
+        '</div>' +
+        '<div class="field">' +
+          '<label class="lbl" for="rpExp">6. What did you expect to happen?</label>' +
+          puffGuide('What did you expect to happen?', 'Describe the normal expected game behavior.') +
+          '<textarea id="rpExp" name="expected" maxlength="2000" rows="3" placeholder="Describe what should have occurred instead..."></textarea>' +
+          '<div class="err" role="alert"></div>' +
+        '</div>' +
       '</div>' +
-      '<form class="form" id="rpForm" novalidate>' +
-        '<div class="form-section-card">' +
-          '<h2 class="form-section-heading"><span class="form-section-num">1</span> Problem details</h2>' +
-          '<div class="field"><label class="lbl" for="rpTitle">1. Short title for the problem <span class="req">*</span></label>' +
-            '<input type="text" id="rpTitle" name="title" maxlength="255" placeholder="Brief summary of what went wrong..." required>' +
-            '<div class="err" role="alert"></div>' +
+      '<div class="form-section-card">' +
+        '<h2 class="form-section-heading"><span class="form-section-num">2</span> Reproduction and impact</h2>' +
+        '<fieldset class="field">' +
+          '<legend class="lbl">7. Can you reproduce the problem?</legend>' +
+          puffGuide('Can you reproduce the problem?', 'Let developers know if this bug occurs consistently or only once.') +
+          '<div class="radios">' +
+            ['Every time', 'Sometimes', 'Only once', 'I haven’t tried again'].map(function (r, i) {
+              return '<label><input type="radio" name="reproduce" value="' + r + '"' + (i === 0 ? ' checked' : '') + '><span>' + r + '</span></label>';
+            }).join('') +
           '</div>' +
-          '<fieldset class="field"><legend class="lbl">2. Which SearchO₂ game version or build were you using?</legend>' +
-            '<div class="radios">' +
-              ['Current test version', 'Previous test version', 'I’m not sure'].map(function (v, i) {
-                return '<label><input type="radio" name="gameVersion" value="' + v + '"' + (i === 0 ? ' checked' : '') + '><span>' + v + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-          '<fieldset class="field"><legend class="lbl">3. Where did the problem happen? <span class="req">*</span></legend>' +
-            '<div class="radios" id="rpAreaRadios">' +
-              ['Getting started or account', 'Chapter 1', 'Chapter 2', 'Chapter 3', 'Saint Martin', 'Menus or settings', 'Another location', 'I’m not sure'].map(function (a, i) {
-                return '<label><input type="radio" name="area" value="' + a + '"' + (i === 1 ? ' checked' : '') + '><span>' + a + '</span></label>';
-              }).join('') +
-            '</div>' +
-            '<div class="err" role="alert"></div>' +
-          '</fieldset>' +
-          '<div class="field"><label class="lbl" for="rpTrying">4. What were you trying to do?</label>' +
-            '<textarea id="rpTrying" name="tryingToDo" maxlength="2000" rows="3" placeholder="Describe the goal or action you were attempting..."></textarea>' +
-            '<div class="err" role="alert"></div>' +
+        '</fieldset>' +
+        '<fieldset class="field">' +
+          '<legend class="lbl">8. How much did the problem affect your play?</legend>' +
+          puffGuide('How much did the problem affect your play?', 'From a minor graphical blip to blocking chapter progression or crashing.') +
+          '<div class="radios">' +
+            ['Minor inconvenience', 'Made gameplay difficult', 'Blocked my progress', 'Made the game unusable'].map(function (im, i) {
+              return '<label><input type="radio" name="impact" value="' + im + '"' + (i === 1 ? ' checked' : '') + '><span>' + im + '</span></label>';
+            }).join('') +
           '</div>' +
-          '<div class="field"><label class="lbl" for="rpWhat">5. What happened? <span class="req">*</span></label>' +
-            '<textarea id="rpWhat" name="whatHappened" maxlength="3000" rows="4" placeholder="Describe what actually happened or went wrong..." required></textarea>' +
-            '<div class="err" role="alert"></div>' +
-          '</div>' +
-          '<div class="field"><label class="lbl" for="rpExp">6. What did you expect to happen?</label>' +
-            '<textarea id="rpExp" name="expected" maxlength="2000" rows="3" placeholder="Describe what should have occurred instead..."></textarea>' +
-            '<div class="err" role="alert"></div>' +
-          '</div>' +
+        '</fieldset>' +
+        '<div class="field">' +
+          '<label class="lbl" for="rpDevice">9. Which device and browser were you using?</label>' +
+          '<input type="text" id="rpDevice" name="deviceBrowser" maxlength="255" value="' + esc(detectDeviceBrowser()) + '" placeholder="e.g. Windows 11 · Chrome 129 / iPhone 15 · Safari">' +
+          '<div class="hint">Automatically detected from your current browser, editable if reporting for another device.</div>' +
         '</div>' +
-        '<div class="form-section-card">' +
-          '<h2 class="form-section-heading"><span class="form-section-num">2</span> Reproduction and impact</h2>' +
-          '<fieldset class="field"><legend class="lbl">7. Can you reproduce the problem?</legend>' +
-            '<div class="radios">' +
-              ['Every time', 'Sometimes', 'Only once', 'I haven’t tried again'].map(function (r, i) {
-                return '<label><input type="radio" name="reproduce" value="' + r + '"' + (i === 0 ? ' checked' : '') + '><span>' + r + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-          '<fieldset class="field"><legend class="lbl">8. How much did the problem affect your play?</legend>' +
-            '<div class="radios">' +
-              ['Minor inconvenience', 'Made gameplay difficult', 'Blocked my progress', 'Made the game unusable'].map(function (im, i) {
-                return '<label><input type="radio" name="impact" value="' + im + '"' + (i === 1 ? ' checked' : '') + '><span>' + im + '</span></label>';
-              }).join('') +
-            '</div>' +
-          '</fieldset>' +
-          '<div class="field"><label class="lbl" for="rpDevice">9. Which device and browser were you using?</label>' +
-            '<input type="text" id="rpDevice" name="deviceBrowser" maxlength="255" value="' + esc(detectDeviceBrowser()) + '" placeholder="e.g. Windows 11 · Chrome 129 / iPhone 15 · Safari">' +
-            '<div class="hint">Automatically detected from your current browser, editable if reporting for another device.</div>' +
-          '</div>' +
-          '<div class="field"><label class="lbl" for="rpEmail">10. Optional email address if you agree that Artifactz may contact you about this report.</label>' +
-            '<input type="email" id="rpEmail" name="email" autocomplete="email" placeholder="name@example.com">' +
-            '<div class="hint">Only if you agree that Artifactz may contact you about this report.</div>' +
-            '<div class="err" role="alert"></div>' +
-          '</div>' +
-          '<div>' +
-            '<label class="check"><input type="checkbox" name="diag" id="rpDiag" checked><span>Add technical diagnostics to help us isolate the cause</span></label>' +
-            '<p class="hint" style="margin:8px 0 6px">This includes your screen resolution, browser user agent, and selected region. No passwords or personal data are included.</p>' +
-            '<div class="diag" id="rpDiagBox"></div>' +
-          '</div>' +
+        '<div class="field">' +
+          '<label class="lbl" for="rpEmail">10. Optional email address if you agree that Artifactz may contact you about this report.</label>' +
+          '<input type="email" id="rpEmail" name="email" autocomplete="email" placeholder="name@example.com">' +
+          '<div class="hint">Only if you agree that Artifactz may contact you about this report.</div>' +
+          '<div class="err" role="alert"></div>' +
         '</div>' +
-        '<div><button class="btn gold" type="submit" id="rpSend"><span class="btn-icon">🚀</span> Send report</button></div>' +
-        '<div id="rpOut" aria-live="polite"></div>' +
-      '</form>' + outboxHtml();
+        '<div>' +
+          '<label class="check"><input type="checkbox" name="diag" id="rpDiag" checked><span>Add technical diagnostics to help us isolate the cause</span></label>' +
+          '<p class="hint" style="margin:8px 0 6px">This includes your screen resolution, browser user agent, and selected region. No passwords or personal data are included.</p>' +
+          '<div class="diag" id="rpDiagBox"></div>' +
+        '</div>' +
+      '</div>' +
+      pipHandoffCard('Pip and Puff have packaged your bug report and diagnostic telemetry. Our engineers are on the case!') +
+      '<div><button class="btn gold" type="submit" id="rpSend"><span class="btn-icon">🚀</span> Send report</button></div>' +
+      '<div id="rpOut" aria-live="polite"></div>' +
+    '</form>' + outboxHtml();
 
     wireOutbox();
     var form = $('#rpForm'), box = $('#rpDiagBox');
@@ -1586,7 +1788,6 @@
       submit({
         type: 'problem',
         title: title,
-        gameVersion: d.get('gameVersion') || null,
         area: d.get('area') || null,
         tryingToDo: String(d.get('tryingToDo') || '').trim() || null,
         whatHappened: what,

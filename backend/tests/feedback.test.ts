@@ -4,7 +4,7 @@ import request from 'supertest';
 const mockQuery = jest.fn();
 jest.mock('../src/config/database', () => {
   const actual = jest.requireActual('../src/config/database');
-  return { ...actual, query: (sql: string, params?: any[]) => mockQuery(sql, params), checkDatabaseConnection: async () => true };
+  return { ...actual, query: (sql: any, params?: any) => mockQuery(sql, params), checkDatabaseConnection: async () => true };
 });
 
 import { app } from '../src/index';

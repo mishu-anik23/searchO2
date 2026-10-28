@@ -322,6 +322,8 @@ const path = require('path');
     try {
       state.money = 5000;
       state.plots[0].accessories = {};
+      state.buildings = state.buildings || {};
+      state.buildings.pond = { built: true };
 
       const hasTiers = IRRIGATION_TIERS.sprinkler && IRRIGATION_TIERS.drip && IRRIGATION_TIERS.solar;
       const dripDef = IRRIGATION_TIERS.drip;

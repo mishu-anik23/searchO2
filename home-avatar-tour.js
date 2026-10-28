@@ -597,6 +597,12 @@
     pendingNextChapter: null
   };
 
+  // Helper: Escape HTML utility
+  function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   // Helper: Shade color utility
   function shade(hex, amt) {
     try {
@@ -1312,11 +1318,62 @@
       }
     }
 
+    var pointerStartX = 0, pointerStartY = 0, pointerStartTime = 0;
+    var pointerDragDist = 0;
+
+    function navigateFromPlot(plot) {
+      if (!plot) return;
+      if (plot.isHome || (plot.id && plot.id.startsWith('plot_'))) {
+        hideHomeOverlay();
+        if (typeof switchScreen === 'function') switchScreen('farm');
+        else window.location.href = 'index.html?enter=farm';
+        return;
+      }
+      if (plot.id === 'bavaria_plots') {
+        window.location.href = 'bavaria/alpenhof.html';
+        return;
+      }
+      if (plot.id === 'saint_martin_plots') {
+        window.location.href = 'saint-martin/blue-lab.html';
+        return;
+      }
+
+      var biomeMap = {
+        'brazil_plots': 'brazil',
+        'senegal_plots': 'senegal',
+        'spain_plots': 'spain',
+        'japan_plots': 'japan',
+        'sweden_plots': 'sweden',
+        'usa_plots': 'usa',
+        'madagascar_plots': 'madagascar'
+      };
+      var biomeId = biomeMap[plot.id];
+      var biomes = getBiomesList();
+      var b = biomes.find(function (x) { return x.id === biomeId; });
+      var curO2 = (typeof state !== 'undefined' && state && typeof state.totalO2 === 'number') ? state.totalO2 : 0;
+      var reqO2 = b ? (b.unlockO2 || 0) : 0;
+      var isUnlocked = b ? (curO2 >= reqO2) : false;
+
+      if (isUnlocked) {
+        if (typeof showNotification === 'function') {
+          showNotification('🌍', plot.name + ' is unlocked! Surveying regional biodiversity.', 'bank', null);
+        }
+      } else {
+        if (typeof showNotification === 'function') {
+          showNotification('🔒', plot.name + ' requires ' + reqO2.toLocaleString() + ' O₂. Generate more oxygen on your active farms! (Current: ' + Math.round(curO2).toLocaleString() + ' O₂)', 'bank', null);
+        }
+      }
+    }
+
     function handlePointerDown(e) {
       isDragging = true;
       var pos = getPointerPos(e);
       lastX = pos.x;
       lastY = pos.y;
+      pointerStartX = pos.x;
+      pointerStartY = pos.y;
+      pointerStartTime = Date.now();
+      pointerDragDist = 0;
       velX = 0;
       velY = 0;
       autoSpin = false;
@@ -1329,6 +1386,7 @@
       if (isDragging) {
         var dx = pos.x - lastX;
         var dy = pos.y - lastY;
+        pointerDragDist += Math.hypot(dx, dy);
         lastX = pos.x;
         lastY = pos.y;
         rotY += dx * 0.008;
@@ -1342,10 +1400,31 @@
       }
     }
 
-    function handlePointerUp() {
+    function handlePointerUp(e) {
       if (isDragging) {
         isDragging = false;
         if (canvas) canvas.style.cursor = 'grab';
+      }
+      var elapsed = Date.now() - pointerStartTime;
+      if (pointerDragDist < 10 && elapsed < 650) {
+        var pos = getPointerPos(e);
+        var closest = null;
+        var minD = 24;
+        for (var i = 0; i < PLOT_MARKINGS.length; i++) {
+          var p = project(PLOT_MARKINGS[i].lat, PLOT_MARKINGS[i].lon);
+          if (p.visible) {
+            var d = Math.hypot(p.x - pos.x, p.y - pos.y);
+            if (d < minD) {
+              minD = d;
+              closest = PLOT_MARKINGS[i];
+            }
+          }
+        }
+        if (closest) {
+          rotateTo(closest.lat, closest.lon, function () {
+            navigateFromPlot(closest);
+          });
+        }
       }
     }
 
@@ -1386,6 +1465,7 @@
 
     return {
       init: init,
+      resize: resize,
       rotateTo: rotateTo,
       setRegionHighlight: setRegionHighlight,
       getRotation: function () { return { rotY: rotY, rotX: rotX }; },
@@ -1404,14 +1484,16 @@
   }
 
   var DEFAULT_FALLBACK_BIOMES = [
-    { id: 'germany', country: 'Germany', flag: '🇩🇪', title: 'Central European Plains', biomeType: 'Temperate Mixed Woodland', status: 'active', unlocked: true },
-    { id: 'bavaria', country: 'Germany', flag: '🇩🇪', title: 'Alpenhof Journey · Alpine Meadow', biomeType: 'Alpine Foothill Meadow', status: 'active', unlocked: true },
-    { id: 'saint_martin', country: 'Bangladesh', flag: '🇧🇩', title: "Saint Martin's Island · Blue Lab", biomeType: 'Tropical Coral Shelf', status: 'active', unlocked: true },
-    { id: 'brazil', country: 'Brazil', flag: '🇧🇷', title: 'Amazon Basin Rainforest', biomeType: 'Tropical Evergreen Lowland Forest', status: 'locked', unlocked: false },
-    { id: 'senegal', country: 'Senegal', flag: '🇸🇳', title: 'Sahel Great Green Wall', biomeType: 'Semi-Arid Acacia Savanna', status: 'locked', unlocked: false },
-    { id: 'japan', country: 'Japan', flag: '🇯🇵', title: 'Hokkaido Ancient Woodlands', biomeType: 'Boreal Conifer & Montane Bamboo', status: 'locked', unlocked: false },
-    { id: 'spain', country: 'Spain', flag: '🇪🇸', title: 'Andalusian Dehesa Agroforestry', biomeType: 'Mediterranean Silvopasture', status: 'locked', unlocked: false },
-    { id: 'madagascar', country: 'Madagascar', flag: '🇲🇬', title: 'Madagascar Spiny Forest', biomeType: 'Spiny Thicket Ecosystem', status: 'locked', unlocked: false }
+    { id: 'germany', country: 'Germany', flag: '🇩🇪', title: 'Central European Plains', biomeType: 'Temperate Mixed Woodland', status: 'active', unlockO2: 0, unlocked: true },
+    { id: 'bavaria', country: 'Germany', flag: '🇩🇪', title: 'Alpenhof Journey · Alpine Meadow', biomeType: 'Alpine Foothill Meadow', status: 'active', unlockO2: 0, unlocked: true },
+    { id: 'saint_martin', country: 'Bangladesh', flag: '🇧🇩', title: "Saint Martin's Island · Blue Lab", biomeType: 'Tropical Coral Shelf', status: 'active', unlockO2: 0, unlocked: true },
+    { id: 'brazil', country: 'Brazil', flag: '🇧🇷', title: 'Amazon Basin Rainforest', biomeType: 'Tropical Evergreen Lowland Forest', status: 'locked', unlockO2: 2500, unlocked: false },
+    { id: 'senegal', country: 'Senegal', flag: '🇸🇳', title: 'Sahel Great Green Wall', biomeType: 'Semi-Arid Acacia Savanna', status: 'locked', unlockO2: 7500, unlocked: false },
+    { id: 'spain', country: 'Spain', flag: '🇪🇸', title: 'Mediterranean Coastal Basin', biomeType: 'Mediterranean Silvopasture', status: 'locked', unlockO2: 15000, unlocked: false },
+    { id: 'japan', country: 'Japan', flag: '🇯🇵', title: 'Hokkaido Ancient Woodlands', biomeType: 'Boreal Conifer & Montane Bamboo', status: 'locked', unlockO2: 30000, unlocked: false },
+    { id: 'sweden', country: 'Sweden', flag: '🇸🇪', title: 'Nordic Boreal Taiga', biomeType: 'Subarctic Coniferous Carbon Sink', status: 'locked', unlockO2: 50000, unlocked: false },
+    { id: 'usa', country: 'United States', flag: '🇺🇸', title: 'Pacific Northwest Rainforest', biomeType: 'Temperate Maritime Conifer Canopy', status: 'locked', unlockO2: 75000, unlocked: false },
+    { id: 'madagascar', country: 'Madagascar', flag: '🇲🇬', title: 'Madagascar Spiny Forest', biomeType: 'Spiny Thicket Ecosystem', status: 'locked', unlockO2: 100000, unlocked: false }
   ];
 
   function getBiomesList() {
@@ -1427,19 +1509,29 @@
   // ---------------------------------------------------------------------------
   // Build Full Home Overlay HTML
   // ---------------------------------------------------------------------------
-  function buildHomeOverlayHtml() {
-    var biomes = getBiomesList().slice(0, 8);
-    var biomeCards = biomes.map(function (b) {
-      var active = b.unlocked || b.status === 'active' || b.id === 'germany' || b.id === 'saint_martin' || b.id === 'bavaria';
+  function renderBiomeCardsHtml() {
+    var biomes = getBiomesList();
+    var curO2 = (typeof state !== 'undefined' && state && typeof state.totalO2 === 'number') ? state.totalO2 : 0;
+    return biomes.map(function (b) {
+      var isCurrent = b.id === 'germany' || b.id === 'bavaria' || b.id === 'saint_martin';
+      var reqO2 = b.unlockO2 || 0;
+      var isUnlocked = isCurrent || curO2 >= reqO2;
+      var badgeText = isCurrent ? '🟢 ACTIVE FARM' : (isUnlocked ? '🟢 UNLOCKED' : ('🔒 ' + reqO2.toLocaleString() + ' O₂'));
+      var cardClass = isCurrent ? 'is-active is-current' : (isUnlocked ? 'is-active is-unlocked' : 'is-locked');
+      var titleAttr = (b.title || b.country) + (isCurrent ? ' · Active Farm (Click to enter)' : (isUnlocked ? ' · Unlocked Biome (Click to survey)' : ' · Locked (Requires ' + reqO2.toLocaleString() + ' O₂ · Current: ' + Math.round(curO2).toLocaleString() + ' O₂)'));
       return (
-        '<div class="s2-biome-card ' + (active ? 'is-active' : 'is-locked') + '" data-biome="' + b.id + '">' +
+        '<div class="s2-biome-card ' + cardClass + '" data-biome="' + b.id + '" role="button" tabindex="0" title="' + esc(titleAttr) + '">' +
         '<div class="s2-biome-flag">' + (b.flag || '🌍') + '</div>' +
         '<div class="s2-biome-name">' + (b.title || b.country) + '</div>' +
         '<div class="s2-biome-type">' + (b.biomeType || '') + '</div>' +
-        '<span class="s2-biome-badge">' + (active ? 'ACTIVE' : 'LOCKED') + '</span>' +
+        '<span class="s2-biome-badge">' + badgeText + '</span>' +
         '</div>'
       );
     }).join('');
+  }
+
+  function buildHomeOverlayHtml() {
+    var biomeCards = renderBiomeCardsHtml();
 
     var regionChips = REGIONS.map(function (reg) {
       var active = (tourState.regionFilter || 'all') === reg.id;
@@ -1667,8 +1759,48 @@
     return true;
   }
 
+  function wireBiomeCards() {
+    var biomeRow = document.getElementById('s2BiomeRow');
+    if (biomeRow && typeof renderBiomeCardsHtml === 'function') {
+      biomeRow.innerHTML = renderBiomeCardsHtml();
+    }
+    document.querySelectorAll('.s2-biome-card').forEach(function (card) {
+      card.onclick = function () {
+        var bId = card.getAttribute('data-biome');
+        var biomes = getBiomesList();
+        var b = biomes.find(function (x) { return x.id === bId; });
+        if (!b) return;
+        var curO2 = (typeof state !== 'undefined' && state && typeof state.totalO2 === 'number') ? state.totalO2 : 0;
+        var reqO2 = b.unlockO2 || 0;
+        var isCurrent = b.id === 'germany' || b.id === 'bavaria' || b.id === 'saint_martin';
+        var isUnlocked = isCurrent || curO2 >= reqO2;
+
+        if (b.id === 'germany') {
+          hideHomeOverlay();
+          if (typeof switchScreen === 'function') switchScreen('farm');
+          else window.location.href = 'index.html?enter=farm';
+        } else if (b.id === 'bavaria') {
+          window.location.href = 'bavaria/alpenhof.html';
+        } else if (b.id === 'saint_martin') {
+          window.location.href = 'saint-martin/blue-lab.html';
+        } else if (isUnlocked) {
+          if (typeof showNotification === 'function') {
+            showNotification('🌍', (b.title || b.country) + ' is unlocked! Surveying regional biodiversity.', 'bank', null);
+          }
+        } else {
+          if (typeof showNotification === 'function') {
+            showNotification('🔒', (b.title || b.country) + ' requires ' + reqO2.toLocaleString() + ' O₂. Generate more oxygen on your active farms! (Current: ' + Math.round(curO2).toLocaleString() + ' O₂)', 'bank', null);
+          }
+        }
+      };
+    });
+  }
+
   function showHomeOverlay() {
-    if (isGuestMode()) {
+    var params = (typeof window !== 'undefined' && window.location && window.location.search) ? new URLSearchParams(window.location.search) : null;
+    var forceHome = params && (params.get('mode') === 'home' || params.has('home') || params.get('screen') === 'home');
+
+    if (isGuestMode() && !forceHome) {
       if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.openWelcomeOrProgressModal === 'function') {
         global.SearchO2ShakirGuide.openWelcomeOrProgressModal();
       }
@@ -1691,11 +1823,19 @@
     if (overlay) overlay.classList.remove('hidden');
     sprinkleStars();
     renderAvatarGrid();
+    wireBiomeCards();
 
     // Initialize 3D Circular Globe
+    HomeAvatarGlobe.init('s2HomeGlobeCanvas');
+    requestAnimationFrame(function () {
+      if (HomeAvatarGlobe.resize) HomeAvatarGlobe.resize();
+    });
     setTimeout(function () {
-      HomeAvatarGlobe.init('s2HomeGlobeCanvas');
-    }, 50);
+      if (HomeAvatarGlobe.resize) HomeAvatarGlobe.resize();
+    }, 80);
+    setTimeout(function () {
+      if (HomeAvatarGlobe.resize) HomeAvatarGlobe.resize();
+    }, 250);
 
     var regFilters = document.getElementById('s2RegionFilters');
     if (regFilters) {
@@ -3485,6 +3625,12 @@
   // Boot & Initialization Hook
   // ---------------------------------------------------------------------------
   function shouldShowHomeOverlay() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'home' || params.has('home') || params.get('screen') === 'home') {
+        return true;
+      }
+    } catch (e) {}
     if (isGuestMode()) return false;
     try {
       if (localStorage.getItem('searchO2_avatar_skipped') === '1') return false;

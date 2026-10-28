@@ -22,6 +22,7 @@ import { adminRouter } from './modules/admin/admin.controller';
 import { admin2faRouter } from './modules/admin/admin2fa.controller';
 import { presenceRouter } from './modules/presence/presence.controller';
 import { feedbackRouter } from './modules/feedback/feedback.controller';
+import { formsRouter } from './modules/forms/forms.controller';
 
 const app = express();
 const server = http.createServer(app);
@@ -30,7 +31,7 @@ const server = http.createServer(app);
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
 app.use(cookieParser());
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(generalLimiter);
 
 // 2. Health & Diagnostic Check
@@ -58,6 +59,7 @@ app.use('/api/kyc', kycRouter);
 app.use('/api/oxyforge', oxyforgeRouter);
 app.use('/api/presence', presenceRouter);
 app.use('/api/feedback', feedbackRouter);
+app.use('/api/forms', formsRouter);
 app.use('/api/admin', admin2faRouter);
 app.use('/api/admin', adminRouter);
 

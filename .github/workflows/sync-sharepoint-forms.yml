@@ -1,0 +1,49 @@
+name: Sync SharePoint Forms to Live Hub
+
+on:
+  schedule:
+    # Runs daily at 04:00 UTC
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target SearchO2 API Base URL'
+        required: true
+        default: 'https://searcho2.online'
+  repository_dispatch:
+    types: [sharepoint_doc_updated]
+
+jobs:
+  sync-forms:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run SharePoint Forms Sync CLI
+        env:
+          SEARCHO2_API_BASE: ${{ github.event.inputs.target_url || 'https://searcho2.online' }}
+          FORMS_SYNC_SECRET: ${{ secrets.FORMS_SYNC_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          SHAREPOINT_SITE_ID: ${{ secrets.SHAREPOINT_SITE_ID }}
+          SHAREPOINT_FILE_ID: ${{ secrets.SHAREPOINT_FILE_ID }}
+        run: |
+          if [ -n "$AZURE_CLIENT_SECRET" ]; then
+            node scripts/sync_sharepoint_forms.mjs --graph
+          else
+            node scripts/sync_sharepoint_forms.mjs --remote "$SEARCHO2_API_BASE"
+          fi
+
+      - name: Commit updated docx templates (if changed by Graph API)
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(forms): auto-sync updated form templates from SharePoint"
+          file_pattern: "SearchO2_Forms_*.docx"
