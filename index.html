@@ -9714,6 +9714,10 @@ var SAINT_MARTIN_BLUE_LAB = {
 };
 
 function openSaintMartinBlueLab(){
+  if (typeof isAdminUser === 'function' && !isAdminUser()) {
+    showNotification('🔒', 'Access Restricted: This base is reserved for Admin (searcho2.online@gmail.com).', 'bank', null);
+    return;
+  }
   var dest = 'saint-martin/blue-lab.html';
   if ((typeof devRegionPreview !== 'undefined' && devRegionPreview === 'bavaria') || (typeof regionId !== 'undefined' && regionId === 'bavaria')) {
     dest = 'bavaria/alpenhof.html';
@@ -15186,14 +15190,16 @@ var GlobeEngine = (function(){
     var newDpr = window.devicePixelRatio || 1;
     var newW = rect.width;
     var newH = rect.height;
-    if (width === newW && height === newH && dpr === newDpr && canvas.width > 0){
-      return; // Dimensions unchanged, skip resetting canvas buffer
+    var targetW = Math.round(newW * newDpr);
+    var targetH = Math.round(newH * newDpr);
+    if (width === newW && height === newH && dpr === newDpr && canvas.width === targetW && canvas.height === targetH){
+      return; // Dimensions and buffer unchanged
     }
     dpr = newDpr;
     width = newW;
     height = newH;
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
+    canvas.width = targetW;
+    canvas.height = targetH;
     canvas.style.width = width + 'px';
     canvas.style.height = height + 'px';
     baseRadius = Math.min(width, height) * 0.38;
@@ -15613,16 +15619,16 @@ var GlobeEngine = (function(){
     hoveredRegion = b.id;
     if (canvas) canvas.style.cursor = 'pointer';
 
-    var isGuest = !apiUser || apiUser.role === 'guest';
-    var isCurrent = isGuest ? (b.id === 'germany') : (b.id === 'germany' || b.id === 'saint_martin' || b.id === 'bavaria');
-    var isUnlocked = isCurrent || (!isGuest && state && state.totalO2 >= (b.unlockO2 || 0));
+    var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
+    var isCurrent = b.id === 'germany' || (isAdmin && (b.id === 'saint_martin' || b.id === 'bavaria'));
+    var isUnlocked = isCurrent || (isAdmin && state && state.totalO2 >= (b.unlockO2 || 0));
     var statusClass = isUnlocked ? 'active' : 'locked';
-    var statusText = isGuest
-      ? (b.id === 'germany' ? '🟢 ACTIVE GUEST FARM · 6 PLOTS' : '🔒 GUEST LOCKED · FREE SIGN IN TO UNLOCK')
-      : (b.id === 'saint_martin' ? '🟢 BLUE LAB · CORAL SHELF & TWIN ORCHARDS' : (b.id === 'bavaria' ? '🟢 ALPENHOF · BAVARIAN ALPINE MEADOW' : (isCurrent ? '🟢 ACTIVE FARM · 6 PLOTS' : (isUnlocked ? '🟢 UNLOCKED · READY TO SURVEY' : ('🔒 UNLOCKS AT ' + (b.unlockO2||0).toLocaleString() + ' O₂')))));
-    var actionText = isGuest
-      ? (b.id === 'germany' ? '👉 CLICK TO ENTER GERMAN FARM ➔' : '🔒 CLICK TO SIGN IN & UNLOCK ➔')
-      : (b.id === 'saint_martin' ? '👉 CLICK TO ENTER BLUE LAB ➔' : (b.id === 'bavaria' ? '👉 CLICK TO ENTER ALPENHOF ➔' : (isCurrent ? '👉 CLICK TO ENTER FARM ➔' : (isUnlocked ? '👉 CLICK TO SURVEY BIOME ➔' : ('🔒 REQUIRES ' + (b.unlockO2||0).toLocaleString() + ' TOTAL O₂')))));
+    var statusText = isCurrent
+      ? (b.id === 'germany' ? '🟢 ACTIVE BASE FARM · 6 PLOTS' : (b.id === 'bavaria' ? '🟢 ALPENHOF · BAVARIAN ALPINE MEADOW' : '🟢 BLUE LAB · CORAL SHELF & TWIN ORCHARDS'))
+      : ((b.id === 'bavaria' || b.id === 'saint_martin') ? '🔒 ADMIN RESTRICTED · SEARCHO2.ONLINE@GMAIL.COM ONLY' : (isAdmin && isUnlocked ? '🟢 UNLOCKED · READY TO SURVEY' : '🔒 BASE LOCKED'));
+    var actionText = isCurrent
+      ? (b.id === 'germany' ? '👉 CLICK TO ENTER GERMAN FARM ➔' : (b.id === 'bavaria' ? '👉 CLICK TO ENTER ALPENHOF ➔' : '👉 CLICK TO ENTER BLUE LAB ➔'))
+      : ((b.id === 'bavaria' || b.id === 'saint_martin') ? '🔒 ADMIN ID REQUIRED ➔' : (isAdmin && isUnlocked ? '👉 CLICK TO SURVEY BIOME ➔' : '🔒 BASE LOCKED ➔'));
 
     var treePills = b.nativeSpecies.map(function(sp){
       return '<span class="g-tt-tree-item">' + sp + '</span>';
@@ -15700,42 +15706,46 @@ var GlobeEngine = (function(){
   }
 
   function handleRegionClick(b){
-    var isGuest = !apiUser || apiUser.role === 'guest';
-    if (isGuest && b.id !== 'germany'){
-      rotateTo(b.lat, b.lon);
-      var authOverlay = document.getElementById('initialAuthOverlay');
-      if (authOverlay){
-        authOverlay.classList.remove('hidden');
-        var card = document.getElementById('initialAuthCard');
-        if (card){
-          card.innerHTML = initialAuthModalHtml();
-          wireInitialAuthEvents();
-        }
-      }
-      showNotification('🔒', b.title + ' is locked in Guest Mode. Sign in with Google or GitHub to unlock!', 'bank', null);
-      return;
-    }
+    var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
     if (b.id === 'germany'){
       rotateTo(b.lat, b.lon, function(){
         switchScreen('farm');
         showNotification('🇩🇪', 'Welcome to your Central European Farm in Germany!', 'bank', null);
       });
-    } else if (b.id === 'saint_martin'){
-      rotateTo(b.lat, b.lon, function(){
-        openSaintMartinBlueLab();
-      });
-    } else if (b.id === 'bavaria'){
+      return;
+    }
+    if (b.id === 'bavaria'){
+      if (!isAdmin){
+        rotateTo(b.lat, b.lon);
+        showNotification('🔒', 'Alpenhof (Bavaria) is restricted exclusively to Admin (searcho2.online@gmail.com).', 'bank', null);
+        return;
+      }
       rotateTo(b.lat, b.lon, function(){
         window.location.href = 'bavaria/alpenhof.html';
       });
-    } else {
-      rotateTo(b.lat, b.lon);
-      var unl = state && state.totalO2 >= (b.unlockO2 || 0);
-      if (unl){
-        showNotification('🌱', b.title + ' is unlocked! Surveying regional biodiversity.', 'bank', null);
-      } else {
-        showNotification('🔒', b.title + ' (' + b.country + ') requires ' + (b.unlockO2||0).toLocaleString() + ' O₂. Produce more oxygen on your German farm!', 'bank', null);
+      return;
+    }
+    if (b.id === 'saint_martin'){
+      if (!isAdmin){
+        rotateTo(b.lat, b.lon);
+        showNotification('🔒', "Saint Martin's Blue Lab is restricted exclusively to Admin (searcho2.online@gmail.com).", 'bank', null);
+        return;
       }
+      rotateTo(b.lat, b.lon, function(){
+        openSaintMartinBlueLab();
+      });
+      return;
+    }
+    rotateTo(b.lat, b.lon);
+    if (!isAdmin){
+      showNotification('🔒', b.title + ' is locked. Base farm is active in Germany.', 'bank', null);
+      return;
+    }
+    var unl = state && state.totalO2 >= (b.unlockO2 || 0);
+    if (unl){
+      showNotification('🌱', b.title + ' is unlocked! Surveying regional biodiversity.', 'bank', null);
+    } else {
+      showNotification('🔒', b.title + ' (' + b.country + ') requires ' + (b.unlockO2||0).toLocaleString() + ' O₂.', 'bank', null);
     }
   }
 
@@ -15744,8 +15754,13 @@ var GlobeEngine = (function(){
       canvas = document.getElementById(canvasId);
       if (!canvas) return;
       ctx = canvas.getContext('2d');
+      width = 0;
+      height = 0;
       initLandPoints();
       resize();
+      requestAnimationFrame(resize);
+      setTimeout(resize, 25);
+      setTimeout(resize, 100);
 
       window.removeEventListener('resize', resize);
       window.addEventListener('resize', resize);
@@ -15789,6 +15804,7 @@ var GlobeEngine = (function(){
     }
   };
 })();
+window.GlobeEngine = GlobeEngine;
 
 // ================= PROCEDURAL REGIONAL SOUNDTRACK & SFX ENGINE (WEB AUDIO API) =================
 var SoundTrackEngine = (function(){
@@ -19525,22 +19541,35 @@ function renderRegionCardsHtml(state, season, isGuest){
   if (typeof isGuest === 'undefined'){
     isGuest = !apiUser || apiUser.role === 'guest';
   }
+  var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
   return REGIONAL_BIOMES.map(function(b){
-    var isCurrent = isGuest ? (b.id === 'germany') : (b.id === 'germany' || b.id === 'saint_martin' || b.id === 'bavaria');
-    var isUnlocked = isCurrent || (!isGuest && state && state.totalO2 >= (b.unlockO2 || 0));
+    var isCurrent = b.id === 'germany' || (isAdmin && (b.id === 'saint_martin' || b.id === 'bavaria'));
+    var isUnlocked = isCurrent || (isAdmin && !isGuest && state && state.totalO2 >= (b.unlockO2 || 0));
     var badgeClass = isUnlocked ? 'active' : 'locked';
 
     var badgeHtml = '';
-    if (isGuest){
-      if (b.id === 'germany'){
-        badgeHtml = '<div class="region-badge-pill active"><span class="badge-main">🟢 Active Farm</span><span class="badge-sub">6 Plots Available</span></div>';
+    if (b.id === 'germany'){
+      badgeHtml = '<div class="region-badge-pill active"><span class="badge-main">🟢 Active Base Farm</span><span class="badge-sub">6 Plots Available</span></div>';
+    } else if (b.id === 'saint_martin'){
+      if (isAdmin) {
+        badgeHtml = '<div class="region-badge-pill active"><span class="badge-main">🟢 Blue Lab (Admin)</span><span class="badge-sub">Coral & Blue Lab</span></div>';
       } else {
-        badgeHtml = '<div class="region-badge-pill locked"><span class="badge-main">🔒 Guest Locked</span><span class="badge-sub">Sign In to Unlock</span></div>';
+        badgeHtml = '<div class="region-badge-pill locked"><span class="badge-main">🔒 Admin Restricted</span><span class="badge-sub">Admin ID Only</span></div>';
+      }
+    } else if (b.id === 'bavaria'){
+      if (isAdmin) {
+        badgeHtml = '<div class="region-badge-pill active"><span class="badge-main">🟢 Alpenhof (Admin)</span><span class="badge-sub">Alpenhof Meadow</span></div>';
+      } else {
+        badgeHtml = '<div class="region-badge-pill locked"><span class="badge-main">🔒 Admin Restricted</span><span class="badge-sub">Admin ID Only</span></div>';
       }
     } else {
-      var sub = (b.id === 'germany' ? '6 Active Plots' : (b.id === 'saint_martin' ? 'Coral & Blue Lab' : (b.id === 'bavaria' ? 'Alpenhof Meadow' : (isUnlocked ? 'Ready to Survey' : (b.unlockO2||0).toLocaleString() + ' O₂ Required'))));
-      var main = isUnlocked ? '🟢 ' + (b.id === 'germany' ? 'German Farm' : (b.id === 'saint_martin' ? 'Blue Lab' : (b.id === 'bavaria' ? 'Alpenhof' : 'Unlocked'))) : '🔒 Locked';
-      badgeHtml = '<div class="region-badge-pill ' + badgeClass + '"><span class="badge-main">' + main + '</span><span class="badge-sub">' + sub + '</span></div>';
+      if (isAdmin && isUnlocked) {
+        badgeHtml = '<div class="region-badge-pill active"><span class="badge-main">🟢 Unlocked</span><span class="badge-sub">Ready to Survey</span></div>';
+      } else if (isAdmin) {
+        badgeHtml = '<div class="region-badge-pill locked"><span class="badge-main">🔒 Locked</span><span class="badge-sub">' + (b.unlockO2||0).toLocaleString() + ' O₂ Required</span></div>';
+      } else {
+        badgeHtml = '<div class="region-badge-pill locked"><span class="badge-main">🔒 Base Locked</span><span class="badge-sub">Coming Soon</span></div>';
+      }
     }
 
     var snapshotHtml = '';
@@ -19557,30 +19586,32 @@ function renderRegionCardsHtml(state, season, isGuest){
     var speciesList = b.nativeSpecies.map(function(s){ return '<span class="species-mini-pill">' + s + '</span>'; }).join('');
 
     var btnHtml = '';
-    if (isGuest){
-      if (b.id === 'germany'){
-        btnHtml = '<button class="btn-enter-region" data-enterfarm="germany"><span>Enter German Farm ➔</span></button>';
-      } else if (b.id === 'saint_martin') {
+    if (b.id === 'germany'){
+      btnHtml = '<button class="btn-enter-region" data-enterfarm="germany"><span>Enter German Farm ➔</span></button>';
+    } else if (b.id === 'saint_martin') {
+      if (isAdmin) {
         btnHtml = '<button class="btn-enter-region" data-enterfarm="saint_martin"><span>Enter Blue Lab ➔</span></button>';
       } else {
-        btnHtml = '<button class="btn-enter-region" data-openinitialauth="1" style="background:linear-gradient(135deg, #455A64, #263238);box-shadow:0 4px 0 #1B2428, 0 8px 16px rgba(0,0,0,0.25);"><span>🔒 Sign In to Unlock ' + (b.id === 'bavaria' ? 'Alpenhof' : b.country) + ' ➔</span></button>';
+        btnHtml = '<button class="btn-locked-region" data-adminrestricted="1" style="background:linear-gradient(135deg, #374151, #1F2937);border:1px solid #4B5563;color:#9CA3AF;cursor:not-allowed;"><span>🔒 Admin Access Only (searcho2.online@gmail.com)</span></button>';
       }
-    } else {
-      if (b.id === 'saint_martin') {
-        btnHtml = '<button class="btn-enter-region" data-enterfarm="saint_martin"><span>Enter Blue Lab ➔</span></button>';
-      } else if (b.id === 'bavaria') {
+    } else if (b.id === 'bavaria') {
+      if (isAdmin) {
         btnHtml = '<button class="btn-enter-region" data-enterfarm="bavaria"><span>Enter Alpenhof Journey ➔</span></button>';
-      } else if (b.id === 'germany') {
-        btnHtml = '<button class="btn-enter-region" data-enterfarm="germany"><span>Enter German Farm ➔</span></button>';
-      } else if (isUnlocked) {
-        btnHtml = '<button class="btn-enter-region" data-centerregion="' + b.id + '"><span>Explore ' + b.country + ' Biome ➔</span></button>';
       } else {
-        btnHtml = '<button class="btn-locked-region" disabled><span>🔒 Region Surveying (' + (b.unlockO2||0).toLocaleString() + ' O₂ Needed)</span></button>';
+        btnHtml = '<button class="btn-locked-region" data-adminrestricted="1" style="background:linear-gradient(135deg, #374151, #1F2937);border:1px solid #4B5563;color:#9CA3AF;cursor:not-allowed;"><span>🔒 Admin Access Only (searcho2.online@gmail.com)</span></button>';
       }
+    } else if (isAdmin && isUnlocked) {
+      btnHtml = '<button class="btn-enter-region" data-centerregion="' + b.id + '"><span>Explore ' + b.country + ' Biome ➔</span></button>';
+    } else {
+      btnHtml = '<button class="btn-locked-region" disabled style="opacity:0.6;cursor:not-allowed;"><span>🔒 Base Locked</span></button>';
     }
 
     var flagSvg = renderCountryFlag(b, 32, 22);
-    var cardAttr = (isGuest && b.id !== 'germany' && b.id !== 'saint_martin') ? 'data-openinitialauth="1"' : (isCurrent ? ('data-enterfarm="' + b.id + '"') : ('data-centerregion="' + b.id + '"'));
+    var cardAttr = (b.id === 'germany')
+      ? 'data-enterfarm="germany"'
+      : ((b.id === 'saint_martin' || b.id === 'bavaria')
+        ? (isAdmin ? ('data-enterfarm="' + b.id + '"') : 'data-adminrestricted="1"')
+        : (isAdmin ? ('data-centerregion="' + b.id + '"') : ''));
     return '<div class="region-card ' + (isCurrent ? 'active-region' : (isUnlocked ? 'unlocked-region' : 'locked-region')) + '" ' + cardAttr + ' style="cursor:pointer;">' +
       '<div>' +
         '<div class="region-card-top">' +
@@ -19610,9 +19641,10 @@ function renderRegionTabularHtml(state, season, isGuest){
   if (typeof isGuest === 'undefined'){
     isGuest = !apiUser || apiUser.role === 'guest';
   }
+  var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
   var rows = REGIONAL_BIOMES.map(function(b){
-    var isCurrent = isGuest ? (b.id === 'germany') : (b.id === 'germany' || b.id === 'saint_martin' || b.id === 'bavaria');
-    var isUnlocked = isCurrent || (!isGuest && state && state.totalO2 >= (b.unlockO2 || 0));
+    var isCurrent = b.id === 'germany' || (isAdmin && (b.id === 'saint_martin' || b.id === 'bavaria'));
+    var isUnlocked = isCurrent || (isAdmin && !isGuest && state && state.totalO2 >= (b.unlockO2 || 0));
     var flagSvg = renderCountryFlag(b, 28, 20);
     var coordsText = (b.lat >= 0 ? b.lat.toFixed(2) + '° N' : Math.abs(b.lat).toFixed(2) + '° S') + ', ' +
                      (b.lon >= 0 ? b.lon.toFixed(2) + '° E' : Math.abs(b.lon).toFixed(2) + '° W');
@@ -19623,32 +19655,31 @@ function renderRegionTabularHtml(state, season, isGuest){
 
     var statusHtml = '';
     var actionBtn = '';
-    if (isGuest){
-      if (b.id === 'germany'){
-        var farmProf = (typeof getGuestFarmProfile === 'function') ? getGuestFarmProfile() : { name: 'AlpenO2' };
-        statusHtml = '<span class="region-badge active" style="background:linear-gradient(135deg,#10B981,#059669);color:#042220;font-weight:900;border:1px solid #6EE7B7;">🟢 Basic Farm Active (' + farmProf.name + ')</span>';
-        actionBtn = '<button class="btn-enter-region" data-enterfarm="germany" style="padding:8px 14px;font-size:0.82rem;border-radius:10px;font-weight:900;">Enter Farm ➔</button>';
-      } else {
-        statusHtml = '<span class="child-friendly-lock" title="🌱 Eco-Pass: Free sign in unlocks this biome!"><span class="lock-sprout">🌱</span>🔒 Eco-Pass Required</span>';
-        actionBtn = '<button class="primary" data-openinitialauth="1" style="padding:8px 14px;font-size:0.78rem;border-radius:10px;background:rgba(6,40,36,0.9);border:1.5px solid var(--dd-emerald);color:var(--dd-mint);cursor:pointer;white-space:nowrap;font-weight:800;">Sign In to Unlock</button>';
-      }
-    } else {
-      if (b.id === 'germany'){
-        statusHtml = '<span class="region-badge active" style="background:#10B981;color:#042220;font-weight:900;">🟢 German Farm</span>';
-        actionBtn = '<button class="btn-enter-region" data-enterfarm="germany" style="padding:8px 14px;font-size:0.82rem;border-radius:10px;">Enter Farm ➔</button>';
-      } else if (b.id === 'bavaria'){
+    if (b.id === 'germany'){
+      statusHtml = '<span class="region-badge active" style="background:#10B981;color:#042220;font-weight:900;">🟢 German Farm</span>';
+      actionBtn = '<button class="btn-enter-region" data-enterfarm="germany" style="padding:8px 14px;font-size:0.82rem;border-radius:10px;">Enter Farm ➔</button>';
+    } else if (b.id === 'bavaria'){
+      if (isAdmin) {
         statusHtml = '<span class="region-badge active" style="background:#10B981;color:#042220;font-weight:900;">🟢 Alpenhof Active</span>';
         actionBtn = '<button class="btn-enter-region" data-enterfarm="bavaria" style="padding:8px 14px;font-size:0.82rem;border-radius:10px;">Enter Alpenhof ➔</button>';
-      } else if (b.id === 'saint_martin'){
+      } else {
+        statusHtml = '<span class="child-friendly-lock" title="🔒 Admin Access Only"><span class="lock-sprout">🔒</span> Admin Only</span>';
+        actionBtn = '<button class="secondary" data-adminrestricted="1" style="padding:8px 14px;font-size:0.78rem;border-radius:10px;opacity:0.6;cursor:not-allowed;">🔒 Admin Only</button>';
+      }
+    } else if (b.id === 'saint_martin'){
+      if (isAdmin) {
         statusHtml = '<span class="region-badge active" style="background:#10B981;color:#042220;font-weight:900;">🟢 Blue Lab Active</span>';
         actionBtn = '<button class="btn-enter-region" data-enterfarm="saint_martin" style="padding:8px 14px;font-size:0.82rem;border-radius:10px;">Enter Blue Lab ➔</button>';
-      } else if (isUnlocked){
-        statusHtml = '<span class="region-badge active" style="background:#10B981;color:#042220;font-weight:900;">🟢 Unlocked</span>';
-        actionBtn = '<button class="primary" data-centerregion="' + b.id + '" style="padding:8px 14px;font-size:0.82rem;border-radius:10px;background:#10B981;color:#042220;font-weight:900;">Center Globe ➔</button>';
       } else {
-        statusHtml = '<span class="child-friendly-lock" title="🌱 Eco-Pass: ' + (b.unlockO2||0).toLocaleString() + ' O₂ required"><span class="lock-sprout">🌱</span>🔒 ' + (b.unlockO2||0).toLocaleString() + ' O₂</span>';
-        actionBtn = '<button class="secondary" data-centerregion="' + b.id + '" style="padding:8px 14px;font-size:0.78rem;border-radius:10px;opacity:0.85;border:1px solid rgba(16,185,129,0.4);color:#E2E8F0;background:rgba(6,40,36,0.6);">Survey ➔</button>';
+        statusHtml = '<span class="child-friendly-lock" title="🔒 Admin Access Only"><span class="lock-sprout">🔒</span> Admin Only</span>';
+        actionBtn = '<button class="secondary" data-adminrestricted="1" style="padding:8px 14px;font-size:0.78rem;border-radius:10px;opacity:0.6;cursor:not-allowed;">🔒 Admin Only</button>';
       }
+    } else if (isAdmin && isUnlocked){
+      statusHtml = '<span class="region-badge active" style="background:#10B981;color:#042220;font-weight:900;">🟢 Unlocked</span>';
+      actionBtn = '<button class="primary" data-centerregion="' + b.id + '" style="padding:8px 14px;font-size:0.82rem;border-radius:10px;background:#10B981;color:#042220;font-weight:900;">Center Globe ➔</button>';
+    } else {
+      statusHtml = '<span class="child-friendly-lock" title="🔒 Base Locked"><span class="lock-sprout">🔒</span> Locked</span>';
+      actionBtn = '<button class="secondary" disabled style="padding:8px 14px;font-size:0.78rem;border-radius:10px;opacity:0.6;cursor:not-allowed;">Locked</button>';
     }
 
     return '<tr style="transition:background 0.15s ease;">' +
@@ -19931,6 +19962,9 @@ function renderRegisteredHomeDashboard(container, state, season){
 
   if (registeredViewTab === 'radar'){
     GlobeEngine.init('globeCanvas');
+    requestAnimationFrame(function(){ GlobeEngine.resize(); });
+    setTimeout(function(){ GlobeEngine.resize(); }, 35);
+    setTimeout(function(){ GlobeEngine.resize(); }, 120);
   }
 }
 
@@ -40368,7 +40402,13 @@ function topbarStatsHtml(){
 
   var header = '<div class="scoreboard-header">' +
     '<div class="scoreboard-title"><span>📊</span> <span>Farm Scoreboard</span></div>' +
-    '<div class="scoreboard-badge">Day ' + gameDay + ' · ' + season.emoji + ' ' + season.name + '</div>' +
+    '<div style="display:inline-flex;align-items:center;gap:6px;">' +
+      '<div class="scoreboard-action-icons" style="display:inline-flex;align-items:center;gap:4px;">' +
+        '<a href="hub/#/feedback" class="scoreboard-icon-btn" title="Player Hub Feedback" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:rgba(46,125,50,0.12);border:1px solid rgba(46,125,50,0.3);text-decoration:none;font-size:0.82rem;line-height:1;transition:transform 0.1s ease;">💬</a>' +
+        '<a href="hub/#/report" class="scoreboard-icon-btn" title="Report a Problem" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:rgba(211,47,47,0.1);border:1px solid rgba(211,47,47,0.3);text-decoration:none;font-size:0.82rem;line-height:1;transition:transform 0.1s ease;">🐞</a>' +
+      '</div>' +
+      '<div class="scoreboard-badge">Day ' + gameDay + ' · ' + season.emoji + ' ' + season.name + '</div>' +
+    '</div>' +
   '</div>';
 
   return header + '<div class="scoreboard-grid">' + cards.join('') + '</div>';
@@ -42440,17 +42480,13 @@ function wireEvents(){
       e.stopPropagation();
       var dest = b.getAttribute('data-enterfarm');
       var isGuest = !apiUser || apiUser.role === 'guest';
-      if (isGuest && dest !== 'germany' && dest !== 'saint_martin'){
-        var authOverlay = document.getElementById('initialAuthOverlay');
-        if (authOverlay){
-          authOverlay.classList.remove('hidden');
-          var card = document.getElementById('initialAuthCard');
-          if (card){
-            card.innerHTML = initialAuthModalHtml();
-            wireInitialAuthEvents();
-          }
-        }
-        showNotification('🔒', 'This biome is locked in Guest Mode. Sign in to unlock and sync!', 'bank', null);
+      var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
+      if ((dest === 'bavaria' || dest === 'saint_martin') && !isAdmin){
+        showNotification('🔒', 'Access Restricted: This base is reserved for Admin (searcho2.online@gmail.com).', 'bank', null);
+        return;
+      }
+      if (dest !== 'germany' && !isAdmin){
+        showNotification('🔒', 'This base is currently locked.', 'bank', null);
         return;
       }
       if (dest === 'bavaria') { window.location.href = 'bavaria/alpenhof.html'; return; }
@@ -42463,6 +42499,12 @@ function wireEvents(){
       }
       switchScreen('farm');
       showNotification('🇩🇪', 'Welcome to your Central European Farm in Germany!', 'bank', null);
+    };
+  });
+  document.querySelectorAll('[data-adminrestricted]').forEach(function(b){
+    b.onclick = function(e){
+      e.stopPropagation();
+      showNotification('🔒', 'Access Restricted: This base is reserved for Admin (searcho2.online@gmail.com).', 'bank', null);
     };
   });
   document.querySelectorAll('[data-openinitialauth]').forEach(function(b){

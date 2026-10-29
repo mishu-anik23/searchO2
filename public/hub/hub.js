@@ -299,6 +299,9 @@
     $$('#nav a').forEach(function (a) {
       if (a.dataset.route === r.id) {
         a.setAttribute('aria-current', 'page');
+        try {
+          a.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        } catch(e){}
       } else {
         a.removeAttribute('aria-current');
       }

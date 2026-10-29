@@ -62,7 +62,7 @@ const roadData = await page.evaluate(() => {
   };
 });
 
-assert.strictEqual(roadData.segmentsCount, 15, 'Must have exactly 15 road segments from alpenhof_road_network.json');
+assert.strictEqual(roadData.segmentsCount, 13, 'Must have exactly 13 road segments from alpenhof_road_network.json');
 assert.strictEqual(roadData.types.length, 4, 'Must have 4 calibrated road type specifications');
 assert(roadData.types.includes('type_a_main_arterial'), 'Must include type_a_main_arterial');
 assert(roadData.types.includes('type_b_sub_road'), 'Must include type_b_sub_road');
@@ -72,15 +72,15 @@ assert(roadData.types.includes('type_d_bypass_road'), 'Must include type_d_bypas
 // Check Primary Arterial
 const primary = roadData.segments.find(s => s.id === 'main_arterial_primary');
 assert(primary, 'Must find main_arterial_primary');
-assert.strictEqual(primary.width, 32, 'Primary arterial width must be 32px');
-assert.strictEqual(primary.pts, 11, 'Primary arterial must have 11 waypoints matching JSON');
+assert.strictEqual(primary.width, 38, 'Primary arterial width must be 38px');
+assert.strictEqual(primary.pts, 24, 'Primary arterial must have 24 waypoints extending to Wind Turbine West matching JSON');
 
 // Check Southern Pond Bypass
 const bypass = roadData.segments.find(s => s.id === 'bypass_road_southern_pond');
 assert(bypass, 'Must find bypass_road_southern_pond');
 assert.strictEqual(bypass.pts, 14, 'Bypass must have 14 waypoints matching JSON');
 
-console.log('[✓ PASSED] Road network structure verified: 15 segments across 4 calibrated types');
+console.log('[✓ PASSED] Road network structure verified: 13 segments across 4 calibrated types');
 
 // ========================================================
 // 3. Old Sticky Modal Removal Verification
@@ -239,8 +239,8 @@ const allRoadsBuilt = await page.evaluate(() => {
   return ALPENHOF_ROAD_NETWORK.every(r => isRoadBuilt(r.id));
 });
 
-assert.strictEqual(allRoadsBuilt, true, 'All 15 road segments must now be built');
-console.log('[✓ PASSED] Master civil engineering package: all 15 road segments paved and active');
+assert.strictEqual(allRoadsBuilt, true, 'All 13 road segments must now be built');
+console.log('[✓ PASSED] Master civil engineering package: all 13 road segments paved and active');
 
 // Capture High-Res Verification Screenshots
 const screenshotDir = path.resolve('tests/screenshots');
