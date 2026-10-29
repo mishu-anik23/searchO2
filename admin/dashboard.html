@@ -2697,10 +2697,15 @@ async function loadUsers(){
       cloudUsers = data.users || [];
     } catch(_){
       try {
-        let endpoint = 'users?select=*&order=created_at.desc&limit=100';
-        if(searchInput) endpoint += `&or=(email.ilike.*${encodeURIComponent(searchInput)}*,display_name.ilike.*${encodeURIComponent(searchInput)}*)`;
-        cloudUsers = await supabaseRest(endpoint);
-      } catch(_){}
+        const direct = await fetch('/api/users?page=1&limit=50' + (searchInput ? '&search='+encodeURIComponent(searchInput) : '')).then(r=>r.json());
+        cloudUsers = direct.users || [];
+      } catch(_2){
+        try {
+          let endpoint = 'users?select=*&order=created_at.desc&limit=100';
+          if(searchInput) endpoint += `&or=(email.ilike.*${encodeURIComponent(searchInput)}*,display_name.ilike.*${encodeURIComponent(searchInput)}*)`;
+          cloudUsers = await supabaseRest(endpoint);
+        } catch(_3){}
+      }
     }
 
     const localUsers = getLocalVaultUsers();
@@ -2783,16 +2788,25 @@ async function loadUsers(){
 
       // Saved Password Cell
       let pwCell = '';
-      const hasPw = u.savedPassword || u.password || u.password_hash || u.passwordHash;
+      const hasPw = u.savedPassword || u.password || u.password_hash || u.passwordHash || u.hasEncryptedPassword;
       if(hasPw){
-        const actualPw = u.savedPassword || u.password || '••••••••';
-        pwCell = `
-          <div class="pw-cell">
-            <span class="badge player" style="font-size:0.68rem">🔐 Saved</span>
-            <span class="mono user-pw-text" id="pw_${escapeHtml(id)}" data-real="${escapeHtml(actualPw)}">••••••••</span>
-            <button class="btn-pw-toggle" onclick="togglePasswordVisibility('${escapeHtml(id)}')">👁️</button>
-          </div>
-        `;
+        const actualPw = u.savedPassword || u.password;
+        if(actualPw){
+          pwCell = `
+            <div class="pw-cell">
+              <span class="badge player" style="font-size:0.68rem">🔐 Saved</span>
+              <span class="mono user-pw-text" id="pw_${escapeHtml(id)}" data-real="${escapeHtml(actualPw)}">••••••••</span>
+              <button class="btn-pw-toggle" onclick="togglePasswordVisibility('${escapeHtml(id)}')">👁️</button>
+            </div>
+          `;
+        } else {
+          pwCell = `
+            <div class="pw-cell" title="Password securely encrypted with salted bcrypt in Supabase PostgreSQL">
+              <span class="badge player" style="font-size:0.68rem;background:#059669;color:#FFF;border-color:#10B981;">🔒 Bcrypt Hash</span>
+              <span class="mono user-pw-text" style="font-size:0.68rem;color:var(--mint);">Supabase Encrypted</span>
+            </div>
+          `;
+        }
       } else {
         pwCell = '<span class="hint" style="font-size:0.75rem">🌐 OAuth Token</span>';
       }

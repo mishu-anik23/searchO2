@@ -465,6 +465,17 @@ tbody tr:last-child td {
   color: var(--mint);
   border: 1px solid rgba(0, 255, 136, 0.2);
 }
+.badge.status-new { background: rgba(255, 94, 126, 0.16); color: var(--coral); border: 1px solid rgba(255, 94, 126, 0.35); }
+.badge.status-seen { background: rgba(56, 189, 248, 0.16); color: var(--blue); border: 1px solid rgba(56, 189, 248, 0.35); }
+.badge.status-resolved { background: rgba(0, 255, 136, 0.16); color: var(--mint); border: 1px solid rgba(0, 255, 136, 0.35); }
+.badge.kind-problem { background: rgba(255, 94, 126, 0.16); color: var(--coral); border: 1px solid rgba(255, 94, 126, 0.3); }
+.badge.kind-chapter { background: rgba(255, 209, 102, 0.16); color: var(--gold); border: 1px solid rgba(255, 209, 102, 0.3); }
+.badge.kind-playtest { background: rgba(0, 229, 255, 0.16); color: var(--cyan); border: 1px solid rgba(0, 229, 255, 0.3); }
+.badge.kind-feedback { background: rgba(0, 255, 136, 0.14); color: var(--mint); border: 1px solid rgba(0, 255, 136, 0.3); }
+.qa-card { background: var(--panel-card); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 10px; }
+.qa-q { font-size: 0.76rem; font-weight: 700; color: var(--mint); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+.qa-a { font-size: 0.9rem; color: var(--text); line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.btn-sm { padding: 5px 10px; font-size: 0.78rem; border-radius: 6px; }
 
 /* Password Cell */
 .pw-cell {
@@ -873,6 +884,7 @@ button.btn-row-inspect:hover {
     <div class="nav-links">
       <button class="active" data-view="overview"><span class="nav-icon">📊</span> Overview</button>
       <button data-view="users"><span class="nav-icon">👥</span> Users & Vault</button>
+      <button data-view="feedback" style="color:var(--mint)"><span class="nav-icon">📬</span> Feedback & Reports</button>
       <button data-view="security"><span class="nav-icon">🔐</span> Admin 2FA & Keys</button>
       <button data-view="live"><span class="nav-icon">🌿</span> Live Players</button>
       <button data-view="map"><span class="nav-icon">🗺️</span> World OSM Map</button>
@@ -1131,6 +1143,65 @@ button.btn-row-inspect:hover {
       </div>
     </section>
 
+    <!-- View: Feedback & Reports -->
+    <section id="view-feedback" class="hidden">
+      <div class="top-header">
+        <div>
+          <h2>📬 Player Feedback &amp; Problem Reports</h2>
+          <div class="meta-sub">Inspect bug reports (10 questions), chapter feedback (8 questions), and playtest reviews (15 questions)</div>
+        </div>
+        <div class="header-actions">
+          <button class="ghost" id="btnExportFeedbackJson">📥 Export JSON</button>
+          <button class="ghost" id="btnSyncFormsDocx" title="Synchronize form schemas from SharePoint docx templates">🔄 Sync Forms</button>
+          <button class="primary" id="btnReloadFeedback">🔄 Reload</button>
+        </div>
+      </div>
+
+      <!-- KPI Stat Cards -->
+      <div class="cards" id="feedbackStatCards"></div>
+
+      <!-- Main Panel with Filters and Table -->
+      <div class="panel">
+        <div class="filter-bar">
+          <input id="feedbackSearch" placeholder="🔍 Search title, feedback, area, build, or email..."/>
+          <select id="feedbackKindFilter">
+            <option value="">All Form Types</option>
+            <option value="problem">🛠️ Problem Reports (10 Qs)</option>
+            <option value="chapter_feedback">📖 Chapter Feedback (8 Qs)</option>
+            <option value="playtest_review">🎮 Playtest Reviews (15 Qs)</option>
+            <option value="feedback">💬 General Feedback</option>
+          </select>
+          <select id="feedbackStatusFilter">
+            <option value="">All Statuses</option>
+            <option value="new">🆕 New</option>
+            <option value="seen">👁️ Seen</option>
+            <option value="resolved">✅ Resolved</option>
+          </select>
+          <button class="ghost" id="btnResetFeedbackFilters">Clear</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Type &amp; Title</th>
+                <th>Area / Chapter</th>
+                <th>Rating / Impact</th>
+                <th>Summary Feedback</th>
+                <th>Build / Device</th>
+                <th>Received</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="feedbackRows">
+              <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-dim)">Click "Feedback &amp; Reports" or "Reload" to fetch telemetry.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- View: Datasource Gateway -->
     <section id="view-datasource" class="hidden">
       <div class="panel">
@@ -1177,6 +1248,73 @@ button.btn-row-inspect:hover {
   </main>
 </div>
 
+
+<!-- ==================== FEEDBACK INSPECTION MODAL ==================== -->
+<div id="modalFeedbackDetail" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:880px">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div id="mfKindIcon" style="font-size:1.8rem">📬</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span id="mfKindBadge" class="badge">Type</span>
+            <span id="mfStatusBadge" class="badge">Status</span>
+            <span class="user-id-pill mono" id="mfId" title="Click to copy">UUID</span>
+          </div>
+          <h2 id="mfTitle" style="font-size:1.15rem;color:#fff">Submission Title</h2>
+        </div>
+      </div>
+      <button class="ghost" id="mfCloseBtn" style="padding:8px 12px;border-radius:50%">✕</button>
+    </div>
+
+    <div class="modal-body" style="max-height:calc(85vh - 140px);overflow-y:auto;padding-right:8px">
+      <!-- Quick Status Action Bar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--panel-card);border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px">
+        <span class="hint" style="font-size:0.8rem">Administrative Workflow:</span>
+        <div style="display:flex;gap:8px">
+          <button class="ghost btn-sm" id="btnStatusNew">🆕 Mark New</button>
+          <button class="ghost btn-sm" id="btnStatusSeen">👁️ Mark Seen</button>
+          <button class="primary btn-sm" id="btnStatusResolved">✅ Mark Resolved</button>
+        </div>
+      </div>
+
+      <!-- Metadata Strip Grid -->
+      <div class="modal-grid-2" style="margin-bottom:16px">
+        <div class="meta-card">
+          <h3>📋 Submission Profile</h3>
+          <div class="meta-item"><span class="meta-label">Received</span><span class="meta-val mono" id="mfCreatedAt">—</span></div>
+          <div class="meta-item"><span class="meta-label">Reply Email</span><span class="meta-val mono" id="mfEmail" style="color:var(--mint)">—</span></div>
+          <div class="meta-item">
+            <span class="meta-label">User / Session ID</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="meta-val mono" id="mfUserId">—</span>
+              <button class="ghost btn-sm" id="btnMfOpenUser360" style="padding:2px 8px;font-size:0.72rem" title="Open 360° User Modal">👤 360° Profile</button>
+            </div>
+          </div>
+          <div class="meta-item"><span class="meta-label">Region / Map</span><span class="meta-val" id="mfRegion">—</span></div>
+        </div>
+        <div class="meta-card">
+          <h3>🎮 System &amp; Game Scope</h3>
+          <div class="meta-item"><span class="meta-label">Game Version / Build</span><span class="meta-val mono" id="mfGameVersion">—</span></div>
+          <div class="meta-item"><span class="meta-label">Area / Chapter</span><span class="meta-val" id="mfAreaChapter">—</span></div>
+          <div class="meta-item"><span class="meta-label">Severity / Impact</span><span class="meta-val" id="mfImpact">—</span></div>
+          <div class="meta-item"><span class="meta-label">Rating / Clarity</span><span class="meta-val" id="mfRating">—</span></div>
+          <div class="meta-item"><span class="meta-label">Device &amp; Browser</span><span class="meta-val" id="mfDeviceBrowser" style="font-size:0.75rem">—</span></div>
+        </div>
+      </div>
+
+      <!-- Structured Q&A Content -->
+      <h3 style="font-size:0.95rem;color:var(--mint);margin-bottom:10px">📝 Survey Responses &amp; Diagnostic Details</h3>
+      <div id="mfQAList"></div>
+
+      <!-- Raw Payload Accordion -->
+      <details style="margin-top:16px;background:var(--panel-card);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 14px">
+        <summary style="cursor:pointer;font-weight:700;font-size:0.8rem;color:var(--text-dim)">View Raw JSON Payload</summary>
+        <pre id="mfRawJson" class="mono" style="margin-top:8px;font-size:0.72rem;background:#030c08;padding:12px;border-radius:8px;overflow-x:auto;max-height:240px;color:#a7f3d0"></pre>
+      </details>
+    </div>
+  </div>
+</div>
 
 <!-- ==================== 360° ROW DETAIL MODAL ==================== -->
 <div id="modalUser360" class="modal-overlay hidden">
@@ -1236,6 +1374,7 @@ button.btn-row-inspect:hover {
         <div class="meta-card">
           <h3>🌿 Farm Infrastructure</h3>
           <div class="meta-item"><span class="meta-label">Farm Identifier</span><span class="meta-val mono" id="mValFarmId">—</span></div>
+          <div class="meta-item"><span class="meta-label">German State &amp; Land</span><span class="meta-val" id="mValGermanState" style="color:var(--gold);font-weight:700">🏔️ Alpenhof (Bavaria)</span></div>
           <div class="meta-item"><span class="meta-label">Farm Level</span><span class="meta-val" id="mValFarmLevel">Level 1 (Seedling)</span></div>
           <div class="meta-item"><span class="meta-label">Active Soil Plots</span><span class="meta-val" id="mValPlots">6 plots</span></div>
           <div class="meta-item"><span class="meta-label">Oxygen Generation</span><span class="meta-val" style="color:var(--mint)" id="mValO2Rate">120 kg O₂ / hr</span></div>
@@ -1904,6 +2043,7 @@ document.querySelectorAll('.nav button[data-view]').forEach(b=>{
     if(b.dataset.view==='privacy') loadPrivacy();
     if(b.dataset.view==='audit') loadAudit();
     if(b.dataset.view==='datasource') renderDataSourceView();
+    if(b.dataset.view==='feedback') loadFeedback();
   };
 });
 
@@ -2086,6 +2226,20 @@ function getLocalVaultUsers(){
     if(u) pushUser(Object.assign({ source: 'Local Session' }, u));
     const g = JSON.parse(localStorage.getItem('searchO2_guest_user') || 'null');
     if(g) pushUser(Object.assign({ role: 'guest', source: 'Guest Trial' }, g));
+    const gp = JSON.parse(localStorage.getItem('searchO2_guest_farm_profile') || 'null');
+    if (gp) {
+      pushUser({
+        id: 'guest_farm_' + (gp.name || 'alpen').toLowerCase(),
+        displayName: 'Guest: ' + (gp.name || 'AlpenO2'),
+        role: 'guest',
+        auth_provider: 'guest',
+        source: 'Guest Trial (' + ((gp.coords && gp.coords.landName) || (gp.coords && gp.coords.region) || 'Alpenhof') + ')',
+        farm_id: gp.name || 'AlpenO2',
+        farmName: gp.name || 'AlpenO2',
+        germanState: (gp.coords && gp.coords.landName) ? (gp.coords.landName + ' · ' + (gp.coords.region || 'Bavaria')) : ((gp.coords && gp.coords.region) || 'Bavaria · Alpenhof Eco-Estate'),
+        coords: gp.coords
+      });
+    }
   } catch(_){}
 
   // 4. Admin account
@@ -2102,6 +2256,433 @@ function getLocalVaultUsers(){
   return users;
 }
 
+/* ==================== Feedback & Reports Loader ==================== */
+let currentFeedbackItems = [];
+let selectedFeedbackItem = null;
+
+async function loadFeedback() {
+  const searchInput = (document.getElementById('feedbackSearch').value || '').trim();
+  const kindFilter = document.getElementById('feedbackKindFilter').value;
+  const statusFilter = document.getElementById('feedbackStatusFilter').value;
+  const tbody = document.getElementById('feedbackRows');
+  const cardsEl = document.getElementById('feedbackStatCards');
+
+  tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text-dim)"><span style="display:inline-block;animation:pulse 1s infinite">📡</span> Fetching feedback telemetry from database...</td></tr>';
+
+  let items = [];
+  let source = 'server';
+
+  try {
+    try {
+      let q = '/feedback?limit=100';
+      if (kindFilter) q += '&kind=' + encodeURIComponent(kindFilter);
+      if (statusFilter) q += '&status=' + encodeURIComponent(statusFilter);
+      if (searchInput) q += '&search=' + encodeURIComponent(searchInput);
+      const res = await api(q);
+      items = (res && res.items) || [];
+      source = 'server';
+    } catch (apiErr) {
+      let ep = 'feedback_submissions?select=*&order=created_at.desc&limit=100';
+      if (kindFilter) ep += '&kind=eq.' + encodeURIComponent(kindFilter);
+      if (statusFilter) ep += '&status=eq.' + encodeURIComponent(statusFilter);
+      if (searchInput) ep += '&or=(title.ilike.*' + encodeURIComponent(searchInput) + '*,message.ilike.*' + encodeURIComponent(searchInput) + '*,email.ilike.*' + encodeURIComponent(searchInput) + '*,game_version.ilike.*' + encodeURIComponent(searchInput) + '*)';
+      items = await supabaseRest(ep);
+      source = 'supabase';
+    }
+  } catch (err) {
+    console.warn('Could not fetch cloud feedback, scanning local backup:', err);
+    try {
+      items = JSON.parse(localStorage.getItem('searchO2_feedback_submissions') || '[]');
+      source = 'local';
+    } catch (_) {
+      items = [];
+    }
+  }
+
+  // Merge local submissions cache so newest hub submissions appear immediately
+  try {
+    const localSaved = JSON.parse(localStorage.getItem('searchO2_feedback_submissions') || '[]');
+    const seenIds = new Set(items.map(x => x.id));
+    localSaved.forEach(ls => {
+      if (!seenIds.has(ls.id)) {
+        if (!kindFilter || ls.kind === kindFilter) {
+          if (!statusFilter || (ls.status || 'new') === statusFilter) {
+            items.unshift(ls);
+            seenIds.add(ls.id);
+          }
+        }
+      }
+    });
+  } catch(_) {}
+
+  currentFeedbackItems = items;
+
+  // Compute KPI HUD Counts
+  const total = items.length;
+  const problems = items.filter(i => i.kind === 'problem').length;
+  const chapters = items.filter(i => i.kind === 'chapter_feedback').length;
+  const playtests = items.filter(i => i.kind === 'playtest_review').length;
+  const pendingNew = items.filter(i => (i.status || 'new') === 'new').length;
+
+  if (cardsEl) {
+    cardsEl.innerHTML = `
+      <div class="card">
+        <div class="card-title">Total Submissions</div>
+        <div class="card-value mono" style="color:var(--mint)">${total}</div>
+        <div class="card-sub">${pendingNew} new unreviewed · ${source.toUpperCase()}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Problem Reports</div>
+        <div class="card-value mono" style="color:var(--coral)">${problems}</div>
+        <div class="card-sub">10 Qs · bugs, glitches, crashes</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Chapter Reviews</div>
+        <div class="card-value mono" style="color:var(--gold)">${chapters}</div>
+        <div class="card-sub">8 Qs · clarity, pacing, progression</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Playtest Reviews</div>
+        <div class="card-value mono" style="color:var(--cyan)">${playtests}</div>
+        <div class="card-sub">15 Qs · deep dive mechanics &amp; NPS</div>
+      </div>
+    `;
+  }
+
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-dim)">No feedback submissions match the active filters.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = items.map(item => {
+    let kindBadge = '<span class="badge kind-feedback">Feedback</span>';
+    if (item.kind === 'problem') kindBadge = '<span class="badge kind-problem">🛠️ Problem</span>';
+    else if (item.kind === 'chapter_feedback') kindBadge = '<span class="badge kind-chapter">📖 Chapter</span>';
+    else if (item.kind === 'playtest_review') kindBadge = '<span class="badge kind-playtest">🎮 Playtest</span>';
+
+    const st = item.status || 'new';
+    let statusBadge = '<span class="badge status-new">🆕 New</span>';
+    if (st === 'seen') statusBadge = '<span class="badge status-seen">👁️ Seen</span>';
+    else if (st === 'resolved') statusBadge = '<span class="badge status-resolved">✅ Resolved</span>';
+
+    let impactHtml = '—';
+    if (item.impact || item.severity) {
+      const imp = item.impact || item.severity;
+      const col = /blocker|completely|broke/i.test(imp) ? 'var(--coral)' : /partially|slow/i.test(imp) ? 'var(--gold)' : 'var(--text-dim)';
+      impactHtml = '<span style="color:' + col + ';font-weight:700">' + escapeHtml(imp) + '</span>';
+    } else if (item.rating || item.nps_recommend !== null) {
+      impactHtml = '<span class="mono" style="color:var(--gold);font-weight:700">⭐ ' + (item.rating || (item.nps_recommend !== null ? item.nps_recommend + '/10 NPS' : '—')) + '</span>';
+    }
+
+    const preview = item.what_happened || item.message || item.trying_to_do || (item.payload && (item.payload.clarityFeedback || item.payload.strongestPart)) || 'No message text';
+    const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString('de-DE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+    const areaChapter = item.chapter ? ('Chapter ' + item.chapter) : (item.area || 'General');
+
+    return `
+      <tr>
+        <td>
+          <div style="font-weight:700;color:#fff;font-size:0.88rem">${escapeHtml(item.title || 'Untitled')}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+            ${kindBadge}
+            <span class="user-id-pill mono" style="font-size:0.68rem">${(item.id || '').slice(0, 8)}</span>
+          </div>
+        </td>
+        <td>
+          <div style="font-weight:600">${escapeHtml(areaChapter)}</div>
+          ${item.region_id ? '<div class="hint" style="font-size:0.72rem">' + escapeHtml(item.region_id) + '</div>' : ''}
+        </td>
+        <td>${impactHtml}</td>
+        <td style="max-width:280px">
+          <div style="font-size:0.82rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(preview)}">
+            ${escapeHtml(preview)}
+          </div>
+          ${item.email ? '<div class="hint" style="font-size:0.72rem;color:var(--mint);margin-top:2px">✉ ' + escapeHtml(item.email) + '</div>' : ''}
+        </td>
+        <td>
+          <div class="mono" style="font-size:0.78rem;color:var(--mint)">${escapeHtml(item.game_version || item.hub_version || 'v1.0')}</div>
+          <div class="hint" style="font-size:0.7rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(item.device_browser || 'Web')}</div>
+        </td>
+        <td style="white-space:nowrap;font-size:0.78rem" class="mono">${dateStr}</td>
+        <td>${statusBadge}</td>
+        <td>
+          <div style="display:flex;gap:6px">
+            <button class="ghost btn-sm" onclick="openFeedbackDetail('${item.id}')">🔍 Inspect</button>
+            <button class="ghost btn-sm" onclick="inspectUser360FromFeedback('${item.id}')" title="Inspect user profile in 360° modal">👤 360°</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function openFeedbackDetail(id) {
+  const item = currentFeedbackItems.find(x => x.id === id);
+  if (!item) return;
+  selectedFeedbackItem = item;
+
+  const modal = document.getElementById('modalFeedbackDetail');
+  if (!modal) return;
+
+  const p = item.payload || {};
+
+  // Header info
+  document.getElementById('mfId').textContent = item.id;
+  document.getElementById('mfTitle').textContent = item.title || (item.kind === 'chapter_feedback' ? 'Chapter ' + item.chapter : 'Submission');
+  document.getElementById('mfCreatedAt').textContent = item.created_at ? new Date(item.created_at).toLocaleString('de-DE') : '—';
+  document.getElementById('mfEmail').textContent = item.email || 'Anonymous / Guest';
+  document.getElementById('mfUserId').textContent = item.user_id || 'Guest / Unsigned';
+  document.getElementById('mfRegion').textContent = item.region_id || p.map || '—';
+  document.getElementById('mfGameVersion').textContent = item.game_version || p.gameVersion || item.hub_version || '—';
+  document.getElementById('mfAreaChapter').textContent = item.chapter ? ('Chapter ' + item.chapter) : (item.area || '—');
+  document.getElementById('mfImpact').textContent = item.impact || item.severity || p.difficulty || '—';
+  document.getElementById('mfRating').textContent = item.rating ? (item.rating + ' / 5') : (item.nps_recommend !== null && item.nps_recommend !== undefined ? item.nps_recommend + ' / 10 NPS' : '—');
+  document.getElementById('mfDeviceBrowser').textContent = item.device_browser || p.deviceBrowser || '—';
+
+  // Badges & Icon
+  let icon = '📬';
+  let kindBadge = '<span class="badge kind-feedback">Feedback</span>';
+  if (item.kind === 'problem') { icon = '🛠️'; kindBadge = '<span class="badge kind-problem">🛠️ Problem Report (10 Qs)</span>'; }
+  else if (item.kind === 'chapter_feedback') { icon = '📖'; kindBadge = '<span class="badge kind-chapter">📖 Chapter Feedback (8 Qs)</span>'; }
+  else if (item.kind === 'playtest_review') { icon = '🎮'; kindBadge = '<span class="badge kind-playtest">🎮 Full Playtest Review (15 Qs)</span>'; }
+
+  document.getElementById('mfKindIcon').textContent = icon;
+  document.getElementById('mfKindBadge').outerHTML = '<span id="mfKindBadge">' + kindBadge + '</span>';
+
+  const st = item.status || 'new';
+  let statusBadge = '<span class="badge status-new">🆕 New</span>';
+  if (st === 'seen') statusBadge = '<span class="badge status-seen">👁️ Seen</span>';
+  else if (st === 'resolved') statusBadge = '<span class="badge status-resolved">✅ Resolved</span>';
+  document.getElementById('mfStatusBadge').outerHTML = '<span id="mfStatusBadge">' + statusBadge + '</span>';
+
+  // Structured Q&A rendering based on kind
+  const qaContainer = document.getElementById('mfQAList');
+  let qaHtml = '';
+
+  if (item.kind === 'problem') {
+    const questions = [
+      ['Q1. Short title for the problem', item.title || p.title],
+      ['Q2. Where did the problem happen?', item.area || p.area],
+      ['Q4. What were you trying to do?', item.trying_to_do || p.tryingToDo],
+      ['Q5. What happened?', item.what_happened || p.whatHappened || p.what || item.message],
+      ['Q6. What did you expect to happen?', item.expected || p.expected],
+      ['Q7. Can you reproduce the problem?', item.reproduce || p.reproduce],
+      ['Q8. How much did the problem affect your play?', item.impact || item.severity || p.impact || p.severity],
+      ['Q9. Which device and browser were you using?', item.device_browser || p.deviceBrowser],
+      ['Q10. Optional email address', item.email || p.email],
+      ['Diagnostics & technical telemetry', item.diagnostics || p.diagnostics]
+    ];
+    if (item.game_version || p.gameVersion) {
+      questions.splice(1, 0, ['Game version or build', item.game_version || p.gameVersion]);
+    }
+    qaHtml = questions.map(([q, a]) => `
+      <div class="qa-card">
+        <div class="qa-q">${escapeHtml(q)}</div>
+        <div class="qa-a">${a ? escapeHtml(String(a)) : '<span style="color:var(--text-muted);font-style:italic">Not answered</span>'}</div>
+      </div>
+    `).join('');
+  } else if (item.kind === 'chapter_feedback') {
+    const compAns = p.completedWithOther || (p.completedOther ? ('Other: ' + p.completedOther) : (item.completed || p.completed));
+    const confAns = p.confusionSourceWithOther || (p.confusionSourceOther ? ('Other: ' + p.confusionSourceOther) : (item.confusion_source || p.confusionSource));
+    const diffAns = p.difficultyRating ? (p.difficultyRating + ' / 5 (' + (item.difficulty || p.difficulty) + ')') : (item.difficulty || p.difficulty);
+    const questions = [
+      ['Q1. Which chapter are you reviewing from Base Farm?', item.chapter || p.chapter],
+      ['Q2. Were you able to complete this chapter?', compAns],
+      ['Q3. How clear was what you needed to do? (1-5)', (item.rating || p.clarityRating) ? (item.rating || p.clarityRating) + ' / 5 ⭐' : null],
+      ['Q4. How did the difficulty feel? (1-5)', diffAns],
+      ['Q5. Main source of confusion or frustration', confAns],
+      ['Q6. What happened, or what would make it clearer?', item.message || p.clarityFeedback],
+      ['Q7. Did you want to continue playing afterward?', item.continue_intent || p.continueIntent]
+    ];
+    if (item.email || p.email) {
+      questions.push(['Optional email address', item.email || p.email]);
+    }
+    if (item.game_version || p.gameVersion) {
+      questions.unshift(['Game version or build', item.game_version || p.gameVersion]);
+    }
+    qaHtml = questions.map(([q, a]) => `
+      <div class="qa-card">
+        <div class="qa-q">${escapeHtml(q)}</div>
+        <div class="qa-a">${a ? escapeHtml(String(a)) : '<span style="color:var(--text-muted);font-style:italic">Not answered</span>'}</div>
+      </div>
+    `).join('');
+  } else if (item.kind === 'playtest_review') {
+    const visAns = p.visualElementImprovementWithOther || (p.visualElementImprovementOther ? ('Other: ' + p.visualElementImprovementOther) : (item.area || p.visualElementImprovement));
+    const questions = [
+      ['Q1. How often do you play simulation or management games?', p.genreFrequency],
+      ['Q2. Ease of learning (1-5)', p.rateEaseOfLearning],
+      ['Q4. Navigation (1-5)', p.rateNavigation],
+      ['Q5. Visual readability (1-5)', p.rateVisualReadability],
+      ['Q6. Clarity of objectives (1-5)', p.rateClarityOfObjectives],
+      ['Q7. Understanding of O₂ system (1-5)', p.rateUnderstandingO2],
+      ['Q8. Enjoyment (1-5)', p.rateEnjoyment],
+      ['Q9. Game stability (1-5)', p.rateGameStability],
+      ['Q10. Did any visual element make game difficult to use?', p.visualDifficulty],
+      ['Q11. Which visual element most needs improvement?', visAns]
+    ];
+    if (item.email || p.email) {
+      questions.push(['Optional email address', item.email || p.email]);
+    }
+    if (p.strongestPart || p.changeOneThing || p.disappointmentLevel || item.nps_recommend !== null) {
+      if (p.strongestPart) questions.push(['Strongest part of SearchO2', p.strongestPart]);
+      if (p.changeOneThing) questions.push(['Change one thing', p.changeOneThing]);
+      if (p.disappointmentLevel) questions.push(['Disappointment level', p.disappointmentLevel]);
+      if (item.nps_recommend !== null && item.nps_recommend !== undefined) questions.push(['Recommend (NPS 0-10)', item.nps_recommend + ' / 10']);
+    }
+    qaHtml = questions.map(([q, a]) => `
+      <div class="qa-card">
+        <div class="qa-q">${escapeHtml(q)}</div>
+        <div class="qa-a">${a !== null && a !== undefined && a !== '' ? escapeHtml(String(a)) : '<span style="color:var(--text-muted);font-style:italic">Not answered</span>'}</div>
+      </div>
+    `).join('');
+  } else {
+    qaHtml = `
+      <div class="qa-card">
+        <div class="qa-q">Topic / Scope</div>
+        <div class="qa-a">${escapeHtml(item.topic || 'General Feedback')}</div>
+      </div>
+      <div class="qa-card">
+        <div class="qa-q">Message Content</div>
+        <div class="qa-a">${escapeHtml(item.message || 'No text provided')}</div>
+      </div>
+    `;
+  }
+
+  qaContainer.innerHTML = qaHtml;
+  document.getElementById('mfRawJson').textContent = JSON.stringify(item, null, 2);
+
+  modal.classList.remove('hidden');
+}
+
+function inspectUser360FromFeedback(feedbackId) {
+  const item = currentFeedbackItems.find(x => x.id === feedbackId);
+  if (!item) return;
+  const p = item.payload || {};
+  const uid = item.user_id || p.userId || p.user_id || (item.email ? 'usr_' + item.email.split('@')[0] : ('guest_' + item.id.slice(0, 8)));
+  const existing = state.cachedUsers.find(x => (x.id && x.id === uid) || (x.email && x.email === item.email));
+  const fallbackUser = existing || {
+    id: uid,
+    displayName: p.userName || (item.email ? item.email.split('@')[0] : 'Guest Explorer'),
+    email: item.email || null,
+    role: (uid && uid.startsWith('usr_')) ? 'user' : 'guest',
+    auth_provider: p.authProvider || (item.email ? 'email' : 'guest'),
+    created_at: item.created_at,
+    farm_id: p.farmName || 'AlpenO2',
+    farmName: p.farmName || 'AlpenO2',
+    germanState: p.landName ? (p.landName + ' · ' + (p.stateName || 'Bavaria')) : (item.region_id === 'bavaria' ? 'Bavaria · Alpenhof Eco-Estate' : (item.region_id || 'Bavaria · Alpenhof Eco-Estate')),
+    device_browser: item.device_browser || p.deviceBrowser,
+    source: 'Feedback Telemetry (' + (item.kind || 'submission') + ')'
+  };
+  inspectUser360(fallbackUser.id, fallbackUser);
+}
+
+async function updateFeedbackItemStatus(id, newStatus) {
+  try {
+    try {
+      await api('/feedback/' + id + '/status', { method: 'PATCH', body: { status: newStatus } });
+    } catch (_) {
+      await supabaseRest('feedback_submissions?id=eq.' + id, {
+        method: 'PATCH',
+        body: { status: newStatus }
+      });
+    }
+  } catch (err) {
+    console.warn('Backend/Supabase status update failed, saving to local store:', err.message);
+  }
+
+  // Update item in currentFeedbackItems and local backup
+  const itemInList = currentFeedbackItems.find(x => x.id === id);
+  if (itemInList) itemInList.status = newStatus;
+  try {
+    const local = JSON.parse(localStorage.getItem('searchO2_feedback_submissions') || '[]');
+    const idx = local.findIndex(x => x.id === id);
+    if (idx >= 0) {
+      local[idx].status = newStatus;
+      localStorage.setItem('searchO2_feedback_submissions', JSON.stringify(local));
+    }
+  } catch (_) {}
+
+  if (selectedFeedbackItem && selectedFeedbackItem.id === id) {
+    selectedFeedbackItem.status = newStatus;
+    openFeedbackDetail(id);
+  }
+  loadFeedback();
+}
+
+// Wire modal status action buttons and close
+document.addEventListener('DOMContentLoaded', () => {
+  const mfClose = document.getElementById('mfCloseBtn');
+  if (mfClose) mfClose.onclick = () => document.getElementById('modalFeedbackDetail').classList.add('hidden');
+
+  const btnNew = document.getElementById('btnStatusNew');
+  if (btnNew) btnNew.onclick = () => selectedFeedbackItem && updateFeedbackItemStatus(selectedFeedbackItem.id, 'new');
+
+  const btnSeen = document.getElementById('btnStatusSeen');
+  if (btnSeen) btnSeen.onclick = () => selectedFeedbackItem && updateFeedbackItemStatus(selectedFeedbackItem.id, 'seen');
+
+  const btnResolved = document.getElementById('btnStatusResolved');
+  if (btnResolved) btnResolved.onclick = () => selectedFeedbackItem && updateFeedbackItemStatus(selectedFeedbackItem.id, 'resolved');
+
+  const btnReload = document.getElementById('btnReloadFeedback');
+  if (btnReload) btnReload.onclick = () => loadFeedback();
+
+  const btnSyncForms = document.getElementById('btnSyncFormsDocx');
+  if (btnSyncForms) {
+    btnSyncForms.onclick = async () => {
+      btnSyncForms.disabled = true;
+      btnSyncForms.textContent = '⏳ Syncing...';
+      try {
+        const base = (state.apiBase || '/api').replace(/\/$/, '');
+        const res = await fetch(base + '/forms/sync/local', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(state.token ? { 'Authorization': 'Bearer ' + state.token } : {})
+          }
+        });
+        const data = await res.json();
+        if (data && data.ok) {
+          const list = (data.syncedForms || []).map(f => '• ' + f.formId + ' (v' + f.version + ', ' + f.questionsCount + ' Qs)').join('\n');
+          alert('✅ Forms successfully synchronized from Word documents!\n\n' + list);
+          loadFeedback();
+        } else {
+          alert('❌ Sync failed: ' + (data && data.error ? data.error : 'Unknown error'));
+        }
+      } catch (err) {
+        alert('❌ Error contacting sync endpoint: ' + err.message);
+      } finally {
+        btnSyncForms.disabled = false;
+        btnSyncForms.textContent = '🔄 Sync Forms';
+      }
+    };
+  }
+
+  const btnReset = document.getElementById('btnResetFeedbackFilters');
+  if (btnReset) btnReset.onclick = () => {
+    document.getElementById('feedbackSearch').value = '';
+    document.getElementById('feedbackKindFilter').value = '';
+    document.getElementById('feedbackStatusFilter').value = '';
+    loadFeedback();
+  };
+
+  const fSearch = document.getElementById('feedbackSearch');
+  if (fSearch) fSearch.oninput = debounce(() => loadFeedback(), 300);
+
+  const fKind = document.getElementById('feedbackKindFilter');
+  if (fKind) fKind.onchange = () => loadFeedback();
+
+  const fStatus = document.getElementById('feedbackStatusFilter');
+  if (fStatus) fStatus.onchange = () => loadFeedback();
+
+  const btnExport = document.getElementById('btnExportFeedbackJson');
+  if (btnExport) btnExport.onclick = () => {
+    const blob = new Blob([JSON.stringify(currentFeedbackItems, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'searchO2_feedback_telemetry_' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+  };
+});
+
 /* ---------- Users Directory Loader ---------- */
 async function loadUsers(){
   const searchInput = (document.getElementById('userSearch').value || '').trim().toLowerCase();
@@ -2116,10 +2697,15 @@ async function loadUsers(){
       cloudUsers = data.users || [];
     } catch(_){
       try {
-        let endpoint = 'users?select=*&order=created_at.desc&limit=100';
-        if(searchInput) endpoint += `&or=(email.ilike.*${encodeURIComponent(searchInput)}*,display_name.ilike.*${encodeURIComponent(searchInput)}*)`;
-        cloudUsers = await supabaseRest(endpoint);
-      } catch(_){}
+        const direct = await fetch('/api/users?page=1&limit=50' + (searchInput ? '&search='+encodeURIComponent(searchInput) : '')).then(r=>r.json());
+        cloudUsers = direct.users || [];
+      } catch(_2){
+        try {
+          let endpoint = 'users?select=*&order=created_at.desc&limit=100';
+          if(searchInput) endpoint += `&or=(email.ilike.*${encodeURIComponent(searchInput)}*,display_name.ilike.*${encodeURIComponent(searchInput)}*)`;
+          cloudUsers = await supabaseRest(endpoint);
+        } catch(_3){}
+      }
     }
 
     const localUsers = getLocalVaultUsers();
@@ -2202,16 +2788,25 @@ async function loadUsers(){
 
       // Saved Password Cell
       let pwCell = '';
-      const hasPw = u.savedPassword || u.password || u.password_hash || u.passwordHash;
+      const hasPw = u.savedPassword || u.password || u.password_hash || u.passwordHash || u.hasEncryptedPassword;
       if(hasPw){
-        const actualPw = u.savedPassword || u.password || '••••••••';
-        pwCell = `
-          <div class="pw-cell">
-            <span class="badge player" style="font-size:0.68rem">🔐 Saved</span>
-            <span class="mono user-pw-text" id="pw_${escapeHtml(id)}" data-real="${escapeHtml(actualPw)}">••••••••</span>
-            <button class="btn-pw-toggle" onclick="togglePasswordVisibility('${escapeHtml(id)}')">👁️</button>
-          </div>
-        `;
+        const actualPw = u.savedPassword || u.password;
+        if(actualPw){
+          pwCell = `
+            <div class="pw-cell">
+              <span class="badge player" style="font-size:0.68rem">🔐 Saved</span>
+              <span class="mono user-pw-text" id="pw_${escapeHtml(id)}" data-real="${escapeHtml(actualPw)}">••••••••</span>
+              <button class="btn-pw-toggle" onclick="togglePasswordVisibility('${escapeHtml(id)}')">👁️</button>
+            </div>
+          `;
+        } else {
+          pwCell = `
+            <div class="pw-cell" title="Password securely encrypted with salted bcrypt in Supabase PostgreSQL">
+              <span class="badge player" style="font-size:0.68rem;background:#059669;color:#FFF;border-color:#10B981;">🔒 Bcrypt Hash</span>
+              <span class="mono user-pw-text" style="font-size:0.68rem;color:var(--mint);">Supabase Encrypted</span>
+            </div>
+          `;
+        }
       } else {
         pwCell = '<span class="hint" style="font-size:0.75rem">🌐 OAuth Token</span>';
       }
@@ -2280,8 +2875,8 @@ document.getElementById('btnResetFilters').onclick = ()=>{
 };
 
 /* ---------- 360° Row Visualizer Modal Controller ---------- */
-async function inspectUser360(id){
-  const u = state.cachedUsers.find(x => x.id === id) || { id, display_name: 'Player', role: 'user' };
+async function inspectUser360(id, overrideUser){
+  const u = overrideUser || state.cachedUsers.find(x => x.id === id) || { id, display_name: 'Player', role: 'user' };
   state.activeUserDetail = u;
 
   const modal = document.getElementById('modalUser360');
@@ -2327,6 +2922,8 @@ async function inspectUser360(id){
 
   // Tab 2: Farm
   document.getElementById('mValFarmId').textContent = u.farm_id || ('farm_' + (u.id||'').slice(0,6));
+  const stEl = document.getElementById('mValGermanState');
+  if (stEl) stEl.textContent = u.germanState || ((u.coords && u.coords.landName) ? (u.coords.landName + ' · ' + (u.coords.region || 'Bavaria')) : '🏔️ Alpenhof (Bavaria)');
   const level = u.farm_level || u.level || 1;
   document.getElementById('mValFarmLevel').textContent = 'Level ' + level + ' (Ecosystem Pioneer)';
   document.getElementById('mValPlots').textContent = (6 + (level * 2)) + ' Organic Plots';
