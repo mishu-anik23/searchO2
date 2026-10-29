@@ -1796,9 +1796,9 @@
     });
   }
 
-  function showHomeOverlay() {
+  function showHomeOverlay(force) {
     var params = (typeof window !== 'undefined' && window.location && window.location.search) ? new URLSearchParams(window.location.search) : null;
-    var forceHome = params && (params.get('mode') === 'home' || params.has('home') || params.get('screen') === 'home');
+    var forceHome = !!force || (params && (params.get('mode') === 'home' || params.has('home') || params.get('screen') === 'home'));
 
     if (isGuestMode() && !forceHome) {
       if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.openWelcomeOrProgressModal === 'function') {
@@ -1943,6 +1943,9 @@
     if (!av) return;
     persistAvatar(av);
     hideHomeOverlay();
+    try {
+      localStorage.removeItem('searchO2_chapter_tour_done');
+    } catch(e) {}
 
     if (typeof switchScreen === 'function') {
       try {
@@ -3052,6 +3055,105 @@
     }
   }
 
+  function getSuccessfulExplorations() {
+    if (typeof state !== 'undefined' && state && typeof state.successfulExplorations === 'number') {
+      return state.successfulExplorations;
+    }
+    try {
+      var raw = localStorage.getItem('searchO2_successful_explorations');
+      if (raw !== null) {
+        var n = parseInt(raw, 10);
+        if (!isNaN(n) && n >= 0) {
+          if (typeof state !== 'undefined' && state) state.successfulExplorations = n;
+          return n;
+        }
+      }
+    } catch (e) {}
+    return 0;
+  }
+
+  function incrementSuccessfulExplorations() {
+    var cur = getSuccessfulExplorations();
+    var next = cur + 1;
+    try {
+      localStorage.setItem('searchO2_successful_explorations', String(next));
+    } catch (e) {}
+    if (typeof state !== 'undefined' && state) {
+      state.successfulExplorations = next;
+      if (typeof requestSave === 'function') requestSave();
+    }
+    return next;
+  }
+
+  function avatarLeaveFarm(isSuccessful, onDone) {
+    var el = tourState.walkerEl || document.getElementById('s2PlayerAvatar');
+    if (!el) {
+      if (isSuccessful) {
+        var cnt = incrementSuccessfulExplorations();
+        if (typeof render === 'function') render();
+        var topbar = document.getElementById('topbarStats');
+        if (topbar && typeof window.topbarStatsHtml === 'function') topbar.innerHTML = window.topbarStatsHtml();
+      }
+      if (onDone) onDone();
+      return;
+    }
+
+    var gate = gateEntryPoint();
+    var curLeft = parseFloat(el.style.left);
+    var curTop = parseFloat(el.style.top);
+    if (isNaN(curLeft) || isNaN(curTop)) {
+      var rect = el.getBoundingClientRect();
+      var scene = document.getElementById('fieldScene');
+      if (scene) {
+        var sRect = scene.getBoundingClientRect();
+        curLeft = ((rect.left - sRect.left) / sRect.width) * 100;
+        curTop = ((rect.top - sRect.top) / sRect.height) * 100;
+      } else {
+        curLeft = 50;
+        curTop = 50;
+      }
+    }
+    var from = { left: curLeft, top: curTop };
+
+    var av = tourState.avatar || (typeof state !== 'undefined' && state && state.playerAvatar) || loadPersistedAvatar() || AVATAR_ROSTER[0];
+    var avName = av ? (av.adjective ? (av.adjective + ' ' + av.name) : av.name) : 'Explorer';
+
+    if (isSuccessful) {
+      if (typeof showNotification === 'function') {
+        showNotification('👋', avName + ' has finished exploring and is leaving through the gate!', 'task');
+      }
+    }
+
+    var dist = Math.hypot(gate.left - curLeft, gate.top - curTop);
+    var duration = Math.max(1800, Math.min(3400, Math.round(dist * 65)));
+
+    walkPath(el, [from, gate], duration, function () {
+      el.style.transition = 'opacity 0.75s ease, transform 0.75s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%, -85%) scale(0.55)';
+
+      setTimeout(function () {
+        if (el && el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+        tourState.walkerEl = null;
+
+        if (isSuccessful) {
+          var count = incrementSuccessfulExplorations();
+          if (typeof showNotification === 'function') {
+            showNotification('🏆', avName + ' completed the exploration! Total successful tours: ' + count, 'achievement');
+          }
+          if (typeof render === 'function') render();
+          var statsEl = document.getElementById('topbarStats');
+          if (statsEl && typeof window.topbarStatsHtml === 'function') {
+            statsEl.innerHTML = window.topbarStatsHtml();
+          }
+        }
+        if (onDone) onDone();
+      }, 800);
+    });
+  }
+
   function endTour(skipped) {
     tourState.active = false;
     tourState.skipped = !!skipped;
@@ -3101,9 +3203,15 @@
     if (!skipped) {
       setTimeout(function () {
         startPostExploration20sCooldown(function () {
-          triggerJuteTarpDiggingSequence();
+          triggerJuteTarpDiggingSequence(function () {
+            avatarLeaveFarm(true);
+          });
         });
       }, 700);
+    } else {
+      setTimeout(function () {
+        avatarLeaveFarm(false);
+      }, 400);
     }
   }
 
@@ -3174,9 +3282,16 @@
     }
   }
 
+  var activePostExplorationCallback = null;
+
   function dismissUnlockModal() {
     var modal = document.getElementById('s2UnlockCelebrationModal');
     if (modal) modal.classList.add('hidden');
+    if (activePostExplorationCallback) {
+      var cb = activePostExplorationCallback;
+      activePostExplorationCallback = null;
+      cb();
+    }
   }
 
   function startPostExploration20sCooldown(onReadyToWalk) {
@@ -3187,13 +3302,23 @@
 
     renderScoutCountdownFloater(remaining, 'tarp');
     var timer = null;
+    var finished = false;
 
-    showUnlockCelebrationModal(remaining, function () {
+    function finish() {
+      if (finished) return;
+      finished = true;
       if (timer) clearInterval(timer);
       tourState.postTourCooldownActive = false;
+      activePostExplorationCallback = null;
       hideScoutCountdownFloater();
+      var modal = document.getElementById('s2UnlockCelebrationModal');
+      if (modal) modal.classList.add('hidden');
       if (onReadyToWalk) onReadyToWalk();
-    });
+    }
+
+    activePostExplorationCallback = finish;
+
+    showUnlockCelebrationModal(remaining, finish);
 
     var fill = document.getElementById('s2UnlockFill');
     var secSpan = document.getElementById('s2UnlockSec');
@@ -3205,11 +3330,7 @@
       if (fill) fill.style.width = ((remaining / 20) * 100) + '%';
 
       if (remaining <= 0) {
-        clearInterval(timer);
-        tourState.postTourCooldownActive = false;
-        hideScoutCountdownFloater();
-        dismissUnlockModal();
-        if (onReadyToWalk) onReadyToWalk();
+        finish();
       }
     }, 1000);
   }
@@ -3647,6 +3768,11 @@
       }
       return;
     }
+    try {
+      if (localStorage.getItem('searchO2_chapter_tour_done') === '1') {
+        return;
+      }
+    } catch(e) {}
     var av = loadPersistedAvatar();
     if (!av) return;
     tourState.avatar = av;
@@ -3769,6 +3895,12 @@
     spawnWaterParticles: spawnWaterParticles,
     spawnSeedParticles: spawnSeedParticles,
     spawnHarvestParticles: spawnHarvestParticles,
+    getPersistedAvatar: function () {
+      return loadPersistedAvatar() || AVATAR_ROSTER[0];
+    },
+    getSuccessfulExplorations: getSuccessfulExplorations,
+    incrementSuccessfulExplorations: incrementSuccessfulExplorations,
+    avatarLeaveFarm: avatarLeaveFarm,
     Globe: HomeAvatarGlobe,
     REGIONS: REGIONS,
     AVATAR_ROSTER: AVATAR_ROSTER

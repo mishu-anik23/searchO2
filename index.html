@@ -11786,6 +11786,19 @@ function freshState(){
     exploredChapterObjects: {},
     exploredChapters: {},
     allChaptersExplored: false,
+    successfulExplorations: (function(){
+      try {
+        var _c = localStorage.getItem('searchO2_successful_explorations');
+        return _c !== null ? (parseInt(_c, 10) || 0) : 0;
+      } catch(e) { return 0; }
+    })(),
+    playerAvatar: (function(){
+      try {
+        var _a = localStorage.getItem('searchO2_selected_avatar');
+        if (_a) return JSON.parse(_a);
+      } catch(e) {}
+      return { id: 'av_rio_boy', name: 'Rio', adjective: 'Curious' };
+    })(),
     ch1CompletedModalShown: false,
     spoilageWarningShown: false,
     spoilageWarningActive: false,
@@ -19744,7 +19757,26 @@ function renderRegisteredHomeDashboard(container, state, season){
   var totalO2 = state ? state.totalO2.toFixed(1) : '0.0';
   var treasury = state ? state.money.toFixed(2) : '10000.00';
   var carbonKg = ((state ? state.totalO2 : 0) * 0.42).toFixed(1);
-  var curAvName = (state && state.playerAvatar && state.playerAvatar.name) ? state.playerAvatar.name : 'Explorer';
+  var activeAvatar = (state && state.playerAvatar && state.playerAvatar.name) ? state.playerAvatar : null;
+  if (!activeAvatar && typeof SearchO2HomeAvatar !== 'undefined' && typeof SearchO2HomeAvatar.getPersistedAvatar === 'function') {
+    activeAvatar = SearchO2HomeAvatar.getPersistedAvatar();
+  }
+  if (!activeAvatar) {
+    try {
+      var rawAv = localStorage.getItem('searchO2_selected_avatar');
+      if (rawAv) activeAvatar = JSON.parse(rawAv);
+    } catch(e) {}
+  }
+  if (!activeAvatar) {
+    activeAvatar = { id: 'av_rio_boy', name: 'Rio', adjective: 'Curious' };
+  }
+  var curAvName = activeAvatar.name || 'Rio';
+  var succCount = (state && typeof state.successfulExplorations === 'number') ? state.successfulExplorations : (function(){
+    try {
+      var _c = localStorage.getItem('searchO2_successful_explorations');
+      return _c !== null ? (parseInt(_c, 10) || 0) : 0;
+    } catch(e) { return 0; }
+  })();
 
   var topbarHtml = '<div class="region-topbar">' +
     '<div class="region-logo">🌍 searchO2 <span class="tag" style="background:linear-gradient(135deg, #1B5E20, #004D40);color:#A7FFEB;padding:3px 10px;border-radius:10px;font-size:0.72rem;letter-spacing:0.05em;font-weight:800;">GLOBAL ECO-COMMAND PORTAL</span></div>' +
@@ -19752,17 +19784,20 @@ function renderRegisteredHomeDashboard(container, state, season){
       '<button class="corner-toggle-btn fullscreen-btn corner-icon-only-btn" id="btnToggleFullscreenRegion" title="Toggle Fullscreen Mode" onclick="toggleFullscreenMode()" style="width:36px;height:36px;min-width:36px;padding:0;font-size:1rem;">' +
         '<span class="fullscreen-btn-icon">⛶</span>' +
       '</button>' +
-      '<button class="primary" onclick="if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.showHomeOverlay()" style="padding:5px 12px;font-size:0.75rem;border-radius:10px;background:#2E7D32;color:#FFF;border:1px solid #81C784;font-weight:800;cursor:pointer;" title="Choose or switch your 3D Isometric Avatar">👤 ' + curAvName + '</button>' +
+      '<button class="primary" onclick="if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.showHomeOverlay(true)" style="padding:5px 12px;font-size:0.75rem;border-radius:10px;background:#2E7D32;color:#FFF;border:1px solid #81C784;font-weight:800;cursor:pointer;" title="Choose or switch your 3D Isometric Avatar">👤 ' + curAvName + '</button>' +
       '<div class="user-stat-chip guest-farm-dock-chip" onclick="if(window.openGuestFarmSetupModal)window.openGuestFarmSetupModal();" style="cursor:pointer;background:linear-gradient(135deg,rgba(16,185,129,0.25),rgba(6,56,54,0.4));border:1px solid #10B981;color:#A7F3D0;display:inline-flex;align-items:center;gap:6px;" title="Custom 3D OpenStreetMap Location &amp; Farm Banner (Click to edit)">' +
         '<span>🏡</span>' +
         '<strong style="color:#FDE047;">' + ((typeof getGuestFarmProfile==='function') ? getGuestFarmProfile().name : 'SearchO2') + '</strong>' +
         '<span style="color:#38BDF8;font-size:0.68rem;font-family:monospace;">📍 ' + ((typeof getGuestFarmProfile==='function') ? (getGuestFarmProfile().coords.lat.toFixed(2)+'°N, '+getGuestFarmProfile().coords.lon.toFixed(2)+'°E') : '50.11°N, 8.68°E') + '</span>' +
       '</div>' +
       '<div class="user-stat-chip">🌟 ' + userDisplay + ' <span style="color:#2E7D32;font-size:0.7rem;font-weight:800;">(Master Custodian)</span></div>' +
+      '<div class="user-stat-chip" title="Successful Farm Explorations Completed">🏆 ' + succCount + ' Tours</div>' +
       '<div class="user-stat-chip" title="Net Carbon Offset">🌱 ' + carbonKg + ' kg CO₂</div>' +
       '<div class="user-stat-chip">🍃 ' + totalO2 + ' O₂</div>' +
       '<div class="user-stat-chip">💶 €' + treasury + '</div>' +
       '<a href="hub/index.html" class="region-hub-btn" style="padding:6px 12px;font-size:0.75rem;border-radius:12px;background:linear-gradient(135deg,#059669,#10B981);color:#fff;text-decoration:none;font-weight:800;display:inline-flex;align-items:center;gap:4px;" title="Learning Hub & Encyclopedia">📚 Hub</a>' +
+      '<a href="hub/#/feedback" class="region-hub-btn" style="padding:6px 10px;font-size:0.75rem;border-radius:12px;background:rgba(46,125,50,0.2);color:#A7F3D0;border:1px solid #10B981;text-decoration:none;font-weight:800;display:inline-flex;align-items:center;gap:4px;" title="Player Hub Feedback">💬 Feedback</a>' +
+      '<a href="hub/#/report" class="region-hub-btn" style="padding:6px 10px;font-size:0.75rem;border-radius:12px;background:rgba(211,47,47,0.2);color:#FCA5A5;border:1px solid #EF4444;text-decoration:none;font-weight:800;display:inline-flex;align-items:center;gap:4px;" title="Report a Problem">🐞 Report</a>' +
       '<button class="btn-enter-region" data-enterfarm="germany" style="width:auto;padding:6px 14px;font-size:0.75rem;border-radius:12px;margin:0;">🚜 Farm View ➔</button>' +
       '<button class="secondary" data-authlogout="1" style="padding:5px 10px;font-size:0.75rem;border-radius:10px;border:1px solid rgba(44,74,50,0.3);cursor:pointer;font-weight:700;">Sign Out</button>' +
     '</div>' +
@@ -21570,6 +21605,23 @@ function loadState(){
         if (state.lawnMowing===undefined) state.lawnMowing = false;
         if (state.lawnMowHours===undefined) state.lawnMowHours = 0;
         if (state.loan===undefined) state.loan = null;
+        if (state.successfulExplorations === undefined) {
+          try {
+            var rawExpl = localStorage.getItem('searchO2_successful_explorations');
+            state.successfulExplorations = rawExpl !== null ? (parseInt(rawExpl, 10) || 0) : 0;
+          } catch(e) {
+            state.successfulExplorations = 0;
+          }
+        }
+        if (!state.playerAvatar) {
+          try {
+            var rawAv = localStorage.getItem('searchO2_selected_avatar');
+            if (rawAv) state.playerAvatar = JSON.parse(rawAv);
+          } catch(e) {}
+          if (!state.playerAvatar) {
+            state.playerAvatar = { id: 'av_rio_boy', name: 'Rio', adjective: 'Curious' };
+          }
+        }
 
         if (!state.buildings) state.buildings = {};
         if (!state.buildings.road) state.buildings.road = {built:false,building:false,buildHours:0};
@@ -40309,14 +40361,40 @@ function topbarStatsHtml(){
   var farmRegion = (guestProf && guestProf.coords && guestProf.coords.region) ? guestProf.coords.region.split('·')[0].trim() : 'Hesse';
   if (farmRegion === 'Bavaria') farmRegion = 'Hesse';
 
+  var activeAvatar = (state && state.playerAvatar && state.playerAvatar.name) ? state.playerAvatar : null;
+  if (!activeAvatar && typeof SearchO2HomeAvatar !== 'undefined' && typeof SearchO2HomeAvatar.getPersistedAvatar === 'function') {
+    activeAvatar = SearchO2HomeAvatar.getPersistedAvatar();
+  }
+  if (!activeAvatar) {
+    try {
+      var rawAv = localStorage.getItem('searchO2_selected_avatar');
+      if (rawAv) activeAvatar = JSON.parse(rawAv);
+    } catch(e) {}
+  }
+  if (!activeAvatar) {
+    activeAvatar = { id: 'av_rio_boy', name: 'Rio', adjective: 'Curious' };
+  }
+  var avName = activeAvatar.name || 'Rio';
+  var avAdj = activeAvatar.adjective || 'Curious';
+
+  var succCount = 0;
+  if (typeof SearchO2HomeAvatar !== 'undefined' && typeof SearchO2HomeAvatar.getSuccessfulExplorations === 'function') {
+    succCount = SearchO2HomeAvatar.getSuccessfulExplorations();
+  } else if (state && typeof state.successfulExplorations === 'number') {
+    succCount = state.successfulExplorations;
+  } else {
+    try {
+      var _c = localStorage.getItem('searchO2_successful_explorations');
+      if (_c !== null) succCount = parseInt(_c, 10) || 0;
+    } catch(e) {}
+  }
+
   var cards = [
-    ((!apiUser || apiUser.role === 'guest') ? (
-      '<div class="kid-stat-card kid-card-action" onclick="if(window.openGuestFarmSetupModal)window.openGuestFarmSetupModal();" style="cursor:pointer;border:1.5px solid #10B981;background:rgba(16,185,129,0.15);" title="Your Custom Basic Farm Coordinates &amp; Banner (Click to edit on 3D OpenStreetMap)">' +
-        '<span class="kid-stat-icon">🏡</span>' +
-        '<span class="kid-stat-val" style="color:#FDE047;">' + farmTitle + '</span>' +
-        '<span class="kid-stat-lbl">📍 ' + farmRegion + '</span>' +
-      '</div>'
-    ) : ''),
+    '<div class="kid-stat-card kid-card-action" onclick="if(window.openGuestFarmSetupModal)window.openGuestFarmSetupModal();" style="cursor:pointer;border:1.5px solid #10B981;background:rgba(16,185,129,0.15);" title="Your Custom Farm Coordinates &amp; Banner (Click to edit on 3D OpenStreetMap)">' +
+      '<span class="kid-stat-icon">🏡</span>' +
+      '<span class="kid-stat-val" style="color:#FDE047;">' + farmTitle + '</span>' +
+      '<span class="kid-stat-lbl">📍 ' + farmRegion + '</span>' +
+    '</div>',
 
     '<div class="kid-stat-card kid-card-money" title="Farm Treasury Balance">' +
       '<span class="kid-stat-icon">🪙</span>' +
@@ -40366,11 +40444,29 @@ function topbarStatsHtml(){
       '<span class="kid-stat-lbl">Journey</span>' +
     '</div>',
 
-    '<div class="kid-stat-card kid-card-action" onclick="if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.showHomeOverlay()" style="cursor:pointer;" title="Your 3D Avatar Explorer · Click to Change">' +
+    '<div class="kid-stat-card kid-card-action" onclick="if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.showHomeOverlay(true)" style="cursor:pointer;" title="Your 3D Avatar Explorer (Click to Change) · Successful Tours: ' + succCount + '">' +
       '<span class="kid-stat-icon">👤</span>' +
-      '<span class="kid-stat-val">' + (state.playerAvatar ? state.playerAvatar.name : 'Explorer') + '</span>' +
-      '<span class="kid-stat-lbl">' + (state.playerAvatar ? state.playerAvatar.adjective : '3D Avatar') + '</span>' +
+      '<span class="kid-stat-val">' + avName + '</span>' +
+      '<span class="kid-stat-lbl">' + avAdj + ' · 🏆 ' + succCount + '</span>' +
     '</div>',
+
+    '<div class="kid-stat-card kid-card-rep" title="Total Successful Farm Explorations Completed">' +
+      '<span class="kid-stat-icon">🏆</span>' +
+      '<span class="kid-stat-val">' + succCount + ' Tours</span>' +
+      '<span class="kid-stat-lbl">Explored</span>' +
+    '</div>',
+
+    '<a href="hub/#/feedback" class="kid-stat-card kid-card-action" style="cursor:pointer;text-decoration:none;" title="Player Hub Feedback &amp; Suggestions">' +
+      '<span class="kid-stat-icon">💬</span>' +
+      '<span class="kid-stat-val" style="color:#059669;font-weight:900;">Feedback</span>' +
+      '<span class="kid-stat-lbl">Suggestions</span>' +
+    '</a>',
+
+    '<a href="hub/#/report" class="kid-stat-card kid-card-action" style="cursor:pointer;text-decoration:none;" title="Report a Problem or Technical Bug">' +
+      '<span class="kid-stat-icon">🐞</span>' +
+      '<span class="kid-stat-val" style="color:#DC2626;font-weight:900;">Report</span>' +
+      '<span class="kid-stat-lbl">Bug Tracker</span>' +
+    '</a>',
 
     '<div class="kid-stat-card kid-card-action" data-navscreen="region_select" title="Click to view Planetary Biome Globe">' +
       '<span class="kid-stat-icon">🗺️</span>' +
@@ -41397,6 +41493,7 @@ window.openTaskMasterplanModal = openTaskMasterplanModal;
 window.buildingSpotHtml = buildingSpotHtml;
 window.storageSpotHtml = storageSpotHtml;
 window.topbarStatsHtml = topbarStatsHtml;
+window.renderRegisteredHomeDashboard = renderRegisteredHomeDashboard;
 window.OBJECT_CHAPTER_UNLOCKS = OBJECT_CHAPTER_UNLOCKS;
 window.CHAPTER_CHALLENGES = CHAPTER_CHALLENGES;
 window.MOTIVATIONAL_SPEECHES = MOTIVATIONAL_SPEECHES;
