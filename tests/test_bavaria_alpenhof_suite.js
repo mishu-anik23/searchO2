@@ -80,7 +80,7 @@ const assert = require('assert');
       chaptersCount: CHAPTERS.length
     };
   });
-  assert.strictEqual(farmConfig.sitesCount, 24, `Expected 24 sites, found ${farmConfig.sitesCount}`);
+  assert.strictEqual(farmConfig.sitesCount, 25, `Expected 25 sites, found ${farmConfig.sitesCount}`);
   assert.strictEqual(farmConfig.orchardsCount, 6, `Expected 6 orchard plots, found ${farmConfig.orchardsCount}`);
   assert.strictEqual(farmConfig.vegBedsCount, 4, `Expected 4 vegetable quadrant beds (2x2), found ${farmConfig.vegBedsCount}`);
   assert.strictEqual(farmConfig.totalVegPositions, 48, `Expected 48 total vegetable plant positions, found ${farmConfig.totalVegPositions}`);
@@ -97,6 +97,7 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('farm_shed').x, y: findSite('farm_shed').y }, { x: 933, y: 237 }, 'farm_shed coordinates');
   assert.deepStrictEqual({ x: findSite('solar').x, y: findSite('solar').y }, { x: 770, y: 330 }, 'solar farm coordinates stretched left towards orchard plots and down towards veg garden');
   assert.deepStrictEqual({ x: findSite('veg').x, y: findSite('veg').y }, { x: 920, y: 525 }, 'hexagonal vegetable garden coordinates stretched 60px down to bottom meadow');
+  assert.deepStrictEqual({ x: findSite('silo').x, y: findSite('silo').y }, { x: 685, y: 470 }, 'bavarian grain silo coordinates between vegetable garden and orchard plots');
   assert.deepStrictEqual({ x: findSite('flower_oval').x, y: findSite('flower_oval').y }, { x: 835, y: 755 }, 'triangular 3-oval flower garden coordinates');
   assert.deepStrictEqual({ x: findSite('bbq').x, y: findSite('bbq').y }, { x: 1760, y: 380 }, 'hilltop tourist bbq coordinates with marker placed behind kiosk roof');
   assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 630, y: 870 }, 'pond coordinates bottom-left meadow');
