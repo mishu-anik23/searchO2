@@ -80,7 +80,7 @@ const assert = require('assert');
       chaptersCount: CHAPTERS.length
     };
   });
-  assert.strictEqual(farmConfig.sitesCount, 26, `Expected 26 sites, found ${farmConfig.sitesCount}`);
+  assert.strictEqual(farmConfig.sitesCount, 28, `Expected 28 sites, found ${farmConfig.sitesCount}`);
   assert.strictEqual(farmConfig.orchardsCount, 6, `Expected 6 orchard plots, found ${farmConfig.orchardsCount}`);
   assert.strictEqual(farmConfig.vegBedsCount, 4, `Expected 4 vegetable quadrant beds (2x2), found ${farmConfig.vegBedsCount}`);
   assert.strictEqual(farmConfig.totalVegPositions, 48, `Expected 48 total vegetable plant positions, found ${farmConfig.totalVegPositions}`);
@@ -92,14 +92,16 @@ const assert = require('assert');
 
   // Verify calibrated coordinates from bavaria-bg-plan.jpg
   const findSite = id => farmConfig.sites.find(s => s.id === id);
-  assert.deepStrictEqual({ x: findSite('wind_w').x, y: findSite('wind_w').y }, { x: 316, y: 156 }, 'wind_w coordinates');
+  assert.deepStrictEqual({ x: findSite('wind_w').x, y: findSite('wind_w').y }, { x: 300, y: 135 }, 'wind_w coordinates');
   assert.deepStrictEqual({ x: findSite('bess').x, y: findSite('bess').y }, { x: 710, y: 216 }, 'bess coordinates');
   assert.deepStrictEqual({ x: findSite('farm_shed').x, y: findSite('farm_shed').y }, { x: 933, y: 237 }, 'farm_shed coordinates');
   assert.deepStrictEqual({ x: findSite('solar').x, y: findSite('solar').y }, { x: 770, y: 330 }, 'solar farm coordinates stretched left towards orchard plots and down towards veg garden');
   assert.deepStrictEqual({ x: findSite('veg').x, y: findSite('veg').y }, { x: 920, y: 525 }, 'hexagonal vegetable garden coordinates stretched 60px down to bottom meadow');
   assert.deepStrictEqual({ x: findSite('silo').x, y: findSite('silo').y }, { x: 650, y: 499 }, 'bavarian grain silo coordinates on two-corner plot side of vegetable garden');
-  assert.deepStrictEqual({ x: findSite('cold_storage').x, y: findSite('cold_storage').y }, { x: 180, y: 945 }, 'bavarian dairy cold storage coordinates along bypass road opposite pond shore');
-  assert.deepStrictEqual({ x: findSite('flower_oval').x, y: findSite('flower_oval').y }, { x: 760, y: 745 }, 'triangular 3-oval flower garden coordinates');
+  assert.deepStrictEqual({ x: findSite('cold_storage').x, y: findSite('cold_storage').y }, { x: 185, y: 945 }, 'bavarian dairy cold storage coordinates along bypass road opposite pond shore');
+  assert.deepStrictEqual({ x: findSite('flower_oval').x, y: findSite('flower_oval').y }, { x: 750, y: 740 }, 'triangular 3-oval flower garden coordinates');
+  assert.deepStrictEqual({ x: findSite('flower_stand').x, y: findSite('flower_stand').y }, { x: 800, y: 695 }, 'alpenblumen flower stand coordinates');
+  assert.deepStrictEqual({ x: findSite('veg_stand').x, y: findSite('veg_stand').y }, { x: 850, y: 635 }, 'alpenhof veg stand coordinates');
   assert.deepStrictEqual({ x: findSite('bbq').x, y: findSite('bbq').y }, { x: 1760, y: 380 }, 'hilltop tourist bbq coordinates with marker placed behind kiosk roof');
   assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 630, y: 870 }, 'pond coordinates bottom-left meadow');
   assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1640, y: 560 }, 'restaurant coordinates at corner of road network with timber deck & grape juice silo');
@@ -110,7 +112,7 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('dairy_plant').x, y: findSite('dairy_plant').y }, { x: 180, y: 725 }, 'dairy processing plant coordinates in bottom left meadow');
   assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1435, y: 380 }, 'vineyard coordinates terrace on hill upslope');
   assert.deepStrictEqual({ x: findSite('bridge').x, y: findSite('bridge').y }, { x: 1625, y: 230 }, 'bridge coordinates to distant hilltop turbine');
-  assert.deepStrictEqual({ x: findSite('wind_e').x, y: findSite('wind_e').y }, { x: 1765, y: 125 }, 'wind_e coordinates on farm hilltop');
+  assert.deepStrictEqual({ x: findSite('wind_e').x, y: findSite('wind_e').y }, { x: 1780, y: 160 }, 'wind_e coordinates on farm hilltop');
   console.log('[✓ PASSED] Strict coordinate mapping verified against bavaria-bg-plan.jpg');
 
   // 5. Dismiss Welcome Banner and verify Intro Why Modal
