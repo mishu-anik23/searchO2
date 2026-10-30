@@ -73,7 +73,7 @@ assert(roadData.types.includes('type_d_bypass_road'), 'Must include type_d_bypas
 const primary = roadData.segments.find(s => s.id === 'main_arterial_primary');
 assert(primary, 'Must find main_arterial_primary');
 assert.strictEqual(primary.width, 38, 'Primary arterial width must be 38px');
-assert.strictEqual(primary.pts, 24, 'Primary arterial must have 24 waypoints extending to Wind Turbine West matching JSON');
+assert.strictEqual(primary.pts, 25, 'Primary arterial must have 25 waypoints extending to Wind Turbine West matching JSON');
 
 // Check Southern Pond Bypass
 const bypass = roadData.segments.find(s => s.id === 'bypass_road_southern_pond');
