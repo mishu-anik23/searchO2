@@ -496,7 +496,7 @@ const SITES = [
   {id:'solar',       x:770,  y:330, icon:'☀️', title:'Agrivoltaic Solar Farm',      sub:'4×4 Photovoltaic Array · 16 Modules Faced to Cow Shed', cat:'energy', color:'#FFD54F', action:'solar'},
   {id:'veg',         x:920,  y:525, icon:'🥦', title:'Hexagonal Vegetable Garden',  sub:'48-Plot Polyculture Bauerngarten · 2×2 Beds · Heirloom Crops', cat:'veg', color:'#76FF03', action:'veg'},
   {id:'silo',        x:650,  y:499, markerX:650, markerY:375, icon:'🏛️', title:'Bavarian Heritage Grain Silos', sub:'Twin Volumetric Timber Silo Towers · Upper & Lower Meadow Facing Corner', cat:'trade', color:'#FFA000', action:'silo'},
-  {id:'cold_storage', x:185, y:945, markerX:185, markerY:885, icon:'❄️', title:'Subterranean Bavarian Dairy Cold Storage', sub:'Autonomous Geothermal Cryo-Vault · Bypass Roadside Opposite Pond Shore', cat:'trade', color:'#00E5FF', action:'cold_storage'},
+  {id:'cold_storage', x:215, y:945, markerX:215, markerY:885, icon:'❄️', title:'Subterranean Bavarian Dairy Cold Storage', sub:'Autonomous Geothermal Cryo-Vault · Bypass Roadside Opposite Pond Shore', cat:'trade', color:'#00E5FF', action:'cold_storage'},
   {id:'flower_oval', x:750,  y:740, icon:'🌸', title:'Triangular 3-Oval Flower Garden', sub:'Volumetric 3D Floral Terraces · Bee Hotel & Honey Bank', cat:'flower', color:'#FF4081', action:'flower'},
   {id:'bbq',         x:1760, y:380, markerX:1765, markerY:235, icon:'🍖', title:'Hilltop Tourist BBQ & Food Stand', sub:'Panoramic Jausenstation · 4 Fire Pits & 7 Park Benches', cat:'trade', color:'#FF7043', action:'bbq'},
   {id:'pond',      x:630,  y:870, icon:'💧', title:'Living Waters Alpine Lake System', sub:'2 Joined Glacial Basins · Fish Hatchery & Duck Aviary', cat:'water', color:'#29B6F6', action:'pond'},
@@ -509,7 +509,7 @@ const SITES = [
   {id:'vineyard',  x:1435, y:380, icon:'🍇', title:'Bavarian Heritage Vineyard',    sub:'3×3 Terraced Beds · 108 Estate Grapevines',cat:'fruit', color:'#7B1FA2', action:'vine'},
   {id:'bridge',    x:1625, y:230, icon:'🌉', title:'Alpine Wooden Overbridge',      sub:'Connected Timber Walking Bridge to Distant Hilltop Turbine', cat:'infra', color:'#8D6E63', action:'bridge'},
   {id:'flower_stand', x:800, y:695, markerX:800, markerY:655, icon:'💐', title:'Alpenblumen-Standl · Alm-Blumenhütte', sub:'Hand-Tied Alpine Bouquets · Edelweiß, Enzian & Alpenrose', cat:'flower', color:'#FF4081', action:'flower_stand'},
-  {id:'veg_stand',    x:850, y:635, markerX:850, markerY:595, icon:'🧺', title:'Alpenhof Gemüsestandl · Hofladen',    sub:'Farm-Fresh Polyculture Produce · Pumpkins, Asparagus & Zucchini', cat:'veg', color:'#76FF03', action:'veg_stand'},
+  {id:'veg_stand',    x:995, y:640, markerX:995, markerY:595, icon:'🧺', title:'Alpenhof Gemüsestandl · Hofladen',    sub:'Farm-Fresh Polyculture Produce · Pumpkins, Asparagus & Zucchini', cat:'veg', color:'#76FF03', action:'veg_stand'},
   {id:'cattle',    x:1360, y:255, icon:'🐄', title:'Cattle Pasture Enclosure',      sub:'Hillside Post-&-Rail · Simmental Dairy, Sheep & Goats', cat:'livestock', color:'#8D6E63', action:'cattle'},
   {id:'wind_w',    x:300,  y:135, markerX:260, markerY:145, icon:'🌬️', title:'Wind Turbine West',            sub:'High-Ridge Turbine · Forest Clearing',   cat:'energy',    color:'#00E5FF', action:'wind'},
   {id:'wind_e',    x:1780, y:160, markerX:1825, markerY:175, icon:'🌬️', title:'Wind Turbine East',            sub:'Alpine Distant Hilltop Turbine · Panoramic Vista', cat:'energy', color:'#00E5FF', action:'wind'}
@@ -1291,7 +1291,7 @@ const ALPENHOF_ROAD_NETWORK = [
     "waypoints": [
       [
         645,
-        665
+        658
       ],
       [
         625,
@@ -1756,20 +1756,20 @@ const ALPENHOF_ROAD_NETWORK = [
         665
       ],
       [
-        295,
-        690
+        255,
+        685
       ],
       [
-        295,
-        735
+        210,
+        700
       ],
       [
-        245,
-        735
+        170,
+        685
       ],
       [
-        245,
-        690
+        160,
+        665
       ],
       [
         270,
@@ -1923,20 +1923,31 @@ function drawMilkTransportTruck(ctx, time) {
   const loopPeriod = 36;
   const tNorm = ((time / loopPeriod) % 1.0);
 
+  // Entry angle when arriving at bypass terminus [270, 665] from [265, 830]
+  const lastSegDx = pts[pts.length - 1][0] - pts[pts.length - 2][0];
+  const lastSegDy = pts[pts.length - 1][1] - pts[pts.length - 2][1];
+  const entryAngle = Math.atan2(lastSegDy, lastSegDx); // ~ -1.54 rad (heading north)
+
   let x, y, angle;
   if (tNorm <= 0.46) {
+    // Forward trip along bypass road
     const prog = tNorm / 0.46;
     const pt = getBypassPolylinePoint(pts, prog);
     x = pt.x; y = pt.y; angle = pt.angle;
   } else if (tNorm <= 0.54) {
+    // Smooth turnaround loop in the paved dairy apron in front of the factory
     const turnProg = (tNorm - 0.46) / 0.08;
-    const endPt = pts[pts.length - 1];
-    const loopAngle = turnProg * Math.PI;
-    const radius = 24;
-    x = endPt[0] - Math.sin(loopAngle) * radius;
-    y = endPt[1] + (1 - Math.cos(loopAngle)) * (radius * 0.7);
-    angle = (pts[pts.length - 1].angle || 0) + loopAngle;
+    const sweepAngle = turnProg * Math.PI;
+    const endPt = pts[pts.length - 1]; // [270, 665]
+
+    // Turnaround loop swinging west into the dairy factory apron [210..270, 665..695]
+    const loopRadiusX = 28;
+    const loopRadiusY = 18;
+    x = endPt[0] - Math.sin(sweepAngle) * loopRadiusX;
+    y = endPt[1] + (1 - Math.cos(sweepAngle)) * 0.5 * loopRadiusY;
+    angle = entryAngle + sweepAngle;
   } else {
+    // Return trip along bypass road (smoothly reversed heading)
     const prog = 1.0 - ((tNorm - 0.54) / 0.46);
     const pt = getBypassPolylinePoint(pts, prog);
     x = pt.x; y = pt.y;
@@ -1947,11 +1958,13 @@ function drawMilkTransportTruck(ctx, time) {
   ctx.translate(x, y);
   ctx.rotate(angle);
 
+  // Ground drop shadow
   ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
   ctx.beginPath();
   ctx.ellipse(0, 5, 24, 9, 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // Wheels
   ctx.fillStyle = '#212121';
   [-13, -5, 9].forEach(wx => {
     ctx.fillRect(wx - 3, 3, 6, 5);
@@ -1959,19 +1972,25 @@ function drawMilkTransportTruck(ctx, time) {
     ctx.fillStyle = '#212121';
   });
 
+  // Cylindrical Stainless Steel Milk Tanker Trailer
   isoBox(ctx, -7, -2, 24, 12, 10, '#ECEFF1', '#CFD8DC', '#B0BEC5', '#78909C');
   ctx.strokeStyle = '#90A4AE'; ctx.lineWidth = 1;
   ctx.strokeRect(-16, -11, 4, 8);
   ctx.strokeRect(-2, -11, 4, 8);
   ctx.fillStyle = '#78909C';
   ctx.beginPath(); ctx.ellipse(-7, -12, 3.5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+  // "ALPEN-MILCH" Blue livery band
   ctx.fillStyle = '#0288D1';
   ctx.fillRect(-17, -7, 20, 3.2);
 
+  // Bavarian Alpine White & Blue Cab
   isoBox(ctx, 11, 0, 10, 11, 11, '#E1F5FE', '#0288D1', '#01579B', '#0277BD');
+  // Windscreen & Headlights
   ctx.fillStyle = '#00E5FF'; ctx.fillRect(11, -9, 4, 5);
   ctx.fillStyle = '#FFF59D'; ctx.fillRect(15, -3, 2, 2);
+  // Chrome Front Grille
   ctx.fillStyle = '#B0BEC5'; ctx.fillRect(15, -1, 1.5, 3.2);
+  // Amber Flashing Roof Beacon
   const flash = Math.sin(time * 10) > 0;
   ctx.fillStyle = flash ? '#FFB300' : '#FF6F00';
   ctx.beginPath(); ctx.arc(10, -12, 1.8, 0, Math.PI * 2); ctx.fill();
@@ -3398,22 +3417,22 @@ function drawJuiceBar(ctx, cx, cy, built){
   ctx.translate(cx, cy);
   ctx.globalAlpha = built ? 1 : 0.50;
 
-  // 1. Natural Ground Shadow beneath 3D Deck (NO light-colored oval base!)
+  // 1. Natural Ground Shadow beneath 3D Deck
   ctx.fillStyle = 'rgba(15, 30, 15, 0.36)';
-  ctx.beginPath(); ctx.ellipse(0, 28, 96, 36, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 28, 98, 38, 0, 0, Math.PI * 2); ctx.fill();
 
-  // 2. CLASSICAL WEATHERED LARCH TIMBER GASTRONOMY TERRACE (Tasteful, authentic dimensions)
-  isoBox(ctx, 0, 16, 188, 64, 8, '#8D6E63', '#6D4C41', '#4E342E');
+  // 2. GRAND WEATHERED LARCH TIMBER GASTRONOMY TERRACE
+  isoBox(ctx, 0, 16, 192, 66, 8, '#8D6E63', '#6D4C41', '#4E342E');
 
   if (built) {
     // Front Promenade Deck
-    isoBox(ctx, 0, 48, 194, 38, 6, '#A1887F', '#8D6E63', '#6D4C41');
+    isoBox(ctx, 0, 48, 196, 38, 6, '#A1887F', '#8D6E63', '#6D4C41');
     ctx.strokeStyle = 'rgba(62, 39, 35, 0.45)'; ctx.lineWidth = 1.0;
     for (let px = -92; px <= 92; px += 10) {
       ctx.beginPath(); ctx.moveTo(px, 16); ctx.lineTo(px, 66); ctx.stroke();
     }
 
-    // Direct Timber Promenade Steps with matching natural road/soil backing
+    // Direct Timber Promenade Steps connecting smoothly to the road
     ctx.fillStyle = '#5D4037';
     ctx.fillRect(-45, 68, 90, 22);
     [[-40, 70, 80, 6], [-44, 76, 88, 6], [-48, 82, 96, 7]].forEach(([sx, sy, sw, sh]) => {
@@ -3433,7 +3452,7 @@ function drawJuiceBar(ctx, cx, cy, built){
     });
 
     // Seating: 3 Traditional Oak Cider Barrel Stehtische
-    [-52, 0, 52].forEach(bx => {
+    [-54, 0, 54].forEach(bx => {
       ctx.fillStyle = '#6D4C41'; ctx.beginPath(); ctx.ellipse(bx, 42, 6.0, 3.8, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#5D4037'; ctx.beginPath(); ctx.ellipse(bx, 40, 5.0, 3.2, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = (bx === 0) ? '#4A148C' : ((bx < 0) ? '#F57C00' : '#2E7D32');
@@ -3444,7 +3463,7 @@ function drawJuiceBar(ctx, cx, cy, built){
     });
 
     // 2 Bavarian Parasols
-    [[-40, 12, '#1565C0', '#FFFFFF'], [40, 12, '#2E7D32', '#FFFFFF']].forEach(([ux, uy, c1, c2]) => {
+    [[-42, 12, '#1565C0', '#FFFFFF'], [42, 12, '#2E7D32', '#FFFFFF']].forEach(([ux, uy, c1, c2]) => {
       ctx.strokeStyle = '#4E342E'; ctx.lineWidth = 2.0;
       ctx.beginPath(); ctx.moveTo(ux, uy + 6); ctx.lineTo(ux, uy - 24); ctx.stroke();
       ctx.fillStyle = c1; ctx.beginPath(); ctx.arc(ux, uy - 24, 15, Math.PI, 0); ctx.fill();
@@ -3453,23 +3472,86 @@ function drawJuiceBar(ctx, cx, cy, built){
     });
   }
 
-  // 3. CENTRAL RUSTIC TIMBER JUICE KIOSK WITH AUTHENTIC CARVED BRAND TAG
-  isoBox(ctx, 0, 2, 70, 34, 24, '#6D4C41', '#5D4037', '#4E342E', '#3E2723');
+  // ================= 3 DISTINCT VISUAL BRANDED COUNTERS =================
 
-  // Prominent Carved Wooden Brand Signboard (Brand Tag)
+  // --- COUNTER 1 (WEST / LEFT): OBST- & APFELMOSTEREI (Tree Fruit Juice & Cider) ---
+  ctx.save();
+  ctx.translate(-58, -4);
+  isoBox(ctx, 0, 0, 50, 28, 18, '#6D4C41', '#5D4037', '#4E342E');
+  // Vibrant Forest Green Timber Roof
+  isoRoof(ctx, 0, -18, 54, 32, 0, 12, '#2E7D32', '#1B5E20', '#33691E');
+  // Branded Counter Sign
+  ctx.fillStyle = '#DCEDC8'; ctx.fillRect(-22, -6, 44, 5.5);
+  ctx.strokeStyle = '#2E7D32'; ctx.lineWidth = 0.8; ctx.strokeRect(-22, -6, 44, 5.5);
+  ctx.fillStyle = '#1B5E20'; ctx.font = 'bold 5.0px Nunito'; ctx.textAlign = 'center';
+  ctx.fillText('🍏 Obst-Mosterei', 0, -2);
+  if (built) {
+    // Mechanical Apple Cider Press with Oak Barrel & Brass Tap
+    ctx.fillStyle = '#5D4037'; ctx.beginPath(); ctx.ellipse(-14, -8, 6, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFD54F'; ctx.fillRect(-15, -9, 2.5, 2.5); // Brass tap
+    // Hopper with red & golden apples
+    ctx.fillStyle = '#D32F2F'; ctx.beginPath(); ctx.arc(12, -9, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FBC02D'; ctx.beginPath(); ctx.arc(15, -7, 3, 0, Math.PI * 2); ctx.fill();
+    // Glass carafe of golden cloudy apple cider
+    ctx.fillStyle = '#F57F17'; ctx.fillRect(-3, -8, 3, 5);
+  }
+  ctx.restore();
+
+  // --- COUNTER 2 (CENTER): TRAUBENMOST-PAVILLON (DEDICATED PURE GRAPE JUICE ONLY!) ---
+  ctx.save();
+  ctx.translate(0, -12);
+  // Elevated regal pavilion
+  isoBox(ctx, 0, 0, 56, 32, 22, '#5D4037', '#4E342E', '#3E2723');
+  // Regal Royal Purple Roof
+  isoRoof(ctx, 0, -22, 60, 36, 0, 16, '#6A1B9A', '#4A148C', '#311B92');
+  // Center Counter Banner
+  ctx.fillStyle = '#FFD54F'; ctx.fillRect(-24, -6, 48, 6);
+  ctx.strokeStyle = '#4A148C'; ctx.lineWidth = 1.0; ctx.strokeRect(-24, -6, 48, 6);
+  ctx.fillStyle = '#4A148C'; ctx.font = 'bold 5.8px Nunito'; ctx.textAlign = 'center';
+  ctx.fillText('🍇 Traubenmost', 0, -1.5);
+  if (built) {
+    // Large Stainless & Oak Grape Must Tank with Ruby Sight Gauge
+    isoBox(ctx, 0, -12, 22, 16, 20, '#ECEFF1', '#CFD8DC', '#B0BEC5', '#78909C');
+    // Ruby purple grape juice sight gauge
+    ctx.fillStyle = '#212121'; ctx.fillRect(-2, -24, 4, 16);
+    ctx.fillStyle = '#7B1FA2'; ctx.fillRect(-1.2, -20, 2.4, 12);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.fillRect(-1.2, -20, 0.8, 12);
+    // Double brass serving taps
+    ctx.fillStyle = '#FFD54F';
+    ctx.fillRect(-7, -4, 3, 3); ctx.fillRect(4, -4, 3, 3);
+    // Carafes of rich purple red and golden white estate grape juice
+    ctx.fillStyle = '#4A148C'; ctx.fillRect(-8, 1, 2.6, 5);
+    ctx.fillStyle = '#FFF59D'; ctx.fillRect(5, 1, 2.6, 5);
+  }
+  ctx.restore();
+
+  // --- COUNTER 3 (EAST / RIGHT): ALPENBEEREN- & GARTENKELTEREI (Plot Berry Juices) ---
+  ctx.save();
+  ctx.translate(58, -4);
+  isoBox(ctx, 0, 0, 50, 28, 18, '#6D4C41', '#5D4037', '#4E342E');
+  // Rich Berry Crimson Roof
+  isoRoof(ctx, 0, -18, 54, 32, 0, 12, '#AD1457', '#880E4F', '#4A148C');
+  // Berry Counter Sign
+  ctx.fillStyle = '#F8BBD0'; ctx.fillRect(-22, -6, 44, 5.5);
+  ctx.strokeStyle = '#880E4F'; ctx.lineWidth = 0.8; ctx.strokeRect(-22, -6, 44, 5.5);
+  ctx.fillStyle = '#880E4F'; ctx.font = 'bold 5.0px Nunito'; ctx.textAlign = 'center';
+  ctx.fillText('🍓 Beeren-Kelterei', 0, -2);
+  if (built) {
+    // Decanters of blueberry and raspberry nectar
+    ctx.fillStyle = '#C2185B'; ctx.fillRect(-12, -8, 3.5, 6);
+    ctx.fillStyle = '#1A237E'; ctx.fillRect(-6, -8, 3.5, 6);
+    // Berry basket
+    ctx.fillStyle = '#8D6E63'; ctx.fillRect(8, -8, 8, 5);
+    ctx.fillStyle = '#E91E63'; ctx.beginPath(); ctx.arc(12, -8, 3, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+
+  // OVERHEAD PROMINENT TRADITIONAL BRAND SIGNBOARD (Brand Tag)
   ctx.fillStyle = '#271206';
-  ctx.beginPath(); ctx.roundRect(-34, -18, 68, 14, 3); ctx.fill();
-  ctx.strokeStyle = '#FFB300'; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(-42, -48, 84, 14, 3); ctx.fill();
+  ctx.strokeStyle = '#FFB300'; ctx.lineWidth = 1.4; ctx.stroke();
   ctx.fillStyle = '#FFD54F'; ctx.font = 'bold 7.5px Nunito'; ctx.textAlign = 'center';
-  ctx.fillText('🍎 HOF-MOSTEREI 🍏', 0, -8);
-
-  isoRoof(ctx, 0, -22, 78, 42, 0, 15, '#795548', '#5D4037', '#8D6E63');
-
-  // Left & Right Wings
-  isoBox(ctx, -58, 8, 42, 26, 18, '#5D4037', '#4E342E', '#3E2723');
-  isoRoof(ctx, -58, -10, 48, 32, 0, 11, '#8D6E63', '#6D4C41', '#5D4037');
-  isoBox(ctx, 58, 8, 42, 26, 18, '#5D4037', '#4E342E', '#3E2723');
-  isoRoof(ctx, 58, -10, 48, 32, 0, 11, '#8D6E63', '#6D4C41', '#5D4037');
+  ctx.fillText('🍎 HOF-MOSTEREI & SAFT-BAR 🍇', 0, -38.5);
 
   ctx.restore();
 }
@@ -4926,80 +5008,114 @@ function drawDairyPlant(ctx, cx, cy, built, time){
    Positioned Prominently Along Southern Bypass Road Opposite the Blue Umbrella Pond Jetty */
 function drawBavarianDairyColdStorage(ctx, cx, cy, built, time){
   ctx.save();
+
+  // 1. FRONT-WAY PAVED APPROACH PAVEMENT SMOOTHLY CONNECTED TO BYPASS ROAD
+  // Extends from cold storage front (cx=215, cy=945) eastward to the bypass road edge (~265..280)
+  ctx.fillStyle = '#D7CCC8';
+  ctx.beginPath();
+  ctx.moveTo(cx + 15, cy + 10);
+  ctx.lineTo(cx + 65, cy + 5);
+  ctx.lineTo(cx + 68, cy + 32);
+  ctx.lineTo(cx + 12, cy + 36);
+  ctx.closePath();
+  ctx.fill();
+
+  // Cobblestone paver joints and curb borders
+  ctx.strokeStyle = '#8D6E63'; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(cx + 15, cy + 10); ctx.lineTo(cx + 65, cy + 5);
+  ctx.moveTo(cx + 12, cy + 36); ctx.lineTo(cx + 68, cy + 32);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(109, 76, 65, 0.4)'; ctx.lineWidth = 0.8;
+  for (let px = cx + 24; px <= cx + 60; px += 8) {
+    ctx.beginPath(); ctx.moveTo(px, cy + 9); ctx.lineTo(px - 2, cy + 34); ctx.stroke();
+  }
+
+  // Lantern post at the bypass road junction
+  ctx.fillStyle = '#212121'; ctx.fillRect(cx + 64, cy - 8, 2.2, 16);
+  ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(cx + 65, cy - 10, 2.5, 0, Math.PI * 2); ctx.fill();
+
   ctx.translate(cx, cy);
-  // Stretched 60px bottom-left and rotated anticlockwise 150 degrees (to -2.34 rad) so the front facade and vault blast door directly face northeast toward the subway road
+  // Rotated so front facade directly faces the paved approach and subway road
   ctx.rotate(-2.34);
   ctx.globalAlpha = built ? 1 : 0.55;
   const t = time || 0;
 
-  // 1. Natural Ground Drop Shadow beneath 3D bunker (NO flat oval base!)
-  ctx.fillStyle = 'rgba(8, 20, 12, 0.48)';
-  ctx.beginPath(); ctx.ellipse(0, 16, 72, 30, 0, 0, Math.PI * 2); ctx.fill();
+  // 2. Natural Ground Drop Shadow beneath 3D bunker
+  ctx.fillStyle = 'rgba(8, 20, 12, 0.45)';
+  ctx.beginPath(); ctx.ellipse(0, 16, 74, 32, 0, 0, Math.PI * 2); ctx.fill();
 
-  // 2. Heavy Stepped Ashlar Limestone Foundation Plinth (3D Shed only)
-  isoBox(ctx, 0, 8, 128, 74, 12, '#78909C', '#607D8B', '#455A64', '#37474F');
+  // 3. BRIGHT POLISHED ASHLAR LIMESTONE FOUNDATION PLINTH (Crisp bright contrast against dark meadow!)
+  isoBox(ctx, 0, 8, 130, 76, 14, '#FFFFFF', '#ECEFF1', '#CFD8DC', '#90A4AE');
 
-  // 3. Subterranean Earth-Bermed Cold Storage Bunker (118px x 68px x 30px)
-  isoBox(ctx, 0, -2, 118, 68, 30, '#ECEFF1', '#CFD8DC', '#B0BEC5', '#78909C');
+  // 4. MAIN CRYOGENIC VAULT STRUCTURE: BRIGHT ALPINE WHITEWASH & ICE-BLUE CRYO CLADDING
+  isoBox(ctx, 0, -2, 120, 70, 32, '#F5F5F5', '#E0F7FA', '#B2EBF2', '#80DEEA');
 
-  // Sloping Earth-Berm Turf Embankments with Alpine Wildflowers
-  ctx.fillStyle = '#2E7D32';
+  // Bright Larch Timber Fachwerk Corner Framing
+  ctx.strokeStyle = '#FFE082'; ctx.lineWidth = 2.0;
   ctx.beginPath();
-  ctx.moveTo(-59, -2); ctx.lineTo(-72, 15); ctx.lineTo(-40, 26); ctx.lineTo(-28, 8);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#388E3C';
-  ctx.beginPath();
-  ctx.moveTo(59, -2); ctx.lineTo(72, 15); ctx.lineTo(40, 26); ctx.lineTo(28, 8);
-  ctx.closePath(); ctx.fill();
+  ctx.moveTo(-60, -2); ctx.lineTo(-60, -34);
+  ctx.moveTo(60, -2); ctx.lineTo(60, -34);
+  ctx.moveTo(-60, -18); ctx.lineTo(60, -18);
+  ctx.stroke();
 
-  // Wildflower blooms on earth berm
-  [[ -56, 8, '#FFEB3B'], [-48, 16, '#E91E63'], [50, 8, '#00E5FF'], [58, 15, '#FF9800']].forEach(([fx, fy, col]) => {
-    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(fx, fy, 1.8, 0, Math.PI * 2); ctx.fill();
+  // 5. HIGH-CONTRAST REFLECTIVE INSULATED ROOF WITH SNOW-WHITE AND ZINC CRESTING
+  // Bright metallic zinc sheeting over cedar timber (No dark green that disappears into meadow!)
+  isoRoof(ctx, 0, -34, 128, 78, 0, 22, '#E0F7FA', '#B0BEC5', '#90A4AE', '#78909C');
+
+  // Bright Zinc Roof Ridge with Decorative Bavarian Finials
+  ctx.strokeStyle = '#00E5FF'; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.moveTo(-45, -56); ctx.lineTo(45, -56); ctx.stroke();
+  [-45, 0, 45].forEach(fx => {
+    ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(fx, -56, 2.5, 0, Math.PI * 2); ctx.fill();
   });
 
-  // 4. Lush Wildflower Sod & Timber Larch Roof
-  isoBox(ctx, 0, -18, 120, 70, 6, '#1B5E20', '#2E7D32', '#388E3C', '#4CAF50');
-
-  // 5. Heavy Cryogenic Geothermal Cooling Fin Compressor Unit
-  isoBox(ctx, 42, -26, 26, 18, 16, '#37474F', '#263238', '#455A64', '#607D8B');
-  ctx.strokeStyle = '#00E5FF'; ctx.lineWidth = 1.0;
-  [-6, -2, 2, 6].forEach(fx => {
-    ctx.beginPath(); ctx.moveTo(42 + fx, -38); ctx.lineTo(42 + fx, -24); ctx.stroke();
+  // 6. HEAVY CRYOGENIC GEOTHERMAL COOLING COMPRESSOR UNIT WITH ELECTRIC CYAN GLOW
+  isoBox(ctx, 44, -26, 28, 20, 18, '#ECEFF1', '#80DEEA', '#00B0FF', '#0288D1');
+  ctx.strokeStyle = '#00E5FF'; ctx.lineWidth = 1.2;
+  [-7, -3, 1, 5].forEach(fx => {
+    ctx.beginPath(); ctx.moveTo(44 + fx, -40); ctx.lineTo(44 + fx, -24); ctx.stroke();
   });
 
-  // Animated Cryogenic Vapor Puffs
+  // Animated Cryogenic Frost Vapor Puffs
   if (built) {
-    ctx.fillStyle = 'rgba(0, 229, 255, 0.28)';
-    for(let p = 0; p < 3; p++){
-      const vy = -38 - p * 6 - ((t * 10 + p * 8) % 18);
-      const vx = 42 + Math.sin(t * 3 + p) * 3;
-      ctx.beginPath(); ctx.arc(vx, vy, 2.5 + p, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.40)';
+    for(let p = 0; p < 4; p++){
+      const vy = -40 - p * 6 - ((t * 12 + p * 8) % 22);
+      const vx = 44 + Math.sin(t * 3.5 + p) * 4;
+      ctx.beginPath(); ctx.arc(vx, vy, 2.5 + p * 0.8, 0, Math.PI * 2); ctx.fill();
     }
   }
 
-  // 6. Heavy Vault Door (Stahltür) Facing Directly Toward the Subway Road
-  ctx.fillStyle = '#263238';
+  // 7. HEAVY HERMETIC STEEL VAULT DOOR (Stahltür) WITH BRIGHT CONTRAST
+  ctx.fillStyle = '#37474F';
   ctx.beginPath();
-  ctx.roundRect(-22, 12, 44, 20, 4);
+  ctx.roundRect(-24, 12, 48, 22, 4);
   ctx.fill();
-  ctx.strokeStyle = '#78909C'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.strokeStyle = '#00E5FF'; ctx.lineWidth = 1.8; ctx.stroke();
 
   // Brass Wheel Vault Lock Handle
-  ctx.strokeStyle = '#FFD54F'; ctx.lineWidth = 2.0;
-  ctx.beginPath(); ctx.arc(0, 22, 5, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(0, 17); ctx.lineTo(0, 27); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(-5, 22); ctx.lineTo(5, 22); ctx.stroke();
+  ctx.strokeStyle = '#FFD54F'; ctx.lineWidth = 2.4;
+  ctx.beginPath(); ctx.arc(0, 23, 5.5, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, 17.5); ctx.lineTo(0, 28.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-5.5, 23); ctx.lineTo(5.5, 23); ctx.stroke();
 
-  // Digital Temperature Gauge: -4°C Bavarian Dairy Cryo Vault
-  ctx.fillStyle = '#051208'; ctx.fillRect(-18, 14, 16, 6);
-  ctx.fillStyle = '#00E5FF'; ctx.font = 'bold 5px monospace'; ctx.textAlign = 'center';
-  ctx.fillText('-4°C', -10, 19);
+  // Illuminated Digital Temperature Gauge: -4°C Bavarian Dairy Cryo Vault
+  ctx.fillStyle = '#051208'; ctx.fillRect(-20, 14, 18, 6.5);
+  ctx.fillStyle = '#00E5FF'; ctx.font = 'bold 5.5px monospace'; ctx.textAlign = 'center';
+  ctx.fillText('-4°C', -11, 19.5);
 
-  // 7. Stack of Alpine Bergkäse & Butter Crates on Wooden Loading Pallet at Road Entrance
-  isoBox(ctx, -40, 22, 24, 16, 4, '#5D4037', '#4E342E', '#3E2723');
-  isoBox(ctx, -40, 18, 20, 14, 8, '#FFF9C4', '#FFF59D', '#FFEE58');
-  ctx.fillStyle = '#F57F17'; ctx.font = 'bold 5px Nunito'; ctx.textAlign = 'center';
-  ctx.fillText('ALPEN-BUTTER', -40, 16);
+  // 8. CRATES OF AGING BERGKÄSE & BUTTER ON PALLET AT FRONT
+  isoBox(ctx, -42, 22, 24, 16, 5, '#8D6E63', '#6D4C41', '#4E342E');
+  isoBox(ctx, -42, 17, 20, 14, 9, '#FFF9C4', '#FFF59D', '#FFEE58');
+  ctx.fillStyle = '#F57F17'; ctx.beginPath(); ctx.ellipse(-42, 12, 4, 2, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Prominent Plaque Above Entrance
+  ctx.fillStyle = '#263238'; ctx.fillRect(-28, -6, 56, 8);
+  ctx.strokeStyle = '#FFD54F'; ctx.lineWidth = 1.0; ctx.strokeRect(-28, -6, 56, 8);
+  ctx.fillStyle = '#00E5FF'; ctx.font = 'bold 4.5px Nunito'; ctx.textAlign = 'center';
+  ctx.fillText('❄️ ALPEN-TIEFKÜHLLAGER', 0, -0.5);
 
   ctx.restore();
 }
@@ -5959,61 +6075,95 @@ function drawVillagePlazaMeadow(ctx, time) {
    ========================================================================= */
 function drawAlpenWelcomeSanctuary(ctx, time) {
   ctx.save();
-  const cx = 1740, cy = 785;
+  // Stretched left onto the rustic mud terrain / meadow border at (1695, 805)
+  const cx = 1695, cy = 805;
   ctx.translate(cx, cy);
   const t = (typeof time === 'number') ? time : 0;
 
-  // 1. Natural Meadow Drop Shadow
-  ctx.fillStyle = 'rgba(15, 30, 18, 0.35)';
-  ctx.beginPath(); ctx.ellipse(0, 12, 38, 20, 0, 0, Math.PI * 2); ctx.fill();
+  // 1. Natural Meadow & Mud Terrain Shadow
+  ctx.fillStyle = 'rgba(15, 30, 18, 0.38)';
+  ctx.beginPath(); ctx.ellipse(0, 14, 46, 22, 0, 0, Math.PI * 2); ctx.fill();
 
-  // 2. Stepped Fieldstone Foundation & Alpine Rockery
-  isoBox(ctx, 0, 8, 44, 28, 8, '#78909C', '#607D8B', '#455A64');
+  // 2. Stepped Fieldstone Foundation & Flowerbed Plinth (Not a house!)
+  isoBox(ctx, 0, 8, 54, 34, 6, '#78909C', '#607D8B', '#455A64');
 
-  // Flowering alpine rockery boulders
-  [[-24, 6], [22, 10], [-18, 12], [26, 4]].forEach(([rx, ry]) => {
-    ctx.fillStyle = '#607D8B'; ctx.beginPath(); ctx.ellipse(rx, ry, 6, 4, 0.1, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#90A4AE'; ctx.beginPath(); ctx.ellipse(rx, ry - 1, 5, 3, 0.1, 0, Math.PI * 2); ctx.fill();
-    // Blooming gentians / edelweiss in rocks
+  // Flowering Alpine Rockery Surround with Blooming Edelweiß & Gentians
+  [[-26, 8], [26, 12], [-20, 15], [22, 5]].forEach(([rx, ry]) => {
+    ctx.fillStyle = '#607D8B'; ctx.beginPath(); ctx.ellipse(rx, ry, 7, 4.5, 0.1, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#90A4AE'; ctx.beginPath(); ctx.ellipse(rx, ry - 1, 6, 3.5, 0.1, 0, Math.PI * 2); ctx.fill();
+    // Gentians / Edelweiß
     ctx.fillStyle = (rx % 2 === 0) ? '#00E5FF' : '#FFFFFF';
-    ctx.beginPath(); ctx.arc(rx, ry - 4, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(rx, ry - 5, 2, 0, Math.PI * 2); ctx.fill();
   });
 
-  // 3. Whitewashed Alpine Wayside Chapel (Wegkapelle)
-  isoBox(ctx, 0, 0, 32, 22, 24, '#FFFFFF', '#CFD8DC', '#B0BEC5', '#78909C');
+  // 3. OPEN-AIR CARVED TIMBER WAYSIDE SHRINE (Alpen-Wegkreuz & Schnitzpavillon)
+  // 4 Carved Pine Support Posts with open airy fretwork
+  [[-14, -4], [14, -4], [-14, 10], [14, 10]].forEach(([px, py]) => {
+    ctx.fillStyle = '#4E342E'; ctx.fillRect(px - 2, py - 32, 4, 32);
+    ctx.fillStyle = '#6D4C41'; ctx.fillRect(px - 1, py - 32, 2, 32);
+  });
 
-  // Arched Sanctuary Entrance with Candlelight Glow
-  ctx.fillStyle = '#3E2723';
-  ctx.beginPath(); ctx.arc(0, -6, 5, Math.PI, 0); ctx.rect(-5, -6, 10, 14); ctx.fill();
-  // Warm candle glow inside
-  const cPulse = 0.6 + Math.sin(t * 5) * 0.25;
+  // Open-back timber altar niche
+  isoBox(ctx, 0, 4, 28, 16, 4, '#8D6E63', '#6D4C41', '#4E342E');
+
+  // Hand-Carved Alpine Crucifix / Mountain Madonna in niche
+  ctx.strokeStyle = '#D7CCC8'; ctx.lineWidth = 2.4;
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -22); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-6, -16); ctx.lineTo(6, -16); ctx.stroke();
+  ctx.fillStyle = '#FFD54F'; ctx.beginPath(); ctx.arc(0, -23, 2, 0, Math.PI * 2); ctx.fill();
+
+  // Flickering Votive Candlelight Lantern
+  const cPulse = 0.6 + Math.sin(t * 6) * 0.3;
   ctx.fillStyle = 'rgba(255, 213, 79, ' + cPulse + ')';
-  ctx.beginPath(); ctx.arc(0, -2, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, -8, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#FF6F00'; ctx.beginPath(); ctx.arc(0, -8, 1.8, 0, Math.PI * 2); ctx.fill();
 
-  // Weathered Larch Shingle Roof
-  isoRoof(ctx, 0, -24, 38, 26, 0, 16, '#5D4037', '#4E342E', '#3E2723', '#271206');
+  // Scalloped Bavarian Shingle Bell Roof with Carved Eaves
+  isoRoof(ctx, 0, -28, 42, 30, 0, 18, '#5D4037', '#4E342E', '#3E2723', '#271206');
 
-  // Miniature Bell Turret (Glockentürmchen) & Brass Cross
-  isoBox(ctx, 0, -40, 8, 8, 10, '#8D6E63', '#6D4C41', '#4E342E');
-  isoRoof(ctx, 0, -50, 10, 10, 0, 8, '#78909C', '#607D8B', '#455A64');
-  ctx.strokeStyle = '#FFD54F'; ctx.lineWidth = 1.4;
-  ctx.beginPath(); ctx.moveTo(0, -58); ctx.lineTo(0, -66); ctx.moveTo(-3, -63); ctx.lineTo(3, -63); ctx.stroke();
+  // Slender Carved Timber Spire & Brass Cross Finial
+  ctx.fillStyle = '#8D6E63'; ctx.fillRect(-2, -50, 4, 6);
+  ctx.strokeStyle = '#FFD54F'; ctx.lineWidth = 1.8;
+  ctx.beginPath(); ctx.moveTo(0, -50); ctx.lineTo(0, -60); ctx.moveTo(-3, -56); ctx.lineTo(3, -56); ctx.stroke();
 
-  // 4. Carved Timber Trail Signpost (Wegweiser)
-  ctx.fillStyle = '#4E342E'; ctx.fillRect(-28, -14, 3, 22);
+  // 4. TRADITIONAL HOLLOW-LOG ALPINE FOUNTAIN (Alpen-Holzbrunnen / Trog)
+  isoBox(ctx, -28, 6, 18, 12, 10, '#6D4C41', '#5D4037', '#4E342E');
+  // Water in trough
+  ctx.fillStyle = '#00E5FF';
+  ctx.beginPath(); ctx.ellipse(-28, 2, 7, 4, 0, 0, Math.PI * 2); ctx.fill();
+  // Upright water post & brass spout
+  ctx.fillStyle = '#4E342E'; ctx.fillRect(-35, -8, 4, 18);
+  ctx.fillStyle = '#FFD54F'; ctx.fillRect(-33, -4, 5, 2.5);
+  // Flowing spring water stream
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(-29, -3); ctx.quadraticCurveTo(-28, 0, -28, 2); ctx.stroke();
+
+  // 5. WEATHERED PINE REST BENCH (Ruhebank)
+  ctx.save();
+  ctx.translate(28, 8);
+  ctx.fillStyle = '#6D4C41'; ctx.fillRect(-8, -4, 16, 4);
+  ctx.fillStyle = '#8D6E63'; ctx.fillRect(-9, -8, 18, 4);
+  ctx.restore();
+
+  // 6. CARVED TIMBER WELCOME MILESTONE (Wegweiser)
+  ctx.fillStyle = '#4E342E'; ctx.fillRect(-38, -12, 3, 26);
   ctx.fillStyle = '#D7CCC8';
-  ctx.fillRect(-38, -12, 20, 5); ctx.fillRect(-36, -6, 18, 5);
-  ctx.fillStyle = '#212121'; ctx.font = 'bold 3.5px sans-serif';
-  ctx.fillText('Stuben', -28, -8);
-  ctx.fillText('See', -27, -2);
+  ctx.fillRect(-52, -10, 24, 6); ctx.fillRect(-50, -3, 22, 6);
+  ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 0.8;
+  ctx.strokeRect(-52, -10, 24, 6); ctx.strokeRect(-50, -3, 22, 6);
+  ctx.fillStyle = '#212121'; ctx.font = 'bold 3.8px Nunito';
+  ctx.fillText('Stuben ➔', -40, -5.5);
+  ctx.fillText('Mosterei ➔', -39, 1.5);
+
+  // Painted Welcome Shield
+  ctx.fillStyle = '#FFF8E1'; ctx.fillRect(-22, -38, 44, 7);
+  ctx.strokeStyle = '#4E342E'; ctx.lineWidth = 0.9; ctx.strokeRect(-22, -38, 44, 7);
+  ctx.fillStyle = '#2E7D32'; ctx.font = 'bold 4.5px Nunito'; ctx.textAlign = 'center';
+  ctx.fillText('🌸 GRÜSS GOTT IM ALPENHOF', 0, -33);
 
   ctx.restore();
 }
 
-/* =========================================================================
-   TRADITIONAL BAVARIAN FRESH FLOWER SELLING STAND (Alpenblumen-Standl)
-   Facing Main Road, Back to Lake Pond at (800, 695).
-   ========================================================================= */
 function drawFlowerStand(ctx, cx, cy, built, time) {
   ctx.save();
   ctx.translate(cx, cy);
@@ -6088,58 +6238,82 @@ function drawVegStand(ctx, cx, cy, built, time) {
   ctx.translate(cx, cy);
   ctx.globalAlpha = built ? 1 : 0.60;
 
+  // Ground drop shadow
   ctx.fillStyle = 'rgba(15, 30, 20, 0.35)';
-  ctx.beginPath(); ctx.ellipse(0, 10, 32, 14, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, 12, 48, 16, 0, 0, Math.PI * 2); ctx.fill();
 
   if (!built) {
     ctx.strokeStyle = '#76FF03'; ctx.lineWidth = 1.4; ctx.setLineDash([4, 4]);
-    ctx.strokeRect(-22, -10, 44, 22);
+    ctx.strokeRect(-42, -12, 84, 24);
     ctx.setLineDash([]);
     ctx.fillStyle = '#B2FF59'; ctx.font = 'bold 9px Nunito'; ctx.textAlign = 'center';
-    ctx.fillText('Gemüse-Standl (Unbuilt)', 0, 4);
+    ctx.fillText('Bio-Hofladen Standl (Unbuilt)', 0, 4);
     ctx.restore();
     return;
   }
 
-  // 1. Raised Timber Stall Deck
-  isoBox(ctx, 0, 4, 44, 24, 6, '#6D4C41', '#5D4037', '#4E342E');
+  // 1. HORIZONTALLY ENLARGED TIMBER STALL DECK (88px wide x 28px deep)
+  isoBox(ctx, 0, 4, 88, 28, 6, '#6D4C41', '#5D4037', '#4E342E');
 
-  // 2. Timber Corner Posts
-  [[-18, -6], [18, -6], [-18, 8], [18, 8]].forEach(([px, py]) => {
-    ctx.fillStyle = '#3E2723'; ctx.fillRect(px - 1.5, py - 24, 3, 24);
+  // 2. TIMBER POSTS & ROOF SUPPORTS
+  [[-38, -8], [38, -8], [-38, 10], [38, 10]].forEach(([px, py]) => {
+    ctx.fillStyle = '#3E2723'; ctx.fillRect(px - 1.8, py - 26, 3.6, 26);
   });
 
-  // 3. Green & White Bavarian Striped Timber Awning
-  isoRoof(ctx, 0, -24, 48, 28, 0, 12, '#2E7D32', '#1B5E20', '#33691E', '#1B5E20');
-  for (let s = -20; s <= 20; s += 8) {
+  // 3. WIDE GREEN & WHITE BAVARIAN STRIPED TIMBER AWNING CANOPY (96px wide)
+  isoRoof(ctx, 0, -26, 96, 32, 0, 14, '#2E7D32', '#1B5E20', '#33691E', '#1B5E20');
+  // Striped awning valance
+  for (let s = -40; s <= 40; s += 8) {
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(s - 2, -16, 4, 3);
+    ctx.fillRect(s - 2, -18, 4, 3.5);
   }
 
-  // 4. Wooden Crates with Polyculture Harvest Produce
-  isoBox(ctx, 0, 0, 38, 14, 6, '#8D6E63', '#6D4C41', '#5D4037');
+  // 4. HORIZONTALLY EXPANDED MULTI-TIERED FRESH PRODUCE DISPLAY TABLE (82px wide)
+  isoBox(ctx, 0, 1, 82, 16, 7, '#8D6E63', '#6D4C41', '#5D4037');
 
-  // Harvest Crates
-  [
-    { x: -12, c: '#FF6F00', name: 'Kürbis' },
-    { x:  -4, c: '#43A047', name: 'Zucchini' },
-    { x:   4, c: '#FFF9C4', name: 'Spargel' },
-    { x:  12, c: '#C2185B', name: 'Rotkohl' }
-  ].forEach(cr => {
-    ctx.fillStyle = '#5D4037'; ctx.fillRect(cr.x - 3.5, -6, 7, 5);
+  // 6 LARGE WOODEN HARVEST CRATES & WICKER BASKETS SPREAD ACROSS HORIZONTAL FRONT
+  const vegProduce = [
+    { x: -32, c: '#FF6F00', name: 'Kürbis',  shape: 'pumpkin' },
+    { x: -19, c: '#43A047', name: 'Zucchini',shape: 'oblong' },
+    { x:  -6, c: '#FFF9C4', name: 'Spargel', shape: 'bundle' },
+    { x:   7, c: '#C2185B', name: 'Rotkohl', shape: 'round' },
+    { x:  20, c: '#FF9800', name: 'Möhren',  shape: 'carrots' },
+    { x:  33, c: '#E91E63', name: 'Radi',    shape: 'radish' }
+  ];
+
+  vegProduce.forEach(cr => {
+    // Timber display crate
+    ctx.fillStyle = '#5D4037'; ctx.fillRect(cr.x - 5.5, -6, 11, 6.5);
+    ctx.strokeStyle = '#3E2723'; ctx.lineWidth = 0.7; ctx.strokeRect(cr.x - 5.5, -6, 11, 6.5);
+    // Produce within crate
     ctx.fillStyle = cr.c;
-    ctx.beginPath(); ctx.ellipse(cr.x, -4, 2.5, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+    if (cr.shape === 'pumpkin') {
+      ctx.beginPath(); ctx.ellipse(cr.x, -4, 3.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2E7D32'; ctx.fillRect(cr.x - 0.5, -7.5, 1, 2);
+    } else if (cr.shape === 'bundle') {
+      ctx.fillRect(cr.x - 3, -6, 6, 4);
+      ctx.fillStyle = '#7CB342'; ctx.fillRect(cr.x - 3, -7, 6, 1.5);
+    } else if (cr.shape === 'carrots') {
+      ctx.beginPath(); ctx.ellipse(cr.x, -4, 3, 2, 0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2E7D32'; ctx.fillRect(cr.x + 1, -7, 2, 2.5);
+    } else {
+      ctx.beginPath(); ctx.arc(cr.x, -4, 2.8, 0, Math.PI * 2); ctx.fill();
+    }
   });
 
-  // Chalkboard Sign
-  ctx.fillStyle = '#212121'; ctx.fillRect(-14, -22, 28, 5);
-  ctx.fillStyle = '#76FF03'; ctx.font = 'bold 3.5px Nunito'; ctx.textAlign = 'center';
-  ctx.fillText('🥦 BIO-HOFLADEN', 0, -18.5);
+  // 5. TRADITIONAL BRASS BALANCE SCALE & CHALKBOARD SIGNBOARD
+  ctx.fillStyle = '#FFD54F'; ctx.fillRect(32, -1, 4, 3); // Brass scale
+  ctx.fillStyle = '#212121'; ctx.beginPath(); ctx.arc(34, -4, 3, 0, Math.PI); ctx.fill();
+
+  // Hand-painted Hanging Chalkboard Sign
+  ctx.fillStyle = '#212121'; ctx.fillRect(-28, -24, 56, 6);
+  ctx.strokeStyle = '#FFD54F'; ctx.lineWidth = 0.9; ctx.strokeRect(-28, -24, 56, 6);
+  ctx.fillStyle = '#76FF03'; ctx.font = 'bold 4.5px Nunito'; ctx.textAlign = 'center';
+  ctx.fillText('🧺 BIO-HOFLADEN & GEMÜSESTANDL', 0, -19.5);
 
   ctx.restore();
 }
 
-/* ================= MODALS FOR FLOWER & VEGETABLE STANDS ================= */
 function openFlowerStandModal() {
   const built = !!state.built['flower_stand'];
   let h = '<div class="modal-hdr"><h3>💐 Alpenblumen-Standl · Alm-Blumenhütte</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
