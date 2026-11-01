@@ -75,6 +75,7 @@ const assert = require('assert');
       vegSpeciesCount: Object.keys(VEG_SPECIES).length,
       vegBedsCount: state.vegetables.beds.length,
       totalVegPositions: state.vegetables.beds.reduce((acc, b) => acc + b.plants.length, 0),
+      biodiversitySpotsCount: state.biodiversity ? state.biodiversity.spots.length : 0,
       vineyardBedsCount: VINEYARD_BEDS.length,
       totalVinePositions: VINEYARD_BEDS.length * 12,
       chaptersCount: CHAPTERS.length
@@ -82,13 +83,14 @@ const assert = require('assert');
   });
   assert.strictEqual(farmConfig.sitesCount, 28, `Expected 28 sites, found ${farmConfig.sitesCount}`);
   assert.strictEqual(farmConfig.orchardsCount, 6, `Expected 6 orchard plots, found ${farmConfig.orchardsCount}`);
-  assert.strictEqual(farmConfig.vegBedsCount, 4, `Expected 4 vegetable quadrant beds (2x2), found ${farmConfig.vegBedsCount}`);
-  assert.strictEqual(farmConfig.totalVegPositions, 48, `Expected 48 total vegetable plant positions, found ${farmConfig.totalVegPositions}`);
-  assert.strictEqual(farmConfig.vegSpeciesCount, 8, `Expected 8 German heirloom vegetable varieties, found ${farmConfig.vegSpeciesCount}`);
+  assert.strictEqual(farmConfig.vegBedsCount, 4, `Expected 4 vegetable quadrant beds (4, 3, 2, 1), found ${farmConfig.vegBedsCount}`);
+  assert.strictEqual(farmConfig.totalVegPositions, 40, `Expected 40 total vegetable plant positions, found ${farmConfig.totalVegPositions}`);
+  assert.strictEqual(farmConfig.vegSpeciesCount, 11, `Expected 11 German heirloom vegetable & crop varieties, found ${farmConfig.vegSpeciesCount}`);
+  assert.strictEqual(farmConfig.biodiversitySpotsCount, 10, `Expected 10 biodiversity tree spots, found ${farmConfig.biodiversitySpotsCount}`);
   assert.strictEqual(farmConfig.vineyardBedsCount, 9, `Expected 9 vineyard beds, found ${farmConfig.vineyardBedsCount}`);
   assert.strictEqual(farmConfig.totalVinePositions, 108, `Expected 108 total vine positions, found ${farmConfig.totalVinePositions}`);
   assert.strictEqual(farmConfig.chaptersCount, 6, `Expected 6 progression chapters, found ${farmConfig.chaptersCount}`);
-  console.log('[✓ PASSED] 21 calibrated sites, 6 orchard plots, 48-plot hexagonal vegetable garden (4 beds x 12 plants), 108-vine vineyard, 6 chapters verified');
+  console.log('[✓ PASSED] 21 calibrated sites, 6 orchard plots, 40-plot rhombus step vegetable garden (4 beds x 10 plants in 4-3-2-1 layout), 10 biodiversity tree spots, 108-vine vineyard, 6 chapters verified');
 
   // Verify calibrated coordinates from bavaria-bg-plan.jpg
   const findSite = id => farmConfig.sites.find(s => s.id === id);
@@ -292,7 +294,7 @@ const assert = require('assert');
   await page.waitForTimeout(200);
 
   // 11. Test Facility Construction: Living Lake Excavation Sequence, Cattle Pasture, Wind Turbines, Barn & Stuben
-  // 11A. Test 48-Plot Hexagonal Vegetable Garden (Plant Selection, Watering, Harvesting)
+  // 11A. Test 40-Plot Rhombus Step Vegetable & Crop Garden (4-3-2-1 layout, Aeration, Monoculture Segregation)
   await page.evaluate(() => {
     const vegSite = SITES.find(s => s.id === 'veg');
     AlpenMap.handle(vegSite);
@@ -301,7 +303,7 @@ const assert = require('assert');
   const vegModalOpen = await page.isVisible('#modal.open');
   assert(vegModalOpen, 'Vegetable garden modal must open');
   const vegModalContent = await page.textContent('#modalBody');
-  assert(vegModalContent.includes('48-Plot Hexagonal Vegetable Garden'), 'Must show hexagonal garden header');
+  assert(vegModalContent.includes('Rhombus Vegetable & Crop Garden') || vegModalContent.includes('Bauerngarten'), 'Must show rhombus step garden header');
 
   // Commission garden if unbuilt
   await page.evaluate(() => {
@@ -309,12 +311,28 @@ const assert = require('assert');
   });
   await page.waitForTimeout(300);
 
+  // Aerate beds 0 and 1 before planting
+  await page.evaluate(() => {
+    aerateVegBed(0);
+    aerateVegBed(1);
+  });
+  await page.waitForTimeout(200);
+
   // Test plant selection: Sow Kürbis into Bed 0, Spargel into Bed 1
   await page.evaluate(() => {
     plantVegBed(0, 'kuerbis');
     plantVegBed(1, 'spargel');
   });
   await page.waitForTimeout(200);
+
+  // Test Monoculture Segregation / Educational Warning: attempt to sow Dinkel (crop) into Bed 0 (vegetables)
+  await page.evaluate(() => {
+    plantVegBed(0, 'dinkel');
+  });
+  await page.waitForTimeout(300);
+  const warningModalContent = await page.textContent('#modalBody');
+  assert(warningModalContent.includes('Professor Whisker Puff') && warningModalContent.includes('Pip Squeak-a-Link'), 'Puff & Pip educational warning must trigger on mixed sowing');
+  assert(warningModalContent.includes('Monoculture'), 'Must explain monoculture segregation');
 
   // Test watering and automatic growth progression via tickGrowth
   await page.evaluate(() => {
@@ -332,7 +350,7 @@ const assert = require('assert');
   await page.waitForTimeout(200);
   const harvestedCount = await page.evaluate(() => state.vegetables.harvestedTotal);
   assert(harvestedCount > 0, 'Vegetable harvesting must record harvested produce');
-  console.log(`[✓ PASSED] 48-Plot Hexagonal Vegetable Garden verified (Kürbis, Zucchini, Spargel sown, watered & harvested: ${harvestedCount} crops)`);
+  console.log(`[✓ PASSED] 40-Plot Rhombus Step Vegetable Garden verified (4-3-2-1 layout, aeration, monoculture segregation & Puff & Pip dialogue, harvested: ${harvestedCount} crops)`);
   if (await page.isVisible('#modal.open')) await page.click('.btn-close');
   await page.waitForTimeout(200);
 
@@ -576,6 +594,48 @@ const assert = require('assert');
     });
   });
   await page.waitForTimeout(300);
+
+  // 11E. Test 10 Biodiversity Tree Planting Spots (Aeration, Species Selection, Care & Puff/Pip Mentoring)
+  await page.evaluate(() => {
+    openBiodiversityModal('bio_tree_1');
+  });
+  await page.waitForTimeout(400);
+  const bioModalOpen = await page.isVisible('#modal.open');
+  assert(bioModalOpen, 'Biodiversity tree spot modal must open');
+  const bioModalContent = await page.textContent('#modalBody');
+  assert(bioModalContent.includes('Professor Whisker Puff') && bioModalContent.includes('Pip Squeak-a-Link'), 'Must render Puff & Pip story dialogue');
+  assert(bioModalContent.includes('Soil Crust'), 'Must show initial soil crust status');
+
+  // Test individual aeration and planting
+  await page.evaluate(() => {
+    aerateBiodiversitySpot('bio_tree_1');
+    plantBiodiversityTree('bio_tree_1', 'cembra');
+  });
+  await page.waitForTimeout(300);
+  const bioSpot1 = await page.evaluate(() => state.biodiversity.spots.find(s => s.id === 'bio_tree_1'));
+  assert.strictEqual(bioSpot1.status, 'sprout', 'Planted spot should be sprouting');
+  assert.strictEqual(bioSpot1.species, 'cembra', 'Species should be Arve / Zirbelkiefer');
+
+  // Test bulk aeration of remaining 9 spots
+  await page.evaluate(() => {
+    aerateAllBiodiversitySpots();
+  });
+  await page.waitForTimeout(200);
+  const aeratedCount = await page.evaluate(() => state.biodiversity.spots.filter(s => s.status === 'aerated').length);
+  assert.strictEqual(aeratedCount, 9, 'All 9 remaining spots should now be aerated');
+
+  // Test caring (watering & mulching)
+  await page.evaluate(() => {
+    careBiodiversitySpot('bio_tree_1', 'water');
+    careBiodiversitySpot('bio_tree_1', 'mulch');
+    AlpenMap.tickGrowth();
+  });
+  await page.waitForTimeout(200);
+  const matureSpot = await page.evaluate(() => state.biodiversity.spots.find(s => s.id === 'bio_tree_1'));
+  assert(matureSpot.progress >= 0.8, 'Tree care must advance growth progress towards maturity');
+  console.log('[✓ PASSED] 10 Biodiversity Tree Spots verified (soil aeration, species selection with scientific names, mycorrhiza/mulch care & Puff & Pip dialogue)');
+  if (await page.isVisible('#modal.open')) await page.click('.btn-close');
+  await page.waitForTimeout(200);
 
   // 12. Multi-level Zoom Controls
   await page.click('.zoom-btn[data-z="2"]');
