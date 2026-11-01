@@ -86,11 +86,11 @@ const assert = require('assert');
   assert.strictEqual(farmConfig.vegBedsCount, 4, `Expected 4 vegetable quadrant beds (4, 3, 2, 1), found ${farmConfig.vegBedsCount}`);
   assert.strictEqual(farmConfig.totalVegPositions, 40, `Expected 40 total vegetable plant positions, found ${farmConfig.totalVegPositions}`);
   assert.strictEqual(farmConfig.vegSpeciesCount, 11, `Expected 11 German heirloom vegetable & crop varieties, found ${farmConfig.vegSpeciesCount}`);
-  assert.strictEqual(farmConfig.biodiversitySpotsCount, 12, `Expected 12 biodiversity tree spots, found ${farmConfig.biodiversitySpotsCount}`);
+  assert.strictEqual(farmConfig.biodiversitySpotsCount, 14, `Expected 14 biodiversity tree spots, found ${farmConfig.biodiversitySpotsCount}`);
   assert.strictEqual(farmConfig.vineyardBedsCount, 9, `Expected 9 vineyard beds, found ${farmConfig.vineyardBedsCount}`);
   assert.strictEqual(farmConfig.totalVinePositions, 108, `Expected 108 total vine positions, found ${farmConfig.totalVinePositions}`);
   assert.strictEqual(farmConfig.chaptersCount, 6, `Expected 6 progression chapters, found ${farmConfig.chaptersCount}`);
-  console.log('[✓ PASSED] 21 calibrated sites, 6 orchard plots, 40-plot rhombus step vegetable garden (4 beds x 10 plants in 4-3-2-1 layout), 12 biodiversity tree spots, 108-vine vineyard, 6 chapters verified');
+  console.log('[✓ PASSED] 21 calibrated sites, 6 orchard plots, 40-plot rhombus step vegetable garden (4 beds x 10 plants in 4-3-2-1 layout), 14 biodiversity tree spots, 108-vine vineyard, 6 chapters verified');
 
   // Verify calibrated coordinates from bavaria-bg-plan.jpg
   const findSite = id => farmConfig.sites.find(s => s.id === id);
@@ -112,7 +112,7 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('crew').x, y: findSite('crew').y }, { x: 945, y: 310 }, 'crew shed transferred north of veg garden');
   assert.deepStrictEqual({ x: findSite('dairy_market').x, y: findSite('dairy_market').y }, { x: 1295, y: 468 }, 'dairy market coordinates on central roadside terrace');
   assert.deepStrictEqual({ x: findSite('dairy_plant').x, y: findSite('dairy_plant').y }, { x: 180, y: 725 }, 'dairy processing plant coordinates in bottom left meadow');
-  assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1455, y: 355 }, 'vineyard coordinates terrace on hill upslope');
+  assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1473, y: 355 }, 'vineyard coordinates terrace on hill upslope');
   assert.deepStrictEqual({ x: findSite('bridge').x, y: findSite('bridge').y }, { x: 1625, y: 230 }, 'bridge coordinates to distant hilltop turbine');
   assert.deepStrictEqual({ x: findSite('wind_e').x, y: findSite('wind_e').y }, { x: 1780, y: 160 }, 'wind_e coordinates on farm hilltop');
   console.log('[✓ PASSED] Strict coordinate mapping verified against bavaria-bg-plan.jpg');
@@ -622,7 +622,7 @@ const assert = require('assert');
   });
   await page.waitForTimeout(200);
   const aeratedCount = await page.evaluate(() => state.biodiversity.spots.filter(s => s.status === 'aerated').length);
-  assert.strictEqual(aeratedCount, 11, 'All 11 remaining spots should now be aerated');
+  assert.strictEqual(aeratedCount, 13, 'All 13 remaining spots should now be aerated');
 
   // Test caring (watering & mulching)
   await page.evaluate(() => {
