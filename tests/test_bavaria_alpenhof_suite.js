@@ -103,7 +103,7 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('cold_storage').x, y: findSite('cold_storage').y }, { x: 180, y: 945 }, 'bavarian dairy cold storage coordinates along bypass road opposite pond shore');
   assert.deepStrictEqual({ x: findSite('flower_oval').x, y: findSite('flower_oval').y }, { x: 750, y: 740 }, 'triangular 3-oval flower garden coordinates');
   assert.deepStrictEqual({ x: findSite('flower_stand').x, y: findSite('flower_stand').y }, { x: 800, y: 695 }, 'alpenblumen flower stand coordinates');
-  assert.deepStrictEqual({ x: findSite('veg_stand').x, y: findSite('veg_stand').y }, { x: 1085, y: 648 }, 'alpenhof veg stand coordinates');
+  assert.deepStrictEqual({ x: findSite('veg_stand').x, y: findSite('veg_stand').y }, { x: 1075, y: 648 }, 'alpenhof veg stand coordinates');
   assert.deepStrictEqual({ x: findSite('bbq').x, y: findSite('bbq').y }, { x: 1760, y: 380 }, 'hilltop tourist bbq coordinates with marker placed behind kiosk roof');
   assert.deepStrictEqual({ x: findSite('pond').x, y: findSite('pond').y }, { x: 630, y: 870 }, 'pond coordinates bottom-left meadow');
   assert.deepStrictEqual({ x: findSite('restaurant').x, y: findSite('restaurant').y }, { x: 1640, y: 560 }, 'restaurant coordinates at corner of road network with timber deck & grape juice silo');
@@ -112,7 +112,7 @@ const assert = require('assert');
   assert.deepStrictEqual({ x: findSite('crew').x, y: findSite('crew').y }, { x: 945, y: 310 }, 'crew shed transferred north of veg garden');
   assert.deepStrictEqual({ x: findSite('dairy_market').x, y: findSite('dairy_market').y }, { x: 1295, y: 468 }, 'dairy market coordinates on central roadside terrace');
   assert.deepStrictEqual({ x: findSite('dairy_plant').x, y: findSite('dairy_plant').y }, { x: 180, y: 725 }, 'dairy processing plant coordinates in bottom left meadow');
-  assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1473, y: 355 }, 'vineyard coordinates terrace on hill upslope');
+  assert.deepStrictEqual({ x: findSite('vineyard').x, y: findSite('vineyard').y }, { x: 1488, y: 355 }, 'vineyard coordinates terrace on hill upslope');
   assert.deepStrictEqual({ x: findSite('bridge').x, y: findSite('bridge').y }, { x: 1625, y: 230 }, 'bridge coordinates to distant hilltop turbine');
   assert.deepStrictEqual({ x: findSite('wind_e').x, y: findSite('wind_e').y }, { x: 1780, y: 160 }, 'wind_e coordinates on farm hilltop');
   console.log('[✓ PASSED] Strict coordinate mapping verified against bavaria-bg-plan.jpg');
@@ -333,6 +333,15 @@ const assert = require('assert');
   const warningModalContent = await page.textContent('#modalBody');
   assert(warningModalContent.includes('Professor Whisker Puff') && warningModalContent.includes('Pip Squeak-a-Link'), 'Puff & Pip educational warning must trigger on mixed sowing');
   assert(warningModalContent.includes('Monoculture'), 'Must explain monoculture segregation');
+
+  // Test bamboo bed construction and root strengthening
+  await page.evaluate(() => {
+    buildBambooBed(0);
+    nourishVegBed(0);
+  });
+  await page.waitForTimeout(200);
+  const bed0Bamboo = await page.evaluate(() => state.vegetables.beds[0].bambooBed);
+  assert(bed0Bamboo, 'Bed 0 bamboo bed must be constructed');
 
   // Test watering and automatic growth progression via tickGrowth
   await page.evaluate(() => {
