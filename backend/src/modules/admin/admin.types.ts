@@ -11,9 +11,20 @@ export interface AdminUserSummary {
   createdAt: string;
   lastLoginAt: string;
   primaryFarmId?: string;
+  farmName?: string;
   money?: number;
   totalO2?: number;
+  totalO2AllTime?: number;
+  farmLevel?: number;
+  o2Rate?: number;
+  hectares?: number;
+  yieldKgPerHa?: number;
+  cleanEnergyKwh?: number;
+  treesPlanted?: number;
+  harvestCount?: number;
+  farmReputation?: number;
   activeSessionsCount?: number;
+  storageSource?: 'cloud' | 'vault';
 }
 
 export interface UserSessionRecord {

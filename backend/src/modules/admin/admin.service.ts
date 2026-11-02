@@ -105,8 +105,13 @@ export class AdminService {
         u.created_at,
         u.last_login_at,
         f.id AS primary_farm_id,
+        f.name AS farm_name,
         COALESCE(f.money, 0)::float AS money,
         COALESCE(f.total_o2, 0)::float AS total_o2,
+        COALESCE(f.total_o2_all_time, 0)::float AS total_o2_all_time,
+        COALESCE(f.trees_planted, 0)::int AS trees_planted,
+        COALESCE(f.harvest_count, 0)::int AS harvest_count,
+        COALESCE(f.farm_reputation, 0)::int AS farm_reputation,
         (
           SELECT COUNT(*)::int
           FROM refresh_tokens rt
@@ -114,7 +119,7 @@ export class AdminService {
         ) AS active_sessions_count
       FROM users u
       LEFT JOIN LATERAL (
-        SELECT id, money, total_o2
+        SELECT id, name, money, total_o2, total_o2_all_time, trees_planted, harvest_count, farm_reputation
         FROM farms
         WHERE user_id = u.id
         ORDER BY created_at ASC
@@ -128,21 +133,43 @@ export class AdminService {
     params.push(limit, offset);
     const usersRes = await query(listQuery, params);
 
-    const users: AdminUserSummary[] = usersRes.rows.map((r) => ({
-      id: r.id,
-      email: r.email,
-      displayName: r.display_name,
-      role: r.role,
-      status: r.status as UserAccountStatus,
-      emailVerified: !!r.email_verified,
-      authProvider: r.auth_provider,
-      createdAt: r.created_at,
-      lastLoginAt: r.last_login_at,
-      primaryFarmId: r.primary_farm_id,
-      money: r.money,
-      totalO2: r.total_o2,
-      activeSessionsCount: r.active_sessions_count || 0,
-    }));
+    const users: AdminUserSummary[] = usersRes.rows.map((r) => {
+      const totalO2AllTime = r.total_o2_all_time || r.total_o2 || 0;
+      const farmLevel = Math.max(1, Math.min(10, Math.floor(totalO2AllTime / 400) + 1));
+      const treesPlanted = r.trees_planted || 0;
+      const harvestCount = r.harvest_count || 0;
+      const o2Rate = Math.round(45 + (treesPlanted * 8.5) + (farmLevel * 20));
+      const hectares = parseFloat((2.0 + (farmLevel * 0.75)).toFixed(1));
+      const yieldKgPerHa = Math.round(450 + (harvestCount * 30) + (farmLevel * 55));
+      const cleanEnergyKwh = Math.round(20 + (farmLevel * 14));
+
+      return {
+        id: r.id,
+        email: r.email,
+        displayName: r.display_name,
+        role: r.role,
+        status: r.status as UserAccountStatus,
+        emailVerified: !!r.email_verified,
+        authProvider: r.auth_provider,
+        createdAt: r.created_at,
+        lastLoginAt: r.last_login_at,
+        primaryFarmId: r.primary_farm_id,
+        farmName: r.farm_name || 'SearchO2 Farm',
+        money: r.money,
+        totalO2: r.total_o2,
+        totalO2AllTime,
+        farmLevel,
+        o2Rate,
+        hectares,
+        yieldKgPerHa,
+        cleanEnergyKwh,
+        treesPlanted,
+        harvestCount,
+        farmReputation: r.farm_reputation || 0,
+        activeSessionsCount: r.active_sessions_count || 0,
+        storageSource: 'cloud',
+      };
+    });
 
     return {
       users,
