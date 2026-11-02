@@ -1330,10 +1330,20 @@
         return;
       }
       if (plot.id === 'bavaria_plots') {
+        var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
+        if (!isAdmin && typeof window.showAdminRestrictedModal === 'function') {
+          window.showAdminRestrictedModal('bavaria', 'Alpenhof Journey (Bavaria)');
+          return;
+        }
         window.location.href = 'bavaria/alpenhof.html';
         return;
       }
       if (plot.id === 'saint_martin_plots') {
+        var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
+        if (!isAdmin && typeof window.showAdminRestrictedModal === 'function') {
+          window.showAdminRestrictedModal('saint_martin', "Saint Martin's Blue Lab");
+          return;
+        }
         window.location.href = 'saint-martin/blue-lab.html';
         return;
       }
@@ -1512,13 +1522,18 @@
   function renderBiomeCardsHtml() {
     var biomes = getBiomesList();
     var curO2 = (typeof state !== 'undefined' && state && typeof state.totalO2 === 'number') ? state.totalO2 : 0;
+    var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
     return biomes.map(function (b) {
-      var isCurrent = b.id === 'germany' || b.id === 'bavaria' || b.id === 'saint_martin';
+      var isCurrent = b.id === 'germany' || (isAdmin && (b.id === 'bavaria' || b.id === 'saint_martin'));
       var reqO2 = b.unlockO2 || 0;
       var isUnlocked = isCurrent || curO2 >= reqO2;
       var badgeText = isCurrent ? '🟢 ACTIVE FARM' : (isUnlocked ? '🟢 UNLOCKED' : ('🔒 ' + reqO2.toLocaleString() + ' O₂'));
+      if (!isAdmin && (b.id === 'bavaria' || b.id === 'saint_martin')) {
+        badgeText = '🔒 ADMIN ONLY';
+        isUnlocked = false;
+      }
       var cardClass = isCurrent ? 'is-active is-current' : (isUnlocked ? 'is-active is-unlocked' : 'is-locked');
-      var titleAttr = (b.title || b.country) + (isCurrent ? ' · Active Farm (Click to enter)' : (isUnlocked ? ' · Unlocked Biome (Click to survey)' : ' · Locked (Requires ' + reqO2.toLocaleString() + ' O₂ · Current: ' + Math.round(curO2).toLocaleString() + ' O₂)'));
+      var titleAttr = (b.title || b.country) + (isCurrent ? ' · Active Farm (Click to enter)' : (!isAdmin && (b.id === 'bavaria' || b.id === 'saint_martin') ? ' · Admin Restricted (SearchO2 Headquarters)' : (isUnlocked ? ' · Unlocked Biome (Click to survey)' : ' · Locked (Requires ' + reqO2.toLocaleString() + ' O₂ · Current: ' + Math.round(curO2).toLocaleString() + ' O₂)')));
       return (
         '<div class="s2-biome-card ' + cardClass + '" data-biome="' + b.id + '" role="button" tabindex="0" title="' + esc(titleAttr) + '">' +
         '<div class="s2-biome-flag">' + (b.flag || '🌍') + '</div>' +
@@ -1780,8 +1795,18 @@
           if (typeof switchScreen === 'function') switchScreen('farm');
           else window.location.href = 'index.html?enter=farm';
         } else if (b.id === 'bavaria') {
+          var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
+          if (!isAdmin && typeof window.showAdminRestrictedModal === 'function') {
+            window.showAdminRestrictedModal('bavaria', 'Alpenhof Journey (Bavaria)');
+            return;
+          }
           window.location.href = 'bavaria/alpenhof.html';
         } else if (b.id === 'saint_martin') {
+          var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
+          if (!isAdmin && typeof window.showAdminRestrictedModal === 'function') {
+            window.showAdminRestrictedModal('saint_martin', "Saint Martin's Blue Lab");
+            return;
+          }
           window.location.href = 'saint-martin/blue-lab.html';
         } else if (isUnlocked) {
           if (typeof showNotification === 'function') {
