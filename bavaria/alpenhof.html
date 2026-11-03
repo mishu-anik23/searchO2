@@ -925,9 +925,17 @@ const TOPIC_DIALOGUES = {
   }
 };
 
-window.openCharacterDialogue = function(topicKey, onProceed) {
-  const d = TOPIC_DIALOGUES[topicKey];
-  if (!d) { if (onProceed) onProceed(); return; }
+window.openCharacterDialogue = function(topicKey, onProceedOrTitle, maybeSpeakers) {
+  let d;
+  if (typeof onProceedOrTitle === 'string' && Array.isArray(maybeSpeakers)) {
+    d = { char: topicKey, title: onProceedOrTitle, speakers: maybeSpeakers };
+  } else {
+    d = TOPIC_DIALOGUES[topicKey];
+  }
+  if (!d) {
+    if (typeof onProceedOrTitle === 'function') onProceedOrTitle();
+    return;
+  }
   const char = CHARACTERS[d.char] || CHARACTERS['puff_pip'];
   
   let h = '<div class="modal-hdr">' +
@@ -959,12 +967,12 @@ window.openCharacterDialogue = function(topicKey, onProceed) {
          '<button class="btn btn-g" style="padding:8px 18px;font-size:0.82rem" onclick="proceedDialogue(&apos;' + topicKey + '&apos;)">Understood · Proceed ➔</button>' +
        '</div>';
 
-  window._currentDialogueProceed = onProceed;
+  window._currentDialogueProceed = (typeof onProceedOrTitle === 'function') ? onProceedOrTitle : null;
   openModal(h, true);
 };
 
 window.proceedDialogue = function(topicKey) {
-  state.dialoguesSeen[topicKey] = true;
+  if (topicKey && state.dialoguesSeen) state.dialoguesSeen[topicKey] = true;
   closeModal();
   if (typeof window._currentDialogueProceed === 'function') {
     const fn = window._currentDialogueProceed;
@@ -7983,6 +7991,11 @@ const AlpenMap = {
         }
       });
     }
+
+    // 4. Periodic Chapter Progression Auto-Check
+    if (typeof checkChapterProgression === 'function' && Math.random() < 0.05) {
+      checkChapterProgression();
+    }
   },
 
   worldFromEvent(e){
@@ -8085,9 +8098,15 @@ const AlpenMap = {
       const radius = s.action === 'pond' ? 120 : s.action === 'vine' ? 90 : 52;
       if (Math.hypot(cx - s.x, cy - s.y) < radius || Math.hypot(cx - mx, cy - my) < 22){
         if (typeof isSiteInLockedZone === 'function' && isSiteInLockedZone(s.id)) {
-          openCharacterDialogue('puff_pip', () => {
-            this.handle(s);
-          });
+          const z = getSiteZone(s.id);
+          const reqCh = (z && z.chapter) ? z.chapter : 2;
+          toast('🔒 ' + s.name + ' is shrouded in mountain mist until Chapter ' + reqCh);
+          if (typeof openCharacterDialogue === 'function') {
+            openCharacterDialogue('puff_pip', 'Sector Locked: Chapter ' + reqCh + ' Required', [
+              { name: 'Puff (🦉)', text: 'Halt, pioneer! ' + s.name + ' lies within ' + (z ? z.name : 'a locked sector') + ', which is currently blanketed in thick mountain mist.' },
+              { name: 'Pip (🐥)', text: 'Complete all objectives in Chapter ' + state.chapter + ' to lift the mist and expand our estate into this territory!' }
+            ]);
+          }
           return;
         }
         this.handle(s);
@@ -10479,6 +10498,30 @@ function openMaster(tabId){
              '<span class="recall-tag">' + c.recall + '</span>' +
            '</div>' +
            '<p style="font-size:0.78rem;color:#A5D6A7;margin:8px 0">' + c.desc + '</p>';
+
+      // Chapter Goals & Criteria Checklist
+      if (c.criteria && c.criteria.length > 0) {
+        const doneCount = c.criteria.filter(crit => crit.check(state)).length;
+        const totalCount = c.criteria.length;
+        const progressPct = Math.round((doneCount / totalCount) * 100);
+        h += '<div style="margin:10px 0;background:rgba(0,0,0,0.32);border-radius:10px;padding:10px 12px;border:1px solid rgba(255,255,255,0.08)">' +
+               '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+                 '<span style="font-size:0.73rem;font-weight:800;color:var(--teal);text-transform:uppercase;letter-spacing:0.5px">🎯 Chapter Objectives (' + doneCount + '/' + totalCount + ' Completed)</span>' +
+                 '<span style="font-size:0.72rem;color:' + (doneCount === totalCount ? 'var(--teal)' : 'var(--gold)') + ';font-weight:700">' + progressPct + '%</span>' +
+               '</div>' +
+               '<div style="height:5px;background:rgba(255,255,255,0.1);border-radius:3px;margin-bottom:8px;overflow:hidden">' +
+                 '<div style="width:' + progressPct + '%;height:100%;background:linear-gradient(90deg,var(--teal),var(--gold));border-radius:3px;transition:width 0.4s ease"></div>' +
+               '</div>' +
+               '<div style="display:flex;flex-direction:column;gap:5px">';
+        c.criteria.forEach(crit => {
+          const done = crit.check(state);
+          h += '<div style="display:flex;align-items:center;gap:8px;font-size:0.75rem">' +
+                 '<span style="font-weight:bold;color:' + (done ? '#00E676' : '#FFD54F') + '">' + (done ? '✓' : '○') + '</span>' +
+                 '<span style="color:' + (done ? '#A5D6A7' : '#ECEFF1') + ';' + (done ? 'text-decoration:line-through;opacity:0.85' : '') + '">' + crit.desc + '</span>' +
+               '</div>';
+        });
+        h += '</div></div>';
+      }
 
       // Chapter Associated Objects & Facilities Grid
       const chapObj = CHAPTER_OBJECTS[c.id];
