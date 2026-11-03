@@ -756,6 +756,278 @@ const GRAPE_SPECIES = {
   }
 };
 
+/* ================= TOPOGRAPHICAL EXPLORATION ZONES & PROCEDURAL MIST ================= */
+const ALPENHOF_ZONES = [
+  {
+    id: 1,
+    name: 'Estate Gate & Courtyard',
+    deName: 'Torhof & Werkstatt',
+    chapter: 1,
+    bounds: { xMin: 850, xMax: 1950, yMin: 180, yMax: 420 },
+    sites: ['gate', 'farm_shed', 'crew', 'o1', 'bio_tree_10']
+  },
+  {
+    id: 2,
+    name: 'Streuobst Meadows & Southern Bypass',
+    deName: 'Streuobstwiesen & Südumgehung',
+    chapter: 2,
+    bounds: { xMin: 50, xMax: 850, yMin: 200, yMax: 500 },
+    sites: ['o2', 'o3', 'o4', 'bio_tree_1', 'bio_tree_11', 'bio_tree_12', 'bio_tree_2', 'bio_tree_3', 'bio_tree_4', 'bio_tree_13', 'bio_tree_14']
+  },
+  {
+    id: 3,
+    name: 'Central Polyculture Arable Meadow',
+    deName: 'Zentraler Gemüsegarten & Silos',
+    chapter: 3,
+    bounds: { xMin: 850, xMax: 1350, yMin: 420, yMax: 750 },
+    sites: ['veg', 'veg_stand', 'silo', 'bio_tree_5']
+  },
+  {
+    id: 4,
+    name: 'Living Waters Basin & Dairy Complex',
+    deName: 'Alpensee, Käserei & Kühlhaus',
+    chapter: 4,
+    bounds: { xMin: 50, xMax: 1500, yMin: 680, yMax: 1150 },
+    sites: ['pond', 'cattle', 'dairy_plant', 'cold_storage', 'o5', 'o6']
+  },
+  {
+    id: 5,
+    name: 'Renewable Ridge & Mountain Intertie',
+    deName: 'Hochkamm-Windkraft & Solarpark',
+    chapter: 5,
+    bounds: { xMin: 150, xMax: 1950, yMin: 50, yMax: 350 },
+    sites: ['solar', 'bess', 'wind_w', 'bridge', 'wind_e', 'bio_tree_6']
+  },
+  {
+    id: 6,
+    name: 'Eco-Village Gastronomy & Viticulture Plaza',
+    deName: 'Gasthof Stuben, Mosterei & Weinberg',
+    chapter: 6,
+    bounds: { xMin: 1250, xMax: 1950, yMin: 320, yMax: 800 },
+    sites: ['vineyard', 'juice', 'dairy_market', 'flower_oval', 'flower_stand', 'bbq', 'restaurant', 'bio_tree_7', 'bio_tree_8', 'bio_tree_9']
+  }
+];
+
+function getSiteZone(siteId) {
+  for (const z of ALPENHOF_ZONES) {
+    if (z.sites.includes(siteId)) return z;
+  }
+  return ALPENHOF_ZONES[0];
+}
+
+function isSiteInLockedZone(siteId) {
+  const z = getSiteZone(siteId);
+  return state.chapter < z.chapter;
+}
+
+/* ================= INTERACTIVE TOPIC-BASED CHARACTER CAST ================= */
+const CHARACTERS = {
+  puff_pip: { name: 'Prof. Whisker Puff & Pip', role: 'Alpine Field Ecology Scouts', avatar: '🦉', color: '#FFD54F' },
+  hans:     { name: 'Hans Weber', role: 'Master Streuobst Pomologist', avatar: '🧑‍🌾', color: '#81C784' },
+  greta:    { name: 'Greta Lindner', role: 'Heirloom Vegetable Grower', avatar: '👩‍🌾', color: '#76FF03' },
+  lukas:    { name: 'Lukas Gruber', role: 'Vintner & Master Cooper', avatar: '🧔', color: '#BA68C8' },
+  anna:     { name: 'Anna Schultze', role: 'Botanist & Wild Bee Apiarist', avatar: '👩‍🔬', color: '#FF4081' },
+  felix:    { name: 'Felix Brunner', role: 'Clean Energy Microgrid Engineer', avatar: '👷', color: '#00E5FF' },
+  sepp:     { name: 'Sepp Huber', role: 'Alpine Dairy Master & Cheesemaker', avatar: '🧀', color: '#FFA726' }
+};
+
+const TOPIC_DIALOGUES = {
+  gate: {
+    char: 'puff_pip',
+    title: 'Welcome to the Alpenhof Heritage Estate',
+    speakers: [
+      { name: 'Puff (🦉)', text: 'Welcome, founder! You step through the traditional Bavarian Torbogen. This estate has stood for over two centuries at the base of the Alps, but neglected soils and broken infrastructure have left it in stasis.' },
+      { name: 'Pip (🐥)', text: 'Look at the view though! The air is crisp and pure. Let us head straight to the Farm Shed and Labour HQ to find tools and assemble our first team!' }
+    ]
+  },
+  farm_shed: {
+    char: 'hans',
+    title: 'The Historic Timber Shed & Fendt Tractor',
+    speakers: [
+      { name: 'Hans Weber (🧑‍🌾)', text: 'Griaß di! This old workshop has sturdy larch framing and a vintage Fendt Dieselross tractor. With a little grease and new gaskets, it will transport compost, saplings, and timber across all 6 orchard meadows.' },
+      { name: 'Puff (🦉)', text: 'Notice the tool racks: hand-forged aerators, grafting chisels, and pruning shears. Recommissioning the shed reduces tool wear across the entire estate by 15%!' }
+    ]
+  },
+  crew: {
+    char: 'puff_pip',
+    title: 'Labour Board & Guild Artisans',
+    speakers: [
+      { name: 'Puff (🦉)', text: 'A regenerative farm cannot run on solo labor alone. Here at the Labour HQ, you can hire certified Bavarian specialists: orchardists, vegetable growers, vintners, florists, and clean energy technicians.' },
+      { name: 'Pip (🐥)', text: 'Hans Weber is ready to join us! Employing him unlocks advanced pomology and protects our saplings from blossom blight!' }
+    ]
+  },
+  orchard: {
+    char: 'hans',
+    title: 'Streuobst Pomology & Loam Crust Aeration',
+    speakers: [
+      { name: 'Hans Weber (🧑‍🌾)', text: 'Centuries of winter freeze-thaw cycles have compacted this alpine clay-loam into a brick-hard crust. If you try to plant directly into it, young rootlets will suffocate and drown in surface runoff.' },
+      { name: 'Puff (🦉)', text: 'By driving the forged spade into each circular bed, we shatter the crust into loose, crumbly tilth. Fungal mycelium can penetrate, earthworms return, and rain percolates deep into the subsoil!' },
+      { name: 'Pip (🐥)', text: 'And once the crust is aerated, we plant our heirloom cultivars across all 6 plots: Kordia Cherries, Boskoop Apples, Williams Pears, and Hauszwetschge Plums. Each mature tree pumps out fresh oxygen every hour!' }
+    ]
+  },
+  veg: {
+    char: 'greta',
+    title: '40-Plot Rhombus Polyculture & Bamboo Trellises',
+    speakers: [
+      { name: 'Greta Lindner (👩‍🌾)', text: 'Servus! Notice how our garden is shaped as a 4-bed stepped rhombus (4-3-2-1 layout). This geometric orientation catches early morning sunshine and ensures cool afternoon alpine airflow.' },
+      { name: 'Greta Lindner (👩‍🌾)', text: 'For climbing crops like Kürbis (squash) and Zucchini, we construct 3D volumetric bamboo trellises! Elevating the heavy fruits keeps them off damp loam, completely preventing mildew!' },
+      { name: 'Puff (🦉)', text: 'And by rotating companion families—cucurbits, brassicas, roots, and nightshades—we break monoculture pest cycles without needing chemical sprays.' }
+    ]
+  },
+  dairy_complex: {
+    char: 'sepp',
+    title: 'Alpen-Käserei & Subterranean Cryo-Vault',
+    speakers: [
+      { name: 'Sepp Huber (🧀)', text: 'The secret of true Bavarian Bergkäse is two things: fresh raw milk from alpine-grazed Simmental cows, and subterranean aging.' },
+      { name: 'Sepp Huber (🧀)', text: 'By building our cold vault 6 meters into the hillside, the granite keeps an unshakeable 4°C naturally. Storing our curd wheels here for aging triples their market value!' },
+      { name: 'Felix Brunner (👷)', text: 'And our clean microgrid with BESS battery backup guarantees zero refrigeration downtime, even during winter storms!' }
+    ]
+  },
+  energy_grid: {
+    char: 'felix',
+    title: 'High-Altitude Solar & Wind Microgrid',
+    speakers: [
+      { name: 'Felix Brunner (👷)', text: 'At 1,150 meters altitude, atmospheric irradiance is 18% higher than in the lowlands. Our 4×4 agrivoltaic bifacial solar array captures both direct sunlight and albedo reflection from winter snow!' },
+      { name: 'Felix Brunner (👷)', text: 'Meanwhile, High-Ridge Wind Turbine West catches constant mountain updrafts. Everything routes into our BESS battery containers to power the cold storage, dairy vats, and cider press.' }
+    ]
+  },
+  hospitality: {
+    char: 'lukas',
+    title: 'Bavarian Viticulture & Gasthof Stuben',
+    speakers: [
+      { name: 'Lukas Gruber (🧔)', text: 'Look at this south-facing slate slope! The sun strikes these 9 terraced beds all afternoon. With 108 heritage vines trained on Guyot wire trellises, our grapes develop deep mineral complexity.' },
+      { name: 'Puff (🦉)', text: 'Harvested grapes and orchard fruit flow directly down to the Hof-Mosterei cider press and Gasthof Stuben terrace, welcoming guests from across Europe!' }
+    ]
+  },
+  lake: {
+    char: 'puff_pip',
+    title: 'Living Waters Alpine Glacial Basins',
+    speakers: [
+      { name: 'Puff (🦉)', text: 'Glacial meltwater gathers in these two natural depressions. By stabilizing the clay loam lining and introducing native reeds, we create an aquatic sanctuary for Arctic charr and Brown trout.' },
+      { name: 'Pip (🐥)', text: 'The ducks have already discovered it! Duck droppings provide valuable aquatic nitrogen that enriches our downstream irrigation canals!' }
+    ]
+  },
+  flower: {
+    char: 'anna',
+    title: 'Alpine Flora Terraces & Wild Bee Hotel',
+    speakers: [
+      { name: 'Anna Schultze (👩‍🔬)', text: 'These 3 joined oval terraces bloom with true high-altitude marvels: Edelweiß, Enzian, and Alpenrose. They require nutrient-poor, gravel-rich soils to develop their intense floral scents.' },
+      { name: 'Anna Schultze (👩‍🔬)', text: 'Our wooden Bee Hotel hosts over 40 species of wild solitary bees. Their constant foraging boosts our fruit orchard yields by over 25%!' }
+    ]
+  },
+  bbq: {
+    char: 'puff_pip',
+    title: 'Hilltop Panoramic Tourist Jausenstation',
+    speakers: [
+      { name: 'Puff (🦉)', text: 'From this vantage point, hikers and guests gaze across the entire estate. 4 natural stone fire pits and timber benches create the ultimate Bavarian rest stop.' },
+      { name: 'Pip (🐥)', text: 'Selling hot snacks, sausages from the cattle pasture, and chilled cider from the Mosterei brings in heaps of tourist revenue on sunny weekends!' }
+    ]
+  }
+};
+
+window.openCharacterDialogue = function(topicKey, onProceed) {
+  const d = TOPIC_DIALOGUES[topicKey];
+  if (!d) { if (onProceed) onProceed(); return; }
+  const char = CHARACTERS[d.char] || CHARACTERS['puff_pip'];
+  
+  let h = '<div class="modal-hdr">' +
+            '<div style="display:flex;align-items:center;gap:10px">' +
+              '<span style="font-size:1.8rem;background:rgba(255,255,255,0.08);padding:6px;border-radius:12px;border:1px solid ' + char.color + '">' + char.avatar + '</span>' +
+              '<div>' +
+                '<h3 style="margin:0;font-size:1.05rem;color:' + char.color + '">' + d.title + '</h3>' +
+                '<div style="font-size:0.72rem;color:#CFD8DC">' + char.name + ' · ' + char.role + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<button class="btn-close" onclick="closeModal()">✕</button>' +
+          '</div>';
+
+  h += '<div style="margin:14px 0;display:flex;flex-direction:column;gap:10px">';
+  d.speakers.forEach(s => {
+    const isPuff = s.name.includes('Puff');
+    const isPip = s.name.includes('Pip');
+    const bubbleBg = isPuff ? 'rgba(30, 45, 35, 0.90)' : isPip ? 'rgba(38, 50, 42, 0.90)' : 'rgba(25, 40, 45, 0.92)';
+    const borderCol = isPuff ? '#FFD54F' : isPip ? '#81C784' : char.color;
+    
+    h += '<div style="background:' + bubbleBg + ';border-left:4px solid ' + borderCol + ';padding:10px 14px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.3)">' +
+           '<div style="font-weight:800;font-size:0.80rem;color:' + borderCol + ';margin-bottom:3px">' + s.name + '</div>' +
+           '<div style="font-size:0.82rem;color:#E8F5E9;line-height:1.45">' + s.text + '</div>' +
+         '</div>';
+  });
+  h += '</div>';
+
+  h += '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">' +
+         '<button class="btn btn-g" style="padding:8px 18px;font-size:0.82rem" onclick="proceedDialogue(&apos;' + topicKey + '&apos;)">Understood · Proceed ➔</button>' +
+       '</div>';
+
+  window._currentDialogueProceed = onProceed;
+  openModal(h, true);
+};
+
+window.proceedDialogue = function(topicKey) {
+  state.dialoguesSeen[topicKey] = true;
+  closeModal();
+  if (typeof window._currentDialogueProceed === 'function') {
+    const fn = window._currentDialogueProceed;
+    window._currentDialogueProceed = null;
+    fn();
+  }
+};
+
+function drawAlpineMist(ctx, t) {
+  if (!ALPENHOF_ZONES) return;
+  t = t || 0;
+  ALPENHOF_ZONES.forEach(z => {
+    if (state.chapter >= z.chapter) return; // Zone is unlocked!
+    
+    ctx.save();
+    const b = z.bounds;
+    const w = b.xMax - b.xMin;
+    const h = b.yMax - b.yMin;
+    
+    // Translucent atmospheric mist blanket
+    ctx.fillStyle = 'rgba(225, 238, 232, 0.42)';
+    ctx.beginPath();
+    ctx.roundRect(b.xMin - 15, b.yMin - 15, w + 30, h + 30, 24);
+    ctx.fill();
+
+    // Soft animated undulating cloud puffs
+    const numPuffs = 7;
+    for (let i = 0; i < numPuffs; i++) {
+      const px = b.xMin + (w / numPuffs) * (i + 0.5) + Math.sin(t * 0.0015 + i * 2.2) * 25;
+      const py = b.yMin + (h * 0.5) + Math.cos(t * 0.0011 + i * 1.8) * 20;
+      const r = Math.min(w, h) * 0.42 + Math.sin(t * 0.002 + i) * 12;
+
+      const radGrad = ctx.createRadialGradient(px, py, r * 0.15, px, py, r);
+      radGrad.addColorStop(0, 'rgba(250, 255, 252, 0.55)');
+      radGrad.addColorStop(0.65, 'rgba(220, 238, 230, 0.28)');
+      radGrad.addColorStop(1, 'rgba(220, 238, 230, 0)');
+      ctx.fillStyle = radGrad;
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Elegant lock pill indicating chapter requirement
+    const cx = (b.xMin + b.xMax) / 2;
+    const cy = (b.yMin + b.yMax) / 2;
+    ctx.fillStyle = 'rgba(8, 24, 16, 0.85)';
+    ctx.beginPath();
+    ctx.roundRect(cx - 65, cy - 14, 130, 28, 14);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 213, 79, 0.8)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFD54F';
+    ctx.font = 'bold 11px Nunito, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔒 Unlocks in Ch. ' + z.chapter, cx, cy);
+
+    ctx.restore();
+  });
+}
+
 /* 21 CALIBRATED SITES (with Bottom-Left Lake, Hilltop Turbine, Sited Vineyard) */
 const SITES = [
   ...ORCHARD_PLOTS.map(p => ({
@@ -797,7 +1069,10 @@ function makeBeds(){
 
 /* STATE DEFINITION */
 const state = {
-  money: 3200, o2: 4500, xp: 50, workers: 0, hired: [], bess: 150, chapter: 1,
+  money: 1200, o2: 250, xp: 10, workers: 0, hired: [], bess: 0, chapter: 1,
+  fruitInventory: { cherry: 0, apple: 0, pear: 0, plum: 0, quince: 0, walnut: 0, totalKg: 0 },
+  dialoguesSeen: {},
+  exploration: { mistAlpha: 0.78, inspectedSites: {}, surveyedSites: {} },
   surveyed: {}, built: {}, zoom: 1.0, panX: 0, panY: 0,
   orchards: Object.fromEntries(ORCHARD_PLOTS.map(p => [p.id, {beds: makeBeds(), aerated: 0}])),
   vineyard: { beds: makeVineBeds(), currentBed: 0, harvested: 0 },
@@ -860,51 +1135,127 @@ const CHAPTERS = [
     id: 1,
     title: 'Survey the Alpenhof Estate',
     recall: 'Recalling Solo Founder Ch. 1',
-    desc: 'Just as in Basic Farm Ch. 1, explore your estate before building. Walk the 6 orchard dirt plots, living waters pond, cattle fence and alpine pads. Acknowledge Why Cards to map the terrain.',
+    desc: 'Survey your ancestral estate and break the hardened alpine loam crusts. Recommission the Farm Shed, hire Master Orchardist Hans Weber, aerate Orchard Plot 1, and plant your first living fruit canopies.',
     goal: 6,
-    badge: '🗺️ Alpine Surveyor'
+    badge: '🗺️ Alpine Pioneer',
+    criteria: [
+      { key: 'shed', desc: 'Recommission Farm Shed & Workshop', check: s => !!s.built['farm_shed'] },
+      { key: 'hans', desc: 'Hire Master Orchardist Hans Weber', check: s => s.hired && s.hired.includes('hans') },
+      { key: 'aerate_o1', desc: 'Aerate Orchard Plot 1 (9 beds)', check: s => s.orchards['o1'].beds.filter(b => b.status !== 'crust').length >= 9 },
+      { key: 'plant_o1', desc: 'Plant at least 3 heirloom fruit saplings', check: s => s.orchards['o1'].beds.filter(b => b.species).length >= 3 },
+      { key: 'capital_o2', desc: 'Accumulate €1,400 Capital & 400 kg O₂', check: s => s.money >= 1400 && s.o2 >= 400 }
+    ]
   },
   {
     id: 2,
     title: 'Streuobst Soil Mechanics & Crust Aeration',
     recall: 'Recalling Infrastructure & Tilth Ch. 2',
-    desc: 'Building on Basic Farm Ch. 2 soil tools, aerate the hardened alpine loam crusts across the 6 orchard fields. Plant heirloom German fruit varieties one circular bed at a time.',
+    desc: 'Expand your fruit orchards across mid-elevation slopes and plant native conifer shelterbelts to shield the dairy corridor from road dust and frost.',
     goal: 4,
-    badge: '⛏️ Master Streuobstler'
+    badge: '⛏️ Master Streuobstler',
+    criteria: [
+      { key: 'aerate_orchards', desc: 'Aerate Orchards #2 and #3', check: s => s.orchards['o2'].beds.some(b => b.status !== 'crust') && s.orchards['o3'].beds.some(b => b.status !== 'crust') },
+      { key: 'plant_trees', desc: 'Plant at least 8 trees across Orchards #2 & #3', check: s => (s.orchards['o2'].beds.filter(b => b.species).length + s.orchards['o3'].beds.filter(b => b.species).length) >= 8 },
+      { key: 'schutzwald', desc: 'Plant Käserei Schutzwald conifer trees', check: s => s.biodiversity.spots.some(sp => sp.id === 'bio_tree_1' && sp.species) },
+      { key: 'bypass_road', desc: 'Commission Bypass Roadway segment', check: s => !!(s.built.roads && s.built.roads['bypass_road_southern_pond']) || !!s.built['road_dairy_bypass'] }
+    ]
   },
   {
     id: 3,
     title: 'Polyculture Arable & Pollinator Guilds',
     recall: 'Recalling Ecosystem & Companion Guilds Ch. 3',
-    desc: 'Echoing Basic Farm Ch. 3, establish balanced companion habitats: build the 48-plot Hexagonal Vegetable Garden (Kürbis, Zucchini, Broccoli, Spargel, Sellerie), erect the Bavarian Grain Silos, and plant the Oval Flower Garden with pollinator bee hotel.',
+    desc: 'Establish the 40-plot Rhombus Step Vegetable Garden with bamboo trellising. Build the twin grain silos and open the Gemüsestandl to market fresh harvests.',
     goal: 3,
-    badge: '🐝 Biodiversity Guardian'
+    badge: '🐝 Biodiversity Guardian',
+    criteria: [
+      { key: 'veg_bld', desc: 'Construct 40-Plot Rhombus Vegetable Garden', check: s => !!s.built['veg'] },
+      { key: 'bamboo', desc: 'Erect bamboo climbing beds on vegetable plots', check: s => s.vegetables.beds.some(b => b.bambooBed) },
+      { key: 'silos', desc: 'Erect Bavarian Twin Grain Silos', check: s => !!s.built['silo'] },
+      { key: 'veg_stand', desc: 'Open Alpenhof Gemüsestandl Hofladen', check: s => !!s.built['veg_stand'] },
+      { key: 'harvest_veg', desc: 'Harvest fresh polyculture crops', check: s => (s.vegetables.harvestedTotal || 0) >= 10 }
+    ]
   },
   {
     id: 4,
     title: 'Closed-Loop Living Waters & Alpine Grazing',
     recall: 'Recalling Circular Closed-Loop Ecology Ch. 4',
-    desc: 'Applying Basic Farm Ch. 4 circularity, excavate the Living Waters Pond to establish aquatic biology and build the Hillside Cattle Pasture for Simmental cows and sheep.',
+    desc: 'Excavate the 2-basin Living Waters Lake system to capture mountain snowmelt. Build the hillside cattle pasture for Simmental cows and commission the Käserei & Subterranean Cold Storage.',
     goal: 2,
-    badge: '🐄 Closed-Loop Steward'
+    badge: '🐄 Closed-Loop Steward',
+    criteria: [
+      { key: 'lake', desc: 'Fully excavate and commission Living Waters Lake', check: s => (s.lake.stage || 0) >= 3 || !!s.built['pond'] },
+      { key: 'cattle', desc: 'Erect Hillside Cattle Pasture & graze cows', check: s => !!s.built['cattle'] },
+      { key: 'käserei', desc: 'Commission Bavarian Dairy Processing Plant', check: s => !!s.built['dairy_plant'] },
+      { key: 'cold_vault', desc: 'Construct Subterranean Geothermal Cold Storage', check: s => !!s.built['cold_storage'] }
+    ]
   },
   {
     id: 5,
     title: 'Mountain Renewable Microgrid & Automation',
     recall: 'Recalling Microgrid & Clean Power Ch. 5',
-    desc: 'Connecting to Basic Farm Ch. 5 energy systems, commission the 4×4 Agrivoltaic Solar Farm, West & East Wind Turbines and connect the BESS Storage Farm to power automated processing machinery.',
+    desc: 'Deploy the 4×4 Agrivoltaic Solar Farm over sheep pasture, assemble Wind Turbine West in the high-ridge clearing, and connect the BESS Storage Farm.',
     goal: 2,
-    badge: '⚡ Alpine Grid Engineer'
+    badge: '⚡ Alpine Grid Engineer',
+    criteria: [
+      { key: 'solar', desc: 'Commission 4×4 Agrivoltaic Solar Farm (16 modules)', check: s => !!s.built['solar'] },
+      { key: 'wind_w', desc: 'Erect High-Ridge Wind Turbine West', check: s => !!s.built['wind_w'] },
+      { key: 'bess', desc: 'Intertie BESS Energy Storage Farm', check: s => !!s.built['bess'] },
+      { key: 'bridge', desc: 'Construct Alpine Wooden Overbridge across cleft', check: s => !!s.built['bridge'] }
+    ]
   },
   {
     id: 6,
     title: 'Eco-Village Community & Farm-to-Table Stuben',
     recall: 'Recalling Eco-Village & Commerce Ch. 6',
-    desc: 'Fulfilling Basic Farm Ch. 6, construct the Crew Lodge, launch the Hof-Mosterei Juice Bar, and open the Alpenhof Gasthof Stuben & Village Fountain to welcome guests.',
+    desc: 'Terrace the 108-vine vineyard, launch the Hof-Mosterei cider press, open the Flower Terraces & Bee Hotel, and welcome guests at the Alpenhof Gasthof Stuben & Village Fountain.',
     goal: 2,
-    badge: '🏘️ Eco-Village Founder'
+    badge: '🏘️ Eco-Village Founder',
+    criteria: [
+      { key: 'vineyard', desc: 'Plant and harvest 108-Vine Heritage Vineyard', check: s => (s.vineyard.harvested || 0) > 0 || !!s.built['vineyard'] },
+      { key: 'juice', desc: 'Commission Hof-Mosterei & Juice Bar press', check: s => !!s.built['juice'] },
+      { key: 'flower', desc: 'Bloom Flower Terraces and harvest Honey Bank', check: s => !!s.built['flower_oval'] },
+      { key: 'bbq', desc: 'Build Hilltop Tourist BBQ & Panoramabenches', check: s => !!s.built['bbq'] },
+      { key: 'stuben', desc: 'Open Alpenhof Gasthof Stuben & Village Fountain', check: s => !!s.built['restaurant'] }
+    ]
   }
 ];
+
+window.checkChapterProgression = function() {
+  const curCh = CHAPTERS[state.chapter - 1];
+  if (!curCh) return;
+  
+  let completedCount = 0;
+  if (curCh.criteria && curCh.criteria.length > 0) {
+    curCh.criteria.forEach(crit => {
+      if (crit.check(state)) completedCount++;
+    });
+    const pct = Math.round((completedCount / curCh.criteria.length) * 100);
+    const tb = document.getElementById('taskBar');
+    if (tb) tb.style.width = Math.max(10, pct) + '%';
+    
+    if (completedCount === curCh.criteria.length && state.chapter < CHAPTERS.length) {
+      state.chapter++;
+      const nextCh = CHAPTERS[state.chapter - 1];
+      toast('🎉 Chapter Milestone Complete! Unlocked Chapter ' + state.chapter + ': ' + nextCh.title);
+      
+      const tt = document.getElementById('taskTitle');
+      if (tt) tt.textContent = 'Chapter ' + state.chapter + ' · ' + nextCh.title;
+      const tr = document.getElementById('taskRecall');
+      if (tr) tr.textContent = nextCh.recall;
+      const td = document.getElementById('taskDesc');
+      if (td) td.textContent = nextCh.desc;
+      if (tb) tb.style.width = '10%';
+      
+      grantXP({ oxygen: 25, biodiversity: 20 });
+      if (typeof openCharacterDialogue === 'function') {
+        openCharacterDialogue('puff_pip', 'Chapter ' + state.chapter + ' Unlocked: ' + nextCh.title, [
+          { name: 'Puff (🦉)', text: 'Magnificent achievement, founder! We have satisfied every ecological and structural requirement for ' + curCh.title + '.' },
+          { name: 'Pip (🐥)', text: 'The mountain mist is lifting from the next sector! New meadows, blueprints, and artisan techniques are now accessible!' }
+        ]);
+      }
+    }
+  }
+};
 
 function toast(msg){
   const t = document.getElementById('toast');
@@ -6603,6 +6954,12 @@ function drawMarker(ctx, s){
     ctx.fillText(s.icon, 0, -2);
   }
 
+  if (typeof isSiteInLockedZone === 'function' && isSiteInLockedZone(s.id)) {
+    ctx.fillStyle = '#FFD54F';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('🔒', 14, -12);
+  }
+
   ctx.restore();
 }
 
@@ -7527,17 +7884,20 @@ const AlpenMap = {
       });
     }
 
-    // 1. Orchard Trees Natural Growth
+    // 1. All 6 Orchard Plots (54 Trees) Natural Pomology Growth & Seasonal Re-flowering
     Object.values(state.orchards).forEach(o => {
       o.beds.forEach(b => {
         if (b.status === 'seed') {
-          b.progress = (b.progress || 0) + 0.004;
+          b.progress = (b.progress || 0) + 0.005;
           if (b.progress >= 1) { b.status = 'sprout'; b.progress = 0; }
         } else if (b.status === 'sprout') {
-          b.progress = (b.progress || 0) + 0.003;
+          b.progress = (b.progress || 0) + 0.004;
           if (b.progress >= 1) { b.status = 'young'; b.progress = 0; }
         } else if (b.status === 'young') {
-          b.progress = (b.progress || 0) + 0.002;
+          b.progress = (b.progress || 0) + 0.003;
+          if (b.progress >= 1) { b.status = 'mature'; b.progress = 0; }
+        } else if (b.status === 'resting') {
+          b.progress = (b.progress || 0) + 0.0025;
           if (b.progress >= 1) { b.status = 'mature'; b.progress = 0; }
         }
       });
@@ -7718,12 +8078,18 @@ const AlpenMap = {
       if (catSite) { this.handle(catSite); return; }
     }
 
-    // Direct click on calibrated Sites
+    // Direct click on calibrated Sites (with Fog-of-War Mist Dialogue)
     for(const s of SITES){
       const mx = (s.markerX !== undefined) ? s.markerX : s.x;
       const my = (s.markerY !== undefined) ? s.markerY : (s.y - 58);
       const radius = s.action === 'pond' ? 120 : s.action === 'vine' ? 90 : 52;
       if (Math.hypot(cx - s.x, cy - s.y) < radius || Math.hypot(cx - mx, cy - my) < 22){
+        if (typeof isSiteInLockedZone === 'function' && isSiteInLockedZone(s.id)) {
+          openCharacterDialogue('puff_pip', () => {
+            this.handle(s);
+          });
+          return;
+        }
         this.handle(s);
         return;
       }
@@ -7818,6 +8184,9 @@ const AlpenMap = {
       else if (s.action === 'crew') drawCrewLodge(ctx, s.x, s.y, built);
       else if (s.action === 'shed') drawFarmBarn(ctx, s.x, s.y, built);
     });
+
+    // 4b. Soft Translucent Animated Alpine Mist across Locked Exploration Zones
+    drawAlpineMist(ctx, this.time);
 
     // 5. Dynamic 3D Flying Alpine Birds System
     drawAlpineBirds(ctx, this.time);
@@ -8725,8 +9094,8 @@ function openBiodiversityModal(spotId){
 }
 
 window.aerateBiodiversitySpot = function(spotId){
-  if (state.money < 25) { toast('Need €25 to aerate soil crust'); return; }
-  state.money -= 25;
+  const cost = Math.min(25, Math.max(0, state.money));
+  state.money -= cost;
   const s = state.biodiversity.spots.find(x => x.id === spotId);
   if (s) {
     s.status = 'aerated';
@@ -8738,8 +9107,8 @@ window.aerateBiodiversitySpot = function(spotId){
 };
 
 window.aerateAllBiodiversitySpots = function(){
-  if (state.money < 200) { toast('Need €200 to aerate all 10 biodiversity spots'); return; }
-  state.money -= 200;
+  const cost = Math.min(200, Math.max(0, state.money));
+  state.money -= cost;
   let count = 0;
   state.biodiversity.spots.forEach(s => {
     if (s.status === 'crust') {
@@ -8748,7 +9117,7 @@ window.aerateAllBiodiversitySpots = function(){
     }
   });
   grantXP({oxygen: 45});
-  toast('⛏️ Aerated ' + count + ' biodiversity spots across Alpenhof! (-€200)');
+  toast('⛏️ Aerated ' + count + ' biodiversity spots across Alpenhof!');
   renderScoreboard();
   const curOpen = state.biodiversity.spots[0].id;
   openBiodiversityModal(curOpen);
@@ -8757,8 +9126,8 @@ window.aerateAllBiodiversitySpots = function(){
 window.plantBiodiversityTree = function(spotId, spKey){
   const sp = BIODIVERSITY_TREE_SPECIES[spKey];
   if (!sp) return;
-  if (state.money < sp.cost) { toast('Need €' + sp.cost + ' to plant ' + sp.name); return; }
-  state.money -= sp.cost;
+  const cost = Math.min(sp.cost, Math.max(0, state.money));
+  state.money -= cost;
 
   const s = state.biodiversity.spots.find(x => x.id === spotId);
   if (s) {
@@ -8773,8 +9142,8 @@ window.plantBiodiversityTree = function(spotId, spKey){
 };
 
 window.careBiodiversitySpot = function(spotId, action){
-  const cost = action === 'water' ? 10 : 12;
-  if (state.money < cost) { toast('Need €' + cost + ' for care'); return; }
+  const maxCost = action === 'water' ? 10 : 12;
+  const cost = Math.min(maxCost, Math.max(0, state.money));
   state.money -= cost;
 
   const s = state.biodiversity.spots.find(x => x.id === spotId);
@@ -8959,7 +9328,7 @@ function openRestaurantModal(){
 }
 
 window.dispenseGrapeJuice = function(){
-  const rev = 36;
+  const rev = 95;
   state.money += rev;
   grantXP({fruit: 14, oxygen: 10});
   toast('🍇 Dispensed 15 carafes of fresh estate grape juice from the Silo (+€' + rev + ' revenue)');
@@ -8968,7 +9337,7 @@ window.dispenseGrapeJuice = function(){
 };
 
 window.hostGastronomyEvening = function(){
-  const rev = 65;
+  const rev = 320;
   state.money += rev;
   grantXP({fruit: 25, biodiversity: 20});
   toast('🍽️ Hosted full evening banquet on the timber terrace! (+€' + rev + ' revenue)');
@@ -9051,8 +9420,11 @@ window.advanceBBQStep = function(stepIdx, cost){
 };
 
 window.buildBBQComplete = function(cost){
-  if (state.money < cost) { toast('Need €' + cost + ' for full BBQ park construction'); return; }
-  state.money -= cost;
+  if (state.money >= cost) {
+    state.money -= cost;
+  } else {
+    state.money = 0;
+  }
   state.bbq.stage = 4;
   state.built['bbq'] = true;
   grantXP({fruit: 35, biodiversity: 30});
@@ -9071,7 +9443,7 @@ window.restockBBQFood = function(){
 };
 
 window.hostBBQTourists = function(){
-  const rev = 48;
+  const rev = 240;
   state.money += rev;
   state.bbq.touristsServed = (state.bbq.touristsServed || 0) + 12;
   grantXP({fruit: 18, oxygen: 15});
@@ -9306,6 +9678,7 @@ window.advanceLakeStep = function(stepIdx, cost){
   if (state.money < cost) { toast('Need €' + cost + ' for this excavation step'); return; }
   state.money -= cost;
   state.lake.stage = stepIdx + 1;
+  state.money += 120; // Glacial loam excavation discovery grant
   grantXP({oxygen: 10, biodiversity: 15});
   if (state.lake.stage >= 4) {
     state.built['pond'] = true;
@@ -9645,7 +10018,7 @@ window.harvestVineBed = function(bedIdx){
   const matureVines = bed.vines.filter(v => v.status === 'mature');
   if (matureVines.length === 0) { toast('No mature grapes ready to harvest'); return; }
 
-  const yieldRevenue = matureVines.length * 12 + 40;
+  const yieldRevenue = matureVines.length * 28 + 140;
   state.money += yieldRevenue;
   state.o2 += 30;
   state.vineyard.harvested += matureVines.length;
@@ -9659,33 +10032,198 @@ window.harvestVineBed = function(bedIdx){
   openVineyardModal(bedIdx);
 };
 
+/* ================= 6 ORCHARD PLOTS & 54 TREES POMOLOGY ENGINE ================= */
+const ORCHARD_HEIRLOOMS = {
+  o1: { name: 'Kordia Sweet Cherry', species: 'cherry', icon: '🍒', slope: 'NW Hillside Loam', harvestRevenue: 38, desc: 'Large deep-crimson cherries with firm, aromatic flesh. Outstanding for Stuben desserts.' },
+  o2: { name: 'Roter Boskoop Apple', species: 'apple', icon: '🍎', slope: 'NE Hillside Sun Terrace', harvestRevenue: 36, desc: 'Heirloom tart winter apple with russet blush. Ideal for cold-pressed Mosterei cider.' },
+  o3: { name: 'Williams Christ Pear', species: 'pear', icon: '🍐', slope: 'Mid-West Loam Slope', harvestRevenue: 34, desc: 'Golden speckled melting pears with intense perfume for traditional compote and spirits.' },
+  o4: { name: 'Fränkische Hauszwetschge', species: 'plum', icon: '🫐', slope: 'Mid-East Sheltered Bench', harvestRevenue: 32, desc: 'Classic powdery-blue damson plums for rustic Bavarian Zwetschgendatschi cakes.' },
+  o5: { name: 'Konstantinopeler Quince', species: 'apple', icon: '🍏', slope: 'SW Lower Meadow Silt', harvestRevenue: 42, desc: 'Fragrant golden woolly quinces with rich pectin for fine jams and fruit pastes.' },
+  o6: { name: 'Geisenheim Black Walnut', species: 'beech', icon: '🌰', slope: 'SE Lower Valley Meadow', harvestRevenue: 45, desc: 'Heavy winter walnut trees providing valuable nut timber and cold-pressed walnut oil.' }
+};
+
 function openOrchardModal(s){
   const o = state.orchards[s.plot];
-  let body = '<div class="modal-hdr"><h3>🌳 ' + s.title + '</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
-  body += '<p style="font-size:0.82rem;color:#A5D6A7;margin-bottom:8px">Strict 3×3 circular hard-rock crusts embedded on background dirt. Aerate crusts, then plant <b>one bed at a time</b> from the German species catalogue.</p>';
+  const info = ORCHARD_HEIRLOOMS[s.plot] || ORCHARD_HEIRLOOMS['o1'];
+  
+  let body = '<div class="modal-hdr">' +
+               '<div>' +
+                 '<h3 style="margin:0">🌳 ' + s.title + '</h3>' +
+                 '<div style="font-size:0.72rem;color:var(--gold)">' + info.slope + ' · Recommended: ' + info.icon + ' ' + info.name + '</div>' +
+               '</div>' +
+               '<button class="btn-close" onclick="closeModal()">✕</button>' +
+             '</div>' +
+             '<p style="font-size:0.82rem;color:#A5D6A7;margin-bottom:8px">Strict 3×3 circular hard-rock crusts embedded on background loam. Aerate crusts, then plant <b>one bed at a time</b> from the German species catalogue.</p>';
 
-  body += '<div class="grid-3">';
+  const crusts = o.beds.filter(b => b.status === 'crust').length;
+  const aerated = o.beds.filter(b => b.status === 'empty' || b.status === 'aerating').length;
+  const growing = o.beds.filter(b => b.species && b.status !== 'mature' && b.status !== 'resting').length;
+  const mature = o.beds.filter(b => b.status === 'mature').length;
+  const resting = o.beds.filter(b => b.status === 'resting').length;
+
+  // Plot Status Telemetry Bar
+  body += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:rgba(255,255,255,0.04);border-radius:10px;padding:8px;margin-bottom:12px;text-align:center">' +
+            '<div><div style="font-size:0.68rem;color:#CFD8DC">Crusts</div><b style="color:#FFA726">' + crusts + ' / 9</b></div>' +
+            '<div><div style="font-size:0.68rem;color:#CFD8DC">Aerated</div><b style="color:#81C784">' + aerated + ' / 9</b></div>' +
+            '<div><div style="font-size:0.68rem;color:#CFD8DC">Growing</div><b style="color:#64B5F6">' + growing + '</b></div>' +
+            '<div><div style="font-size:0.68rem;color:#CFD8DC">Mature</div><b style="color:var(--teal)">' + mature + ' ready</b></div>' +
+          '</div>';
+
+  // 3x3 Circular Bed Grid
+  body += '<div class="grid-3" style="gap:8px">';
   o.beds.forEach((b, i) => {
-    let label = '🪨 Crust', cls = '';
-    if (b.status === 'empty' || b.status === 'aerating') { label = '⛏️ Ready'; cls = 'open'; }
-    else if (b.species) { const sp = SPECIES[b.species]; label = sp.icon + ' ' + b.status; cls = 'filled'; }
-    body += '<div class="bed-cell ' + cls + '" onclick="selectBed(\'' + s.plot + '\',' + i + ')">Bed #' + (i + 1) + '<br/>' + label + '</div>';
+    let label = '🪨 Crust', cls = '', icon = '🪨', sub = 'Click to aerate';
+    if (b.status === 'empty' || b.status === 'aerating') {
+      label = '⛏️ Aerated'; cls = 'open'; icon = '⛏️'; sub = 'Plant sapling';
+    } else if (b.species) {
+      const sp = SPECIES[b.species] || { icon: '🌳', name: 'Tree' };
+      if (b.status === 'mature') {
+        label = 'Mature Fruiting'; cls = 'filled'; icon = sp.icon; sub = '🧺 Pick (+€' + info.harvestRevenue + ')';
+      } else if (b.status === 'resting') {
+        label = 'Resting'; cls = 'filled'; icon = '🍃'; sub = 'Budding';
+      } else {
+        const pct = Math.round((b.progress || 0) * 100);
+        label = b.status.charAt(0).toUpperCase() + b.status.slice(1);
+        cls = 'filled'; icon = sp.icon; sub = pct + '% growth';
+      }
+    }
+    body += '<div class="bed-cell ' + cls + '" style="cursor:pointer;padding:10px 6px;text-align:center;border-radius:8px;position:relative" onclick="handleBedAction(&apos;' + s.plot + '&apos;,' + i + ')">' +
+              '<div style="font-size:1.3rem;margin-bottom:2px">' + icon + '</div>' +
+              '<div style="font-size:0.75rem;font-weight:700">Bed #' + (i + 1) + '</div>' +
+              '<div style="font-size:0.68rem;opacity:.85">' + label + '</div>' +
+              '<div style="font-size:0.65rem;color:' + (b.status === 'mature' ? 'var(--gold)' : '#A5D6A7') + '">' + sub + '</div>' +
+            '</div>';
   });
   body += '</div>';
 
-  const crusts = o.beds.filter(b => b.status === 'crust').length;
+  // Quick Action Buttons
+  body += '<div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">';
   if (crusts > 0) {
-    body += '<button class="btn btn-a" style="margin-top:12px;width:100%" onclick="aeratePlot(\'' + s.plot + '\')">⛏️ Aerate all 9 hard crusts (€40)</button>';
+    body += '<button class="btn btn-a" style="width:100%" onclick="aeratePlot(&apos;' + s.plot + '&apos;)">⛏️ Aerate all ' + crusts + ' loam crusts (€' + (crusts * 4.5).toFixed(0) + ')</button>';
   }
+  if (aerated > 0) {
+    body += '<button class="btn btn-g" style="width:100%" onclick="plantEntirePlot(&apos;' + s.plot + '&apos;,&apos;' + info.species + '&apos;)">🌱 Plant all ' + aerated + ' aerated beds with ' + info.icon + ' ' + info.name + ' (€' + (aerated * 35) + ')</button>';
+  }
+  if (mature > 0) {
+    body += '<button class="btn btn-c" style="width:100%" onclick="harvestEntirePlot(&apos;' + s.plot + '&apos;)">🧺 Harvest all ' + mature + ' mature trees (+€' + (mature * info.harvestRevenue) + ')</button>';
+  }
+  body += '<button class="btn btn-outline" style="width:100%;font-size:0.75rem;padding:6px;background:rgba(255,255,255,0.06);border:1px solid var(--border)" onclick="openCharacterDialogue(&apos;orchard&apos;, () => openOrchardModal(SITES.find(st=>st.plot===&apos;' + s.plot + '&apos;)))">💬 Hans Weber & Pomology Lore</button>';
+  body += '</div>';
 
   body += '<div class="why-card" style="margin-top:12px">' +
             '<b>Streuobst Mastery & Basic Farm Ch. 2 Recall</b>' +
-            '<div class="recall-box"><b>Recalling Soil Aeration:</b> Just as you used the hand-forged spade to till Plot 1, breaking hard alpine loam allows root penetration and microbial respiration.</div>' +
+            '<div class="recall-box"><b>Recalling Soil Aeration:</b> Just as you used the hand-forged spade to till Plot 1, breaking hard alpine loam allows root penetration and microbial respiration across all 54 beds.</div>' +
             '<p style="font-size:0.78rem;color:#C8E6C9">Planting one bed at a time lets you observe seed → sprout → young → mature progression.</p>' +
           '</div>';
 
   openModal(body, true);
 }
+
+window.handleBedAction = function(plotId, idx) {
+  const o = state.orchards[plotId];
+  const bed = o.beds[idx];
+  const info = ORCHARD_HEIRLOOMS[plotId] || ORCHARD_HEIRLOOMS['o1'];
+
+  if (bed.status === 'crust') {
+    if (state.money < 5) { toast('Need €5 to aerate crust'); return; }
+    state.money -= 5;
+    bed.status = 'empty';
+    grantXP({ oxygen: 4 });
+    toast('Bed #' + (idx + 1) + ' aerated! Loam loosened for planting');
+    renderScoreboard();
+    openOrchardModal(SITES.find(s => s.plot === plotId));
+    if (typeof checkChapterProgression === 'function') checkChapterProgression();
+    return;
+  }
+
+  if (bed.status === 'empty' || bed.status === 'aerating') {
+    selectBed(plotId, idx);
+    return;
+  }
+
+  if (bed.status === 'mature') {
+    harvestOrchardBed(plotId, idx);
+    return;
+  }
+
+  if (bed.species) {
+    const sp = SPECIES[bed.species];
+    const pct = Math.round((bed.progress || 0) * 100);
+    toast(sp.name + ' · Bed #' + (idx + 1) + ' (' + bed.status + ' ' + pct + '%) · Naturally maturing');
+  }
+};
+
+window.harvestOrchardBed = function(plotId, idx) {
+  const o = state.orchards[plotId];
+  const bed = o.beds[idx];
+  if (!bed || bed.status !== 'mature') return;
+
+  const info = ORCHARD_HEIRLOOMS[plotId] || ORCHARD_HEIRLOOMS['o1'];
+  const rev = info.harvestRevenue || 35;
+  state.money += rev;
+  state.o2 += 18;
+  bed.status = 'resting';
+  bed.progress = 0;
+  o.harvestsCount = (o.harvestsCount || 0) + 1;
+  o.totalYieldKg = (o.totalYieldKg || 0) + 18;
+  state.fruitInventory = state.fruitInventory || {};
+  state.fruitInventory[info.species] = (state.fruitInventory[info.species] || 0) + 18;
+
+  grantXP({ fruit: 15, oxygen: 8 });
+  toast('🧺 Harvested Bed #' + (idx + 1) + '! +€' + rev + ' · 18 kg ' + info.name + ' gathered');
+  renderScoreboard();
+  openOrchardModal(SITES.find(s => s.plot === plotId));
+  if (typeof checkChapterProgression === 'function') checkChapterProgression();
+};
+
+window.harvestEntirePlot = function(plotId) {
+  const o = state.orchards[plotId];
+  const matureBeds = o.beds.filter(b => b.status === 'mature');
+  if (matureBeds.length === 0) { toast('No mature trees ready to harvest in this plot'); return; }
+
+  const info = ORCHARD_HEIRLOOMS[plotId] || ORCHARD_HEIRLOOMS['o1'];
+  const totalRev = matureBeds.length * info.harvestRevenue;
+  const totalKg = matureBeds.length * 18;
+
+  state.money += totalRev;
+  state.o2 += matureBeds.length * 18;
+  matureBeds.forEach(b => {
+    b.status = 'resting';
+    b.progress = 0;
+  });
+  o.harvestsCount = (o.harvestsCount || 0) + matureBeds.length;
+  o.totalYieldKg = (o.totalYieldKg || 0) + totalKg;
+  state.fruitInventory = state.fruitInventory || {};
+  state.fruitInventory[info.species] = (state.fruitInventory[info.species] || 0) + totalKg;
+
+  grantXP({ fruit: matureBeds.length * 15, oxygen: matureBeds.length * 8 });
+  toast('🎉 Harvested all ' + matureBeds.length + ' mature trees in ' + plotId.toUpperCase() + '! +€' + totalRev + ' (' + totalKg + ' kg)');
+  renderScoreboard();
+  openOrchardModal(SITES.find(s => s.plot === plotId));
+  if (typeof checkChapterProgression === 'function') checkChapterProgression();
+};
+
+window.plantEntirePlot = function(plotId, spKey) {
+  const o = state.orchards[plotId];
+  const emptyBeds = o.beds.filter(b => b.status === 'empty');
+  if (emptyBeds.length === 0) { toast('No aerated beds ready for planting'); return; }
+
+  const cost = emptyBeds.length * 35;
+  if (state.money < cost) { toast('Need €' + cost + ' to plant ' + emptyBeds.length + ' beds'); return; }
+
+  state.money -= cost;
+  emptyBeds.forEach(b => {
+    b.species = spKey;
+    b.status = 'seed';
+    b.progress = 0;
+  });
+
+  grantXP({ fruit: emptyBeds.length * 10, oxygen: emptyBeds.length * 5 });
+  toast('🌱 Planted ' + emptyBeds.length + ' beds in ' + plotId.toUpperCase() + ' with ' + SPECIES[spKey].name);
+  renderScoreboard();
+  openOrchardModal(SITES.find(s => s.plot === plotId));
+  if (typeof checkChapterProgression === 'function') checkChapterProgression();
+};
 
 window.selectBed = function(plotId, idx){
   const bed = state.orchards[plotId].beds[idx];
@@ -9773,8 +10311,9 @@ window.hireWorker = function(id, cost){
   state.money -= cost;
   state.workers++;
   state.hired.push(id);
+  state.money += 280; // Bavarian Guild tool chest & pioneer subsidy grant
   grantXP({biodiversity: 20});
-  toast('Hired ' + id.toUpperCase() + ' for Alpenhof operations');
+  toast('Hired ' + id.toUpperCase() + ' for Alpenhof operations (+€280 Guild Subsidy & Tools)');
   closeModal(); openLabour(); renderScoreboard();
 };
 
