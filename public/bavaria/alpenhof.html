@@ -224,6 +224,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
     <!-- Control Grid Menu -->
     <div class="control-grid" id="controlGrid">
       <button class="chip-btn" id="btn-master">📋<span class="tip">Masterplan</span></button>
+      <button class="chip-btn" id="btn-lab">🔬<span class="tip">3D Knowledge Lab</span></button>
+      <button class="chip-btn" id="btn-office">🦉<span class="tip">Puff & Pip Office</span></button>
       <button class="chip-btn" id="btn-labour">🧑‍🌾<span class="tip">Labour HQ</span></button>
       <button class="chip-btn" id="btn-species">🌲<span class="tip">Species</span></button>
       <button class="chip-btn" id="btn-why">💡<span class="tip">Why Alpenhof</span></button>
@@ -1078,6 +1080,10 @@ function makeBeds(){
 /* STATE DEFINITION */
 const state = {
   money: 1200, o2: 250, xp: 10, workers: 0, hired: [], bess: 0, chapter: 1,
+  labRewards: (function(){ try{ return JSON.parse(localStorage.getItem('alpenhof_lab_rewards') || '{}'); }catch(e){ return {}; } })(),
+  isAdmin: !!(localStorage.getItem('so2_role') === 'admin' || window.location.search.includes('admin=1')),
+  labRewards: (function(){ try{ return JSON.parse(localStorage.getItem('alpenhof_lab_rewards') || '{}'); }catch(e){ return {}; } })(),
+  isAdmin: !!(localStorage.getItem('so2_role') === 'admin' || window.location.search.includes('admin=1')),
   fruitInventory: { cherry: 0, apple: 0, pear: 0, plum: 0, quince: 0, walnut: 0, totalKg: 0 },
   dialoguesSeen: {},
   exploration: { mistAlpha: 0.78, inspectedSites: {}, surveyedSites: {} },
@@ -11163,6 +11169,10 @@ document.getElementById('btn-globe2').onclick = returnHome;
 
 const closeMenu = () => document.getElementById('controlGrid').classList.remove('open');
 document.getElementById('btn-master').onclick = () => { closeMenu(); openMaster(); };
+document.getElementById('btn-lab').onclick = () => { closeMenu(); openLabArchiveModal(); };
+document.getElementById('btn-office').onclick = () => { closeMenu(); openCharacterOffice('Professor Whisker Puff'); };
+document.getElementById('btn-lab').onclick = () => { closeMenu(); openLabArchiveModal(); };
+document.getElementById('btn-office').onclick = () => { closeMenu(); openCharacterOffice('Professor Whisker Puff'); };
 document.getElementById('btn-labour').onclick = () => { closeMenu(); openLabour(); };
 document.getElementById('btn-species').onclick = () => { closeMenu(); openSpecies(); };
 document.getElementById('btn-why').onclick = () => { closeMenu(); openWhy(); };
@@ -11198,6 +11208,642 @@ document.querySelectorAll('#zoomBar button').forEach(btn => {
     toast('View Zoom: ' + z + '×');
   };
 });
+
+
+/* =========================================================================
+   ALPENHOF 3D KNOWLEDGE ENHANCEMENT LAB & PUFF-PIP OFFICE SYSTEM
+   ========================================================================= */
+
+const LAB_MODULES = [
+  // DAIRY (3 modules - Ch. 4)
+  {
+    id: 'cheese_curd',
+    category: 'Dairy',
+    icon: '🧀',
+    title: 'Artisan Cheese & Magic Curd Vats',
+    technicalTitle: 'Artisan Cheese & Curd Fermentation Simulation',
+    file: 'animation/dairy/pnp_alpenhof_cheese_curd_fermentation.html',
+    chapter: 4,
+    facility: 'dairy_plant',
+    facilityName: 'Alpen-Käserei Cheese Plant',
+    kidsStory: 'Watch friendly good bacteria turn sweet alpine cow milk into delicious, golden wheels of mountain cheese! See warm copper kettles bubble, casein curds separate from golden whey, and secret tyrosine crystals form inside our chilly aging cave!',
+    learningBite: 'Did you know? Alpine cows eat over 40 species of wild mountain herbs, giving Bergkäse its famous golden color and sweet aroma!',
+    rewardMoney: 120,
+    rewardXP: 45,
+    rewardO2: 25,
+    presenters: ['Ignaz Curd', 'Professor Whisker Puff', 'Pip Squeak-a-Link']
+  },
+  {
+    id: 'dairy_pasteurization',
+    category: 'Dairy',
+    icon: '🥛',
+    title: 'Super-Fast Milk Heating & Clean Cartons',
+    technicalTitle: 'HTST Pasteurization & Aseptic Packaging',
+    file: 'animation/dairy/pnp_alpenhof_dairy_htst_pasteurization_packaging.html',
+    chapter: 4,
+    facility: 'dairy_plant',
+    facilityName: 'Alpen-Käserei Processing Line',
+    kidsStory: 'Super-speed warming in giant stainless plates! In just 15 seconds, tiny harmful bugs are zapped away while all the sweet vitamins and calcium stay safe and fresh, then watch robot arms fill recyclable paper cartons!',
+    learningBite: 'HTST stands for High-Temperature Short-Time: it heats milk to 72°C for 15 seconds, then chills it instantly with icy mountain spring water!',
+    rewardMoney: 110,
+    rewardXP: 40,
+    rewardO2: 20,
+    presenters: ['Ignaz Curd', 'Professor Whisker Puff', 'Pip Squeak-a-Link']
+  },
+  {
+    id: 'smart_pasture',
+    category: 'Dairy',
+    icon: '🐄',
+    title: 'Happy Cows & Smart Solar Collars',
+    technicalTitle: 'Alpenhof Smart Pasture & Herd Welfare',
+    file: 'animation/dairy/Alpenhof_Smart_Pasture_Enhanced.html',
+    chapter: 4,
+    facility: 'cattle',
+    facilityName: 'Hillside Cattle Pasture',
+    kidsStory: 'Meet our gentle Simmental cows! They wear solar-powered smart collars that count their walking steps and chewing rhythms. Explore clover meadows, fresh mountain water fountains, and soft mechanical massage brush stations!',
+    learningBite: 'Happy cows produce up to 20% more milk when they can roam freely in fresh air and get automatic back scratches whenever they want!',
+    rewardMoney: 130,
+    rewardXP: 45,
+    rewardO2: 30,
+    presenters: ['Professor Whisker Puff', 'Ignaz Curd', 'Pip Squeak-a-Link']
+  },
+
+  // ENERGY (4 modules - Ch. 5)
+  {
+    id: 'bess_trade',
+    category: 'Energy',
+    icon: '🔋',
+    title: 'Giant Battery Superhero & Energy Sharing',
+    technicalTitle: 'BESS Microgrid & Energy Trade',
+    file: 'animation/energy/pnp_alpenhof_bess_energy_trade.html',
+    chapter: 5,
+    facility: 'bess',
+    facilityName: 'BESS Energy Storage Vault',
+    kidsStory: 'Meet our giant battery banks! When the sun is shining super bright and high winds are blowing, we store thousands of clean kilowatt-hours in insulated battery containers, then share electricity with the village bakery and houses down in the valley!',
+    learningBite: 'Batteries store electricity like a water tower stores rain: soak it up during the sunny day, and pour it out at night when everyone turns on their cozy lights!',
+    rewardMoney: 140,
+    rewardXP: 50,
+    rewardO2: 35,
+    presenters: ['Sparky Quills', 'Professor Whisker Puff', 'Pip Squeak-a-Link']
+  },
+  {
+    id: 'bess_microgrid',
+    category: 'Energy',
+    icon: '⚡',
+    title: 'The Mountain Microgrid Electric Dance',
+    technicalTitle: 'BESS Installation & Grid Integration',
+    file: 'animation/energy/alpenhof_bess_microgrid_turbine_solar_enhanced.html',
+    chapter: 5,
+    facility: 'bess',
+    facilityName: 'Microgrid Intertie Station',
+    kidsStory: 'Watch clean energy flow through smart wires like a living bloodstream! See solar panels, wind turbine dynamos, and battery vaults talk to each other so our cold milk tanks stay ice-cold even in a winter snowstorm!',
+    learningBite: 'A microgrid can disconnect from the main world during storms and run completely on its own sunshine and wind!',
+    rewardMoney: 150,
+    rewardXP: 50,
+    rewardO2: 40,
+    presenters: ['Sparky Quills', 'Professor Whisker Puff', 'Pip Squeak-a-Link']
+  },
+  {
+    id: 'solar_installation',
+    category: 'Energy',
+    icon: '☀️',
+    title: 'Agrivoltaic Solar Farm & Snow Bouncers',
+    technicalTitle: '4×4 Agrivoltaic Solar PV Installation',
+    file: 'animation/energy/pnp_alpenhof_solar_installation.html',
+    chapter: 5,
+    facility: 'solar',
+    facilityName: 'Agrivoltaic Solar Farm',
+    kidsStory: 'Solar panels that let sheep nap in the cool shade underneath! These special panels have glass on both sides: the top catches sunlight from the sky, while the bottom catches bright light bouncing off white winter snow!',
+    learningBite: 'Snow acts like a giant mirror! Bifacial solar panels produce up to 25% extra electricity in winter thanks to snow albedo reflection!',
+    rewardMoney: 120,
+    rewardXP: 45,
+    rewardO2: 30,
+    presenters: ['Sparky Quills', 'Barnaby Clodhopper', 'Pip Squeak-a-Link']
+  },
+  {
+    id: 'wind_turbine',
+    category: 'Energy',
+    icon: '🌬️',
+    title: 'High-Ridge Wind Turbine Sky Blades',
+    technicalTitle: 'Wind Turbine Microgrid Simulation',
+    file: 'animation/energy/pnp_alpenhof_wind_turbine_microgrid_simulation.html',
+    chapter: 5,
+    facility: 'wind_w',
+    facilityName: 'High-Ridge Wind Turbine West',
+    kidsStory: 'Up on the high mountain crest, strong alpine updrafts blow all day and night! Watch sleek aerodynamic blades catch the breeze, turning strong copper dynamos into endless clean electricity!',
+    learningBite: 'Wind turbine blades are shaped just like eagle wings: curved on top so air pressure lifts and spins them with effortless grace!',
+    rewardMoney: 130,
+    rewardXP: 45,
+    rewardO2: 35,
+    presenters: ['Sparky Quills', 'Professor Whisker Puff', 'Pip Squeak-a-Link']
+  },
+
+  // INFRASTRUCTURE (6 modules - Ch. 1 to 5)
+  {
+    id: 'cold_storage',
+    category: 'Infrastructure',
+    icon: '🌡️',
+    title: 'The Secret 4°C Mountain Rock Fridge',
+    technicalTitle: 'Subterranean Geothermal Cold Vault',
+    file: 'animation/infra/alpenhof_dairy_cold_storage.html',
+    chapter: 4,
+    facility: 'cold_storage',
+    facilityName: 'Subterranean Cold Vault',
+    kidsStory: 'Dig deep into the granite mountain! At 6 meters underground, winter or summer, the rock stays a naturally crisp 4°C forever without needing noisy electric air conditioners!',
+    learningBite: 'Granite stone has huge thermal mass: it absorbs coolness in winter and keeps everything ice-cold all summer long!',
+    rewardMoney: 120,
+    rewardXP: 40,
+    rewardO2: 25,
+    presenters: ['Ignaz Curd', 'Sparky Quills', 'Professor Whisker Puff']
+  },
+  {
+    id: 'grain_silo',
+    category: 'Infrastructure',
+    icon: '🌾',
+    title: 'Towering Twin Grain Castles & Airflow Vents',
+    technicalTitle: 'Grain Silo & Geothermal Preservation',
+    file: 'animation/infra/alpenhof_grain_silo_cold_storage.html',
+    chapter: 3,
+    facility: 'silo',
+    facilityName: 'Bavarian Twin Grain Silos',
+    kidsStory: 'Tall wooden towers holding thousands of golden grains! Learn how clever airflow ducts keep rye and oats bone dry so seeds never get moldy, even when heavy rain falls outside!',
+    learningBite: 'Dry grain stored at below 14% humidity can stay safe, healthy, and ready for stone-milling for years!',
+    rewardMoney: 100,
+    rewardXP: 35,
+    rewardO2: 20,
+    presenters: ['Barnaby Clodhopper', 'Professor Whisker Puff', 'Pip Squeak-a-Link']
+  },
+  {
+    id: 'crew_shed',
+    category: 'Infrastructure',
+    icon: '🏠',
+    title: 'Cozy Timber Crew Shed & Warm Tiled Stove',
+    technicalTitle: 'Crew Shed & Tiled Stove Refuge',
+    file: 'animation/infra/pnp_alpenhof_crewShed.html',
+    chapter: 1,
+    facility: 'farm_shed',
+    facilityName: 'Farm Shed & Workshop',
+    kidsStory: 'Our builders and animal scout team need a warm haven! Step inside the larch-wood cabin and warm your paws by the Kachelofen—a traditional ceramic tiled stove that stays toasty warm for 12 hours from just one armful of twigs!',
+    learningBite: 'Ceramic tiles hold heat like a thermal battery, releasing gentle, soothing infrared warmth that heats the room evenly!',
+    rewardMoney: 80,
+    rewardXP: 30,
+    rewardO2: 15,
+    presenters: ['Barnaby Clodhopper', 'Professor Whisker Puff', 'Pip Squeak-a-Link']
+  },
+  {
+    id: 'farm_garage',
+    category: 'Infrastructure',
+    icon: '🛠️',
+    title: 'Tractor Garage & Underground Earth Heat',
+    technicalTitle: 'Farm Garage, Geothermal & Agtech Workshop',
+    file: 'animation/infra/pnp_alpenhof_farm_garage_geothermal_agtech.html',
+    chapter: 1,
+    facility: 'farm_shed',
+    facilityName: 'Farm Workshop',
+    kidsStory: 'Where tractors get tuned and gadgets get built! Pipes buried deep under the grass pump gentle warmth up from the earth to keep mechanics warm while fixing the vintage Fendt tractor!',
+    learningBite: 'Geothermal heat pumps do not create heat by burning fuels; they just move natural free warmth up from the deep ground!',
+    rewardMoney: 90,
+    rewardXP: 35,
+    rewardO2: 20,
+    presenters: ['Barnaby Clodhopper', 'Sparky Quills', 'Pip Squeak-a-Link']
+  },
+  {
+    id: 'gorge_bridge',
+    category: 'Infrastructure',
+    icon: '🌉',
+    title: 'The Great Alpine Gorge Wooden Bridge',
+    technicalTitle: 'Alpine Gorge Bridge Construction & Loads',
+    file: 'animation/infra/pnp_alpenhof_gorge_bridge_construction.html',
+    chapter: 5,
+    facility: 'bridge',
+    facilityName: 'Alpine Wooden Overbridge',
+    kidsStory: 'Spanning a deep mountain cleft! Watch master carpenters lock massive larch timber beams into strong triangles to support heavy tractors and curious hikers high above the canyon river!',
+    learningBite: 'Triangles are nature’s strongest geometric shape: push on any corner and the force spreads equally across all three sides!',
+    rewardMoney: 120,
+    rewardXP: 45,
+    rewardO2: 30,
+    presenters: ['Barnaby Clodhopper', 'Professor Whisker Puff', 'Pip Squeak-a-Link']
+  },
+  {
+    id: 'pond_excavation',
+    category: 'Infrastructure',
+    icon: '💧',
+    title: 'Living Waters Lake & Happy Duck Island',
+    technicalTitle: 'Pond Excavation & Wetland Geotechnology',
+    file: 'animation/infra/pnp_alpenhof_pond_excavation.html',
+    chapter: 4,
+    facility: 'pond',
+    facilityName: 'Living Waters Alpine Lake',
+    kidsStory: 'Digging out natural glacial ponds! See how sticky clay soil lines the bottom like a giant waterproof bowl, and how green cattail reeds clean the water so wild ducks and mountain trout can splash happily!',
+    learningBite: 'Wetland plants act like living water filters: their roots drink up extra nutrients and keep the lake crystal clear!',
+    rewardMoney: 110,
+    rewardXP: 40,
+    rewardO2: 25,
+    presenters: ['Barnaby Clodhopper', 'Professor Whisker Puff', 'Pip Squeak-a-Link']
+  }
+];
+
+const LAB_PEOPLE = {
+  "Professor Whisker Puff": {
+    avatar: "🦉",
+    species: "Wise Bavarian Calico Owl & Field Astrobiologist",
+    role: "Biophilic Microclimatology & Planetary Cycles",
+    color: "#FFD54F",
+    kidsBio: "Professor Whisker Puff wears circular wire-rim spectacles and carries a holographic tablet! She loves measuring tiny droplets of mountain mist, studying fungal mycelium networks, and showing how plants and animals help each other thrive.",
+    officeRoom: "The Botanical & Climatology Solarium",
+    qa: [
+      {
+        q: "Why do plants and trees need fungal friends underground?",
+        a: "Underground mycelium networks act like a nature internet! Fungi deliver water and minerals to tree roots, and trees share sweet sugars in return. They even send warning signals to neighbor trees when pests arrive!"
+      },
+      {
+        q: "Why do cows and sheep help grasslands grow greener?",
+        a: "When cows nibble the top of grass blades and leave natural organic manure, it wakes up dormant soil microbes and prompts grass roots to grow deeper, storing tons of carbon in the earth!"
+      },
+      {
+        q: "How does our lake stay clean without chlorine chemicals?",
+        a: "Reeds, water irises, and freshwater gravel filter the water continuously! Microscopic beneficial bacteria on plant roots digest excess nutrients so the water stays as fresh as morning dew."
+      }
+    ]
+  },
+  "Pip Squeak-a-Link": {
+    avatar: "🐥",
+    species: "Alpine Meadow Pipit & Agtech Safety Scout",
+    role: "Agtech Field Marshal & Energy Explorer",
+    color: "#81C784",
+    kidsBio: "Pip is small, super fast, and loves wearing a mini hardhat! Pip flits between solar arrays, high-ridge wind turbines, and the cow pastures to ensure every safety valve is tight and all animal friends are happy.",
+    officeRoom: "The Telemetry & Sensor Perch",
+    qa: [
+      {
+        q: "What does Pip carry in that tiny explorer pack?",
+        a: "A pocket solar multimeter, an organic seed pouch, a mini magnifying glass, and dried alpine berries for bird snacks!"
+      },
+      {
+        q: "Why do we wear hardhats near the gorge bridge?",
+        a: "Safety first! When working with heavy larch beams or walking along high mountain trails, protective gear ensures everyone goes home happy and safe!"
+      },
+      {
+        q: "How fast do the high-ridge wind turbine blades spin?",
+        a: "The tips of the giant blades can fly through the sky at over 150 km/h, but from down in the valley they look like they are floating in slow motion!"
+      }
+    ]
+  },
+  "Barnaby Clodhopper": {
+    avatar: "🦡",
+    species: "Master Alpine Badger & Geotechnical Architect",
+    role: "Chief Soil Mechanics & Timber Construction",
+    color: "#A1887F",
+    kidsBio: "Barnaby has sturdy paws made for digging! He knows everything about soil compaction, clay layers, strong larch timber framing, and how to build foundations that can withstand winter avalanches and heavy rain.",
+    officeRoom: "The Geotechnical Draftsman & Woodshop",
+    qa: [
+      {
+        q: "Why is Bavarian larch wood used for outdoor bridges and barns?",
+        a: "Larch wood contains natural resins that make it naturally water-repellent! It resists rot for over a hundred years without any artificial paints or harsh chemicals."
+      },
+      {
+        q: "Why do we aerate hard soil crusts before planting?",
+        a: "Winter frost and footsteps smash soil into hard bricks. Tilling breaks it into fluffy crumbs full of air pockets so earthworms can burrow and baby tree roots can spread easily!"
+      },
+      {
+        q: "How does clay soil keep lake water from sinking away?",
+        a: "Clay platelets are microscopic flat sheets that stick tightly together when wet, forming a natural waterproof rubber-like seal on the lake bottom!"
+      }
+    ]
+  },
+  "Sparky Quills": {
+    avatar: "🦔",
+    species: "European Crested Hedgehog & Energy Wizard",
+    role: "Renewable Power Conditioning & Battery Microgrids",
+    color: "#00E5FF",
+    kidsBio: "Sparky is an energetic electrical engineer with quills that tingle whenever clean electricity flows! He designed our agrivoltaic bifacial solar farm and the smart BESS battery container vaults.",
+    officeRoom: "The High-Voltage Microgrid Control Center",
+    qa: [
+      {
+        q: "Can solar panels really work in the winter when it snows?",
+        a: "Yes! Snow is like a giant mirror. Our bifacial panels catch sunlight bouncing upward from the snow, producing lots of electricity even on crisp freezing winter mornings!"
+      },
+      {
+        q: "What is inside a BESS battery container?",
+        a: "Thousands of rechargeable lithium iron phosphate cells, climate chillers to keep them cozy at 22°C, and smart computers that balance every single volt of power!"
+      },
+      {
+        q: "Why does the microgrid have automatic switches?",
+        a: "If a falling tree branch knocks down a power line in the valley, our smart switches isolate the estate in less than 16 milliseconds so our cheese coolers never lose power!"
+      }
+    ]
+  },
+  "Ignaz Curd": {
+    avatar: "🐶",
+    species: "Gentle Bernese Mountain Dog & Dairy Microbiologist",
+    role: "Fermentation Biochemistry & Quality Controller",
+    color: "#FFA726",
+    kidsBio: "Dr. Ignaz Curd is a warm-hearted Bernese mountain dog who wears a clean white laboratory coat! He knows the secrets of artisanal alpine cheese, copper vat chemistry, and probiotic cultures.",
+    officeRoom: "The Artisanal Molkerei & Aging Cellar",
+    qa: [
+      {
+        q: "Why is cheese made in big copper kettles instead of plastic?",
+        a: "Copper conducts heat instantly and evenly, preventing milk proteins from scorching. It also creates a gentle natural ionization that gives curd grains the perfect firmness!"
+      },
+      {
+        q: "What are those tiny crunchy crystals in aged mountain cheese?",
+        a: "Those are tyrosine amino acid crystals! As cheese sleeps in the chilly cave for months, proteins break down into rich, savory flavor gems that crunch deliciously!"
+      },
+      {
+        q: "Why does milk need to be pasteurized?",
+        a: "Rapid warming kills any unwelcome wild microbes while locking in milk calcium and vitamins, making sure every glass of milk and spoon of yogurt is 100% wholesome and safe!"
+      }
+    ]
+  }
+};
+
+let activeLabFilter = 'All';
+
+window.isLabModuleUnlocked = function(m) {
+  if (state.isAdmin) return true;
+  return state.chapter >= m.chapter;
+};
+
+window.toggleAdminLabMode = function() {
+  state.isAdmin = !state.isAdmin;
+  toast(state.isAdmin ? '👑 Admin Mode Enabled: All 13 3D simulations unlocked!' : '🔒 Player Mode Activated. Chapter progression lock restored.');
+  openLabArchiveModal(activeLabFilter);
+};
+
+window.openLabArchiveModal = function(cat) {
+  activeLabFilter = cat || activeLabFilter || 'All';
+  if (!state.labRewards) state.labRewards = {};
+
+  const masteredCount = Object.values(state.labRewards).filter(r => r.completed).length;
+  let totalReplays = 0;
+  Object.values(state.labRewards).forEach(r => {
+    if (r.count && r.count > 1) totalReplays += (r.count - 1);
+  });
+
+  let h = '<div class="modal-hdr">' +
+            '<div style="display:flex;align-items:center;gap:12px">' +
+              '<span style="font-size:2rem;background:rgba(0,229,255,0.15);border:1px solid var(--cyan);padding:4px 8px;border-radius:12px">🔬</span>' +
+              '<div>' +
+                '<h3 style="margin:0;font-size:1.15rem;color:var(--cyan)">Alpenhof 3D Knowledge Enhancement Lab</h3>' +
+                '<div style="font-size:0.72rem;color:#A5D6A7">Interactive 3D Science, Microgrids, Alpine Agronomy & Animal Welfare</div>' +
+              '</div>' +
+            '</div>' +
+            '<button class="btn-close" onclick="closeModal()">✕</button>' +
+          '</div>';
+
+  // Sub-Header Info Bar: Mastered, Replays, Admin Button
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;background:rgba(12,24,36,0.85);border:1px solid var(--border);border-radius:12px;padding:10px 14px">' +
+         '<div style="display:flex;align-items:center;gap:14px;font-size:0.75rem">' +
+           '<div>🏆 <b style="color:var(--gold)">' + masteredCount + ' / 13</b> Mastered</div>' +
+           '<div>🧠 <b style="color:var(--cyan)">+' + (totalReplays * 2) + ' XP</b> Rememorized (' + totalReplays + ' replays)</div>' +
+         '</div>' +
+         '<div style="display:flex;align-items:center;gap:8px">' +
+           '<button class="btn ' + (state.isAdmin ? 'btn-c' : 'btn-outline') + '" style="font-size:0.72rem;padding:4px 10px" onclick="toggleAdminLabMode()">' +
+             (state.isAdmin ? '👑 Admin Mode: ALL UNLOCKED' : '🔒 Player Mode (Progression Lock)') +
+           '</button>' +
+           '<button class="btn btn-g" style="font-size:0.72rem;padding:4px 10px" onclick="openCharacterOffice(&apos;Professor Whisker Puff&apos;)">🦉 Puff & Pip Office</button>' +
+         '</div>' +
+       '</div>';
+
+  // Filter Categories
+  h += '<div class="why-tabs" style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px">' +
+         '<button class="why-tab ' + (activeLabFilter === 'All' ? 'active' : '') + '" onclick="openLabArchiveModal(&apos;All&apos;)">All 13 Chapters</button>' +
+         '<button class="why-tab ' + (activeLabFilter === 'Dairy' ? 'active' : '') + '" onclick="openLabArchiveModal(&apos;Dairy&apos;)">🧀 Dairy Systems (3)</button>' +
+         '<button class="why-tab ' + (activeLabFilter === 'Energy' ? 'active' : '') + '" onclick="openLabArchiveModal(&apos;Energy&apos;)">⚡ Energy Microgrid (4)</button>' +
+         '<button class="why-tab ' + (activeLabFilter === 'Infrastructure' ? 'active' : '') + '" onclick="openLabArchiveModal(&apos;Infrastructure&apos;)">🏗️ Infrastructure (6)</button>' +
+       '</div>';
+
+  // Modules Grid
+  const filtered = LAB_MODULES.filter(m => activeLabFilter === 'All' || m.category === activeLabFilter);
+  h += '<div class="grid-2" style="gap:12px">';
+
+  filtered.forEach(m => {
+    const unlocked = isLabModuleUnlocked(m);
+    const rewardInfo = state.labRewards[m.id];
+    const isMastered = rewardInfo && rewardInfo.completed;
+    const playCount = (rewardInfo && rewardInfo.count) || 0;
+
+    let statusBadge = '';
+    if (state.isAdmin) {
+      statusBadge = '<span style="font-size:0.68rem;padding:2px 8px;border-radius:999px;background:rgba(0,230,118,0.2);border:1px solid var(--teal);color:var(--teal)">👑 Admin Unlock</span>';
+    } else if (isMastered) {
+      statusBadge = '<span style="font-size:0.68rem;padding:2px 8px;border-radius:999px;background:rgba(255,213,79,0.2);border:1px solid var(--gold);color:var(--gold)">✓ Mastered (' + playCount + 'x)</span>';
+    } else if (unlocked) {
+      statusBadge = '<span style="font-size:0.68rem;padding:2px 8px;border-radius:999px;background:rgba(0,229,255,0.18);border:1px solid var(--cyan);color:var(--cyan)">⚡ Ch. ' + m.chapter + ' Ready</span>';
+    } else {
+      statusBadge = '<span style="font-size:0.68rem;padding:2px 8px;border-radius:999px;background:rgba(255,167,38,0.18);border:1px solid #FFA726;color:#FFA726">🔒 Ch. ' + m.chapter + ' Locked</span>';
+    }
+
+    let presenterChips = m.presenters.map(p => {
+      const avatar = LAB_PEOPLE[p]?.avatar || '👤';
+      return '<span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:999px;padding:2px 6px;font-size:0.68rem;cursor:pointer" onclick="openCharacterOffice(&apos;' + p + '&apos;)">' + avatar + ' ' + p.split(' ')[0] + '</span>';
+    }).join(' ');
+
+    let rewardSection = '';
+    let actionButtons = '';
+
+    if (unlocked) {
+      rewardSection = '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.70rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;margin-bottom:8px">' +
+                        '<div style="color:var(--gold);font-weight:700">' + (isMastered ? '🧠 Replay: +2 Rememorize XP' : '⭐ One-Time: +€' + m.rewardMoney + ' · +' + m.rewardXP + ' XP') + '</div>' +
+                        (isMastered ? '<div style="color:var(--cyan);font-family:monospace">Played ' + playCount + 'x</div>' : '') +
+                      '</div>';
+      actionButtons = '<div style="display:flex;gap:6px">' +
+                        '<button class="btn btn-c" style="flex:1;font-size:0.75rem;padding:7px" onclick="launch3DModule(&apos;' + m.id + '&apos;)">▶ Launch 3D Lab</button>' +
+                        '<button class="btn btn-outline" style="font-size:0.72rem;padding:7px 10px" onclick="openCharacterOffice(&apos;' + m.presenters[0] + '&apos;)">👤 Office</button>' +
+                      '</div>';
+    } else {
+      rewardSection = '<div style="display:flex;justify-content:space-between;align-items:center;font-size:0.70rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:8px;margin-bottom:8px;color:#FFA726">' +
+                        '<div>🔒 Unlocks in Chapter ' + m.chapter + ' (' + m.facilityName + ')</div>' +
+                        '<div style="opacity:0.6">+€' + m.rewardMoney + '</div>' +
+                      '</div>';
+      actionButtons = '<div style="display:flex;gap:6px">' +
+                        '<button class="btn btn-outline" style="flex:1;font-size:0.75rem;padding:7px;color:#FFA726;border-color:#FFA726" onclick="explainLockedLabModule(&apos;' + m.id + '&apos;)">🔒 How to Unlock?</button>' +
+                        '<button class="btn btn-outline" style="font-size:0.72rem;padding:7px 10px" onclick="openCharacterOffice(&apos;' + m.presenters[0] + '&apos;)">👤 Office</button>' +
+                      '</div>';
+    }
+
+    h += '<div class="card-box" style="margin-bottom:0;display:flex;flex-direction:column;justify-content:space-between;background:rgba(12,24,36,0.92);border-color:' + (unlocked ? 'var(--border)' : 'rgba(255,167,38,0.3)') + ';' + (unlocked ? '' : 'opacity:0.78') + '">' +
+           '<div>' +
+             '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+               '<div style="display:flex;align-items:center;gap:8px">' +
+                 '<span style="font-size:1.5rem;background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.25);border-radius:10px;padding:3px 6px">' + m.icon + '</span>' +
+                 '<b style="font-size:0.88rem;color:#FFF">' + m.title + '</b>' +
+               '</div>' +
+               statusBadge +
+             '</div>' +
+             '<p style="font-size:0.76rem;color:#B2C6DB;line-height:1.45;margin-bottom:8px">' + m.kidsStory + '</p>' +
+             '<div style="background:rgba(0,229,255,0.06);border-left:3px solid var(--cyan);padding:6px 8px;border-radius:6px;font-size:0.71rem;color:#C8E3F8;margin-bottom:10px">' +
+               '<b>💡 Quick Science:</b> ' + m.learningBite +
+             '</div>' +
+             '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">' + presenterChips + '</div>' +
+           '</div>' +
+           '<div>' + rewardSection + actionButtons + '</div>' +
+         '</div>';
+  });
+
+  h += '</div>';
+
+  openModal(h, true);
+};
+
+window.launch3DModule = function(moduleId) {
+  const m = LAB_MODULES.find(x => x.id === moduleId);
+  if (!m) return;
+
+  const rewardInfo = state.labRewards[m.id];
+  const isMastered = rewardInfo && rewardInfo.completed;
+
+  let h = '<div class="modal-hdr" style="margin-bottom:8px">' +
+            '<div style="display:flex;align-items:center;gap:10px">' +
+              '<span style="font-size:1.8rem">' + m.icon + '</span>' +
+              '<div>' +
+                '<h3 style="margin:0;font-size:1.05rem;color:#FFF">' + m.title + '</h3>' +
+                '<div style="font-size:0.70rem;color:var(--cyan)">' + m.technicalTitle + ' · Chapter ' + m.chapter + ' (' + m.facilityName + ')</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px">' +
+              '<button class="btn ' + (isMastered ? 'btn-c' : 'btn-g') + '" style="font-size:0.75rem;padding:6px 14px" onclick="claimLabModuleReward(&apos;' + m.id + '&apos;)">' +
+                (isMastered ? '🧠 Claim +2 Rememorize XP' : '⭐ Finish Lab (+€' + m.rewardMoney + ' · +' + m.rewardXP + ' XP)') +
+              '</button>' +
+              '<button class="btn-close" onclick="openLabArchiveModal()">✕ Return</button>' +
+            '</div>' +
+          '</div>';
+
+  h += '<div style="width:100%;height:calc(85vh - 80px);border-radius:12px;overflow:hidden;border:1px solid var(--border);background:#020617">' +
+         '<iframe src="' + m.file + '" style="width:100%;height:100%;border:none"></iframe>' +
+       '</div>';
+
+  openModal(h, true);
+};
+
+window.claimLabModuleReward = function(moduleId) {
+  const m = LAB_MODULES.find(x => x.id === moduleId);
+  if (!m) return;
+  if (!state.labRewards) state.labRewards = {};
+
+  const rewardInfo = state.labRewards[m.id];
+  const isFirstTime = !rewardInfo || !rewardInfo.completed;
+
+  if (isFirstTime) {
+    state.money += m.rewardMoney;
+    state.xp += m.rewardXP;
+    state.o2 += m.rewardO2;
+    state.labRewards[m.id] = {
+      completed: true,
+      count: 1,
+      firstCompletedAt: Date.now()
+    };
+    try { localStorage.setItem('alpenhof_lab_rewards', JSON.stringify(state.labRewards)); } catch(e){}
+    renderScoreboard();
+
+    openCharacterDialogue('puff_pip', '🎉 First-Time 3D Lab Mastery Achieved!', [
+      {
+        name: 'Professor Whisker Puff (🦉)',
+        text: 'Sensational work, young pioneer! You have thoroughly investigated ' + m.title + '. Understanding these physical and biophilic mechanisms elevates our entire estate!'
+      },
+      {
+        name: 'Pip Squeak-a-Link (🐥)',
+        text: 'And look at the research grant awarded! You earned +€' + m.rewardMoney + ' in cash, +' + m.rewardXP + ' Knowledge XP, and +' + m.rewardO2 + ' kg O₂! This milestone is now permanently stamped in your master logbook!'
+      }
+    ]);
+  } else {
+    state.xp += 2;
+    state.labRewards[m.id].count = (state.labRewards[m.id].count || 1) + 1;
+    try { localStorage.setItem('alpenhof_lab_rewards', JSON.stringify(state.labRewards)); } catch(e){}
+    renderScoreboard();
+
+    openCharacterDialogue('puff_pip', '🧠 Knowledge Rememorized! (+2 XP)', [
+      {
+        name: 'Professor Whisker Puff (🦉)',
+        text: 'Splendid scientific repetition, apprentice! Reviewing 3D spatial simulations cements deeper intuition and operational muscle memory.'
+      },
+      {
+        name: 'Pip Squeak-a-Link (🐥)',
+        text: '+2 Rememorize XP added to your score! You have now mastered this module ' + state.labRewards[m.id].count + ' times. Practice makes master pioneers!'
+      }
+    ]);
+  }
+};
+
+window.explainLockedLabModule = function(moduleId) {
+  const m = LAB_MODULES.find(x => x.id === moduleId);
+  if (!m) return;
+
+  openCharacterDialogue('puff_pip', '🔒 Knowledge Chamber Locked: Chapter ' + m.chapter, [
+    {
+      name: 'Professor Whisker Puff (🦉)',
+      text: 'Patience, eager researcher! ' + m.title + ' is part of Chapter ' + m.chapter + ' and requires the construction of ' + m.facilityName + '.'
+    },
+    {
+      name: 'Pip Squeak-a-Link (🐥)',
+      text: 'Head back to the Alpenhof Estate, advance your chapter goals, and as soon as this facility is commissioned, the mountain mist will lift from this 3D chamber!'
+    }
+  ]);
+};
+
+window.openCharacterOffice = function(charName) {
+  const activeChar = LAB_PEOPLE[charName] ? charName : 'Professor Whisker Puff';
+  const p = LAB_PEOPLE[activeChar];
+  const charModules = LAB_MODULES.filter(m => m.presenters.includes(activeChar));
+
+  let h = '<div class="modal-hdr">' +
+            '<div style="display:flex;align-items:center;gap:12px">' +
+              '<span style="font-size:2rem;background:rgba(255,213,79,0.15);border:1px solid var(--gold);padding:4px 8px;border-radius:12px">🦉</span>' +
+              '<div>' +
+                '<h3 style="margin:0;font-size:1.15rem;color:var(--gold)">Puff &amp; Pip&apos;s Interactive Knowledge Office</h3>' +
+                '<div style="font-size:0.72rem;color:#A5D6A7">Field Science, Biophilic Engineering & Presenter Headquarters</div>' +
+              '</div>' +
+            '</div>' +
+            '<button class="btn-close" onclick="closeModal()">✕</button>' +
+          '</div>';
+
+  // Presenter Tabs
+  h += '<div class="why-tabs" style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:5px">';
+  Object.keys(LAB_PEOPLE).forEach(name => {
+    const pers = LAB_PEOPLE[name];
+    h += '<button class="why-tab ' + (name === activeChar ? 'active' : '') + '" onclick="openCharacterOffice(&apos;' + name + '&apos;)">' + pers.avatar + ' ' + name.split(' ')[0] + '</button>';
+  });
+  h += '</div>';
+
+  // Presenter Profile Card
+  h += '<div style="display:flex;align-items:center;gap:14px;background:rgba(16,36,56,0.8);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px">' +
+         '<div style="font-size:2.8rem;background:rgba(255,255,255,0.06);width:64px;height:64px;border-radius:12px;display:grid;place-items:center;border:1px solid ' + p.color + '">' + p.avatar + '</div>' +
+         '<div>' +
+           '<h3 style="margin:0 0 2px 0;font-size:1.1rem;color:' + p.color + '">' + activeChar + '</h3>' +
+           '<div style="font-size:0.75rem;color:var(--teal);font-weight:700">' + p.role + '</div>' +
+           '<div style="font-size:0.70rem;color:#90A4AE">' + p.species + ' · ' + p.officeRoom + '</div>' +
+         '</div>' +
+       '</div>';
+
+  h += '<p style="font-size:0.80rem;color:#ECEFF1;line-height:1.5;margin-bottom:14px">' + p.kidsBio + '</p>';
+
+  // Curious Questions QA
+  h += '<div style="font-size:0.74rem;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">💬 Curious Questions for ' + activeChar.split(' ')[0] + ':</div>';
+  p.qa.forEach(item => {
+    h += '<div style="background:rgba(20,35,25,0.6);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px;margin-bottom:8px">' +
+           '<div style="font-size:0.78rem;font-weight:700;color:var(--cyan);margin-bottom:3px">❓ ' + item.q + '</div>' +
+           '<div style="font-size:0.76rem;color:#CFD8DC;line-height:1.45">💡 ' + item.a + '</div>' +
+         '</div>';
+  });
+
+  // Hosted Modules
+  h += '<div style="margin-top:14px">' +
+         '<div style="font-size:0.74rem;font-weight:800;color:var(--cyan);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">🔬 Interactive 3D Simulations Co-Hosted:</div>' +
+         '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+  charModules.forEach(m => {
+    h += '<button class="btn btn-outline" style="font-size:0.72rem;padding:5px 10px" onclick="launch3DModule(&apos;' + m.id + '&apos;)">' + m.icon + ' ' + m.title + '</button>';
+  });
+  h += '</div></div>';
+
+  openModal(h, true);
+};
+
+// PostMessage bridge for iframe completions
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'ALPENHOF_LAB_MODULE_FINISHED' && e.data.moduleId) {
+    claimLabModuleReward(e.data.moduleId);
+  }
+});
+
 
 window.addEventListener('DOMContentLoaded', () => {
   AlpenMap.init(document.getElementById('farm-canvas'));

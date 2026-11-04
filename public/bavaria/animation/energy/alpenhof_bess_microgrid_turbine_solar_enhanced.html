@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alpenhof BESS Installation & Grid Integration Simulation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+    body, html {
+      margin: 0; padding: 0; overflow: hidden;
+      width: 100vw; height: 100vh;
+      background: #020617;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+    }
+    #viewport-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+    .bubble-font { font-family: 'Fredoka', cursive; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .glass-panel {
+      background: rgba(10, 16, 31, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.22);
+    }
+    .icon-btn {
+      background: rgba(15, 23, 42, 0.82);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      width: 38px; height: 38px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+    .icon-btn:hover {
+      background: rgba(56, 189, 248, 0.3);
+      border-color: rgba(56, 189, 248, 0.6);
+      transform: translateY(-2px);
+    }
+    .icon-btn.active {
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      color: #022c22; border-color: #38bdf8;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.5);
+    }
+
+    .dialogue-box { transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    .dialogue-box.fade-out { opacity: 0; transform: translate(-50%, 16px) scale(0.97); pointer-events: none; }
+    .dialogue-box.fade-in { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+
+    .virtual-slide { transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+    .virtual-slide.slide-hidden { opacity: 0; transform: translateY(-16px) scale(0.96); pointer-events: none; }
+    .virtual-slide.slide-visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+    .metric-badge { background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.25); }
+
+    /* Speech "speaking" pulse on avatar */
+    @keyframes speakPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(56,189,248,0.6); }
+      50% { box-shadow: 0 0 0 8px rgba(56,189,248,0); }
+    }
+    .speaking-avatar { animation: speakPulse 1.4s ease-out infinite; }
+  </style>
+</head>
+<body class="text-white"><a id="archive-home-link" href="../../index.html" title="Return to Alpenhof Research HQ archive" aria-label="Return to Alpenhof Research HQ" style="position:fixed;top:12px;left:12px;z-index:1000;padding:8px 12px;border:1px solid rgba(120,190,225,.45);border-radius:10px;background:rgba(5,17,30,.86);backdrop-filter:blur(8px);color:#dff4ff;text-decoration:none;font:600 12px/1.2 system-ui,sans-serif;box-shadow:0 5px 20px #0005">🏔️ Archive</a>
+
+  <div id="viewport-container"></div>
+
+  <header class="absolute top-4 left-4 z-20 flex items-center gap-2 pointer-events-auto">
+    <button id="btn-info-modal" class="icon-btn text-lg" title="Simulation Info & Telemetry">ℹ️</button>
+    <div class="glass-panel px-3 py-1.5 rounded-xl flex items-center gap-2">
+      <span class="text-xs font-bold text-sky-400">🔋 Alpenhof Hybrid Microgrid</span>
+      <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">DUAL WIND + 3x4 SOLAR + BESS</span>
+    </div>
+  </header>
+
+  <aside id="virtual-slide-card" class="virtual-slide slide-visible absolute top-16 right-4 z-20 w-80 md:w-96 glass-panel p-4 rounded-2xl border border-sky-400/40 shadow-2xl">
+    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-700/60">
+      <div class="flex items-center gap-2">
+        <span id="slide-icon" class="text-xl">🔋</span>
+        <div>
+          <h2 id="slide-title" class="bubble-font text-xs font-bold text-sky-300">BESS Microgrid Core</h2>
+          <p id="slide-subtitle" class="text-[9px] text-slate-400 font-mono">100 kWh Central Architecture</p>
+        </div>
+      </div>
+      <span id="slide-badge" class="text-[9px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 font-mono">SYSTEM SPEC</span>
+    </div>
+
+    <div id="slide-visual-container" class="space-y-2 mb-3 text-[11px]">
+      <div class="grid grid-cols-2 gap-2">
+        <div class="metric-badge p-2 rounded-xl">
+          <span class="text-[9px] text-slate-400 block">Wind Generation:</span>
+          <strong id="slide-m1" class="text-sky-400 text-xs">2x 25 kW Dual Ridge</strong>
+        </div>
+        <div class="metric-badge p-2 rounded-xl">
+          <span class="text-[9px] text-slate-400 block">Solar Generation:</span>
+          <strong id="slide-m2" class="text-amber-300 text-xs">3x4 Array (6.6 kWp)</strong>
+        </div>
+      </div>
+      <div class="metric-badge p-2.5 rounded-xl">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-[10px] text-slate-300">Substation Power Flow:</span>
+          <span id="slide-flow-rate" class="text-[10px] text-emerald-300 font-mono">Combined Hybrid Input</span>
+        </div>
+        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden flex">
+          <div id="slide-bar-solar" class="bg-amber-400 h-full w-[30%]" title="Solar Ingress"></div>
+          <div id="slide-bar-wind" class="bg-sky-400 h-full w-[45%]" title="Dual Wind Ingress"></div>
+          <div id="slide-bar-bess" class="bg-emerald-400 h-full w-[25%]" title="Stored in BESS"></div>
+        </div>
+      </div>
+    </div>
+
+    <p id="slide-takeaway" class="text-[11px] text-slate-200 leading-snug bg-slate-900/70 p-2 rounded-xl border border-slate-700/60 font-medium">
+      Centralized energy hub synchronizing intermittent alpine solar and wind power with zero transmission losses.
+    </p>
+  </aside>
+
+  <nav class="absolute top-4 right-4 z-20 flex items-center gap-2 pointer-events-auto">
+    <button id="cam-bess" class="icon-btn text-base" title="View Battery Racks">🔋</button>
+    <button id="cam-pcs" class="icon-btn text-base" title="View Hybrid Inverter & BMS">🔄</button>
+    <button id="cam-grid" class="icon-btn text-base" title="View Grid Gateway Transformer">⚡</button>
+    <button id="cam-overview" class="icon-btn text-base" title="Isometric Overview">🔭</button>
+    <div class="w-[1px] h-6 bg-slate-700 mx-1"></div>
+    <button id="btn-market-mode" class="icon-btn text-base active" title="Toggle Market Trading Mode">📈</button>
+    <button id="btn-subtitles" class="icon-btn text-base active" title="Toggle Subtitles">💬</button>
+    <button id="btn-audio" class="icon-btn text-base active" title="Toggle Sound & Voices">🔊</button>
+  </nav>
+
+  <footer class="absolute bottom-4 left-4 z-20 glass-panel p-2.5 rounded-2xl flex flex-col gap-2 pointer-events-auto w-72 md:w-80 shadow-2xl">
+    <div class="flex items-center gap-2 text-xs">
+      <button id="btn-play-pause" class="w-8 h-8 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold flex items-center justify-center shadow-md transition">▶</button>
+      <button id="btn-restart" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition" title="Restart">↺</button>
+      <span id="time-display" class="font-mono text-sky-300 w-12 text-center text-xs font-bold">00:00</span>
+      <input id="story-scrubber" type="range" min="0" max="98" step="0.1" value="0" class="flex-1 cursor-pointer accent-sky-400">
+    </div>
+    <div class="grid grid-cols-4 gap-1 pt-1 border-t border-slate-700/60">
+      <button id="step-btn-1" class="w-full py-1 rounded-lg text-[10px] font-bold bg-sky-500 text-slate-950 flex items-center justify-center transition shadow-md">1: Rack</button>
+      <button id="step-btn-2" class="w-full py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 transition">2: PCS</button>
+      <button id="step-btn-3" class="w-full py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 transition">3: Bus</button>
+      <button id="step-btn-4" class="w-full py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 transition">4: Mkt</button>
+    </div>
+  </footer>
+
+  <aside id="dialogue-container" class="dialogue-box absolute bottom-24 left-1/2 -translate-x-1/2 z-30 pointer-events-auto max-w-xl w-[92%] glass-panel p-4 rounded-3xl border border-sky-400/40 shadow-2xl flex items-center gap-4 fade-in">
+    <div id="speaker-avatar" class="w-14 h-14 rounded-2xl flex-shrink-0 flex items-center justify-center text-3xl bg-slate-900 border-2 border-sky-400 shadow-md">🦔</div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-0.5">
+        <div class="flex items-center gap-2">
+          <span id="speaker-name" class="bubble-font text-sm font-bold text-sky-300 tracking-wide">Dr. Sparky Quills</span>
+          <span id="speaker-role" class="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-400/20 font-mono">Microgrid & HV Specialist</span>
+        </div>
+        <span id="speech-emotion" class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-sky-300 border border-sky-500/30">System Ready</span>
+      </div>
+      <p id="speech-text" class="text-xs md:text-sm text-slate-100 leading-snug font-medium transition-all duration-200">
+        "Welcome to the Alpenhof BESS installation! Let's examine how we store our sun and wind into 100 kWh of solid-state reserve."
+      </p>
+    </div>
+  </aside>
+
+  <aside id="modal-telemetry" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="glass-panel border-2 border-sky-400/60 rounded-3xl p-6 max-w-lg w-full text-center shadow-2xl relative">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-400 to-emerald-400 text-slate-950 flex items-center justify-center text-3xl mx-auto mb-3 shadow-lg">🔋</div>
+      <h2 class="bubble-font text-lg font-bold text-sky-300 mb-1">Alpenhof 100 kWh BESS Verified!</h2>
+      <p class="text-xs text-slate-300 mb-4 leading-relaxed">
+        Full bidirectional grid integration complete. High-capacity LiFePO4 cells buffer renewable surpluses and trade electricity onto the European wholesale market.
+      </p>
+      <div class="bg-slate-900/90 p-3 rounded-2xl border border-sky-500/30 text-left text-xs mb-4 space-y-1.5 font-mono">
+        <div class="flex justify-between"><span>Modular Racks:</span><span class="text-emerald-400 font-bold">4 Cabinets (24 Packs)</span></div>
+        <div class="flex justify-between"><span>Nominal Voltage:</span><span class="text-sky-400 font-bold">512 V DC</span></div>
+        <div class="flex justify-between"><span>Hybrid Inverter (PCS):</span><span class="text-amber-300 font-bold">50 kW 4-Quadrant Bidirectional</span></div>
+        <div class="flex justify-between"><span>Market Arbitrage:</span><span class="text-purple-300 font-bold">EPEX SPOT Automated Sync</span></div>
+      </div>
+      <button id="btn-close-modal" class="w-full bg-gradient-to-r from-sky-500 to-emerald-500 text-slate-950 font-bold py-2.5 rounded-xl text-xs transition">
+        Return to Simulation View
+      </button>
+    </div>
+  </aside>
+
+  <script>
+    /* =========================================================================
+       ALPENHOF BESS — CINEMATIC PRESENTER-DRIVEN VISUALIZATION
+       ========================================================================= */
+
+    let scene, camera, renderer, controls;
+    let quillsGroup, quillsHead, quillsArmR, quillsArmL, quillsLegL, quillsLegR;
+    let puffGroup, puffHead, puffArmR, puffArmL, puffLegL, puffLegR;
+    let pipGroup, pipHead, pipArmR, pipArmL, pipLegL, pipLegR, pipWrench;
+
+    let bessHousing, batteryRacks = [], rackStatusLEDs = [], pcsInverter, gridTransformer;
+    let busbars = [], electronPulses = [];
+    let solarArray3x4, westWindTurbine, eastWindTurbine;
+
+    let highlightRing, highlightLight;
+
+    let storyTime = 0;
+    const TOTAL_DURATION = 98;
+    let isPlaying = true;
+    let audioEnabled = true;
+    let subtitlesEnabled = true;
+    let synth = null;
+    let currentSpeechIdx = -1;
+    let isSpeaking = false;
+    let speechDone = true;
+    let currentUtterance = null;
+
+    /* ---- Presenter stand-positions next to each exhibit ---- */
+    const PRESENT_TARGETS = {
+      overview:   { pos: new THREE.Vector3( 0.0, 0.15,  4.2), look: new THREE.Vector3( 0.0, 2.0,  0.0), highlight: new THREE.Vector3( 0.0, 0.15,  0.0), color: 0x38bdf8 },
+      westWind:   { pos: new THREE.Vector3(-5.6, 0.15, -1.2), look: new THREE.Vector3(-9.5, 4.0, -4.5), highlight: new THREE.Vector3(-9.5, 0.15, -4.5), color: 0x38bdf8 },
+      solar:      { pos: new THREE.Vector3( 0.0, 0.15, -1.4), look: new THREE.Vector3( 0.0, 1.6, -4.2), highlight: new THREE.Vector3( 0.0, 0.15, -4.2), color: 0xfbbf24 },
+      pcs:        { pos: new THREE.Vector3( 2.4, 0.15,  2.6), look: new THREE.Vector3( 2.4, 1.8,  0.2), highlight: new THREE.Vector3( 2.4, 0.15,  0.2), color: 0xf59e0b },
+      bess:       { pos: new THREE.Vector3(-2.8, 0.15,  2.6), look: new THREE.Vector3(-2.8, 1.8,  0.2), highlight: new THREE.Vector3(-2.8, 0.15,  0.2), color: 0x34d399 },
+      busbars:    { pos: new THREE.Vector3(-0.2, 0.15,  2.2), look: new THREE.Vector3(-0.2, 3.4,  0.5), highlight: new THREE.Vector3(-0.2, 0.15,  0.2), color: 0xd97706 },
+      grid:       { pos: new THREE.Vector3( 5.4, 0.15,  4.6), look: new THREE.Vector3( 6.8, 1.8,  2.8), highlight: new THREE.Vector3( 6.8, 0.15,  2.8), color: 0xa855f7 },
+      finale:     { pos: new THREE.Vector3( 0.0, 0.15,  4.2), look: new THREE.Vector3( 0.0, 2.2,  0.0), highlight: new THREE.Vector3( 0.0, 0.15,  0.0), color: 0xfacc15 }
+    };
+
+    /* ---- Character runtime state ---- */
+    const CHAR = {
+      quills: null, puff: null, pip: null
+    };
+
+    function makeCharState(key, group, head, armL, armR, legL, legR, home, style) {
+      return {
+        key, group, head, armL, armR, legL, legR,
+        home: home.clone(),
+        pos: home.clone(),
+        targetPos: home.clone(),
+        targetLook: new THREE.Vector3(0, 1.5, 0),
+        walkPhase: Math.random() * Math.PI * 2,
+        walkStep: 0,
+        breathePhase: Math.random() * Math.PI * 2,
+        isPresenter: false,
+        style,
+        baseY: home.y
+      };
+    }
+
+    function initCharStates() {
+      CHAR.quills = makeCharState('quills', quillsGroup, quillsHead, quillsArmL, quillsArmR, quillsLegL, quillsLegR,
+                                  new THREE.Vector3(2.8, 0.15, 3.4), 'professional');
+      CHAR.puff   = makeCharState('puff', puffGroup, puffHead, puffArmL, puffArmR, puffLegL, puffLegR,
+                                  new THREE.Vector3(-1.8, 0.15, 3.4), 'graceful');
+      CHAR.pip    = makeCharState('pip', pipGroup, pipHead, pipArmL, pipArmR, pipLegL, pipLegR,
+                                  new THREE.Vector3(0.2, 0.15, 3.2), 'bouncy');
+    }
+
+    /* ---- Pedagogical script with presenter + target tags ---- */
+    const STORY_BEATS = [
+      {
+        start: 0, end: 10.0, speaker: 'Quills', avatar: '🦔', role: 'Chief Microgrid Engineer',
+        emotion: 'System Ready', presenter: 'quills', presentTarget: 'overview',
+        text: "Guten Tag! Welcome to the Alpenhof central energy hub. To achieve round-the-clock power, we deploy two wind turbines on opposite mountain ridges combined with our central three-by-four solar field and a hundred kilowatt-hour battery!"
+      },
+      {
+        start: 10.0, end: 19.5, speaker: 'Puff', avatar: '🌸', role: 'Chief Astrobiologist',
+        emotion: 'Atmospheric Physics', presenter: 'puff', presentTarget: 'westWind',
+        text: "Brilliant topographical placement! The West Hill turbine catches morning thermal up-valley breezes, while the East Hill turbine catches evening mountain down-drafts. Together they yield continuous wind generation!"
+      },
+      {
+        start: 19.5, end: 28.5, speaker: 'Pip', avatar: '🌺', role: 'Curious Toddler Mouse',
+        emotion: 'Discovery & Spark', presenter: 'pip', presentTarget: 'solar',
+        text: "Look at the big solar tables in the middle! Three rows by four panels! When the wind takes a nap at noon, the bright sun juices up the farm!"
+      },
+      {
+        start: 28.5, end: 38.5, speaker: 'Quills', avatar: '🦔', role: 'Chief Microgrid Engineer',
+        emotion: 'Inverter & PCS', presenter: 'quills', presentTarget: 'pcs',
+        text: "Exactly, Pip! Solar and dual-wind generate at complementary times. All streams converge through this fifty-kilowatt Bidirectional PCS Inverter, which rectifies AC wind and regulates DC solar into our battery banks."
+      },
+      {
+        start: 38.5, end: 48.0, speaker: 'Puff', avatar: '🌸', role: 'Chief Astrobiologist',
+        emotion: 'Battery Racks', presenter: 'puff', presentTarget: 'bess',
+        text: "And inside these four modular cabinets, twenty-four Lithium Iron Phosphate packs store up to one hundred kilowatt-hours. Zero cobalt, zero fire risk, and over six thousand charge cycles!"
+      },
+      {
+        start: 48.0, end: 57.0, speaker: 'Pip', avatar: '🌺', role: 'Laser-Focused Helper',
+        emotion: 'Laser Focus', presenter: 'pip', presentTarget: 'busbars',
+        text: "Click! Click! Clack! I'm torquing down the heavy red and black copper busbars on top! No electricity drops allowed!"
+      },
+      {
+        start: 57.0, end: 67.5, speaker: 'Quills', avatar: '🦔', role: 'Chief Microgrid Engineer',
+        emotion: 'Busbar Integration', presenter: 'quills', presentTarget: 'busbars',
+        text: "Solid copper busbars distribute peak currents without resistive heating. When both turbines spin and midday sun shines, surplus energy charges the cells at maximum speed."
+      },
+      {
+        start: 67.5, end: 78.5, speaker: 'Puff', avatar: '🌸', role: 'Chief Astrobiologist',
+        emotion: 'Load Balancing', presenter: 'puff', presentTarget: 'westWind',
+        text: "The West turbine directly feeds the orchard pumps, the East turbine runs the dairy chillers, and the central solar covers daytime kitchens and farm shops, buffering every single extra watt into storage."
+      },
+      {
+        start: 78.5, end: 88.5, speaker: 'Quills', avatar: '🦔', role: 'Chief Microgrid Engineer',
+        emotion: 'Market Arbitrage', presenter: 'quills', presentTarget: 'grid',
+        text: "At this step-up transformer, our automated gateway syncs with the European EPEX SPOT market: charging during negative-price sunny lulls, and selling stored power during lucrative evening peaks!"
+      },
+      {
+        start: 88.5, end: 98.0, speaker: 'All', avatar: '⚡', role: 'Alpenhof Eco-Team',
+        emotion: 'Complete Sovereign Grid', presenter: 'all', presentTarget: 'finale',
+        text: "With two wind turbines, three-by-four solar panels, and smart BESS storage, Alpenhof achieves total clean energy sovereignty and economic profitability!"
+      }
+    ];
+
+    /* ========================================================================
+       AUDIO / VOICE ENGINE — richer, more emotional
+       ======================================================================== */
+    function initAudio() {
+      try {
+        if (!synth) synth = new (window.AudioContext || window.webkitAudioContext)();
+        if (synth && synth.state === 'suspended') synth.resume();
+      } catch (e) {}
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.05) {
+      if (!audioEnabled || !synth) return;
+      try {
+        const osc = synth.createOscillator();
+        const gain = synth.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, synth.currentTime);
+        gain.gain.setValueAtTime(gainVal, synth.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + duration);
+        osc.connect(gain); gain.connect(synth.destination);
+        osc.start(); osc.stop(synth.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playMouseSqueak() {
+      if (!audioEnabled || !synth) return;
+      try {
+        const osc = synth.createOscillator();
+        const gain = synth.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(1400, synth.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(2600, synth.currentTime + 0.08);
+        osc.frequency.exponentialRampToValueAtTime(1800, synth.currentTime + 0.16);
+        gain.gain.setValueAtTime(0.04, synth.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + 0.16);
+        osc.connect(gain); gain.connect(synth.destination);
+        osc.start(); osc.stop(synth.currentTime + 0.16);
+      } catch (e) {}
+    }
+
+    function playRelayClick() { playTone(180, 'square', 0.05, 0.04); setTimeout(() => playTone(320, 'sine', 0.08, 0.03), 40); }
+    function playInverterHum() { playTone(100, 'sawtooth', 0.25, 0.03); setTimeout(() => playTone(200, 'sine', 0.35, 0.04), 80); }
+
+    let availableVoices = [];
+    function loadVoices() {
+      if ('speechSynthesis' in window) {
+        availableVoices = window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => { availableVoices = window.speechSynthesis.getVoices(); };
+      }
+    }
+    loadVoices();
+
+    function pickVoice(preferred) {
+      const eng = availableVoices.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+      if (!eng.length) return null;
+      for (const name of preferred) {
+        const found = eng.find(v => v.name.toLowerCase().includes(name.toLowerCase()));
+        if (found) return found;
+      }
+      return eng[0];
+    }
+
+    // Emotion → (pitchDelta, rateDelta, volumeDelta)
+    const EMOTION_MOD = {
+      'System Ready':            { pitch: 0.00, rate: 0.00, vol: 0.00 },
+      'Atmospheric Physics':     { pitch: 0.04, rate: -0.05, vol: -0.05 },
+      'Discovery & Spark':       { pitch: 0.14, rate: 0.12, vol: 0.05 },
+      'Inverter & PCS':          { pitch: -0.04, rate: 0.02, vol: 0.00 },
+      'Battery Racks':           { pitch: 0.03, rate: -0.02, vol: 0.00 },
+      'Laser Focus':             { pitch: 0.08, rate: 0.08, vol: 0.05 },
+      'Busbar Integration':      { pitch: -0.02, rate: 0.01, vol: 0.00 },
+      'Load Balancing':          { pitch: 0.02, rate: -0.03, vol: 0.00 },
+      'Market Arbitrage':        { pitch: 0.04, rate: 0.02, vol: 0.00 },
+      'Complete Sovereign Grid': { pitch: 0.10, rate: 0.05, vol: 0.05 }
+    };
+
+    function speakBeat(beat) {
+      if (currentUtterance) { try { window.speechSynthesis.cancel(); } catch (e) {} currentUtterance = null; }
+      if (!audioEnabled || !('speechSynthesis' in window)) { speechDone = true; isSpeaking = false; return; }
+
+      const utt = new SpeechSynthesisUtterance(beat.text);
+      currentUtterance = utt;
+      speechDone = false;
+      isSpeaking = true;
+
+      let finalized = false;
+      const finalize = () => {
+        if (finalized || currentUtterance !== utt) return;
+        finalized = true;
+        isSpeaking = false;
+        speechDone = true;
+      };
+      utt.onend = finalize;
+      utt.onerror = finalize;
+
+      const mod = EMOTION_MOD[beat.emotion] || { pitch: 0, rate: 0, vol: 0 };
+
+      if (beat.speaker === 'Pip') {
+        utt.pitch = 1.48 + mod.pitch;
+        utt.rate = 1.08 + mod.rate;
+        utt.volume = 0.95;
+        const v = pickVoice(['Junior', 'Fred', 'Google UK English Female', 'Samantha', 'Female']);
+        if (v) utt.voice = v;
+        playMouseSqueak();
+      } else if (beat.speaker === 'Puff') {
+        utt.pitch = 1.20 + mod.pitch;
+        utt.rate = 0.94 + mod.rate;
+        utt.volume = 1.0;
+        const v = pickVoice(['Samantha', 'Victoria', 'Karen', 'Google UK English Female', 'Female']);
+        if (v) utt.voice = v;
+        playTone(523.25, 'sine', 0.15, 0.03);
+      } else if (beat.speaker === 'All') {
+        utt.pitch = 1.15 + mod.pitch;
+        utt.rate = 1.05 + mod.rate;
+        utt.volume = 1.0;
+        const v = pickVoice(['Samantha', 'Daniel', 'Google UK English Female', 'Female']);
+        if (v) utt.voice = v;
+        playTone(660, 'sine', 0.2, 0.04);
+        setTimeout(() => playTone(880, 'sine', 0.25, 0.04), 120);
+      } else {
+        utt.pitch = 0.95 + mod.pitch;
+        utt.rate = 1.00 + mod.rate;
+        utt.volume = 1.0;
+        const v = pickVoice(['Daniel', 'Alex', 'Google UK English Male', 'Male']);
+        if (v) utt.voice = v;
+        playInverterHum();
+      }
+
+      // Safety poll: release only after the browser voice has actually finished.
+      const releaseWhenVoiceIsIdle = () => {
+        if (!window.speechSynthesis.speaking && !window.speechSynthesis.pending) finalize();
+        else setTimeout(releaseWhenVoiceIsIdle, 700);
+      };
+      setTimeout(releaseWhenVoiceIsIdle, Math.max(5000, beat.text.length * 100) + 1800);
+
+      try { window.speechSynthesis.speak(utt); } catch (e) { finalize(); }
+    }
+
+    /* ========================================================================
+       SCENE / LIGHTS / GEOMETRY
+       ======================================================================== */
+    function init() {
+      const container = document.getElementById('viewport-container');
+      const w = window.innerWidth, h = window.innerHeight;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x020617);
+      scene.fog = new THREE.FogExp2(0x020617, 0.012);
+
+      const aspect = w / h, d = 15;
+      camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 0.1, 400);
+      camera.position.set(16, 14, 16);
+      camera.lookAt(0, 1.5, 0);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2.05;
+      controls.target.set(0, 1.5, 0);
+
+      setupLighting();
+      buildSubstationBase();
+      buildBESSBatteryCabinets();
+      buildHybridPCSInverter();
+      buildSolidCopperBusbars();
+      buildGridTransformerSubstation();
+      buildDualWindTurbines();
+      buildCentral3x4SolarPlant();
+      buildDrSparkyQuills();
+      buildProfessorWhiskerPuff();
+      buildFullPipSqueak();
+      setupHighlight();
+      initCharStates();
+      setupUIEvents();
+
+      window.addEventListener('resize', onResize);
+    }
+
+    function setupLighting() {
+      const hemi = new THREE.HemisphereLight(0xe0f2fe, 0x1e293b, 0.85);
+      scene.add(hemi);
+
+      const dirLight = new THREE.DirectionalLight(0xfffdf5, 1.5);
+      dirLight.position.set(22, 28, 18);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 2048;
+      dirLight.shadow.mapSize.height = 2048;
+      dirLight.shadow.bias = -0.0003;
+      scene.add(dirLight);
+
+      const padSpot = new THREE.SpotLight(0x38bdf8, 2.0, 16, Math.PI / 3, 0.4);
+      padSpot.position.set(2, 8, 4);
+      scene.add(padSpot);
+    }
+
+    function buildSubstationBase() {
+      const baseplate = new THREE.Mesh(
+        new THREE.BoxGeometry(32, 0.5, 30),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 })
+      );
+      baseplate.position.y = -0.25;
+      baseplate.receiveShadow = true;
+      scene.add(baseplate);
+
+      const grid = new THREE.GridHelper(32, 32, 0x0284c7, 0x1e293b);
+      grid.position.y = 0.01;
+      scene.add(grid);
+
+      const apron = new THREE.Mesh(
+        new THREE.BoxGeometry(20, 0.15, 14),
+        new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4 })
+      );
+      apron.position.set(0, 0.08, 1.5);
+      apron.receiveShadow = true;
+      scene.add(apron);
+    }
+
+    function buildBESSBatteryCabinets() {
+      bessHousing = new THREE.Group();
+      bessHousing.position.set(-2.8, 0.16, 0.2);
+
+      const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3, metalness: 0.4 });
+      const moduleMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.6 });
+
+      const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.25, transmission: 0.7, roughness: 0.1 });
+      const glassWall = new THREE.Mesh(new THREE.BoxGeometry(6.8, 3.4, 0.05), glassMat);
+      glassWall.position.set(0, 1.7, 1.15);
+      bessHousing.add(glassWall);
+
+      for (let c = 0; c < 4; c++) {
+        const xPos = -2.4 + c * 1.6;
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.2, 2.1), cabinetMat);
+        cab.position.set(xPos, 1.6, 0);
+        cab.castShadow = true;
+        bessHousing.add(cab);
+
+        for (let m = 0; m < 6; m++) {
+          const modY = 0.4 + m * 0.45;
+          const mod = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.3, 1.9), moduleMat);
+          mod.position.set(xPos, modY, 0.05);
+          bessHousing.add(mod);
+
+          const led = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), new THREE.MeshBasicMaterial({ color: 0x34d399 }));
+          led.position.set(xPos + 0.5, modY, 1.02);
+          bessHousing.add(led);
+          rackStatusLEDs.push(led);
+        }
+      }
+
+      const hvac = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.45, 1.8), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+      hvac.position.set(0, 3.42, 0);
+      bessHousing.add(hvac);
+
+      scene.add(bessHousing);
+    }
+
+    function buildHybridPCSInverter() {
+      pcsInverter = new THREE.Group();
+      pcsInverter.position.set(2.4, 0.16, 0.2);
+
+      const pcsBody = new THREE.Mesh(
+        new THREE.BoxGeometry(2.0, 3.0, 1.5),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3, metalness: 0.5 })
+      );
+      pcsBody.position.y = 1.5;
+      pcsBody.castShadow = true;
+      pcsInverter.add(pcsBody);
+
+      const screenMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0284c7, emissiveIntensity: 0.6 });
+      const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.8), screenMat);
+      screen.position.set(0, 1.9, 0.76);
+      pcsInverter.add(screen);
+
+      const switchKnob = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+      switchKnob.rotation.x = Math.PI / 2;
+      switchKnob.position.set(0.5, 0.9, 0.77);
+      pcsInverter.add(switchKnob);
+
+      scene.add(pcsInverter);
+    }
+
+    function buildSolidCopperBusbars() {
+      const copperMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.9, roughness: 0.2 });
+
+      const busPos = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.08, 0.1), copperMat);
+      busPos.position.set(-0.2, 3.4, 0.6);
+      scene.add(busPos);
+
+      const busNeg = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.08, 0.1), copperMat);
+      busNeg.position.set(-0.2, 3.4, 0.3);
+      scene.add(busNeg);
+
+      const dropP = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+      dropP.position.set(2.4, 2.7, 0.6);
+      scene.add(dropP);
+
+      const dropN = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+      dropN.position.set(2.4, 2.7, 0.3);
+      scene.add(dropN);
+    }
+
+    function buildGridTransformerSubstation() {
+      gridTransformer = new THREE.Group();
+      gridTransformer.position.set(6.8, 0.16, 2.8);
+
+      const transBase = new THREE.Mesh(
+        new THREE.BoxGeometry(2.4, 2.2, 2.2),
+        new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6 })
+      );
+      transBase.position.y = 1.1;
+      gridTransformer.add(transBase);
+
+      for (let b = 0; b < 3; b++) {
+        const bush = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.08, 0.14, 0.9, 8),
+          new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.2 })
+        );
+        bush.position.set(-0.6 + b * 0.6, 2.65, 0);
+        gridTransformer.add(bush);
+      }
+
+      scene.add(gridTransformer);
+
+      const conduitCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(2.4, 0.2, 0.5),
+        new THREE.Vector3(4.6, 0.2, 1.8),
+        new THREE.Vector3(6.8, 0.2, 2.8)
+      ]);
+      const conduitMesh = new THREE.Mesh(
+        new THREE.TubeGeometry(conduitCurve, 20, 0.08, 8, false),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b })
+      );
+      scene.add(conduitMesh);
+
+      for (let i = 0; i < 4; i++) {
+        const pulse = new THREE.Mesh(
+          new THREE.SphereGeometry(0.09, 8, 8),
+          new THREE.MeshBasicMaterial({ color: 0xa855f7 })
+        );
+        scene.add(pulse);
+        electronPulses.push({ mesh: pulse, curve: conduitCurve, offset: i * 0.25, type: 'grid' });
+      }
+    }
+
+    function createAlpineTurbine(posX, posZ) {
+      const turbineGroup = new THREE.Group();
+      turbineGroup.position.set(posX, 0.16, posZ);
+
+      const tower = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18, 0.38, 7.5, 16),
+        new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.6, roughness: 0.3 })
+      );
+      tower.position.y = 3.75;
+      tower.castShadow = true;
+      turbineGroup.add(tower);
+
+      const nacelle = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.32, 0.32, 1.3, 16),
+        new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.5 })
+      );
+      nacelle.rotation.x = Math.PI / 2;
+      nacelle.position.set(0, 7.5, 0);
+      turbineGroup.add(nacelle);
+
+      const hub = new THREE.Mesh(
+        new THREE.ConeGeometry(0.3, 0.6, 16),
+        new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.7 })
+      );
+      hub.rotation.x = -Math.PI / 2;
+      hub.position.set(0, 7.5, 0.75);
+      turbineGroup.add(hub);
+
+      const rotor = new THREE.Group();
+      rotor.position.set(0, 7.5, 0.75);
+
+      const bladeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25, metalness: 0.1 });
+
+      for (let b = 0; b < 3; b++) {
+        const bladeArm = new THREE.Group();
+        bladeArm.rotation.z = (b / 3) * Math.PI * 2;
+
+        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.4, 8), bladeMat);
+        root.position.y = 0.2;
+        bladeArm.add(root);
+
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.8, 0.04), bladeMat);
+        blade.position.y = 1.7;
+        blade.rotation.y = 0.18;
+        bladeArm.add(blade);
+
+        const tip = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.4, 0.042), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+        tip.position.y = 3.0;
+        bladeArm.add(tip);
+
+        rotor.add(bladeArm);
+      }
+
+      turbineGroup.add(rotor);
+      turbineGroup.userData.rotor = rotor;
+      scene.add(turbineGroup);
+      return turbineGroup;
+    }
+
+    function buildDualWindTurbines() {
+      westWindTurbine = createAlpineTurbine(-9.5, -4.5);
+      const westConduit = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-9.5, 0.2, -4.5),
+        new THREE.Vector3(-5.5, 0.2, -2.5),
+        new THREE.Vector3(-2.8, 0.2, 0.2)
+      ]);
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(westConduit, 20, 0.06, 8, false), new THREE.MeshStandardMaterial({ color: 0x38bdf8 })));
+      for (let i = 0; i < 3; i++) {
+        const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+        scene.add(pulse);
+        electronPulses.push({ mesh: pulse, curve: westConduit, offset: i * 0.33, type: 'windWest' });
+      }
+
+      eastWindTurbine = createAlpineTurbine(9.5, -4.5);
+      const eastConduit = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(9.5, 0.2, -4.5),
+        new THREE.Vector3(5.5, 0.2, -2.5),
+        new THREE.Vector3(2.4, 0.2, 0.2)
+      ]);
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(eastConduit, 20, 0.06, 8, false), new THREE.MeshStandardMaterial({ color: 0x38bdf8 })));
+      for (let i = 0; i < 3; i++) {
+        const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+        scene.add(pulse);
+        electronPulses.push({ mesh: pulse, curve: eastConduit, offset: i * 0.33, type: 'windEast' });
+      }
+    }
+
+    function buildCentral3x4SolarPlant() {
+      solarArray3x4 = new THREE.Group();
+      solarArray3x4.position.set(0, 0.16, -4.2);
+
+      const rackingMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8, roughness: 0.3 });
+      const pvCellMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, metalness: 0.9, roughness: 0.15, emissive: 0x0284c7, emissiveIntensity: 0.2 });
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 });
+
+      for (let c = 0; c < 5; c++) {
+        const lx = -2.8 + c * 1.4;
+        const postFront = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8, 8), rackingMat);
+        postFront.position.set(lx, 0.4, 0.8);
+        solarArray3x4.add(postFront);
+
+        const postBack = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 8), rackingMat);
+        postBack.position.set(lx, 0.9, -1.0);
+        solarArray3x4.add(postBack);
+      }
+
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 4; c++) {
+          const px = -2.1 + c * 1.4;
+          const pz = 0.5 - r * 0.85;
+          const py = 0.65 + r * 0.48;
+
+          const panelGroup = new THREE.Group();
+          panelGroup.position.set(px, py, pz);
+          panelGroup.rotation.x = -Math.PI / 5.2;
+
+          const frame = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.04, 0.8), frameMat);
+          panelGroup.add(frame);
+
+          const cell = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.045, 0.74), pvCellMat);
+          panelGroup.add(cell);
+
+          solarArray3x4.add(panelGroup);
+        }
+      }
+
+      scene.add(solarArray3x4);
+
+      const solarConduit = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 0.2, -4.2),
+        new THREE.Vector3(1.0, 0.2, -2.0),
+        new THREE.Vector3(2.4, 0.2, 0.2)
+      ]);
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(solarConduit, 20, 0.06, 8, false), new THREE.MeshStandardMaterial({ color: 0xf59e0b })));
+      for (let i = 0; i < 4; i++) {
+        const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
+        scene.add(pulse);
+        electronPulses.push({ mesh: pulse, curve: solarConduit, offset: i * 0.25, type: 'solar' });
+      }
+    }
+
+    /* ----- Characters (arms converted to pivot-Groups for smooth swing) ----- */
+    function buildDrSparkyQuills() {
+      quillsGroup = new THREE.Group();
+      quillsGroup.name = "Dr. Sparky Quills";
+
+      const furBrown = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+      const bellyTan = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.7 });
+      const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+      const bootMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.4 });
+      const vestMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4 });
+      const spineDark = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.8 });
+      const spineTip = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.5 });
+
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.65, 1.4, 16), furBrown);
+      torso.position.y = 1.45;
+      torso.castShadow = true;
+      quillsGroup.add(torso);
+
+      const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.53, 0.68, 1.0, 16), vestMat);
+      vest.position.y = 1.5;
+      quillsGroup.add(vest);
+
+      quillsHead = new THREE.Group();
+      quillsHead.position.set(0, 2.35, 0.05);
+      const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), furBrown);
+      quillsHead.add(headMesh);
+
+      const snout = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.55, 12), bellyTan);
+      snout.rotation.x = 1.35;
+      snout.position.set(0, -0.08, 0.45);
+      quillsHead.add(snout);
+
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshStandardMaterial({ color: 0x09090b }));
+      nose.position.set(0, -0.1, 0.72);
+      quillsHead.add(nose);
+
+      [-0.18, 0.18].forEach(gx => {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 8, 16), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
+        rim.position.set(gx, 0.08, 0.5);
+        quillsHead.add(rim);
+      });
+
+      for (let s = 0; s < 28; s++) {
+        const spine = new THREE.Group();
+        const angU = Math.PI * 0.25 + (s / 28) * Math.PI * 0.85;
+        const angV = (s % 7 - 3) * 0.3;
+        const shaft = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.5, 5), spineDark);
+        shaft.position.y = 0.25;
+        spine.add(shaft);
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 6), spineTip);
+        tip.position.y = 0.5;
+        spine.add(tip);
+        spine.position.set(Math.sin(angV) * 0.48, Math.cos(angU) * 0.6 + 0.15, -Math.sin(angU) * 0.48);
+        spine.rotation.set(-angU + Math.PI / 2, 0, angV);
+        torso.add(spine);
+      }
+      quillsGroup.add(quillsHead);
+
+      quillsLegL = new THREE.Group();
+      quillsLegL.position.set(-0.28, 0.75, 0);
+      const legMeshL = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.14, 0.8, 10), pantsMat);
+      legMeshL.position.y = -0.4;
+      quillsLegL.add(legMeshL);
+      const bootL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.45), bootMat);
+      bootL.position.set(0, -0.74, 0.08);
+      quillsLegL.add(bootL);
+      quillsGroup.add(quillsLegL);
+
+      quillsLegR = new THREE.Group();
+      quillsLegR.position.set(0.28, 0.75, 0);
+      const legMeshR = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.14, 0.8, 10), pantsMat);
+      legMeshR.position.y = -0.4;
+      quillsLegR.add(legMeshR);
+      const bootR = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.22, 0.45), bootMat);
+      bootR.position.set(0, -0.74, 0.08);
+      quillsLegR.add(bootR);
+      quillsGroup.add(quillsLegR);
+
+      // LEFT ARM now a pivot-Group
+      quillsArmL = new THREE.Group();
+      quillsArmL.position.set(-0.68, 1.5, 0);
+      const armBoneL = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.11, 0.7, 8), furBrown);
+      armBoneL.position.y = -0.35;
+      quillsArmL.add(armBoneL);
+      quillsGroup.add(quillsArmL);
+
+      // RIGHT ARM pivot-Group (original already a group, re-create for clarity)
+      quillsArmR = new THREE.Group();
+      quillsArmR.position.set(0.68, 1.5, 0);
+      const armBoneR = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.11, 0.7, 8), furBrown);
+      armBoneR.position.y = -0.35;
+      quillsArmR.add(armBoneR);
+      quillsGroup.add(quillsArmR);
+
+      quillsGroup.position.set(2.8, 0.15, 3.4);
+      quillsGroup.rotation.y = Math.PI;
+      scene.add(quillsGroup);
+    }
+
+    function buildProfessorWhiskerPuff() {
+      puffGroup = new THREE.Group();
+      puffGroup.name = "Professor Whisker Puff";
+
+      const calicoGinger = new THREE.MeshStandardMaterial({ color: 0xe07a38, roughness: 0.65 });
+      const calicoWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+      const calicoBlack = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.65 });
+      const labVest = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.5 });
+      const skirtMat = new THREE.MeshStandardMaterial({ color: 0x064e3b, roughness: 0.6 });
+      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x831843, roughness: 0.4 });
+
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.62, 1.25, 16), calicoWhite);
+      body.position.y = 1.45;
+      body.castShadow = true;
+      puffGroup.add(body);
+
+      const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.66, 0.85, 16), labVest);
+      vest.position.y = 1.55;
+      puffGroup.add(vest);
+
+      const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.85, 0.6, 16), skirtMat);
+      skirt.position.y = 0.95;
+      puffGroup.add(skirt);
+
+      puffHead = new THREE.Group();
+      puffHead.position.set(0, 2.35, 0.05);
+
+      const headGeo = new THREE.SphereGeometry(0.68, 18, 18);
+      headGeo.scale(1.15, 0.95, 1.05);
+      const head = new THREE.Mesh(headGeo, calicoGinger);
+      puffHead.add(head);
+
+      const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 14), calicoWhite);
+      muzzle.scale.set(1.2, 0.8, 0.85);
+      muzzle.position.set(0, -0.15, 0.58);
+      puffHead.add(muzzle);
+
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.08, 4), new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
+      nose.rotation.z = Math.PI;
+      nose.rotation.x = 0.35;
+      nose.position.set(0, -0.09, 0.85);
+      puffHead.add(nose);
+
+      [-0.22, 0.22].forEach(gx => {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.035, 10, 20), new THREE.MeshStandardMaterial({ color: 0x09090b }));
+        rim.position.set(gx, 0.04, 0.65);
+        puffHead.add(rim);
+      });
+
+      const earGeo = new THREE.ConeGeometry(0.22, 0.42, 4);
+      const earL = new THREE.Mesh(earGeo, calicoGinger);
+      earL.position.set(-0.42, 0.58, 0.05);
+      earL.rotation.set(-0.1, 0, 0.35);
+      puffHead.add(earL);
+      const earR = new THREE.Mesh(earGeo, calicoBlack);
+      earR.position.set(0.42, 0.58, 0.05);
+      earR.rotation.set(-0.1, 0, -0.35);
+      puffHead.add(earR);
+
+      const hairBunMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.7 });
+      const bunL = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), hairBunMat);
+      bunL.position.set(-0.55, 0.42, 0.08);
+      bunL.add(new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.035, 8, 16), new THREE.MeshStandardMaterial({ color: 0x8b5cf6 })));
+      puffHead.add(bunL);
+      const bunR = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), hairBunMat);
+      bunR.position.set(0.55, 0.42, 0.08);
+      bunR.add(new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.035, 8, 16), new THREE.MeshStandardMaterial({ color: 0xec4899 })));
+      puffHead.add(bunR);
+
+      puffGroup.add(puffHead);
+
+      puffLegL = new THREE.Group();
+      puffLegL.position.set(-0.25, 0.75, 0);
+      const legMeshPuffL = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.75, 10), calicoWhite);
+      legMeshPuffL.position.y = -0.35;
+      puffLegL.add(legMeshPuffL);
+      const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.38), shoeMat);
+      shoeL.position.set(0, -0.67, 0.06);
+      puffLegL.add(shoeL);
+      puffGroup.add(puffLegL);
+
+      puffLegR = new THREE.Group();
+      puffLegR.position.set(0.25, 0.75, 0);
+      const legMeshPuffR = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.75, 10), calicoWhite);
+      legMeshPuffR.position.y = -0.35;
+      puffLegR.add(legMeshPuffR);
+      const shoeR = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.38), shoeMat);
+      shoeR.position.set(0, -0.67, 0.06);
+      puffLegR.add(shoeR);
+      puffGroup.add(puffLegR);
+
+      // Both arms as pivot-Groups
+      puffArmL = new THREE.Group();
+      puffArmL.position.set(-0.62, 1.45, 0);
+      const puffArmLMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.65, 8), calicoWhite);
+      puffArmLMesh.position.y = -0.32;
+      puffArmL.add(puffArmLMesh);
+      puffGroup.add(puffArmL);
+
+      puffArmR = new THREE.Group();
+      puffArmR.position.set(0.62, 1.45, 0);
+      const puffArmRMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.65, 8), calicoWhite);
+      puffArmRMesh.position.y = -0.32;
+      puffArmR.add(puffArmRMesh);
+      puffGroup.add(puffArmR);
+
+      puffGroup.position.set(-1.8, 0.15, 3.4);
+      puffGroup.rotation.y = Math.PI;
+      scene.add(puffGroup);
+    }
+
+    function buildFullPipSqueak() {
+      pipGroup = new THREE.Group();
+      pipGroup.name = "Pip Squeak";
+
+      const mouseBrown = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.75 });
+      const mousePink = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.5 });
+      const beachShirtMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.6 });
+      const shortsMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.6 });
+      const sockMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 });
+      const sneakerMat = new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.4 });
+
+      const torso = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 14), mouseBrown);
+      torso.scale.set(0.9, 1.15, 0.9);
+      torso.position.y = 0.95;
+      torso.castShadow = true;
+      pipGroup.add(torso);
+
+      const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.41, 0.45, 14), beachShirtMat);
+      shirt.position.y = 1.0;
+      pipGroup.add(shirt);
+
+      const shorts = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.36, 0.28, 14), shortsMat);
+      shorts.position.y = 0.72;
+      pipGroup.add(shorts);
+
+      pipHead = new THREE.Group();
+      pipHead.position.set(0, 1.35, 0.05);
+
+      const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 14), mouseBrown);
+      pipHead.add(mHead);
+
+      const snout = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.35, 10), mouseBrown);
+      snout.rotation.x = 1.35;
+      snout.position.set(0, -0.05, 0.25);
+      pipHead.add(snout);
+
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), mousePink);
+      nose.position.set(0, -0.07, 0.42);
+      pipHead.add(nose);
+
+      [-0.1, 0.1].forEach(ex => {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshBasicMaterial({ color: 0x0f172a }));
+        eye.position.set(ex, 0.06, 0.28);
+        pipHead.add(eye);
+      });
+
+      [-0.22, 0.22].forEach((ex, idx) => {
+        const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.025, 12), mousePink);
+        ear.position.set(ex, 0.22, -0.02);
+        ear.rotation.set(0.2, idx === 0 ? 0.35 : -0.35, idx === 0 ? -0.4 : 0.4);
+        pipHead.add(ear);
+      });
+      pipGroup.add(pipHead);
+
+      pipArmL = new THREE.Group();
+      pipArmL.position.set(-0.35, 1.08, 0);
+      const pawL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+      pawL.position.y = -0.18;
+      pipArmL.add(pawL);
+      pipGroup.add(pipArmL);
+
+      pipArmR = new THREE.Group();
+      pipArmR.position.set(0.35, 1.08, 0);
+      const pawR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+      pawR.position.y = -0.18;
+      pipArmR.add(pawR);
+
+      pipWrench = new THREE.Group();
+      pipWrench.position.set(0.08, -0.22, 0.18);
+      const wHandle = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.32, 0.04), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+      pipWrench.add(wHandle);
+      const wHead = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.05, 6), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9 }));
+      wHead.position.y = 0.16;
+      pipWrench.add(wHead);
+      pipArmR.add(pipWrench);
+      pipGroup.add(pipArmR);
+
+      pipLegL = new THREE.Group();
+      pipLegL.position.set(-0.16, 0.6, 0);
+      const legBoneL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.38, 8), mouseBrown);
+      legBoneL.position.y = -0.19;
+      pipLegL.add(legBoneL);
+      const sockL = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.08, 0.1, 8), sockMat);
+      sockL.position.y = -0.32;
+      pipLegL.add(sockL);
+      const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.28), sneakerMat);
+      shoeL.position.set(0, -0.42, 0.05);
+      pipLegL.add(shoeL);
+      pipGroup.add(pipLegL);
+
+      pipLegR = new THREE.Group();
+      pipLegR.position.set(0.16, 0.6, 0);
+      const legBoneR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.38, 8), mouseBrown);
+      legBoneR.position.y = -0.19;
+      pipLegR.add(legBoneR);
+      const sockR = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.08, 0.1, 8), sockMat);
+      sockR.position.y = -0.32;
+      pipLegR.add(sockR);
+      const shoeR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.28), sneakerMat);
+      shoeR.position.set(0, -0.42, 0.05);
+      pipLegR.add(shoeR);
+      pipGroup.add(pipLegR);
+
+      pipGroup.position.set(0.2, 0.15, 3.2);
+      pipGroup.rotation.y = Math.PI;
+      scene.add(pipGroup);
+    }
+
+    /* ---- Highlight ring + light ---- */
+    function setupHighlight() {
+      highlightRing = new THREE.Mesh(
+        new THREE.TorusGeometry(1.4, 0.075, 12, 44),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.9 })
+      );
+      highlightRing.rotation.x = -Math.PI / 2;
+      highlightRing.position.set(0, 0.18, 0);
+      highlightRing.visible = false;
+      scene.add(highlightRing);
+
+      highlightLight = new THREE.PointLight(0x38bdf8, 0, 12, 2);
+      highlightLight.position.set(0, 2, 0);
+      scene.add(highlightLight);
+    }
+
+    function setHighlight(spot, color) {
+      highlightRing.visible = true;
+      highlightRing.material.color.setHex(color);
+      highlightLight.color.setHex(color);
+
+      new TWEEN.Tween(highlightRing.position)
+        .to({ x: spot.x, y: 0.18, z: spot.z }, 420)
+        .easing(TWEEN.Easing.Cubic.Out).start();
+
+      new TWEEN.Tween(highlightLight.position)
+        .to({ x: spot.x, y: 2.0, z: spot.z }, 420)
+        .easing(TWEEN.Easing.Cubic.Out).start();
+
+      new TWEEN.Tween(highlightLight)
+        .to({ intensity: 2.6 }, 420)
+        .easing(TWEEN.Easing.Cubic.Out).start();
+    }
+
+    /* ========================================================================
+       CAMERA AUTO-FRAMING
+       ======================================================================== */
+    function setBeatCamera(target) {
+      const pos = target.pos, look = target.look;
+      const mid = new THREE.Vector3().addVectors(pos, look).multiplyScalar(0.5);
+      mid.y = Math.max(mid.y, 1.6);
+
+      const dirLine = new THREE.Vector3().subVectors(look, pos);
+      dirLine.y = 0;
+      if (dirLine.lengthSq() < 0.01) dirLine.set(0, 0, -1);
+      dirLine.normalize();
+      const perp = new THREE.Vector3(-dirLine.z, 0, dirLine.x);
+
+      // Bias camera toward scene centre
+      const toCenter = new THREE.Vector3(0, 0, 0).sub(pos);
+      toCenter.y = 0;
+      if (perp.dot(toCenter) < 0) perp.negate();
+
+      const dist = 7.5 + pos.distanceTo(look) * 0.5;
+      const camPos = mid.clone()
+        .addScaledVector(perp, dist * 0.85)
+        .addScaledVector(dirLine, -dist * 0.25)
+        .add(new THREE.Vector3(0, dist * 0.55, 0));
+
+      new TWEEN.Tween(camera.position)
+        .to({ x: camPos.x, y: camPos.y, z: camPos.z }, 1500)
+        .easing(TWEEN.Easing.Cubic.InOut).start();
+      new TWEEN.Tween(controls.target)
+        .to({ x: mid.x, y: mid.y, z: mid.z }, 1500)
+        .easing(TWEEN.Easing.Cubic.InOut).start();
+    }
+
+    /* ========================================================================
+       CHARACTER MOTION CONTROLLER
+       ======================================================================== */
+    function lerpAngle(a, b, t) {
+      let d = b - a;
+      while (d > Math.PI) d -= 2 * Math.PI;
+      while (d < -Math.PI) d += 2 * Math.PI;
+      return a + d * t;
+    }
+
+    const WALK_SPEED = 2.4; // units / second
+
+    function updateCharacter(c, delta, realTime) {
+      if (!c.group) return;
+
+      const dToTarget = c.pos.distanceTo(c.targetPos);
+      const walking = dToTarget > 0.06;
+
+      if (walking) {
+        const dir = new THREE.Vector3().subVectors(c.targetPos, c.pos).normalize();
+        const step = Math.min(dToTarget, WALK_SPEED * delta);
+        c.pos.addScaledVector(dir, step);
+        c.walkPhase += delta * 9.5;
+        c.walkStep = Math.min(1, c.walkStep + delta * 1.8);
+
+        const walkAngle = Math.atan2(dir.x, dir.z);
+        c.group.rotation.y = lerpAngle(c.group.rotation.y, walkAngle, 0.18);
+
+        // Legs and arms swing
+        const swing = Math.sin(c.walkPhase);
+        if (c.legL) c.legL.rotation.x = swing * 0.72;
+        if (c.legR) c.legR.rotation.x = -swing * 0.72;
+        if (c.armL) c.armL.rotation.x = -swing * 0.55;
+        if (c.armR) c.armR.rotation.x = swing * 0.55;
+        if (c.head) c.head.rotation.z = swing * 0.045;
+
+        c.group.position.copy(c.pos);
+        c.group.position.y = c.baseY + Math.abs(swing) * 0.07;
+      } else {
+        // Settle limbs
+        if (c.legL) c.legL.rotation.x *= 0.82;
+        if (c.legR) c.legR.rotation.x *= 0.82;
+        if (c.head) c.head.rotation.z *= 0.85;
+
+        // Face look-at target smoothly
+        const dx = c.targetLook.x - c.pos.x;
+        const dz = c.targetLook.z - c.pos.z;
+        if (dx*dx + dz*dz > 0.01) {
+          const targetAngle = Math.atan2(dx, dz);
+          c.group.rotation.y = lerpAngle(c.group.rotation.y, targetAngle, 0.07);
+        }
+
+        // Idle breathing / bobbing
+        const breath = Math.sin(realTime * 1.8 + c.breathePhase);
+        c.group.position.copy(c.pos);
+        c.group.position.y = c.baseY + breath * 0.012;
+
+        // Presentation pose
+        if (c.isPresenter) {
+          const shoulderY = c.pos.y + 1.5;
+          const dy = c.targetLook.y - shoulderY;
+          const dxz = Math.sqrt(dx*dx + dz*dz) + 0.001;
+
+          if (c.style === 'bouncy') {
+            // Pip: hop + wave both arms
+            const hop = Math.abs(Math.sin(realTime * 5.4)) * 0.12;
+            c.group.position.y = c.baseY + hop;
+            c.group.rotation.z = Math.sin(realTime * 5.4) * 0.06;
+
+            if (c.armR) {
+              c.armR.rotation.x = -1.15 + Math.sin(realTime * 7.5) * 0.35;
+              c.armR.rotation.z = -0.35 + Math.sin(realTime * 6.5) * 0.15;
+            }
+            if (c.armL) {
+              c.armL.rotation.x = -0.95 + Math.sin(realTime * 7.5 + 1.2) * 0.35;
+              c.armL.rotation.z = 0.35 - Math.sin(realTime * 6.5) * 0.15;
+            }
+            if (c.head) c.head.rotation.x = Math.sin(realTime * 4.5) * 0.08;
+          } else {
+            // Professional / graceful — point at the object
+            const pointAngle = Math.atan2(-dxz, -dy);
+            const wobble = Math.sin(realTime * 2.4 + c.breathePhase) * 0.05;
+
+            if (c.armR) {
+              c.armR.rotation.x = THREE.MathUtils.lerp(c.armR.rotation.x, pointAngle + wobble, 0.12);
+              c.armR.rotation.z = THREE.MathUtils.lerp(c.armR.rotation.z, -0.18, 0.12);
+            }
+            if (c.armL) {
+              c.armL.rotation.x = THREE.MathUtils.lerp(c.armL.rotation.x, 0.08, 0.09);
+              c.armL.rotation.z = THREE.MathUtils.lerp(c.armL.rotation.z, 0.08, 0.09);
+            }
+            if (c.head) {
+              const headTilt = Math.max(-0.55, Math.min(0.55, -dy / (dxz + 1) * 0.30));
+              c.head.rotation.x = THREE.MathUtils.lerp(c.head.rotation.x, headTilt, 0.09);
+            }
+          }
+        } else {
+          // Not presenting — relaxed arms
+          if (c.armR) c.armR.rotation.x *= 0.88;
+          if (c.armL) c.armL.rotation.x *= 0.88;
+          if (c.head) c.head.rotation.x *= 0.92;
+        }
+      }
+    }
+
+    function updateCharacters(delta, realTime) {
+      updateCharacter(CHAR.quills, delta, realTime);
+      updateCharacter(CHAR.puff, delta, realTime);
+      updateCharacter(CHAR.pip, delta, realTime);
+    }
+
+    /* ========================================================================
+       BEAT TRANSITION
+       ======================================================================== */
+    function onBeatChange(idx) {
+      const beat = STORY_BEATS[idx];
+      if (!beat) return;
+
+      const target = PRESENT_TARGETS[beat.presentTarget] || PRESENT_TARGETS.overview;
+
+      // Character routing
+      if (beat.presenter === 'all') {
+        // Finale: everyone lines up in front
+        CHAR.quills.isPresenter = true;
+        CHAR.quills.targetPos.set(1.8, 0.15, 4.2);
+        CHAR.quills.targetLook.copy(target.look);
+
+        CHAR.puff.isPresenter = true;
+        CHAR.puff.targetPos.set(-1.8, 0.15, 4.2);
+        CHAR.puff.targetLook.copy(target.look);
+
+        CHAR.pip.isPresenter = true;
+        CHAR.pip.targetPos.set(0.2, 0.15, 4.6);
+        CHAR.pip.targetLook.copy(target.look);
+      } else {
+        for (const key of ['quills','puff','pip']) {
+          const c = CHAR[key];
+          if (key === beat.presenter) {
+            c.isPresenter = true;
+            c.targetPos.copy(target.pos);
+            c.targetLook.copy(target.look);
+          } else {
+            c.isPresenter = false;
+            c.targetPos.copy(c.home);
+            c.targetLook.copy(target.look);
+          }
+        }
+      }
+
+      // Highlight & Camera
+      setHighlight(target.highlight, target.color || 0x38bdf8);
+      setBeatCamera(target);
+
+      // Dialogue overlay
+      const dialogueBox = document.getElementById('dialogue-container');
+      dialogueBox.classList.remove('fade-in');
+      dialogueBox.classList.add('fade-out');
+
+      setTimeout(() => {
+        document.getElementById('speaker-avatar').textContent = beat.avatar;
+        document.getElementById('speaker-name').textContent =
+          beat.speaker === 'Quills' ? 'Dr. Sparky Quills' :
+          (beat.speaker === 'Puff' ? 'Professor Whisker Puff' :
+          (beat.speaker === 'Pip' ? 'Pip Squeak-a-Link' : 'Alpenhof Eco-Team'));
+        document.getElementById('speaker-role').textContent = beat.role;
+        document.getElementById('speech-emotion').textContent = beat.emotion;
+        document.getElementById('speech-text').textContent = `"${beat.text}"`;
+        document.getElementById('speaker-avatar').classList.add('speaking-avatar');
+        if (subtitlesEnabled) {
+          dialogueBox.classList.remove('fade-out');
+          dialogueBox.classList.add('fade-in');
+        }
+      }, 180);
+
+      updateVirtualSlide(idx);
+
+      // Voice
+      speakBeat(beat);
+
+      // Little sound stings for certain beats
+      if (beat.emotion.includes('Inverter') || beat.emotion.includes('PCS')) playInverterHum();
+      if (beat.emotion.includes('Busbar')) playRelayClick();
+    }
+
+    /* ---- Virtual slide ---- */
+    const VIRTUAL_SLIDES = [
+      { icon: "🔋", title: "Hybrid Microgrid Overview", subtitle: "Dual Wind + 3x4 Solar + BESS", badge: "TOTAL TOPOLOGY", m1: "2x 25 kW Dual Wind", m2: "3x4 Solar (6.6 kWp)", flow: "Hybrid Co-generation", bars: { solar: 25, wind: 55, bess: 20 }, takeaway: "Opposing ridge turbines capture diurnal valley winds while central solar handles midday loads." },
+      { icon: "🌬️", title: "Dual Ridge Aerodynamics", subtitle: "Katabatic & Anabatic Mountain Winds", badge: "WIND PHYSICS", m1: "West: Morning Up-Valley", m2: "East: Evening Down-Draft", flow: "Complementary 50 kW", bars: { solar: 10, wind: 80, bess: 10 }, takeaway: "Positioning turbines on both sides prevents dead-wind lulls through diurnal mountain breezes." },
+      { icon: "☀️", title: "3x4 Bifacial Solar Plant", subtitle: "12 High-Yield Monocrystalline Modules", badge: "SOLAR YIELD", m1: "12x 550 Wp Modules", m2: "35° South Alpine Tilt", flow: "36.3 kWh / Summer Day", bars: { solar: 70, wind: 15, bess: 15 }, takeaway: "Midday sun generation peaks exactly when mountain thermal wind drops, ensuring steady baseload." },
+      { icon: "🔄", title: "50 kW Hybrid Inverter (PCS)", subtitle: "Bidirectional Power Conversion", badge: "POWER CONDITIONING", m1: "4-Quadrant Inverter", m2: "DC 512V ⇋ AC 400V 3Φ", flow: "Centralized Sync", bars: { solar: 35, wind: 45, bess: 20 }, takeaway: "Harmonizes DC solar and AC wind feeds into a single stable 400V microgrid and DC battery bus." },
+      { icon: "🛡️", title: "LiFePO4 Battery Cabinets", subtitle: "100 kWh Solid-State Reserve", badge: "SAFETY & CAPACITY", m1: "4 Industrial Racks", m2: "6,000+ Lifespan Cycles", flow: "Thermal Safe", bars: { solar: 20, wind: 30, bess: 50 }, takeaway: "Lithium Iron Phosphate avoids thermal runaway risk, ideal for sensitive agricultural communities." },
+      { icon: "🔧", title: "Low-Loss Copper Busbars", subtitle: "Solid High-Amperage Spine", badge: "DISTRIBUTION SPINE", m1: "Solid Dual Copper", m2: "Zero Resistance Loss", flow: "High-Amperage Bus", bars: { solar: 30, wind: 50, bess: 20 }, takeaway: "Heavy overhead copper conductors eliminate voltage sag during simultaneous wind and solar spikes." },
+      { icon: "📥", title: "Surplus Energy Absorption", subtitle: "Zero Curtailment Buffering", badge: "PEAK STORAGE", m1: "100% Green Capture", m2: "Direct DC Injection", flow: "+42.5 kW Charging", bars: { solar: 35, wind: 50, bess: 15 }, takeaway: "Excess energy is absorbed directly into the 100 kWh BESS instead of feathering turbine blades." },
+      { icon: "🏡", title: "Alpenhof Dedicated Loads", subtitle: "Orchard, Dairy & Community Balancing", badge: "LOAD ALLOCATION", m1: "West ➔ Orchard Pumps", m2: "East ➔ Dairy Coolers", flow: "Autonomous Supply", bars: { solar: 33, wind: 33, bess: 34 }, takeaway: "Dedicated regional circuits balance heavy agricultural loads without drawing from national utilities." },
+      { icon: "📈", title: "EPEX SPOT Arbitrage", subtitle: "Automated Electricity Trading", badge: "MARKET DYNAMICS", m1: "Charge: 0€ Low / Negative", m2: "Discharge: Evening Peak €", flow: "Automated Revenue", bars: { solar: 10, wind: 10, bess: 80 }, takeaway: "The step-up transformer trades surplus stored power onto the European grid during peak hours." },
+      { icon: "⚡", title: "Energy Sovereign Village", subtitle: "100% Sustainable Alpenhof Microgrid", badge: "CYCLE COMPLETE", m1: "Zero Carbon Footprint", m2: "Profitable Energy Hub", flow: "100% Self-Sufficient", bars: { solar: 33, wind: 33, bess: 34 }, takeaway: "The complete system provides resilient emergency backup, agricultural autonomy, and financial returns." }
+    ];
+
+    function updateVirtualSlide(idx) {
+      const slide = VIRTUAL_SLIDES[Math.min(idx, VIRTUAL_SLIDES.length - 1)];
+      if (!slide) return;
+      const card = document.getElementById('virtual-slide-card');
+      card.classList.remove('slide-visible');
+      card.classList.add('slide-hidden');
+      setTimeout(() => {
+        document.getElementById('slide-icon').textContent = slide.icon;
+        document.getElementById('slide-title').textContent = slide.title;
+        document.getElementById('slide-subtitle').textContent = slide.subtitle;
+        document.getElementById('slide-badge').textContent = slide.badge;
+        document.getElementById('slide-m1').textContent = slide.m1;
+        document.getElementById('slide-m2').textContent = slide.m2;
+        document.getElementById('slide-flow-rate').textContent = slide.flow;
+        document.getElementById('slide-takeaway').textContent = slide.takeaway;
+        document.getElementById('slide-bar-solar').style.width = `${slide.bars.solar}%`;
+        document.getElementById('slide-bar-wind').style.width = `${slide.bars.wind}%`;
+        document.getElementById('slide-bar-bess').style.width = `${slide.bars.bess}%`;
+        card.classList.remove('slide-hidden');
+        card.classList.add('slide-visible');
+      }, 150);
+    }
+
+    /* ========================================================================
+       TIMELINE
+       ======================================================================== */
+    function updateStoryTimeline(time) {
+      const scrubber = document.getElementById('story-scrubber');
+      if (Math.abs(parseFloat(scrubber.value) - time) > 0.3) scrubber.value = time;
+
+      const mins = Math.floor(time / 60);
+      const secs = Math.floor(time % 60);
+      document.getElementById('time-display').textContent =
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      // Step buttons
+      let currentStep = 1;
+      if (time >= 78.5) currentStep = 4;
+      else if (time >= 48.0) currentStep = 3;
+      else if (time >= 28.5) currentStep = 2;
+      for (let i = 1; i <= 4; i++) {
+        const btn = document.getElementById(`step-btn-${i}`);
+        if (i === currentStep) {
+          btn.className = "w-full py-1 rounded-lg text-[10px] font-bold bg-sky-500 text-slate-950 flex items-center justify-center transition shadow-md";
+        } else {
+          btn.className = "w-full py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 transition";
+        }
+      }
+
+      // LED blink
+      rackStatusLEDs.forEach((led, idx) => {
+        const blink = Math.sin(time * 5 + idx) > 0.1;
+        led.material.color.setHex(blink ? 0x34d399 : 0x065f46);
+      });
+
+      // Energy pulses
+      electronPulses.forEach(ep => {
+        const t = (time * 0.8 + ep.offset) % 1.0;
+        ep.mesh.position.copy(ep.curve.getPoint(t));
+      });
+
+      // Beat selection
+      const activeIdx = STORY_BEATS.findIndex(b => time >= b.start && time < b.end);
+      if (activeIdx !== -1 && activeIdx !== currentSpeechIdx) {
+        currentSpeechIdx = activeIdx;
+        onBeatChange(activeIdx);
+      }
+
+      // Pulse the highlight ring
+      if (highlightRing && highlightRing.visible) {
+        const pulse = 1 + Math.sin(time * 4) * 0.12;
+        highlightRing.scale.set(pulse, pulse, 1);
+        highlightRing.material.opacity = 0.55 + Math.sin(time * 4) * 0.30;
+      }
+    }
+
+    /* ========================================================================
+       UI EVENTS
+       ======================================================================== */
+    function haltSpeech() {
+      if ('speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+      }
+      currentUtterance = null;
+      isSpeaking = false;
+      speechDone = true;
+    }
+
+    function setupUIEvents() {
+      const playBtn = document.getElementById('btn-play-pause');
+      playBtn.addEventListener('click', () => {
+        initAudio();
+        isPlaying = !isPlaying;
+        playBtn.textContent = isPlaying ? '⏸' : '▶';
+        if (!isPlaying) haltSpeech();
+        else if (!speechDone) { /* resume existing speech logic */ }
+      });
+
+      const restartBtn = document.getElementById('btn-restart');
+      restartBtn.addEventListener('click', () => {
+        initAudio();
+        haltSpeech();
+        storyTime = 0;
+        currentSpeechIdx = -1;
+        isPlaying = true;
+        playBtn.textContent = '⏸';
+        document.getElementById('modal-telemetry').classList.add('opacity-0', 'pointer-events-none');
+      });
+
+      const scrubber = document.getElementById('story-scrubber');
+      scrubber.addEventListener('input', (e) => {
+        initAudio();
+        haltSpeech();
+        storyTime = parseFloat(e.target.value);
+        currentSpeechIdx = -1;
+        updateStoryTimeline(storyTime);
+      });
+
+      document.getElementById('step-btn-1').addEventListener('click', () => {
+        initAudio(); haltSpeech(); storyTime = 0; currentSpeechIdx = -1; isPlaying = true; playBtn.textContent = '⏸';
+      });
+      document.getElementById('step-btn-2').addEventListener('click', () => {
+        initAudio(); haltSpeech(); storyTime = 28.6; currentSpeechIdx = -1; isPlaying = true; playBtn.textContent = '⏸';
+      });
+      document.getElementById('step-btn-3').addEventListener('click', () => {
+        initAudio(); haltSpeech(); storyTime = 48.1; currentSpeechIdx = -1; isPlaying = true; playBtn.textContent = '⏸';
+      });
+      document.getElementById('step-btn-4').addEventListener('click', () => {
+        initAudio(); haltSpeech(); storyTime = 78.6; currentSpeechIdx = -1; isPlaying = true; playBtn.textContent = '⏸';
+      });
+
+      // Camera presets override the beat camera
+      document.getElementById('cam-bess').addEventListener('click', () => {
+        new TWEEN.Tween(camera.position).to({ x: 4, y: 5, z: 6 }, 1000).easing(TWEEN.Easing.Cubic.Out).start();
+        new TWEEN.Tween(controls.target).to({ x: -1.5, y: 1.8, z: -1.0 }, 1000).easing(TWEEN.Easing.Cubic.Out).start();
+      });
+      document.getElementById('cam-pcs').addEventListener('click', () => {
+        new TWEEN.Tween(camera.position).to({ x: 6, y: 4, z: 7 }, 1000).easing(TWEEN.Easing.Cubic.Out).start();
+        new TWEEN.Tween(controls.target).to({ x: 2.4, y: 1.6, z: -1.0 }, 1000).easing(TWEEN.Easing.Cubic.Out).start();
+      });
+      document.getElementById('cam-grid').addEventListener('click', () => {
+        new TWEEN.Tween(camera.position).to({ x: 10, y: 6, z: 10 }, 1000).easing(TWEEN.Easing.Cubic.Out).start();
+        new TWEEN.Tween(controls.target).to({ x: 6.8, y: 1.2, z: 2.8 }, 1000).easing(TWEEN.Easing.Cubic.Out).start();
+      });
+      document.getElementById('cam-overview').addEventListener('click', () => {
+        new TWEEN.Tween(camera.position).to({ x: 16, y: 14, z: 16 }, 1000).easing(TWEEN.Easing.Cubic.Out).start();
+        new TWEEN.Tween(controls.target).to({ x: 0, y: 1.5, z: 0 }, 1000).easing(TWEEN.Easing.Cubic.Out).start();
+      });
+
+      const audioBtn = document.getElementById('btn-audio');
+      audioBtn.addEventListener('click', () => {
+        initAudio();
+        audioEnabled = !audioEnabled;
+        audioBtn.textContent = audioEnabled ? '🔊' : '🔇';
+        audioBtn.classList.toggle('active', audioEnabled);
+        if (!audioEnabled) haltSpeech();
+      });
+
+      const subBtn = document.getElementById('btn-subtitles');
+      subBtn.addEventListener('click', () => {
+        subtitlesEnabled = !subtitlesEnabled;
+        subBtn.classList.toggle('active', subtitlesEnabled);
+        const box = document.getElementById('dialogue-container');
+        if (!subtitlesEnabled) box.classList.add('fade-out');
+        else box.classList.remove('fade-out');
+      });
+
+      document.getElementById('btn-info-modal').addEventListener('click', () => {
+        document.getElementById('modal-telemetry').classList.remove('opacity-0', 'pointer-events-none');
+      });
+      document.getElementById('btn-close-modal').addEventListener('click', () => {
+        document.getElementById('modal-telemetry').classList.add('opacity-0', 'pointer-events-none');
+      });
+
+      window.addEventListener('click', () => initAudio(), { once: true });
+    }
+
+    function onResize() {
+      const w = window.innerWidth, h = window.innerHeight;
+      const aspect = w / h, d = 15;
+      camera.left = -d * aspect;
+      camera.right = d * aspect;
+      camera.top = d;
+      camera.bottom = -d;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+
+    /* ========================================================================
+       MAIN LOOP
+       ======================================================================== */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const realTime = clock.elapsedTime;
+      TWEEN.update();
+
+      if (isPlaying) {
+        let timeScale = 1;
+        const curBeat = STORY_BEATS[currentSpeechIdx] || STORY_BEATS[0];
+
+        // No dialogue cut: if speech is still running at beat edge, hold the timeline
+        if (!speechDone && storyTime + delta * timeScale > curBeat.end - 0.3) {
+          storyTime = curBeat.end - 0.3;
+          timeScale = 0;
+        }
+        // No lag: if speech finished well before the beat ends, fast-forward
+        else if (speechDone && curBeat.end - storyTime > 1.6) {
+          timeScale = 2.0;
+        }
+
+        storyTime += delta * timeScale;
+
+        if (storyTime > TOTAL_DURATION) {
+          storyTime = TOTAL_DURATION;
+          isPlaying = false;
+          document.getElementById('btn-play-pause').textContent = '▶';
+          document.getElementById('modal-telemetry').classList.remove('opacity-0', 'pointer-events-none');
+        }
+        updateStoryTimeline(storyTime);
+      }
+
+      // Always animate characters & props — no freeze even when timeline holds
+      updateCharacters(delta, realTime);
+
+      // Wind turbine spin
+      if (westWindTurbine && westWindTurbine.userData.rotor) westWindTurbine.userData.rotor.rotation.z += 0.035;
+      if (eastWindTurbine && eastWindTurbine.userData.rotor) eastWindTurbine.userData.rotor.rotation.z += 0.035;
+
+      // Highlight pulse (independent of timeline)
+      if (highlightRing && highlightRing.visible) {
+        const p = 1 + Math.sin(realTime * 4) * 0.12;
+        highlightRing.scale.set(p, p, 1);
+        highlightRing.material.opacity = 0.55 + Math.sin(realTime * 4) * 0.30;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.onload = () => {
+      init();
+      animate();
+    };
+  </script>
+</body>
+</html>

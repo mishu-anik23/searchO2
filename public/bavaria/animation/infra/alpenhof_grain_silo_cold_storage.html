@@ -1,0 +1,1889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alpenhof Eco-Village — Traditional Grain Silo & Hypogeal Cold Storage</title>
+
+  <!-- Tailwind CSS & Three.js Libraries -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+  <!-- Typography matching Alpenhof Standard -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Fredoka:wght@500;600;700&family=Cinzel:wght@700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; overflow: hidden;
+      width: 100vw; height: 100vh;
+      background: #09131d;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #viewport-container { position: absolute; inset: 0; z-index: 0; }
+    .bubble-font { font-family: 'Fredoka', cursive; }
+    .cinzel { font-family: 'Cinzel', serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .glass-ui {
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    /* Icon toolbar matching strict Alpenhof standard */
+    .tool-icon {
+      position: relative;
+      width: 38px; height: 38px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 12px;
+      font-size: 15px; line-height: 1;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #e2e8f0;
+      cursor: pointer;
+      flex: 0 0 auto;
+      transition: background .18s, border-color .18s, transform .18s, box-shadow .18s;
+    }
+    .tool-icon:hover {
+      background: rgba(56, 189, 248, 0.22);
+      border-color: rgba(56, 189, 248, 0.65);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(56, 189, 248, 0.25);
+    }
+    .tool-icon:active { transform: translateY(0) scale(0.96); }
+    .tool-icon.active {
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      color: #04231c;
+      border-color: #38bdf8;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+    }
+
+    /* Standard tooltip bubble */
+    .tool-icon::after {
+      content: attr(data-tip);
+      position: absolute;
+      top: calc(100% + 9px);
+      left: 50%;
+      transform: translate(-50%, -6px);
+      background: rgba(2, 6, 23, 0.97);
+      border: 1px solid rgba(56, 189, 248, 0.42);
+      color: #e2e8f0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .015em;
+      padding: 5px 9px;
+      border-radius: 8px;
+      white-space: nowrap;
+      opacity: 0; pointer-events: none;
+      transition: opacity .16s ease, transform .16s ease;
+      z-index: 90;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+    }
+    .tool-icon:hover::after { opacity: 1; transform: translate(-50%, 0); }
+
+    .tip-up::after {
+      top: auto;
+      bottom: calc(100% + 9px);
+      transform: translate(-50%, 6px);
+    }
+    .tip-up:hover::after { transform: translate(-50%, 0); }
+
+    /* Dialogue transition */
+    .dialogue-box {
+      transition: opacity .26s cubic-bezier(.16,1,.3,1), transform .26s cubic-bezier(.16,1,.3,1);
+    }
+    .dialogue-box.fade-out {
+      opacity: 0;
+      transform: translate(-50%, 16px) scale(.96);
+      pointer-events: none;
+    }
+    .dialogue-box.fade-in {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+    .subtitles-off .dialogue-box {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translate(-50%, 20px) scale(.96) !important;
+    }
+
+    /* Virtual Intuitive Concept Slide (HUD Infographic) */
+    #virtual-slide {
+      transition: opacity .32s ease, transform .32s cubic-bezier(.16,1,.3,1);
+    }
+    #virtual-slide.slide-hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-12px) scale(0.96);
+    }
+
+    /* Timeline step chips */
+    .step-chip {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      padding: 4px 2px;
+      border-radius: 7px;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      color: #94a3b8;
+      transition: all .18s ease;
+      cursor: pointer;
+    }
+    .step-chip:hover { border-color: rgba(56,189,248,.6); color: #bae6fd; }
+    .step-chip.active {
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      color: #04231c;
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
+    }
+
+    input[type=range] {
+      -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 4px;
+      background: linear-gradient(90deg, #10b981 0%, #38bdf8 100%);
+      outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 11px; height: 11px; border-radius: 50%;
+      background: #f0fdfa; border: 2px solid #0ea5e9;
+      box-shadow: 0 0 8px rgba(56,189,248,.8);
+      cursor: pointer;
+    }
+
+    #player-panel { transition: opacity .2s ease, transform .2s cubic-bezier(.16,1,.3,1); }
+    #player-panel.hidden-panel {
+      opacity: 0; pointer-events: none;
+      transform: translateY(10px) scale(.95);
+      display: block !important;
+    }
+    #modal-architecture { transition: opacity .3s ease; }
+  </style>
+</head>
+<body class="text-white"><a id="archive-home-link" href="../../index.html" title="Return to Alpenhof Research HQ archive" aria-label="Return to Alpenhof Research HQ" style="position:fixed;top:12px;left:12px;z-index:1000;padding:8px 12px;border:1px solid rgba(120,190,225,.45);border-radius:10px;background:rgba(5,17,30,.86);backdrop-filter:blur(8px);color:#dff4ff;text-decoration:none;font:600 12px/1.2 system-ui,sans-serif;box-shadow:0 5px 20px #0005">🏔️ Archive</a>
+
+  <!-- 3D Canvas Viewport -->
+  <div id="viewport-container"></div>
+
+  <!-- ============ TOP LEFT : Mission Header & Character Roster ============ -->
+  <header class="fixed top-4 left-4 z-40 flex flex-col gap-2 pointer-events-none max-w-[340px]">
+    <div class="glass-ui p-3 rounded-2xl shadow-2xl pointer-events-auto border border-emerald-500/30">
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-emerald-600 to-cyan-400 p-[2px] shadow-lg flex-shrink-0">
+            <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-lg">🌾</div>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h1 class="text-[13px] font-bold tracking-wide text-emerald-200 leading-tight">Alpenhof Agronomy &amp; Storage Lab</h1>
+              <span class="text-[8px] px-1.5 py-[1px] rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-mono">ALP</span>
+            </div>
+            <p class="text-[10px] text-slate-300 leading-tight">Silo Architecture &amp; Natural Cooling Chain</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="stage-tag" class="text-[9px] uppercase font-bold tracking-wider px-2 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-400/30 text-center mb-2">
+        Step 1 · Alpine Timber Framing &amp; Stone Pedestal
+      </div>
+
+      <div class="grid grid-cols-3 gap-1.5 text-[10px]">
+        <div class="p-1.5 rounded-xl bg-slate-900/80 border border-amber-500/40 flex items-center gap-1.5">
+          <span class="text-sm">🦡</span>
+          <div class="truncate">
+            <strong class="text-amber-300 block truncate leading-tight text-[9px]">Dr. Clodhopper</strong>
+            <span class="text-[8px] text-slate-400">Chief Mason</span>
+          </div>
+        </div>
+        <div class="p-1.5 rounded-xl bg-slate-900/80 border border-purple-500/40 flex items-center gap-1.5">
+          <span class="text-sm">🌸</span>
+          <div class="truncate">
+            <strong class="text-purple-300 block truncate leading-tight text-[9px]">Prof. Puff</strong>
+            <span class="text-[8px] text-slate-400">Microclimate Sci</span>
+          </div>
+        </div>
+        <div class="p-1.5 rounded-xl bg-slate-900/80 border border-cyan-500/40 flex items-center gap-1.5">
+          <span class="text-sm">🌺</span>
+          <div class="truncate">
+            <strong class="text-cyan-300 block truncate leading-tight text-[9px]">Pip Squeak</strong>
+            <span class="text-[8px] text-slate-400">Sorting Helper</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ TOP RIGHT : Icon-only toolbar with hover tooltips ============ -->
+  <nav class="fixed top-4 right-4 z-40 flex flex-row items-center gap-2 flex-nowrap">
+    <button id="btn-audio"       class="tool-icon"        data-tip="Audio &amp; Voice Synthesis">🔊</button>
+    <button id="btn-subtitle"    class="tool-icon active" data-tip="Subtitles On / Off">💬</button>
+    <button id="btn-slide-toggle" class="tool-icon active" data-tip="Concept Fact Slide HUD">📊</button>
+    <button id="btn-open-arch"   class="tool-icon"        data-tip="Ancient Thermal Blueprint">📐</button>
+    <button id="btn-cam-silo"    class="tool-icon"        data-tip="Silo Architecture Focus">🏛️</button>
+    <button id="btn-cam-cellar"  class="tool-icon"        data-tip="Hypogeal Cellar Cross-Section">❄️</button>
+    <button id="btn-cam-sort"    class="tool-icon"        data-tip="Sorting &amp; Grading Bay">🍎</button>
+    <button id="btn-cam-gastro"  class="tool-icon"        data-tip="Gastronomy &amp; Market Hub">🍽️</button>
+  </nav>
+
+  <!-- ============ TOP CENTER-RIGHT : Virtual Concept Fact Slide HUD ============ -->
+  <aside id="virtual-slide" class="fixed top-20 right-4 z-30 w-[330px] sm:w-[380px] glass-ui p-3.5 rounded-2xl border border-cyan-400/40 shadow-2xl pointer-events-auto">
+    <div class="flex items-center justify-between border-b border-slate-700/60 pb-2 mb-2.5">
+      <div class="flex items-center gap-2">
+        <span id="slide-icon" class="text-lg">📐</span>
+        <div>
+          <h2 id="slide-title" class="bubble-font text-[12px] font-bold text-cyan-200">Mortise-and-Tenon Alpine Silo</h2>
+          <span id="slide-subtitle" class="text-[9px] text-slate-400 font-mono">Larchwood Frame &amp; Rodent-Stilt Pillars</span>
+        </div>
+      </div>
+      <span id="slide-metric" class="mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/40">14.2% H₂O</span>
+    </div>
+
+    <!-- Intuitive visual diagram card -->
+    <div id="slide-diagram" class="rounded-xl bg-slate-950/70 p-2.5 border border-slate-800 text-[11px] mb-2 font-mono space-y-1.5">
+      <div class="flex items-center justify-between text-slate-300">
+        <span>🌲 Framing:</span>
+        <span class="text-emerald-400 font-bold">High-altitude Alpine Larch</span>
+      </div>
+      <div class="flex items-center justify-between text-slate-300">
+        <span>🐭 Rodent Guard:</span>
+        <span class="text-amber-400 font-bold">Schiefer Granite Stilt Stones</span>
+      </div>
+      <div class="flex items-center justify-between text-slate-300">
+        <span>💨 Aeration Slats:</span>
+        <span class="text-cyan-400 font-bold">45° Slanted Inward Louvers</span>
+      </div>
+    </div>
+
+    <!-- Live thermal & telemetry indicators -->
+    <div class="grid grid-cols-3 gap-1.5 text-center font-mono text-[9.5px]">
+      <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+        <div class="text-slate-400 text-[8px]">SUB-TEMP</div>
+        <div id="metric-temp" class="text-emerald-300 font-bold">8.4°C</div>
+      </div>
+      <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+        <div class="text-slate-400 text-[8px]">HUMIDITY</div>
+        <div id="metric-rh" class="text-cyan-300 font-bold">62% RH</div>
+      </div>
+      <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+        <div class="text-slate-400 text-[8px]">CONVECTION</div>
+        <div id="metric-flow" class="text-amber-300 font-bold">0.85 m/s</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ BOTTOM LEFT : Packed expandable playback controller ============ -->
+  <div class="fixed bottom-4 left-4 z-50 flex flex-col items-start gap-2">
+    <div id="player-panel" class="hidden-panel glass-ui rounded-2xl p-2.5 w-[280px] shadow-2xl border border-slate-700">
+      <div class="flex items-center gap-1.5">
+        <button id="btn-play-pause" class="w-7 h-7 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[11px] font-bold flex items-center justify-center transition">⏸</button>
+        <button id="btn-restart" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] flex items-center justify-center border border-slate-600 transition" title="Restart">↺</button>
+        <span id="time-display" class="mono text-[10px] text-emerald-300 w-9 text-center font-bold">00:00</span>
+        <input id="story-scrubber" type="range" min="0" max="90" step="0.1" value="0" class="flex-1">
+        <span class="mono text-[9px] text-slate-500">1:30</span>
+      </div>
+      <div class="grid grid-cols-4 gap-1 mt-2">
+        <button id="step-btn-1" class="step-chip active" data-tip="Step 1: Timber Silo Frame">S1</button>
+        <button id="step-btn-2" class="step-chip" data-tip="Step 2: Hypogeal Convection">S2</button>
+        <button id="step-btn-3" class="step-chip" data-tip="Step 3: Crop Sorting">S3</button>
+        <button id="step-btn-4" class="step-chip" data-tip="Step 4: Gastronomy &amp; Market">S4</button>
+      </div>
+    </div>
+    <button id="btn-player-toggle" class="tool-icon tip-up" data-tip="Timeline Playback Panel">▶</button>
+  </div>
+
+  <!-- ============ BOTTOM CENTER : Subtitle / Dialogue ============ -->
+  <div id="subtitle-layer" class="fixed left-0 right-0 bottom-0 z-30 pointer-events-none" style="padding-bottom: 22px;">
+    <div id="dialogue-container"
+         class="dialogue-box fade-in pointer-events-auto mx-auto glass-ui px-4 py-3 rounded-2xl border border-emerald-400/40 shadow-2xl flex items-center gap-3"
+         style="width: min(620px, 88vw);">
+      <div id="speaker-avatar" class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl bg-slate-900 border-2 border-emerald-400 shadow-md">🦡</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2 mb-0.5">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span id="speaker-name" class="bubble-font text-[12px] font-bold text-amber-300 tracking-wide truncate">Dr. Barnaby Clodhopper</span>
+            <span id="speaker-role" class="hidden sm:inline text-[9px] px-1.5 py-[1px] rounded bg-amber-500/20 text-amber-300 border border-amber-400/30 font-mono whitespace-nowrap">Chief Geotechnical Architect</span>
+          </div>
+          <span id="speech-emotion" class="text-[9px] uppercase tracking-wider px-1.5 py-[1px] rounded-full bg-slate-800 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">Silo Framing</span>
+        </div>
+        <p id="speech-text" class="text-[11.5px] text-slate-100 leading-snug font-medium">
+          "Grüß Gott! Welcome to the Alpenhof harvest quarter. Here we construct our elevated larchwood grain silo!"
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Blueprint / Architectural Specifications Modal ============ -->
+  <aside id="modal-architecture" class="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none">
+    <div class="glass-ui border-2 border-emerald-400/60 rounded-3xl p-5 max-w-md w-full text-center shadow-2xl relative">
+      <button id="btn-close-arch-x"
+              class="absolute top-3 right-3 w-7 h-7 rounded-lg bg-slate-800/90 hover:bg-rose-500/80 border border-slate-600 hover:border-rose-400 text-slate-200 text-[11px] flex items-center justify-center transition"
+              title="Close">✕</button>
+
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-emerald-500 text-slate-950 flex items-center justify-center text-2xl mx-auto mb-2.5 shadow-lg">🌾</div>
+      <h2 class="cinzel text-lg font-bold text-emerald-300 mb-1">Alpenhof Silo &amp; Root Cellar Geothermal Blueprint</h2>
+      <p class="text-[11px] text-slate-300 mb-3 leading-relaxed">
+        Engineered by Dr. Clodhopper with Professor Whisker Puff's biomimetic cooling telemetry.
+      </p>
+
+      <div class="bg-slate-900/90 p-3 rounded-2xl border border-emerald-500/30 text-left text-[10.5px] mb-4 space-y-1.5 font-mono">
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>🌲 Stilt Mushroom Pillars</span>
+          <span class="text-amber-400 font-bold text-right">Granite Capstones (Mäusepfeiler)</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>💨 Passive Wind-Catcher Flue</span>
+          <span class="text-cyan-400 font-bold text-right">Badger-draft Stack Effect</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>❄️ Subterranean Soil Matrix</span>
+          <span class="text-emerald-400 font-bold text-right">Constant 7°C - 9°C Geothermal</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>💧 Evaporative Gravel Bed</span>
+          <span class="text-blue-400 font-bold text-right">85% RH for Root Tubers &amp; Apples</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>🍽️ Gastronomy &amp; Milling Ratio</span>
+          <span class="text-purple-400 font-bold text-right">40% Fresh Kitchen / 60% Stone Mill</span>
+        </div>
+      </div>
+
+      <button id="btn-close-arch"
+              class="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold py-2 rounded-xl transition text-[11px] shadow-lg">
+        Return to Harvest Facility
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- MAIN SIMULATION LOGIC                                                 -->
+  <!-- ===================================================================== -->
+  <script>
+  let scene, camera, renderer, controls;
+
+  // Characters
+  let badgerGroup, puffGroup, pipGroup;
+  let badgerHead, badgerArmL, badgerArmR;
+  let puffHead, puffArmL, puffArmR, puffTail;
+  let pipHead, pipArmL, pipArmR, pipTail, pipBasket;
+
+  // Facilities & Props
+  let grainSilo, siloRoof, siloWallCutaway;
+  let hypogealCellar, airChimneyFlue, coolingFlowParticles;
+  let sortingChuteTable, appleCrates = [], grainSacks = [];
+  let gastronomyCart, gastronomyRestaurant, villageMarketStand;
+
+  // Environment & Lights
+  let sunLight, ambientLight, cellarGlowLight;
+  let clock;
+
+  // Timeline & State
+  const TOTAL_DURATION = 90;
+  let storyTime = 0;
+  let isPlaying = true;
+  let audioEnabled = true;
+  let subtitlesEnabled = true;
+  let currentSpeechIdx = -1;
+  let lastCamStep = -1;
+  let synth = null;
+
+  /* Camera Presets */
+  const CAM = {
+    intro:  { pos: [12.0, 10.0, 22.0], tgt: [0.0, 2.5, 0.0], zoom: 1.15 },
+    step1:  { pos: [10.5, 9.2, 19.5],  tgt: [-1.5, 3.2, 1.0], zoom: 1.18 },
+    step2:  { pos: [16.0, 4.5, 14.0],  tgt: [0.5, -0.8, -0.5], zoom: 1.25 },
+    step3:  { pos: [9.0, 6.5, 15.0],   tgt: [3.8, 1.2, 2.5], zoom: 1.25 },
+    step4:  { pos: [18.0, 12.0, 18.0], tgt: [-2.0, 2.0, -3.0], zoom: 1.05 },
+    silo:   { pos: [8.0, 8.5, 12.0],   tgt: [-3.5, 3.5, 0.0], zoom: 1.30 },
+    cellar: { pos: [14.0, 2.5, 11.0],  tgt: [0.0, -1.0, 0.0], zoom: 1.40 },
+    sort:   { pos: [9.5, 5.0, 11.5],   tgt: [3.5, 1.0, 2.0], zoom: 1.45 },
+    gastro: { pos: [-12.0, 8.0, 16.0], tgt: [-8.0, 1.8, -2.0], zoom: 1.25 }
+  };
+
+  /* Story Beats with Educational Telemetry & Virtual Concept Slides */
+  const STORY_BEATS = [
+    {
+      start: 0, end: 7.5, speaker: 'Badger', avatar: '🦡', role: 'Chief Geotechnical Badger', emotion: 'Warm Welcome',
+      text: "Grüß Gott! Welcome to the Alpenhof harvest quarter. Here we construct our elevated larchwood grain silo with ancient masonry!",
+      slide: {
+        icon: "🌲", title: "Alpine Timber Mortise-and-Tenon", sub: "Larchwood Slat Framing & Aeration",
+        metric: "14.2% H₂O",
+        diagram: [
+          ["🌲 Timber", "Alpine Mountain Larch (Resin-Rich)"],
+          ["🐭 Rodent Guard", "Granite Mushroom Caps (Mäusepfeiler)"],
+          ["💨 Aeration", "Diagonal Louver Wall Slats (Rain-proof)"]
+        ],
+        temp: "17.5°C", rh: "54%", flow: "0.62 m/s"
+      }
+    },
+    {
+      start: 7.5, end: 15.0, speaker: 'Puff', avatar: '🌸', role: 'Chief Astrobiologist', emotion: 'Microbial Analysis',
+      text: "Notice the elevated granite stilts! They prevent capillary ground dampness and maintain crop dormancy at below 14% seed moisture.",
+      slide: {
+        icon: "🔬", title: "Capillary Isolation Science", sub: "Seed Dormancy & Fungus Prevention",
+        metric: "Aw < 0.65",
+        diagram: [
+          ["🌱 Seed Dormancy", "Water Activity < 0.65 Aw"],
+          ["🛑 Bio-barrier", "Zero Ground Capillary Infiltration"],
+          ["🌬️ Air Gap", "0.8m Ground Elevation Aeration"]
+        ],
+        temp: "16.8°C", rh: "51%", flow: "0.78 m/s"
+      }
+    },
+    {
+      start: 15.0, end: 23.0, speaker: 'Pip', avatar: '🌺', role: 'Sorting Helper Mouse', emotion: 'Upright & Eager',
+      text: "I helped check every granite capstone! Not a single rascal mouse can climb over the smooth stone mushrooms! All beams stand tall and true!",
+      slide: {
+        icon: "📐", title: "Mäusepfeiler Rodent Shield", sub: "Geometric Overhang Friction Cutoff",
+        metric: "R = 0.45m",
+        diagram: [
+          ["🪨 Granite Edge", "Overhanging Lip Defeats Climbing"],
+          ["⚖️ Alignment", "Strict Vertical Gravitational Load"],
+          ["🪵 Tenons", "Hand-carved Oak Dowels (No rust nails)"]
+        ],
+        temp: "16.2°C", rh: "50%", flow: "0.80 m/s"
+      }
+    },
+    {
+      start: 23.0, end: 32.0, speaker: 'Badger', avatar: '🦡', role: 'Chief Geotechnical Badger', emotion: 'Earth Mechanics',
+      text: "Step 2: The subterranean hypogeal cold cellar! Dug 3 meters deep, exploiting Bavarian earth's stable geothermal thermal inertia.",
+      slide: {
+        icon: "❄️", title: "Subterranean Geothermal Sink", sub: "3m Depth Bavarian Earth Thermal Mass",
+        metric: "8.2°C Cons.",
+        diagram: [
+          ["🌍 Earth Buffer", "Annual Constant Geothermal Layer"],
+          ["🧱 Stone Masonry", "Dry-stacked Porous Dolomite Walls"],
+          ["💧 Wet Gravel Bed", "Percolating Alpine Spring Evaporator"]
+        ],
+        temp: "8.2°C", rh: "88%", flow: "0.45 m/s"
+      }
+    },
+    {
+      start: 32.0, end: 40.0, speaker: 'Puff', avatar: '🌸', role: 'Chief Astrobiologist', emotion: 'Passive Convection',
+      text: "Ancient natural cooling: Warm air exits through high vent stacks while shaded mountain breezes are drawn down wet gravel beds!",
+      slide: {
+        icon: "💨", title: "Passive Convective Thermal Stack", sub: "Wind-Catcher & Stack-Effect Siphon",
+        metric: "ΔT = 9.5°C",
+        diagram: [
+          ["🌀 Chimney Draft", "Solar-assisted Thermal Updraft"],
+          ["❄️ Intake Flue", "North-Facing Mountain Air Inflow"],
+          ["🍃 Zero Power", "100% Gravity & Pressure Driven"]
+        ],
+        temp: "7.9°C", rh: "86%", flow: "1.12 m/s"
+      }
+    },
+    {
+      start: 40.0, end: 49.0, speaker: 'Pip', avatar: '🌺', role: 'Sorting Helper Mouse', emotion: 'Crop Sorting Fun',
+      text: "Step 3: Harvest sorting time! Round red apples roll down the gravity size chute, while winter pumpkins go to the dry cellar ledges!",
+      slide: {
+        icon: "🍎", title: "Gravity Density & Size Sorting", sub: "Multi-Chute Separation Protocol",
+        metric: "Tier 1 to 3",
+        diagram: [
+          ["🍎 A-Grade Fruits", "Intact Skin → Cellar Humid Racks"],
+          ["🎃 Winter Squash", "Cured Skin → 12°C Intermediate Loft"],
+          ["🌾 Bread Grains", "Spelt & Rye → Elevated Dry Silo"]
+        ],
+        temp: "11.0°C", rh: "74%", flow: "0.55 m/s"
+      }
+    },
+    {
+      start: 49.0, end: 58.0, speaker: 'Puff', avatar: '🌸', role: 'Chief Astrobiologist', emotion: 'Ethylene Stratification',
+      text: "Apples emit ethylene gas, so our ventilation segregates them from sensitive root vegetables. Natural biochemistry at its finest!",
+      slide: {
+        icon: "🧪", title: "Ethylene Differential Venting", sub: "Gas Stratification & Separation",
+        metric: "C₂H₄ Ex",
+        diagram: [
+          ["💨 Gas Venting", "Direct Flue Draft for Fruit Boxes"],
+          ["🥕 Root Veggies", "Carrots & Beets Packed in Moist Sand"],
+          ["🛡️ Preservation", "Prevents Sprouting & Premature Softening"]
+        ],
+        temp: "8.5°C", rh: "85%", flow: "0.72 m/s"
+      }
+    },
+    {
+      start: 58.0, end: 68.0, speaker: 'Badger', avatar: '🦡', role: 'Chief Geotechnical Badger', emotion: 'Gastronomy Supply',
+      text: "Step 4: Immediate delivery! Prime heirloom vegetables and fresh crisp orchard fruits go directly into the Alpenhof Farm Gastronomy kitchen!",
+      slide: {
+        icon: "🍽️", title: "Farm-to-Table Gastronomy Circuit", sub: "Zero-Kilometer Farm Restaurant Supply",
+        metric: "40% Share",
+        diagram: [
+          ["👨‍🍳 Kitchen Intake", "Crisp Greens, Berries & Fine Apples"],
+          ["⏱️ Transit Time", "< 15 Minutes Harvest to Prep"],
+          ["🌱 Fresh Flavor", "Maximum Vitamin & Terroir Preservation"]
+        ],
+        temp: "14.5°C", rh: "65%", flow: "0.30 m/s"
+      }
+    },
+    {
+      start: 68.0, end: 78.0, speaker: 'Pip', avatar: '🌺', role: 'Sorting Helper Mouse', emotion: 'Market Milling Cheer',
+      text: "And the remaining grain goes to our water-powered stone mill for organic flour, and surplus apples are pressed into sweet cider!",
+      slide: {
+        icon: "⚙️", title: "Stone-Milling & Value-Add Processing", sub: "Local Market Flour & Fruit Preserves",
+        metric: "60% Share",
+        diagram: [
+          ["🌾 Stone Mill", "Cold-Ground Wholemeal Spelt Flour"],
+          ["🍏 Cider & Dried", "Solar Dehydrated Apple Rings & Juice"],
+          ["🏪 Village Stand", "Alpenhof Eco-Market Wooden Crates"]
+        ],
+        temp: "15.2°C", rh: "58%", flow: "0.40 m/s"
+      }
+    },
+    {
+      start: 78.0, end: 90.0, speaker: 'All', avatar: '🌾', role: 'Alpenhof Team', emotion: 'Village Feast',
+      text: "Alpenhof Harvest & Storage Cycle complete! Century-old wisdom, zero electricity, pure nourishment for our whole community!",
+      slide: {
+        icon: "🏆", title: "Alpenhof Circular Bio-Economy", sub: "Zero-Emission Ancient Thermal Masterpiece",
+        metric: "100% Circular",
+        diagram: [
+          ["🏛️ Elevated Silo", "Dry Grain Protection (1 Year+)"],
+          ["❄️ Hypogeal Cellar", "Fresh Roots & Fruits (6 Months+)"],
+          ["🍽️ Community Life", "Nourishing Village Gastronomy & Market"]
+        ],
+        temp: "8.4°C", rh: "78%", flow: "0.85 m/s"
+      }
+    }
+  ];
+
+  /* Audio Synthesizer */
+  function initAudio() {
+    try { if (!synth) synth = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+  }
+  function playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.05) {
+    if (!audioEnabled || !synth) return;
+    try {
+      if (synth.state === 'suspended') synth.resume();
+      const osc = synth.createOscillator(), gain = synth.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, synth.currentTime);
+      gain.gain.setValueAtTime(gainVal, synth.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + duration);
+      osc.connect(gain); gain.connect(synth.destination);
+      osc.start(); osc.stop(synth.currentTime + duration);
+    } catch(e){}
+  }
+
+  let availableVoices = [];
+  function loadVoices() {
+    if ('speechSynthesis' in window) {
+      availableVoices = window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => { availableVoices = window.speechSynthesis.getVoices(); };
+    }
+  }
+  loadVoices();
+
+  let dialogueSpeaking = false;
+    function speakText(text, speaker) {
+      dialogueSpeaking = false;
+    if (!audioEnabled || !('speechSynthesis' in window)) return;
+    
+    const u = new SpeechSynthesisUtterance(text);
+      dialogueSpeaking = true;
+      u.onstart = () => { dialogueSpeaking = true; };
+      u.onend = u.onerror = () => { dialogueSpeaking = false; };
+    if (speaker === 'Pip') {
+      u.pitch = 1.48; u.rate = 1.08;
+      const v = availableVoices.find(v => /Junior|Fred|Child|Princess/i.test(v.name) && v.lang.startsWith('en'));
+      if (v) u.voice = v;
+      playTone(720, 'triangle', 0.1, 0.04);
+    } else if (speaker === 'Puff') {
+      u.pitch = 1.2; u.rate = 0.96;
+      const v = availableVoices.find(v => /Samantha|Victoria|Zira|Female/i.test(v.name) && v.lang.startsWith('en'));
+      if (v) u.voice = v;
+      playTone(520, 'sine', 0.18, 0.03);
+    } else {
+      u.pitch = 0.94; u.rate = 1.02;
+      const v = availableVoices.find(v => /Daniel|George|David|Male/i.test(v.name) && v.lang.startsWith('en'));
+      if (v) u.voice = v;
+      playTone(180, 'sawtooth', 0.2, 0.05);
+    }
+    const lineMood = String(STORY_BEATS[currentSpeechIdx]?.emotion || '');
+      if (/discover|curious|delight|excite|wonder/i.test(lineMood)) { u.pitch = Math.min(1.55, u.pitch + 0.035); u.rate = Math.min(1.12, u.rate + 0.025); }
+      else if (/focus|careful|technical|serious|reflect/i.test(lineMood)) { u.rate = Math.max(0.90, u.rate - 0.025); }
+      window.speechSynthesis.speak(u);
+  }
+
+  /* ===================================================================== */
+  /* INITIALIZATION                                                        */
+  /* ===================================================================== */
+  function init() {
+    const container = document.getElementById('viewport-container');
+    const w = window.innerWidth, h = window.innerHeight;
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x091421);
+    scene.fog = new THREE.FogExp2(0x091421, 0.012);
+
+    const aspect = w / h, d = 15;
+    camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 0.1, 400);
+    camera.position.set(12.0, 10.0, 22.0);
+    camera.lookAt(0.0, 2.5, 0.0);
+    camera.zoom = CAM.intro.zoom;
+    camera.updateProjectionMatrix();
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(w, h);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+    container.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.maxPolarAngle = Math.PI / 2.05;
+    controls.target.set(0.0, 2.5, 0.0);
+
+    setupLighting();
+    buildTerrain();
+    buildGrainSilo();
+    buildHypogealCellar();
+    buildSortingBay();
+    buildGastronomyAndMarket();
+    buildBadger();
+    buildPuff();
+    buildPip();
+    setupUI();
+
+    clock = new THREE.Clock();
+    window.addEventListener('resize', onResize);
+  }
+
+  /* ===================================================================== */
+  /* LIGHTING                                                              */
+  /* ===================================================================== */
+  function setupLighting() {
+    ambientLight = new THREE.HemisphereLight(0xa5d8ff, 0x1a2634, 0.95);
+    scene.add(ambientLight);
+
+    sunLight = new THREE.DirectionalLight(0xfff6de, 1.6);
+    sunLight.position.set(24, 32, 20);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 85;
+    const dl = 24;
+    sunLight.shadow.camera.left = -dl;
+    sunLight.shadow.camera.right = dl;
+    sunLight.shadow.camera.top = dl;
+    sunLight.shadow.camera.bottom = -dl;
+    sunLight.shadow.bias = -0.0003;
+    scene.add(sunLight);
+
+    cellarGlowLight = new THREE.PointLight(0x38bdf8, 1.8, 12);
+    cellarGlowLight.position.set(0.5, -0.8, -0.5);
+    scene.add(cellarGlowLight);
+  }
+
+  /* ===================================================================== */
+  /* TERRAIN & NATURAL SURROUNDINGS                                        */
+  /* ===================================================================== */
+  function buildTerrain() {
+    // Volumetric bedrock & deep earth
+    const bedrock = new THREE.Mesh(
+      new THREE.BoxGeometry(38, 4.0, 32),
+      new THREE.MeshStandardMaterial({ color: 0x221810, roughness: 0.95 })
+    );
+    bedrock.position.y = -2.0;
+    bedrock.receiveShadow = true;
+    scene.add(bedrock);
+
+    // Alpine pasture terrain with gentle rolling swales
+    const grassGeo = new THREE.PlaneGeometry(38, 32, 48, 48);
+    grassGeo.rotateX(-Math.PI / 2);
+    const pos = grassGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), z = pos.getZ(i);
+      let y = Math.sin(x * 0.18) * 0.35 + Math.cos(z * 0.22) * 0.32;
+      // Plateau for Silo and cellar access
+      if (Math.hypot(x + 2, z - 1) < 7.0) y = 0.05;
+      pos.setY(i, y);
+    }
+    grassGeo.computeVertexNormals();
+
+    const grass = new THREE.Mesh(grassGeo, new THREE.MeshStandardMaterial({
+      color: 0x3d6614, roughness: 0.85
+    }));
+    grass.receiveShadow = true;
+    scene.add(grass);
+
+    // Cobblestone pathways connecting Silo, Cellar, Sorting Bay, and Gastronomy
+    const pathMat = new THREE.MeshStandardMaterial({ color: 0x857158, roughness: 0.92 });
+    const mainAvenue = new THREE.Mesh(new THREE.BoxGeometry(32, 0.08, 2.6), pathMat);
+    mainAvenue.position.set(0, 0.04, 5.5);
+    mainAvenue.receiveShadow = true;
+    scene.add(mainAvenue);
+
+    const crossAvenue = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 18), pathMat);
+    crossAvenue.position.set(-0.5, 0.04, -1.0);
+    crossAvenue.receiveShadow = true;
+    scene.add(crossAvenue);
+
+    // Alpine Conifers & Wildflower Tufts
+    const needleMat = new THREE.MeshStandardMaterial({ color: 0x144923, roughness: 0.8 });
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a2c13, roughness: 0.9 });
+    const treeLocs = [
+      [-16, -11, 1.4], [-14, -4, 1.2], [-15, 8, 1.1],
+      [15, -10, 1.3], [14, 4, 1.15], [16, 11, 1.0],
+      [-5, -13, 1.25], [6, -13, 1.1]
+    ];
+    treeLocs.forEach(([tx, tz, ts]) => {
+      const tg = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * ts, 0.22 * ts, 1.2 * ts, 7), trunkMat);
+      trunk.position.y = 0.6 * ts;
+      trunk.castShadow = true; tg.add(trunk);
+      for (let i = 0; i < 4; i++) {
+        const cone = new THREE.Mesh(new THREE.ConeGeometry((1.1 - i * 0.22) * ts, (1.4 - i * 0.2) * ts, 8), needleMat);
+        cone.position.y = (1.2 + i * 0.75) * ts;
+        cone.castShadow = true; tg.add(cone);
+      }
+      tg.position.set(tx, 0, tz);
+      scene.add(tg);
+    });
+  }
+
+  /* ===================================================================== */
+  /* FACILITY 1: TRADITIONAL ALPENHOF GRAIN STORAGE SILO                    */
+  /* ===================================================================== */
+  function buildGrainSilo() {
+    grainSilo = new THREE.Group();
+    grainSilo.position.set(-5.5, 0, 0.5);
+
+    const larchWood = new THREE.MeshStandardMaterial({ color: 0x935f34, roughness: 0.82 });
+    const darkBeam = new THREE.MeshStandardMaterial({ color: 0x603813, roughness: 0.85 });
+    const graniteMat = new THREE.MeshStandardMaterial({ color: 0x71717a, roughness: 0.92, flatShading: true });
+    const roofShingle = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.75 });
+
+    /* --- Rodent-Proof Foundation: Mäusepfeiler (Stilt Mushroom Pillars) --- */
+    const pillarPositions = [
+      [-2.4, -2.4], [2.4, -2.4], [-2.4, 2.4], [2.4, 2.4],
+      [0, -2.4], [0, 2.4]
+    ];
+    pillarPositions.forEach(([px, pz]) => {
+      const pillarGroup = new THREE.Group();
+      pillarGroup.position.set(px, 0, pz);
+
+      // Stone vertical pedestal
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.32, 0.9, 10), graniteMat);
+      shaft.position.y = 0.45; shaft.castShadow = true;
+      pillarGroup.add(shaft);
+
+      // Overhanging disc mushroom cap (Mäusepfeiler) that blocks rodents
+      const discCap = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.52, 0.16, 16), graniteMat);
+      discCap.position.y = 0.95; discCap.castShadow = true;
+      pillarGroup.add(discCap);
+
+      grainSilo.add(pillarGroup);
+    });
+
+    // Elevated Heavy Timber Chassis
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.32, 5.4), darkBeam);
+    chassis.position.y = 1.15; chassis.castShadow = true;
+    grainSilo.add(chassis);
+
+    // Silo Body: Timber Slats with Aeration Louvers
+    const siloBody = new THREE.Group();
+    siloBody.position.y = 1.35;
+
+    // Outer corner posts
+    pillarPositions.slice(0, 4).forEach(([cx, cz]) => {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.8, 0.28), darkBeam);
+      post.position.set(cx * 0.92, 1.9, cz * 0.92);
+      post.castShadow = true;
+      siloBody.add(post);
+    });
+
+    // Horizontal mortise-and-tenon wall slats (leaving front openable for cutaway view)
+    const wallGeo = new THREE.BoxGeometry(4.8, 0.12, 0.08);
+    for (let h = 0; h < 24; h++) {
+      const y = 0.15 + h * 0.15;
+      // North & South walls
+      const sWall = new THREE.Mesh(wallGeo, larchWood);
+      sWall.position.set(0, y, -2.2); sWall.castShadow = true;
+      siloBody.add(sWall);
+
+      // East wall
+      const eWall = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 4.4), larchWood);
+      eWall.position.set(-2.2, y, 0); eWall.castShadow = true;
+      siloBody.add(eWall);
+
+      // West wall
+      const wWall = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 4.4), larchWood);
+      wWall.position.set(2.2, y, 0); wWall.castShadow = true;
+      siloBody.add(wWall);
+    }
+
+    // Cutaway front door / inspection hatch
+    siloWallCutaway = new THREE.Group();
+    for (let h = 0; h < 14; h++) {
+      const fWall = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.12, 0.08), larchWood);
+      fWall.position.set(0, 0.15 + h * 0.15, 2.2); fWall.castShadow = true;
+      siloWallCutaway.add(fWall);
+    }
+    siloBody.add(siloWallCutaway);
+
+    // Stored grain mass visible inside
+    const grainMass = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.0, 2.1, 2.0, 16),
+      new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.95 })
+    );
+    grainMass.position.set(0, 1.1, 0);
+    siloBody.add(grainMass);
+
+    grainSilo.add(siloBody);
+
+    // Alpine Steep-Pitched Gable Roof with ventilation dormers
+    siloRoof = new THREE.Group();
+    siloRoof.position.y = 5.25;
+
+    const roof1 = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.12, 5.8), roofShingle);
+    roof1.position.set(-1.25, 0.9, 0); roof1.rotation.z = Math.PI / 6;
+    roof1.castShadow = true; siloRoof.add(roof1);
+
+    const roof2 = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.12, 5.8), roofShingle);
+    roof2.position.set(1.25, 0.9, 0); roof2.rotation.z = -Math.PI / 6;
+    roof2.castShadow = true; siloRoof.add(roof2);
+
+    // Gable triangular end
+    const gable = new THREE.Mesh(new THREE.ConeGeometry(2.8, 1.7, 4), darkBeam);
+    gable.position.y = 0.85; gable.rotation.y = Math.PI / 4;
+    siloRoof.add(gable);
+
+    grainSilo.add(siloRoof);
+
+    // Silo access ladder & unloading grain chute
+    const chuteMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+    const grainChute = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.2, 1.4), chuteMat);
+    grainChute.position.set(0, 1.3, 2.5); grainChute.rotation.x = 0.28;
+    grainSilo.add(grainChute);
+
+    scene.add(grainSilo);
+  }
+
+  /* ===================================================================== */
+  /* FACILITY 2: HYPOGEAL CELLAR & NATURAL CONVECTIVE COOLING FLUE         */
+  /* ===================================================================== */
+  function buildHypogealCellar() {
+    hypogealCellar = new THREE.Group();
+    hypogealCellar.position.set(1.5, 0, -1.0);
+
+    const earthStone = new THREE.MeshStandardMaterial({ color: 0x4b5563, roughness: 0.95, side: THREE.DoubleSide });
+    const wetGravelMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.2 });
+    const flueSteel = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.7 });
+
+    // Excavated Subterranean Chamber Box
+    const chamberFloor = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.4, 5.5), wetGravelMat);
+    chamberFloor.position.y = -2.1; chamberFloor.receiveShadow = true;
+    hypogealCellar.add(chamberFloor);
+
+    // Natural stone walls of the underground cellar
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(7.0, 2.3, 0.35), earthStone);
+    backWall.position.set(0, -0.95, -2.6); hypogealCellar.add(backWall);
+
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.35, 2.3, 5.5), earthStone);
+    leftWall.position.set(-3.35, -0.95, 0); hypogealCellar.add(leftWall);
+
+    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.35, 2.3, 5.5), earthStone);
+    rightWall.position.set(3.35, -0.95, 0); hypogealCellar.add(rightWall);
+
+    // Timber cellar ceiling / ground deck
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.3, 5.8),
+      new THREE.MeshStandardMaterial({ color: 0x3e2723, roughness: 0.9 }));
+    ceiling.position.y = 0.15; hypogealCellar.add(ceiling);
+
+    // Cellar Shelving & Stored Root Bins (Potatoes, Carrots, Turnips, Beets)
+    const shelfWood = new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.85 });
+    for (let z = -1.8; z <= 1.8; z += 1.2) {
+      const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.9), shelfWood);
+      shelf.position.set(-2.2, -1.2, z);
+      hypogealCellar.add(shelf);
+
+      // Crates of tubers
+      const crate = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.35, 0.75),
+        new THREE.MeshStandardMaterial({ color: 0xa16207, roughness: 0.8 }));
+      crate.position.set(-2.2, -0.95, z);
+      hypogealCellar.add(crate);
+    }
+
+    // Passive Convective Wind-Catcher Flue & Thermal Chimney Stack
+    airChimneyFlue = new THREE.Group();
+    airChimneyFlue.position.set(2.4, 0, -1.8);
+
+    const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.38, 4.8, 14), flueSteel);
+    chimney.position.y = 2.2; chimney.castShadow = true;
+    airChimneyFlue.add(chimney);
+
+    // Aerodynamic rotating wind cowl on top
+    const cowl = new THREE.Mesh(new THREE.ConeGeometry(0.55, 0.6, 12), flueSteel);
+    cowl.position.set(0.12, 4.7, 0); cowl.rotation.z = -Math.PI / 4;
+    airChimneyFlue.add(cowl);
+
+    hypogealCellar.add(airChimneyFlue);
+
+    // Natural Convection Airflow Particle Stream (visualizing passive geothermal cooling)
+    const flowCount = 65;
+    const flowGeo = new THREE.BufferGeometry();
+    const flowPos = new Float32Array(flowCount * 3);
+    for (let i = 0; i < flowCount; i++) {
+      flowPos[i * 3]     = (Math.random() - 0.5) * 4.0;
+      flowPos[i * 3 + 1] = -1.8 + Math.random() * 4.5;
+      flowPos[i * 3 + 2] = (Math.random() - 0.5) * 3.5;
+    }
+    flowGeo.setAttribute('position', new THREE.BufferAttribute(flowPos, 3));
+    const flowMat = new THREE.PointsMaterial({
+      size: 0.14,
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending
+    });
+    coolingFlowParticles = new THREE.Points(flowGeo, flowMat);
+    hypogealCellar.add(coolingFlowParticles);
+
+    scene.add(hypogealCellar);
+  }
+
+  /* ===================================================================== */
+  /* FACILITY 3: HARVEST SORTING & GRADING BAY                             */
+  /* ===================================================================== */
+  function buildSortingBay() {
+    sortingChuteTable = new THREE.Group();
+    sortingChuteTable.position.set(4.5, 0, 4.2);
+
+    const wood = new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.8 });
+    const metalTrough = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.25 });
+
+    // Multi-tier Gravity Sorting Table
+    const tableTop = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.15, 1.6), wood);
+    tableTop.position.set(0, 1.1, 0); tableTop.rotation.z = -0.12; tableTop.castShadow = true;
+    sortingChuteTable.add(tableTop);
+
+    // Chute metal side rails
+    [-0.75, 0.75].forEach(rz => {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.25, 0.08), metalTrough);
+      rail.position.set(0, 1.25, rz); rail.rotation.z = -0.12;
+      sortingChuteTable.add(rail);
+    });
+
+    // Support trestle legs
+    [[-1.5], [1.5]].forEach(([lx]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.1, 8), wood);
+      leg.position.set(lx, 0.55, 0);
+      sortingChuteTable.add(leg);
+    });
+
+    // Wooden Crates with Harvest: Red Apples, Pumpkins & Golden Pears
+    const crateMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.85 });
+    const appleMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.45 });
+    const pumpkinMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.6 });
+
+    for (let c = 0; c < 4; c++) {
+      const crateG = new THREE.Group();
+      crateG.position.set(1.5 + c * 0.85, 0.22, 1.2 + (c % 2) * 0.9);
+
+      const box = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.38, 0.65), crateMat);
+      box.castShadow = true; crateG.add(box);
+
+      // Fruit content on top
+      for (let f = 0; f < 6; f++) {
+        const fruit = new THREE.Mesh(
+          c < 2 ? new THREE.SphereGeometry(0.09, 8, 8) : new THREE.DodecahedronGeometry(0.14),
+          c < 2 ? appleMat : pumpkinMat
+        );
+        fruit.position.set(-0.2 + (f % 3) * 0.2, 0.24, -0.12 + Math.floor(f / 3) * 0.24);
+        crateG.add(fruit);
+      }
+      appleCrates.push(crateG);
+      sortingChuteTable.add(crateG);
+    }
+
+    // Heavy Burlap Grain Sacks
+    const sackMat = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, roughness: 0.95 });
+    for (let s = 0; s < 5; s++) {
+      const sack = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.75, 10), sackMat);
+      sack.position.set(-0.6 - s * 0.55, 0.38, 1.5 + (s % 2) * 0.4);
+      sack.rotation.z = (Math.random() - 0.5) * 0.18;
+      sack.castShadow = true;
+      grainSacks.push(sack);
+      sortingChuteTable.add(sack);
+    }
+
+    scene.add(sortingChuteTable);
+  }
+
+  /* ===================================================================== */
+  /* FACILITY 4: GASTRONOMY DELIVERY & VILLAGE PROCESSING MARKET           */
+  /* ===================================================================== */
+  function buildGastronomyAndMarket() {
+    // Alpenhof Gastronomy Farm Restaurant (Left wing)
+    gastronomyRestaurant = new THREE.Group();
+    gastronomyRestaurant.position.set(-13.0, 0, -4.0);
+
+    const chaletWood = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.85 });
+    const stoneBase = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.95 });
+    const whitePlaster = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.7 });
+    const redTile = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.75 });
+
+    const base = new THREE.Mesh(new THREE.BoxGeometry(6.2, 1.2, 5.0), stoneBase);
+    base.position.y = 0.6; base.castShadow = true; gastronomyRestaurant.add(base);
+
+    const diningFloor = new THREE.Mesh(new THREE.BoxGeometry(5.8, 2.0, 4.6), whitePlaster);
+    diningFloor.position.y = 2.2; diningFloor.castShadow = true; gastronomyRestaurant.add(diningFloor);
+
+    // Decorative Chalet Balcony with timber posts
+    const balcony = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.45, 0.6), chaletWood);
+    balcony.position.set(0, 2.4, 2.5); gastronomyRestaurant.add(balcony);
+
+    // Roof
+    const gRoof = new THREE.Mesh(new THREE.ConeGeometry(4.6, 2.2, 4), redTile);
+    gRoof.position.y = 4.3; gRoof.rotation.y = Math.PI / 4; gRoof.castShadow = true;
+    gastronomyRestaurant.add(gRoof);
+
+    // Gastronomy Signboard: "Alpenhof Hofküche"
+    const signBoard = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.6, 0.08), chaletWood);
+    signBoard.position.set(0, 3.1, 2.38); gastronomyRestaurant.add(signBoard);
+
+    scene.add(gastronomyRestaurant);
+
+    // Transport Cart for Fresh Gastronomy & Market Deliveries
+    gastronomyCart = new THREE.Group();
+    gastronomyCart.position.set(-2.5, 0.28, 4.6);
+
+    const wagonWood = new THREE.MeshStandardMaterial({ color: 0x854d0e, roughness: 0.8 });
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.6 });
+
+    const wagonBed = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.45, 1.3), wagonWood);
+    wagonBed.position.y = 0.35; wagonBed.castShadow = true;
+    gastronomyCart.add(wagonBed);
+
+    // Wagon spoked wheels
+    [[-0.85, -0.75], [0.85, -0.75], [-0.85, 0.75], [0.85, 0.75]].forEach(([wx, wz]) => {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.12, 14), wheelMat);
+      wheel.rotation.x = Math.PI / 2;
+      wheel.position.set(wx, 0.34, wz);
+      wheel.castShadow = true;
+      gastronomyCart.add(wheel);
+    });
+
+    // Hauling drawbar
+    const drawbar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.5, 8), wagonWood);
+    drawbar.rotation.z = Math.PI / 2;
+    drawbar.position.set(-1.6, 0.35, 0);
+    gastronomyCart.add(drawbar);
+
+    scene.add(gastronomyCart);
+
+    // Local Market Stand with Water-Powered Stone Mill Model (Far right)
+    villageMarketStand = new THREE.Group();
+    villageMarketStand.position.set(10.5, 0, -2.5);
+
+    const millBase = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.0, 3.8), stoneBase);
+    millBase.position.y = 1.0; millBase.castShadow = true; villageMarketStand.add(millBase);
+
+    // Millstones visible inside
+    const millstoneMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.9 });
+    const mStone1 = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.28, 18), millstoneMat);
+    mStone1.position.set(0, 1.5, 0); villageMarketStand.add(mStone1);
+
+    // Market Awning (Striped Bavarian Canopy)
+    const awningMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.6 });
+    const awning = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.1, 2.2), awningMat);
+    awning.position.set(0, 2.4, 1.4); awning.rotation.x = 0.25;
+    villageMarketStand.add(awning);
+
+    scene.add(villageMarketStand);
+  }
+
+  /* ===================================================================== */
+  /* CHARACTER RIGGING: DR. CLODHOPPER (Badger Chief Mason)                */
+  /* ===================================================================== */
+  function buildBadger() {
+    badgerGroup = new THREE.Group();
+
+    const furGrey = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.82 });
+    const furWhite = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.82 });
+    const furBlack = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.82 });
+    const vestOrange = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.55 });
+    const silverTape = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.18 });
+    const pantsMat = new THREE.MeshStandardMaterial({ color: 0x5b3414, roughness: 0.78 });
+    const hardHat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.4, roughness: 0.3 });
+
+    // Torso
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.78, 1.4, 16), furGrey);
+    body.position.y = 1.35; body.castShadow = true; badgerGroup.add(body);
+
+    const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.81, 1.05, 16), vestOrange);
+    vest.position.y = 1.45; badgerGroup.add(vest);
+
+    [1.35, 1.65].forEach(vy => {
+      const strip = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.71, 0.08, 16), silverTape);
+      strip.position.y = vy; badgerGroup.add(strip);
+    });
+
+    const pants = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.78, 0.65, 16), pantsMat);
+    pants.position.y = 0.65; badgerGroup.add(pants);
+
+    // Legs & Boots
+    [-0.35, 0.35].forEach(bx => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.6, 8), furGrey);
+      leg.position.set(bx, 0.4, 0); badgerGroup.add(leg);
+      const boot = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.24, 0.55),
+        new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.6 }));
+      boot.position.set(bx, 0.12, 0.1); badgerGroup.add(boot);
+    });
+
+    // UNIFIED HIERARCHICAL HEAD (Ensuring all facial organs turn together)
+    badgerHead = new THREE.Group();
+    badgerHead.position.set(0, 2.3, 0.1);
+
+    const bHeadMesh = new THREE.Mesh(new THREE.SphereGeometry(0.74, 18, 18), furGrey);
+    bHeadMesh.scale.set(1.1, 0.95, 1.2); bHeadMesh.castShadow = true;
+    badgerHead.add(bHeadMesh);
+
+    const whiteStripe = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.8, 0.9), furWhite);
+    whiteStripe.position.set(0, 0.1, 0.45); badgerHead.add(whiteStripe);
+
+    [-0.32, 0.32].forEach(bx => {
+      const blackStripe = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.7, 0.85), furBlack);
+      blackStripe.position.set(bx, 0.1, 0.45); badgerHead.add(blackStripe);
+    });
+
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 10), furBlack);
+    nose.position.set(0, -0.05, 1.15); badgerHead.add(nose);
+
+    // Eyes
+    [-0.3, 0.3].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x09090b }));
+      eye.position.set(ex, 0.16, 0.98); badgerHead.add(eye);
+    });
+
+    // Hard Hat
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.82, 18, 18, 0, Math.PI * 2, 0, Math.PI / 2), hardHat);
+    helmet.position.set(0, 0.4, 0.15); badgerHead.add(helmet);
+
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.08, 18), hardHat);
+    brim.position.set(0, 0.4, 0.25); badgerHead.add(brim);
+
+    badgerGroup.add(badgerHead);
+
+    // Arms
+    badgerArmL = new THREE.Group();
+    badgerArmL.position.set(-0.82, 1.5, 0);
+    const bArmBoneL = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.75, 8), furGrey);
+    bArmBoneL.position.y = -0.38; badgerArmL.add(bArmBoneL);
+    badgerGroup.add(badgerArmL);
+
+    badgerArmR = new THREE.Group();
+    badgerArmR.position.set(0.82, 1.5, 0);
+    const bArmBoneR = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.75, 8), furGrey);
+    bArmBoneR.position.y = -0.38; badgerArmR.add(bArmBoneR);
+
+    // Carpenter's spirit rule
+    const rule = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.2, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
+    rule.position.set(0.1, -0.35, 0.2); badgerArmR.add(rule);
+    badgerGroup.add(badgerArmR);
+
+    badgerGroup.position.set(-1.8, 0.08, 3.6);
+    badgerGroup.rotation.y = 0.25;
+    scene.add(badgerGroup);
+  }
+
+  /* ===================================================================== */
+  /* CHARACTER RIGGING: PROFESSOR WHISKER PUFF (Calico Astrobiologist)     */
+  /* ===================================================================== */
+  function buildPuff() {
+    puffGroup = new THREE.Group();
+
+    const ginger = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.68 });
+    const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.72 });
+    const black = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.68 });
+    const labVest = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.55 });
+    const skirtMat = new THREE.MeshStandardMaterial({ color: 0x065f46, roughness: 0.62 });
+
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.64, 1.25, 16), white);
+    body.position.y = 1.35; body.castShadow = true; puffGroup.add(body);
+
+    const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.67, 0.9, 16, 1, false, 0.3, Math.PI * 1.8), labVest);
+    vest.position.y = 1.45; puffGroup.add(vest);
+
+    const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.85, 0.65, 16, 1, true), skirtMat);
+    skirt.position.y = 0.85; skirt.rotation.x = Math.PI; puffGroup.add(skirt);
+
+    // UNIFIED HIERARCHICAL HEAD WITH ALL GLASSES, EARS & ORGANS LOCKED
+    puffHead = new THREE.Group();
+    puffHead.position.set(0, 2.3, 0.1);
+
+    const headGeo = new THREE.SphereGeometry(0.72, 20, 20);
+    headGeo.scale(1.15, 0.95, 1.05);
+    const head = new THREE.Mesh(headGeo, ginger);
+    head.castShadow = true; puffHead.add(head);
+
+    const patch = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), black);
+    patch.scale.set(0.9, 0.8, 0.35); patch.position.set(-0.35, 0.25, 0.55);
+    puffHead.add(patch);
+
+    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 14), white);
+    muzzle.scale.set(1.2, 0.8, 0.85); muzzle.position.set(0, -0.15, 0.62);
+    puffHead.add(muzzle);
+
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.09, 4),
+      new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
+    nose.rotation.z = Math.PI; nose.rotation.x = 0.35; nose.position.set(0, -0.09, 0.92);
+    puffHead.add(nose);
+
+    // Ears
+    const earGeo = new THREE.ConeGeometry(0.26, 0.48, 4);
+    const earL = new THREE.Mesh(earGeo, ginger);
+    earL.position.set(-0.48, 0.65, 0.05); earL.rotation.set(-0.1, 0, 0.35); puffHead.add(earL);
+
+    const earR = new THREE.Mesh(earGeo, black);
+    earR.position.set(0.48, 0.65, 0.05); earR.rotation.set(-0.1, 0, -0.35); puffHead.add(earR);
+
+    // Glasses
+    const glassesMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.12 });
+    [-0.26, 0.26].forEach(gx => {
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.04, 10, 24), glassesMat);
+      rim.position.set(gx, 0.02, 0.75); puffHead.add(rim);
+    });
+    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.22), glassesMat);
+    bridge.rotation.z = Math.PI / 2; bridge.position.set(0, 0.02, 0.77); puffHead.add(bridge);
+
+    // Eyes
+    [-0.26, 0.26].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x09090b }));
+      eye.position.set(ex, 0.02, 0.72); puffHead.add(eye);
+    });
+
+    puffGroup.add(puffHead);
+
+    // Arms & Datapad
+    puffArmL = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.7, 10), white);
+    puffArmL.position.set(-0.62, 1.35, 0); puffGroup.add(puffArmL);
+
+    puffArmR = new THREE.Group();
+    puffArmR.position.set(0.62, 1.35, 0);
+    const armRMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.7, 10), white);
+    armRMesh.position.y = -0.35; puffArmR.add(armRMesh);
+
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.45, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 0.6 }));
+    pad.position.set(0, -0.65, 0.2); puffArmR.add(pad);
+    puffGroup.add(puffArmR);
+
+    // Tail
+    puffTail = new THREE.Group();
+    puffTail.position.set(0, 0.8, -0.5);
+    let prev = puffTail;
+    for (let i = 0; i < 5; i++) {
+      const seg = new THREE.Mesh(new THREE.SphereGeometry(0.12 - i * 0.015, 8, 8), (i % 2 === 0) ? ginger : black);
+      seg.position.set(0, 0.12, -0.14); prev.add(seg); prev = seg;
+    }
+    puffGroup.add(puffTail);
+
+    puffGroup.position.set(0.6, 0.08, 4.4);
+    puffGroup.rotation.y = -0.15;
+    scene.add(puffGroup);
+  }
+
+  /* ===================================================================== */
+  /* CHARACTER RIGGING: PIP SQUEAK (Mouse Helper - Fixed Upright Dynamics) */
+  /* ===================================================================== */
+  function buildPip() {
+    pipGroup = new THREE.Group();
+
+    const mouseBrown = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.78 });
+    const mousePink = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.55 });
+    const beachShirt = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.62 });
+    const shortsMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.62 });
+    const sneakerMat = new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.45 });
+
+    // Strict vertical standing alignment: No inclined spinal angles
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), mouseBrown);
+    body.scale.set(0.9, 1.15, 0.9); body.position.y = 0.55; body.castShadow = true;
+    pipGroup.add(body);
+
+    const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.39, 0.42, 0.45, 14), beachShirt);
+    shirt.position.y = 0.62; pipGroup.add(shirt);
+
+    const shorts = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.38, 0.28, 14), shortsMat);
+    shorts.position.y = 0.34; pipGroup.add(shorts);
+
+    // UNIFIED HEAD (All ears, snout, eyes, nose locked into pipHead group)
+    pipHead = new THREE.Group();
+    pipHead.position.set(0, 0.92, 0.02);
+
+    const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), mouseBrown);
+    mHead.castShadow = true; pipHead.add(mHead);
+
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.38, 12), mouseBrown);
+    snout.rotation.x = 1.35; snout.position.set(0, -0.06, 0.26); pipHead.add(snout);
+
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), mousePink);
+    nose.position.set(0, -0.08, 0.45); pipHead.add(nose);
+
+    // Large friendly mouse ears
+    [-0.24, 0.24].forEach((ex, idx) => {
+      const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 14), mousePink);
+      ear.position.set(ex, 0.24, -0.02);
+      ear.rotation.set(0.2, idx === 0 ? 0.35 : -0.35, idx === 0 ? -0.4 : 0.4);
+      pipHead.add(ear);
+    });
+
+    // Eyes
+    [-0.13, 0.13].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x09090b }));
+      eye.position.set(ex, 0.06, 0.3); pipHead.add(eye);
+    });
+
+    pipGroup.add(pipHead);
+
+    // Arms
+    pipArmL = new THREE.Group();
+    pipArmL.position.set(-0.36, 0.65, 0);
+    const pawL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+    pawL.position.y = -0.18; pipArmL.add(pawL); pipGroup.add(pipArmL);
+
+    pipArmR = new THREE.Group();
+    pipArmR.position.set(0.36, 0.65, 0);
+    const pawR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+    pawR.position.y = -0.18; pipArmR.add(pawR);
+
+    // Apple sorting basket
+    pipBasket = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.14, 0.25, 10),
+      new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.85 }));
+    pipBasket.position.set(0.08, -0.28, 0.18);
+    pipArmR.add(pipBasket);
+    pipGroup.add(pipArmR);
+
+    // Upright Straight Legs & Shoes (Strict forward posture)
+    [-0.16, 0.16].forEach(lx => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.26, 8), mouseBrown);
+      leg.position.set(lx, 0.18, 0); pipGroup.add(leg);
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.32), sneakerMat);
+      shoe.position.set(lx, 0.06, 0.06); pipGroup.add(shoe);
+    });
+
+    // Tail
+    pipTail = new THREE.Group();
+    pipTail.position.set(0, 0.28, -0.32);
+    let pPrev = pipTail;
+    for (let i = 0; i < 5; i++) {
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.03 - i * 0.004, 0.035 - i * 0.004, 0.15, 6), mousePink);
+      seg.position.set(0, 0.04, -0.12); seg.rotation.x = -0.25; pPrev.add(seg); pPrev = seg;
+    }
+    pipGroup.add(pipTail);
+
+    pipGroup.position.set(2.4, 0.08, 4.6);
+    pipGroup.rotation.y = -0.3;
+    scene.add(pipGroup);
+  }
+
+  /* ===================================================================== */
+  /* CAMERA TRANSITION CONTROLLER                                          */
+  /* ===================================================================== */
+  function setCameraPreset(key, instant = false) {
+    const p = CAM[key];
+    if (!p) return;
+    if (instant) {
+      camera.position.set(p.pos[0], p.pos[1], p.pos[2]);
+      controls.target.set(p.tgt[0], p.tgt[1], p.tgt[2]);
+      camera.zoom = p.zoom; camera.updateProjectionMatrix();
+      return;
+    }
+    new TWEEN.Tween(camera.position)
+      .to({ x: p.pos[0], y: p.pos[1], z: p.pos[2] }, 1150)
+      .easing(TWEEN.Easing.Cubic.InOut).start();
+    new TWEEN.Tween(controls.target)
+      .to({ x: p.tgt[0], y: p.tgt[1], z: p.tgt[2] }, 1150)
+      .easing(TWEEN.Easing.Cubic.InOut).start();
+    new TWEEN.Tween({ z: camera.zoom })
+      .to({ z: p.zoom }, 1150)
+      .easing(TWEEN.Easing.Cubic.InOut)
+      .onUpdate(o => { camera.zoom = o.z; camera.updateProjectionMatrix(); })
+      .start();
+  }
+
+  /* ===================================================================== */
+  /* TIMELINE & VIRTUAL CONCEPT FACT SLIDE UPDATER                         */
+  /* ===================================================================== */
+  
+    // Subtle presenter breathing, listening, and hand emphasis, layered over each scene's staged poses.
+    const archiveMotionRigs = () => [typeof badgerGroup !== 'undefined' ? badgerGroup : null, typeof puffGroup !== 'undefined' ? puffGroup : null, typeof pipGroup !== 'undefined' ? pipGroup : null];
+    if (typeof pipGroup !== 'undefined' && pipGroup) pipGroup.name ||= 'pipGroup';
+    if (typeof puffGroup !== 'undefined' && puffGroup) puffGroup.name ||= 'puffGroup';
+    if (typeof badgerGroup !== 'undefined' && badgerGroup) badgerGroup.name ||= 'badgerGroup';
+    const archiveMotionHeads = () => [typeof badgerHead !== 'undefined' ? badgerHead : null, typeof puffHead !== 'undefined' ? puffHead : null, typeof pipHead !== 'undefined' ? pipHead : null];
+    if (typeof badgerHead !== 'undefined' && badgerHead) badgerHead.name ||= 'badgerHead';
+    if (typeof puffHead !== 'undefined' && puffHead) puffHead.name ||= 'puffHead';
+    if (typeof pipHead !== 'undefined' && pipHead) pipHead.name ||= 'pipHead';
+
+    const archiveMotionArms = () => [typeof badgerArmL !== 'undefined' ? badgerArmL : null, typeof badgerArmR !== 'undefined' ? badgerArmR : null, typeof puffArmL !== 'undefined' ? puffArmL : null, typeof puffArmR !== 'undefined' ? puffArmR : null, typeof pipArmL !== 'undefined' ? pipArmL : null, typeof pipArmR !== 'undefined' ? pipArmR : null];
+    if (typeof badgerArmL !== 'undefined' && badgerArmL) badgerArmL.name ||= 'badgerArmL';
+    if (typeof badgerArmR !== 'undefined' && badgerArmR) badgerArmR.name ||= 'badgerArmR';
+    if (typeof puffArmL !== 'undefined' && puffArmL) puffArmL.name ||= 'puffArmL';
+    if (typeof puffArmR !== 'undefined' && puffArmR) puffArmR.name ||= 'puffArmR';
+    if (typeof pipArmL !== 'undefined' && pipArmL) pipArmL.name ||= 'pipArmL';
+    if (typeof pipArmR !== 'undefined' && pipArmR) pipArmR.name ||= 'pipArmR';
+
+    const archiveMotionLegs = () => [];
+    const rigsNames = ["badgerGroup", "puffGroup", "pipGroup"];
+    const headsNames = ["badgerHead", "puffHead", "pipHead"];
+    const armsNames = ["badgerArmL", "badgerArmR", "puffArmL", "puffArmR", "pipArmL", "pipArmR"];
+    const legsNames = [];
+    function clearArchiveMotionOffsets() {
+      [...archiveMotionRigs(), ...archiveMotionHeads(), ...archiveMotionArms(), ...archiveMotionLegs()].forEach(node => {
+        if (!node || !node.userData.archiveMotionOffset) return;
+        const o = node.userData.archiveMotionOffset;
+        node.rotation.x -= o.x; node.rotation.y -= o.y; node.rotation.z -= o.z;
+        if (o.px) node.position.x -= o.px; if (o.pz) node.position.z -= o.pz;
+        node.userData.archiveMotionOffset = null;
+      });
+    }
+    function applyArchivePresenterMotion(time) {
+      const beat = STORY_BEATS[currentSpeechIdx] || null;
+      const speaker = String(beat?.speaker || '').toLowerCase();
+      const phase = (time || 0) * 2.15;
+      const progress = beat ? Math.max(0, Math.min(1, ((time || 0) - beat.start) / Math.max(0.1, beat.end - beat.start))) : 0;
+      const smooth = v => v * v * (3 - 2 * v);
+      const walk = progress < 0.2 ? smooth(progress / 0.2) : progress < 0.62 ? 1 : progress < 0.86 ? 1 - smooth((progress - 0.62) / 0.24) : 0;
+      const put = (node, x, y, z, px = 0, pz = 0) => {
+        if (!node) return;
+        node.rotation.x += x; node.rotation.y += y; node.rotation.z += z;
+        node.position.x += px; node.position.z += pz;
+        node.userData.archiveMotionOffset = { x, y, z, px, pz };
+      };
+      archiveMotionRigs().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= rigsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          ((name.includes('curd')) && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        const radius = Math.hypot(node.position.x, node.position.z);
+        const approach = active && radius > 0.25 ? Math.min(0.48, radius * 0.12) * walk : 0;
+        put(node, Math.sin(phase + i) * (active ? 0.016 : 0.008), 0, Math.sin(phase * 0.52 + i) * 0.008,
+          radius > 0.25 ? -node.position.x / radius * approach : 0,
+          radius > 0.25 ? -node.position.z / radius * approach : 0);
+      });
+      archiveMotionLegs().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= legsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) || (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        put(node, active ? Math.sin(phase * 2.2 + (i % 2) * Math.PI) * 0.20 * walk : 0, 0, 0);
+      });
+      archiveMotionHeads().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= headsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        put(node, Math.sin(phase * 1.25 + i) * (active ? 0.018 : 0.009), 0, Math.sin(phase * 0.62 + i) * 0.014);
+      });
+      archiveMotionArms().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= armsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        const right = /armr$/.test(name);
+        put(node, Math.sin(phase * (active ? 1.5 : 0.7) + i) * (active ? 0.055 : 0.018), 0, Math.sin(phase * 0.8 + i) * (right && active ? 0.035 : 0.012));
+      });
+    }
+
+    function updateStoryTimeline(time) {
+      clearArchiveMotionOffsets();
+    const scrubber = document.getElementById('story-scrubber');
+    if (Math.abs(parseFloat(scrubber.value) - time) > 0.35) scrubber.value = time;
+
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    document.getElementById('time-display').textContent =
+      `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+    // Step detection
+    let currentStep = 1;
+    if (time >= 68) currentStep = 4;
+    else if (time >= 40) currentStep = 3;
+    else if (time >= 23) currentStep = 2;
+
+    for (let i = 1; i <= 4; i++) {
+      const btn = document.getElementById('step-btn-' + i);
+      if (i === currentStep) btn.classList.add('active');
+      else btn.classList.remove('active');
+    }
+
+    const stepTags = [
+      'Step 1 · Alpine Timber Framing &amp; Stone Pedestal',
+      'Step 2 · Hypogeal Earth Convection &amp; Vent Stack',
+      'Step 3 · Density Crop Grading &amp; Ethylene Management',
+      'Step 4 · Gastronomy Kitchen Circuit &amp; Village Stone-Milling'
+    ];
+    document.getElementById('stage-tag').innerHTML = stepTags[currentStep - 1];
+
+    if (currentStep !== lastCamStep) {
+      lastCamStep = currentStep;
+      setCameraPreset('step' + currentStep, false);
+    }
+
+    // Dialogue & Virtual Concept Fact Slide Synchronization
+    const idx = STORY_BEATS.findIndex(b => time >= b.start && time < b.end);
+    if (idx !== -1 && idx !== currentSpeechIdx) {
+      currentSpeechIdx = idx;
+      const beat = STORY_BEATS[idx];
+      const box = document.getElementById('dialogue-container');
+
+      box.classList.remove('fade-in');
+      box.classList.add('fade-out');
+
+      setTimeout(() => {
+        document.getElementById('speaker-avatar').textContent = beat.avatar;
+        document.getElementById('speaker-name').textContent =
+          beat.speaker === 'Badger' ? 'Dr. Barnaby Clodhopper' :
+          beat.speaker === 'Puff' ? 'Professor Whisker Puff' :
+          beat.speaker === 'Pip' ? 'Pip Squeak-a-Link' : 'Alpenhof Team';
+        document.getElementById('speaker-role').textContent = beat.role;
+        document.getElementById('speech-emotion').textContent = beat.emotion;
+        document.getElementById('speech-text').textContent = `"${beat.text}"`;
+
+        if (subtitlesEnabled) {
+          box.classList.remove('fade-out');
+          box.classList.add('fade-in');
+        }
+      }, 120);
+
+      // Update Virtual Intuitive Concept Slide HUD
+      updateConceptSlide(beat.slide);
+      speakText(beat.text, beat.speaker);
+    }
+
+    animateChoreography(time, currentStep);
+  
+      applyArchivePresenterMotion(time);
+    }
+
+  function updateConceptSlide(slide) {
+    if (!slide) return;
+    document.getElementById('slide-icon').textContent = slide.icon;
+    document.getElementById('slide-title').textContent = slide.title;
+    document.getElementById('slide-subtitle').textContent = slide.sub;
+    document.getElementById('slide-metric').textContent = slide.metric;
+    document.getElementById('metric-temp').textContent = slide.temp;
+    document.getElementById('metric-rh').textContent = slide.rh;
+    document.getElementById('metric-flow').textContent = slide.flow;
+
+    const diagContainer = document.getElementById('slide-diagram');
+    diagContainer.innerHTML = '';
+    slide.diagram.forEach(([k, v]) => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center justify-between text-slate-300';
+      row.innerHTML = `<span>${k}:</span><span class="text-emerald-400 font-bold">${v}</span>`;
+      diagContainer.appendChild(row);
+    });
+  }
+
+  /* ===================================================================== */
+  /* CHOREOGRAPHY & CHARACTER DYNAMICS (Pip Straight Walk & Head Facing)   */
+  /* ===================================================================== */
+  function animateChoreography(time, step) {
+    const t = time;
+
+    /* --- STEP 1: Silo Framing Inspection --- */
+    if (step === 1) {
+      // Dr. Clodhopper checks stilt pillar levels
+      badgerGroup.position.set(-1.8, 0.08, 3.6);
+      badgerGroup.rotation.y = 0.35 + Math.sin(t * 0.8) * 0.08;
+      badgerArmR.rotation.x = Math.sin(t * 2.2) * 0.25 - 0.2;
+
+      // Prof. Puff measures timber hydration with datapad
+      puffGroup.position.set(0.4, 0.08, 4.2);
+      puffGroup.rotation.y = -0.15;
+      puffArmR.rotation.x = Math.sin(t * 1.8) * 0.15 - 0.2;
+
+      // Pip walking straight along the pathway (NO INCLINE, STRICTLY VERTICAL)
+      const walkX = 1.0 + Math.sin(t * 1.5) * 1.8;
+      pipGroup.position.set(walkX, 0.08, 4.6);
+      pipGroup.rotation.set(0, Math.cos(t * 1.5) > 0 ? -Math.PI / 2 : Math.PI / 2, 0); // Strictly straight turn
+      pipArmL.rotation.x = Math.sin(t * 8) * 0.45;
+      pipArmR.rotation.x = -Math.sin(t * 8) * 0.45;
+
+      // Silo inspection hatch partially open
+      siloWallCutaway.position.x = Math.sin(t * 0.5) * 0.3;
+    }
+
+    /* --- STEP 2: Subterranean Hypogeal Cold Cellar Convection --- */
+    else if (step === 2) {
+      // Badger leads near the cellar stairs
+      badgerGroup.position.set(1.2, 0.08, 2.2);
+      badgerGroup.rotation.y = 2.85;
+      badgerArmR.rotation.set(0.6, 0, 0.4);
+
+      // Puff monitors chimney stack convection
+      puffGroup.position.set(3.4, 0.08, 1.8);
+      puffGroup.rotation.y = 2.6;
+      puffArmR.rotation.x = -0.5 + Math.sin(t * 2.0) * 0.1;
+
+      // Pip jumps upright in excitement near the cool air vent
+      const pipHop = Math.abs(Math.sin(t * 5.0)) * 0.18;
+      pipGroup.position.set(2.4, 0.08 + pipHop, 2.8);
+      pipGroup.rotation.set(0, 2.7, 0); // Straight forward facing
+      pipArmR.rotation.z = Math.sin(t * 7) * 0.4;
+      pipArmL.rotation.z = -Math.sin(t * 7) * 0.4;
+    }
+
+    /* --- STEP 3: Harvest Sorting & Grading Bay --- */
+    else if (step === 3) {
+      // Badger loads grain sacks onto the gravity chute
+      badgerGroup.position.set(3.0, 0.08, 4.8);
+      badgerGroup.rotation.y = 1.15;
+      badgerArmL.rotation.x = Math.sin(t * 3) * 0.35;
+
+      // Puff grades apples with spectral tablet
+      puffGroup.position.set(4.2, 0.08, 3.2);
+      puffGroup.rotation.y = -1.2;
+      puffArmR.rotation.set(0.4, 0, -0.3);
+
+      // Pip carries an apple crate along a straight line path to the wagon
+      const pipCartX = 1.0 + Math.sin(t * 1.2) * 1.4;
+      pipGroup.position.set(pipCartX, 0.08, 4.6);
+      pipGroup.rotation.set(0, Math.cos(t * 1.2) > 0 ? -Math.PI / 2 : Math.PI / 2, 0);
+      pipBasket.visible = true;
+    }
+
+    /* --- STEP 4: Gastronomy Delivery & Village Stone Mill --- */
+    else {
+      // Cart rolls towards Alpenhof Gastronomy Chalet
+      const cartProgress = Math.min(1.0, (t - 68) / 18.0);
+      gastronomyCart.position.x = -2.5 - cartProgress * 7.5;
+      gastronomyCart.position.z = 4.6 - cartProgress * 4.0;
+
+      // Badger and Puff celebrate near the Gastronomy entrance
+      badgerGroup.position.set(-8.5, 0.08, 0.5);
+      badgerGroup.rotation.y = 0.85;
+      badgerArmR.rotation.set(0.8, 0, 0.6);
+
+      puffGroup.position.set(-9.8, 0.08, 1.2);
+      puffGroup.rotation.y = 0.65;
+      puffArmR.rotation.set(0.5, 0, -0.2);
+
+      // Pip cheering upright with arms raised
+      const cheerJump = Math.abs(Math.sin((t - 68) * 6.0)) * 0.28;
+      pipGroup.position.set(-7.2, 0.08 + cheerJump, 1.6);
+      pipGroup.rotation.set(0, 0.5, 0); // Strict upright
+      pipArmR.rotation.set(1.3, 0, 0.3);
+      pipArmL.rotation.set(1.3, 0, -0.3);
+
+      if (t >= 87) {
+        document.getElementById('modal-architecture').classList.remove('opacity-0', 'pointer-events-none');
+      }
+    }
+
+    // Cooling air convective particle circulation
+    if (coolingFlowParticles) {
+      const pos = coolingFlowParticles.geometry.attributes.position.array;
+      for (let i = 0; i < pos.length / 3; i++) {
+        pos[i * 3 + 1] += 0.045; // upward convection flow
+        if (pos[i * 3 + 1] > 3.0) {
+          pos[i * 3 + 1] = -1.8;
+          pos[i * 3]     = (Math.random() - 0.5) * 3.8;
+          pos[i * 3 + 2] = (Math.random() - 0.5) * 3.2;
+        }
+      }
+      coolingFlowParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // Gentle tail idle sway
+    if (puffTail) puffTail.rotation.y = Math.sin(t * 1.8) * 0.25;
+    if (pipTail) pipTail.rotation.y = Math.sin(t * 3.4) * 0.32;
+  }
+
+  /* ===================================================================== */
+  /* UI SETUP & EVENT LISTENERS                                            */
+  /* ===================================================================== */
+  function setupUI() {
+    const playBtn = document.getElementById('btn-play-pause');
+    const playerPanel = document.getElementById('player-panel');
+    const playerToggle = document.getElementById('btn-player-toggle');
+
+    playerToggle.addEventListener('click', () => {
+      initAudio();
+      const isHidden = playerPanel.classList.contains('hidden-panel');
+      playerPanel.classList.toggle('hidden-panel');
+      playerToggle.classList.toggle('active', isHidden);
+    });
+
+    playBtn.addEventListener('click', () => {
+      initAudio();
+      isPlaying = !isPlaying;
+      playBtn.textContent = isPlaying ? '⏸' : '▶';
+      playerToggle.textContent = isPlaying ? '⏸' : '▶';
+    });
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      initAudio();
+      storyTime = 0;
+      currentSpeechIdx = -1;
+      isPlaying = true;
+      lastCamStep = -1;
+      playBtn.textContent = '⏸';
+      playerToggle.textContent = '⏸';
+      document.getElementById('modal-architecture').classList.add('opacity-0', 'pointer-events-none');
+    });
+
+    document.getElementById('story-scrubber').addEventListener('input', (e) => {
+      initAudio();
+      storyTime = parseFloat(e.target.value);
+      currentSpeechIdx = -1;
+      lastCamStep = -1;
+      updateStoryTimeline(storyTime);
+    });
+
+    // Step jumps
+    const stepTimes = { 1: 0.1, 2: 23.1, 3: 40.1, 4: 68.1 };
+    [1, 2, 3, 4].forEach(n => {
+      document.getElementById('step-btn-' + n).addEventListener('click', () => {
+        initAudio();
+        storyTime = stepTimes[n];
+        currentSpeechIdx = -1;
+        isPlaying = true;
+        playBtn.textContent = '⏸';
+        playerToggle.textContent = '⏸';
+        updateStoryTimeline(storyTime);
+      });
+    });
+
+    // Camera preset toolbar
+    document.getElementById('btn-cam-silo').addEventListener('click', () => setCameraPreset('silo', false));
+    document.getElementById('btn-cam-cellar').addEventListener('click', () => setCameraPreset('cellar', false));
+    document.getElementById('btn-cam-sort').addEventListener('click', () => setCameraPreset('sort', false));
+    document.getElementById('btn-cam-gastro').addEventListener('click', () => setCameraPreset('gastro', false));
+
+    // Audio & voice toggle
+    const audioBtn = document.getElementById('btn-audio');
+    audioBtn.addEventListener('click', () => {
+      initAudio();
+      audioEnabled = !audioEnabled;
+      audioBtn.textContent = audioEnabled ? '🔊' : '🔇';
+      audioBtn.classList.toggle('active', audioEnabled);
+      if (!audioEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel(); dialogueSpeaking = false;
+    });
+    audioBtn.classList.add('active');
+
+    // Subtitle toggle
+    const subBtn = document.getElementById('btn-subtitle');
+    subBtn.addEventListener('click', () => {
+      subtitlesEnabled = !subtitlesEnabled;
+      subBtn.classList.toggle('active', subtitlesEnabled);
+      document.body.classList.toggle('subtitles-off', !subtitlesEnabled);
+      const box = document.getElementById('dialogue-container');
+      if (subtitlesEnabled) {
+        box.classList.remove('fade-out'); box.classList.add('fade-in');
+      } else {
+        box.classList.remove('fade-in'); box.classList.add('fade-out');
+      }
+    });
+
+    // Virtual slide toggle
+    const slideToggleBtn = document.getElementById('btn-slide-toggle');
+    const slideHUD = document.getElementById('virtual-slide');
+    slideToggleBtn.addEventListener('click', () => {
+      const isHidden = slideHUD.classList.contains('slide-hidden');
+      slideHUD.classList.toggle('slide-hidden', !isHidden);
+      slideToggleBtn.classList.toggle('active', isHidden);
+    });
+
+    // Architecture blueprint modal
+    const modal = document.getElementById('modal-architecture');
+    document.getElementById('btn-open-arch').addEventListener('click', () => {
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+    });
+    document.getElementById('btn-close-arch').addEventListener('click', () => {
+      modal.classList.add('opacity-0', 'pointer-events-none');
+    });
+    document.getElementById('btn-close-arch-x').addEventListener('click', () => {
+      modal.classList.add('opacity-0', 'pointer-events-none');
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.add('opacity-0', 'pointer-events-none');
+    });
+
+    window.addEventListener('click', () => initAudio(), { once: true });
+  }
+
+  /* ===================================================================== */
+  /* RESIZE & ANIMATION LOOP                                               */
+  /* ===================================================================== */
+  function onResize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const aspect = w / h, d = 15;
+    camera.left = -d * aspect;
+    camera.right = d * aspect;
+    camera.top = d;
+    camera.bottom = -d;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+
+    TWEEN.update();
+
+    if (isPlaying) {
+      const syncBeat = STORY_BEATS[currentSpeechIdx];
+      const waitingForLine = dialogueSpeaking && syncBeat && storyTime >= syncBeat.end - 0.24;
+      if (!waitingForLine) {
+        const nextBeat = STORY_BEATS[currentSpeechIdx + 1];
+        const quietGap = nextBeat ? nextBeat.start - storyTime : 0;
+        const tailCatchUp = !dialogueSpeaking && syncBeat && (syncBeat.end - storyTime > 1.8 || quietGap > 1.8) ? 2.0 : 1;
+        storyTime += dt * tailCatchUp;
+      }
+      if (storyTime >= TOTAL_DURATION) {
+        storyTime = TOTAL_DURATION;
+        isPlaying = false;
+        document.getElementById('btn-play-pause').textContent = '▶';
+        document.getElementById('btn-player-toggle').textContent = '▶';
+      }
+      updateStoryTimeline(storyTime);
+    }
+
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  window.onload = () => {
+    init();
+    setCameraPreset('intro', true);
+    animate();
+  };
+  </script>
+</body>
+</html>

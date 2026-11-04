@@ -1,0 +1,2267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alpenhof Eco-Village — Pond Excavation &amp; Civil Geotechnology</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Fredoka:wght@500;600;700&family=Cinzel:wght@700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; overflow: hidden;
+      width: 100vw; height: 100vh;
+      background: #08131d;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #viewport-container { position: absolute; inset: 0; }
+    .bubble-font { font-family: 'Fredoka', cursive; }
+    .cinzel { font-family: 'Cinzel', serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .glass-ui {
+      background: rgba(15, 23, 42, 0.86);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    /* ---------- Icon toolbar + standard hover tooltips ---------- */
+    .tool-icon {
+      position: relative;
+      width: 38px; height: 38px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 12px;
+      font-size: 15px; line-height: 1;
+      background: rgba(15, 23, 42, 0.86);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #e2e8f0;
+      cursor: pointer;
+      flex: 0 0 auto;
+      transition: background .18s, border-color .18s, transform .18s, box-shadow .18s;
+    }
+    .tool-icon:hover {
+      background: rgba(56, 189, 248, 0.22);
+      border-color: rgba(56, 189, 248, 0.65);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(56, 189, 248, 0.25);
+    }
+    .tool-icon:active { transform: translateY(0) scale(0.96); }
+    .tool-icon.active {
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      color: #04231c;
+      border-color: #38bdf8;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+    }
+
+    /* Tooltip bubble */
+    .tool-icon::after {
+      content: attr(data-tip);
+      position: absolute;
+      top: calc(100% + 9px);
+      left: 50%;
+      transform: translate(-50%, -6px);
+      background: rgba(2, 6, 23, 0.97);
+      border: 1px solid rgba(56, 189, 248, 0.42);
+      color: #e2e8f0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .015em;
+      padding: 5px 9px;
+      border-radius: 8px;
+      white-space: nowrap;
+      opacity: 0; pointer-events: none;
+      transition: opacity .16s ease, transform .16s ease;
+      z-index: 90;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+    }
+    .tool-icon:hover::after { opacity: 1; transform: translate(-50%, 0); }
+
+    /* Upward tooltip (bottom-left widgets) */
+    .tip-up::after {
+      top: auto;
+      bottom: calc(100% + 9px);
+      transform: translate(-50%, 6px);
+    }
+    .tip-up:hover::after { transform: translate(-50%, 0); }
+
+    /* ---------- Subtitle / dialogue ---------- */
+    .dialogue-box {
+      transition: opacity .26s cubic-bezier(.16,1,.3,1), transform .26s cubic-bezier(.16,1,.3,1);
+    }
+    .dialogue-box.fade-out {
+      opacity: 0;
+      transform: translate(-50%, 16px) scale(.96);
+      pointer-events: none;
+    }
+    .dialogue-box.fade-in {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+    .subtitles-off .dialogue-box {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translate(-50%, 20px) scale(.96) !important;
+    }
+
+    /* ---------- Step chips ---------- */
+    .step-chip {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      padding: 4px 2px;
+      border-radius: 7px;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      color: #94a3b8;
+      transition: all .18s ease;
+      cursor: pointer;
+    }
+    .step-chip:hover { border-color: rgba(56,189,248,.6); color: #bae6fd; }
+    .step-chip.active {
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      color: #04231c;
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
+    }
+
+    /* Range slider */
+    input[type=range] {
+      -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 4px;
+      background: linear-gradient(90deg, #10b981 0%, #38bdf8 100%);
+      outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 11px; height: 11px; border-radius: 50%;
+      background: #f0fdfa; border: 2px solid #0ea5e9;
+      box-shadow: 0 0 8px rgba(56,189,248,.8);
+      cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 11px; height: 11px; border-radius: 50%;
+      background: #f0fdfa; border: 2px solid #0ea5e9; cursor: pointer;
+    }
+
+    #player-panel { transition: opacity .2s ease, transform .2s cubic-bezier(.16,1,.3,1); }
+    #player-panel.hidden-panel {
+      opacity: 0; pointer-events: none;
+      transform: translateY(10px) scale(.95);
+      display: block !important;
+    }
+    #modal-geology { transition: opacity .3s ease; }
+  </style>
+</head>
+<body class="text-white"><a id="archive-home-link" href="../../index.html" title="Return to Alpenhof Research HQ archive" aria-label="Return to Alpenhof Research HQ" style="position:fixed;top:12px;left:12px;z-index:1000;padding:8px 12px;border:1px solid rgba(120,190,225,.45);border-radius:10px;background:rgba(5,17,30,.86);backdrop-filter:blur(8px);color:#dff4ff;text-decoration:none;font:600 12px/1.2 system-ui,sans-serif;box-shadow:0 5px 20px #0005">🏔️ Archive</a>
+
+  <div id="viewport-container"></div>
+
+  <!-- ============ TOP LEFT : Mission + Roster ============ -->
+  <header class="fixed top-4 left-4 z-40 flex flex-col gap-2 pointer-events-none max-w-[340px]">
+    <div class="glass-ui p-3 rounded-2xl shadow-2xl pointer-events-auto border border-emerald-500/30">
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-emerald-600 to-cyan-400 p-[2px] shadow-lg flex-shrink-0">
+            <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-lg">🚜</div>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h1 class="text-[13px] font-bold tracking-wide text-emerald-200 leading-tight">Alpenhof Civil &amp; Hydro Lab</h1>
+              <span class="text-[8px] px-1.5 py-[1px] rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-mono">EU</span>
+            </div>
+            <p class="text-[10px] text-slate-300 leading-tight">4-Step Ecological Pond Excavation</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="experiment-tag" class="text-[9px] uppercase font-bold tracking-wider px-2 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-400/30 text-center mb-2">
+        Step 1 · Staking &amp; Topsoil
+      </div>
+
+      <div class="grid grid-cols-3 gap-1.5 text-[10px]">
+        <div class="p-1.5 rounded-xl bg-slate-900/80 border border-amber-500/40 flex items-center gap-1.5">
+          <span class="text-sm">🦡</span>
+          <div class="truncate">
+            <strong class="text-amber-300 block truncate leading-tight text-[9px]">Dr. Clodhopper</strong>
+            <span class="text-[8px] text-slate-400">Civil &amp; Geo</span>
+          </div>
+        </div>
+        <div class="p-1.5 rounded-xl bg-slate-900/80 border border-purple-500/40 flex items-center gap-1.5">
+          <span class="text-sm">🌸</span>
+          <div class="truncate">
+            <strong class="text-purple-300 block truncate leading-tight text-[9px]">Prof. Puff</strong>
+            <span class="text-[8px] text-slate-400">Astrobiologist</span>
+          </div>
+        </div>
+        <div class="p-1.5 rounded-xl bg-slate-900/80 border border-cyan-500/40 flex items-center gap-1.5">
+          <span class="text-sm">🌺</span>
+          <div class="truncate">
+            <strong class="text-cyan-300 block truncate leading-tight text-[9px]">Pip Squeak</strong>
+            <span class="text-[8px] text-slate-400">Helper Mouse</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ TOP RIGHT : Horizontal icon-only toolbar ============ -->
+  <nav class="fixed top-4 right-4 z-40 flex flex-row items-center gap-2 flex-nowrap">
+    <button id="btn-audio"    class="tool-icon" data-tip="Audio &amp; Text-to-Speech">🔊</button>
+    <button id="btn-subtitle" class="tool-icon active" data-tip="Subtitles On / Off">💬</button>
+    <button id="btn-open-geo" class="tool-icon" data-tip="Soil &amp; Geotechnical Spec">📐</button>
+    <button id="btn-cam-pond" class="tool-icon" data-tip="Pond Basin View">🌊</button>
+    <button id="btn-cam-equip" class="tool-icon" data-tip="Excavator Close-up">🚜</button>
+    <button id="btn-cam-wide" class="tool-icon" data-tip="Wide Site Overview">🌄</button>
+  </nav>
+
+  <!-- ============ BOTTOM LEFT : Packed playback icon → expands to compact player ============ -->
+  <div class="fixed bottom-4 left-4 z-50 flex flex-col items-start gap-2">
+    <div id="player-panel" class="hidden-panel glass-ui rounded-2xl p-2.5 w-[268px] shadow-2xl border border-slate-700">
+      <div class="flex items-center gap-1.5">
+        <button id="btn-play-pause" class="w-7 h-7 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[11px] font-bold flex items-center justify-center transition">⏸</button>
+        <button id="btn-restart" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] flex items-center justify-center border border-slate-600 transition" title="Restart">↺</button>
+        <span id="time-display" class="mono text-[10px] text-emerald-300 w-9 text-center font-bold">00:00</span>
+        <input id="story-scrubber" type="range" min="0" max="90" step="0.1" value="0" class="flex-1">
+        <span class="mono text-[9px] text-slate-500">1:30</span>
+      </div>
+      <div class="grid grid-cols-4 gap-1 mt-2">
+        <button id="step-btn-1" class="step-chip active" data-tip="Staking &amp; Topsoil">S1</button>
+        <button id="step-btn-2" class="step-chip" data-tip="Tiered Excavation">S2</button>
+        <button id="step-btn-3" class="step-chip" data-tip="Geotextile &amp; Liner">S3</button>
+        <button id="step-btn-4" class="step-chip" data-tip="Riprap &amp; Eco Fill">S4</button>
+      </div>
+    </div>
+
+    <button id="btn-player-toggle" class="tool-icon tip-up" data-tip="Playback &amp; Timeline">▶</button>
+  </div>
+
+  <!-- ============ BOTTOM CENTER : Subtitle / Dialogue ============ -->
+  <div id="subtitle-layer" class="fixed left-0 right-0 bottom-0 z-30 pointer-events-none" style="padding-bottom: 22px;">
+    <div id="dialogue-container"
+         class="dialogue-box fade-in pointer-events-auto mx-auto glass-ui px-4 py-3 rounded-2xl border border-emerald-400/40 shadow-2xl flex items-center gap-3"
+         style="width: min(600px, 88vw);">
+      <div id="speaker-avatar" class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl bg-slate-900 border-2 border-emerald-400 shadow-md">🦡</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2 mb-0.5">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span id="speaker-name" class="bubble-font text-[12px] font-bold text-amber-300 tracking-wide truncate">Dr. Barnaby Clodhopper</span>
+            <span id="speaker-role" class="hidden sm:inline text-[9px] px-1.5 py-[1px] rounded bg-amber-500/20 text-amber-300 border border-amber-400/30 font-mono whitespace-nowrap">Chief Geotechnical Badger</span>
+          </div>
+          <span id="speech-emotion" class="text-[9px] uppercase tracking-wider px-1.5 py-[1px] rounded-full bg-slate-800 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">Site Survey</span>
+        </div>
+        <p id="speech-text" class="text-[11.5px] text-slate-100 leading-snug font-medium">
+          "Guten Tag, Professor Puff and young Pip! Welcome down to the Alpenhof basin!"
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Geotechnical Modal ============ -->
+  <aside id="modal-geology" class="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none">
+    <div class="glass-ui border-2 border-emerald-400/60 rounded-3xl p-5 max-w-md w-full text-center shadow-2xl relative">
+      <button id="btn-close-geo-x"
+              class="absolute top-3 right-3 w-7 h-7 rounded-lg bg-slate-800/90 hover:bg-rose-500/80 border border-slate-600 hover:border-rose-400 text-slate-200 text-[11px] flex items-center justify-center transition"
+              title="Close">✕</button>
+
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-emerald-500 text-slate-950 flex items-center justify-center text-2xl mx-auto mb-2.5 shadow-lg">🔬</div>
+      <h2 class="cinzel text-lg font-bold text-emerald-300 mb-1">Alpenhof Hydro-Geology Blueprint</h2>
+      <p class="text-[11px] text-slate-300 mb-3.5 leading-relaxed">
+        Civil &amp; geological specifications formulated by Dr. Barnaby Clodhopper with Professor Whisker Puff's soil microbiome team.
+      </p>
+
+      <div class="bg-slate-900/90 p-3 rounded-2xl border border-emerald-500/30 text-left text-[10.5px] mb-4 space-y-1.5 font-mono">
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>🌿 Horizon A (Humus &amp; Loam)</span>
+          <span class="text-amber-400 font-bold text-right">Stripped 30cm · Stockpiled</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>🚜 Hydraulic Terracing</span>
+          <span class="text-cyan-400 font-bold text-right">1:3 Slope · Safety Bench</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>🛡️ Geosynthetic Protection</span>
+          <span class="text-slate-300 font-bold text-right">300 g/m² PP Fleece</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>💧 Hydraulic Conductivity</span>
+          <span class="text-emerald-400 font-bold text-right">k ≤ 10⁻⁷ cm/s (EPDM)</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>🌸 Shoreline Riprap</span>
+          <span class="text-pink-400 font-bold text-right">Granite + Wetland Flora</span>
+        </div>
+      </div>
+
+      <button id="btn-close-geo"
+              class="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold py-2 rounded-xl transition text-[11px] shadow-lg">
+        Return to Excavation Site
+      </button>
+    </div>
+  </aside>
+
+  <script>
+  /* =========================================================================
+     ALPENHOF ECO-VILLAGE — 4-STEP POND EXCAVATION SIMULATION
+     Enhanced: detailed excavator, realistic water colormap, fountain spray,
+     camera presets per step, packed playback widget, icon toolbars.
+     ========================================================================= */
+
+  let scene, camera, renderer, controls;
+
+  // Characters & rigs
+  let badgerGroup, puffGroup, pipGroup;
+  let badgerHead, badgerArmL, badgerArmR, badgerToolBelt, surveyorTransit;
+  let puffHead, puffTail, puffArmL, puffArmR, puffTablet;
+  let pipHead, pipTail, pipArmL, pipArmR, pipSoilFlag;
+
+  // Machinery
+  let miniDozer, dozerBlade;
+  let excavator, excavatorTurret, excavatorBoom, excavatorArm, excavatorBucket, excavatorBeacon;
+  let rollerCompactor, compactorDrum;
+
+  // Pond
+  let pondBasinStage1, pondBasinStage2, pondLinerMesh, pondWaterMesh;
+  let waterBasePos = null;
+  let anchorTrenchStones = [], riparianLilies = [], reeds = [];
+  let aerationFountain, fountainPoints, fountainVel = [], rippleRings = [];
+
+  let surveyorStakes = [];
+  let sunLight, hemiLight, pondGlowLight, waterGlintLight;
+
+  // Timeline
+  const TOTAL_DURATION = 90;
+  let storyTime = 0;
+  let isPlaying = true;
+  let audioEnabled = true;
+  let subtitlesEnabled = true;
+  let currentSpeechIdx = -1;
+  let lastCamStep = -1;
+  let synth = null;
+  let clock;
+
+  /* ------------------------------------------------------------------ */
+  /* Camera presets — every step has a deliberately framed shot          */
+  /* ------------------------------------------------------------------ */
+  const CAM = {
+    intro: { pos: [8.5, 6.2, 20.0], tgt: [2.2, 1.5, 4.2], zoom: 1.18 },
+    step1: { pos: [8.5, 6.2, 20.0], tgt: [2.2, 1.5, 4.2], zoom: 1.18 },
+    step2: { pos: [20.0, 11.5, 12.5], tgt: [3.4, 0.2, -1.6], zoom: 1.02 },
+    step3: { pos: [16.0, 10.0, 17.0], tgt: [0.6, -0.5, 0.6], zoom: 1.08 },
+    step4: { pos: [13.0, 8.2, 19.0], tgt: [0.6, 0.3, 1.6], zoom: 1.10 },
+    pond:  { pos: [12.0, 13.0, 12.0], tgt: [0, 0.2, 0], zoom: 1.05 },
+    equip: { pos: [15.5, 8.5, 6.5], tgt: [6.4, 1.3, -1.2], zoom: 1.22 },
+    wide:  { pos: [28.0, 26.0, 28.0], tgt: [0, 1.2, 0], zoom: 1.0 }
+  };
+
+  /* ------------------------------------------------------------------ */
+  /* Story beats                                                         */
+  /* ------------------------------------------------------------------ */
+  const STORY_BEATS = [
+    { start: 0, end: 7.5, speaker: 'Badger', avatar: '🦡', role: 'Chief Geotechnical Badger', emotion: 'Warm Greetings',
+      text: "Guten Tag, Professor Puff and young Pip! Welcome down to the Alpenhof basin! Today we construct our organic permaculture pond." },
+    { start: 7.5, end: 14.5, speaker: 'Puff', avatar: '🌸', role: 'Chief Astrobiologist', emotion: 'Intellectual Inquiry',
+      text: "Delighted to meet you, Dr. Clodhopper! We have brought our laser spectroscopes to analyse soil stratification and biological porosity." },
+    { start: 14.5, end: 22.0, speaker: 'Pip', avatar: '🌺', role: '3yo Quick Learner', emotion: 'Bouncy Curiosity',
+      text: "Look at the orange flags! I put the laser stick right on the red chalk line! Scurry scurry, topsoil is so soft and squishy!" },
+    { start: 22.0, end: 29.5, speaker: 'Badger', avatar: '🦡', role: 'Chief Geotechnical Badger', emotion: 'Instructional',
+      text: "Step 2: Commencing rough excavation! Our excavator carves a 1:3 slope with safety shelves and a shallow littoral wetland bench." },
+    { start: 29.5, end: 36.5, speaker: 'Pip', avatar: '🌺', role: '3yo Excited', emotion: 'Excavator Awe',
+      text: "Vroom chugga! Big yellow bucket scoop! Down goes the clay, deeper and deeper! Professor Puff, look how deep it goes!" },
+    { start: 36.5, end: 44.0, speaker: 'Puff', avatar: '🌸', role: 'Chief Astrobiologist', emotion: 'Soil Horizon Analysis',
+      text: "Notice the transition from Horizon A loam to dense Bavarian subsoil clay. The terraced ledges prevent hydraulic collapse!" },
+    { start: 44.0, end: 52.0, speaker: 'Badger', avatar: '🦡', role: 'Civil & Geo Builder', emotion: 'Technical Precision',
+      text: "Step 3: Heavy compaction! We roll smooth the bed, lay 300 g/m² geotextile fleece, and seal with a heavy waterproof EPDM membrane!" },
+    { start: 52.0, end: 60.5, speaker: 'Pip', avatar: '🌺', role: '3yo Toddler Helper', emotion: 'Helpful Splash',
+      text: "I helped tuck the big black blanket into the anchor trench! Rolling round river pebbles so wind can't blow it away!" },
+    { start: 60.5, end: 68.0, speaker: 'Puff', avatar: '🌸', role: 'Chief Astrobiologist', emotion: 'Awe & Chemistry',
+      text: "Hydraulic conductivity is below 10⁻⁷ cm per second! The impervious boundary prevents any aquifer loss while preserving water table balance." },
+    { start: 68.0, end: 78.5, speaker: 'Badger', avatar: '🦡', role: 'Chief Geotechnical Badger', emotion: 'Triumphant Engineering',
+      text: "Step 4: Shoreline riprap stone armouring! Filling with filtered mountain stream runoff, activating the solar fountain and native nymphaea!" },
+    { start: 78.5, end: 90.0, speaker: 'All', avatar: '🏞️', role: 'Alpenhof Team', emotion: 'Eco-Village Celebration',
+      text: "Alpenhof Wetland Pond complete! Providing gravity irrigation for orchards, wildlife hydration, and pure natural biodiversity!" }
+  ];
+
+  /* ================================================================== */
+  /* AUDIO                                                               */
+  /* ================================================================== */
+  function initAudio() {
+    try { if (!synth) synth = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  }
+  function playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.05) {
+    if (!audioEnabled || !synth) return;
+    try {
+      if (synth.state === 'suspended') synth.resume();
+      const osc = synth.createOscillator(), gain = synth.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, synth.currentTime);
+      gain.gain.setValueAtTime(gainVal, synth.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + duration);
+      osc.connect(gain); gain.connect(synth.destination);
+      osc.start(); osc.stop(synth.currentTime + duration);
+    } catch (e) {}
+  }
+  function playDigSound() {
+    playTone(90, 'triangle', 0.25, 0.08);
+    setTimeout(() => playTone(62, 'sawtooth', 0.35, 0.06), 90);
+  }
+  function playWaterSplash() {
+    playTone(560, 'sine', 0.12, 0.04);
+    setTimeout(() => playTone(790, 'sine', 0.2, 0.03), 70);
+    setTimeout(() => playTone(340, 'triangle', 0.25, 0.04), 160);
+  }
+
+  let availableVoices = [];
+  function loadVoices() {
+    if ('speechSynthesis' in window) {
+      availableVoices = window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => { availableVoices = window.speechSynthesis.getVoices(); };
+    }
+  }
+  loadVoices();
+
+  let dialogueSpeaking = false;
+    function speakText(text, speaker) {
+      dialogueSpeaking = false;
+    if (!audioEnabled || !('speechSynthesis' in window)) return;
+    
+    const u = new SpeechSynthesisUtterance(text);
+      dialogueSpeaking = true;
+      u.onstart = () => { dialogueSpeaking = true; };
+      u.onend = u.onerror = () => { dialogueSpeaking = false; };
+    if (speaker === 'Pip') {
+      u.pitch = 1.46; u.rate = 1.08;
+      const v = availableVoices.find(v => /Junior|Fred|Child/i.test(v.name) && v.lang.startsWith('en'));
+      if (v) u.voice = v;
+      playTone(740, 'triangle', 0.1, 0.04);
+    } else if (speaker === 'Puff') {
+      u.pitch = 1.2; u.rate = 0.95;
+      const v = availableVoices.find(v => /Samantha|Victoria|Zira|Female/i.test(v.name) && v.lang.startsWith('en'));
+      if (v) u.voice = v;
+      playTone(520, 'sine', 0.18, 0.03);
+    } else {
+      u.pitch = 0.94; u.rate = 1.02;
+      const v = availableVoices.find(v => /Daniel|George|David|Male/i.test(v.name) && v.lang.startsWith('en'));
+      if (v) u.voice = v;
+      playTone(180, 'sawtooth', 0.2, 0.05);
+    }
+    const lineMood = String(STORY_BEATS[currentSpeechIdx]?.emotion || '');
+      if (/discover|curious|delight|excite|wonder/i.test(lineMood)) { u.pitch = Math.min(1.55, u.pitch + 0.035); u.rate = Math.min(1.12, u.rate + 0.025); }
+      else if (/focus|careful|technical|serious|reflect/i.test(lineMood)) { u.rate = Math.max(0.90, u.rate - 0.025); }
+      window.speechSynthesis.speak(u);
+  }
+
+  /* ================================================================== */
+  /* INIT                                                                */
+  /* ================================================================== */
+  function init() {
+    const container = document.getElementById('viewport-container');
+    const w = window.innerWidth, h = window.innerHeight;
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a1626);
+    scene.fog = new THREE.FogExp2(0x0a1626, 0.0115);
+
+    const aspect = w / h, d = 16;
+    camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 0.1, 400);
+    camera.position.set(8.5, 6.2, 20);
+    camera.lookAt(2.2, 1.5, 4.2);
+    camera.zoom = CAM.intro.zoom;
+    camera.updateProjectionMatrix();
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(w, h);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.22;
+    container.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.maxPolarAngle = Math.PI / 2.05;
+    controls.target.set(2.2, 1.5, 4.2);
+
+    setupLighting();
+    buildTerrain();
+    buildEnvironmentDetails();
+    buildConstructionSignboard();
+    buildSurveyStation();
+    buildPondSystem();
+    buildMachinery();
+    buildBadger();
+    buildPuff();
+    buildPip();
+    setupUI();
+
+    clock = new THREE.Clock();
+    window.addEventListener('resize', onResize);
+  }
+
+  /* ================================================================== */
+  /* LIGHTING                                                            */
+  /* ================================================================== */
+  function setupLighting() {
+    hemiLight = new THREE.HemisphereLight(0x9fd8ff, 0x1e293b, 0.9);
+    scene.add(hemiLight);
+
+    sunLight = new THREE.DirectionalLight(0xfff5e0, 1.55);
+    sunLight.position.set(22, 34, 18);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 90;
+    const dl = 26;
+    sunLight.shadow.camera.left = -dl;
+    sunLight.shadow.camera.right = dl;
+    sunLight.shadow.camera.top = dl;
+    sunLight.shadow.camera.bottom = -dl;
+    sunLight.shadow.bias = -0.00035;
+    scene.add(sunLight);
+
+    pondGlowLight = new THREE.PointLight(0x38bdf8, 2.0, 16);
+    pondGlowLight.position.set(0, 2.2, 0);
+    scene.add(pondGlowLight);
+
+    waterGlintLight = new THREE.PointLight(0xa5f3fc, 1.4, 12);
+    waterGlintLight.position.set(-3, 1.4, 2);
+    scene.add(waterGlintLight);
+  }
+
+  /* ================================================================== */
+  /* TERRAIN                                                             */
+  /* ================================================================== */
+  function buildTerrain() {
+    // Volumetric soil block
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(34, 1.8, 30),
+      new THREE.MeshStandardMaterial({ color: 0x2a2118, roughness: 0.95 })
+    );
+    base.position.y = -0.9;
+    base.receiveShadow = true;
+    scene.add(base);
+
+    // Meadow surface
+    const grassGeo = new THREE.PlaneGeometry(34, 30, 56, 56);
+    grassGeo.rotateX(-Math.PI / 2);
+    const pos = grassGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), z = pos.getZ(i);
+      const dist = Math.hypot(x * 0.9, z * 1.3);
+      let y = Math.sin(x * 0.2) * 0.34 + Math.cos(z * 0.25) * 0.38;
+      if (dist < 8.5) y -= Math.cos((dist / 8.5) * Math.PI * 0.5) * 0.42;
+      pos.setY(i, y);
+    }
+    grassGeo.computeVertexNormals();
+
+    const grassMesh = new THREE.Mesh(grassGeo, new THREE.MeshStandardMaterial({
+      color: 0x4e7d18, roughness: 0.85, metalness: 0.05
+    }));
+    grassMesh.receiveShadow = true;
+    scene.add(grassMesh);
+
+    // Access roads
+    const roadMat = new THREE.MeshStandardMaterial({ color: 0x8f6039, roughness: 0.96 });
+    const mainRoad = new THREE.Mesh(new THREE.BoxGeometry(34, 0.06, 2.8), roadMat);
+    mainRoad.position.set(0, 0.03, 11.2);
+    mainRoad.receiveShadow = true;
+    scene.add(mainRoad);
+
+    const subRoad = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.06, 22), roadMat);
+    subRoad.position.set(-11.5, 0.03, 0);
+    subRoad.receiveShadow = true;
+    scene.add(subRoad);
+
+    // Flower pollinator beds
+    const flowerColors = [0xf43f5e, 0xec4899, 0xfacc15, 0x38bdf8, 0xa855f7, 0xfb923c];
+    for (let b = 0; b < 30; b++) {
+      const flower = new THREE.Mesh(
+        new THREE.SphereGeometry(0.17, 6, 6),
+        new THREE.MeshStandardMaterial({ color: flowerColors[b % flowerColors.length], roughness: 0.6 })
+      );
+      flower.position.set(-6 + (b % 6) * 1.25, 0.34, -8.2 - Math.floor(b / 6) * 1.05);
+      flower.castShadow = true;
+      scene.add(flower);
+    }
+
+    // Grass tufts
+    const tuftMat = new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.9 });
+    for (let g = 0; g < 60; g++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 10 + Math.random() * 8;
+      const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.42, 4), tuftMat);
+      tuft.position.set(Math.cos(a) * r, 0.2, Math.sin(a) * r * 0.85);
+      tuft.rotation.y = Math.random() * Math.PI;
+      scene.add(tuft);
+    }
+  }
+
+  /* ================================================================== */
+  /* ENVIRONMENT — trees, mountains, fences, rocks                       */
+  /* ================================================================== */
+  function addConifer(x, z, s) {
+    const g = new THREE.Group();
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12 * s, 0.19 * s, 1.0 * s, 7),
+      new THREE.MeshStandardMaterial({ color: 0x59371a, roughness: 0.9 })
+    );
+    trunk.position.y = 0.5 * s;
+    trunk.castShadow = true;
+    g.add(trunk);
+
+    const needleMat = new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.85 });
+    for (let i = 0; i < 4; i++) {
+      const cone = new THREE.Mesh(
+        new THREE.ConeGeometry((1.0 - i * 0.2) * s, (1.35 - i * 0.18) * s, 9),
+        needleMat
+      );
+      cone.position.y = (1.05 + i * 0.72) * s;
+      cone.castShadow = true;
+      g.add(cone);
+    }
+    g.position.set(x, 0, z);
+    g.rotation.y = Math.random() * Math.PI;
+    scene.add(g);
+  }
+
+  function buildEnvironmentDetails() {
+    // Conifer belt around the diorama
+    const trees = [
+      [-15, -11, 1.35], [-16, -5, 1.15], [-15.5, 2, 1.25], [-13, 8, 1.0],
+      [15, -9, 1.3], [16, -3, 1.1], [15.5, 4, 1.2], [13, 9, 0.95],
+      [-9, -12.5, 1.0], [-2, -13, 1.2], [5, -12.5, 1.05], [11, -12, 1.15],
+      [-12, 12.5, 1.1], [12.5, 12.5, 1.05]
+    ];
+    trees.forEach(([x, z, s]) => addConifer(x, z, s));
+
+    // Distant alpine peaks
+    const peakMat = new THREE.MeshStandardMaterial({ color: 0x27415c, roughness: 1.0, flatShading: true });
+    const snowMat = new THREE.MeshStandardMaterial({ color: 0xdbeafe, roughness: 0.8, flatShading: true });
+    [[-52, -62, 26, 30], [-18, -74, 32, 38], [26, -68, 24, 28], [58, -56, 20, 22]].forEach(([x, z, r, hh]) => {
+      const peak = new THREE.Mesh(new THREE.ConeGeometry(r, hh, 7), peakMat);
+      peak.position.set(x, hh / 2 - 6, z);
+      scene.add(peak);
+      const cap = new THREE.Mesh(new THREE.ConeGeometry(r * 0.32, hh * 0.28, 7), snowMat);
+      cap.position.set(x, hh - 6 - hh * 0.13, z);
+      scene.add(cap);
+    });
+
+    // Wooden pasture fence along the north road
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.9 });
+    for (let i = 0; i < 9; i++) {
+      const px = -13 + i * 3.2;
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 1.3, 6), woodMat);
+      post.position.set(px, 0.65, 13.4);
+      post.castShadow = true;
+      scene.add(post);
+      if (i < 8) {
+        [0.55, 1.05].forEach(ry => {
+          const rail = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.09, 0.09), woodMat);
+          rail.position.set(px + 1.6, ry, 13.4);
+          scene.add(rail);
+        });
+      }
+    }
+
+    // Scattered boulders
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.95, flatShading: true });
+    for (let i = 0; i < 14; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 10.5 + Math.random() * 5;
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.45), rockMat);
+      rock.position.set(Math.cos(a) * r, 0.15, Math.sin(a) * r * 0.85);
+      rock.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+      rock.castShadow = true;
+      scene.add(rock);
+    }
+
+    // Small farm shed
+    const shed = new THREE.Group();
+    shed.position.set(-12.5, 0, -9.5);
+    const shedWall = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.7, 2.2),
+      new THREE.MeshStandardMaterial({ color: 0x8b5e3c, roughness: 0.9 }));
+    shedWall.position.y = 0.85; shedWall.castShadow = true; shed.add(shedWall);
+    const shedRoof = new THREE.Mesh(new THREE.ConeGeometry(2.2, 1.1, 4),
+      new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.8 }));
+    shedRoof.position.y = 2.2; shedRoof.rotation.y = Math.PI / 4; shedRoof.castShadow = true; shed.add(shedRoof);
+    scene.add(shed);
+  }
+
+  function buildConstructionSignboard() {
+    const boardGroup = new THREE.Group();
+    boardGroup.position.set(-8.5, 0, 7.8);
+
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.85 });
+    [-1.2, 1.2].forEach(px => {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.8, 8), woodMat);
+      post.position.set(px, 1.4, 0);
+      post.castShadow = true;
+      boardGroup.add(post);
+    });
+
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, 512, 256);
+    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 10; ctx.strokeRect(10, 10, 492, 236);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fde047'; ctx.font = 'bold 30px sans-serif';
+    ctx.fillText('ALPENHOF ECO-POND', 256, 65);
+    ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 22px monospace';
+    ctx.fillText('CIVIL & HYDRO-GEOLOGY DEPT.', 256, 115);
+    ctx.fillStyle = '#4ade80'; ctx.font = '20px monospace';
+    ctx.fillText('LEAD: DR. BARNABY CLODHOPPER', 256, 160);
+    ctx.fillStyle = '#cbd5e1'; ctx.font = '18px monospace';
+    ctx.fillText('STEP 1 TO 4 EXCAVATION PROTOCOL', 256, 205);
+
+    const tex = new THREE.CanvasTexture(c);
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 1.6),
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.45 }));
+    sign.position.set(0, 1.9, 0.06);
+    boardGroup.add(sign);
+
+    scene.add(boardGroup);
+  }
+
+  /* ================================================================== */
+  /* SURVEY STATION                                                      */
+  /* ================================================================== */
+  function buildSurveyStation() {
+    surveyorTransit = new THREE.Group();
+    surveyorTransit.position.set(6.8, 0.2, 6.6);
+
+    const yellowMat = new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.6, roughness: 0.32 });
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.85, roughness: 0.25 });
+
+    for (let i = 0; i < 3; i++) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.03, 2.2, 8), yellowMat);
+      const a = (i / 3) * Math.PI * 2;
+      leg.position.set(Math.cos(a) * 0.45, 1.0, Math.sin(a) * 0.45);
+      leg.rotation.z = Math.cos(a) * 0.28;
+      leg.rotation.x = Math.sin(a) * 0.28;
+      surveyorTransit.add(leg);
+    }
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.45, 0.36), yellowMat);
+    body.position.y = 2.2; body.castShadow = true;
+    surveyorTransit.add(body);
+
+    const scope = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.62, 12), steelMat);
+    scope.rotation.x = Math.PI / 2; scope.position.set(0, 2.36, 0);
+    surveyorTransit.add(scope);
+
+    // Red staking laser
+    const laserGeo = new THREE.CylinderGeometry(0.014, 0.014, 13, 6);
+    laserGeo.rotateX(Math.PI / 2);
+    const laser = new THREE.Mesh(laserGeo, new THREE.MeshBasicMaterial({
+      color: 0xef4444, transparent: true, opacity: 0.7
+    }));
+    laser.position.set(-6, 2.36, -6);
+    surveyorTransit.add(laser);
+
+    scene.add(surveyorTransit);
+
+    // Boundary stakes with neon flags
+    const stakeWood = new THREE.MeshStandardMaterial({ color: 0xa16207, roughness: 0.9 });
+    const flagNeon = new THREE.MeshStandardMaterial({ color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 0.45 });
+    const coords = [
+      [-7.5, 0.1, -3.5], [-4.0, 0.1, -5.2], [2.0, 0.1, -5.0], [6.5, 0.1, -3.0],
+      [7.2, 0.1, 1.5], [4.5, 0.1, 4.2], [-2.0, 0.1, 4.8], [-6.8, 0.1, 2.2]
+    ];
+    coords.forEach(([sx, sy, sz]) => {
+      const stake = new THREE.Group();
+      stake.position.set(sx, sy, sz);
+      const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.02, 1.0, 6), stakeWood);
+      peg.position.y = 0.45; peg.castShadow = true;
+      stake.add(peg);
+      const flag = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.24, 4), flagNeon);
+      flag.rotation.z = Math.PI / 2; flag.position.set(0.12, 0.85, 0);
+      stake.add(flag);
+      surveyorStakes.push(stake);
+      scene.add(stake);
+    });
+  }
+
+  /* ================================================================== */
+  /* POND SYSTEM — basin, liner, realistic water, fountain               */
+  /* ================================================================== */
+  function makeDiscGeometry(radius, rings, segs) {
+    const positions = [0, 0, 0];
+    const indices = [];
+    for (let r = 1; r <= rings; r++) {
+      const rad = radius * (r / rings);
+      for (let s = 0; s < segs; s++) {
+        const a = (s / segs) * Math.PI * 2;
+        positions.push(Math.cos(a) * rad, 0, Math.sin(a) * rad);
+      }
+    }
+    // center fan
+    for (let s = 0; s < segs; s++) {
+      indices.push(0, 1 + s, 1 + ((s + 1) % segs));
+    }
+    // ring bands
+    for (let r = 1; r < rings; r++) {
+      const b0 = 1 + (r - 1) * segs;
+      const b1 = 1 + r * segs;
+      for (let s = 0; s < segs; s++) {
+        const sn = (s + 1) % segs;
+        indices.push(b0 + s, b1 + s, b0 + sn);
+        indices.push(b0 + sn, b1 + s, b1 + sn);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  function buildPondSystem() {
+    /* --- Stage 1 : stripped topsoil pad --- */
+    pondBasinStage1 = new THREE.Mesh(
+      new THREE.CylinderGeometry(7.2, 7.5, 0.3, 40),
+      new THREE.MeshStandardMaterial({ color: 0x543821, roughness: 0.96 })
+    );
+    pondBasinStage1.scale.set(1.4, 1.0, 0.85);
+    pondBasinStage1.position.set(0, -0.05, -0.2);
+    pondBasinStage1.receiveShadow = true;
+    scene.add(pondBasinStage1);
+
+    /* --- Stage 2 : terraced excavation --- */
+    pondBasinStage2 = new THREE.Group();
+    pondBasinStage2.position.set(0, 0, -0.2);
+    const subsoilMat = new THREE.MeshStandardMaterial({ color: 0x7c4a27, roughness: 0.96, side: THREE.DoubleSide });
+
+    const tier1 = new THREE.Mesh(new THREE.CylinderGeometry(6.6, 6.2, 0.7, 40, 1, true), subsoilMat);
+    tier1.scale.set(1.4, 1.0, 0.85); tier1.position.y = -0.35; tier1.receiveShadow = true;
+    pondBasinStage2.add(tier1);
+
+    const tier2 = new THREE.Mesh(new THREE.CylinderGeometry(5.0, 4.4, 0.7, 40, 1, true), subsoilMat);
+    tier2.scale.set(1.4, 1.0, 0.85); tier2.position.y = -0.95; tier2.receiveShadow = true;
+    pondBasinStage2.add(tier2);
+
+    const tier3 = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 2.8, 1.0, 40), subsoilMat);
+    tier3.scale.set(1.4, 1.0, 0.85); tier3.position.y = -1.6; tier3.receiveShadow = true;
+    pondBasinStage2.add(tier3);
+
+    scene.add(pondBasinStage2);
+
+    /* --- Stage 3 : EPDM liner --- */
+    pondLinerMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(6.5, 2.7, 2.2, 40, 6, true),
+      new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.28, metalness: 0.28, side: THREE.DoubleSide })
+    );
+    pondLinerMesh.scale.set(1.39, 1.0, 0.84);
+    pondLinerMesh.position.set(0, -1.1, -0.2);
+    scene.add(pondLinerMesh);
+
+    /* --- Anchor trench boulders --- */
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.88, flatShading: true });
+    for (let s = 0; s < 40; s++) {
+      const ang = (s / 40) * Math.PI * 2;
+      const rx = 8.9 + Math.sin(s * 3) * 0.3;
+      const rz = 5.65 + Math.cos(s * 2) * 0.25;
+      const boulder = new THREE.Mesh(new THREE.DodecahedronGeometry(0.24 + Math.random() * 0.16), stoneMat);
+      boulder.position.set(Math.cos(ang) * rx, 0.14, Math.sin(ang) * rz - 0.2);
+      boulder.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+      boulder.castShadow = true;
+      anchorTrenchStones.push(boulder);
+      scene.add(boulder);
+    }
+
+    /* --- Realistic water with gradient vertex colormap --- */
+    const waterGeo = makeDiscGeometry(6.35, 22, 72);
+    const wPos = waterGeo.attributes.position;
+    const deepCol = new THREE.Color(0x07324f);
+    const midCol = new THREE.Color(0x0d7ba3);
+    const shallowCol = new THREE.Color(0x3fdfc9);
+    const colors = [];
+    for (let i = 0; i < wPos.count; i++) {
+      const x = wPos.getX(i), z = wPos.getZ(i);
+      const r = Math.min(1, Math.hypot(x, z) / 6.35);
+      const c = new THREE.Color();
+      if (r < 0.5) c.copy(deepCol).lerp(midCol, r / 0.5);
+      else c.copy(midCol).lerp(shallowCol, (r - 0.5) / 0.5);
+      colors.push(c.r, c.g, c.b);
+    }
+    waterGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    waterBasePos = waterGeo.attributes.position.array.slice();
+
+    const waterMat = new THREE.MeshPhysicalMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      roughness: 0.06,
+      metalness: 0.22,
+      transmission: 0.55,
+      ior: 1.33,
+      side: THREE.DoubleSide,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.08
+    });
+
+    pondWaterMesh = new THREE.Mesh(waterGeo, waterMat);
+    pondWaterMesh.scale.set(1.38, 1.0, 0.83);
+    pondWaterMesh.position.set(0, -0.15, -0.2);
+    scene.add(pondWaterMesh);
+
+    /* --- Ripple rings --- */
+    const rippleMat = new THREE.MeshBasicMaterial({
+      color: 0xbdf3ff, transparent: true, opacity: 0.0, side: THREE.DoubleSide
+    });
+    for (let i = 0; i < 4; i++) {
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.0, 48), rippleMat.clone());
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(0, -0.12, -0.2);
+      ring.userData.phase = i * 0.9;
+      rippleRings.push(ring);
+      scene.add(ring);
+    }
+
+    /* --- Lily pads --- */
+    const lilyPadMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.45 });
+    const lilyFlowerMat = new THREE.MeshStandardMaterial({ color: 0xf9a8d4, roughness: 0.5 });
+    for (let lp = 0; lp < 10; lp++) {
+      const pad = new THREE.Group();
+      const ang = (lp / 10) * Math.PI * 2 + 0.4;
+      const rad = 3.3 + Math.random() * 2.3;
+      pad.position.set(Math.cos(ang) * rad * 1.32, -0.05, Math.sin(ang) * rad * 0.8 - 0.2);
+      const leaf = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.02, 16), lilyPadMat);
+      pad.add(leaf);
+      const flower = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 8), lilyFlowerMat);
+      flower.position.y = 0.09;
+      pad.add(flower);
+      riparianLilies.push(pad);
+      scene.add(pad);
+    }
+
+    /* --- Reeds / cattails on the littoral shelf --- */
+    const reedStemMat = new THREE.MeshStandardMaterial({ color: 0x4d7c0f, roughness: 0.8 });
+    const cattailMat = new THREE.MeshStandardMaterial({ color: 0x63380f, roughness: 0.9 });
+    for (let r = 0; r < 26; r++) {
+      const ang = Math.random() * Math.PI * 2;
+      const rad = 5.4 + Math.random() * 1.2;
+      const reed = new THREE.Group();
+      reed.position.set(Math.cos(ang) * rad * 1.34, -0.55, Math.sin(ang) * rad * 0.82 - 0.2);
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.9 + Math.random() * 0.4, 5), reedStemMat);
+      stem.position.y = 0.45;
+      reed.add(stem);
+      const head = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.2, 6), cattailMat);
+      head.position.y = 0.92;
+      reed.add(head);
+      reed.rotation.z = (Math.random() - 0.5) * 0.25;
+      reeds.push(reed);
+      scene.add(reed);
+    }
+
+    /* --- Aeration fountain with real spray particles --- */
+    aerationFountain = new THREE.Group();
+    aerationFountain.position.set(0, -0.1, -0.2);
+
+    const floatRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.42, 0.09, 8, 24),
+      new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.75, roughness: 0.35 })
+    );
+    floatRing.rotation.x = Math.PI / 2;
+    aerationFountain.add(floatRing);
+
+    const nozzle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.09, 0.14, 0.28, 10),
+      new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 })
+    );
+    nozzle.position.y = 0.14;
+    aerationFountain.add(nozzle);
+
+    // Particle spray
+    const COUNT = 150;
+    const spriteTex = makeDropTexture();
+    const fGeo = new THREE.BufferGeometry();
+    const fPositions = new Float32Array(COUNT * 3);
+    for (let i = 0; i < COUNT; i++) {
+      fPositions[i * 3] = 0; fPositions[i * 3 + 1] = 0.2; fPositions[i * 3 + 2] = 0;
+      fountainVel.push(new THREE.Vector3(
+        (Math.random() - 0.5) * 0.9,
+        1.7 + Math.random() * 0.9,
+        (Math.random() - 0.5) * 0.9
+      ));
+    }
+    fGeo.setAttribute('position', new THREE.BufferAttribute(fPositions, 3));
+    const fMat = new THREE.PointsMaterial({
+      size: 0.14,
+      map: spriteTex,
+      transparent: true,
+      opacity: 0.92,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      color: 0xdff6ff,
+      sizeAttenuation: true
+    });
+    fountainPoints = new THREE.Points(fGeo, fMat);
+    aerationFountain.add(fountainPoints);
+
+    scene.add(aerationFountain);
+  }
+
+  function makeDropTexture() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d');
+    const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grd.addColorStop(0, 'rgba(255,255,255,1)');
+    grd.addColorStop(0.35, 'rgba(205,244,255,0.72)');
+    grd.addColorStop(1, 'rgba(140,220,255,0)');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 64, 64);
+    return new THREE.CanvasTexture(c);
+  }
+
+  /* ================================================================== */
+  /* MACHINERY                                                           */
+  /* ================================================================== */
+  function buildMachinery() {
+    buildDozer();
+    buildExcavator();
+    buildRoller();
+  }
+
+  function buildDozer() {
+    const catYellow = new THREE.MeshStandardMaterial({ color: 0xf5b301, metalness: 0.45, roughness: 0.4 });
+    const trackMat = new THREE.MeshStandardMaterial({ color: 0x22262e, roughness: 0.95 });
+    const steel = new THREE.MeshStandardMaterial({ color: 0xb8c2cc, metalness: 0.95, roughness: 0.18 });
+
+    miniDozer = new THREE.Group();
+    miniDozer.position.set(-6.5, 0.25, 0);
+
+    [-0.72, 0.72].forEach(tz => {
+      const tread = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.45, 0.36), trackMat);
+      tread.position.set(0, 0, tz);
+      tread.castShadow = true;
+      miniDozer.add(tread);
+      [-1.1, 1.1].forEach(wx => {
+        const w = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.34, 12), trackMat);
+        w.rotation.x = Math.PI / 2;
+        w.position.set(wx, 0, tz);
+        miniDozer.add(w);
+      });
+    });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.8, 1.15), catYellow);
+    body.position.y = 0.5; body.castShadow = true;
+    miniDozer.add(body);
+
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.35, 1.0), catYellow);
+    hood.position.set(-0.45, 0.98, 0);
+    miniDozer.add(hood);
+
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.72, 0.95),
+      new THREE.MeshPhysicalMaterial({ color: 0x7fd8ff, transmission: 0.75, opacity: 0.7, transparent: true, roughness: 0.05 }));
+    cab.position.set(0.35, 1.15, 0);
+    miniDozer.add(cab);
+
+    dozerBlade = new THREE.Group();
+    dozerBlade.position.set(1.25, 0.05, 0);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 1.9), steel);
+    blade.castShadow = true;
+    dozerBlade.add(blade);
+    const brace = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.12), steel);
+    brace.position.set(-0.3, 0.1, 0);
+    dozerBlade.add(brace);
+    miniDozer.add(dozerBlade);
+
+    scene.add(miniDozer);
+  }
+
+  function buildExcavator() {
+    const yellow = new THREE.MeshStandardMaterial({ color: 0xf5b301, metalness: 0.5, roughness: 0.35 });
+    const darkYellow = new THREE.MeshStandardMaterial({ color: 0xbf8b06, metalness: 0.55, roughness: 0.45 });
+    const trackMat = new THREE.MeshStandardMaterial({ color: 0x22262e, roughness: 0.95, metalness: 0.25 });
+    const grouserMat = new THREE.MeshStandardMaterial({ color: 0x3b4149, metalness: 0.65, roughness: 0.55 });
+    const steel = new THREE.MeshStandardMaterial({ color: 0xb8c2cc, metalness: 0.95, roughness: 0.16 });
+    const glass = new THREE.MeshPhysicalMaterial({
+      color: 0x9ee7ff, transmission: 0.85, opacity: 0.62, transparent: true, roughness: 0.04, metalness: 0.1
+    });
+
+    excavator = new THREE.Group();
+    excavator.position.set(6.4, 0, -1.2);
+    excavator.rotation.y = -0.95;
+
+    /* --- Tracks --- */
+    [-0.98, 0.98].forEach(tz => {
+      const track = new THREE.Group();
+      track.position.set(0, 0.55, tz);
+
+      const belt = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.62, 0.48), trackMat);
+      belt.castShadow = true;
+      track.add(belt);
+
+      [-1.82, 1.82].forEach(ex => {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.5, 18), trackMat);
+        wheel.rotation.x = Math.PI / 2;
+        wheel.position.set(ex, 0, 0);
+        wheel.castShadow = true;
+        track.add(wheel);
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.54, 10), steel);
+        hub.rotation.x = Math.PI / 2;
+        hub.position.set(ex, 0, 0);
+        track.add(hub);
+      });
+
+      for (let g = 0; g < 11; g++) {
+        const grouser = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.09, 0.54), grouserMat);
+        grouser.position.set(-1.65 + g * 0.33, 0.34, 0);
+        track.add(grouser);
+      }
+
+      excavator.add(track);
+    });
+
+    /* --- Undercarriage --- */
+    const carriage = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.32, 1.9), darkYellow);
+    carriage.position.y = 0.72;
+    carriage.castShadow = true;
+    excavator.add(carriage);
+
+    /* --- Rotating turret --- */
+    excavatorTurret = new THREE.Group();
+    excavatorTurret.position.y = 1.05;
+
+    const deck = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.22, 24), darkYellow);
+    deck.position.y = 0.1;
+    deck.castShadow = true;
+    excavatorTurret.add(deck);
+
+    // Engine hood
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.85, 1.6), yellow);
+    hood.position.set(-0.55, 0.62, -0.05);
+    hood.castShadow = true;
+    excavatorTurret.add(hood);
+
+    // Counterweight
+    const counter = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.95, 1.75), darkYellow);
+    counter.position.set(-1.62, 0.6, -0.05);
+    counter.castShadow = true;
+    excavatorTurret.add(counter);
+
+    // Exhaust stack
+    const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.62, 8), steel);
+    exhaust.position.set(-0.75, 1.35, -0.45);
+    excavatorTurret.add(exhaust);
+    const exhaustCap = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.08, 8), steel);
+    exhaustCap.position.set(-0.75, 1.68, -0.45);
+    excavatorTurret.add(exhaustCap);
+
+    // Beacon
+    excavatorBeacon = new THREE.Mesh(
+      new THREE.SphereGeometry(0.09, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0xf97316, emissive: 0xf97316, emissiveIntensity: 1.4 })
+    );
+    excavatorBeacon.position.set(-0.35, 1.32, 0.6);
+    excavatorTurret.add(excavatorBeacon);
+
+    // Operator cab
+    const cabFrame = new THREE.Mesh(new THREE.BoxGeometry(1.05, 1.25, 1.0), yellow);
+    cabFrame.position.set(0.68, 1.05, 0.42);
+    cabFrame.castShadow = true;
+    excavatorTurret.add(cabFrame);
+
+    const cabGlass = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.85, 0.94), glass);
+    cabGlass.position.set(0.68, 1.14, 0.42);
+    excavatorTurret.add(cabGlass);
+
+    const cabRoof = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.09, 1.06), darkYellow);
+    cabRoof.position.set(0.68, 1.7, 0.42);
+    excavatorTurret.add(cabRoof);
+
+    // Handrail
+    for (let i = 0; i < 4; i++) {
+      const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.4, 6), steel);
+      rail.position.set(-1.0 + i * 0.45, 1.1, 0.78);
+      excavatorTurret.add(rail);
+    }
+
+    /* --- Boom kinematics --- */
+    excavatorBoom = new THREE.Group();
+    excavatorBoom.position.set(0.55, 0.75, 0.0);
+    excavatorBoom.rotation.z = 0.62;
+
+    const boomMesh = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.38, 0.44), yellow);
+    boomMesh.position.set(1.5, 0, 0);
+    boomMesh.castShadow = true;
+    excavatorBoom.add(boomMesh);
+
+    // Hydraulic cylinder on boom
+    const boomCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1.5, 10), steel);
+    boomCyl.rotation.z = Math.PI / 2;
+    boomCyl.position.set(0.85, -0.3, 0.28);
+    excavatorBoom.add(boomCyl);
+    const boomRod = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.2, 8), steel);
+    boomRod.rotation.z = Math.PI / 2;
+    boomRod.position.set(1.9, -0.3, 0.28);
+    excavatorBoom.add(boomRod);
+
+    /* --- Arm (dipper stick) --- */
+    excavatorArm = new THREE.Group();
+    excavatorArm.position.set(3.0, 0, 0);
+    excavatorArm.rotation.z = -1.55;
+
+    const armMesh = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.3, 0.36), yellow);
+    armMesh.position.set(1.2, 0, 0);
+    armMesh.castShadow = true;
+    excavatorArm.add(armMesh);
+
+    const armCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 1.1, 10), steel);
+    armCyl.rotation.z = Math.PI / 2;
+    armCyl.position.set(1.1, 0.26, 0);
+    excavatorArm.add(armCyl);
+
+    /* --- Bucket --- */
+    excavatorBucket = new THREE.Group();
+    excavatorBucket.position.set(2.4, 0, 0);
+    excavatorBucket.rotation.z = 0.9;
+
+    const bucketShell = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.42, 0.52, 0.62, 12, 1, false, 0, Math.PI * 1.35),
+      new THREE.MeshStandardMaterial({ color: 0x8b949e, metalness: 0.9, roughness: 0.35, side: THREE.DoubleSide })
+    );
+    bucketShell.rotation.z = Math.PI / 2;
+    bucketShell.rotation.y = Math.PI / 2;
+    bucketShell.position.set(0.12, -0.18, 0);
+    bucketShell.castShadow = true;
+    excavatorBucket.add(bucketShell);
+
+    const bucketBack = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.42, 0.62), darkYellow);
+    bucketBack.position.set(-0.15, -0.1, 0);
+    excavatorBucket.add(bucketBack);
+
+    // Bucket teeth
+    for (let t = 0; t < 5; t++) {
+      const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.24, 5), steel);
+      tooth.position.set(0.42, -0.36, -0.26 + t * 0.13);
+      tooth.rotation.z = -Math.PI / 2.4;
+      excavatorBucket.add(tooth);
+    }
+
+    excavatorArm.add(excavatorBucket);
+    excavatorBoom.add(excavatorArm);
+    excavatorTurret.add(excavatorBoom);
+    excavator.add(excavatorTurret);
+
+    scene.add(excavator);
+  }
+
+  function buildRoller() {
+    const catYellow = new THREE.MeshStandardMaterial({ color: 0xf5b301, metalness: 0.45, roughness: 0.4 });
+    const steel = new THREE.MeshStandardMaterial({ color: 0xb8c2cc, metalness: 0.95, roughness: 0.18 });
+
+    rollerCompactor = new THREE.Group();
+    rollerCompactor.position.set(2.0, 0.3, 5.5);
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.9, 1.2), catYellow);
+    body.position.y = 0.55; body.castShadow = true;
+    rollerCompactor.add(body);
+
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.8, 1.0),
+      new THREE.MeshPhysicalMaterial({ color: 0x7fd8ff, transmission: 0.75, opacity: 0.68, transparent: true, roughness: 0.05 }));
+    cab.position.set(-0.4, 1.35, 0);
+    rollerCompactor.add(cab);
+
+    compactorDrum = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.66, 1.65, 26), steel);
+    compactorDrum.rotation.x = Math.PI / 2;
+    compactorDrum.position.set(1.4, 0.3, 0);
+    compactorDrum.castShadow = true;
+    rollerCompactor.add(compactorDrum);
+
+    [-0.75, 0.75].forEach(tz => {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.32, 16),
+        new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.9 }));
+      wheel.rotation.x = Math.PI / 2;
+      wheel.position.set(-1.05, 0.35, tz);
+      rollerCompactor.add(wheel);
+    });
+
+    scene.add(rollerCompactor);
+  }
+
+  /* ================================================================== */
+  /* CHARACTER : Dr. Barnaby Clodhopper                                  */
+  /* ================================================================== */
+  function buildBadger() {
+    badgerGroup = new THREE.Group();
+
+    const furGrey = new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.82 });
+    const furWhite = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.82 });
+    const furBlack = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.82 });
+    const vestOrange = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.55 });
+    const silverTape = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.18 });
+    const pantsMat = new THREE.MeshStandardMaterial({ color: 0x5b3414, roughness: 0.78 });
+    const bootMat = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.6 });
+    const hardHat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.4, roughness: 0.3 });
+
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.8, 1.4, 16), furGrey);
+    body.position.y = 1.35; body.castShadow = true;
+    badgerGroup.add(body);
+
+    const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.83, 1.05, 16), vestOrange);
+    vest.position.y = 1.45;
+    badgerGroup.add(vest);
+
+    [1.35, 1.65].forEach(vy => {
+      const strip = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.72, 0.08, 16), silverTape);
+      strip.position.y = vy;
+      badgerGroup.add(strip);
+    });
+
+    badgerToolBelt = new THREE.Group();
+    badgerToolBelt.position.y = 0.95;
+    const belt = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.07, 8, 16),
+      new THREE.MeshStandardMaterial({ color: 0x451a03 }));
+    belt.rotation.x = Math.PI / 2;
+    badgerToolBelt.add(belt);
+
+    const spiritLevel = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.1),
+      new THREE.MeshStandardMaterial({ color: 0x22c55e }));
+    spiritLevel.position.set(-0.75, 0, 0.2);
+    badgerToolBelt.add(spiritLevel);
+
+    const hammer = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.38, 0.2),
+      new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+    hammer.position.set(0.75, 0, 0.2);
+    badgerToolBelt.add(hammer);
+    badgerGroup.add(badgerToolBelt);
+
+    const pants = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.8, 0.65, 16), pantsMat);
+    pants.position.y = 0.65;
+    badgerGroup.add(pants);
+
+    badgerHead = new THREE.Group();
+    badgerHead.position.set(0, 2.3, 0.1);
+
+    const bHead = new THREE.Mesh(new THREE.SphereGeometry(0.75, 18, 18), furGrey);
+    bHead.scale.set(1.1, 0.95, 1.2);
+    bHead.castShadow = true;
+    badgerHead.add(bHead);
+
+    const whiteStripe = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.8, 0.9), furWhite);
+    whiteStripe.position.set(0, 0.1, 0.45);
+    badgerHead.add(whiteStripe);
+
+    [-0.32, 0.32].forEach(bx => {
+      const blackStripe = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.7, 0.85), furBlack);
+      blackStripe.position.set(bx, 0.1, 0.45);
+      badgerHead.add(blackStripe);
+    });
+
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 10), furBlack);
+    nose.position.set(0, -0.05, 1.15);
+    badgerHead.add(nose);
+
+    // Eyes
+    [-0.3, 0.3].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x0b0b0d, roughness: 0.15 }));
+      eye.position.set(ex, 0.16, 0.98);
+      badgerHead.add(eye);
+    });
+
+    [-0.55, 0.55].forEach(ex => {
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10), furBlack);
+      ear.position.set(ex, 0.65, 0.1);
+      badgerHead.add(ear);
+    });
+
+    const helmet = new THREE.Mesh(
+      new THREE.SphereGeometry(0.82, 18, 18, 0, Math.PI * 2, 0, Math.PI / 2), hardHat);
+    helmet.position.set(0, 0.4, 0.15);
+    badgerHead.add(helmet);
+
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.08, 18), hardHat);
+    brim.position.set(0, 0.4, 0.25);
+    badgerHead.add(brim);
+
+    badgerGroup.add(badgerHead);
+
+    badgerArmL = new THREE.Group();
+    badgerArmL.position.set(-0.82, 1.5, 0);
+    const bArmBoneL = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.8, 8), furGrey);
+    bArmBoneL.position.y = -0.4;
+    badgerArmL.add(bArmBoneL);
+    badgerGroup.add(badgerArmL);
+
+    badgerArmR = new THREE.Group();
+    badgerArmR.position.set(0.82, 1.5, 0);
+    const bArmBoneR = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.8, 8), furGrey);
+    bArmBoneR.position.y = -0.4;
+    badgerArmR.add(bArmBoneR);
+
+    const rod = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.4, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.5, roughness: 0.35 }));
+    rod.position.set(0.1, -0.4, 0.3);
+    badgerArmR.add(rod);
+    badgerGroup.add(badgerArmR);
+
+    [[-0.35], [0.35]].forEach(([bx]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.6, 8), furGrey);
+      leg.position.set(bx, 0.4, 0);
+      badgerGroup.add(leg);
+      const boot = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.24, 0.55), bootMat);
+      boot.position.set(bx, 0.12, 0.1);
+      badgerGroup.add(boot);
+    });
+
+    badgerGroup.position.set(4.6, 0.1, 4.4);
+    badgerGroup.rotation.y = 0.32;
+    scene.add(badgerGroup);
+  }
+
+  /* ================================================================== */
+  /* CHARACTER : Professor Whisker Puff                                  */
+  /* ================================================================== */
+  function buildPuff() {
+    puffGroup = new THREE.Group();
+
+    const ginger = new THREE.MeshStandardMaterial({ color: 0xe07a38, roughness: 0.68 });
+    const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.72 });
+    const black = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.68 });
+    const labVest = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.55 });
+    const skirtMat = new THREE.MeshStandardMaterial({ color: 0x064e3b, roughness: 0.62 });
+    const goldTrim = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.7, roughness: 0.3 });
+
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.65, 1.25, 16), white);
+    body.position.y = 1.35; body.castShadow = true;
+    puffGroup.add(body);
+
+    const vest = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.52, 0.68, 0.9, 16, 1, false, 0.3, Math.PI * 1.8), labVest);
+    vest.position.y = 1.45;
+    puffGroup.add(vest);
+
+    [1.3, 1.5, 1.7].forEach(by => {
+      const btn = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), goldTrim);
+      btn.position.set(0, by, 0.58);
+      puffGroup.add(btn);
+    });
+
+    const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.85, 0.65, 16, 1, true), skirtMat);
+    skirt.position.y = 0.85; skirt.rotation.x = Math.PI;
+    puffGroup.add(skirt);
+
+    puffHead = new THREE.Group();
+    puffHead.position.set(0, 2.3, 0.1);
+
+    const headGeo = new THREE.SphereGeometry(0.72, 20, 20);
+    headGeo.scale(1.15, 0.95, 1.05);
+    const head = new THREE.Mesh(headGeo, ginger);
+    head.castShadow = true;
+    puffHead.add(head);
+
+    const patch = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), black);
+    patch.scale.set(0.9, 0.8, 0.35);
+    patch.position.set(-0.35, 0.25, 0.55);
+    puffHead.add(patch);
+
+    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 14), white);
+    muzzle.scale.set(1.2, 0.8, 0.85);
+    muzzle.position.set(0, -0.15, 0.62);
+    puffHead.add(muzzle);
+
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.09, 4),
+      new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
+    nose.rotation.z = Math.PI; nose.rotation.x = 0.35;
+    nose.position.set(0, -0.09, 0.92);
+    puffHead.add(nose);
+
+    const earGeo = new THREE.ConeGeometry(0.26, 0.5, 4);
+    const earL = new THREE.Mesh(earGeo, ginger);
+    earL.position.set(-0.48, 0.65, 0.05);
+    earL.rotation.set(-0.1, 0, 0.35);
+    puffHead.add(earL);
+    const earR = new THREE.Mesh(earGeo, black);
+    earR.position.set(0.48, 0.65, 0.05);
+    earR.rotation.set(-0.1, 0, -0.35);
+    puffHead.add(earR);
+
+    // Round glasses
+    const glassesMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.12 });
+    const rimGeo = new THREE.TorusGeometry(0.24, 0.04, 10, 24);
+    [-0.26, 0.26].forEach(gx => {
+      const rim = new THREE.Mesh(rimGeo, glassesMat);
+      rim.position.set(gx, 0.02, 0.75);
+      puffHead.add(rim);
+    });
+    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.22), glassesMat);
+    bridge.rotation.z = Math.PI / 2; bridge.position.set(0, 0.02, 0.77);
+    puffHead.add(bridge);
+
+    // Eyes
+    [-0.26, 0.26].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x0b0b0d }));
+      eye.position.set(ex, 0.02, 0.72);
+      puffHead.add(eye);
+    });
+
+    const hairBunMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.72 });
+    const bunL = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10), hairBunMat);
+    bunL.position.set(-0.65, 0.48, 0.1);
+    bunL.add(new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 8, 16),
+      new THREE.MeshStandardMaterial({ color: 0x8b5cf6 })));
+    puffHead.add(bunL);
+
+    const bunR = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 10), hairBunMat);
+    bunR.position.set(0.65, 0.48, 0.1);
+    bunR.add(new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.04, 8, 16),
+      new THREE.MeshStandardMaterial({ color: 0xec4899 })));
+    puffHead.add(bunR);
+
+    puffGroup.add(puffHead);
+
+    puffArmL = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.7, 10), white);
+    puffArmL.position.set(-0.62, 1.35, 0);
+    puffGroup.add(puffArmL);
+
+    puffArmR = new THREE.Group();
+    puffArmR.position.set(0.62, 1.35, 0);
+    const armBoneR = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.7, 10), white);
+    armBoneR.position.y = -0.35;
+    puffArmR.add(armBoneR);
+
+    puffTablet = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.45, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 0.6 }));
+    puffTablet.position.set(0, -0.65, 0.2);
+    puffArmR.add(puffTablet);
+    puffGroup.add(puffArmR);
+
+    puffTail = new THREE.Group();
+    puffTail.position.set(0, 0.8, -0.5);
+    let prev = puffTail;
+    for (let i = 0; i < 5; i++) {
+      const seg = new THREE.Mesh(new THREE.SphereGeometry(0.12 - i * 0.015, 8, 8),
+        (i % 2 === 0) ? ginger : black);
+      seg.position.set(0, 0.12, -0.14);
+      prev.add(seg);
+      prev = seg;
+    }
+    puffGroup.add(puffTail);
+
+    puffGroup.position.set(2.3, 0.1, 5.2);
+    puffGroup.rotation.y = -0.05;
+    scene.add(puffGroup);
+  }
+
+  /* ================================================================== */
+  /* CHARACTER : Pip Squeak-a-Link                                       */
+  /* ================================================================== */
+  function buildPip() {
+    pipGroup = new THREE.Group();
+
+    const mouseBrown = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.78 });
+    const mousePink = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.55 });
+    const beachShirt = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.62 });
+    const flowerMat = new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.55 });
+    const shortsMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.62 });
+    const sneakerMat = new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.45 });
+
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), mouseBrown);
+    body.scale.set(0.9, 1.15, 0.9);
+    body.position.y = 0.55; body.castShadow = true;
+    pipGroup.add(body);
+
+    const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.39, 0.42, 0.45, 14), beachShirt);
+    shirt.position.y = 0.62;
+    pipGroup.add(shirt);
+
+    for (let f = 0; f < 5; f++) {
+      const petal = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), flowerMat);
+      const a = (f / 5) * Math.PI * 2;
+      petal.position.set(Math.cos(a) * 0.38, 0.62, Math.sin(a) * 0.38);
+      pipGroup.add(petal);
+    }
+
+    const shorts = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.38, 0.28, 14), shortsMat);
+    shorts.position.y = 0.34;
+    pipGroup.add(shorts);
+
+    pipHead = new THREE.Group();
+    pipHead.position.set(0, 0.92, 0.05);
+
+    const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), mouseBrown);
+    mHead.castShadow = true;
+    pipHead.add(mHead);
+
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.38, 12), mouseBrown);
+    snout.rotation.x = 1.35;
+    snout.position.set(0, -0.06, 0.26);
+    pipHead.add(snout);
+
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), mousePink);
+    nose.position.set(0, -0.08, 0.45);
+    pipHead.add(nose);
+
+    [-0.24, 0.24].forEach((ex, idx) => {
+      const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 14), mousePink);
+      ear.position.set(ex, 0.24, -0.02);
+      ear.rotation.set(0.2, idx === 0 ? 0.35 : -0.35, idx === 0 ? -0.4 : 0.4);
+      pipHead.add(ear);
+    });
+
+    [-0.13, 0.13].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x0b0b0d }));
+      eye.position.set(ex, 0.06, 0.3);
+      pipHead.add(eye);
+    });
+
+    pipGroup.add(pipHead);
+
+    pipArmL = new THREE.Group();
+    pipArmL.position.set(-0.36, 0.65, 0);
+    const pawL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+    pawL.position.y = -0.18;
+    pipArmL.add(pawL);
+    pipGroup.add(pipArmL);
+
+    pipArmR = new THREE.Group();
+    pipArmR.position.set(0.36, 0.65, 0);
+    const pawR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+    pawR.position.y = -0.18;
+    pipArmR.add(pawR);
+
+    pipSoilFlag = new THREE.Group();
+    pipSoilFlag.position.set(0.08, -0.28, 0.15);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6),
+      new THREE.MeshStandardMaterial({ color: 0xd97706 }));
+    pipSoilFlag.add(pole);
+    const pennant = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.18, 3),
+      new THREE.MeshStandardMaterial({ color: 0xf97316, emissive: 0xea580c, emissiveIntensity: 0.3 }));
+    pennant.rotation.z = Math.PI / 2;
+    pennant.position.set(0.08, 0.22, 0);
+    pipSoilFlag.add(pennant);
+    pipArmR.add(pipSoilFlag);
+    pipGroup.add(pipArmR);
+
+    [-0.16, 0.16].forEach(lx => {
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.28), sneakerMat);
+      shoe.position.set(lx, 0.08, 0.05);
+      pipGroup.add(shoe);
+    });
+
+    pipTail = new THREE.Group();
+    pipTail.position.set(0, 0.28, -0.32);
+    let pPrev = pipTail;
+    for (let i = 0; i < 5; i++) {
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.03 - i * 0.004, 0.035 - i * 0.004, 0.15, 6), mousePink);
+      seg.position.set(0, 0.04, -0.12);
+      seg.rotation.x = -0.25;
+      pPrev.add(seg);
+      pPrev = seg;
+    }
+    pipGroup.add(pipTail);
+
+    pipGroup.position.set(0.7, 0.1, 5.6);
+    pipGroup.rotation.y = 0.15;
+    scene.add(pipGroup);
+  }
+
+  /* ================================================================== */
+  /* CAMERA PRESETS                                                      */
+  /* ================================================================== */
+  function setCameraPreset(key, instant) {
+    const p = CAM[key];
+    if (!p) return;
+    if (instant) {
+      camera.position.set(p.pos[0], p.pos[1], p.pos[2]);
+      controls.target.set(p.tgt[0], p.tgt[1], p.tgt[2]);
+      camera.zoom = p.zoom; camera.updateProjectionMatrix();
+      return;
+    }
+    new TWEEN.Tween(camera.position)
+      .to({ x: p.pos[0], y: p.pos[1], z: p.pos[2] }, 1150)
+      .easing(TWEEN.Easing.Cubic.InOut).start();
+    new TWEEN.Tween(controls.target)
+      .to({ x: p.tgt[0], y: p.tgt[1], z: p.tgt[2] }, 1150)
+      .easing(TWEEN.Easing.Cubic.InOut).start();
+    new TWEEN.Tween({ z: camera.zoom })
+      .to({ z: p.zoom }, 1150)
+      .easing(TWEEN.Easing.Cubic.InOut)
+      .onUpdate(o => { camera.zoom = o.z; camera.updateProjectionMatrix(); })
+      .start();
+  }
+
+  /* ================================================================== */
+  /* TIMELINE                                                            */
+  /* ================================================================== */
+  
+    // Subtle presenter breathing, listening, and hand emphasis, layered over each scene's staged poses.
+    const archiveMotionRigs = () => [typeof badgerGroup !== 'undefined' ? badgerGroup : null, typeof puffGroup !== 'undefined' ? puffGroup : null, typeof pipGroup !== 'undefined' ? pipGroup : null];
+    if (typeof pipGroup !== 'undefined' && pipGroup) pipGroup.name ||= 'pipGroup';
+    if (typeof puffGroup !== 'undefined' && puffGroup) puffGroup.name ||= 'puffGroup';
+    if (typeof badgerGroup !== 'undefined' && badgerGroup) badgerGroup.name ||= 'badgerGroup';
+    const archiveMotionHeads = () => [typeof badgerHead !== 'undefined' ? badgerHead : null, typeof puffHead !== 'undefined' ? puffHead : null, typeof pipHead !== 'undefined' ? pipHead : null];
+    if (typeof badgerHead !== 'undefined' && badgerHead) badgerHead.name ||= 'badgerHead';
+    if (typeof puffHead !== 'undefined' && puffHead) puffHead.name ||= 'puffHead';
+    if (typeof pipHead !== 'undefined' && pipHead) pipHead.name ||= 'pipHead';
+
+    const archiveMotionArms = () => [typeof badgerArmL !== 'undefined' ? badgerArmL : null, typeof badgerArmR !== 'undefined' ? badgerArmR : null, typeof puffArmL !== 'undefined' ? puffArmL : null, typeof puffArmR !== 'undefined' ? puffArmR : null, typeof pipArmL !== 'undefined' ? pipArmL : null, typeof pipArmR !== 'undefined' ? pipArmR : null];
+    if (typeof badgerArmL !== 'undefined' && badgerArmL) badgerArmL.name ||= 'badgerArmL';
+    if (typeof badgerArmR !== 'undefined' && badgerArmR) badgerArmR.name ||= 'badgerArmR';
+    if (typeof puffArmL !== 'undefined' && puffArmL) puffArmL.name ||= 'puffArmL';
+    if (typeof puffArmR !== 'undefined' && puffArmR) puffArmR.name ||= 'puffArmR';
+    if (typeof pipArmL !== 'undefined' && pipArmL) pipArmL.name ||= 'pipArmL';
+    if (typeof pipArmR !== 'undefined' && pipArmR) pipArmR.name ||= 'pipArmR';
+
+    const archiveMotionLegs = () => [];
+    const rigsNames = ["badgerGroup", "puffGroup", "pipGroup"];
+    const headsNames = ["badgerHead", "puffHead", "pipHead"];
+    const armsNames = ["badgerArmL", "badgerArmR", "puffArmL", "puffArmR", "pipArmL", "pipArmR"];
+    const legsNames = [];
+    function clearArchiveMotionOffsets() {
+      [...archiveMotionRigs(), ...archiveMotionHeads(), ...archiveMotionArms(), ...archiveMotionLegs()].forEach(node => {
+        if (!node || !node.userData.archiveMotionOffset) return;
+        const o = node.userData.archiveMotionOffset;
+        node.rotation.x -= o.x; node.rotation.y -= o.y; node.rotation.z -= o.z;
+        if (o.px) node.position.x -= o.px; if (o.pz) node.position.z -= o.pz;
+        node.userData.archiveMotionOffset = null;
+      });
+    }
+    function applyArchivePresenterMotion(time) {
+      const beat = STORY_BEATS[currentSpeechIdx] || null;
+      const speaker = String(beat?.speaker || '').toLowerCase();
+      const phase = (time || 0) * 2.15;
+      const progress = beat ? Math.max(0, Math.min(1, ((time || 0) - beat.start) / Math.max(0.1, beat.end - beat.start))) : 0;
+      const smooth = v => v * v * (3 - 2 * v);
+      const walk = progress < 0.2 ? smooth(progress / 0.2) : progress < 0.62 ? 1 : progress < 0.86 ? 1 - smooth((progress - 0.62) / 0.24) : 0;
+      const put = (node, x, y, z, px = 0, pz = 0) => {
+        if (!node) return;
+        node.rotation.x += x; node.rotation.y += y; node.rotation.z += z;
+        node.position.x += px; node.position.z += pz;
+        node.userData.archiveMotionOffset = { x, y, z, px, pz };
+      };
+      archiveMotionRigs().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= rigsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          ((name.includes('curd')) && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        const radius = Math.hypot(node.position.x, node.position.z);
+        const approach = active && radius > 0.25 ? Math.min(0.48, radius * 0.12) * walk : 0;
+        put(node, Math.sin(phase + i) * (active ? 0.016 : 0.008), 0, Math.sin(phase * 0.52 + i) * 0.008,
+          radius > 0.25 ? -node.position.x / radius * approach : 0,
+          radius > 0.25 ? -node.position.z / radius * approach : 0);
+      });
+      archiveMotionLegs().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= legsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) || (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        put(node, active ? Math.sin(phase * 2.2 + (i % 2) * Math.PI) * 0.20 * walk : 0, 0, 0);
+      });
+      archiveMotionHeads().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= headsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        put(node, Math.sin(phase * 1.25 + i) * (active ? 0.018 : 0.009), 0, Math.sin(phase * 0.62 + i) * 0.014);
+      });
+      archiveMotionArms().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= armsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        const right = /armr$/.test(name);
+        put(node, Math.sin(phase * (active ? 1.5 : 0.7) + i) * (active ? 0.055 : 0.018), 0, Math.sin(phase * 0.8 + i) * (right && active ? 0.035 : 0.012));
+      });
+    }
+
+    function updateStoryTimeline(time) {
+      clearArchiveMotionOffsets();
+    const scrubber = document.getElementById('story-scrubber');
+    if (Math.abs(parseFloat(scrubber.value) - time) > 0.35) scrubber.value = time;
+
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    document.getElementById('time-display').textContent =
+      `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+    /* --- Step detection --- */
+    let currentStep = 1;
+    if (time >= 68) currentStep = 4;
+    else if (time >= 44) currentStep = 3;
+    else if (time >= 22) currentStep = 2;
+
+    for (let i = 1; i <= 4; i++) {
+      const btn = document.getElementById('step-btn-' + i);
+      if (i === currentStep) btn.classList.add('active');
+      else btn.classList.remove('active');
+    }
+
+    const tagLabels = [
+      'Step 1 · Staking & Topsoil',
+      'Step 2 · Tiered Excavation',
+      'Step 3 · Geotextile & Liner',
+      'Step 4 · Riprap & Bio-Fill'
+    ];
+    document.getElementById('experiment-tag').textContent = tagLabels[currentStep - 1];
+
+    /* --- Auto camera framing when the step changes --- */
+    if (currentStep !== lastCamStep) {
+      lastCamStep = currentStep;
+      setCameraPreset('step' + currentStep, false);
+    }
+
+    /* --- Dialogue --- */
+    const idx = STORY_BEATS.findIndex(b => time >= b.start && time < b.end);
+    if (idx !== -1 && idx !== currentSpeechIdx) {
+      currentSpeechIdx = idx;
+      const beat = STORY_BEATS[idx];
+      const box = document.getElementById('dialogue-container');
+
+      box.classList.remove('fade-in');
+      box.classList.add('fade-out');
+
+      setTimeout(() => {
+        document.getElementById('speaker-avatar').textContent = beat.avatar;
+        document.getElementById('speaker-name').textContent =
+          beat.speaker === 'Badger' ? 'Dr. Barnaby Clodhopper' :
+          beat.speaker === 'Puff' ? 'Professor Whisker Puff' :
+          beat.speaker === 'Pip' ? 'Pip Squeak-a-Link' : 'Alpenhof Team';
+        document.getElementById('speaker-role').textContent = beat.role;
+        document.getElementById('speech-emotion').textContent = beat.emotion;
+        document.getElementById('speech-text').textContent = `"${beat.text}"`;
+
+        if (subtitlesEnabled) {
+          box.classList.remove('fade-out');
+          box.classList.add('fade-in');
+        }
+      }, 130);
+
+      speakText(beat.text, beat.speaker);
+
+      if (/Excavator|Precision/.test(beat.emotion)) playDigSound();
+      if (/Splash|Riprap|Awe/.test(beat.emotion)) playWaterSplash();
+    }
+
+    /* --- Choreography --- */
+    animateStage(time);
+  
+      applyArchivePresenterMotion(time);
+    }
+
+  function animateStage(time) {
+    const pondVisible = pondBasinStage1.visible;
+
+    /* ============ STEP 1 : Surveying & topsoil stripping ============ */
+    if (time < 22) {
+      pondBasinStage1.visible = true;
+      pondBasinStage2.visible = false;
+      pondLinerMesh.visible = false;
+      pondWaterMesh.visible = false;
+      aerationFountain.visible = false;
+      rippleRings.forEach(r => r.visible = false);
+      surveyorStakes.forEach(s => s.visible = true);
+      anchorTrenchStones.forEach(s => s.visible = false);
+      riparianLilies.forEach(l => l.visible = false);
+      reeds.forEach(r => r.visible = false);
+
+      miniDozer.visible = true;
+      const t = (time / 22) * Math.PI * 2;
+      miniDozer.position.set(-2 + Math.cos(t) * 4.6, 0.2, -0.6 + Math.sin(t) * 2.6);
+      miniDozer.rotation.y = -t + Math.PI / 2;
+      dozerBlade.rotation.x = Math.sin(time * 4) * 0.12;
+
+      excavator.visible = false;
+      rollerCompactor.visible = false;
+
+      // Characters facing the camera — faces clearly visible
+      badgerGroup.position.set(4.6, 0.1, 4.4);
+      badgerGroup.rotation.y = 0.32 + Math.sin(time * 0.8) * 0.06;
+      badgerArmR.rotation.x = Math.sin(time * 2.2) * 0.18 - 0.15;
+      badgerArmL.rotation.z = Math.sin(time * 1.6) * 0.12;
+
+      puffGroup.position.set(2.3, 0.1, 5.2);
+      puffGroup.rotation.y = -0.05 + Math.sin(time * 0.7) * 0.07;
+      puffArmR.rotation.x = Math.sin(time * 1.9) * 0.18 - 0.2;
+
+      const bounce = Math.abs(Math.sin(time * 3.2)) * 0.16;
+      pipGroup.position.set(0.7 + Math.sin(time * 1.6) * 0.5, 0.1 + bounce, 5.6);
+      pipGroup.rotation.y = 0.15 + Math.sin(time * 1.4) * 0.2;
+      pipArmR.rotation.z = Math.sin(time * 7) * 0.45;
+      pipArmL.rotation.z = -Math.sin(time * 7) * 0.35;
+    }
+
+    /* ============ STEP 2 : Tiered excavation ============ */
+    else if (time < 44) {
+      pondBasinStage1.visible = false;
+      pondBasinStage2.visible = true;
+      pondLinerMesh.visible = false;
+      pondWaterMesh.visible = false;
+      aerationFountain.visible = false;
+      rippleRings.forEach(r => r.visible = false);
+      surveyorStakes.forEach(s => s.visible = false);
+      anchorTrenchStones.forEach(s => s.visible = false);
+      riparianLilies.forEach(l => l.visible = false);
+      reeds.forEach(r => r.visible = false);
+
+      miniDozer.visible = false;
+      excavator.visible = true;
+      rollerCompactor.visible = false;
+
+      const c = (time - 22) * 1.35;
+      excavatorTurret.rotation.y = Math.sin(c * 0.7) * 0.55 - 0.35;
+      excavatorBoom.rotation.z = 0.62 + Math.sin(c * 1.4) * 0.16;
+      excavatorArm.rotation.z = -1.55 + Math.cos(c * 1.4) * 0.28;
+      excavatorBucket.rotation.z = 0.9 + Math.sin(c * 1.4 + 0.8) * 0.32;
+
+      // Watch the excavator
+      badgerGroup.position.set(-3.2, 0.1, 3.6);
+      badgerGroup.rotation.y = 1.95;
+      badgerArmL.rotation.z = 0.65 + Math.sin(time * 1.5) * 0.1;
+
+      puffGroup.position.set(-1.8, 0.1, 4.4);
+      puffGroup.rotation.y = 1.88;
+      puffArmR.rotation.x = Math.sin(time * 1.7) * 0.15 - 0.2;
+
+      pipGroup.position.set(-4.8, 0.1, 4.6);
+      pipGroup.rotation.y = 1.95;
+      pipArmR.rotation.z = Math.sin(time * 8) * 0.5;
+    }
+
+    /* ============ STEP 3 : Compaction & EPDM liner ============ */
+    else if (time < 68) {
+      pondBasinStage1.visible = false;
+      pondBasinStage2.visible = true;
+      pondLinerMesh.visible = true;
+      pondWaterMesh.visible = false;
+      aerationFountain.visible = false;
+      rippleRings.forEach(r => r.visible = false);
+      surveyorStakes.forEach(s => s.visible = false);
+
+      anchorTrenchStones.forEach((st, i) => { st.visible = (time - 44) > (i * 0.32); });
+      riparianLilies.forEach(l => l.visible = false);
+      reeds.forEach(r => r.visible = false);
+
+      miniDozer.visible = false;
+      excavator.visible = false;
+      rollerCompactor.visible = true;
+
+      const rt = (time - 44) * 0.34;
+      rollerCompactor.position.set(Math.sin(rt) * 7.6, 0.2, Math.cos(rt) * 4.6 - 0.2);
+      rollerCompactor.rotation.y = Math.atan2(
+        Math.cos(rt) * 7.6 - Math.sin(rt) * 7.6,
+        -Math.sin(rt) * 4.6 - Math.cos(rt) * 4.6
+      ) + Math.PI / 2;
+      compactorDrum.rotation.y += 0.22;
+
+      badgerGroup.position.set(4.2, 0.1, 3.6);
+      badgerGroup.rotation.y = 2.55;
+      badgerArmR.rotation.x = Math.sin(time * 2) * 0.2 - 0.2;
+
+      puffGroup.position.set(2.6, 0.1, 4.4);
+      puffGroup.rotation.y = 2.7;
+      puffArmR.rotation.x = Math.sin(time * 1.6) * 0.16 - 0.25;
+
+      pipGroup.position.set(-1.5, 0.1, 4.6);
+      pipGroup.rotation.y = 2.85;
+      pipArmL.rotation.x = Math.sin(time * 6) * 0.45;
+    }
+
+    /* ============ STEP 4 : Riprap, water fill & eco ============ */
+    else {
+      pondBasinStage1.visible = false;
+      pondBasinStage2.visible = true;
+      pondLinerMesh.visible = true;
+      pondWaterMesh.visible = true;
+      surveyorStakes.forEach(s => s.visible = false);
+      anchorTrenchStones.forEach(st => st.visible = true);
+      riparianLilies.forEach(l => l.visible = true);
+      reeds.forEach(r => r.visible = true);
+
+      miniDozer.visible = false;
+      excavator.visible = false;
+      rollerCompactor.visible = false;
+
+      // Rising water level
+      const fill = Math.min(1, (time - 68) / 12);
+      const waterY = -1.55 + fill * 1.42;
+      pondWaterMesh.position.y = waterY + Math.sin(time * 2.4) * 0.018;
+
+      aerationFountain.visible = fill > 0.85;
+      aerationFountain.position.y = waterY + 0.05;
+      rippleRings.forEach(r => { r.visible = fill > 0.85; r.position.y = waterY + 0.02; });
+
+      // Celebration poses — 3/4 view toward camera, pond behind
+      badgerGroup.position.set(3.0, 0.1, 5.0);
+      badgerGroup.rotation.y = 0.62 + Math.sin(time * 1.2) * 0.06;
+      badgerArmR.rotation.set(0.7, 0, 0.75);
+      badgerArmL.rotation.z = Math.sin(time * 2) * 0.15;
+
+      puffGroup.position.set(1.0, 0.1, 5.6);
+      puffGroup.rotation.y = 0.42;
+      puffArmR.rotation.set(0.45, 0, -0.3);
+
+      const jump = Math.abs(Math.sin((time - 68) * 6.2)) * 0.32;
+      pipGroup.position.set(-1.6, 0.1 + jump, 5.4);
+      pipGroup.rotation.y = 0.28;
+      pipArmR.rotation.set(1.25, 0, 0.3);
+      pipArmL.rotation.set(1.0, 0, -0.3);
+
+      if (time >= 87) {
+        document.getElementById('modal-geology').classList.remove('opacity-0', 'pointer-events-none');
+      }
+    }
+  }
+
+  /* ================================================================== */
+  /* EFFECTS (water waves, fountain, ripples, beacon)                    */
+  /* ================================================================== */
+  function updateEffects(dt, time) {
+    const t = time;
+
+    // Water surface waves
+    if (pondWaterMesh && pondWaterMesh.visible && waterBasePos) {
+      const attr = pondWaterMesh.geometry.attributes.position;
+      const arr = attr.array;
+      for (let i = 0; i < attr.count; i++) {
+        const x = waterBasePos[i * 3];
+        const z = waterBasePos[i * 3 + 2];
+        arr[i * 3 + 1] =
+          Math.sin(x * 1.15 + t * 1.7) * 0.042 +
+          Math.cos(z * 1.45 + t * 1.35) * 0.034 +
+          Math.sin((x + z) * 0.8 + t * 2.1) * 0.018;
+      }
+      attr.needsUpdate = true;
+    }
+
+    // Ripple rings expanding
+    if (pondWaterMesh && pondWaterMesh.visible) {
+      rippleRings.forEach((ring, i) => {
+        if (!ring.visible) return;
+        const ph = ((t * 0.55 + ring.userData.phase) % 1);
+        const s = 0.35 + ph * 2.6;
+        ring.scale.set(s, s, s);
+        ring.material.opacity = Math.max(0, (1 - ph)) * 0.42;
+      });
+    }
+
+    // Fountain particle physics
+    if (aerationFountain && aerationFountain.visible && fountainPoints) {
+      const attr = fountainPoints.geometry.attributes.position;
+      const a = attr.array;
+      for (let i = 0; i < fountainVel.length; i++) {
+        const v = fountainVel[i];
+        v.y -= 5.4 * dt;
+        a[i * 3] += v.x * dt;
+        a[i * 3 + 1] += v.y * dt;
+        a[i * 3 + 2] += v.z * dt;
+        if (a[i * 3 + 1] < 0.05) {
+          a[i * 3] = (Math.random() - 0.5) * 0.05;
+          a[i * 3 + 1] = 0.2;
+          a[i * 3 + 2] = (Math.random() - 0.5) * 0.05;
+          v.set((Math.random() - 0.5) * 1.0, 1.6 + Math.random() * 1.0, (Math.random() - 0.5) * 1.0);
+        }
+      }
+      attr.needsUpdate = true;
+    }
+
+    // Excavator beacon pulse
+    if (excavatorBeacon) {
+      const pulse = 0.6 + Math.abs(Math.sin(t * 5)) * 1.6;
+      excavatorBeacon.material.emissiveIntensity = pulse;
+      excavatorBeacon.material.color.setHSL(0.07, 1, 0.45 + Math.abs(Math.sin(t * 5)) * 0.25);
+    }
+
+    // Water glint light drift
+    if (waterGlintLight) {
+      waterGlintLight.position.set(Math.sin(t * 0.5) * 3.2, 1.4, Math.cos(t * 0.42) * 2.6);
+    }
+
+    // Pip tail / Puff tail idle sway
+    if (pipTail) pipTail.rotation.y = Math.sin(t * 3) * 0.3;
+    if (puffTail) puffTail.rotation.y = Math.sin(t * 1.6) * 0.2;
+  }
+
+  /* ================================================================== */
+  /* UI                                                                  */
+  /* ================================================================== */
+  function setupUI() {
+    const playBtn = document.getElementById('btn-play-pause');
+    const playerPanel = document.getElementById('player-panel');
+    const playerToggle = document.getElementById('btn-player-toggle');
+
+    // --- Packed player widget ---
+    playerToggle.addEventListener('click', () => {
+      initAudio();
+      const isHidden = playerPanel.classList.contains('hidden-panel');
+      playerPanel.classList.toggle('hidden-panel');
+      playerToggle.classList.toggle('active', isHidden);
+    });
+
+    playBtn.addEventListener('click', () => {
+      initAudio();
+      isPlaying = !isPlaying;
+      playBtn.textContent = isPlaying ? '⏸' : '▶';
+      playerToggle.textContent = isPlaying ? '⏸' : '▶';
+    });
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      initAudio();
+      storyTime = 0;
+      currentSpeechIdx = -1;
+      isPlaying = true;
+      lastCamStep = -1;
+      playBtn.textContent = '⏸';
+      playerToggle.textContent = '⏸';
+      document.getElementById('modal-geology').classList.add('opacity-0', 'pointer-events-none');
+    });
+
+    document.getElementById('story-scrubber').addEventListener('input', (e) => {
+      initAudio();
+      storyTime = parseFloat(e.target.value);
+      currentSpeechIdx = -1;
+      lastCamStep = -1;
+      updateStoryTimeline(storyTime);
+    });
+
+    // --- Step chips ---
+    const stepTimes = { 1: 0.1, 2: 22.1, 3: 44.1, 4: 68.1 };
+    [1, 2, 3, 4].forEach(n => {
+      document.getElementById('step-btn-' + n).addEventListener('click', () => {
+        initAudio();
+        storyTime = stepTimes[n];
+        currentSpeechIdx = -1;
+        isPlaying = true;
+        playBtn.textContent = '⏸';
+        playerToggle.textContent = '⏸';
+        updateStoryTimeline(storyTime);
+      });
+    });
+
+    // --- Camera buttons ---
+    document.getElementById('btn-cam-pond').addEventListener('click', () => setCameraPreset('pond', false));
+    document.getElementById('btn-cam-equip').addEventListener('click', () => setCameraPreset('equip', false));
+    document.getElementById('btn-cam-wide').addEventListener('click', () => setCameraPreset('wide', false));
+
+    // --- Audio toggle ---
+    const audioBtn = document.getElementById('btn-audio');
+    audioBtn.addEventListener('click', () => {
+      initAudio();
+      audioEnabled = !audioEnabled;
+      audioBtn.textContent = audioEnabled ? '🔊' : '🔇';
+      audioBtn.classList.toggle('active', audioEnabled);
+      if (!audioEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel(); dialogueSpeaking = false;
+    });
+    audioBtn.classList.add('active');
+
+    // --- Subtitle toggle ---
+    const subBtn = document.getElementById('btn-subtitle');
+    subBtn.addEventListener('click', () => {
+      subtitlesEnabled = !subtitlesEnabled;
+      subBtn.classList.toggle('active', subtitlesEnabled);
+      document.body.classList.toggle('subtitles-off', !subtitlesEnabled);
+      const box = document.getElementById('dialogue-container');
+      if (subtitlesEnabled) {
+        box.classList.remove('fade-out');
+        box.classList.add('fade-in');
+      } else {
+        box.classList.remove('fade-in');
+        box.classList.add('fade-out');
+      }
+    });
+
+    // --- Geotechnical modal ---
+    const modal = document.getElementById('modal-geology');
+    document.getElementById('btn-open-geo').addEventListener('click', () => {
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+    });
+    document.getElementById('btn-close-geo').addEventListener('click', () => {
+      modal.classList.add('opacity-0', 'pointer-events-none');
+    });
+    document.getElementById('btn-close-geo-x').addEventListener('click', () => {
+      modal.classList.add('opacity-0', 'pointer-events-none');
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.add('opacity-0', 'pointer-events-none');
+    });
+
+    window.addEventListener('click', () => initAudio(), { once: true });
+  }
+
+  /* ================================================================== */
+  /* RESIZE / LOOP                                                       */
+  /* ================================================================== */
+  function onResize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const aspect = w / h, d = 16;
+    camera.left = -d * aspect;
+    camera.right = d * aspect;
+    camera.top = d;
+    camera.bottom = -d;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+
+    TWEEN.update();
+
+    if (isPlaying) {
+      const syncBeat = STORY_BEATS[currentSpeechIdx];
+      const waitingForLine = dialogueSpeaking && syncBeat && storyTime >= syncBeat.end - 0.24;
+      if (!waitingForLine) {
+        const nextBeat = STORY_BEATS[currentSpeechIdx + 1];
+        const quietGap = nextBeat ? nextBeat.start - storyTime : 0;
+        const tailCatchUp = !dialogueSpeaking && syncBeat && (syncBeat.end - storyTime > 1.8 || quietGap > 1.8) ? 2.0 : 1;
+        storyTime += dt * tailCatchUp;
+      }
+      if (storyTime >= TOTAL_DURATION) {
+        storyTime = TOTAL_DURATION;
+        isPlaying = false;
+        document.getElementById('btn-play-pause').textContent = '▶';
+        document.getElementById('btn-player-toggle').textContent = '▶';
+      }
+      updateStoryTimeline(storyTime);
+    }
+
+    updateEffects(dt, storyTime);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  window.onload = () => {
+    init();
+    // Ensure the intro framing shows the visitors' faces clearly
+    setCameraPreset('intro', true);
+    animate();
+  };
+  </script>
+</body>
+</html>

@@ -1,0 +1,1865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alpenhof Dairy: Artisan Cheese & Curd Fermentation Simulation</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js + OrbitControls + TWEEN.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      background: #020617;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+    }
+    #viewport-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .bubble-font { font-family: 'Fredoka', cursive; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Frosted Glass Panels */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+    }
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      background: rgba(30, 41, 59, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #94a3b8;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+    .icon-btn:hover {
+      background: rgba(251, 191, 36, 0.25);
+      border-color: #fbbf24;
+      color: #fbbf24;
+      transform: translateY(-2px);
+    }
+    .icon-btn.active {
+      background: linear-gradient(135deg, #d97706, #f59e0b);
+      color: #020617;
+      font-weight: 800;
+      border-color: #fde68a;
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.6);
+    }
+
+    /* Dialogue Card */
+    #dialogue-container {
+      opacity: 1;
+      transform: translate(-50%, 0);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: auto;
+    }
+    #dialogue-container.dialogue-hidden {
+      opacity: 0;
+      transform: translate(-50%, 15px);
+      pointer-events: none;
+    }
+    /* Pip cute excitement bubble indicator */
+    .bubble-pulse {
+      animation: pulseAlert 1.2s infinite alternate;
+    }
+    @keyframes pulseAlert {
+      0% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 8px #fbbf24); }
+    }
+  </style>
+</head>
+<body class="text-white"><a id="archive-home-link" href="../../index.html" title="Return to Alpenhof Research HQ archive" aria-label="Return to Alpenhof Research HQ" style="position:fixed;top:12px;left:12px;z-index:1000;padding:8px 12px;border:1px solid rgba(120,190,225,.45);border-radius:10px;background:rgba(5,17,30,.86);backdrop-filter:blur(8px);color:#dff4ff;text-decoration:none;font:600 12px/1.2 system-ui,sans-serif;box-shadow:0 5px 20px #0005">🏔️ Archive</a>
+
+  <!-- 3D Canvas Viewport -->
+  <div id="viewport-container"></div>
+
+  <!-- Top Left: Title Badge & Telemetry Launcher -->
+  <header class="absolute top-4 left-4 z-20 flex items-center gap-2 pointer-events-auto">
+    <button id="btn-info-modal" class="icon-btn text-lg" title="Cheese Chemistry & Fermentation Telemetry">
+      ℹ️
+    </button>
+    <div class="glass-panel px-3.5 py-1.5 rounded-xl flex items-center gap-2.5">
+      <span class="text-xs font-bold text-amber-400">🧀 Alpenhof Artisan Fromagerie</span>
+      <span id="badge-culture-mode" class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold border border-amber-500/40">MESOPHILIC (32°C / pH 4.6)</span>
+    </div>
+  </header>
+
+  <!-- Top Right: Clean Fromagerie Navigation & Presets -->
+  <nav class="absolute top-4 right-4 z-20 flex items-center gap-2 pointer-events-auto">
+    <!-- Camera View Focus Presets -->
+    <button id="btn-cam-hall" class="icon-btn active" title="Fromagerie Hall Overview">
+      🏰
+    </button>
+    <button id="btn-cam-vat" class="icon-btn" title="Cheese Vat & Curd Cutting Harps">
+      🥣
+    </button>
+    <button id="btn-cam-press" class="icon-btn" title="Pneumatic Press & Whey Drainage">
+      ⚙️
+    </button>
+    <button id="btn-cam-brine" class="icon-btn" title="Saturated NaCl Brine Immersion">
+      🌊
+    </button>
+    <button id="btn-cam-cave" class="icon-btn" title="Alpine Spruce Aging Cave (Affinage)">
+      🪵
+    </button>
+    <button id="btn-cam-packaging" class="icon-btn" title="Vacuum Skin-Packaging & Transport">
+      📦
+    </button>
+
+    <div class="w-[1px] h-6 bg-slate-700 mx-1"></div>
+
+    <!-- Culture Starter Mode Toggle -->
+    <button id="btn-mode-meso" class="icon-btn active font-bold text-xs" title="Mesophilic Starter (L. lactis, 32°C - Alpine Mountain Gouda & Cheddar)">
+      MESO
+    </button>
+    <button id="btn-mode-thermo" class="icon-btn font-bold text-xs" title="Thermophilic Starter (L. helveticus, 42°C - Hard Emmental & Alpine Gruyère)">
+      THERM
+    </button>
+
+    <div class="w-[1px] h-6 bg-slate-700 mx-1"></div>
+
+    <!-- Audio / Voice Toggle -->
+    <button id="btn-sfx-toggle" class="icon-btn active" title="Toggle Sound & Speech">
+      🔊
+    </button>
+    <!-- Subtitle Toggle -->
+    <button id="btn-subtitles-toggle" class="icon-btn active" title="Toggle Subtitles">
+      💬
+    </button>
+  </nav>
+
+  <!-- Dialogue Overlay Container -->
+  <aside id="dialogue-container" class="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 max-w-xl w-[92%] glass-panel p-4 rounded-2xl border border-amber-400/40 shadow-2xl flex items-center gap-3.5">
+    <div id="speaker-avatar" class="w-14 h-14 rounded-2xl flex-shrink-0 flex items-center justify-center text-3xl bg-slate-900 border-2 border-amber-400 shadow-lg">
+      🐶
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <span id="speaker-name" class="bubble-font text-sm font-bold text-amber-300">Dr. Barnaby Q. Curds</span>
+          <span id="speaker-role" class="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono border border-amber-500/30">Chief Dairy Biochemist &amp; Affineur</span>
+        </div>
+        <span id="speech-emotion" class="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-amber-300 border border-amber-500/30 font-mono">Starter Inoculation</span>
+      </div>
+      <p id="speech-text" class="text-xs md:text-sm text-slate-100 leading-snug font-medium">
+        "Welcome to the Alpenhof Fromagerie! Our pristine pasteurized milk is warmed to 32°C inside the copper-lined double-jacketed vat before we inoculate active lactic starter cultures."
+      </p>
+    </div>
+  </aside>
+
+  <!-- Bottom-Left Scrubber & Timeline Controls -->
+  <footer class="absolute bottom-4 left-4 z-20 flex items-center gap-2 pointer-events-auto">
+    <div class="glass-panel p-2 rounded-xl flex items-center gap-2 border border-slate-700">
+      <button id="btn-play-pause" class="w-8 h-8 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold flex items-center justify-center transition shadow-md text-xs">
+        ⏸
+      </button>
+      <button id="btn-restart" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center border border-slate-600 transition text-xs" title="Restart Simulation">
+        ↺
+      </button>
+      <span id="time-display" class="font-mono text-amber-300 text-xs w-12 text-center font-bold">00:00</span>
+      <input id="story-scrubber" type="range" min="0" max="112" step="0.1" value="0" class="w-28 sm:w-44 cursor-pointer accent-amber-400">
+
+      <div class="w-[1px] h-5 bg-slate-700 mx-1"></div>
+
+      <!-- Step Fast Jumps (1 to 5) -->
+      <button id="step-btn-1" class="px-2.5 h-7 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 flex items-center gap-1 transition shadow-md" title="Step 1: Fermentation & Inoculation">
+        <span>1</span><span class="hidden sm:inline">Ferment</span>
+      </button>
+      <button id="step-btn-2" class="px-2.5 h-7 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 flex items-center gap-1 hover:bg-slate-700 transition" title="Step 2: Rennet & Harp Slicing">
+        <span>2</span><span class="hidden sm:inline">Coagulate</span>
+      </button>
+      <button id="step-btn-3" class="px-2.5 h-7 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 flex items-center gap-1 hover:bg-slate-700 transition" title="Step 3: Wheying-off & Pneumatic Pressing">
+        <span>3</span><span class="hidden sm:inline">Press</span>
+      </button>
+      <button id="step-btn-4" class="px-2.5 h-7 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 flex items-center gap-1 hover:bg-slate-700 transition" title="Step 4: Brine Immersion & Spruce Affinage">
+        <span>4</span><span class="hidden sm:inline">Affinage</span>
+      </button>
+      <button id="step-btn-5" class="px-2.5 h-7 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 flex items-center gap-1 hover:bg-slate-700 transition" title="Step 5: Thermoforming Vacuum Packing">
+        <span>5</span><span class="hidden sm:inline">Pack</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Telemetry & Educational Science Modal -->
+  <aside id="modal-telemetry" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="glass-panel border border-amber-400/50 rounded-2xl p-6 max-w-lg w-full text-center shadow-2xl relative">
+      <button id="btn-close-telemetry-x" class="absolute top-3 right-3 text-slate-400 hover:text-white text-lg">✕</button>
+
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-600 text-slate-950 flex items-center justify-center text-2xl mx-auto mb-2 shadow-lg">
+        🧀
+      </div>
+      <h2 class="text-base font-bold text-amber-300 mb-1">Alpenhof Cheese Fermentation &amp; Affinage Science</h2>
+      <p class="text-[11px] text-slate-300 mb-3 leading-relaxed">
+        Curd formation is an enzymatic and microbial cascade: lactic acid bacteria ferment lactose into lactic acid, dropping milk pH to 4.6. Chymosin enzymatically cleaves kappa-casein micelle stabilizing hairs, causing calcium paracaseinate precipitation into an elastic matrix that traps cream fat globules while expelling whey.
+      </p>
+
+      <div class="bg-slate-900/95 p-3.5 rounded-xl border border-amber-500/30 text-left text-xs mb-4 space-y-2 font-mono">
+        <div class="flex justify-between text-slate-200">
+          <span>🧪 Active Starter Cultures:</span>
+          <span id="hud-culture-type" class="text-amber-400 font-bold">Lactococcus lactis ssp. cremoris</span>
+        </div>
+        <div class="flex justify-between text-slate-200">
+          <span>📉 Isoelectric pH Drop:</span>
+          <span id="hud-ph-level" class="text-rose-400 font-bold">pH 6.65 → 4.62 (Casein Curdling)</span>
+        </div>
+        <div class="flex justify-between text-slate-200">
+          <span>🔪 Cutting Harp Wire Matrix:</span>
+          <span class="text-sky-300 font-bold">0.8 mm High-Tensile 316L Wire Spacing</span>
+        </div>
+        <div class="flex justify-between text-slate-200">
+          <span>⚙️ Pneumatic Press Pressure:</span>
+          <span class="text-yellow-400 font-bold">4.2 Bar (Expelling 85% Free Moisture)</span>
+        </div>
+        <div class="flex justify-between text-slate-200">
+          <span>🌊 Affinage Saturated Brine:</span>
+          <span class="text-cyan-300 font-bold">20.5% NaCl at 11°C (Rind Formation)</span>
+        </div>
+        <div class="flex justify-between text-slate-200">
+          <span>🪵 Alpine Spruce Ripening:</span>
+          <span class="text-emerald-400 font-bold">12°C / 85% RH (Brevibacterium linens)</span>
+        </div>
+        <div class="flex justify-between text-slate-200">
+          <span>📦 Vacuum Thermoforming:</span>
+          <span class="text-indigo-300 font-bold">N2 Flush Skin-Pack in Pine Wooden Crates</span>
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <button id="btn-close-telemetry" class="flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-bold py-2 rounded-xl transition text-xs shadow-md">
+          Return to Fromagerie
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    /* =========================================================================
+       ALPENHOF DAIRY: ARTISAN CHEESE & FERMENTATION SIMULATION
+       Interactive Three.js 3D Demonstration with Dr. Curds, Puff & Pip
+       ========================================================================= */
+
+    let scene, camera, renderer, controls;
+
+    // Characters
+    let curdsGroup, curdsHead, curdsArmR, curdsArmL, curdsLegL, curdsLegR, curdsRefractometer, curdsCurdKnife;
+    let puffGroup, puffHead, puffTail, puffArmR, puffArmL, puffLegL, puffLegR, puffTablet;
+    let pipGroup, pipHead, pipTail, pipArmR, pipArmL, pipLegL, pipLegR, pipWoodenSpoon, pipEarL, pipEarR;
+
+    // Fromagerie Hall Architecture & Machinery
+    let floorMesh, floorGrid;
+    let cheeseVat, curdMilkSurface, cuttingHarpsGroup, harpRotor;
+    let drainingTable, wheyCollectionTank, curdGrains = [];
+    let pneumaticPress, pressRam, cheeseMolds = [];
+    let brineBath, brineWaterSurface, submergedWheels = [];
+    let spruceAgingRacks, agingWheels = [];
+    let packagingLine, vacuumSkinMachine, woodenCrates = [], finishedCheeses = [];
+    let evDeliveryTruck;
+
+    // Particles (Steam, Whey Droplets, Floating Bubbles)
+    let steamParticles = [];
+    let wheyBubbles = [];
+
+    // Process Configuration & State
+    let starterType = 'MESO'; // 'MESO' (32°C) or 'THERMO' (42°C)
+    let subtitlesEnabled = true;
+
+    // Story Timeline Engine (112s Total Duration)
+    let storyTime = 0;
+    let isPlaying = true;
+    const TOTAL_DURATION = 112;
+    let audioEnabled = true;
+    let synth = null;
+    let currentSpeechIdx = -1;
+    let isSpeaking = false;
+
+    // Detailed Educational Dialogue Beats with Maximum Character Visibility Cues
+    const STORY_BEATS = [
+      {
+        start: 0,
+        end: 10.0,
+        speaker: 'Curds',
+        avatar: '🐶',
+        role: 'Chief Dairy Food Biochemist & Affineur',
+        emotion: 'Mesophilic Inoculation',
+        camera: { pos: { x: -14, y: 11, z: 12 }, target: { x: -7.0, y: 3.2, z: -2.0 } },
+        text: "Welcome to the Alpenhof Fromagerie! Our fresh pasteurized milk is tempered to 32°C inside our copper-jacketed vat before we add pure freeze-dried starter cultures: Lactococcus lactis and cremoris."
+      },
+      {
+        start: 10.0,
+        end: 20.0,
+        speaker: 'Curds',
+        avatar: '🐶',
+        role: 'Chief Dairy Food Biochemist & Affineur',
+        emotion: 'Acidification pH 4.6',
+        camera: { pos: { x: -10, y: 7.2, z: 6.5 }, target: { x: -6.5, y: 2.4, z: -2.5 } },
+        text: "These bacteria consume lactose sugar through glycolysis, producing natural lactic acid. Watch my digital probe: as pH drops from 6.7 down to 4.6, the negative charges shielding casein micelles collapse, preparing them to bond!"
+      },
+      {
+        start: 20.0,
+        end: 28.5,
+        speaker: 'Pip',
+        avatar: '🌺',
+        role: '3yo Junior Tasting Scout',
+        emotion: 'Warm Milk Whiff!',
+        camera: { pos: { x: -2, y: 4.2, z: 8.5 }, target: { x: 0.6, y: 1.5, z: 3.4 } },
+        text: "Sniff sniff! *Gasp!* Dr. Barnaby, it smells warm and tangy like fresh buttery yogurt! Look, my wooden spoon has tiny little yellow drops of butterfat floating around!"
+      },
+      {
+        start: 28.5,
+        end: 39.5,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Scientific Lead & Astrobiologist',
+        emotion: 'Rennet Chymosin Cleavage',
+        camera: { pos: { x: -4, y: 8.5, z: 6.0 }, target: { x: -6.5, y: 2.8, z: -2.5 } },
+        text: "Now comes the magic of coagulation! We introduce vegetarian chymosin enzyme. It surgically cleaves the stabilizing hairy peptide coat of kappa-casein, causing calcium paracaseinate to cross-link into a solid custard gel!"
+      },
+      {
+        start: 39.5,
+        end: 50.0,
+        speaker: 'Curds',
+        avatar: '🐶',
+        role: 'Chief Dairy Food Biochemist & Affineur',
+        emotion: 'Harp Slicing & Syneresis',
+        camera: { pos: { x: -8, y: 6.5, z: 3.0 }, target: { x: -6.5, y: 2.2, z: -2.5 } },
+        text: "Once the curd exhibits a clean culinary break, our dual mechanical wire harps rotate. Slicing the gel into pea-sized curd cubes initiates syneresis: contracting the protein network to expel emerald liquid whey!"
+      },
+      {
+        start: 50.0,
+        end: 58.5,
+        speaker: 'Pip',
+        avatar: '🌺',
+        role: '3yo Junior Tasting Scout',
+        emotion: 'Curd Bounce Delight',
+        camera: { pos: { x: 2.0, y: 4.8, z: 7.8 }, target: { x: 0.6, y: 1.5, z: 3.4 } },
+        text: "Squeak squeak! Look look look! The big jelly cracked into thousands of squishy white cheese pillows! Can I pop the whey bubbles with my spoon?!"
+      },
+      {
+        start: 58.5,
+        end: 69.0,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Scientific Lead & Astrobiologist',
+        emotion: 'Wheying-Off & Pneumatic Press',
+        camera: { pos: { x: 2.5, y: 7.5, z: 5.5 }, target: { x: 0.5, y: 2.6, z: -2.5 } },
+        text: "The curds pump onto our perforated stainless draining table. Liquid whey drains away for protein recovery, while warm elastic curds are scooped into micro-perforated molds and pressed under 4.2 bars of pneumatic pressure!"
+      },
+      {
+        start: 69.0,
+        end: 79.5,
+        speaker: 'Curds',
+        avatar: '🐶',
+        role: 'Chief Dairy Food Biochemist & Affineur',
+        emotion: '20% NaCl Saturated Brine',
+        camera: { pos: { x: 6.5, y: 6.5, z: 4.5 }, target: { x: 6.0, y: 2.0, z: -2.2 } },
+        text: "Step 4: Brine Immersion! The solid pressed cheese wheels float in a 20% saturated alpine salt bath for 48 hours. Osmotic pressure draws out excess surface moisture, creating a firm protective rind while seasoning the interior."
+      },
+      {
+        start: 79.5,
+        end: 90.0,
+        speaker: 'Curds',
+        avatar: '🐶',
+        role: 'Chief Dairy Food Biochemist & Affineur',
+        emotion: 'Spruce Affinage Ripening',
+        camera: { pos: { x: 9.0, y: 7.5, z: 7.0 }, target: { x: 9.5, y: 3.2, z: 1.5 } },
+        text: "Welcome to our alpine spruce aging cellar at 12°C and 85% humidity. Here, native Brevibacterium linens and wild yeasts break down proteins and butterfats into rich glutamate crystals, developing our signature nutty Alpenhof bouquet."
+      },
+      {
+        start: 90.0,
+        end: 100.5,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Scientific Lead & Astrobiologist',
+        emotion: 'Vacuum Skin Packaging',
+        camera: { pos: { x: 12.0, y: 7.5, z: 9.5 }, target: { x: 8.5, y: 2.4, z: 6.8 } },
+        text: "Finally, ripe wheels are portioned and sealed in our multi-layer vacuum skin-packager with nitrogen flush. Each wedge is hand-nested into sustainably stamped pine crates, preserving live artisanal aromatics without preservatives!"
+      },
+      {
+        start: 100.5,
+        end: 112.0,
+        speaker: 'All',
+        avatar: '🧀',
+        role: 'Alpenhof Dairy Team',
+        emotion: 'Artisan Heritage Certified',
+        camera: { pos: { x: 15.0, y: 13.0, z: 16.0 }, target: { x: 0, y: 2.6, z: 1.5 } },
+        text: "From farm milk to fermented gold! Alpenhof Artisan Cheese is aged to perfection, vacuum-sealed for mountain freshness, and departing in our chilled electric express van!"
+      }
+    ];
+
+    /* --- Sound Synthesizer & Pip Childish Squeak SFX --- */
+    function initAudio() {
+      try {
+        if (!synth) {
+          synth = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      } catch (e) {}
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.04) {
+      if (!audioEnabled || !synth) return;
+      try {
+        if (synth.state === 'suspended') synth.resume();
+        const osc = synth.createOscillator();
+        const gain = synth.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, synth.currentTime);
+        gain.gain.setValueAtTime(gainVal, synth.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(synth.destination);
+        osc.start();
+        osc.stop(synth.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playPipSqueakSFX() {
+      if (!audioEnabled || !synth) return;
+      try {
+        if (synth.state === 'suspended') synth.resume();
+        const osc1 = synth.createOscillator();
+        const gain1 = synth.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(1600, synth.currentTime);
+        osc1.frequency.exponentialRampToValueAtTime(2900, synth.currentTime + 0.09);
+        gain1.gain.setValueAtTime(0.065, synth.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + 0.11);
+        osc1.connect(gain1);
+        gain1.connect(synth.destination);
+        osc1.start();
+        osc1.stop(synth.currentTime + 0.11);
+
+        setTimeout(() => {
+          const osc2 = synth.createOscillator();
+          const gain2 = synth.createGain();
+          osc2.type = 'triangle';
+          osc2.frequency.setValueAtTime(2400, synth.currentTime);
+          osc2.frequency.exponentialRampToValueAtTime(3400, synth.currentTime + 0.08);
+          gain2.gain.setValueAtTime(0.05, synth.currentTime);
+          gain2.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + 0.1);
+          osc2.connect(gain2);
+          gain2.connect(synth.destination);
+          osc2.start();
+          osc2.stop(synth.currentTime + 0.1);
+        }, 90);
+      } catch (e) {}
+    }
+
+    function playHarpSlicingSFX() {
+      playTone(320, 'sine', 0.25, 0.03);
+      setTimeout(() => playTone(540, 'triangle', 0.2, 0.025), 60);
+    }
+
+    function playPressPneumaticSFX() {
+      playTone(140, 'sawtooth', 0.35, 0.03);
+      setTimeout(() => playTone(90, 'sine', 0.45, 0.035), 80);
+    }
+
+    let availableVoices = [];
+    function loadVoices() {
+      if ('speechSynthesis' in window) {
+        availableVoices = window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => {
+          availableVoices = window.speechSynthesis.getVoices();
+        };
+      }
+    }
+    loadVoices();
+
+    let dialogueSpeaking = false;
+    function speakText(text, speaker) {
+      dialogueSpeaking = false;
+      if (!audioEnabled || !('speechSynthesis' in window)) return;
+      
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      dialogueSpeaking = true;
+      utterance.onstart = () => { dialogueSpeaking = true; };
+      utterance.onend = utterance.onerror = () => { dialogueSpeaking = false; };
+
+      if (speaker === 'Pip') {
+        utterance.pitch = 1.48;
+        utterance.rate = 1.15;
+        const childVoice = availableVoices.find(v => v.name.includes('Junior') || v.name.includes('Fred') || v.name.includes('Child') || v.lang.startsWith('en'));
+        if (childVoice) utterance.voice = childVoice;
+        playPipSqueakSFX();
+      } else if (speaker === 'Puff') {
+        utterance.pitch = 1.18;
+        utterance.rate = 0.95;
+        const femaleVoice = availableVoices.find(v => (v.name.includes('Samantha') || v.name.includes('Victoria') || v.name.includes('Zira') || v.name.includes('Female')) && v.lang.startsWith('en'));
+        if (femaleVoice) utterance.voice = femaleVoice;
+        playTone(520, 'sine', 0.18, 0.03);
+      } else {
+        // Dr. Barnaby Q. Curds (Warm, rich Alpine Bernese Mountain Dog tone)
+        utterance.pitch = 0.88;
+        utterance.rate = 0.96;
+        const deepVoice = availableVoices.find(v => (v.name.includes('Daniel') || v.name.includes('Oliver') || v.name.includes('George') || v.name.includes('Male')) && v.lang.startsWith('en'));
+        if (deepVoice) utterance.voice = deepVoice;
+        playTone(260, 'sine', 0.22, 0.04);
+      }
+
+      utterance.onstart = () => { isSpeaking = true; dialogueSpeaking = true; };
+      utterance.onend = () => { isSpeaking = false; dialogueSpeaking = false; };
+      utterance.onerror = () => { isSpeaking = false; dialogueSpeaking = false; };
+      const lineMood = String(STORY_BEATS[currentSpeechIdx]?.emotion || '');
+      if (/discover|curious|delight|excite|wonder/i.test(lineMood)) { utterance.pitch = Math.min(1.55, utterance.pitch + 0.035); utterance.rate = Math.min(1.12, utterance.rate + 0.025); }
+      else if (/focus|careful|technical|serious|reflect/i.test(lineMood)) { utterance.rate = Math.max(0.90, utterance.rate - 0.025); }
+      window.speechSynthesis.speak(utterance);
+    }
+
+    /* --- Three.js Scene Setup --- */
+    function init() {
+      const container = document.getElementById('viewport-container');
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x030712);
+      scene.fog = new THREE.FogExp2(0x030712, 0.007);
+
+      const aspect = w / h;
+      const d = 16;
+      camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 0.1, 400);
+      camera.position.set(16, 15, 18);
+      camera.lookAt(0, 2.6, 0);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.3;
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2.05;
+      controls.target.set(0, 2.6, 0);
+
+      setupLighting();
+      buildFromagerieArchitecture();
+      buildCheeseVatAndCuttingHarps();
+      buildWheyingOffAndPneumaticPress();
+      buildBrineImmersionBath();
+      buildAlpineSpruceAgingRacks();
+      buildVacuumPackagingLine();
+      buildColdDeliveryTruck();
+
+      // Characters
+      buildFullDrBarnabyCurds();
+      buildFullProfessorWhiskerPuff();
+      buildFullPipSqueak();
+
+      buildParticleEffects();
+      setupUIEvents();
+
+      window.addEventListener('resize', onResize);
+    }
+
+    /* --- Professional High-Contrast Studio Lighting --- */
+    function setupLighting() {
+      const hemiLight = new THREE.HemisphereLight(0xfef3c7, 0x0f172a, 1.15);
+      scene.add(hemiLight);
+
+      const dirLight = new THREE.DirectionalLight(0xfffbeb, 1.45);
+      dirLight.position.set(22, 34, 22);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 2048;
+      dirLight.shadow.mapSize.height = 2048;
+      dirLight.shadow.camera.near = 0.5;
+      dirLight.shadow.camera.far = 100;
+      const dL = 28;
+      dirLight.shadow.camera.left = -dL;
+      dirLight.shadow.camera.right = dL;
+      dirLight.shadow.camera.top = dL;
+      dirLight.shadow.camera.bottom = -dL;
+      dirLight.shadow.bias = -0.0003;
+      scene.add(dirLight);
+
+      // Warm Golden Ambient Lamp over Aging Cellar
+      const cellarGlow = new THREE.PointLight(0xf59e0b, 1.7, 10);
+      cellarGlow.position.set(9.5, 4.0, 1.5);
+      scene.add(cellarGlow);
+
+      // Fresh Vat Steam Light
+      const vatLight = new THREE.PointLight(0x38bdf8, 1.4, 8);
+      vatLight.position.set(-6.5, 3.8, -2.5);
+      scene.add(vatLight);
+    }
+
+    /* --- Fromagerie Hall Floor, Wall & Drainage Architecture --- */
+    function buildFromagerieArchitecture() {
+      // 1. Seamless Anti-Microbial Terrazzo Floor
+      const floorGeo = new THREE.BoxGeometry(44, 1.0, 44);
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        roughness: 0.32,
+        metalness: 0.28
+      });
+      floorMesh = new THREE.Mesh(floorGeo, floorMat);
+      floorMesh.position.y = -0.5;
+      floorMesh.receiveShadow = true;
+      scene.add(floorMesh);
+
+      // 2. High-Tech Cheese Hall Tile Grid
+      floorGrid = new THREE.GridHelper(44, 44, 0xf59e0b, 0x1e293b);
+      floorGrid.position.y = 0.006;
+      scene.add(floorGrid);
+
+      // 3. Stainless CIP Drainage Gullies
+      const drainMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.85, roughness: 0.25 });
+      const drainVat = new THREE.Mesh(new THREE.BoxGeometry(36, 0.05, 0.4), drainMat);
+      drainVat.position.set(0, 0.015, -0.6);
+      scene.add(drainVat);
+
+      const drainPress = new THREE.Mesh(new THREE.BoxGeometry(36, 0.05, 0.4), drainMat);
+      drainPress.position.set(0, 0.015, 6.4);
+      scene.add(drainPress);
+
+      // 4. Perimeter Cleanroom Walls
+      const wallMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.6, metalness: 0.2 });
+      const backWall = new THREE.Mesh(new THREE.BoxGeometry(44, 12, 1), wallMat);
+      backWall.position.set(0, 5.5, -12);
+      backWall.receiveShadow = true;
+      scene.add(backWall);
+
+      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 12, 44), wallMat);
+      leftWall.position.set(-18, 5.5, 0);
+      leftWall.receiveShadow = true;
+      scene.add(leftWall);
+
+      // 5. Overhead Stainless CIP Pipes
+      const pipeMatSteam = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.85, roughness: 0.2 });
+      const pipeMatWhey = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.85, roughness: 0.2 });
+      const pipeMatMilk = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.9, roughness: 0.1 });
+
+      const overheadSteam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 42, 16), pipeMatSteam);
+      overheadSteam.rotation.z = Math.PI / 2;
+      overheadSteam.position.set(0, 8.5, -4.5);
+      scene.add(overheadSteam);
+
+      const overheadWhey = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 42, 16), pipeMatWhey);
+      overheadWhey.rotation.z = Math.PI / 2;
+      overheadWhey.position.set(0, 8.8, -4.8);
+      scene.add(overheadWhey);
+
+      const overheadMilk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 42, 16), pipeMatMilk);
+      overheadMilk.rotation.z = Math.PI / 2;
+      overheadMilk.position.set(0, 9.1, -5.1);
+      scene.add(overheadMilk);
+
+      // 6. Character Interactive Demonstration Stage
+      const demoStage = new THREE.Mesh(
+        new THREE.BoxGeometry(11, 0.18, 7.5),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.45, metalness: 0.15 })
+      );
+      demoStage.position.set(0.6, 0.09, 2.8);
+      demoStage.receiveShadow = true;
+      scene.add(demoStage);
+    }
+
+    /* --- Step 1 & 2: Double-Jacketed Copper Cheese Vat & Mechanical Harps --- */
+    function buildCheeseVatAndCuttingHarps() {
+      cheeseVat = new THREE.Group();
+      cheeseVat.position.set(-6.5, 0, -2.5);
+
+      const copperMat = new THREE.MeshStandardMaterial({ color: 0xb45309, metalness: 0.85, roughness: 0.25 });
+      const ssMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.15 });
+      const curdMilkMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.5, metalness: 0.1 });
+
+      // Circular Copper-Lined Heated Vat Base
+      const vatOuter = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.1, 2.2, 32), copperMat);
+      vatOuter.position.y = 1.3;
+      vatOuter.castShadow = true;
+      cheeseVat.add(vatOuter);
+
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(2.3, 0.12, 12, 32), ssMat);
+      rim.rotation.x = Math.PI / 2;
+      rim.position.y = 2.4;
+      cheeseVat.add(rim);
+
+      // Warm Curd Milk / Coagulum Surface
+      curdMilkSurface = new THREE.Mesh(new THREE.CircleGeometry(2.18, 32), curdMilkMat);
+      curdMilkSurface.rotation.x = -Math.PI / 2;
+      curdMilkSurface.position.y = 2.25;
+      cheeseVat.add(curdMilkSurface);
+
+      // Overhead Mechanical Cutting Harp Rig
+      cuttingHarpsGroup = new THREE.Group();
+      cuttingHarpsGroup.position.set(0, 3.4, 0);
+
+      const harpGantry = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.25, 0.4), ssMat);
+      cuttingHarpsGroup.add(harpGantry);
+
+      const centerMotor = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.6, 16), ssMat);
+      centerMotor.position.y = 0.4;
+      cuttingHarpsGroup.add(centerMotor);
+
+      harpRotor = new THREE.Group();
+      // Dual Counter-Rotating Stainless Harps with Vertical Wires
+      [-1.2, 1.2].forEach(hx => {
+        const harpFrame = new THREE.Group();
+        harpFrame.position.x = hx;
+
+        const verticalShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.3, 8), ssMat);
+        verticalShaft.position.y = -0.65;
+        harpFrame.add(verticalShaft);
+
+        const frameOuter = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 0.06), new THREE.MeshStandardMaterial({ color: 0x94a3b8, wireframe: true }));
+        frameOuter.position.y = -1.2;
+        harpFrame.add(frameOuter);
+
+        // 12 Fine Cutting Wires
+        for (let w = -0.6; w <= 0.6; w += 0.12) {
+          const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 1.18, 4), ssMat);
+          wire.position.set(w, -1.2, 0);
+          harpFrame.add(wire);
+        }
+        harpRotor.add(harpFrame);
+      });
+      cuttingHarpsGroup.add(harpRotor);
+      cheeseVat.add(cuttingHarpsGroup);
+
+      scene.add(cheeseVat);
+    }
+
+    /* --- Step 3: Draining Table, Syneresis Separation & Pneumatic Cheese Press --- */
+    function buildWheyingOffAndPneumaticPress() {
+      const ssMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.85, roughness: 0.2 });
+      const pressMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, metalness: 0.6, roughness: 0.3 });
+      const cheeseCurdMat = new THREE.MeshStandardMaterial({ color: 0xfef9c3, roughness: 0.6 });
+
+      // 1. Curd Draining Table
+      drainingTable = new THREE.Group();
+      drainingTable.position.set(-1.8, 0, -2.5);
+
+      const tableTop = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.4, 2.0), ssMat);
+      tableTop.position.y = 1.4;
+      tableTop.castShadow = true;
+      drainingTable.add(tableTop);
+
+      // Micro-Perforated Curd Screen
+      const screen = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.05, 1.8), new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.4 }));
+      screen.position.y = 1.62;
+      drainingTable.add(screen);
+
+      // Curd Grains Granulation
+      for (let g = 0; g < 40; g++) {
+        const grain = new THREE.Mesh(new THREE.DodecahedronGeometry(0.08, 0), cheeseCurdMat);
+        grain.position.set((Math.random() - 0.5) * 3.0, 1.7, (Math.random() - 0.5) * 1.4);
+        drainingTable.add(grain);
+        curdGrains.push(grain);
+      }
+
+      // Whey Recovery Sump under Table
+      wheyCollectionTank = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.8, 16), ssMat);
+      wheyCollectionTank.position.set(0, 0.5, 0);
+      drainingTable.add(wheyCollectionTank);
+
+      scene.add(drainingTable);
+
+      // 2. Heavy Pneumatic Cheese Press Station
+      pneumaticPress = new THREE.Group();
+      pneumaticPress.position.set(1.8, 0, -2.5);
+
+      const pressBase = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.3, 2.0), ssMat);
+      pressBase.position.y = 0.9;
+      pneumaticPress.add(pressBase);
+
+      const columnL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.6, 12), ssMat);
+      columnL.position.set(-1.0, 2.2, 0);
+      pneumaticPress.add(columnL);
+
+      const columnR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.6, 12), ssMat);
+      columnR.position.set(1.0, 2.2, 0);
+      pneumaticPress.add(columnR);
+
+      const topCrossbar = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.3, 0.5), pressMat);
+      topCrossbar.position.set(0, 3.4, 0);
+      pneumaticPress.add(topCrossbar);
+
+      // Pneumatic Cylinder & Moving Ram Head
+      const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.8, 16), pressMat);
+      cylinder.position.set(0, 2.9, 0);
+      pneumaticPress.add(cylinder);
+
+      pressRam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.15, 20), ssMat);
+      pressRam.position.set(0, 2.1, 0);
+      pneumaticPress.add(pressRam);
+
+      // Perforated Circular Cheese Molds under Press
+      for (let m = 0; m < 2; m++) {
+        const mold = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.45, 24), ssMat);
+        mold.position.set((m === 0 ? -0.55 : 0.55), 1.25, 0);
+        pneumaticPress.add(mold);
+        cheeseMolds.push(mold);
+      }
+
+      scene.add(pneumaticPress);
+    }
+
+    /* --- Step 4: Saturated NaCl Brine Immersion Tank --- */
+    function buildBrineImmersionBath() {
+      brineBath = new THREE.Group();
+      brineBath.position.set(5.8, 0, -2.5);
+
+      const tankMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.5, roughness: 0.3 });
+      const waterMat = new THREE.MeshPhysicalMaterial({
+        color: 0x38bdf8,
+        transmission: 0.88,
+        opacity: 0.5,
+        transparent: true,
+        roughness: 0.15,
+        ior: 1.34
+      });
+      const saltedCheeseMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.4 });
+
+      // Deep Insulated Brine Tank
+      const outerTank = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.8, 2.2), tankMat);
+      outerTank.position.y = 0.9;
+      outerTank.castShadow = true;
+      brineBath.add(outerTank);
+
+      // Saturated Brine Water Surface
+      brineWaterSurface = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.05, 1.9), waterMat);
+      brineWaterSurface.position.y = 1.6;
+      brineBath.add(brineWaterSurface);
+
+      // Floating Wheels of Salting Cheese
+      for (let f = 0; f < 3; f++) {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.28, 20), saltedCheeseMat);
+        wheel.position.set(-0.9 + f * 0.9, 1.52, 0);
+        brineBath.add(wheel);
+        submergedWheels.push(wheel);
+      }
+
+      scene.add(brineBath);
+    }
+
+    /* --- Step 4 (Cont.): Alpine Spruce Aging Cave (Affinage Cellar) --- */
+    function buildAlpineSpruceAgingRacks() {
+      spruceAgingRacks = new THREE.Group();
+      spruceAgingRacks.position.set(9.5, 0, 1.5);
+
+      const spruceWoodMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.85 });
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.3 });
+      const goldenRindMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.55 });
+
+      // Steel Upright Posts
+      [-1.8, 1.8].forEach(px => {
+        [-0.8, 0.8].forEach(pz => {
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 5.0, 8), frameMat);
+          post.position.set(px, 2.5, pz);
+          spruceAgingRacks.add(post);
+        });
+      });
+
+      // 4 Tiers of Native Mountain Spruce Planks
+      for (let tier = 0; tier < 4; tier++) {
+        const plank = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.08, 1.8), spruceWoodMat);
+        plank.position.y = 1.0 + tier * 1.1;
+        plank.castShadow = true;
+        spruceAgingRacks.add(plank);
+
+        // Wheels of Aged Alpenhof Gold Cheese
+        for (let w = 0; w < 4; w++) {
+          const agedWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.26, 20), goldenRindMat);
+          agedWheel.position.set(-1.35 + w * 0.9, plank.position.y + 0.17, 0);
+          agedWheel.castShadow = true;
+          spruceAgingRacks.add(agedWheel);
+          agingWheels.push(agedWheel);
+        }
+      }
+
+      scene.add(spruceAgingRacks);
+    }
+
+    /* --- Step 5: Automated Vacuum Skin-Packaging Line --- */
+    function buildVacuumPackagingLine() {
+      packagingLine = new THREE.Group();
+      packagingLine.position.set(7.5, 0, 6.8);
+
+      const ssMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.15 });
+      const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x06b6d4, transmission: 0.85, transparent: true, opacity: 0.35 });
+      const cheeseWedgeMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.4 });
+      const crateMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.9 });
+
+      // Vacuum Chamber Hood
+      vacuumSkinMachine = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.8, 2.2), glassMat);
+      vacuumSkinMachine.position.y = 2.0;
+      packagingLine.add(vacuumSkinMachine);
+
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.25, 2.3), ssMat);
+      frame.position.y = 3.4;
+      packagingLine.add(frame);
+
+      // Conveyor Section
+      const conveyor = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.25, 6.8), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 }));
+      conveyor.position.set(0, 0.85, 2.2);
+      packagingLine.add(conveyor);
+
+      // Vacuum-Sealed Cheese Wedges along Conveyor
+      for (let c = 0; c < 6; c++) {
+        const wedge = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.25, 3), cheeseWedgeMat);
+        wedge.rotation.x = Math.PI / 2;
+        wedge.position.set(0, 1.05, 0.2 + c * 0.9);
+        packagingLine.add(wedge);
+        finishedCheeses.push(wedge);
+      }
+
+      // Wooden Pine Shipping Crates
+      for (let cr = 0; cr < 3; cr++) {
+        const crate = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.55, 0.9), crateMat);
+        crate.position.set(1.4, 0.3 + cr * 0.58, 2.8);
+        crate.castShadow = true;
+        packagingLine.add(crate);
+        woodenCrates.push(crate);
+      }
+
+      scene.add(packagingLine);
+    }
+
+    /* --- Electric Refrigerated Van --- */
+    function buildColdDeliveryTruck() {
+      evDeliveryTruck = new THREE.Group();
+      evDeliveryTruck.position.set(12.2, 0, 8.5);
+
+      const vanMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
+      const cabMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 });
+      const tireMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 });
+
+      const cargo = new THREE.Mesh(new THREE.BoxGeometry(3.0, 2.6, 4.4), vanMat);
+      cargo.position.y = 1.9;
+      cargo.castShadow = true;
+      evDeliveryTruck.add(cargo);
+
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.0, 2.2), cabMat);
+      cab.position.set(0, 1.5, 3.2);
+      evDeliveryTruck.add(cab);
+
+      // Wheels
+      const wheels = [
+        [-1.5, 0.5, 2.2], [1.5, 0.5, 2.2],
+        [-1.5, 0.5, -1.5], [1.5, 0.5, -1.5]
+      ];
+      wheels.forEach(w => {
+        const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16), tireMat);
+        tire.rotation.z = Math.PI / 2;
+        tire.position.set(w[0], w[1], w[2]);
+        evDeliveryTruck.add(tire);
+      });
+
+      scene.add(evDeliveryTruck);
+    }
+
+    /* =========================================================================
+       CHARACTER 1: DR. BARNABY Q. CURDS (ALPINE BERNESE MOUNTAIN DOG BIOCHEMIST)
+       ========================================================================= */
+    function buildFullDrBarnabyCurds() {
+      curdsGroup = new THREE.Group();
+      curdsGroup.name = "Dr. Barnaby Q. Curds";
+
+      const coatWhite = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.45 });
+      const bernerBlack = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.8 });
+      const bernerRust = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.75 });
+      const bernerWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+      const pantsMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
+      const bootMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4 });
+      const nitrileBlue = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.25 });
+      const bouffantMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+
+      // Torso & Sanitary Lab Coat
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.5, 1.25, 16), coatWhite);
+      torso.position.y = 1.72;
+      torso.castShadow = true;
+      curdsGroup.add(torso);
+
+      const lapel = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.85, 0.1), coatWhite);
+      lapel.position.set(0, 1.85, 0.46);
+      curdsGroup.add(lapel);
+
+      const qaBadge = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.28, 0.05), new THREE.MeshStandardMaterial({ color: 0xd97706 }));
+      qaBadge.position.set(-0.28, 2.05, 0.52);
+      curdsGroup.add(qaBadge);
+
+      // Head & Bernese Markings
+      curdsHead = new THREE.Group();
+      curdsHead.position.set(0, 2.58, 0.05);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.58, 18, 18), bernerBlack);
+      head.castShadow = true;
+      curdsHead.add(head);
+
+      const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.28, 14, 14), bernerWhite);
+      muzzle.scale.set(1.1, 0.85, 1.1);
+      muzzle.position.set(0, -0.1, 0.48);
+      curdsHead.add(muzzle);
+
+      [-0.24, 0.24].forEach(cx => {
+        const rustDot = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), bernerRust);
+        rustDot.position.set(cx, 0.22, 0.46);
+        curdsHead.add(rustDot);
+      });
+
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), new THREE.MeshStandardMaterial({ color: 0x09090b }));
+      nose.position.set(0, -0.06, 0.72);
+      curdsHead.add(nose);
+
+      // Bernese Floppy Ears
+      [-0.48, 0.48].forEach((ex, idx) => {
+        const ear = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.42, 0.1), bernerBlack);
+        ear.position.set(ex, 0.1, 0.05);
+        ear.rotation.z = idx === 0 ? 0.35 : -0.35;
+        curdsHead.add(ear);
+      });
+
+      // Bouffant Sanitary Cap
+      const bouffant = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 16), bouffantMat);
+      bouffant.scale.set(1.05, 0.65, 1.05);
+      bouffant.position.set(0, 0.32, 0);
+      curdsHead.add(bouffant);
+
+      // Thermal Safety Goggles
+      [-0.2, 0.2].forEach(gx => {
+        const goggle = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 8, 16), new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8 }));
+        goggle.position.set(gx, 0.08, 0.52);
+        curdsHead.add(goggle);
+      });
+
+      curdsGroup.add(curdsHead);
+
+      // Arms & Curd Testing Knife Wand
+      curdsArmL = new THREE.Group();
+      curdsArmL.position.set(-0.65, 2.15, 0);
+      const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.7, 8), coatWhite);
+      armL.position.y = -0.35;
+      curdsArmL.add(armL);
+      const gloveL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.24, 0.22), nitrileBlue);
+      gloveL.position.set(0, -0.72, 0.05);
+      curdsArmL.add(gloveL);
+      curdsGroup.add(curdsArmL);
+
+      curdsArmR = new THREE.Group();
+      curdsArmR.position.set(0.65, 2.15, 0);
+      const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.7, 8), coatWhite);
+      armR.position.y = -0.35;
+      curdsArmR.add(armR);
+
+      // Curd Knife / pH Probe Wand
+      curdsCurdKnife = new THREE.Group();
+      curdsCurdKnife.position.set(0, -0.72, 0.2);
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.65, 0.12), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.95 }));
+      blade.rotation.x = 0.5;
+      curdsCurdKnife.add(blade);
+      const digitalGlow = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xd97706, emissiveIntensity: 0.6 }));
+      digitalGlow.position.set(0, 0.35, 0.15);
+      curdsCurdKnife.add(digitalGlow);
+      curdsArmR.add(curdsCurdKnife);
+      curdsGroup.add(curdsArmR);
+
+      // Legs
+      curdsLegL = new THREE.Group();
+      curdsLegL.position.set(-0.28, 1.1, 0);
+      const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.8, 10), pantsMat);
+      legL.position.y = -0.4;
+      curdsLegL.add(legL);
+      const bootL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.24, 0.48), bootMat);
+      bootL.position.set(0, -0.8, 0.1);
+      curdsLegL.add(bootL);
+      curdsGroup.add(curdsLegL);
+
+      curdsLegR = new THREE.Group();
+      curdsLegR.position.set(0.28, 1.1, 0);
+      const legR = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.8, 10), pantsMat);
+      legR.position.y = -0.4;
+      curdsLegR.add(legR);
+      const bootR = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.24, 0.48), bootMat);
+      bootR.position.set(0, -0.8, 0.1);
+      curdsLegR.add(bootR);
+      curdsGroup.add(curdsLegR);
+
+      curdsGroup.position.set(2.8, 0.15, 2.2);
+      curdsGroup.rotation.set(0, -Math.PI / 2.3, 0);
+      scene.add(curdsGroup);
+    }
+
+    /* =========================================================================
+       CHARACTER 2: PROFESSOR WHISKER PUFF (SCIENTIFIC LEAD & ASTROBIOLOGIST)
+       ========================================================================= */
+    function buildFullProfessorWhiskerPuff() {
+      puffGroup = new THREE.Group();
+      puffGroup.name = "Professor Whisker Puff";
+
+      const calicoGinger = new THREE.MeshStandardMaterial({ color: 0xe07a38, roughness: 0.65 });
+      const calicoWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+      const calicoBlack = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.65 });
+      const labVest = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.5 });
+      const skirtMat = new THREE.MeshStandardMaterial({ color: 0x064e3b, roughness: 0.6 });
+      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x831843, roughness: 0.4 });
+
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 1.05, 16), calicoWhite);
+      torso.position.y = 1.72;
+      torso.castShadow = true;
+      puffGroup.add(torso);
+
+      const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.5, 0.75, 16, 1, false, 0.3, Math.PI * 1.8), labVest);
+      vest.position.y = 1.8;
+      puffGroup.add(vest);
+
+      const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.7, 0.55, 16, 1, true), skirtMat);
+      skirt.position.y = 1.25;
+      skirt.rotation.x = Math.PI;
+      puffGroup.add(skirt);
+
+      // Head
+      puffHead = new THREE.Group();
+      puffHead.position.set(0, 2.48, 0.05);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.62, 18, 18), calicoGinger);
+      head.scale.set(1.1, 0.95, 1.05);
+      head.castShadow = true;
+      puffHead.add(head);
+
+      const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), calicoWhite);
+      muzzle.scale.set(1.2, 0.8, 0.85);
+      muzzle.position.set(0, -0.12, 0.55);
+      puffHead.add(muzzle);
+
+      [-0.22, 0.22].forEach(gx => {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.035, 10, 20), new THREE.MeshStandardMaterial({ color: 0x09090b }));
+        rim.position.set(gx, 0.04, 0.65);
+        puffHead.add(rim);
+      });
+
+      // Hair Buns
+      const hairBunMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.7 });
+      const bunL = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), hairBunMat);
+      bunL.position.set(-0.55, 0.42, 0.08);
+      bunL.add(new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.035, 8, 16), new THREE.MeshStandardMaterial({ color: 0x8b5cf6 })));
+      puffHead.add(bunL);
+
+      const bunR = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), hairBunMat);
+      bunR.position.set(0.55, 0.42, 0.08);
+      bunR.add(new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.035, 8, 16), new THREE.MeshStandardMaterial({ color: 0xec4899 })));
+      puffHead.add(bunR);
+
+      puffGroup.add(puffHead);
+
+      // Arms & Bio-Analytical Tablet
+      puffArmL = new THREE.Group();
+      puffArmL.position.set(-0.52, 2.05, 0);
+      const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.65, 8), calicoWhite);
+      armL.position.y = -0.32;
+      puffArmL.add(armL);
+      puffGroup.add(puffArmL);
+
+      puffArmR = new THREE.Group();
+      puffArmR.position.set(0.52, 2.05, 0);
+      const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.65, 8), calicoWhite);
+      armR.position.y = -0.32;
+      puffArmR.add(armR);
+
+      puffTablet = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.48, 0.03), new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x38bdf8, emissiveIntensity: 0.4 }));
+      puffTablet.position.set(0, -0.58, 0.18);
+      puffArmR.add(puffTablet);
+      puffGroup.add(puffArmR);
+
+      // Legs
+      puffLegL = new THREE.Group();
+      puffLegL.position.set(-0.22, 1.0, 0);
+      const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.78, 8), calicoWhite);
+      legL.position.y = -0.39;
+      puffLegL.add(legL);
+      const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.35), shoeMat);
+      shoeL.position.set(0, -0.78, 0.06);
+      puffLegL.add(shoeL);
+      puffGroup.add(puffLegL);
+
+      puffLegR = new THREE.Group();
+      puffLegR.position.set(0.22, 1.0, 0);
+      const legR = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.78, 8), calicoWhite);
+      legR.position.y = -0.39;
+      puffLegR.add(legR);
+      const shoeR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.35), shoeMat);
+      shoeR.position.set(0, -0.78, 0.06);
+      puffLegR.add(shoeR);
+      puffGroup.add(puffLegR);
+
+      // Tail
+      puffTail = new THREE.Group();
+      puffTail.position.set(0, 1.1, -0.4);
+      let prev = puffTail;
+      for (let i = 0; i < 5; i++) {
+        const seg = new THREE.Mesh(new THREE.SphereGeometry(0.1 - i * 0.012, 8, 8), (i % 2 === 0) ? calicoGinger : calicoBlack);
+        seg.position.set(0, 0.1, -0.12);
+        prev.add(seg);
+        prev = seg;
+      }
+      puffGroup.add(puffTail);
+
+      puffGroup.position.set(-1.4, 0.15, 2.4);
+      puffGroup.rotation.set(0, -Math.PI / 2.6, 0);
+      scene.add(puffGroup);
+    }
+
+    /* =========================================================================
+       CHARACTER 3: PIP SQUEAK (ENHANCED CUTE TODDLER DYNAMICS & CONCENTRATION)
+       ========================================================================= */
+    function buildFullPipSqueak() {
+      pipGroup = new THREE.Group();
+      pipGroup.name = "Pip Squeak";
+
+      const mouseBrown = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.75 });
+      const mousePink = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.5 });
+      const shirtMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.6 });
+      const shortsMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.6 });
+      const sockMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 });
+      const sneakerMat = new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.4 });
+      const woodSpoonMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.8 });
+
+      // Torso
+      const torso = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 14), mouseBrown);
+      torso.scale.set(0.9, 1.15, 0.9);
+      torso.position.y = 0.95;
+      torso.castShadow = true;
+      pipGroup.add(torso);
+
+      const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.41, 0.45, 14), shirtMat);
+      shirt.position.y = 1.0;
+      pipGroup.add(shirt);
+
+      const shorts = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.36, 0.28, 14), shortsMat);
+      shorts.position.y = 0.72;
+      pipGroup.add(shorts);
+
+      // Head & Ears with Interactive Twitches
+      pipHead = new THREE.Group();
+      pipHead.position.set(0, 1.35, 0.05);
+
+      const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 14), mouseBrown);
+      pipHead.add(mHead);
+
+      const snout = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.35, 10), mouseBrown);
+      snout.rotation.x = 1.35;
+      snout.position.set(0, -0.05, 0.25);
+      pipHead.add(snout);
+
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), mousePink);
+      nose.position.set(0, -0.07, 0.42);
+      pipHead.add(nose);
+
+      // Pip's Big Mouse Ears (Individual groups for independent wiggling)
+      pipEarL = new THREE.Group();
+      pipEarL.position.set(-0.22, 0.22, -0.02);
+      const earGeomL = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.025, 12), mousePink);
+      earGeomL.rotation.set(0.2, 0.35, -0.4);
+      pipEarL.add(earGeomL);
+      pipHead.add(pipEarL);
+
+      pipEarR = new THREE.Group();
+      pipEarR.position.set(0.22, 0.22, -0.02);
+      const earGeomR = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.025, 12), mousePink);
+      earGeomR.rotation.set(0.2, -0.35, 0.4);
+      pipEarR.add(earGeomR);
+      pipHead.add(pipEarR);
+
+      pipGroup.add(pipHead);
+
+      // Arms & Tasting Spoon
+      pipArmL = new THREE.Group();
+      pipArmL.position.set(-0.35, 1.08, 0);
+      const pawL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+      pawL.position.y = -0.18;
+      pipArmL.add(pawL);
+      pipGroup.add(pipArmL);
+
+      pipArmR = new THREE.Group();
+      pipArmR.position.set(0.35, 1.08, 0);
+      const pawR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+      pawR.position.y = -0.18;
+      pipArmR.add(pawR);
+
+      // Tiny Handcrafted Wooden Tasting Spoon
+      pipWoodenSpoon = new THREE.Group();
+      pipWoodenSpoon.position.set(0.1, -0.22, 0.2);
+      const spoonHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.45), woodSpoonMat);
+      spoonHandle.rotation.x = Math.PI / 2.8;
+      pipWoodenSpoon.add(spoonHandle);
+      const spoonBowl = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), woodSpoonMat);
+      spoonBowl.scale.set(1.0, 0.4, 1.3);
+      spoonBowl.position.set(0, 0.16, 0.25);
+      pipWoodenSpoon.add(spoonBowl);
+      pipArmR.add(pipWoodenSpoon);
+      pipGroup.add(pipArmR);
+
+      // Legs
+      pipLegL = new THREE.Group();
+      pipLegL.position.set(-0.16, 0.6, 0);
+      const legBoneL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.38, 8), mouseBrown);
+      legBoneL.position.y = -0.19;
+      pipLegL.add(legBoneL);
+      const sockL = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.08, 0.1, 8), sockMat);
+      sockL.position.y = -0.32;
+      pipLegL.add(sockL);
+      const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.28), sneakerMat);
+      shoeL.position.set(0, -0.42, 0.05);
+      pipLegL.add(shoeL);
+      pipGroup.add(pipLegL);
+
+      pipLegR = new THREE.Group();
+      pipLegR.position.set(0.16, 0.6, 0);
+      const legBoneR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.38, 8), mouseBrown);
+      legBoneR.position.y = -0.19;
+      pipLegR.add(legBoneR);
+      const sockR = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.08, 0.1, 8), sockMat);
+      sockR.position.y = -0.32;
+      pipLegR.add(sockR);
+      const shoeR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.28), sneakerMat);
+      shoeR.position.set(0, -0.42, 0.05);
+      pipLegR.add(shoeR);
+      pipGroup.add(pipLegR);
+
+      // Tail
+      pipTail = new THREE.Group();
+      pipTail.position.set(0, 0.65, -0.28);
+      let pPrev = pipTail;
+      for (let i = 0; i < 5; i++) {
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.03 - i * 0.004, 0.035 - i * 0.004, 0.14, 6), mousePink);
+        seg.position.set(0, 0.04, -0.1);
+        seg.rotation.x = -0.25;
+        pPrev.add(seg);
+        pPrev = seg;
+      }
+      pipGroup.add(pipTail);
+
+      pipGroup.position.set(0.6, 0.15, 3.4);
+      scene.add(pipGroup);
+    }
+
+    /* --- Dynamic Particle Systems (Steam & Whey Bubbles) --- */
+    function buildParticleEffects() {
+      // 1. Steam rising from 32°C Vat
+      for (let s = 0; s < 25; s++) {
+        const steam = new THREE.Mesh(
+          new THREE.SphereGeometry(0.12 + Math.random() * 0.1, 6, 6),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 })
+        );
+        steam.position.set(-6.5 + (Math.random() - 0.5) * 2.5, 2.5 + Math.random() * 2.0, -2.5 + (Math.random() - 0.5) * 2.5);
+        scene.add(steam);
+        steamParticles.push({ mesh: steam, speedY: 0.015 + Math.random() * 0.02, initialY: 2.3 });
+      }
+
+      // 2. Translucent floating whey bubbles that Pip loves to inspect
+      for (let b = 0; b < 15; b++) {
+        const bubble = new THREE.Mesh(
+          new THREE.SphereGeometry(0.06 + Math.random() * 0.05, 8, 8),
+          new THREE.MeshPhysicalMaterial({ color: 0xfef08a, transmission: 0.9, opacity: 0.6, transparent: true })
+        );
+        bubble.position.set((Math.random() - 0.5) * 5.0, 1.2 + Math.random() * 2.5, 1.0 + (Math.random() - 0.5) * 4.0);
+        scene.add(bubble);
+        wheyBubbles.push({ mesh: bubble, floatSpeed: 0.01 + Math.random() * 0.015, baseY: bubble.position.y });
+      }
+    }
+
+    /* --- Dynamic Simulation Controller with Speech Completion Gate --- */
+    
+    // Subtle presenter breathing, listening, and hand emphasis, layered over each scene's staged poses.
+    const archiveMotionRigs = () => [typeof curdsGroup !== 'undefined' ? curdsGroup : null, typeof puffGroup !== 'undefined' ? puffGroup : null, typeof pipGroup !== 'undefined' ? pipGroup : null];
+    if (typeof pipGroup !== 'undefined' && pipGroup) pipGroup.name ||= 'pipGroup';
+    if (typeof puffGroup !== 'undefined' && puffGroup) puffGroup.name ||= 'puffGroup';
+    if (typeof curdsGroup !== 'undefined' && curdsGroup) curdsGroup.name ||= 'curdsGroup';
+    const archiveMotionHeads = () => [typeof curdsHead !== 'undefined' ? curdsHead : null, typeof puffHead !== 'undefined' ? puffHead : null, typeof pipHead !== 'undefined' ? pipHead : null];
+    if (typeof curdsHead !== 'undefined' && curdsHead) curdsHead.name ||= 'curdsHead';
+    if (typeof puffHead !== 'undefined' && puffHead) puffHead.name ||= 'puffHead';
+    if (typeof pipHead !== 'undefined' && pipHead) pipHead.name ||= 'pipHead';
+
+    const archiveMotionArms = () => [typeof curdsArmR !== 'undefined' ? curdsArmR : null, typeof curdsArmL !== 'undefined' ? curdsArmL : null, typeof puffArmR !== 'undefined' ? puffArmR : null, typeof puffArmL !== 'undefined' ? puffArmL : null, typeof pipArmR !== 'undefined' ? pipArmR : null, typeof pipArmL !== 'undefined' ? pipArmL : null];
+    if (typeof curdsArmR !== 'undefined' && curdsArmR) curdsArmR.name ||= 'curdsArmR';
+    if (typeof curdsArmL !== 'undefined' && curdsArmL) curdsArmL.name ||= 'curdsArmL';
+    if (typeof puffArmR !== 'undefined' && puffArmR) puffArmR.name ||= 'puffArmR';
+    if (typeof puffArmL !== 'undefined' && puffArmL) puffArmL.name ||= 'puffArmL';
+    if (typeof pipArmR !== 'undefined' && pipArmR) pipArmR.name ||= 'pipArmR';
+    if (typeof pipArmL !== 'undefined' && pipArmL) pipArmL.name ||= 'pipArmL';
+
+    const archiveMotionLegs = () => [typeof curdsLegL !== 'undefined' ? curdsLegL : null, typeof curdsLegR !== 'undefined' ? curdsLegR : null, typeof puffLegL !== 'undefined' ? puffLegL : null, typeof puffLegR !== 'undefined' ? puffLegR : null, typeof pipLegL !== 'undefined' ? pipLegL : null, typeof pipLegR !== 'undefined' ? pipLegR : null];
+    if (typeof curdsLegL !== 'undefined' && curdsLegL) curdsLegL.name ||= 'curdsLegL';
+    if (typeof curdsLegR !== 'undefined' && curdsLegR) curdsLegR.name ||= 'curdsLegR';
+    if (typeof puffLegL !== 'undefined' && puffLegL) puffLegL.name ||= 'puffLegL';
+    if (typeof puffLegR !== 'undefined' && puffLegR) puffLegR.name ||= 'puffLegR';
+    if (typeof pipLegL !== 'undefined' && pipLegL) pipLegL.name ||= 'pipLegL';
+    if (typeof pipLegR !== 'undefined' && pipLegR) pipLegR.name ||= 'pipLegR';
+    const rigsNames = ["curdsGroup", "puffGroup", "pipGroup"];
+    const headsNames = ["curdsHead", "puffHead", "pipHead"];
+    const armsNames = ["curdsArmR", "curdsArmL", "puffArmR", "puffArmL", "pipArmR", "pipArmL"];
+    const legsNames = ["curdsLegL", "curdsLegR", "puffLegL", "puffLegR", "pipLegL", "pipLegR"];
+    function clearArchiveMotionOffsets() {
+      [...archiveMotionRigs(), ...archiveMotionHeads(), ...archiveMotionArms(), ...archiveMotionLegs()].forEach(node => {
+        if (!node || !node.userData.archiveMotionOffset) return;
+        const o = node.userData.archiveMotionOffset;
+        node.rotation.x -= o.x; node.rotation.y -= o.y; node.rotation.z -= o.z;
+        if (o.px) node.position.x -= o.px; if (o.pz) node.position.z -= o.pz;
+        node.userData.archiveMotionOffset = null;
+      });
+    }
+    function applyArchivePresenterMotion(time) {
+      const beat = STORY_BEATS[currentSpeechIdx] || null;
+      const speaker = String(beat?.speaker || '').toLowerCase();
+      const phase = (time || 0) * 2.15;
+      const progress = beat ? Math.max(0, Math.min(1, ((time || 0) - beat.start) / Math.max(0.1, beat.end - beat.start))) : 0;
+      const smooth = v => v * v * (3 - 2 * v);
+      const walk = progress < 0.2 ? smooth(progress / 0.2) : progress < 0.62 ? 1 : progress < 0.86 ? 1 - smooth((progress - 0.62) / 0.24) : 0;
+      const put = (node, x, y, z, px = 0, pz = 0) => {
+        if (!node) return;
+        node.rotation.x += x; node.rotation.y += y; node.rotation.z += z;
+        node.position.x += px; node.position.z += pz;
+        node.userData.archiveMotionOffset = { x, y, z, px, pz };
+      };
+      archiveMotionRigs().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= rigsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          ((name.includes('curd')) && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        const radius = Math.hypot(node.position.x, node.position.z);
+        const approach = active && radius > 0.25 ? Math.min(0.48, radius * 0.12) * walk : 0;
+        put(node, Math.sin(phase + i) * (active ? 0.016 : 0.008), 0, Math.sin(phase * 0.52 + i) * 0.008,
+          radius > 0.25 ? -node.position.x / radius * approach : 0,
+          radius > 0.25 ? -node.position.z / radius * approach : 0);
+      });
+      archiveMotionLegs().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= legsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) || (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        put(node, active ? Math.sin(phase * 2.2 + (i % 2) * Math.PI) * 0.20 * walk : 0, 0, 0);
+      });
+      archiveMotionHeads().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= headsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        put(node, Math.sin(phase * 1.25 + i) * (active ? 0.018 : 0.009), 0, Math.sin(phase * 0.62 + i) * 0.014);
+      });
+      archiveMotionArms().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= armsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        const right = /armr$/.test(name);
+        put(node, Math.sin(phase * (active ? 1.5 : 0.7) + i) * (active ? 0.055 : 0.018), 0, Math.sin(phase * 0.8 + i) * (right && active ? 0.035 : 0.012));
+      });
+    }
+
+    function updateStoryTimeline(time) {
+      clearArchiveMotionOffsets();
+      const scrubber = document.getElementById('story-scrubber');
+      if (Math.abs(scrubber.value - time) > 0.3) scrubber.value = time;
+
+      const mins = Math.floor(time / 60);
+      const secs = Math.floor(time % 60);
+      document.getElementById('time-display').textContent =
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      // Update Phase Step Buttons (1 to 5)
+      let currentStep = 1;
+      if (time >= 100.5) currentStep = 5;
+      else if (time >= 79.5) currentStep = 4;
+      else if (time >= 58.5) currentStep = 3;
+      else if (time >= 28.5) currentStep = 2;
+
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.getElementById(`step-btn-${i}`);
+        if (i === currentStep) {
+          btn.className = "px-2.5 h-7 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 flex items-center gap-1 transition shadow-md";
+        } else {
+          btn.className = "px-2.5 h-7 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 flex items-center gap-1 hover:bg-slate-700 transition";
+        }
+      }
+
+      // 1. Mechanical Harps Slicing Motion
+      if (harpRotor) {
+        harpRotor.rotation.y += 0.04;
+      }
+
+      // 2. Pneumatic Ram Oscillation
+      if (pressRam) {
+        pressRam.position.y = 2.05 + Math.sin(time * 3) * 0.12;
+      }
+
+      // 3. Submerged Brine Wheels Bobbing
+      submergedWheels.forEach((wheel, idx) => {
+        wheel.position.y = 1.52 + Math.sin(time * 2 + idx * 1.5) * 0.03;
+      });
+
+      // 4. Finished Cheeses on Packaging Conveyor Movement
+      finishedCheeses.forEach((cheese) => {
+        cheese.position.z += 0.03;
+        if (cheese.position.z > 5.5) {
+          cheese.position.z = 0.2;
+        }
+      });
+
+      // 5. Steam & Bubble Dynamics
+      steamParticles.forEach(st => {
+        st.mesh.position.y += st.speedY;
+        if (st.mesh.position.y > 5.2) {
+          st.mesh.position.y = st.initialY;
+          st.mesh.position.x = -6.5 + (Math.random() - 0.5) * 2.2;
+        }
+      });
+
+      wheyBubbles.forEach(wb => {
+        wb.mesh.position.y = wb.baseY + Math.sin(time * 3 + wb.floatSpeed * 50) * 0.35;
+      });
+
+      // Synchronize Speech Dialogue without Cuts + Automatic Object Director Camera Cuts
+      const activeBeatIdx = STORY_BEATS.findIndex(b => time >= b.start && time < b.end);
+      if (activeBeatIdx !== -1 && activeBeatIdx !== currentSpeechIdx) {
+        currentSpeechIdx = activeBeatIdx;
+        const beat = STORY_BEATS[activeBeatIdx];
+        const dialogueBox = document.getElementById('dialogue-container');
+
+        document.getElementById('speaker-avatar').textContent = beat.avatar;
+        document.getElementById('speaker-name').textContent =
+          beat.speaker === 'Curds' ? 'Dr. Barnaby Q. Curds' :
+          (beat.speaker === 'Puff' ? 'Professor Whisker Puff' :
+          (beat.speaker === 'Pip' ? 'Pip Squeak-a-Link' : 'Alpenhof Fromagerie Team'));
+        document.getElementById('speaker-role').textContent = beat.role;
+        document.getElementById('speech-emotion').textContent = beat.emotion;
+        document.getElementById('speech-text').textContent = `"${beat.text}"`;
+
+        if (subtitlesEnabled) {
+          dialogueBox.classList.remove('dialogue-hidden');
+        }
+
+        speakText(beat.text, beat.speaker);
+
+        // Smooth Camera Transition toward the discussed object & avatars
+        if (beat.camera) {
+          new TWEEN.Tween(camera.position).to(beat.camera.pos, 1100).easing(TWEEN.Easing.Cubic.Out).start();
+          new TWEEN.Tween(controls.target).to(beat.camera.target, 1100).easing(TWEEN.Easing.Cubic.Out).start();
+        }
+
+        if (beat.emotion.includes('Harp') || beat.emotion.includes('Slicing')) playHarpSlicingSFX();
+        if (beat.emotion.includes('Press')) playPressPneumaticSFX();
+      }
+
+      /* =========================================================================
+         ENHANCED PIP TODDLER BEHAVIOR & CONCENTRATION TRIGGERS
+         ========================================================================= */
+      const walkCycle = Math.sin(time * 8);
+
+      if (time >= 20.0 && time < 28.5) {
+        // Pip's Sudden Concentration & Sniffing Trigger:
+        // Freezes walking, tilts forward, twitches ears, sniffs warm milk vat!
+        pipGroup.position.set(0.6, 0.15, 3.2);
+        pipGroup.lookAt(-6.5, 2.5, -2.5);
+
+        // Sniffing bob + Ear twitch
+        pipHead.rotation.x = -0.35 + Math.sin(time * 14) * 0.1;
+        pipEarL.rotation.z = Math.sin(time * 20) * 0.25;
+        pipEarR.rotation.z = -Math.sin(time * 20) * 0.25;
+
+        // Curious wooden spoon inspection
+        pipArmR.rotation.set(0.8, 0.3, Math.sin(time * 10) * 0.15);
+      } else if (time >= 50.0 && time < 58.5) {
+        // Pip bounces enthusiastically watching the curd cubes and chasing whey bubbles!
+        const hop = Math.abs(Math.sin((time - 50.0) * 8)) * 0.35;
+        pipGroup.position.set(0.6 + Math.sin(time * 2) * 0.8, 0.15 + hop, 3.4);
+        pipGroup.lookAt(-1.8, 1.8, -2.5);
+
+        pipHead.rotation.x = -0.25;
+        pipArmR.rotation.set(1.1, 0, Math.sin(time * 12) * 0.4); // waving spoon
+        pipArmL.rotation.set(0.8, 0, -Math.sin(time * 12) * 0.4);
+        pipEarL.rotation.y = Math.sin(time * 16) * 0.2;
+        pipEarR.rotation.y = -Math.sin(time * 16) * 0.2;
+      } else if (time >= 79.5 && time < 90.0) {
+        // Pip sniffs the golden spruce aging racks in intense childish wonder
+        pipGroup.position.set(1.2, 0.15, 3.5);
+        pipGroup.lookAt(9.5, 2.8, 1.5);
+        pipHead.rotation.x = -0.4;
+        pipEarL.rotation.z = Math.sin(time * 18) * 0.2;
+        pipArmR.rotation.set(0.5, 0, 0.4);
+      } else {
+        // Normal cheerful pacing and observing stage
+        const circleT = time * 1.5;
+        pipGroup.position.set(Math.sin(circleT) * 1.4, 0.15, 3.6 + Math.cos(circleT) * 0.5);
+        pipGroup.rotation.y = -circleT + Math.PI / 2;
+        pipLegL.rotation.x = walkCycle * 0.7;
+        pipLegR.rotation.x = -walkCycle * 0.7;
+        pipArmR.rotation.set(0.4, 0, Math.sin(time * 4) * 0.15);
+      }
+
+      // Adult character head tracking
+      if (time < 39.5) {
+        curdsHead.lookAt(-6.5, 2.5, -2.5);
+        puffHead.lookAt(-6.5, 2.5, -2.5);
+        curdsArmR.rotation.x = Math.sin(time * 2.5) * 0.2 - 0.2;
+      } else if (time >= 39.5 && time < 69.0) {
+        curdsHead.lookAt(-1.8, 2.0, -2.5);
+        puffHead.lookAt(1.8, 2.5, -2.5);
+        puffArmR.rotation.x = Math.sin(time * 3) * 0.2 - 0.3;
+      } else if (time >= 69.0 && time < 90.0) {
+        curdsHead.lookAt(9.5, 3.0, 1.5);
+        puffHead.lookAt(5.8, 1.8, -2.5);
+      } else {
+        curdsHead.lookAt(7.5, 2.5, 6.8);
+        puffHead.lookAt(7.5, 2.5, 6.8);
+        curdsArmR.rotation.set(0.6, 0, 0.6);
+        puffArmR.rotation.set(0.4, 0, -0.3);
+
+        if (time >= 110) {
+          document.getElementById('modal-telemetry').classList.remove('opacity-0', 'pointer-events-none');
+        }
+      }
+    
+      applyArchivePresenterMotion(time);
+    }
+
+    /* --- Interactive UI Events & Camera Cues --- */
+    function setupUIEvents() {
+      const playBtn = document.getElementById('btn-play-pause');
+      playBtn.addEventListener('click', () => {
+        initAudio();
+        isPlaying = !isPlaying;
+        playBtn.textContent = isPlaying ? '⏸' : '▶';
+      });
+
+      const restartBtn = document.getElementById('btn-restart');
+      restartBtn.addEventListener('click', () => {
+        initAudio();
+        storyTime = 0;
+        currentSpeechIdx = -1;
+        isSpeaking = false;
+        isPlaying = true;
+        playBtn.textContent = '⏸';
+        document.getElementById('modal-telemetry').classList.add('opacity-0', 'pointer-events-none');
+      });
+
+      const scrubber = document.getElementById('story-scrubber');
+      scrubber.addEventListener('input', (e) => {
+        initAudio();
+        storyTime = parseFloat(e.target.value);
+        currentSpeechIdx = -1;
+        isSpeaking = false;
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel(); dialogueSpeaking = false;
+        updateStoryTimeline(storyTime);
+      });
+
+      function cueCamera(pos, target) {
+        new TWEEN.Tween(camera.position).to(pos, 950).easing(TWEEN.Easing.Cubic.Out).start();
+        new TWEEN.Tween(controls.target).to(target, 950).easing(TWEEN.Easing.Cubic.Out).start();
+      }
+
+      // Step Buttons (1 to 5)
+      document.getElementById('step-btn-1').addEventListener('click', () => {
+        initAudio(); storyTime = 0.1; currentSpeechIdx = -1; isPlaying = true;
+      });
+      document.getElementById('step-btn-2').addEventListener('click', () => {
+        initAudio(); storyTime = 28.6; currentSpeechIdx = -1; isPlaying = true;
+      });
+      document.getElementById('step-btn-3').addEventListener('click', () => {
+        initAudio(); storyTime = 58.6; currentSpeechIdx = -1; isPlaying = true;
+      });
+      document.getElementById('step-btn-4').addEventListener('click', () => {
+        initAudio(); storyTime = 79.6; currentSpeechIdx = -1; isPlaying = true;
+      });
+      document.getElementById('step-btn-5').addEventListener('click', () => {
+        initAudio(); storyTime = 100.6; currentSpeechIdx = -1; isPlaying = true;
+      });
+
+      // Quick Camera Presets
+      const navIds = ['btn-cam-hall', 'btn-cam-vat', 'btn-cam-press', 'btn-cam-brine', 'btn-cam-cave', 'btn-cam-packaging'];
+      document.getElementById('btn-cam-hall').addEventListener('click', (e) => {
+        navIds.forEach(id => document.getElementById(id).classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        cueCamera({ x: 16, y: 15, z: 18 }, { x: 0, y: 2.6, z: 0 });
+      });
+      document.getElementById('btn-cam-vat').addEventListener('click', (e) => {
+        navIds.forEach(id => document.getElementById(id).classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        cueCamera({ x: -10, y: 7.2, z: 6.5 }, { x: -6.5, y: 2.4, z: -2.5 });
+      });
+      document.getElementById('btn-cam-press').addEventListener('click', (e) => {
+        navIds.forEach(id => document.getElementById(id).classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        cueCamera({ x: 2.5, y: 7.5, z: 5.5 }, { x: 0.5, y: 2.6, z: -2.5 });
+      });
+      document.getElementById('btn-cam-brine').addEventListener('click', (e) => {
+        navIds.forEach(id => document.getElementById(id).classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        cueCamera({ x: 6.5, y: 6.5, z: 4.5 }, { x: 6.0, y: 2.0, z: -2.2 });
+      });
+      document.getElementById('btn-cam-cave').addEventListener('click', (e) => {
+        navIds.forEach(id => document.getElementById(id).classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        cueCamera({ x: 9.0, y: 7.5, z: 7.0 }, { x: 9.5, y: 3.2, z: 1.5 });
+      });
+      document.getElementById('btn-cam-packaging').addEventListener('click', (e) => {
+        navIds.forEach(id => document.getElementById(id).classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        cueCamera({ x: 12.0, y: 7.5, z: 9.5 }, { x: 8.5, y: 2.4, z: 6.8 });
+      });
+
+      // Culture Starter Mode Toggle
+      document.getElementById('btn-mode-meso').addEventListener('click', (e) => {
+        initAudio();
+        starterType = 'MESO';
+        document.getElementById('btn-mode-meso').classList.add('active');
+        document.getElementById('btn-mode-thermo').classList.remove('active');
+        document.getElementById('badge-culture-mode').textContent = 'MESOPHILIC (32°C / pH 4.6)';
+        document.getElementById('badge-culture-mode').className = 'text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold border border-amber-500/40';
+        document.getElementById('hud-culture-type').textContent = 'Lactococcus lactis ssp. cremoris';
+        document.getElementById('hud-ph-level').textContent = 'pH 6.65 → 4.62 (Casein Curdling)';
+        playTone(420, 'sine', 0.2, 0.03);
+      });
+
+      document.getElementById('btn-mode-thermo').addEventListener('click', (e) => {
+        initAudio();
+        starterType = 'THERMO';
+        document.getElementById('btn-mode-thermo').classList.add('active');
+        document.getElementById('btn-mode-meso').classList.remove('active');
+        document.getElementById('badge-culture-mode').textContent = 'THERMOPHILIC (42°C / pH 5.2)';
+        document.getElementById('badge-culture-mode').className = 'text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono font-bold border border-rose-500/40';
+        document.getElementById('hud-culture-type').textContent = 'Lactobacillus helveticus & S. thermophilus';
+        document.getElementById('hud-ph-level').textContent = 'pH 6.65 → 5.20 (Hard Alpine Emmental)';
+        playTone(620, 'triangle', 0.2, 0.03);
+      });
+
+      // Audio Toggle
+      const sfxBtn = document.getElementById('btn-sfx-toggle');
+      sfxBtn.addEventListener('click', () => {
+        initAudio();
+        audioEnabled = !audioEnabled;
+        sfxBtn.classList.toggle('active', audioEnabled);
+        sfxBtn.textContent = audioEnabled ? '🔊' : '🔇';
+        if (!audioEnabled && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel(); dialogueSpeaking = false;
+          isSpeaking = false;
+        }
+      });
+
+      // Subtitles Toggle
+      const subBtn = document.getElementById('btn-subtitles-toggle');
+      subBtn.addEventListener('click', () => {
+        subtitlesEnabled = !subtitlesEnabled;
+        subBtn.classList.toggle('active', subtitlesEnabled);
+        const dialogueBox = document.getElementById('dialogue-container');
+        if (subtitlesEnabled) {
+          dialogueBox.classList.remove('dialogue-hidden');
+        } else {
+          dialogueBox.classList.add('dialogue-hidden');
+        }
+      });
+
+      // Modals
+      const openModal = () => document.getElementById('modal-telemetry').classList.remove('opacity-0', 'pointer-events-none');
+      const closeModal = () => document.getElementById('modal-telemetry').classList.add('opacity-0', 'pointer-events-none');
+
+      document.getElementById('btn-info-modal').addEventListener('click', openModal);
+      document.getElementById('btn-close-telemetry').addEventListener('click', closeModal);
+      document.getElementById('btn-close-telemetry-x').addEventListener('click', closeModal);
+
+      window.addEventListener('click', () => initAudio(), { once: true });
+    }
+
+    function onResize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const aspect = w / h;
+      const d = 16;
+
+      camera.left = -d * aspect;
+      camera.right = d * aspect;
+      camera.top = d;
+      camera.bottom = -d;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(w, h);
+    }
+
+    /* --- Main Animation Loop with Speech Completion Hold --- */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      TWEEN.update();
+
+      if (isPlaying) {
+        const activeBeat = STORY_BEATS[currentSpeechIdx];
+        const isAtBeatEnd = activeBeat && (storyTime >= activeBeat.end - 0.05);
+
+        // Speech-hold gate: do not progress if voice is still talking
+        if (!(isSpeaking && isAtBeatEnd)) {
+          const syncBeat = STORY_BEATS[currentSpeechIdx];
+          const waitingForLine = dialogueSpeaking && syncBeat && storyTime >= syncBeat.end - 0.24;
+          if (!waitingForLine) {
+            const nextBeat = STORY_BEATS[currentSpeechIdx + 1];
+            const quietGap = nextBeat ? nextBeat.start - storyTime : 0;
+            const tailCatchUp = !dialogueSpeaking && syncBeat && (syncBeat.end - storyTime > 1.8 || quietGap > 1.8) ? 2.0 : 1;
+            storyTime += delta * tailCatchUp;
+          }
+        }
+
+        if (storyTime > TOTAL_DURATION) {
+          storyTime = TOTAL_DURATION;
+          isPlaying = false;
+          document.getElementById('btn-play-pause').textContent = '▶';
+        }
+        updateStoryTimeline(storyTime);
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.onload = () => {
+      init();
+      animate();
+    };
+  </script>
+</body>
+</html>

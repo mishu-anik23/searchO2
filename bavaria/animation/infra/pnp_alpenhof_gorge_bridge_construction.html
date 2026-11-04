@@ -1,0 +1,1871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alpenhof Eco-Village — Alpine Timber Gorge Bridge &amp; Wind Grid Integration</title>
+
+  <!-- Tailwind CSS & Three.js Libraries -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+  <!-- Alpenhof Standard Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Fredoka:wght@500;600;700&family=Cinzel:wght@700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; overflow: hidden;
+      width: 100vw; height: 100vh;
+      background: #060e17;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #viewport-container { position: absolute; inset: 0; z-index: 0; }
+    .bubble-font { font-family: 'Fredoka', cursive; }
+    .cinzel { font-family: 'Cinzel', serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .glass-ui {
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+
+    /* Icon toolbar matching strict Alpenhof standard */
+    .tool-icon {
+      position: relative;
+      width: 38px; height: 38px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 12px;
+      font-size: 15px; line-height: 1;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #e2e8f0;
+      cursor: pointer;
+      flex: 0 0 auto;
+      transition: background .18s, border-color .18s, transform .18s, box-shadow .18s;
+    }
+    .tool-icon:hover {
+      background: rgba(56, 189, 248, 0.22);
+      border-color: rgba(56, 189, 248, 0.65);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(56, 189, 248, 0.25);
+    }
+    .tool-icon:active { transform: translateY(0) scale(0.96); }
+    .tool-icon.active {
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      color: #04231c;
+      border-color: #38bdf8;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+    }
+
+    /* Tooltip bubble */
+    .tool-icon::after {
+      content: attr(data-tip);
+      position: absolute;
+      top: calc(100% + 9px);
+      left: 50%;
+      transform: translate(-50%, -6px);
+      background: rgba(2, 6, 23, 0.97);
+      border: 1px solid rgba(56, 189, 248, 0.42);
+      color: #e2e8f0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .015em;
+      padding: 5px 9px;
+      border-radius: 8px;
+      white-space: nowrap;
+      opacity: 0; pointer-events: none;
+      transition: opacity .16s ease, transform .16s ease;
+      z-index: 90;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+    }
+    .tool-icon:hover::after { opacity: 1; transform: translate(-50%, 0); }
+
+    .tip-up::after {
+      top: auto;
+      bottom: calc(100% + 9px);
+      transform: translate(-50%, 6px);
+    }
+    .tip-up:hover::after { transform: translate(-50%, 0); }
+
+    /* Dialogue transition */
+    .dialogue-box {
+      transition: opacity .26s cubic-bezier(.16,1,.3,1), transform .26s cubic-bezier(.16,1,.3,1);
+    }
+    .dialogue-box.fade-out {
+      opacity: 0;
+      transform: translate(-50%, 16px) scale(.96);
+      pointer-events: none;
+    }
+    .dialogue-box.fade-in {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+    .subtitles-off .dialogue-box {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translate(-50%, 20px) scale(.96) !important;
+    }
+
+    /* Concept Fact Slide HUD */
+    #virtual-slide {
+      transition: opacity .32s ease, transform .32s cubic-bezier(.16,1,.3,1);
+    }
+    #virtual-slide.slide-hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-12px) scale(0.96);
+    }
+
+    /* Step chips */
+    .step-chip {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      padding: 4px 2px;
+      border-radius: 7px;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      color: #94a3b8;
+      transition: all .18s ease;
+      cursor: pointer;
+    }
+    .step-chip:hover { border-color: rgba(56,189,248,.6); color: #bae6fd; }
+    .step-chip.active {
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      color: #04231c;
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
+    }
+
+    input[type=range] {
+      -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 4px;
+      background: linear-gradient(90deg, #10b981 0%, #38bdf8 100%);
+      outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 11px; height: 11px; border-radius: 50%;
+      background: #f0fdfa; border: 2px solid #0ea5e9;
+      box-shadow: 0 0 8px rgba(56,189,248,.8);
+      cursor: pointer;
+    }
+
+    #player-panel { transition: opacity .2s ease, transform .2s cubic-bezier(.16,1,.3,1); }
+    #player-panel.hidden-panel {
+      opacity: 0; pointer-events: none;
+      transform: translateY(10px) scale(.95);
+      display: block !important;
+    }
+    #modal-bridge { transition: opacity .3s ease; }
+  </style>
+</head>
+<body class="text-white"><a id="archive-home-link" href="../../index.html" title="Return to Alpenhof Research HQ archive" aria-label="Return to Alpenhof Research HQ" style="position:fixed;top:12px;left:12px;z-index:1000;padding:8px 12px;border:1px solid rgba(120,190,225,.45);border-radius:10px;background:rgba(5,17,30,.86);backdrop-filter:blur(8px);color:#dff4ff;text-decoration:none;font:600 12px/1.2 system-ui,sans-serif;box-shadow:0 5px 20px #0005">🏔️ Archive</a>
+
+  <!-- 3D Canvas Viewport -->
+  <div id="viewport-container"></div>
+
+  <!-- ============ TOP LEFT : Mission Header & Roster ============ -->
+  <header class="fixed top-4 left-4 z-40 flex flex-col gap-2 pointer-events-none max-w-[340px]">
+    <div class="glass-ui p-3 rounded-2xl shadow-2xl pointer-events-auto border border-emerald-500/30">
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-emerald-600 to-cyan-400 p-[2px] shadow-lg flex-shrink-0">
+            <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-lg">🌉</div>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h1 class="text-[13px] font-bold tracking-wide text-emerald-200 leading-tight">Alpenhof Heavy Timber &amp; Grid Lab</h1>
+              <span class="text-[8px] px-1.5 py-[1px] rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-mono">ALP</span>
+            </div>
+            <p class="text-[10px] text-slate-300 leading-tight">Gorge Timber Bridge &amp; Wind Microgrid Span</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="stage-tag" class="text-[9px] uppercase font-bold tracking-wider px-2 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-400/30 text-center mb-2">
+        Step 1 · Bedrock Anchor Drilling &amp; Aerial Cableway
+      </div>
+
+      <div class="grid grid-cols-3 gap-1.5 text-[10px]">
+        <div class="p-1.5 rounded-xl bg-slate-900/80 border border-amber-500/40 flex items-center gap-1.5">
+          <span class="text-sm">🦡</span>
+          <div class="truncate">
+            <strong class="text-amber-300 block truncate leading-tight text-[9px]">Dr. Clodhopper</strong>
+            <span class="text-[8px] text-slate-400">Chief Structural Eng</span>
+          </div>
+        </div>
+        <div class="p-1.5 rounded-xl bg-slate-900/80 border border-purple-500/40 flex items-center gap-1.5">
+          <span class="text-sm">🌸</span>
+          <div class="truncate">
+            <strong class="text-purple-300 block truncate leading-tight text-[9px]">Prof. Puff</strong>
+            <span class="text-[8px] text-slate-400">Aero &amp; Fluid Sci</span>
+          </div>
+        </div>
+        <div class="p-1.5 rounded-xl bg-slate-900/80 border border-cyan-500/40 flex items-center gap-1.5">
+          <span class="text-sm">🌺</span>
+          <div class="truncate">
+            <strong class="text-cyan-300 block truncate leading-tight text-[9px]">Pip Squeak</strong>
+            <span class="text-[8px] text-slate-400">Safety &amp; Cable Line</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ TOP RIGHT : Icon-only toolbar with hover tooltips ============ -->
+  <nav class="fixed top-4 right-4 z-40 flex flex-row items-center gap-2 flex-nowrap">
+    <button id="btn-audio"        class="tool-icon"        data-tip="Audio &amp; Voice Synthesis">🔊</button>
+    <button id="btn-subtitle"     class="tool-icon active" data-tip="Subtitles On / Off">💬</button>
+    <button id="btn-slide-toggle" class="tool-icon active" data-tip="Concept Fact Slide HUD">📊</button>
+    <button id="btn-open-bridge"  class="tool-icon"        data-tip="Structural &amp; Aero Blueprint">📐</button>
+    <button id="btn-cam-gorge"    class="tool-icon"        data-tip="Canyon Abyss &amp; Torrent View">🌊</button>
+    <button id="btn-cam-turbine"  class="tool-icon"        data-tip="Ridge Wind Turbine Focus">💨</button>
+    <button id="btn-cam-truss"    class="tool-icon"        data-tip="Larch Queen-Post Arch Truss">🪵</button>
+    <button id="btn-cam-wide"     class="tool-icon"        data-tip="Panoramic Mountain Overview">🌄</button>
+  </nav>
+
+  <!-- ============ TOP CENTER-RIGHT : Virtual Concept Fact Slide HUD ============ -->
+  <aside id="virtual-slide" class="fixed top-20 right-4 z-30 w-[330px] sm:w-[380px] glass-ui p-3.5 rounded-2xl border border-cyan-400/40 shadow-2xl pointer-events-auto">
+    <div class="flex items-center justify-between border-b border-slate-700/60 pb-2 mb-2.5">
+      <div class="flex items-center gap-2">
+        <span id="slide-icon" class="text-lg">🪨</span>
+        <div>
+          <h2 id="slide-title" class="bubble-font text-[12px] font-bold text-cyan-200">Gorge Abutment Anchor Wells</h2>
+          <span id="slide-subtitle" class="text-[9px] text-slate-400 font-mono">32mm Post-Tensioned Bedrock Rock Bolts</span>
+        </div>
+      </div>
+      <span id="slide-metric" class="mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/40">F_safe = 3.8</span>
+    </div>
+
+    <!-- Intuitive visual diagram card -->
+    <div id="slide-diagram" class="rounded-xl bg-slate-950/70 p-2.5 border border-slate-800 text-[11px] mb-2 font-mono space-y-1.5">
+      <div class="flex items-center justify-between text-slate-300">
+        <span>⚙️ Rock Anchors:</span>
+        <span class="text-emerald-400 font-bold">12m Grout Sockets in Granite</span>
+      </div>
+      <div class="flex items-center justify-between text-slate-300">
+        <span>🚠 Aerial Cableway:</span>
+        <span class="text-amber-400 font-bold">Zero-Ground Highline Trolley</span>
+      </div>
+      <div class="flex items-center justify-between text-slate-300">
+        <span>🛡️ Safety Arrest:</span>
+        <span class="text-cyan-400 font-bold">High-Tenacity Abyss Catch Net</span>
+      </div>
+    </div>
+
+    <!-- Live thermal, stress & energy indicators -->
+    <div class="grid grid-cols-4 gap-1.5 text-center font-mono text-[9px]">
+      <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+        <div class="text-slate-400 text-[7.5px]">CANYON GUST</div>
+        <div id="metric-wind" class="text-cyan-300 font-bold">18.4 m/s</div>
+      </div>
+      <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+        <div class="text-slate-400 text-[7.5px]">TRUSS LOAD</div>
+        <div id="metric-stress" class="text-emerald-300 font-bold">14.2 MPa</div>
+      </div>
+      <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+        <div class="text-slate-400 text-[7.5px]">POWER GRID</div>
+        <div id="metric-power" class="text-amber-300 font-bold">45.0 kW</div>
+      </div>
+      <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+        <div class="text-slate-400 text-[7.5px]">AERO DAMPING</div>
+        <div id="metric-damp" class="text-purple-300 font-bold">ζ = 0.082</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ BOTTOM LEFT : Packed expandable playback controller ============ -->
+  <div class="fixed bottom-4 left-4 z-50 flex flex-col items-start gap-2">
+    <div id="player-panel" class="hidden-panel glass-ui rounded-2xl p-2.5 w-[280px] shadow-2xl border border-slate-700">
+      <div class="flex items-center gap-1.5">
+        <button id="btn-play-pause" class="w-7 h-7 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[11px] font-bold flex items-center justify-center transition">⏸</button>
+        <button id="btn-restart" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] flex items-center justify-center border border-slate-600 transition" title="Restart">↺</button>
+        <span id="time-display" class="mono text-[10px] text-emerald-300 w-9 text-center font-bold">00:00</span>
+        <input id="story-scrubber" type="range" min="0" max="90" step="0.1" value="0" class="flex-1">
+        <span class="mono text-[9px] text-slate-500">1:30</span>
+      </div>
+      <div class="grid grid-cols-4 gap-1 mt-2">
+        <button id="step-btn-1" class="step-chip active" data-tip="Step 1: Anchor &amp; Cableway">S1</button>
+        <button id="step-btn-2" class="step-chip" data-tip="Step 2: Larch Queen Truss">S2</button>
+        <button id="step-btn-3" class="step-chip" data-tip="Step 3: Deck Baffles &amp; Grid Cable">S3</button>
+        <button id="step-btn-4" class="step-chip" data-tip="Step 4: Energy Flow &amp; Testing">S4</button>
+      </div>
+    </div>
+    <button id="btn-player-toggle" class="tool-icon tip-up" data-tip="Timeline Playback Panel">▶</button>
+  </div>
+
+  <!-- ============ BOTTOM CENTER : Subtitle / Dialogue ============ -->
+  <div id="subtitle-layer" class="fixed left-0 right-0 bottom-0 z-30 pointer-events-none" style="padding-bottom: 22px;">
+    <div id="dialogue-container"
+         class="dialogue-box fade-in pointer-events-auto mx-auto glass-ui px-4 py-3 rounded-2xl border border-emerald-400/40 shadow-2xl flex items-center gap-3"
+         style="width: min(620px, 88vw);">
+      <div id="speaker-avatar" class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl bg-slate-900 border-2 border-emerald-400 shadow-md">🦡</div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2 mb-0.5">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span id="speaker-name" class="bubble-font text-[12px] font-bold text-amber-300 tracking-wide truncate">Dr. Barnaby Clodhopper</span>
+            <span id="speaker-role" class="hidden sm:inline text-[9px] px-1.5 py-[1px] rounded bg-amber-500/20 text-amber-300 border border-amber-400/30 font-mono whitespace-nowrap">Chief Structural &amp; Timber Engineer</span>
+          </div>
+          <span id="speech-emotion" class="text-[9px] uppercase tracking-wider px-1.5 py-[1px] rounded-full bg-slate-800 text-emerald-300 border border-emerald-500/30 whitespace-nowrap">Bedrock Sockets</span>
+        </div>
+        <p id="speech-text" class="text-[11.5px] text-slate-100 leading-snug font-medium">
+          "Grüß Gott! Behold the formidable Alpenhof Ravine. To harness the high-ridge wind turbine, we bridge this abyss!"
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Blueprint / Architectural Specifications Modal ============ -->
+  <aside id="modal-bridge" class="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none">
+    <div class="glass-ui border-2 border-emerald-400/60 rounded-3xl p-5 max-w-md w-full text-center shadow-2xl relative">
+      <button id="btn-close-bridge-x"
+              class="absolute top-3 right-3 w-7 h-7 rounded-lg bg-slate-800/90 hover:bg-rose-500/80 border border-slate-600 hover:border-rose-400 text-slate-200 text-[11px] flex items-center justify-center transition"
+              title="Close">✕</button>
+
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-emerald-500 text-slate-950 flex items-center justify-center text-2xl mx-auto mb-2.5 shadow-lg">🌉</div>
+      <h2 class="cinzel text-lg font-bold text-emerald-300 mb-1">Alpine Timber Gorge Bridge Blueprint</h2>
+      <p class="text-[11px] text-slate-300 mb-3 leading-relaxed">
+        Civil, aerodynamic, and high-voltage grid transmission specifications designed by Dr. Clodhopper and Professor Whisker Puff.
+      </p>
+
+      <div class="bg-slate-900/90 p-3 rounded-2xl border border-emerald-500/30 text-left text-[10.5px] mb-4 space-y-1.5 font-mono">
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>🪨 Bedrock Abutment Anchors</span>
+          <span class="text-amber-400 font-bold text-right">32mm Dywidag Rods in Granodiorite</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>🌲 Heavy Queen-Post Arch</span>
+          <span class="text-emerald-400 font-bold text-right">Dense Alpine Larch (GL28c Glulam)</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>💨 Venturi Canyon Baffles</span>
+          <span class="text-cyan-400 font-bold text-right">45° Aerodynamic Edge Fairings</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>⚡ High-Voltage Shielded Conduit</span>
+          <span class="text-purple-400 font-bold text-right">400V 3-Phase Armored Neutral-Axis Bus</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-slate-200">
+          <span>🛡️ Mountain Fall Arrest Netting</span>
+          <span class="text-pink-400 font-bold text-right">100 kN/m² Dyneema Zero-Abyss Net</span>
+        </div>
+      </div>
+
+      <button id="btn-close-bridge"
+              class="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold py-2 rounded-xl transition text-[11px] shadow-lg">
+        Return to Bridge Construction Site
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- THREE.JS SIMULATION & LOGIC ENGINE                                    -->
+  <!-- ===================================================================== -->
+  <script>
+  let scene, camera, renderer, controls;
+
+  // Characters
+  let badgerGroup, puffGroup, pipGroup;
+  let badgerHead, badgerArmL, badgerArmR;
+  let puffHead, puffArmL, puffArmR, puffTail;
+  let pipHead, pipArmL, pipArmR, pipTail, pipFlag;
+
+  // Environment & Chasm
+  let gorgeRiver, waterBasePos = null;
+  let turbineTower, turbineHub, turbineBlades = [];
+  let substationFarm, substationGlowLight;
+  let windStreamParticles, windParticlesData = [];
+
+  // Bridge Structural Components (4 Steps)
+  let highlineCableway, highlineTrolley, safetyArrestNet;
+  let bedrockAbutments = [];
+  let timberTrusses = [], deckFloor, deckBaffles = [], steelTieRods = [];
+  let powerConduitTray, energyPulseParticles;
+
+  // Lights
+  let sunLight, ambientLight, riverGlowLight;
+  let clock;
+
+  // Timeline
+  const TOTAL_DURATION = 90;
+  let storyTime = 0;
+  let isPlaying = true;
+  let audioEnabled = true;
+  let subtitlesEnabled = true;
+  let currentSpeechIdx = -1;
+  let lastCamStep = -1;
+  let synth = null;
+
+  /* Camera Perspectives */
+  const CAM = {
+    intro:   { pos: [14.0, 12.0, 24.0], tgt: [0.0, 3.5, 0.0], zoom: 1.15 },
+    step1:   { pos: [11.0, 8.5, 18.0],  tgt: [4.0, 3.5, 0.0], zoom: 1.25 },
+    step2:   { pos: [0.0, 8.0, 22.0],   tgt: [0.0, 3.8, 0.0], zoom: 1.22 },
+    step3:   { pos: [12.5, 7.5, 12.0],  tgt: [-1.0, 4.2, 0.0], zoom: 1.35 },
+    step4:   { pos: [-16.0, 14.0, 22.0],tgt: [-3.0, 5.0, 0.0], zoom: 1.05 },
+    gorge:   { pos: [0.0, -1.0, 16.0],  tgt: [0.0, -1.5, 0.0], zoom: 1.30 },
+    turbine: { pos: [-18.0, 16.0, 14.0],tgt: [-14.0, 9.0, 0.0], zoom: 1.25 },
+    truss:   { pos: [6.0, 5.5, 8.5],    tgt: [0.0, 4.0, 0.0], zoom: 1.45 },
+    wide:    { pos: [26.0, 24.0, 26.0], tgt: [0.0, 4.0, 0.0], zoom: 0.95 }
+  };
+
+  /* Story Beats with Educational Telemetry & Virtual Concept Slides */
+  const STORY_BEATS = [
+    {
+      start: 0, end: 7.5, speaker: 'Badger', avatar: '🦡', role: 'Chief Structural Engineer', emotion: 'Topography Survey',
+      text: "Grüß Gott! Behold the Alpenhof Chasm! A 24-meter deep abyss separating our farm grid from the high-altitude ridge wind turbine.",
+      slide: {
+        icon: "🏔️", title: "Canyon Abutment Topography", sub: "Granodiorite Fissures & 28m Gap Geometry",
+        metric: "Span = 24m",
+        diagram: [
+          ["🧗 Chasm Depth", "24.5 Meters to Torrent Floor"],
+          ["🪨 Bedrock Integrity", "Competent Alpine Granodiorite"],
+          ["⚡ Target Grid", "East Farm Substation ↔ West Turbine"]
+        ],
+        wind: "14.2 m/s", stress: "2.1 MPa", power: "0.0 kW", damp: "0.035"
+      }
+    },
+    {
+      start: 7.5, end: 15.0, speaker: 'Puff', avatar: '🌸', role: 'Fluid & Microclimate Scientist', emotion: 'Venturi Canyon Aerodynamics',
+      text: "Look at the wind vectors! The narrowing canyon walls create a severe Venturi acceleration, raising wind gusts up to 26 meters per second!",
+      slide: {
+        icon: "💨", title: "Canyon Venturi Acceleration", sub: "Bernoulli Pressure Drop & Air Choke",
+        metric: "v_max = 26 m/s",
+        diagram: [
+          ["🌀 Venturi Effect", "Canyon Narrowing Accelerates Mass Flow"],
+          ["⚠️ Critical Aero Risk", "Vortex Shedding Torsional Resonance"],
+          ["📐 Solution", "Aerodynamic Deck Fairings & Larch Arch"]
+        ],
+        wind: "26.4 m/s", stress: "4.5 MPa", power: "0.0 kW", damp: "0.048"
+      }
+    },
+    {
+      start: 15.0, end: 23.0, speaker: 'Pip', avatar: '🌺', role: 'Safety & Cableline Helper', emotion: 'Upright & Vigilant',
+      text: "I anchored our highline winch cable across the gorge! Not a single step out over the abyss without our dual safety lifelines and arrest net!",
+      slide: {
+        icon: "🚠", title: "Aerial Highline & Zero-Crane Safety", sub: "Suspension Winch & Dyneema Fall Net",
+        metric: "Net = 100 kN",
+        diagram: [
+          ["🚠 Cableway Trolley", "Zero-Abyss Crane-Free Material Delivery"],
+          ["🦺 Dual Lanyard", "100% Tie-Off Continuous Lifeline Track"],
+          ["🛡️ Catch Netting", "100 kN/m² Slung Across Empty Chasm"]
+        ],
+        wind: "22.0 m/s", stress: "6.8 MPa", power: "0.0 kW", damp: "0.052"
+      }
+    },
+    {
+      start: 23.0, end: 32.0, speaker: 'Badger', avatar: '🦡', role: 'Chief Structural Engineer', emotion: 'Timber Queen Arch',
+      text: "Step 2: Erecting the heavy timber Queen-Post Arch! Premium resin-rich mountain larch absorbs massive compressive forces, driving loads into bedrock!",
+      slide: {
+        icon: "🪵", title: "Queen-Post Larch Arch Truss", sub: "High-Compression Glulam & Thrust Blocks",
+        metric: "σ_c = 18.2 MPa",
+        diagram: [
+          ["🌲 Larch Glulam", "Dense Winter-Felled Alpine Larch (GL28c)"],
+          ["📐 Arch Geometry", "Queen-Post Triangular Diagonal Stiffeners"],
+          ["🧱 Thrust Blocks", "82% Dead Load Transferred to Abutments"]
+        ],
+        wind: "19.5 m/s", stress: "18.2 MPa", power: "0.0 kW", damp: "0.071"
+      }
+    },
+    {
+      start: 32.0, end: 40.0, speaker: 'Puff', avatar: '🌸', role: 'Fluid & Microclimate Scientist', emotion: 'Aeroelastic Damping',
+      text: "Notice how our aerodynamic edge baffles slice through upward mountain turbulence, completely suppressing torsional flutter!",
+      slide: {
+        icon: "📐", title: "Aeroelastic Flange Baffles", sub: "Tacoma Mitigation & Slotted Relief",
+        metric: "Scruton = 14.5",
+        diagram: [
+          ["💨 Edge Fairings", "45° Wind Baffles Split Lateral Gusts"],
+          ["🌪️ Vortex Disruption", "Suppresses Strouhal Shedding Frequencies"],
+          ["📉 Deck Slits", "Relieves Dangerous Upward Lift Gusts"]
+        ],
+        wind: "24.1 m/s", stress: "15.4 MPa", power: "0.0 kW", damp: "0.086"
+      }
+    },
+    {
+      start: 40.0, end: 49.0, speaker: 'Pip', avatar: '🌺', role: 'Safety & Cableline Helper', emotion: 'Deck & Conduit Laying',
+      text: "Step 3: Laying the oak deck and running the armored electrical conduit right through the truss center where vibration is lowest!",
+      slide: {
+        icon: "⚡", title: "Neutral-Axis Conduit Integration", sub: "3-Phase Armored Cable Shielding",
+        metric: "400V 3Φ",
+        diagram: [
+          ["⚡ Bus Integration", "Conduit Nested in Zero-Bending Neutral Axis"],
+          ["🛡️ Steel Armor", "Protection from Debris, Snow & Lightning"],
+          ["🚶 Walking Deck", "Non-Slip Slotted Alpine White Oak Planks"]
+        ],
+        wind: "18.0 m/s", stress: "14.8 MPa", power: "12.5 kW", damp: "0.084"
+      }
+    },
+    {
+      start: 49.0, end: 58.0, speaker: 'Puff', avatar: '🌸', role: 'Fluid & Microclimate Scientist', emotion: 'Kinetic Generation',
+      text: "The ridge wind turbine is spinning at optimal pitch! Generating 45 kilowatts of clean kinetic energy from high-altitude alpine thermals!",
+      slide: {
+        icon: "🌪️", title: "High-Ridge Wind Harvesting", sub: "Variable-Pitch 3-Blade Clean Turbine",
+        metric: "η = 47.8%",
+        diagram: [
+          ["💨 Rotor Swept Area", "12.5m Diameter Aerodynamic Fiberglass Blades"],
+          ["⚡ Alternator", "Permanent Magnet Direct-Drive Hub"],
+          ["📈 Yield Increase", "+310% Compared to Stagnant Basin Valley"]
+        ],
+        wind: "16.8 m/s", stress: "13.6 MPa", power: "45.0 kW", damp: "0.082"
+      }
+    },
+    {
+      start: 58.0, end: 68.0, speaker: 'Badger', avatar: '🦡', role: 'Chief Structural Engineer', emotion: 'Grid Power Flow',
+      text: "Step 4: Microgrid synchronization! Power pulses safely across the timber bridge right into the farm's battery bank and stone mill!",
+      slide: {
+        icon: "🔋", title: "Microgrid Substation Coupling", sub: "Zero-Loss Ultra-Low Line Drop Conduit",
+        metric: "Grid P = 45 kW",
+        diagram: [
+          ["🔌 Grid Inflow", "Supplies Silo Aerators, Cold Storage & Dairy"],
+          ["🔋 Storage Buffer", "120 kWh Lithium-Iron Alpine Battery Pack"],
+          ["⚖️ Bridge Load", "Combined Structural Static & Dynamic Stability"]
+        ],
+        wind: "15.2 m/s", stress: "14.2 MPa", power: "45.0 kW", damp: "0.082"
+      }
+    },
+    {
+      start: 68.0, end: 78.0, speaker: 'Pip', avatar: '🌺', role: 'Safety & Cableline Helper', emotion: 'Joyful Upright Cheer',
+      text: "The bridge doesn't wobble even a tiny bit! The lights are on, the turbine is singing, and we built it safely across the sky!",
+      slide: {
+        icon: "✨", title: "Structural Integrity Verified", sub: "Load Test Passed & Dynamic Equilibrium",
+        metric: "Defl < 12mm",
+        diagram: [
+          ["⚖️ Deflection", "Only 11.4mm under 5-Tonne Dynamic Test"],
+          ["🛡️ Anchor Pullout", "Tested to 350 kN with Zero Bedrock Creep"],
+          ["🌟 Farm Energy", "100% Energy Self-Sufficiency Achieved"]
+        ],
+        wind: "14.0 m/s", stress: "12.8 MPa", power: "45.0 kW", damp: "0.085"
+      }
+    },
+    {
+      start: 78.0, end: 90.0, speaker: 'All', avatar: '🌉', role: 'Alpenhof Team', emotion: 'Triumphant Engineering',
+      text: "Alpenhof Timber Gorge Bridge complete! Combining ancient timber craft with modern wind energy to power our resilient eco-village!",
+      slide: {
+        icon: "🏆", title: "Alpenhof Ecological Engineering", sub: "Clean Energy & Timber Synergy Masterpiece",
+        metric: "100% Clean",
+        diagram: [
+          ["🌉 Alpine Bridge", "Century-Lifespan Mountain Larch Queen Arch"],
+          ["💨 Wind Turbine", "Self-Renewing Clean High-Ridge Power"],
+          ["🏡 Village Grid", "Powering Food Security & Sustainable Future"]
+        ],
+        wind: "14.2 m/s", stress: "12.5 MPa", power: "45.0 kW", damp: "0.085"
+      }
+    }
+  ];
+
+  /* Audio Synthesizer */
+  function initAudio() {
+    try { if (!synth) synth = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+  }
+  function playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.05) {
+    if (!audioEnabled || !synth) return;
+    try {
+      if (synth.state === 'suspended') synth.resume();
+      const osc = synth.createOscillator(), gain = synth.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, synth.currentTime);
+      gain.gain.setValueAtTime(gainVal, synth.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + duration);
+      osc.connect(gain); gain.connect(synth.destination);
+      osc.start(); osc.stop(synth.currentTime + duration);
+    } catch(e){}
+  }
+
+  let availableVoices = [];
+  function loadVoices() {
+    if ('speechSynthesis' in window) {
+      availableVoices = window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => { availableVoices = window.speechSynthesis.getVoices(); };
+    }
+  }
+  loadVoices();
+
+  let dialogueSpeaking = false;
+    function speakText(text, speaker) {
+      dialogueSpeaking = false;
+    if (!audioEnabled || !('speechSynthesis' in window)) return;
+    
+    const u = new SpeechSynthesisUtterance(text);
+      dialogueSpeaking = true;
+      u.onstart = () => { dialogueSpeaking = true; };
+      u.onend = u.onerror = () => { dialogueSpeaking = false; };
+    if (speaker === 'Pip') {
+      u.pitch = 1.48; u.rate = 1.08;
+      const v = availableVoices.find(v => /Junior|Fred|Child|Princess/i.test(v.name) && v.lang.startsWith('en'));
+      if (v) u.voice = v;
+      playTone(720, 'triangle', 0.1, 0.04);
+    } else if (speaker === 'Puff') {
+      u.pitch = 1.2; u.rate = 0.96;
+      const v = availableVoices.find(v => /Samantha|Victoria|Zira|Female/i.test(v.name) && v.lang.startsWith('en'));
+      if (v) u.voice = v;
+      playTone(540, 'sine', 0.18, 0.03);
+    } else {
+      u.pitch = 0.94; u.rate = 1.02;
+      const v = availableVoices.find(v => /Daniel|George|David|Male/i.test(v.name) && v.lang.startsWith('en'));
+      if (v) u.voice = v;
+      playTone(190, 'sawtooth', 0.2, 0.05);
+    }
+    const lineMood = String(STORY_BEATS[currentSpeechIdx]?.emotion || '');
+      if (/discover|curious|delight|excite|wonder/i.test(lineMood)) { u.pitch = Math.min(1.55, u.pitch + 0.035); u.rate = Math.min(1.12, u.rate + 0.025); }
+      else if (/focus|careful|technical|serious|reflect/i.test(lineMood)) { u.rate = Math.max(0.90, u.rate - 0.025); }
+      window.speechSynthesis.speak(u);
+  }
+
+  /* ===================================================================== */
+  /* INITIALIZATION                                                        */
+  /* ===================================================================== */
+  function init() {
+    const container = document.getElementById('viewport-container');
+    const w = window.innerWidth, h = window.innerHeight;
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x060e17);
+    scene.fog = new THREE.FogExp2(0x060e17, 0.012);
+
+    const aspect = w / h, d = 16;
+    camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 0.1, 450);
+    camera.position.set(14.0, 12.0, 24.0);
+    camera.lookAt(0.0, 3.5, 0.0);
+    camera.zoom = CAM.intro.zoom;
+    camera.updateProjectionMatrix();
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(w, h);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+    container.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.maxPolarAngle = Math.PI / 2.05;
+    controls.target.set(0.0, 3.5, 0.0);
+
+    setupLighting();
+    buildGorgeTerrain();
+    buildWindTurbine();
+    buildFarmSubstation();
+    buildWindStreamPhysics();
+    buildBridgeSystem();
+    buildBadger();
+    buildPuff();
+    buildPip();
+    setupUI();
+
+    clock = new THREE.Clock();
+    window.addEventListener('resize', onResize);
+  }
+
+  /* ===================================================================== */
+  /* LIGHTING                                                              */
+  /* ===================================================================== */
+  function setupLighting() {
+    ambientLight = new THREE.HemisphereLight(0x93c5fd, 0x1e293b, 0.95);
+    scene.add(ambientLight);
+
+    sunLight = new THREE.DirectionalLight(0xfff7ed, 1.65);
+    sunLight.position.set(28, 36, 22);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 95;
+    const dl = 26;
+    sunLight.shadow.camera.left = -dl;
+    sunLight.shadow.camera.right = dl;
+    sunLight.shadow.camera.top = dl;
+    sunLight.shadow.camera.bottom = -dl;
+    sunLight.shadow.bias = -0.0003;
+    scene.add(sunLight);
+
+    substationGlowLight = new THREE.PointLight(0x38bdf8, 2.0, 15);
+    substationGlowLight.position.set(11.5, 4.5, 0.0);
+    scene.add(substationGlowLight);
+
+    riverGlowLight = new THREE.PointLight(0x0284c7, 1.4, 12);
+    riverGlowLight.position.set(0.0, -1.8, 0.0);
+    scene.add(riverGlowLight);
+  }
+
+  /* ===================================================================== */
+  /* GORGE TOPOGRAPHY & ROARING TORRENT                                    */
+  /* ===================================================================== */
+  function buildGorgeTerrain() {
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.95, flatShading: true });
+    const cliffMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.98, flatShading: true });
+    const grassMat = new THREE.MeshStandardMaterial({ color: 0x365314, roughness: 0.88 });
+
+    // West Cliff (Wind Turbine Ridge - High side)
+    const westCliff = new THREE.Mesh(new THREE.BoxGeometry(16, 12, 28), cliffMat);
+    westCliff.position.set(-19.0, 0.0, 0.0);
+    westCliff.receiveShadow = true; scene.add(westCliff);
+
+    const westTop = new THREE.Mesh(new THREE.BoxGeometry(16, 0.3, 28), grassMat);
+    westTop.position.set(-19.0, 6.1, 0.0);
+    westTop.receiveShadow = true; scene.add(westTop);
+
+    // East Cliff (Alpenhof Farm Side - Microgrid Substation Plateau)
+    const eastCliff = new THREE.Mesh(new THREE.BoxGeometry(16, 9, 28), cliffMat);
+    eastCliff.position.set(19.0, -1.5, 0.0);
+    eastCliff.receiveShadow = true; scene.add(eastCliff);
+
+    const eastTop = new THREE.Mesh(new THREE.BoxGeometry(16, 0.3, 28), grassMat);
+    eastTop.position.set(19.0, 3.1, 0.0);
+    eastTop.receiveShadow = true; scene.add(eastTop);
+
+    // Canyon Bedrock Strata (Deep Ravine Bottom)
+    const canyonFloor = new THREE.Mesh(new THREE.BoxGeometry(22, 2.0, 32), rockMat);
+    canyonFloor.position.set(0.0, -4.5, 0.0);
+    canyonFloor.receiveShadow = true; scene.add(canyonFloor);
+
+    // Glacial River Torrent
+    const riverGeo = new THREE.PlaneGeometry(16, 30, 24, 24);
+    riverGeo.rotateX(-Math.PI / 2);
+    waterBasePos = riverGeo.attributes.position.array.slice();
+
+    const riverMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0284c7,
+      transparent: true,
+      opacity: 0.85,
+      roughness: 0.1,
+      metalness: 0.3,
+      transmission: 0.6,
+      ior: 1.333
+    });
+    gorgeRiver = new THREE.Mesh(riverGeo, riverMat);
+    gorgeRiver.position.set(0.0, -3.2, 0.0);
+    scene.add(gorgeRiver);
+
+    // Scattered Canyon Boulders & Rocks
+    for (let i = 0; i < 18; i++) {
+      const rock = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.6 + Math.random() * 0.8),
+        rockMat
+      );
+      rock.position.set((Math.random() - 0.5) * 12, -3.2, (Math.random() - 0.5) * 26);
+      rock.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+      rock.castShadow = true; scene.add(rock);
+    }
+
+    // Alpine Conifers on West & East Plateaus
+    const needleMat = new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.8 });
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.9 });
+    const pines = [
+      [-22, 6.2, -6, 1.3], [-24, 6.2, 5, 1.2], [-20, 6.2, 9, 1.4],
+      [22, 3.2, -7, 1.2], [24, 3.2, 6, 1.35], [20, 3.2, 10, 1.1]
+    ];
+    pines.forEach(([px, py, pz, ps]) => {
+      const g = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15 * ps, 0.22 * ps, 1.2 * ps, 7), trunkMat);
+      trunk.position.y = 0.6 * ps; trunk.castShadow = true; g.add(trunk);
+      for (let c = 0; c < 4; c++) {
+        const cone = new THREE.Mesh(new THREE.ConeGeometry((1.1 - c * 0.2) * ps, (1.3 - c * 0.18) * ps, 8), needleMat);
+        cone.position.y = (1.2 + c * 0.72) * ps; cone.castShadow = true; g.add(cone);
+      }
+      g.position.set(px, py, pz); scene.add(g);
+    });
+  }
+
+  /* ===================================================================== */
+  /* HIGH-RIDGE WIND TURBINE                                               */
+  /* ===================================================================== */
+  function buildWindTurbine() {
+    turbineTower = new THREE.Group();
+    turbineTower.position.set(-15.5, 6.2, -3.5);
+
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.7, roughness: 0.3 });
+    const nacelleMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6, roughness: 0.35 });
+    const bladeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2, metalness: 0.2 });
+
+    // Tapered Tubular Steel Wind Turbine Mast
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.65, 11.5, 18), steelMat);
+    mast.position.y = 5.75; mast.castShadow = true;
+    turbineTower.add(mast);
+
+    // Nacelle Generator Housing
+    const nacelle = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.9, 2.6), nacelleMat);
+    nacelle.position.set(0, 11.5, 0.4); nacelle.castShadow = true;
+    turbineTower.add(nacelle);
+
+    // Rotor Hub
+    turbineHub = new THREE.Group();
+    turbineHub.position.set(0, 11.5, 1.75);
+
+    const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.48, 0.85, 16), steelMat);
+    spinner.rotation.x = Math.PI / 2;
+    turbineHub.add(spinner);
+
+    // 3 Variable-Pitch Aerodynamic Rotor Blades
+    for (let b = 0; b < 3; b++) {
+      const bladeRoot = new THREE.Group();
+      bladeRoot.rotation.z = (b / 3) * Math.PI * 2;
+
+      const blade = new THREE.Mesh(new THREE.ConeGeometry(0.24, 6.2, 8), bladeMat);
+      blade.position.y = 3.1; blade.scale.set(0.4, 1.0, 1.0);
+      blade.castShadow = true;
+      bladeRoot.add(blade);
+
+      turbineHub.add(bladeRoot);
+      turbineBlades.push(bladeRoot);
+    }
+    turbineTower.add(turbineHub);
+
+    scene.add(turbineTower);
+  }
+
+  /* ===================================================================== */
+  /* ALPENHOF FARM MICROGRID SUBSTATION                                    */
+  /* ===================================================================== */
+  function buildFarmSubstation() {
+    substationFarm = new THREE.Group();
+    substationFarm.position.set(13.5, 3.2, 0.0);
+
+    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.9 });
+    const cabinetMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 });
+    const meterMat = new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.8 });
+
+    // Concrete Equipment Pad
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.4, 3.6), concreteMat);
+    pad.position.y = 0.2; pad.receiveShadow = true;
+    substationFarm.add(pad);
+
+    // Inverter & Battery Bank Cabinets
+    const cabinet = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.8, 1.2), cabinetMat);
+    cabinet.position.set(0, 1.3, -0.6); cabinet.castShadow = true;
+    substationFarm.add(cabinet);
+
+    // Live Grid Status Bar
+    const meter = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.22, 0.08), meterMat);
+    meter.position.set(0, 1.8, 0.05);
+    substationFarm.add(meter);
+
+    // High-Voltage Transformer Insulator Bushings
+    const ceramicMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.2 });
+    [-0.4, 0, 0.4].forEach(ix => {
+      const bushing = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.45, 8), ceramicMat);
+      bushing.position.set(ix, 2.4, -0.6);
+      substationFarm.add(bushing);
+    });
+
+    scene.add(substationFarm);
+  }
+
+  /* ===================================================================== */
+  /* DYNAMIC WIND STREAM PHYSICS (Venturi Canyon Flow)                     */
+  /* ===================================================================== */
+  function buildWindStreamPhysics() {
+    const count = 160;
+    const geo = new THREE.BufferGeometry();
+    const pos = new Float32Array(count * 3);
+
+    for (let i = 0; i < count; i++) {
+      pos[i * 3]     = -22.0 + Math.random() * 44.0;
+      pos[i * 3 + 1] = 0.5 + Math.random() * 7.0;
+      pos[i * 3 + 2] = -12.0 + Math.random() * 24.0;
+
+      windParticlesData.push({
+        baseY: pos[i * 3 + 1],
+        baseZ: pos[i * 3 + 2],
+        speed: 16.0 + Math.random() * 12.0
+      });
+    }
+
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({
+      size: 0.16,
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.65,
+      blending: THREE.AdditiveBlending
+    });
+    windStreamParticles = new THREE.Points(geo, mat);
+    scene.add(windStreamParticles);
+  }
+
+  /* ===================================================================== */
+  /* BRIDGE SYSTEM (4 Progressive Structural Steps)                        */
+  /* ===================================================================== */
+  function buildBridgeSystem() {
+    const larchWood = new THREE.MeshStandardMaterial({ color: 0x92512a, roughness: 0.82 });
+    const oakWood = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.85 });
+    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.95 });
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.85, roughness: 0.25 });
+    const netMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, wireframe: true, transparent: true, opacity: 0.55 });
+    const baffleMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.4, metalness: 0.6 });
+
+    /* --- Bedrock Abutment Sockets (East & West) --- */
+    [-11.2, 11.2].forEach((bx, idx) => {
+      const abutment = new THREE.Group();
+      abutment.position.set(bx, idx === 0 ? 4.2 : 2.5, 0.0);
+
+      // Angled concrete thrust block keyed into rock
+      const block = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.2, 4.4), concreteMat);
+      block.rotation.z = idx === 0 ? -0.25 : 0.25;
+      block.castShadow = true; abutment.add(block);
+
+      // Steel tieback rock bolts drilled into granite
+      for (let r = 0; r < 4; r++) {
+        const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8, 8), steelMat);
+        bolt.rotation.z = idx === 0 ? -Math.PI / 3 : Math.PI / 3;
+        bolt.position.set(idx === 0 ? -0.8 : 0.8, -0.6 + r * 0.5, 0.0);
+        abutment.add(bolt);
+      }
+      bedrockAbutments.push(abutment);
+      scene.add(abutment);
+    });
+
+    /* --- Step 1: Highline Aerial Cableway & Safety Fall Net --- */
+    highlineCableway = new THREE.Group();
+
+    // Highline suspension wire spanning the abyss
+    const cableGeo = new THREE.CylinderGeometry(0.03, 0.03, 24.5, 8);
+    cableGeo.rotateZ(Math.PI / 2);
+    const mainCable = new THREE.Mesh(cableGeo, steelMat);
+    mainCable.position.set(0.0, 7.8, 0.0);
+    highlineCableway.add(mainCable);
+
+    // Cableway Material Trolley Winch
+    highlineTrolley = new THREE.Group();
+    highlineTrolley.position.set(-2.0, 7.8, 0.0);
+    const trolleyWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.15, 12), steelMat);
+    trolleyWheel.rotation.x = Math.PI / 2; highlineTrolley.add(trolleyWheel);
+    const cargoHook = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.3), steelMat);
+    cargoHook.position.y = -0.45; highlineTrolley.add(cargoHook);
+    highlineCableway.add(highlineTrolley);
+
+    // Mountain Abyss Safety Arrest Catch Net
+    const netGeo = new THREE.PlaneGeometry(22, 5.0, 16, 8);
+    netGeo.rotateX(-Math.PI / 2);
+    safetyArrestNet = new THREE.Mesh(netGeo, netMat);
+    safetyArrestNet.position.set(0.0, 1.2, 0.0);
+    highlineCableway.add(safetyArrestNet);
+
+    scene.add(highlineCableway);
+
+    /* --- Step 2: Heavy Timber Queen-Post Arch Trusses --- */
+    [-1.7, 1.7].forEach(tz => {
+      const truss = new THREE.Group();
+      truss.position.set(0.0, 3.6, tz);
+
+      // Lower polygonal compression arch (Larch Glulam)
+      const archMat = larchWood;
+      const leftArch = new THREE.Mesh(new THREE.BoxGeometry(11.8, 0.38, 0.32), archMat);
+      leftArch.position.set(-5.6, -0.65, 0.0); leftArch.rotation.z = -0.16;
+      leftArch.castShadow = true; truss.add(leftArch);
+
+      const rightArch = new THREE.Mesh(new THREE.BoxGeometry(11.8, 0.38, 0.32), archMat);
+      rightArch.position.set(5.6, -0.85, 0.0); rightArch.rotation.z = 0.16;
+      rightArch.castShadow = true; truss.add(rightArch);
+
+      // Top horizontal chord
+      const topChord = new THREE.Mesh(new THREE.BoxGeometry(22.6, 0.36, 0.32), archMat);
+      topChord.position.set(0.0, 0.55, 0.0); topChord.castShadow = true;
+      truss.add(topChord);
+
+      // Queen-post vertical struts & diagonal shear braces
+      for (let s = -4; s <= 4; s++) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.24, 1.35, 0.24), archMat);
+        post.position.set(s * 2.5, 0.0, 0.0);
+        post.castShadow = true; truss.add(post);
+
+        if (s !== 4) {
+          const diag = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.18, 0.18), archMat);
+          diag.position.set(s * 2.5 + 1.25, 0.0, 0.0);
+          diag.rotation.z = (s % 2 === 0) ? 0.42 : -0.42;
+          truss.add(diag);
+        }
+      }
+
+      timberTrusses.push(truss);
+      scene.add(truss);
+    });
+
+    /* --- Step 3: Decking, Aerodynamic Wind Baffles & Armored Cable Tray --- */
+    // Slotted non-slip oak bridge deck
+    const deckGeo = new THREE.BoxGeometry(23.2, 0.18, 3.6);
+    deckFloor = new THREE.Mesh(deckGeo, oakWood);
+    deckFloor.position.set(0.0, 4.25, 0.0);
+    deckFloor.receiveShadow = true; deckFloor.castShadow = true;
+    scene.add(deckFloor);
+
+    // Aerodynamic Wind Fairings / Baffles (45° outer edges to prevent vortex resonance)
+    [-1.95, 1.95].forEach((bz, idx) => {
+      const baffle = new THREE.Mesh(new THREE.BoxGeometry(23.2, 0.35, 0.08), baffleMat);
+      baffle.position.set(0.0, 4.25, bz);
+      baffle.rotation.x = idx === 0 ? Math.PI / 4 : -Math.PI / 4;
+      deckBaffles.push(baffle);
+      scene.add(baffle);
+    });
+
+    // Guardrails & Illuminated Deck Lantern Posts
+    [-1.75, 1.75].forEach(rz => {
+      for (let p = -5; p <= 5; p++) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.1, 8), steelMat);
+        post.position.set(p * 2.2, 4.85, rz);
+        scene.add(post);
+
+        // Deck light
+        const lamp = new THREE.Mesh(
+          new THREE.SphereGeometry(0.08, 8, 8),
+          new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.9 })
+        );
+        lamp.position.set(p * 2.2, 5.35, rz);
+        scene.add(lamp);
+      }
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(23.2, 0.08, 0.08), steelMat);
+      rail.position.set(0.0, 5.35, rz);
+      scene.add(rail);
+    });
+
+    // High-Voltage Armored Transmission Conduit Tray (Nested safely in neutral axis)
+    powerConduitTray = new THREE.Group();
+    powerConduitTray.position.set(0.0, 3.9, 0.0);
+
+    const conduit = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.12, 0.12, 23.4, 12),
+      new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.2 })
+    );
+    conduit.rotation.z = Math.PI / 2;
+    powerConduitTray.add(conduit);
+
+    scene.add(powerConduitTray);
+
+    // Step 4 Power Grid Transmission Pulses
+    const pCount = 36;
+    const pGeo = new THREE.BufferGeometry();
+    const pPos = new Float32Array(pCount * 3);
+    for (let i = 0; i < pCount; i++) {
+      pPos[i * 3]     = -11.0 + (i / pCount) * 22.0;
+      pPos[i * 3 + 1] = 3.9;
+      pPos[i * 3 + 2] = 0.0;
+    }
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+    const pMat = new THREE.PointsMaterial({
+      size: 0.25,
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.95,
+      blending: THREE.AdditiveBlending
+    });
+    energyPulseParticles = new THREE.Points(pGeo, pMat);
+    scene.add(energyPulseParticles);
+  }
+
+  /* ===================================================================== */
+  /* CHARACTER RIGS (Synchronized Heads & Pip Upright Walking)             */
+  /* ===================================================================== */
+  function buildBadger() {
+    badgerGroup = new THREE.Group();
+
+    const furGrey = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.82 });
+    const furWhite = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.82 });
+    const furBlack = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.82 });
+    const vestOrange = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.55 });
+    const silverTape = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.18 });
+    const pantsMat = new THREE.MeshStandardMaterial({ color: 0x5b3414, roughness: 0.78 });
+    const hardHat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.4, roughness: 0.3 });
+
+    // Torso & Reflective Safety Vest
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.78, 1.4, 16), furGrey);
+    body.position.y = 1.35; body.castShadow = true; badgerGroup.add(body);
+
+    const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.81, 1.05, 16), vestOrange);
+    vest.position.y = 1.45; badgerGroup.add(vest);
+
+    [1.35, 1.65].forEach(vy => {
+      const strip = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.71, 0.08, 16), silverTape);
+      strip.position.y = vy; badgerGroup.add(strip);
+    });
+
+    const pants = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.78, 0.65, 16), pantsMat);
+    pants.position.y = 0.65; badgerGroup.add(pants);
+
+    [-0.35, 0.35].forEach(bx => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.16, 0.6, 8), furGrey);
+      leg.position.set(bx, 0.4, 0); badgerGroup.add(leg);
+      const boot = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.24, 0.55),
+        new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.6 }));
+      boot.position.set(bx, 0.12, 0.1); badgerGroup.add(boot);
+    });
+
+    // UNIFIED HIERARCHICAL HEAD (Ears, eyes, nose & helmet turn with badgerHead)
+    badgerHead = new THREE.Group();
+    badgerHead.position.set(0, 2.3, 0.1);
+
+    const bHeadMesh = new THREE.Mesh(new THREE.SphereGeometry(0.74, 18, 18), furGrey);
+    bHeadMesh.scale.set(1.1, 0.95, 1.2); bHeadMesh.castShadow = true;
+    badgerHead.add(bHeadMesh);
+
+    const whiteStripe = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.8, 0.9), furWhite);
+    whiteStripe.position.set(0, 0.1, 0.45); badgerHead.add(whiteStripe);
+
+    [-0.32, 0.32].forEach(bx => {
+      const blackStripe = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.7, 0.85), furBlack);
+      blackStripe.position.set(bx, 0.1, 0.45); badgerHead.add(blackStripe);
+    });
+
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 10), furBlack);
+    nose.position.set(0, -0.05, 1.15); badgerHead.add(nose);
+
+    [-0.3, 0.3].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x09090b }));
+      eye.position.set(ex, 0.16, 0.98); badgerHead.add(eye);
+    });
+
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.82, 18, 18, 0, Math.PI * 2, 0, Math.PI / 2), hardHat);
+    helmet.position.set(0, 0.4, 0.15); badgerHead.add(helmet);
+
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.08, 18), hardHat);
+    brim.position.set(0, 0.4, 0.25); badgerHead.add(brim);
+
+    badgerGroup.add(badgerHead);
+
+    // Arms & Theodolite Survey Staff
+    badgerArmL = new THREE.Group();
+    badgerArmL.position.set(-0.82, 1.5, 0);
+    const bArmBoneL = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.75, 8), furGrey);
+    bArmBoneL.position.y = -0.38; badgerArmL.add(bArmBoneL);
+    badgerGroup.add(badgerArmL);
+
+    badgerArmR = new THREE.Group();
+    badgerArmR.position.set(0.82, 1.5, 0);
+    const bArmBoneR = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.75, 8), furGrey);
+    bArmBoneR.position.y = -0.38; badgerArmR.add(bArmBoneR);
+
+    const staff = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.4, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
+    staff.position.set(0.1, -0.35, 0.2); badgerArmR.add(staff);
+    badgerGroup.add(badgerArmR);
+
+    badgerGroup.position.set(13.2, 3.2, 2.5);
+    badgerGroup.rotation.y = -1.25;
+    scene.add(badgerGroup);
+  }
+
+  function buildPuff() {
+    puffGroup = new THREE.Group();
+
+    const ginger = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.68 });
+    const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.72 });
+    const black = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.68 });
+    const labVest = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.55 });
+    const skirtMat = new THREE.MeshStandardMaterial({ color: 0x065f46, roughness: 0.62 });
+
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.64, 1.25, 16), white);
+    body.position.y = 1.35; body.castShadow = true; puffGroup.add(body);
+
+    const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.67, 0.9, 16, 1, false, 0.3, Math.PI * 1.8), labVest);
+    vest.position.y = 1.45; puffGroup.add(vest);
+
+    const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.85, 0.65, 16, 1, true), skirtMat);
+    skirt.position.y = 0.85; skirt.rotation.x = Math.PI; puffGroup.add(skirt);
+
+    // UNIFIED HIERARCHICAL HEAD (Ears, spectacles, nose locked inside puffHead)
+    puffHead = new THREE.Group();
+    puffHead.position.set(0, 2.3, 0.1);
+
+    const headGeo = new THREE.SphereGeometry(0.72, 20, 20);
+    headGeo.scale(1.15, 0.95, 1.05);
+    const head = new THREE.Mesh(headGeo, ginger);
+    head.castShadow = true; puffHead.add(head);
+
+    const patch = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), black);
+    patch.scale.set(0.9, 0.8, 0.35); patch.position.set(-0.35, 0.25, 0.55);
+    puffHead.add(patch);
+
+    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 14), white);
+    muzzle.scale.set(1.2, 0.8, 0.85); muzzle.position.set(0, -0.15, 0.62);
+    puffHead.add(muzzle);
+
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.09, 4),
+      new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
+    nose.rotation.z = Math.PI; nose.rotation.x = 0.35; nose.position.set(0, -0.09, 0.92);
+    puffHead.add(nose);
+
+    const earGeo = new THREE.ConeGeometry(0.26, 0.48, 4);
+    const earL = new THREE.Mesh(earGeo, ginger);
+    earL.position.set(-0.48, 0.65, 0.05); earL.rotation.set(-0.1, 0, 0.35); puffHead.add(earL);
+
+    const earR = new THREE.Mesh(earGeo, black);
+    earR.position.set(0.48, 0.65, 0.05); earR.rotation.set(-0.1, 0, -0.35); puffHead.add(earR);
+
+    // Spectacles
+    const glassesMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.12 });
+    [-0.26, 0.26].forEach(gx => {
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.04, 10, 24), glassesMat);
+      rim.position.set(gx, 0.02, 0.75); puffHead.add(rim);
+    });
+    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.22), glassesMat);
+    bridge.rotation.z = Math.PI / 2; bridge.position.set(0, 0.02, 0.77); puffHead.add(bridge);
+
+    puffGroup.add(puffHead);
+
+    puffArmL = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.7, 10), white);
+    puffArmL.position.set(-0.62, 1.35, 0); puffGroup.add(puffArmL);
+
+    puffArmR = new THREE.Group();
+    puffArmR.position.set(0.62, 1.35, 0);
+    const armRMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.7, 10), white);
+    armRMesh.position.y = -0.35; puffArmR.add(armRMesh);
+
+    const anemometer = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.45, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 0.6 }));
+    anemometer.position.set(0, -0.65, 0.2); puffArmR.add(anemometer);
+    puffGroup.add(puffArmR);
+
+    puffTail = new THREE.Group();
+    puffTail.position.set(0, 0.8, -0.5);
+    let prev = puffTail;
+    for (let i = 0; i < 5; i++) {
+      const seg = new THREE.Mesh(new THREE.SphereGeometry(0.12 - i * 0.015, 8, 8), (i % 2 === 0) ? ginger : black);
+      seg.position.set(0, 0.12, -0.14); prev.add(seg); prev = seg;
+    }
+    puffGroup.add(puffTail);
+
+    puffGroup.position.set(14.5, 3.2, 1.0);
+    puffGroup.rotation.y = -1.45;
+    scene.add(puffGroup);
+  }
+
+  function buildPip() {
+    pipGroup = new THREE.Group();
+
+    const mouseBrown = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.78 });
+    const mousePink = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.55 });
+    const beachShirt = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.62 });
+    const shortsMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.62 });
+    const sneakerMat = new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.45 });
+
+    // STRICT UPRIGHT STANDING ALIGNMENT: Zero inclined angle
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), mouseBrown);
+    body.scale.set(0.9, 1.15, 0.9); body.position.y = 0.55; body.castShadow = true;
+    pipGroup.add(body);
+
+    const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.39, 0.42, 0.45, 14), beachShirt);
+    shirt.position.y = 0.62; pipGroup.add(shirt);
+
+    const shorts = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.38, 0.28, 14), shortsMat);
+    shorts.position.y = 0.34; pipGroup.add(shorts);
+
+    // UNIFIED HEAD
+    pipHead = new THREE.Group();
+    pipHead.position.set(0, 0.92, 0.02);
+
+    const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), mouseBrown);
+    mHead.castShadow = true; pipHead.add(mHead);
+
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.38, 12), mouseBrown);
+    snout.rotation.x = 1.35; snout.position.set(0, -0.06, 0.26); pipHead.add(snout);
+
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), mousePink);
+    nose.position.set(0, -0.08, 0.45); pipHead.add(nose);
+
+    [-0.24, 0.24].forEach((ex, idx) => {
+      const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 14), mousePink);
+      ear.position.set(ex, 0.24, -0.02);
+      ear.rotation.set(0.2, idx === 0 ? 0.35 : -0.35, idx === 0 ? -0.4 : 0.4);
+      pipHead.add(ear);
+    });
+
+    [-0.13, 0.13].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x09090b }));
+      eye.position.set(ex, 0.06, 0.3); pipHead.add(eye);
+    });
+
+    pipGroup.add(pipHead);
+
+    pipArmL = new THREE.Group();
+    pipArmL.position.set(-0.36, 0.65, 0);
+    const pawL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+    pawL.position.y = -0.18; pipArmL.add(pawL); pipGroup.add(pipArmL);
+
+    pipArmR = new THREE.Group();
+    pipArmR.position.set(0.36, 0.65, 0);
+    const pawR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+    pawR.position.y = -0.18; pipArmR.add(pawR);
+
+    // Neon highline cable survey rod
+    pipFlag = new THREE.Group();
+    pipFlag.position.set(0.08, -0.28, 0.18);
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.65),
+      new THREE.MeshStandardMaterial({ color: 0xeab308 }));
+    pipFlag.add(rod);
+    const pennant = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.2, 3),
+      new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+    pennant.rotation.z = Math.PI / 2; pennant.position.set(0.08, 0.25, 0);
+    pipFlag.add(pennant);
+    pipArmR.add(pipFlag);
+    pipGroup.add(pipArmR);
+
+    // Straight Upright Vertical Legs
+    [-0.16, 0.16].forEach(lx => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.26, 8), mouseBrown);
+      leg.position.set(lx, 0.18, 0); pipGroup.add(leg);
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.32), sneakerMat);
+      shoe.position.set(lx, 0.06, 0.06); pipGroup.add(shoe);
+    });
+
+    pipTail = new THREE.Group();
+    pipTail.position.set(0, 0.28, -0.32);
+    let pPrev = pipTail;
+    for (let i = 0; i < 5; i++) {
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.03 - i * 0.004, 0.035 - i * 0.004, 0.15, 6), mousePink);
+      seg.position.set(0, 0.04, -0.12); seg.rotation.x = -0.25; pPrev.add(seg); pPrev = seg;
+    }
+    pipGroup.add(pipTail);
+
+    pipGroup.position.set(11.8, 3.2, 3.2);
+    pipGroup.rotation.y = -1.15;
+    scene.add(pipGroup);
+  }
+
+  /* ===================================================================== */
+  /* CAMERA CONTROLLER                                                     */
+  /* ===================================================================== */
+  function setCameraPreset(key, instant = false) {
+    const p = CAM[key];
+    if (!p) return;
+    if (instant) {
+      camera.position.set(p.pos[0], p.pos[1], p.pos[2]);
+      controls.target.set(p.tgt[0], p.tgt[1], p.tgt[2]);
+      camera.zoom = p.zoom; camera.updateProjectionMatrix();
+      return;
+    }
+    new TWEEN.Tween(camera.position)
+      .to({ x: p.pos[0], y: p.pos[1], z: p.pos[2] }, 1150)
+      .easing(TWEEN.Easing.Cubic.InOut).start();
+    new TWEEN.Tween(controls.target)
+      .to({ x: p.tgt[0], y: p.tgt[1], z: p.tgt[2] }, 1150)
+      .easing(TWEEN.Easing.Cubic.InOut).start();
+    new TWEEN.Tween({ z: camera.zoom })
+      .to({ z: p.zoom }, 1150)
+      .easing(TWEEN.Easing.Cubic.InOut)
+      .onUpdate(o => { camera.zoom = o.z; camera.updateProjectionMatrix(); })
+      .start();
+  }
+
+  /* ===================================================================== */
+  /* TIMELINE & CONCEPT FACT SLIDE UPDATER                                 */
+  /* ===================================================================== */
+  
+    // Subtle presenter breathing, listening, and hand emphasis, layered over each scene's staged poses.
+    const archiveMotionRigs = () => [typeof badgerGroup !== 'undefined' ? badgerGroup : null, typeof puffGroup !== 'undefined' ? puffGroup : null, typeof pipGroup !== 'undefined' ? pipGroup : null];
+    if (typeof pipGroup !== 'undefined' && pipGroup) pipGroup.name ||= 'pipGroup';
+    if (typeof puffGroup !== 'undefined' && puffGroup) puffGroup.name ||= 'puffGroup';
+    if (typeof badgerGroup !== 'undefined' && badgerGroup) badgerGroup.name ||= 'badgerGroup';
+    const archiveMotionHeads = () => [typeof badgerHead !== 'undefined' ? badgerHead : null, typeof puffHead !== 'undefined' ? puffHead : null, typeof pipHead !== 'undefined' ? pipHead : null];
+    if (typeof badgerHead !== 'undefined' && badgerHead) badgerHead.name ||= 'badgerHead';
+    if (typeof puffHead !== 'undefined' && puffHead) puffHead.name ||= 'puffHead';
+    if (typeof pipHead !== 'undefined' && pipHead) pipHead.name ||= 'pipHead';
+
+    const archiveMotionArms = () => [typeof badgerArmL !== 'undefined' ? badgerArmL : null, typeof badgerArmR !== 'undefined' ? badgerArmR : null, typeof puffArmL !== 'undefined' ? puffArmL : null, typeof puffArmR !== 'undefined' ? puffArmR : null, typeof pipArmL !== 'undefined' ? pipArmL : null, typeof pipArmR !== 'undefined' ? pipArmR : null];
+    if (typeof badgerArmL !== 'undefined' && badgerArmL) badgerArmL.name ||= 'badgerArmL';
+    if (typeof badgerArmR !== 'undefined' && badgerArmR) badgerArmR.name ||= 'badgerArmR';
+    if (typeof puffArmL !== 'undefined' && puffArmL) puffArmL.name ||= 'puffArmL';
+    if (typeof puffArmR !== 'undefined' && puffArmR) puffArmR.name ||= 'puffArmR';
+    if (typeof pipArmL !== 'undefined' && pipArmL) pipArmL.name ||= 'pipArmL';
+    if (typeof pipArmR !== 'undefined' && pipArmR) pipArmR.name ||= 'pipArmR';
+
+    const archiveMotionLegs = () => [];
+    const rigsNames = ["badgerGroup", "puffGroup", "pipGroup"];
+    const headsNames = ["badgerHead", "puffHead", "pipHead"];
+    const armsNames = ["badgerArmL", "badgerArmR", "puffArmL", "puffArmR", "pipArmL", "pipArmR"];
+    const legsNames = [];
+    function clearArchiveMotionOffsets() {
+      [...archiveMotionRigs(), ...archiveMotionHeads(), ...archiveMotionArms(), ...archiveMotionLegs()].forEach(node => {
+        if (!node || !node.userData.archiveMotionOffset) return;
+        const o = node.userData.archiveMotionOffset;
+        node.rotation.x -= o.x; node.rotation.y -= o.y; node.rotation.z -= o.z;
+        if (o.px) node.position.x -= o.px; if (o.pz) node.position.z -= o.pz;
+        node.userData.archiveMotionOffset = null;
+      });
+    }
+    function applyArchivePresenterMotion(time) {
+      const beat = STORY_BEATS[currentSpeechIdx] || null;
+      const speaker = String(beat?.speaker || '').toLowerCase();
+      const phase = (time || 0) * 2.15;
+      const progress = beat ? Math.max(0, Math.min(1, ((time || 0) - beat.start) / Math.max(0.1, beat.end - beat.start))) : 0;
+      const smooth = v => v * v * (3 - 2 * v);
+      const walk = progress < 0.2 ? smooth(progress / 0.2) : progress < 0.62 ? 1 : progress < 0.86 ? 1 - smooth((progress - 0.62) / 0.24) : 0;
+      const put = (node, x, y, z, px = 0, pz = 0) => {
+        if (!node) return;
+        node.rotation.x += x; node.rotation.y += y; node.rotation.z += z;
+        node.position.x += px; node.position.z += pz;
+        node.userData.archiveMotionOffset = { x, y, z, px, pz };
+      };
+      archiveMotionRigs().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= rigsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          ((name.includes('curd')) && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        const radius = Math.hypot(node.position.x, node.position.z);
+        const approach = active && radius > 0.25 ? Math.min(0.48, radius * 0.12) * walk : 0;
+        put(node, Math.sin(phase + i) * (active ? 0.016 : 0.008), 0, Math.sin(phase * 0.52 + i) * 0.008,
+          radius > 0.25 ? -node.position.x / radius * approach : 0,
+          radius > 0.25 ? -node.position.z / radius * approach : 0);
+      });
+      archiveMotionLegs().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= legsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) || (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        put(node, active ? Math.sin(phase * 2.2 + (i % 2) * Math.PI) * 0.20 * walk : 0, 0, 0);
+      });
+      archiveMotionHeads().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= headsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        put(node, Math.sin(phase * 1.25 + i) * (active ? 0.018 : 0.009), 0, Math.sin(phase * 0.62 + i) * 0.014);
+      });
+      archiveMotionArms().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= armsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        const right = /armr$/.test(name);
+        put(node, Math.sin(phase * (active ? 1.5 : 0.7) + i) * (active ? 0.055 : 0.018), 0, Math.sin(phase * 0.8 + i) * (right && active ? 0.035 : 0.012));
+      });
+    }
+
+    function updateStoryTimeline(time) {
+      clearArchiveMotionOffsets();
+    const scrubber = document.getElementById('story-scrubber');
+    if (Math.abs(parseFloat(scrubber.value) - time) > 0.35) scrubber.value = time;
+
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    document.getElementById('time-display').textContent =
+      `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+    // Step detection
+    let currentStep = 1;
+    if (time >= 68) currentStep = 4;
+    else if (time >= 40) currentStep = 3;
+    else if (time >= 23) currentStep = 2;
+
+    for (let i = 1; i <= 4; i++) {
+      const btn = document.getElementById('step-btn-' + i);
+      if (i === currentStep) btn.classList.add('active');
+      else btn.classList.remove('active');
+    }
+
+    const stepTags = [
+      'Step 1 · Bedrock Anchor Drilling &amp; Aerial Cableway',
+      'Step 2 · Queen-Post Larch Arch Truss Cantilevers',
+      'Step 3 · Deck Aerodynamic Baffles &amp; Grid Cable Tray',
+      'Step 4 · Wind Turbine Grid Synchronization &amp; Full Power'
+    ];
+    document.getElementById('stage-tag').innerHTML = stepTags[currentStep - 1];
+
+    if (currentStep !== lastCamStep) {
+      lastCamStep = currentStep;
+      setCameraPreset('step' + currentStep, false);
+    }
+
+    // Dialogue & Slide Update
+    const idx = STORY_BEATS.findIndex(b => time >= b.start && time < b.end);
+    if (idx !== -1 && idx !== currentSpeechIdx) {
+      currentSpeechIdx = idx;
+      const beat = STORY_BEATS[idx];
+      const box = document.getElementById('dialogue-container');
+
+      box.classList.remove('fade-in'); box.classList.add('fade-out');
+
+      setTimeout(() => {
+        document.getElementById('speaker-avatar').textContent = beat.avatar;
+        document.getElementById('speaker-name').textContent =
+          beat.speaker === 'Badger' ? 'Dr. Barnaby Clodhopper' :
+          beat.speaker === 'Puff' ? 'Professor Whisker Puff' :
+          beat.speaker === 'Pip' ? 'Pip Squeak-a-Link' : 'Alpenhof Team';
+        document.getElementById('speaker-role').textContent = beat.role;
+        document.getElementById('speech-emotion').textContent = beat.emotion;
+        document.getElementById('speech-text').textContent = `"${beat.text}"`;
+
+        if (subtitlesEnabled) {
+          box.classList.remove('fade-out'); box.classList.add('fade-in');
+        }
+      }, 120);
+
+      updateConceptSlide(beat.slide);
+      speakText(beat.text, beat.speaker);
+    }
+
+    animateChoreography(time, currentStep);
+  
+      applyArchivePresenterMotion(time);
+    }
+
+  function updateConceptSlide(slide) {
+    if (!slide) return;
+    document.getElementById('slide-icon').textContent = slide.icon;
+    document.getElementById('slide-title').textContent = slide.title;
+    document.getElementById('slide-subtitle').textContent = slide.sub;
+    document.getElementById('slide-metric').textContent = slide.metric;
+    document.getElementById('metric-wind').textContent = slide.wind;
+    document.getElementById('metric-stress').textContent = slide.stress;
+    document.getElementById('metric-power').textContent = slide.power;
+    document.getElementById('metric-damp').textContent = slide.damp;
+
+    const diag = document.getElementById('slide-diagram');
+    diag.innerHTML = '';
+    slide.diagram.forEach(([k, v]) => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center justify-between text-slate-300';
+      row.innerHTML = `<span>${k}:</span><span class="text-emerald-400 font-bold">${v}</span>`;
+      diag.appendChild(row);
+    });
+  }
+
+  /* ===================================================================== */
+  /* CHOREOGRAPHY & KINEMATICS                                             */
+  /* ===================================================================== */
+  function animateChoreography(time, step) {
+    const t = time;
+
+    // Wind Turbine continuous rotation
+    if (turbineHub) {
+      const rotSpeed = step >= 3 ? 3.5 : 1.5;
+      turbineHub.rotation.z += 0.03 * rotSpeed;
+    }
+
+    // River wave simulation
+    if (gorgeRiver && waterBasePos) {
+      const arr = gorgeRiver.geometry.attributes.position.array;
+      for (let i = 0; i < arr.length / 3; i++) {
+        const x = waterBasePos[i * 3];
+        const z = waterBasePos[i * 3 + 2];
+        arr[i * 3 + 1] = Math.sin(x * 0.8 + t * 4.2) * 0.12 + Math.cos(z * 0.6 + t * 3.5) * 0.08;
+      }
+      gorgeRiver.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // Canyon Wind Stream particle flow
+    if (windStreamParticles) {
+      const pos = windStreamParticles.geometry.attributes.position.array;
+      for (let i = 0; i < windParticlesData.length; i++) {
+        const d = windParticlesData[i];
+        pos[i * 3] += (d.speed * 0.016);
+        if (pos[i * 3] > 22.0) {
+          pos[i * 3] = -22.0;
+        }
+      }
+      windStreamParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
+    /* --- STEP 1: Bedrock Survey & Cableway Winch --- */
+    if (step === 1) {
+      highlineCableway.visible = true;
+      timberTrusses.forEach(tr => tr.visible = false);
+      deckFloor.visible = false;
+      deckBaffles.forEach(b => b.visible = false);
+      powerConduitTray.visible = false;
+      energyPulseParticles.visible = false;
+
+      // Trolley travels across cableway delivering rock anchor grout
+      highlineTrolley.position.x = -8.0 + Math.sin(t * 1.5) * 7.5;
+
+      // Characters on East Cliff surveying anchor drilling
+      badgerGroup.position.set(12.5, 3.2, 2.0);
+      badgerGroup.rotation.y = -1.65;
+      badgerArmR.rotation.x = Math.sin(t * 2.5) * 0.25 - 0.2;
+
+      puffGroup.position.set(13.8, 3.2, 0.8);
+      puffGroup.rotation.y = -1.75;
+      puffArmR.rotation.x = Math.sin(t * 1.8) * 0.15 - 0.25;
+
+      // Pip walking straight along the rock edge with highline safety guide flag
+      const walkZ = 2.0 + Math.sin(t * 1.6) * 1.5;
+      pipGroup.position.set(11.2, 3.2, walkZ);
+      pipGroup.rotation.set(0, Math.cos(t * 1.6) > 0 ? 0 : Math.PI, 0); // Strict vertical upright
+      pipArmL.rotation.x = Math.sin(t * 8) * 0.45;
+      pipArmR.rotation.x = -Math.sin(t * 8) * 0.45;
+    }
+
+    /* --- STEP 2: Queen-Post Arch Truss Assembly --- */
+    else if (step === 2) {
+      highlineCableway.visible = true;
+      timberTrusses.forEach(tr => tr.visible = true);
+      deckFloor.visible = false;
+      deckBaffles.forEach(b => b.visible = false);
+      powerConduitTray.visible = false;
+      energyPulseParticles.visible = false;
+
+      // Cantilever arch growth effect
+      const archScale = Math.min(1.0, 0.4 + ((t - 23) / 17) * 0.6);
+      timberTrusses.forEach(tr => tr.scale.set(archScale, 1.0, 1.0));
+
+      badgerGroup.position.set(10.2, 3.2, 1.2);
+      badgerGroup.rotation.y = -1.55;
+      badgerArmR.rotation.set(0.6, 0, 0.4);
+
+      puffGroup.position.set(11.4, 3.2, -0.6);
+      puffGroup.rotation.y = -1.60;
+      puffArmR.rotation.x = -0.4 + Math.sin(t * 2.2) * 0.15;
+
+      const pipHop = Math.abs(Math.sin(t * 5.0)) * 0.18;
+      pipGroup.position.set(9.5, 3.2 + pipHop, 2.2);
+      pipGroup.rotation.set(0, -1.55, 0); // Strict upright
+      pipArmR.rotation.z = Math.sin(t * 7) * 0.45;
+    }
+
+    /* --- STEP 3: Deck Baffles & High-Voltage Shielded Cable --- */
+    else if (step === 3) {
+      highlineCableway.visible = false; // Highline dismantled
+      timberTrusses.forEach(tr => { tr.visible = true; tr.scale.set(1, 1, 1); });
+      deckFloor.visible = true;
+      deckBaffles.forEach(b => b.visible = true);
+      powerConduitTray.visible = true;
+      energyPulseParticles.visible = false;
+
+      // Characters walking out directly onto the bridge deck
+      badgerGroup.position.set(4.2, 4.35, 0.0);
+      badgerGroup.rotation.y = -Math.PI / 2;
+      badgerArmL.rotation.x = Math.sin(t * 3) * 0.35;
+
+      puffGroup.position.set(2.4, 4.35, -0.6);
+      puffGroup.rotation.y = -Math.PI / 2;
+      puffArmR.rotation.set(0.4, 0, -0.3);
+
+      // Pip walking upright along bridge center
+      const deckWalkX = 2.0 + Math.sin(t * 1.4) * 2.0;
+      pipGroup.position.set(deckWalkX, 4.35, 0.6);
+      pipGroup.rotation.set(0, Math.cos(t * 1.4) > 0 ? -Math.PI / 2 : Math.PI / 2, 0);
+    }
+
+    /* --- STEP 4: Turbine Grid Power Flow & Testing --- */
+    else {
+      highlineCableway.visible = false;
+      timberTrusses.forEach(tr => { tr.visible = true; tr.scale.set(1, 1, 1); });
+      deckFloor.visible = true;
+      deckBaffles.forEach(b => b.visible = true);
+      powerConduitTray.visible = true;
+      energyPulseParticles.visible = true;
+
+      // Transmission pulses flowing from turbine to farm
+      const pos = energyPulseParticles.geometry.attributes.position.array;
+      for (let i = 0; i < pos.length / 3; i++) {
+        pos[i * 3] += 0.22;
+        if (pos[i * 3] > 12.0) pos[i * 3] = -12.0;
+      }
+      energyPulseParticles.geometry.attributes.position.needsUpdate = true;
+
+      // Celebration on bridge overlook
+      badgerGroup.position.set(-1.0, 4.35, 0.8);
+      badgerGroup.rotation.y = 0.45;
+      badgerArmR.rotation.set(0.9, 0, 0.6);
+
+      puffGroup.position.set(-2.4, 4.35, 0.2);
+      puffGroup.rotation.y = 0.35;
+      puffArmR.rotation.set(0.6, 0, -0.2);
+
+      const cheerJump = Math.abs(Math.sin((t - 68) * 6.2)) * 0.3;
+      pipGroup.position.set(0.8, 4.35 + cheerJump, 0.5);
+      pipGroup.rotation.set(0, 0.25, 0); // Strict upright
+      pipArmR.rotation.set(1.35, 0, 0.3);
+      pipArmL.rotation.set(1.35, 0, -0.3);
+
+      if (t >= 87) {
+        document.getElementById('modal-bridge').classList.remove('opacity-0', 'pointer-events-none');
+      }
+    }
+
+    // Tails idle sway
+    if (puffTail) puffTail.rotation.y = Math.sin(t * 1.8) * 0.25;
+    if (pipTail) pipTail.rotation.y = Math.sin(t * 3.4) * 0.32;
+  }
+
+  /* ===================================================================== */
+  /* UI SETUP & EVENT LISTENERS                                            */
+  /* ===================================================================== */
+  function setupUI() {
+    const playBtn = document.getElementById('btn-play-pause');
+    const playerPanel = document.getElementById('player-panel');
+    const playerToggle = document.getElementById('btn-player-toggle');
+
+    playerToggle.addEventListener('click', () => {
+      initAudio();
+      const isHidden = playerPanel.classList.contains('hidden-panel');
+      playerPanel.classList.toggle('hidden-panel');
+      playerToggle.classList.toggle('active', isHidden);
+    });
+
+    playBtn.addEventListener('click', () => {
+      initAudio();
+      isPlaying = !isPlaying;
+      playBtn.textContent = isPlaying ? '⏸' : '▶';
+      playerToggle.textContent = isPlaying ? '⏸' : '▶';
+    });
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      initAudio();
+      storyTime = 0;
+      currentSpeechIdx = -1;
+      isPlaying = true;
+      lastCamStep = -1;
+      playBtn.textContent = '⏸';
+      playerToggle.textContent = '⏸';
+      document.getElementById('modal-bridge').classList.add('opacity-0', 'pointer-events-none');
+    });
+
+    document.getElementById('story-scrubber').addEventListener('input', (e) => {
+      initAudio();
+      storyTime = parseFloat(e.target.value);
+      currentSpeechIdx = -1;
+      lastCamStep = -1;
+      updateStoryTimeline(storyTime);
+    });
+
+    // Step jumps
+    const stepTimes = { 1: 0.1, 2: 23.1, 3: 40.1, 4: 68.1 };
+    [1, 2, 3, 4].forEach(n => {
+      document.getElementById('step-btn-' + n).addEventListener('click', () => {
+        initAudio();
+        storyTime = stepTimes[n];
+        currentSpeechIdx = -1;
+        isPlaying = true;
+        playBtn.textContent = '⏸';
+        playerToggle.textContent = '⏸';
+        updateStoryTimeline(storyTime);
+      });
+    });
+
+    // Camera preset buttons
+    document.getElementById('btn-cam-gorge').addEventListener('click', () => setCameraPreset('gorge', false));
+    document.getElementById('btn-cam-turbine').addEventListener('click', () => setCameraPreset('turbine', false));
+    document.getElementById('btn-cam-truss').addEventListener('click', () => setCameraPreset('truss', false));
+    document.getElementById('btn-cam-wide').addEventListener('click', () => setCameraPreset('wide', false));
+
+    // Audio toggle
+    const audioBtn = document.getElementById('btn-audio');
+    audioBtn.addEventListener('click', () => {
+      initAudio();
+      audioEnabled = !audioEnabled;
+      audioBtn.textContent = audioEnabled ? '🔊' : '🔇';
+      audioBtn.classList.toggle('active', audioEnabled);
+      if (!audioEnabled && 'speechSynthesis' in window) window.speechSynthesis.cancel(); dialogueSpeaking = false;
+    });
+    audioBtn.classList.add('active');
+
+    // Subtitle toggle
+    const subBtn = document.getElementById('btn-subtitle');
+    subBtn.addEventListener('click', () => {
+      subtitlesEnabled = !subtitlesEnabled;
+      subBtn.classList.toggle('active', subtitlesEnabled);
+      document.body.classList.toggle('subtitles-off', !subtitlesEnabled);
+      const box = document.getElementById('dialogue-container');
+      if (subtitlesEnabled) {
+        box.classList.remove('fade-out'); box.classList.add('fade-in');
+      } else {
+        box.classList.remove('fade-in'); box.classList.add('fade-out');
+      }
+    });
+
+    // Virtual slide toggle
+    const slideToggleBtn = document.getElementById('btn-slide-toggle');
+    const slideHUD = document.getElementById('virtual-slide');
+    slideToggleBtn.addEventListener('click', () => {
+      const isHidden = slideHUD.classList.contains('slide-hidden');
+      slideHUD.classList.toggle('slide-hidden', !isHidden);
+      slideToggleBtn.classList.toggle('active', isHidden);
+    });
+
+    // Blueprint modal
+    const modal = document.getElementById('modal-bridge');
+    document.getElementById('btn-open-bridge').addEventListener('click', () => {
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+    });
+    document.getElementById('btn-close-bridge').addEventListener('click', () => {
+      modal.classList.add('opacity-0', 'pointer-events-none');
+    });
+    document.getElementById('btn-close-bridge-x').addEventListener('click', () => {
+      modal.classList.add('opacity-0', 'pointer-events-none');
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.add('opacity-0', 'pointer-events-none');
+    });
+
+    window.addEventListener('click', () => initAudio(), { once: true });
+  }
+
+  /* ===================================================================== */
+  /* RESIZE & ANIMATION LOOP                                               */
+  /* ===================================================================== */
+  function onResize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const aspect = w / h, d = 16;
+    camera.left = -d * aspect;
+    camera.right = d * aspect;
+    camera.top = d;
+    camera.bottom = -d;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+
+    TWEEN.update();
+
+    if (isPlaying) {
+      const syncBeat = STORY_BEATS[currentSpeechIdx];
+      const waitingForLine = dialogueSpeaking && syncBeat && storyTime >= syncBeat.end - 0.24;
+      if (!waitingForLine) {
+        const nextBeat = STORY_BEATS[currentSpeechIdx + 1];
+        const quietGap = nextBeat ? nextBeat.start - storyTime : 0;
+        const tailCatchUp = !dialogueSpeaking && syncBeat && (syncBeat.end - storyTime > 1.8 || quietGap > 1.8) ? 2.0 : 1;
+        storyTime += dt * tailCatchUp;
+      }
+      if (storyTime >= TOTAL_DURATION) {
+        storyTime = TOTAL_DURATION;
+        isPlaying = false;
+        document.getElementById('btn-play-pause').textContent = '▶';
+        document.getElementById('btn-player-toggle').textContent = '▶';
+      }
+      updateStoryTimeline(storyTime);
+    }
+
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  window.onload = () => {
+    init();
+    setCameraPreset('intro', true);
+    animate();
+  };
+  </script>
+</body>
+</html>

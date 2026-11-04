@@ -1,0 +1,1822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alpenhof Dairy: HTST Milk Pasteurization & Aseptic Packaging Simulation</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js + OrbitControls + TWEEN.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      background: #020617;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+    }
+    #viewport-container {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .bubble-font { font-family: 'Fredoka', cursive; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Frosted HUD Glass */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      background: rgba(30, 41, 59, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #94a3b8;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+    .icon-btn:hover {
+      background: rgba(56, 189, 248, 0.25);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      transform: translateY(-2px);
+    }
+    .icon-btn.active {
+      background: linear-gradient(135deg, #0284c7, #06b6d4);
+      color: #020617;
+      font-weight: 800;
+      border-color: #7dd3fc;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.55);
+    }
+
+    /* Dialogue Card - Always visible by default */
+    #dialogue-container {
+      opacity: 1;
+      transform: translate(-50%, 0);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: auto;
+    }
+    #dialogue-container.dialogue-hidden {
+      opacity: 0;
+      transform: translate(-50%, 15px);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="text-white"><a id="archive-home-link" href="../../index.html" title="Return to Alpenhof Research HQ archive" aria-label="Return to Alpenhof Research HQ" style="position:fixed;top:12px;left:12px;z-index:1000;padding:8px 12px;border:1px solid rgba(120,190,225,.45);border-radius:10px;background:rgba(5,17,30,.86);backdrop-filter:blur(8px);color:#dff4ff;text-decoration:none;font:600 12px/1.2 system-ui,sans-serif;box-shadow:0 5px 20px #0005">🏔️ Archive</a>
+
+  <!-- 3D Canvas Viewport -->
+  <div id="viewport-container"></div>
+
+  <!-- Top Left: Minimal Badges & Modal Launcher -->
+  <header class="absolute top-4 left-4 z-20 flex items-center gap-2 pointer-events-auto">
+    <button id="btn-info-modal" class="icon-btn text-lg" title="Dairy Bio-Engineering & QA Telemetry">
+      ℹ️
+    </button>
+    <div class="glass-panel px-3.5 py-1.5 rounded-xl flex items-center gap-2.5">
+      <span class="text-xs font-bold text-sky-400">🥛 Alpenhof Dairy Plant</span>
+      <span id="badge-process-mode" class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30">HTST 72°C / 15s</span>
+    </div>
+  </header>
+
+  <!-- Top Right: Clean Dairy Process Navigation -->
+  <nav class="absolute top-4 right-4 z-20 flex items-center gap-2 pointer-events-auto">
+    <!-- Camera View Focus Presets -->
+    <button id="btn-cam-overview" class="icon-btn active" title="Facility Overview">
+      🏭
+    </button>
+    <button id="btn-cam-clarifier" class="icon-btn" title="Centrifugal Clarifier (6,500 RPM)">
+      🌀
+    </button>
+    <button id="btn-cam-phe" class="icon-btn" title="Plate Heat Exchanger & Serpentine Holding Tube">
+      🔥
+    </button>
+    <button id="btn-cam-labqa" class="icon-btn" title="Microbiology QA Lab & Phosphatase Testing">
+      🔬
+    </button>
+    <button id="btn-cam-packaging" class="icon-btn" title="Aseptic FFS Packing & Cold Shipping">
+      📦
+    </button>
+
+    <div class="w-[1px] h-6 bg-slate-700 mx-1"></div>
+
+    <!-- Thermal Process Mode Toggles -->
+    <button id="btn-mode-htst" class="icon-btn active font-bold text-xs" title="Standard HTST Pasteurization (72°C for 15s)">
+      HTST
+    </button>
+    <button id="btn-mode-uht" class="icon-btn font-bold text-xs" title="Ultra-High Temperature Flash (138°C for 2s)">
+      UHT
+    </button>
+
+    <div class="w-[1px] h-6 bg-slate-700 mx-1"></div>
+
+    <!-- Audio / Voice Toggle -->
+    <button id="btn-sfx-toggle" class="icon-btn active" title="Toggle Sound & Speech">
+      🔊
+    </button>
+    <!-- Subtitle Toggle -->
+    <button id="btn-subtitles-toggle" class="icon-btn active" title="Toggle Subtitles">
+      💬
+    </button>
+  </nav>
+
+  <!-- Dialogue Overlay Container (Clean, Visible, No Glitch) -->
+  <aside id="dialogue-container" class="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 max-w-xl w-[92%] glass-panel p-4 rounded-2xl border border-sky-400/40 shadow-2xl flex items-center gap-3.5">
+    <div id="speaker-avatar" class="w-14 h-14 rounded-2xl flex-shrink-0 flex items-center justify-center text-3xl bg-slate-900 border-2 border-sky-400 shadow-lg">
+      🐶
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-1">
+        <div class="flex items-center gap-2">
+          <span id="speaker-name" class="bubble-font text-sm font-bold text-sky-300">Dr. Barnaby Q. Curds</span>
+          <span id="speaker-role" class="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono border border-amber-500/30">Chief Food Safety Director</span>
+        </div>
+        <span id="speech-emotion" class="text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-sky-300 border border-sky-500/30 font-mono">Reception 4°C</span>
+      </div>
+      <p id="speech-text" class="text-xs md:text-sm text-slate-100 leading-snug font-medium">
+        "Welcome to Alpenhof Dairy Science! Farm-fresh raw milk arrives chilled at 4°C into our sanitary balance tank before entering the centrifugal clarifier."
+      </p>
+    </div>
+  </aside>
+
+  <!-- Bottom-Left Scrubber & Timeline Controls -->
+  <footer class="absolute bottom-4 left-4 z-20 flex items-center gap-2 pointer-events-auto">
+    <div class="glass-panel p-2 rounded-xl flex items-center gap-2 border border-slate-700">
+      <button id="btn-play-pause" class="w-8 h-8 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold flex items-center justify-center transition shadow-md text-xs">
+        ⏸
+      </button>
+      <button id="btn-restart" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center border border-slate-600 transition text-xs" title="Restart Simulation">
+        ↺
+      </button>
+      <span id="time-display" class="font-mono text-sky-300 text-xs w-12 text-center font-bold">00:00</span>
+      <input id="story-scrubber" type="range" min="0" max="96" step="0.1" value="0" class="w-28 sm:w-44 cursor-pointer accent-sky-400">
+
+      <div class="w-[1px] h-5 bg-slate-700 mx-1"></div>
+
+      <!-- Step Fast Jumps -->
+      <button id="step-btn-1" class="px-2.5 h-7 rounded-lg text-xs font-bold bg-sky-500 text-slate-950 flex items-center gap-1 transition shadow-md" title="Step 1: Reception & Clarifier">
+        <span>1</span><span class="hidden sm:inline">Clarify</span>
+      </button>
+      <button id="step-btn-2" class="px-2.5 h-7 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 flex items-center gap-1 hover:bg-slate-700 transition" title="Step 2: HTST 72°C & Homogenizer">
+        <span>2</span><span class="hidden sm:inline">HTST 72°C</span>
+      </button>
+      <button id="step-btn-3" class="px-2.5 h-7 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 flex items-center gap-1 hover:bg-slate-700 transition" title="Step 3: Bio-QA & Inactivation Test">
+        <span>3</span><span class="hidden sm:inline">Lab QA</span>
+      </button>
+      <button id="step-btn-4" class="px-2.5 h-7 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 flex items-center gap-1 hover:bg-slate-700 transition" title="Step 4: Aseptic Packing & Cold Shipping">
+        <span>4</span><span class="hidden sm:inline">Pack</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Telemetry & Process Science Modal -->
+  <aside id="modal-telemetry" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="glass-panel border border-sky-400/50 rounded-2xl p-6 max-w-lg w-full text-center shadow-2xl relative">
+      <button id="btn-close-telemetry-x" class="absolute top-3 right-3 text-slate-400 hover:text-white text-lg">✕</button>
+
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-slate-950 flex items-center justify-center text-2xl mx-auto mb-2 shadow-lg">
+        🥛
+      </div>
+      <h2 class="text-base font-bold text-sky-300 mb-1">Alpenhof HTST Pasteurization & QA Architecture</h2>
+      <p class="text-[11px] text-slate-300 mb-3 leading-relaxed">
+        High-Temperature Short-Time (HTST) pasteurization targets complete thermal destruction of human pathogens (including heat-resistant <i>Coxiella burnetii</i> and <i>Listeria monocytogenes</i>) while preserving bio-available calcium, lactoglobulins, and native alpine milk flavor.
+      </p>
+
+      <div class="bg-slate-900/95 p-3.5 rounded-xl border border-sky-500/30 text-left text-xs mb-4 space-y-2 font-mono">
+        <div class="flex justify-between text-slate-200">
+          <span>🔥 Thermal Setpoint:</span>
+          <span id="hud-thermal-temp" class="text-rose-400 font-bold">72.0°C (161.6°F) for 15.0s</span>
+        </div>
+        <div class="flex justify-between text-slate-200">
+          <span>⚙️ 2-Stage Homogenization:</span>
+          <span class="text-amber-400 font-bold">160 bar (Stage 1) / 40 bar (Stage 2)</span>
+        </div>
+        <div class="flex justify-between text-slate-200">
+          <span>🔬 Fat Globule Dispersion:</span>
+          <span class="text-sky-300 font-bold">Reduced from 4.0 µm to &lt; 0.8 µm</span>
+        </div>
+        <div class="flex justify-between text-slate-200">
+          <span>🌱 Regenerative Efficiency:</span>
+          <span class="text-emerald-400 font-bold">92.4% Thermal Energy Recovery</span>
+        </div>
+        <div class="flex justify-between text-slate-200">
+          <span>🧪 Alkaline Phosphatase Test:</span>
+          <span class="text-emerald-400 font-bold">Negative (Zero Active Enzyme)</span>
+        </div>
+        <div class="flex justify-between text-slate-200">
+          <span>📦 Aseptic Form-Fill-Seal:</span>
+          <span class="text-indigo-300 font-bold">H2O2 Vapor Sterilization + Ultrasonic</span>
+        </div>
+        <div class="flex justify-between text-slate-200">
+          <span>❄️ Extended Cold-Chain Life:</span>
+          <span class="text-teal-400 font-bold">21 Days at 4°C Constant</span>
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <button id="btn-close-telemetry" class="flex-1 bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-400 hover:to-cyan-400 text-slate-950 font-bold py-2 rounded-xl transition text-xs shadow-md">
+          Close &amp; Return to Simulation
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    /* =========================================================================
+       ALPENHOF DAIRY: HTST PASTEURIZATION & PACKAGING SIMULATION
+       Interactive Three.js 3D Demonstration with Barnaby, Puff & Pip
+       ========================================================================= */
+
+    let scene, camera, renderer, controls;
+
+    // Characters
+    let barnabyGroup, barnabyHead, barnabyArmR, barnabyArmL, barnabyLegL, barnabyLegR, barnabyRefractometer;
+    let puffGroup, puffHead, puffTail, puffArmR, puffArmL, puffLegL, puffLegR, puffTablet;
+    let pipGroup, pipHead, pipTail, pipArmR, pipArmL, pipLegL, pipLegR, pipInspectGlass;
+
+    // Dairy Cleanroom Facility & Machines
+    let floorMesh, floorGrid;
+    let rawMilkSilo, balanceTank, centrifugalClarifier, clarifierRotor;
+    let plateHeatExchanger, holdingTubeSerpentine;
+    let homogenizerPistons = [], homogenizerGauge;
+    let labBench, petriDishes = [], microscope, digitalBrixDisplay, safeIndicatorLight;
+    let packagingMachine, ultrasonicSealerGlow;
+    let conveyorBelt, milkCartons = [];
+    let electricVan;
+
+    // Dynamic Thermal Liquid Flow Particles
+    let fluidParticles = [];
+
+    // Process Configuration
+    let processMode = 'HTST'; // 'HTST' or 'UHT'
+    let subtitlesEnabled = true;
+
+    // Story Timeline Engine (96s Duration)
+    let storyTime = 0;
+    let isPlaying = true;
+    const TOTAL_DURATION = 96;
+    let audioEnabled = true;
+    let synth = null;
+    let currentSpeechIdx = -1;
+    let isSpeaking = false;
+
+    // Rich Educational Dialogue Beats
+    const STORY_BEATS = [
+      {
+        start: 0,
+        end: 9.0,
+        speaker: 'Barnaby',
+        avatar: '🐶',
+        role: 'Chief Dairy Food Safety Director',
+        emotion: 'Raw Reception 4°C',
+        camera: { pos: { x: -14, y: 11, z: 12 }, target: { x: -7.5, y: 3.2, z: -1.5 } },
+        text: "Welcome to Alpenhof Dairy Science! Farm-fresh raw milk arrives chilled at 4°C into our sanitary balance tank. Maintaining low reception temperature stops bacteria from multiplying right from the start."
+      },
+      {
+        start: 9.0,
+        end: 18.5,
+        speaker: 'Barnaby',
+        avatar: '🐶',
+        role: 'Chief Dairy Food Safety Director',
+        emotion: 'Centrifugal Clarifier 6500 RPM',
+        camera: { pos: { x: -10, y: 7.5, z: 7 }, target: { x: -5.5, y: 2.2, z: -2.0 } },
+        text: "Next is the centrifugal clarifier spinning at 6,500 RPM. Conical disc stacks generate thousands of Gs of acceleration, removing microscopic sediments and somatic cells without breaking fragile cream emulsion!"
+      },
+      {
+        start: 18.5,
+        end: 26.5,
+        speaker: 'Pip',
+        avatar: '🌺',
+        role: '3yo Junior Taster',
+        emotion: 'Whirling Cream Play',
+        camera: { pos: { x: -2, y: 4, z: 8 }, target: { x: 0.6, y: 1.5, z: 3.4 } },
+        text: "Squeak squeak! Look at the shiny silver spinner go zoom! Barnaby says bad little dusties get flung right out so only super silky clean milk goes forward!"
+      },
+      {
+        start: 26.5,
+        end: 36.0,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Scientific Lead & Astrobiologist',
+        emotion: 'Plate Heat Exchanger 92% Recovery',
+        camera: { pos: { x: -4, y: 8.5, z: 6 }, target: { x: 0, y: 3.8, z: -2.0 } },
+        text: "Here is the Plate Heat Exchanger! Raw milk flows between corrugated 316L stainless steel plates counter-current to already-pasteurized hot milk. This recovers 92% of our heat energy, pre-heating the incoming stream to 55°C!"
+      },
+      {
+        start: 36.0,
+        end: 45.5,
+        speaker: 'Barnaby',
+        avatar: '🐶',
+        role: 'Chief Dairy Food Safety Director',
+        emotion: '2-Stage Homogenization 200 Bar',
+        camera: { pos: { x: 4.5, y: 8, z: 6.5 }, target: { x: 3.4, y: 2.5, z: -2.0 } },
+        text: "At 55°C, milk fat is completely liquid. We pump it through our 2-stage homogenizer at 200 bar! Forcing milk through microscopic tungsten orifices shears fat globules down from 4 microns to under 0.8 microns, preventing cream separation!"
+      },
+      {
+        start: 45.5,
+        end: 54.5,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Scientific Lead & Astrobiologist',
+        emotion: '15-Second Holding Tube at 72°C',
+        camera: { pos: { x: 0, y: 9.0, z: 5.5 }, target: { x: 0, y: 4.8, z: -2.0 } },
+        text: "Now into the insulated serpentine holding tube at 72°C for exactly 15 seconds! High kinetic heat denatures bacterial cell walls and inactivates Coxiella burnetii, achieving a certified 5-log microbial kill rate!"
+      },
+      {
+        start: 54.5,
+        end: 62.0,
+        speaker: 'Pip',
+        avatar: '🌺',
+        role: '3yo Curious Helper',
+        emotion: 'Instant Cold Shock',
+        camera: { pos: { x: 2.5, y: 4.5, z: 7.5 }, target: { x: 0.6, y: 1.5, z: 3.4 } },
+        text: "It gets hot like hot cocoa, but just for fifteen seconds! Then swoosh! Ice-cold water shocks it back to 4°C so it stays yummy, sweet, and packed with bone-building calcium!"
+      },
+      {
+        start: 62.0,
+        end: 71.5,
+        speaker: 'Barnaby',
+        avatar: '🐶',
+        role: 'Chief Dairy Food Safety Director',
+        emotion: 'Bio-QA & Phosphatase Inactivation',
+        camera: { pos: { x: 8, y: 7.0, z: 6 }, target: { x: 6.8, y: 2.4, z: 0.8 } },
+        text: "Before packaging, our sterile laboratory conducts the critical Alkaline Phosphatase test. Phosphatase heat resistance mirrors dangerous pathogens; its total inactivation proves pasteurization was 100% successful!"
+      },
+      {
+        start: 71.5,
+        end: 80.5,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Scientific Lead & Astrobiologist',
+        emotion: 'Aseptic Form-Fill-Seal Packaging',
+        camera: { pos: { x: 10.5, y: 7.5, z: 8.5 }, target: { x: 7.5, y: 2.8, z: 5.0 } },
+        text: "The sterile milk enters our Form-Fill-Seal aseptic packaging chamber. Hydrogen peroxide vapor sterilizes the cartons under positive HEPA air pressure before ultrasonic hermetic capping!"
+      },
+      {
+        start: 80.5,
+        end: 88.5,
+        speaker: 'Pip',
+        avatar: '🌺',
+        role: 'Carton Cheerleader',
+        emotion: 'Chilled Delivery Express',
+        camera: { pos: { x: 12, y: 6.5, z: 12 }, target: { x: 9.0, y: 1.8, z: 8.5 } },
+        text: "Look at the cartons march down the conveyor! Clink clank clink! Chilled crate stacks are packing into the zero-emission electric Alpenhof delivery truck!"
+      },
+      {
+        start: 88.5,
+        end: 96.0,
+        speaker: 'All',
+        avatar: '🥛',
+        role: 'Alpenhof Dairy Team',
+        emotion: 'Cold-Chain Certified',
+        camera: { pos: { x: 14, y: 13, z: 16 }, target: { x: 0, y: 2.8, z: 2.0 } },
+        text: "Alpenhof HTST Pasteurization complete! Pristine alpine milk, naturally nutritious, microbiologically pure, and guaranteed fresh for 21 days across our valley!"
+      }
+    ];
+
+    /* --- Audio Synthesizer & Pip Mouse Squeak SFX --- */
+    function initAudio() {
+      try {
+        if (!synth) {
+          synth = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      } catch (e) {}
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.04) {
+      if (!audioEnabled || !synth) return;
+      try {
+        if (synth.state === 'suspended') synth.resume();
+        const osc = synth.createOscillator();
+        const gain = synth.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, synth.currentTime);
+        gain.gain.setValueAtTime(gainVal, synth.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(synth.destination);
+        osc.start();
+        osc.stop(synth.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playPipSqueakSFX() {
+      if (!audioEnabled || !synth) return;
+      try {
+        if (synth.state === 'suspended') synth.resume();
+        const osc1 = synth.createOscillator();
+        const gain1 = synth.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(1550, synth.currentTime);
+        osc1.frequency.exponentialRampToValueAtTime(2800, synth.currentTime + 0.08);
+        gain1.gain.setValueAtTime(0.06, synth.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + 0.1);
+        osc1.connect(gain1);
+        gain1.connect(synth.destination);
+        osc1.start();
+        osc1.stop(synth.currentTime + 0.1);
+
+        setTimeout(() => {
+          const osc2 = synth.createOscillator();
+          const gain2 = synth.createGain();
+          osc2.type = 'triangle';
+          osc2.frequency.setValueAtTime(2300, synth.currentTime);
+          osc2.frequency.exponentialRampToValueAtTime(3200, synth.currentTime + 0.07);
+          gain2.gain.setValueAtTime(0.05, synth.currentTime);
+          gain2.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + 0.09);
+          osc2.connect(gain2);
+          gain2.connect(synth.destination);
+          osc2.start();
+          osc2.stop(synth.currentTime + 0.09);
+        }, 85);
+      } catch (e) {}
+    }
+
+    function playPumpHum() {
+      playTone(160, 'sawtooth', 0.4, 0.025);
+      setTimeout(() => playTone(320, 'sine', 0.3, 0.02), 70);
+    }
+
+    function playUltrasonicSealSFX() {
+      playTone(1800, 'sine', 0.25, 0.04);
+      setTimeout(() => playTone(2400, 'triangle', 0.15, 0.03), 50);
+    }
+
+    let availableVoices = [];
+    function loadVoices() {
+      if ('speechSynthesis' in window) {
+        availableVoices = window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => {
+          availableVoices = window.speechSynthesis.getVoices();
+        };
+      }
+    }
+    loadVoices();
+
+    let dialogueSpeaking = false;
+    function speakText(text, speaker) {
+      dialogueSpeaking = false;
+      if (!audioEnabled || !('speechSynthesis' in window)) return;
+      
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      dialogueSpeaking = true;
+      utterance.onstart = () => { dialogueSpeaking = true; };
+      utterance.onend = utterance.onerror = () => { dialogueSpeaking = false; };
+
+      if (speaker === 'Pip') {
+        utterance.pitch = 1.48;
+        utterance.rate = 1.15;
+        const childVoice = availableVoices.find(v => v.name.includes('Junior') || v.name.includes('Fred') || v.name.includes('Child') || v.lang.startsWith('en'));
+        if (childVoice) utterance.voice = childVoice;
+        playPipSqueakSFX();
+      } else if (speaker === 'Puff') {
+        utterance.pitch = 1.18;
+        utterance.rate = 0.95;
+        const femaleVoice = availableVoices.find(v => (v.name.includes('Samantha') || v.name.includes('Victoria') || v.name.includes('Zira') || v.name.includes('Female')) && v.lang.startsWith('en'));
+        if (femaleVoice) utterance.voice = femaleVoice;
+        playTone(520, 'sine', 0.18, 0.03);
+      } else {
+        // Barnaby (Warm, authoritative Bernese Mountain Dog Biochemist)
+        utterance.pitch = 0.88;
+        utterance.rate = 0.96;
+        const deepVoice = availableVoices.find(v => (v.name.includes('Daniel') || v.name.includes('Oliver') || v.name.includes('George') || v.name.includes('Male')) && v.lang.startsWith('en'));
+        if (deepVoice) utterance.voice = deepVoice;
+        playTone(280, 'sine', 0.22, 0.04);
+      }
+
+      utterance.onstart = () => { isSpeaking = true; dialogueSpeaking = true; };
+      utterance.onend = () => { isSpeaking = false; dialogueSpeaking = false; };
+      utterance.onerror = () => { isSpeaking = false; dialogueSpeaking = false; };
+      const lineMood = String(STORY_BEATS[currentSpeechIdx]?.emotion || '');
+      if (/discover|curious|delight|excite|wonder/i.test(lineMood)) { utterance.pitch = Math.min(1.55, utterance.pitch + 0.035); utterance.rate = Math.min(1.12, utterance.rate + 0.025); }
+      else if (/focus|careful|technical|serious|reflect/i.test(lineMood)) { utterance.rate = Math.max(0.90, utterance.rate - 0.025); }
+      window.speechSynthesis.speak(utterance);
+    }
+
+    /* --- Three.js Scene Setup --- */
+    function init() {
+      const container = document.getElementById('viewport-container');
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x020617);
+      scene.fog = new THREE.FogExp2(0x020617, 0.007);
+
+      const aspect = w / h;
+      const d = 16;
+      camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 0.1, 400);
+      camera.position.set(16, 15, 18);
+      camera.lookAt(0, 2.8, 0);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.25;
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2.05;
+      controls.target.set(0, 2.8, 0);
+
+      setupLighting();
+      buildEpoxyCleanroomFacility();
+      buildRawMilkSection();
+      buildPHEPasteurizerAndHoldingTube();
+      buildTwoStageHomogenizer();
+      buildMicrobiologyQALab();
+      buildAsepticPackagingLine();
+      buildElectricColdVan();
+
+      // Characters
+      buildFullDrBarnabyCurds();
+      buildFullProfessorWhiskerPuff();
+      buildFullPipSqueak();
+
+      buildFluidPipingNetwork();
+      setupUIEvents();
+
+      window.addEventListener('resize', onResize);
+    }
+
+    /* --- Crisp Industrial Lighting (No murky green tints) --- */
+    function setupLighting() {
+      const hemiLight = new THREE.HemisphereLight(0xe0f2fe, 0x1e293b, 1.1);
+      scene.add(hemiLight);
+
+      const dirLight = new THREE.DirectionalLight(0xfffdf5, 1.45);
+      dirLight.position.set(24, 34, 22);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 2048;
+      dirLight.shadow.mapSize.height = 2048;
+      dirLight.shadow.camera.near = 0.5;
+      dirLight.shadow.camera.far = 100;
+      const dL = 28;
+      dirLight.shadow.camera.left = -dL;
+      dirLight.shadow.camera.right = dL;
+      dirLight.shadow.camera.top = dL;
+      dirLight.shadow.camera.bottom = -dL;
+      dirLight.shadow.bias = -0.0003;
+      scene.add(dirLight);
+
+      // Lab Inspection Spotlight
+      safeIndicatorLight = new THREE.PointLight(0x10b981, 1.8, 6);
+      safeIndicatorLight.position.set(6.8, 2.8, 0.5);
+      scene.add(safeIndicatorLight);
+
+      // Packaging Ultrasonic Sealer Glow
+      ultrasonicSealerGlow = new THREE.PointLight(0x38bdf8, 1.8, 8);
+      ultrasonicSealerGlow.position.set(7.5, 3.8, 4.5);
+      scene.add(ultrasonicSealerGlow);
+    }
+
+    /* --- High-Spec Anti-Microbial Cleanroom Floor & Architecture --- */
+    function buildEpoxyCleanroomFacility() {
+      // 1. Hygienic Heavy-Duty Floor Baseplate (Seamless Solid Mesh)
+      const floorGeo = new THREE.BoxGeometry(44, 1.0, 44);
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: 0x0b1329,
+        roughness: 0.35,
+        metalness: 0.25
+      });
+      floorMesh = new THREE.Mesh(floorGeo, floorMat);
+      floorMesh.position.y = -0.5;
+      floorMesh.receiveShadow = true;
+      scene.add(floorMesh);
+
+      // 2. High-Tech Epoxy Cleanroom Tile Grid
+      floorGrid = new THREE.GridHelper(44, 44, 0x38bdf8, 0x1e293b);
+      floorGrid.position.y = 0.005;
+      scene.add(floorGrid);
+
+      // 3. Stainless Steel Floor Drainage Gullies (Hygienic CIP drains)
+      const drainMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8, roughness: 0.3 });
+      const drain1 = new THREE.Mesh(new THREE.BoxGeometry(36, 0.05, 0.35), drainMat);
+      drain1.position.set(0, 0.015, -0.6);
+      scene.add(drain1);
+
+      const drain2 = new THREE.Mesh(new THREE.BoxGeometry(36, 0.05, 0.35), drainMat);
+      drain2.position.set(0, 0.015, 6.2);
+      scene.add(drain2);
+
+      // 4. Cleanroom Perimeter Walls (Back and Left)
+      const wallMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6, metalness: 0.2 });
+      const backWall = new THREE.Mesh(new THREE.BoxGeometry(44, 12, 1), wallMat);
+      backWall.position.set(0, 5.5, -12);
+      backWall.receiveShadow = true;
+      scene.add(backWall);
+
+      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(1, 12, 44), wallMat);
+      leftWall.position.set(-18, 5.5, 0);
+      leftWall.receiveShadow = true;
+      scene.add(leftWall);
+
+      // 5. Overhead Utility Pipelines (Steam Red, Chilled Water Blue, Milk Silver)
+      const pipeMatSteam = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.8, roughness: 0.2 });
+      const pipeMatChilled = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8, roughness: 0.2 });
+      const pipeMatMilk = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.9, roughness: 0.1 });
+
+      const overheadSteam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 42, 16), pipeMatSteam);
+      overheadSteam.rotation.z = Math.PI / 2;
+      overheadSteam.position.set(0, 8.5, -4.5);
+      scene.add(overheadSteam);
+
+      const overheadChilled = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 42, 16), pipeMatChilled);
+      overheadChilled.rotation.z = Math.PI / 2;
+      overheadChilled.position.set(0, 8.8, -4.8);
+      scene.add(overheadChilled);
+
+      const overheadMilk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 42, 16), pipeMatMilk);
+      overheadMilk.rotation.z = Math.PI / 2;
+      overheadMilk.position.set(0, 9.1, -5.1);
+      scene.add(overheadMilk);
+
+      // 6. Character Interactive Demonstration Stage
+      const demoStage = new THREE.Mesh(
+        new THREE.BoxGeometry(11, 0.18, 7),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.45, metalness: 0.15 })
+      );
+      demoStage.position.set(0.6, 0.09, 2.8);
+      demoStage.receiveShadow = true;
+      scene.add(demoStage);
+    }
+
+    /* --- 1. Raw Milk Reception Silo & Centrifugal Clarifier --- */
+    function buildRawMilkSection() {
+      const ssMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.85, roughness: 0.2 });
+      const blueTankMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.4, roughness: 0.3 });
+
+      // Raw Milk Silo (4°C Insulated)
+      rawMilkSilo = new THREE.Group();
+      rawMilkSilo.position.set(-8.5, 0, -2);
+
+      const siloBody = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 6.5, 24), blueTankMat);
+      siloBody.position.y = 3.6;
+      siloBody.castShadow = true;
+      rawMilkSilo.add(siloBody);
+
+      const siloDome = new THREE.Mesh(new THREE.SphereGeometry(1.6, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), blueTankMat);
+      siloDome.position.y = 6.85;
+      rawMilkSilo.add(siloDome);
+
+      // Silo Level Indicator & Digital Temp Gauge (4°C)
+      const gauge = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.5, 8), ssMat);
+      gauge.position.set(1.65, 3.6, 0);
+      rawMilkSilo.add(gauge);
+
+      // Stainless Steel Balance Tank
+      balanceTank = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 1.6, 20), ssMat);
+      balanceTank.position.set(-5.5, 1.1, 0.2);
+      balanceTank.castShadow = true;
+      scene.add(balanceTank);
+
+      // Centrifugal Disc Clarifier
+      centrifugalClarifier = new THREE.Group();
+      centrifugalClarifier.position.set(-5.5, 0, -2.5);
+
+      const clarifierBase = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.1, 1.4, 20), ssMat);
+      clarifierBase.position.y = 0.7;
+      centrifugalClarifier.add(clarifierBase);
+
+      const clarifierBowl = new THREE.Mesh(new THREE.ConeGeometry(1.15, 1.6, 24), ssMat);
+      clarifierBowl.position.y = 2.1;
+      centrifugalClarifier.add(clarifierBowl);
+
+      // Disc Stack Spinner (simulated visible disc rotor)
+      clarifierRotor = new THREE.Group();
+      clarifierRotor.position.y = 2.4;
+      for (let i = 0; i < 6; i++) {
+        const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.7 - i * 0.08, 0.85 - i * 0.08, 0.04, 16), ssMat);
+        disc.position.y = i * 0.08;
+        clarifierRotor.add(disc);
+      }
+      centrifugalClarifier.add(clarifierRotor);
+
+      scene.add(rawMilkSilo);
+      scene.add(centrifugalClarifier);
+    }
+
+    /* --- 2. Plate Heat Exchanger (PHE) & 15-Sec Holding Serpentine --- */
+    function buildPHEPasteurizerAndHoldingTube() {
+      const pheGroup = new THREE.Group();
+      pheGroup.position.set(0, 0, -2.5);
+
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6, roughness: 0.4 });
+      const plateMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.15 });
+      const hotCopper = new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.85, roughness: 0.25 });
+
+      // PHE End Frames & Tension Tie-Bars
+      const frameStart = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.8, 1.8), frameMat);
+      frameStart.position.set(-1.4, 2.0, 0);
+      pheGroup.add(frameStart);
+
+      const frameEnd = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.8, 1.8), frameMat);
+      frameEnd.position.set(1.4, 2.0, 0);
+      pheGroup.add(frameEnd);
+
+      // Stack of 36 Corrugated Heat Plates
+      for (let i = 0; i < 34; i++) {
+        const plate = new THREE.Mesh(new THREE.BoxGeometry(0.04, 3.2, 1.6), plateMat);
+        plate.position.set(-1.2 + i * 0.07, 2.0, 0);
+        pheGroup.add(plate);
+      }
+
+      // Insulated Serpentine Holding Tube (72°C Flash Chamber)
+      holdingTubeSerpentine = new THREE.Group();
+      holdingTubeSerpentine.position.set(0, 4.3, 0);
+
+      for (let s = 0; s < 5; s++) {
+        const tubeSegment = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.6, 16), hotCopper);
+        tubeSegment.rotation.z = Math.PI / 2;
+        tubeSegment.position.set(0, s * 0.32, (s % 2 === 0 ? 0.2 : -0.2));
+        holdingTubeSerpentine.add(tubeSegment);
+      }
+      pheGroup.add(holdingTubeSerpentine);
+
+      scene.add(pheGroup);
+    }
+
+    /* --- 3. High-Pressure 2-Stage Homogenizer (200 Bar) --- */
+    function buildTwoStageHomogenizer() {
+      const castIronMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.3 });
+      const chromeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.95, roughness: 0.1 });
+
+      const homoGroup = new THREE.Group();
+      homoGroup.position.set(3.4, 0, -2.5);
+
+      const homoBody = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.2, 1.8), castIronMat);
+      homoBody.position.y = 1.3;
+      homoBody.castShadow = true;
+      homoGroup.add(homoBody);
+
+      // Triple Reciprocating High-Pressure Pistons
+      for (let p = 0; p < 3; p++) {
+        const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.75, 16), chromeMat);
+        piston.position.set(-0.5 + p * 0.5, 2.5, 0.3);
+        homoGroup.add(piston);
+        homogenizerPistons.push(piston);
+      }
+
+      // Pressure Gauge Dial (200 Bar)
+      homogenizerGauge = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.1, 16), chromeMat);
+      homogenizerGauge.rotation.x = Math.PI / 2;
+      homogenizerGauge.position.set(0.6, 2.6, 0.95);
+      homoGroup.add(homogenizerGauge);
+
+      scene.add(homoGroup);
+    }
+
+    /* --- 4. Quality Control & Microbiology Lab Station --- */
+    function buildMicrobiologyQALab() {
+      labBench = new THREE.Group();
+      labBench.position.set(6.8, 0, 0.5);
+
+      const tableMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 });
+      const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transmission: 0.85, opacity: 0.4, transparent: true });
+
+      // Cleanroom Countertop
+      const benchTop = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.2, 2.2), tableMat);
+      benchTop.position.y = 1.5;
+      benchTop.castShadow = true;
+      labBench.add(benchTop);
+
+      const legs = [
+        [-1.6, 0.75, -0.9], [1.6, 0.75, -0.9],
+        [-1.6, 0.75, 0.9], [1.6, 0.75, 0.9]
+      ];
+      legs.forEach(lp => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5, 8), tableMat);
+        leg.position.set(lp[0], lp[1], lp[2]);
+        labBench.add(leg);
+      });
+
+      // Digital Milk Analyzer Unit
+      const analyzer = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.6), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
+      analyzer.position.set(-0.8, 1.9, -0.2);
+      labBench.add(analyzer);
+
+      // Microscopic Lens Assembly
+      microscope = new THREE.Group();
+      microscope.position.set(0.6, 1.6, 0.1);
+      const mBase = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.1, 16), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+      microscope.add(mBase);
+      const mArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.7, 8), new THREE.MeshStandardMaterial({ color: 0x94a3b8 }));
+      mArm.position.set(0, 0.38, -0.15);
+      microscope.add(mArm);
+      const mHead = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.35, 12), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+      mHead.rotation.x = 0.4;
+      mHead.position.set(0, 0.7, 0);
+      microscope.add(mHead);
+      labBench.add(microscope);
+
+      // Petri Dishes with Nutrient Agar (Listeria & Coliform Negative QA tests)
+      for (let d = 0; d < 3; d++) {
+        const petri = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.04, 16), glassMat);
+        petri.position.set(-0.1 + d * 0.45, 1.63, 0.5);
+        labBench.add(petri);
+        petriDishes.push(petri);
+      }
+
+      scene.add(labBench);
+    }
+
+    /* --- 5. Aseptic Form-Fill-Seal Packaging & Conveyor --- */
+    function buildAsepticPackagingLine() {
+      packagingMachine = new THREE.Group();
+      packagingMachine.position.set(7.5, 0, 4.5);
+
+      const ssMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.2 });
+      const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x06b6d4, transmission: 0.82, transparent: true, opacity: 0.35 });
+
+      // Cleanroom Sterile Filling Enclosure
+      const enclosure = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.4, 2.6), glassMat);
+      enclosure.position.y = 2.1;
+      packagingMachine.add(enclosure);
+
+      const sterileFrame = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.3, 2.7), ssMat);
+      sterileFrame.position.y = 3.9;
+      packagingMachine.add(sterileFrame);
+
+      // Automated Conveyor Belt (Transports finished cartons)
+      conveyorBelt = new THREE.Group();
+      conveyorBelt.position.set(7.5, 0, 7.8);
+
+      const beltTrack = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.3, 7.5), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 }));
+      beltTrack.position.y = 0.9;
+      conveyorBelt.add(beltTrack);
+
+      const beltRollers = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.82, 1.6, 16), ssMat);
+      beltRollers.rotation.z = Math.PI / 2;
+      beltRollers.position.set(0, 0.9, 3.75);
+      conveyorBelt.add(beltRollers);
+
+      // Milk Cartons (Alpenhof Fresh Whole Milk, 1L Gable Top)
+      const cartonMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
+      const capMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 });
+
+      for (let c = 0; c < 8; c++) {
+        const carton = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.75, 0.38), cartonMat);
+        body.position.y = 0.375;
+        carton.add(body);
+
+        const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.05, 8), capMat);
+        cap.position.set(0, 0.77, 0);
+        carton.add(cap);
+
+        carton.position.set(0, 1.05, -2.5 + c * 0.9);
+        conveyorBelt.add(carton);
+        milkCartons.push(carton);
+      }
+
+      scene.add(packagingMachine);
+      scene.add(conveyorBelt);
+    }
+
+    /* --- 6. Zero-Emission Electric Cold-Chain Transport Van --- */
+    function buildElectricColdVan() {
+      electricVan = new THREE.Group();
+      electricVan.position.set(11.5, 0, 8.5);
+
+      const vanWhite = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.3, roughness: 0.3 });
+      const vanBlue = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.4, roughness: 0.3 });
+      const tireMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
+
+      // Insulated Refrigerated Cargo Box
+      const cargo = new THREE.Mesh(new THREE.BoxGeometry(3.0, 2.6, 4.4), vanWhite);
+      cargo.position.y = 1.9;
+      cargo.castShadow = true;
+      electricVan.add(cargo);
+
+      // Cabin
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(2.8, 2.0, 2.2), vanBlue);
+      cab.position.set(0, 1.5, 3.2);
+      electricVan.add(cab);
+
+      // Wheels
+      const wheelPos = [
+        [-1.5, 0.5, 2.2], [1.5, 0.5, 2.2],
+        [-1.5, 0.5, -1.5], [1.5, 0.5, -1.5]
+      ];
+      wheelPos.forEach(wp => {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16), tireMat);
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(wp[0], wp[1], wp[2]);
+        electricVan.add(wheel);
+      });
+
+      scene.add(electricVan);
+    }
+
+    /* =========================================================================
+       CHARACTER 1: DR. BARNABY Q. CURDS (ALPINE BERNESE MOUNTAIN DOG BIOCHEMIST)
+       ========================================================================= */
+    function buildFullDrBarnabyCurds() {
+      barnabyGroup = new THREE.Group();
+      barnabyGroup.name = "Dr. Barnaby Q. Curds";
+
+      const coatWhite = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.45 });
+      const bernerBlack = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.8 });
+      const bernerRust = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.75 });
+      const bernerWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+      const pantsMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
+      const bootMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4 });
+      const nitrileBlue = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.25 });
+      const bouffantMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+
+      // Torso & Sanitary Lab Coat
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.5, 1.25, 16), coatWhite);
+      torso.position.y = 1.72;
+      torso.castShadow = true;
+      barnabyGroup.add(torso);
+
+      // Coat Lapels & Safety Badge
+      const lapel = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.85, 0.1), coatWhite);
+      lapel.position.set(0, 1.85, 0.46);
+      barnabyGroup.add(lapel);
+
+      const qaBadge = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.28, 0.05), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
+      qaBadge.position.set(-0.28, 2.05, 0.52);
+      barnabyGroup.add(qaBadge);
+
+      // Head & Bernese Fur Markings
+      barnabyHead = new THREE.Group();
+      barnabyHead.position.set(0, 2.58, 0.05);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.58, 18, 18), bernerBlack);
+      head.castShadow = true;
+      barnabyHead.add(head);
+
+      // White Blaze down muzzle
+      const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.28, 14, 14), bernerWhite);
+      muzzle.scale.set(1.1, 0.85, 1.1);
+      muzzle.position.set(0, -0.1, 0.48);
+      barnabyHead.add(muzzle);
+
+      // Rust Eyebrows & Cheeks
+      [-0.24, 0.24].forEach(cx => {
+        const rustDot = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), bernerRust);
+        rustDot.position.set(cx, 0.22, 0.46);
+        barnabyHead.add(rustDot);
+      });
+
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), new THREE.MeshStandardMaterial({ color: 0x09090b }));
+      nose.position.set(0, -0.06, 0.72);
+      barnabyHead.add(nose);
+
+      // Floppy Bernese Ears poking through Bouffant Cap
+      [-0.48, 0.48].forEach((ex, idx) => {
+        const ear = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.42, 0.1), bernerBlack);
+        ear.position.set(ex, 0.1, 0.05);
+        ear.rotation.z = idx === 0 ? 0.35 : -0.35;
+        barnabyHead.add(ear);
+      });
+
+      // Hygienic White Bouffant Sanitary Cap
+      const bouffant = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 16), bouffantMat);
+      bouffant.scale.set(1.05, 0.65, 1.05);
+      bouffant.position.set(0, 0.32, 0);
+      barnabyHead.add(bouffant);
+
+      // Thermal Safety Goggles
+      [-0.2, 0.2].forEach(gx => {
+        const goggle = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 8, 16), new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8 }));
+        goggle.position.set(gx, 0.08, 0.52);
+        barnabyHead.add(goggle);
+      });
+
+      barnabyGroup.add(barnabyHead);
+
+      // Arms with Sky-Blue Sterile Nitrile Gloves
+      barnabyArmL = new THREE.Group();
+      barnabyArmL.position.set(-0.65, 2.15, 0);
+      const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.7, 8), coatWhite);
+      armL.position.y = -0.35;
+      barnabyArmL.add(armL);
+      const gloveL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.24, 0.22), nitrileBlue);
+      gloveL.position.set(0, -0.72, 0.05);
+      barnabyArmL.add(gloveL);
+      barnabyGroup.add(barnabyArmL);
+
+      barnabyArmR = new THREE.Group();
+      barnabyArmR.position.set(0.65, 2.15, 0);
+      const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.7, 8), coatWhite);
+      armR.position.y = -0.35;
+      barnabyArmR.add(armR);
+
+      // Digital Refractometer & pH Safety Wand
+      barnabyRefractometer = new THREE.Group();
+      barnabyRefractometer.position.set(0, -0.72, 0.2);
+      const wand = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9 }));
+      wand.rotation.x = Math.PI / 2;
+      barnabyRefractometer.add(wand);
+      const digitalTip = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.5 }));
+      digitalTip.position.set(0, 0, 0.28);
+      barnabyRefractometer.add(digitalTip);
+      barnabyArmR.add(barnabyRefractometer);
+      barnabyGroup.add(barnabyArmR);
+
+      // Sturdy Legs & Cleanroom Boots
+      barnabyLegL = new THREE.Group();
+      barnabyLegL.position.set(-0.28, 1.1, 0);
+      const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.8, 10), pantsMat);
+      legL.position.y = -0.4;
+      barnabyLegL.add(legL);
+      const bootL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.24, 0.48), bootMat);
+      bootL.position.set(0, -0.8, 0.1);
+      barnabyLegL.add(bootL);
+      barnabyGroup.add(barnabyLegL);
+
+      barnabyLegR = new THREE.Group();
+      barnabyLegR.position.set(0.28, 1.1, 0);
+      const legR = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.8, 10), pantsMat);
+      legR.position.y = -0.4;
+      barnabyLegR.add(legR);
+      const bootR = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.24, 0.48), bootMat);
+      bootR.position.set(0, -0.8, 0.1);
+      barnabyLegR.add(bootR);
+      barnabyGroup.add(barnabyLegR);
+
+      barnabyGroup.position.set(2.8, 0.15, 2.2);
+      barnabyGroup.rotation.set(0, -Math.PI / 2.3, 0);
+      scene.add(barnabyGroup);
+    }
+
+    /* =========================================================================
+       CHARACTER 2: PROFESSOR WHISKER PUFF (SCIENTIFIC LEAD & ASTROBIOLOGIST)
+       ========================================================================= */
+    function buildFullProfessorWhiskerPuff() {
+      puffGroup = new THREE.Group();
+      puffGroup.name = "Professor Whisker Puff";
+
+      const calicoGinger = new THREE.MeshStandardMaterial({ color: 0xe07a38, roughness: 0.65 });
+      const calicoWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+      const calicoBlack = new THREE.MeshStandardMaterial({ color: 0x27272a, roughness: 0.65 });
+      const labVest = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.5 });
+      const skirtMat = new THREE.MeshStandardMaterial({ color: 0x064e3b, roughness: 0.6 });
+      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x831843, roughness: 0.4 });
+
+      // Torso (Upright vertical posture)
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 1.05, 16), calicoWhite);
+      torso.position.y = 1.72;
+      torso.castShadow = true;
+      puffGroup.add(torso);
+
+      const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.5, 0.75, 16, 1, false, 0.3, Math.PI * 1.8), labVest);
+      vest.position.y = 1.8;
+      puffGroup.add(vest);
+
+      const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.7, 0.55, 16, 1, true), skirtMat);
+      skirt.position.y = 1.25;
+      skirt.rotation.x = Math.PI;
+      puffGroup.add(skirt);
+
+      // Head, Buns & Specs
+      puffHead = new THREE.Group();
+      puffHead.position.set(0, 2.48, 0.05);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.62, 18, 18), calicoGinger);
+      head.scale.set(1.1, 0.95, 1.05);
+      head.castShadow = true;
+      puffHead.add(head);
+
+      const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), calicoWhite);
+      muzzle.scale.set(1.2, 0.8, 0.85);
+      muzzle.position.set(0, -0.12, 0.55);
+      puffHead.add(muzzle);
+
+      [-0.22, 0.22].forEach(gx => {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.035, 10, 20), new THREE.MeshStandardMaterial({ color: 0x09090b }));
+        rim.position.set(gx, 0.04, 0.65);
+        puffHead.add(rim);
+      });
+
+      const hairBunMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.7 });
+      const bunL = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), hairBunMat);
+      bunL.position.set(-0.55, 0.42, 0.08);
+      bunL.add(new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.035, 8, 16), new THREE.MeshStandardMaterial({ color: 0x8b5cf6 })));
+      puffHead.add(bunL);
+
+      const bunR = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), hairBunMat);
+      bunR.position.set(0.55, 0.42, 0.08);
+      bunR.add(new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.035, 8, 16), new THREE.MeshStandardMaterial({ color: 0xec4899 })));
+      puffHead.add(bunR);
+
+      puffGroup.add(puffHead);
+
+      // Arms & Science Tablet
+      puffArmL = new THREE.Group();
+      puffArmL.position.set(-0.52, 2.05, 0);
+      const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.65, 8), calicoWhite);
+      armL.position.y = -0.32;
+      puffArmL.add(armL);
+      puffGroup.add(puffArmL);
+
+      puffArmR = new THREE.Group();
+      puffArmR.position.set(0.52, 2.05, 0);
+      const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.65, 8), calicoWhite);
+      armR.position.y = -0.32;
+      puffArmR.add(armR);
+
+      puffTablet = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.48, 0.03), new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x38bdf8, emissiveIntensity: 0.4 }));
+      puffTablet.position.set(0, -0.58, 0.18);
+      puffArmR.add(puffTablet);
+      puffGroup.add(puffArmR);
+
+      // Legs
+      puffLegL = new THREE.Group();
+      puffLegL.position.set(-0.22, 1.0, 0);
+      const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.78, 8), calicoWhite);
+      legL.position.y = -0.39;
+      puffLegL.add(legL);
+      const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.35), shoeMat);
+      shoeL.position.set(0, -0.78, 0.06);
+      puffLegL.add(shoeL);
+      puffGroup.add(puffLegL);
+
+      puffLegR = new THREE.Group();
+      puffLegR.position.set(0.22, 1.0, 0);
+      const legR = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.78, 8), calicoWhite);
+      legR.position.y = -0.39;
+      puffLegR.add(legR);
+      const shoeR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.35), shoeMat);
+      shoeR.position.set(0, -0.78, 0.06);
+      puffLegR.add(shoeR);
+      puffGroup.add(puffLegR);
+
+      // Tail
+      puffTail = new THREE.Group();
+      puffTail.position.set(0, 1.1, -0.4);
+      let prev = puffTail;
+      for (let i = 0; i < 5; i++) {
+        const seg = new THREE.Mesh(new THREE.SphereGeometry(0.1 - i * 0.012, 8, 8), (i % 2 === 0) ? calicoGinger : calicoBlack);
+        seg.position.set(0, 0.1, -0.12);
+        prev.add(seg);
+        prev = seg;
+      }
+      puffGroup.add(puffTail);
+
+      puffGroup.position.set(-1.4, 0.15, 2.4);
+      puffGroup.rotation.set(0, -Math.PI / 2.6, 0);
+      scene.add(puffGroup);
+    }
+
+    /* =========================================================================
+       CHARACTER 3: PIP SQUEAK (3YO TODDLER MOUSE & CURIOUS INSPECTOR)
+       ========================================================================= */
+    function buildFullPipSqueak() {
+      pipGroup = new THREE.Group();
+      pipGroup.name = "Pip Squeak";
+
+      const mouseBrown = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.75 });
+      const mousePink = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.5 });
+      const beachShirtMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.6 });
+      const shortsMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.6 });
+      const sockMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 });
+      const sneakerMat = new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.4 });
+
+      // Torso
+      const torso = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 14), mouseBrown);
+      torso.scale.set(0.9, 1.15, 0.9);
+      torso.position.y = 0.95;
+      torso.castShadow = true;
+      pipGroup.add(torso);
+
+      const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.41, 0.45, 14), beachShirtMat);
+      shirt.position.y = 1.0;
+      pipGroup.add(shirt);
+
+      const shorts = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.36, 0.28, 14), shortsMat);
+      shorts.position.y = 0.72;
+      pipGroup.add(shorts);
+
+      // Head & Ears
+      pipHead = new THREE.Group();
+      pipHead.position.set(0, 1.35, 0.05);
+
+      const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 14), mouseBrown);
+      pipHead.add(mHead);
+
+      const snout = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.35, 10), mouseBrown);
+      snout.rotation.x = 1.35;
+      snout.position.set(0, -0.05, 0.25);
+      pipHead.add(snout);
+
+      const nose = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), mousePink);
+      nose.position.set(0, -0.07, 0.42);
+      pipHead.add(nose);
+
+      [-0.22, 0.22].forEach((ex, idx) => {
+        const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.025, 12), mousePink);
+        ear.position.set(ex, 0.22, -0.02);
+        ear.rotation.set(0.2, idx === 0 ? 0.35 : -0.35, idx === 0 ? -0.4 : 0.4);
+        pipHead.add(ear);
+      });
+      pipGroup.add(pipHead);
+
+      // Arms & Magnifying Inspection Glass
+      pipArmL = new THREE.Group();
+      pipArmL.position.set(-0.35, 1.08, 0);
+      const pawL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+      pawL.position.y = -0.18;
+      pipArmL.add(pawL);
+      pipGroup.add(pipArmL);
+
+      pipArmR = new THREE.Group();
+      pipArmR.position.set(0.35, 1.08, 0);
+      const pawR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+      pawR.position.y = -0.18;
+      pipArmR.add(pawR);
+
+      // Mini magnifying glass
+      pipInspectGlass = new THREE.Group();
+      pipInspectGlass.position.set(0.12, -0.22, 0.22);
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+      pipInspectGlass.add(handle);
+      const lensRim = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.025, 8, 16), new THREE.MeshStandardMaterial({ color: 0xd97706 }));
+      lensRim.position.y = 0.22;
+      pipInspectGlass.add(lensRim);
+      pipArmR.add(pipInspectGlass);
+      pipGroup.add(pipArmR);
+
+      // Legs
+      pipLegL = new THREE.Group();
+      pipLegL.position.set(-0.16, 0.6, 0);
+      const legBoneL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.38, 8), mouseBrown);
+      legBoneL.position.y = -0.19;
+      pipLegL.add(legBoneL);
+      const sockL = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.08, 0.1, 8), sockMat);
+      sockL.position.y = -0.32;
+      pipLegL.add(sockL);
+      const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.28), sneakerMat);
+      shoeL.position.set(0, -0.42, 0.05);
+      pipLegL.add(shoeL);
+      pipGroup.add(pipLegL);
+
+      pipLegR = new THREE.Group();
+      pipLegR.position.set(0.16, 0.6, 0);
+      const legBoneR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.38, 8), mouseBrown);
+      legBoneR.position.y = -0.19;
+      pipLegR.add(legBoneR);
+      const sockR = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.08, 0.1, 8), sockMat);
+      sockR.position.y = -0.32;
+      pipLegR.add(sockR);
+      const shoeR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.28), sneakerMat);
+      shoeR.position.set(0, -0.42, 0.05);
+      pipLegR.add(shoeR);
+      pipGroup.add(pipLegR);
+
+      // Tail
+      pipTail = new THREE.Group();
+      pipTail.position.set(0, 0.65, -0.28);
+      let pPrev = pipTail;
+      for (let i = 0; i < 5; i++) {
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.03 - i * 0.004, 0.035 - i * 0.004, 0.14, 6), mousePink);
+        seg.position.set(0, 0.04, -0.1);
+        seg.rotation.x = -0.25;
+        pPrev.add(seg);
+        pPrev = seg;
+      }
+      pipGroup.add(pipTail);
+
+      pipGroup.position.set(0.6, 0.15, 3.4);
+      scene.add(pipGroup);
+    }
+
+    /* --- Dynamic Thermal Liquid Flow Piping Network --- */
+    function buildFluidPipingNetwork() {
+      // 1. Raw Chilled Line: Silo -> Balance Tank -> Clarifier (Cold Cyan-Blue 4°C)
+      const pathRaw = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-8.5, 0.8, -2),
+        new THREE.Vector3(-7.0, 0.8, -1.0),
+        new THREE.Vector3(-5.5, 0.8, 0.2),
+        new THREE.Vector3(-5.5, 1.4, -2.5)
+      ]);
+      const pipeRaw = new THREE.Mesh(new THREE.TubeGeometry(pathRaw, 24, 0.07, 8, false), new THREE.MeshStandardMaterial({ color: 0x38bdf8 }));
+      scene.add(pipeRaw);
+
+      // 2. Pre-Heat Line: Clarifier -> PHE Regenerative In (Warm Amber 55°C)
+      const pathPreheat = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-5.5, 2.8, -2.5),
+        new THREE.Vector3(-3.0, 2.8, -2.5),
+        new THREE.Vector3(-1.4, 2.8, -2.5),
+        new THREE.Vector3(1.4, 2.8, -2.5),
+        new THREE.Vector3(3.4, 2.5, -2.5)
+      ]);
+      const pipePreheat = new THREE.Mesh(new THREE.TubeGeometry(pathPreheat, 32, 0.07, 8, false), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+      scene.add(pipePreheat);
+
+      // 3. High-Temp Pasteurization Holding Tube: Homogenizer -> Serpentine (Ruby 72°C)
+      const pathHot = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(3.4, 2.8, -2.5),
+        new THREE.Vector3(1.8, 4.5, -2.5),
+        new THREE.Vector3(0, 5.2, -2.5),
+        new THREE.Vector3(-1.2, 4.5, -2.5),
+        new THREE.Vector3(-1.4, 2.0, -2.5)
+      ]);
+      const pipeHot = new THREE.Mesh(new THREE.TubeGeometry(pathHot, 32, 0.07, 8, false), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+      scene.add(pipeHot);
+
+      // 4. Regenerative Shock-Chilled Sterile Line: PHE -> QA Station -> Packaging (Pure Milk White/Ice Cyan 4°C)
+      const pathSterile = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(1.4, 1.2, -2.5),
+        new THREE.Vector3(5.0, 1.2, -1.0),
+        new THREE.Vector3(6.8, 1.6, 0.5),
+        new THREE.Vector3(7.5, 2.5, 4.5)
+      ]);
+      const pipeSterile = new THREE.Mesh(new THREE.TubeGeometry(pathSterile, 32, 0.07, 8, false), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+      scene.add(pipeSterile);
+
+      // Dynamic Flow Pulse Orbs
+      const curves = [
+        { curve: pathRaw, color: 0x38bdf8, count: 8 },
+        { curve: pathPreheat, color: 0xfbbf24, count: 10 },
+        { curve: pathHot, color: 0xf43f5e, count: 12 },
+        { curve: pathSterile, color: 0xf0fdf4, count: 10 }
+      ];
+
+      curves.forEach(c => {
+        for (let i = 0; i < c.count; i++) {
+          const sphere = new THREE.Mesh(
+            new THREE.SphereGeometry(0.09, 8, 8),
+            new THREE.MeshBasicMaterial({ color: c.color })
+          );
+          scene.add(sphere);
+          fluidParticles.push({ mesh: sphere, curve: c.curve, offset: i / c.count });
+        }
+      });
+    }
+
+    /* --- Dynamic Simulation Controller with Speech Hold Gate --- */
+    
+    // Subtle presenter breathing, listening, and hand emphasis, layered over each scene's staged poses.
+    const archiveMotionRigs = () => [typeof barnabyGroup !== 'undefined' ? barnabyGroup : null, typeof puffGroup !== 'undefined' ? puffGroup : null, typeof pipGroup !== 'undefined' ? pipGroup : null];
+    if (typeof pipGroup !== 'undefined' && pipGroup) pipGroup.name ||= 'pipGroup';
+    if (typeof puffGroup !== 'undefined' && puffGroup) puffGroup.name ||= 'puffGroup';
+    if (typeof barnabyGroup !== 'undefined' && barnabyGroup) barnabyGroup.name ||= 'barnabyGroup';
+    const archiveMotionHeads = () => [typeof barnabyHead !== 'undefined' ? barnabyHead : null, typeof puffHead !== 'undefined' ? puffHead : null, typeof pipHead !== 'undefined' ? pipHead : null];
+    if (typeof barnabyHead !== 'undefined' && barnabyHead) barnabyHead.name ||= 'barnabyHead';
+    if (typeof puffHead !== 'undefined' && puffHead) puffHead.name ||= 'puffHead';
+    if (typeof pipHead !== 'undefined' && pipHead) pipHead.name ||= 'pipHead';
+
+    const archiveMotionArms = () => [typeof barnabyArmR !== 'undefined' ? barnabyArmR : null, typeof barnabyArmL !== 'undefined' ? barnabyArmL : null, typeof puffArmR !== 'undefined' ? puffArmR : null, typeof puffArmL !== 'undefined' ? puffArmL : null, typeof pipArmR !== 'undefined' ? pipArmR : null, typeof pipArmL !== 'undefined' ? pipArmL : null];
+    if (typeof barnabyArmR !== 'undefined' && barnabyArmR) barnabyArmR.name ||= 'barnabyArmR';
+    if (typeof barnabyArmL !== 'undefined' && barnabyArmL) barnabyArmL.name ||= 'barnabyArmL';
+    if (typeof puffArmR !== 'undefined' && puffArmR) puffArmR.name ||= 'puffArmR';
+    if (typeof puffArmL !== 'undefined' && puffArmL) puffArmL.name ||= 'puffArmL';
+    if (typeof pipArmR !== 'undefined' && pipArmR) pipArmR.name ||= 'pipArmR';
+    if (typeof pipArmL !== 'undefined' && pipArmL) pipArmL.name ||= 'pipArmL';
+
+    const archiveMotionLegs = () => [typeof barnabyLegL !== 'undefined' ? barnabyLegL : null, typeof barnabyLegR !== 'undefined' ? barnabyLegR : null, typeof puffLegL !== 'undefined' ? puffLegL : null, typeof puffLegR !== 'undefined' ? puffLegR : null, typeof pipLegL !== 'undefined' ? pipLegL : null, typeof pipLegR !== 'undefined' ? pipLegR : null];
+    if (typeof barnabyLegL !== 'undefined' && barnabyLegL) barnabyLegL.name ||= 'barnabyLegL';
+    if (typeof barnabyLegR !== 'undefined' && barnabyLegR) barnabyLegR.name ||= 'barnabyLegR';
+    if (typeof puffLegL !== 'undefined' && puffLegL) puffLegL.name ||= 'puffLegL';
+    if (typeof puffLegR !== 'undefined' && puffLegR) puffLegR.name ||= 'puffLegR';
+    if (typeof pipLegL !== 'undefined' && pipLegL) pipLegL.name ||= 'pipLegL';
+    if (typeof pipLegR !== 'undefined' && pipLegR) pipLegR.name ||= 'pipLegR';
+    const rigsNames = ["barnabyGroup", "puffGroup", "pipGroup"];
+    const headsNames = ["barnabyHead", "puffHead", "pipHead"];
+    const armsNames = ["barnabyArmR", "barnabyArmL", "puffArmR", "puffArmL", "pipArmR", "pipArmL"];
+    const legsNames = ["barnabyLegL", "barnabyLegR", "puffLegL", "puffLegR", "pipLegL", "pipLegR"];
+    function clearArchiveMotionOffsets() {
+      [...archiveMotionRigs(), ...archiveMotionHeads(), ...archiveMotionArms(), ...archiveMotionLegs()].forEach(node => {
+        if (!node || !node.userData.archiveMotionOffset) return;
+        const o = node.userData.archiveMotionOffset;
+        node.rotation.x -= o.x; node.rotation.y -= o.y; node.rotation.z -= o.z;
+        if (o.px) node.position.x -= o.px; if (o.pz) node.position.z -= o.pz;
+        node.userData.archiveMotionOffset = null;
+      });
+    }
+    function applyArchivePresenterMotion(time) {
+      const beat = STORY_BEATS[currentSpeechIdx] || null;
+      const speaker = String(beat?.speaker || '').toLowerCase();
+      const phase = (time || 0) * 2.15;
+      const progress = beat ? Math.max(0, Math.min(1, ((time || 0) - beat.start) / Math.max(0.1, beat.end - beat.start))) : 0;
+      const smooth = v => v * v * (3 - 2 * v);
+      const walk = progress < 0.2 ? smooth(progress / 0.2) : progress < 0.62 ? 1 : progress < 0.86 ? 1 - smooth((progress - 0.62) / 0.24) : 0;
+      const put = (node, x, y, z, px = 0, pz = 0) => {
+        if (!node) return;
+        node.rotation.x += x; node.rotation.y += y; node.rotation.z += z;
+        node.position.x += px; node.position.z += pz;
+        node.userData.archiveMotionOffset = { x, y, z, px, pz };
+      };
+      archiveMotionRigs().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= rigsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          ((name.includes('curd')) && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        const radius = Math.hypot(node.position.x, node.position.z);
+        const approach = active && radius > 0.25 ? Math.min(0.48, radius * 0.12) * walk : 0;
+        put(node, Math.sin(phase + i) * (active ? 0.016 : 0.008), 0, Math.sin(phase * 0.52 + i) * 0.008,
+          radius > 0.25 ? -node.position.x / radius * approach : 0,
+          radius > 0.25 ? -node.position.z / radius * approach : 0);
+      });
+      archiveMotionLegs().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= legsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) || (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        put(node, active ? Math.sin(phase * 2.2 + (i % 2) * Math.PI) * 0.20 * walk : 0, 0, 0);
+      });
+      archiveMotionHeads().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= headsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        put(node, Math.sin(phase * 1.25 + i) * (active ? 0.018 : 0.009), 0, Math.sin(phase * 0.62 + i) * 0.014);
+      });
+      archiveMotionArms().forEach((node, i) => {
+        if (!node) return;
+        node.name ||= armsNames[i];
+        const name = node.name.toLowerCase();
+        const active = (name.includes('pip') && speaker.includes('pip')) ||
+          ((name.includes('badger') || name.includes('barnaby')) && (speaker.includes('badger') || speaker.includes('barnaby'))) ||
+          (name.includes('curd') && speaker.includes('curd')) ||
+          (name.includes('puff') && speaker.includes('puff')) ||
+          (name.includes('quills') && speaker.includes('quills'));
+        const right = /armr$/.test(name);
+        put(node, Math.sin(phase * (active ? 1.5 : 0.7) + i) * (active ? 0.055 : 0.018), 0, Math.sin(phase * 0.8 + i) * (right && active ? 0.035 : 0.012));
+      });
+    }
+
+    function updateStoryTimeline(time) {
+      clearArchiveMotionOffsets();
+      const scrubber = document.getElementById('story-scrubber');
+      if (Math.abs(scrubber.value - time) > 0.3) scrubber.value = time;
+
+      const mins = Math.floor(time / 60);
+      const secs = Math.floor(time % 60);
+      document.getElementById('time-display').textContent =
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      // Update Phase Step Buttons
+      let currentStep = 1;
+      if (time >= 80.5) currentStep = 4;
+      else if (time >= 54.5) currentStep = 3;
+      else if (time >= 26.5) currentStep = 2;
+
+      for (let i = 1; i <= 4; i++) {
+        const btn = document.getElementById(`step-btn-${i}`);
+        if (i === currentStep) {
+          btn.className = "px-2.5 h-7 rounded-lg text-xs font-bold bg-sky-500 text-slate-950 flex items-center gap-1 transition shadow-md";
+        } else {
+          btn.className = "px-2.5 h-7 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 flex items-center gap-1 hover:bg-slate-700 transition";
+        }
+      }
+
+      // Machine Mechanical Rotations & Vibrations
+      if (clarifierRotor) {
+        clarifierRotor.rotation.y += 0.25;
+      }
+      homogenizerPistons.forEach((pst, idx) => {
+        pst.position.y = 2.5 + Math.sin(time * 24 + idx * 2.1) * 0.12;
+      });
+      if (ultrasonicSealerGlow) {
+        ultrasonicSealerGlow.intensity = 1.2 + Math.sin(time * 18) * 0.8;
+      }
+
+      // Conveyor & Finished Cartons Loop
+      milkCartons.forEach((carton, idx) => {
+        carton.position.z += 0.035;
+        if (carton.position.z > 3.6) {
+          carton.position.z = -2.5;
+        }
+      });
+
+      // Synchronize Flow Pulse Orbs
+      fluidParticles.forEach(fp => {
+        const t = (time * 0.45 + fp.offset) % 1.0;
+        const pt = fp.curve.getPoint(t);
+        fp.mesh.position.copy(pt);
+      });
+
+      // Synchronize Speech Dialogue without Cuts + Automatic Object Director Camera Cuts
+      const activeBeatIdx = STORY_BEATS.findIndex(b => time >= b.start && time < b.end);
+      if (activeBeatIdx !== -1 && activeBeatIdx !== currentSpeechIdx) {
+        currentSpeechIdx = activeBeatIdx;
+        const beat = STORY_BEATS[activeBeatIdx];
+        const dialogueBox = document.getElementById('dialogue-container');
+
+        // Smooth text transition
+        document.getElementById('speaker-avatar').textContent = beat.avatar;
+        document.getElementById('speaker-name').textContent =
+          beat.speaker === 'Barnaby' ? 'Dr. Barnaby Q. Curds' :
+          (beat.speaker === 'Puff' ? 'Professor Whisker Puff' :
+          (beat.speaker === 'Pip' ? 'Pip Squeak-a-Link' : 'Alpenhof Dairy Team'));
+        document.getElementById('speaker-role').textContent = beat.role;
+        document.getElementById('speech-emotion').textContent = beat.emotion;
+        document.getElementById('speech-text').textContent = `"${beat.text}"`;
+
+        if (subtitlesEnabled) {
+          dialogueBox.classList.remove('dialogue-hidden');
+        }
+
+        speakText(beat.text, beat.speaker);
+
+        // Smooth Camera Transition toward the discussed object & avatars
+        if (beat.camera) {
+          new TWEEN.Tween(camera.position).to(beat.camera.pos, 1100).easing(TWEEN.Easing.Cubic.Out).start();
+          new TWEEN.Tween(controls.target).to(beat.camera.target, 1100).easing(TWEEN.Easing.Cubic.Out).start();
+        }
+
+        if (beat.emotion.includes('Homogenization') || beat.emotion.includes('Clarifier')) playPumpHum();
+        if (beat.emotion.includes('Aseptic') || beat.emotion.includes('Packaging')) playUltrasonicSealSFX();
+      }
+
+      // Character Gestures (Upright posture, head tracking focused on active machinery)
+      const walkCycle = Math.sin(time * 8);
+
+      if (time < 26.5) {
+        // Step 1: Observing Centrifugal Clarifier & Raw Silo
+        barnabyHead.lookAt(-5.5, 2.2, -2.5);
+        barnabyArmR.rotation.x = Math.sin(time * 2.5) * 0.2 - 0.2;
+        puffHead.lookAt(-5.5, 2.2, -2.5);
+
+        // Pip runs joyfully with magnifying glass around the stage
+        const circleT = time * 2;
+        pipGroup.position.set(Math.sin(circleT) * 1.5, 0.15, 3.8 + Math.cos(circleT) * 0.5);
+        pipGroup.rotation.y = -circleT + Math.PI / 2;
+        pipLegL.rotation.x = walkCycle * 0.8;
+        pipLegR.rotation.x = -walkCycle * 0.8;
+      } else if (time >= 26.5 && time < 54.5) {
+        // Step 2: Examining PHE Heat Exchanger, Homogenizer & 72°C Holding Tube
+        puffHead.lookAt(0, 4.5, -2.5);
+        puffArmR.rotation.x = Math.sin(time * 3) * 0.2 - 0.3;
+
+        barnabyHead.lookAt(3.4, 2.8, -2.5);
+        barnabyArmR.rotation.set(0.6, 0, Math.sin(time * 5) * 0.2);
+
+        const hop = Math.abs(Math.sin(time * 5)) * 0.2;
+        pipGroup.position.set(0.4, 0.15 + hop, 3.2);
+        pipGroup.lookAt(0, 4.5, -2.5);
+        pipHead.rotation.x = -0.4 + Math.sin(time * 6) * 0.15;
+      } else if (time >= 54.5 && time < 80.5) {
+        // Step 3: At Microbiology QA Testing Station
+        barnabyHead.lookAt(6.8, 1.8, 0.5);
+        barnabyArmR.rotation.set(0.4, 0, -0.2);
+
+        puffHead.lookAt(6.8, 1.8, 0.5);
+
+        const scurryT = ((time - 54.5) % 6) / 6;
+        pipGroup.position.lerpVectors(new THREE.Vector3(-0.8, 0.15, 3.5), new THREE.Vector3(1.8, 0.15, 3.5), scurryT < 0.5 ? scurryT * 2 : (1 - scurryT) * 2);
+        pipGroup.lookAt(scurryT < 0.5 ? 1.8 : -0.8, 0.15, 3.5);
+        pipLegL.rotation.x = walkCycle * 0.9;
+        pipLegR.rotation.x = -walkCycle * 0.9;
+      } else {
+        // Step 4: Celebrating at Aseptic Packaging & Electric Cold Delivery Van
+        barnabyHead.lookAt(7.5, 3.2, 4.5);
+        barnabyArmR.rotation.set(0.6, 0, 0.6);
+
+        puffHead.lookAt(7.5, 3.2, 4.5);
+        puffArmR.rotation.set(0.4, 0, -0.3);
+
+        const pipJump = Math.abs(Math.sin((time - 80.5) * 7)) * 0.35;
+        pipGroup.position.set(0.6, 0.15 + pipJump, 3.6);
+        pipGroup.lookAt(11.5, 1.9, 8.5);
+        pipArmR.rotation.set(1.2, 0, 0.3);
+        pipLegL.rotation.x = Math.sin(time * 12) * 0.4;
+        pipLegR.rotation.x = -Math.sin(time * 12) * 0.4;
+
+        if (time >= 94) {
+          document.getElementById('modal-telemetry').classList.remove('opacity-0', 'pointer-events-none');
+        }
+      }
+    
+      applyArchivePresenterMotion(time);
+    }
+
+    /* --- Interactive UI Events & Camera Cues --- */
+    function setupUIEvents() {
+      const playBtn = document.getElementById('btn-play-pause');
+      playBtn.addEventListener('click', () => {
+        initAudio();
+        isPlaying = !isPlaying;
+        playBtn.textContent = isPlaying ? '⏸' : '▶';
+      });
+
+      const restartBtn = document.getElementById('btn-restart');
+      restartBtn.addEventListener('click', () => {
+        initAudio();
+        storyTime = 0;
+        currentSpeechIdx = -1;
+        isSpeaking = false;
+        isPlaying = true;
+        playBtn.textContent = '⏸';
+        document.getElementById('modal-telemetry').classList.add('opacity-0', 'pointer-events-none');
+      });
+
+      const scrubber = document.getElementById('story-scrubber');
+      scrubber.addEventListener('input', (e) => {
+        initAudio();
+        storyTime = parseFloat(e.target.value);
+        currentSpeechIdx = -1;
+        isSpeaking = false;
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel(); dialogueSpeaking = false;
+        updateStoryTimeline(storyTime);
+      });
+
+      function cueCamera(pos, target) {
+        new TWEEN.Tween(camera.position).to(pos, 950).easing(TWEEN.Easing.Cubic.Out).start();
+        new TWEEN.Tween(controls.target).to(target, 950).easing(TWEEN.Easing.Cubic.Out).start();
+      }
+
+      // Step Buttons (1-4)
+      document.getElementById('step-btn-1').addEventListener('click', () => {
+        initAudio(); storyTime = 0.1; currentSpeechIdx = -1; isPlaying = true;
+      });
+      document.getElementById('step-btn-2').addEventListener('click', () => {
+        initAudio(); storyTime = 26.6; currentSpeechIdx = -1; isPlaying = true;
+      });
+      document.getElementById('step-btn-3').addEventListener('click', () => {
+        initAudio(); storyTime = 54.6; currentSpeechIdx = -1; isPlaying = true;
+      });
+      document.getElementById('step-btn-4').addEventListener('click', () => {
+        initAudio(); storyTime = 80.6; currentSpeechIdx = -1; isPlaying = true;
+      });
+
+      // Quick Camera Presets
+      document.getElementById('btn-cam-overview').addEventListener('click', (e) => {
+        ['btn-cam-overview', 'btn-cam-clarifier', 'btn-cam-phe', 'btn-cam-labqa', 'btn-cam-packaging'].forEach(id => document.getElementById(id).classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        cueCamera({ x: 16, y: 15, z: 18 }, { x: 0, y: 2.8, z: 0 });
+      });
+      document.getElementById('btn-cam-clarifier').addEventListener('click', (e) => {
+        ['btn-cam-overview', 'btn-cam-clarifier', 'btn-cam-phe', 'btn-cam-labqa', 'btn-cam-packaging'].forEach(id => document.getElementById(id).classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        cueCamera({ x: -10, y: 7.5, z: 7 }, { x: -5.5, y: 2.2, z: -2.0 });
+      });
+      document.getElementById('btn-cam-phe').addEventListener('click', (e) => {
+        ['btn-cam-overview', 'btn-cam-clarifier', 'btn-cam-phe', 'btn-cam-labqa', 'btn-cam-packaging'].forEach(id => document.getElementById(id).classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        cueCamera({ x: 0, y: 9.0, z: 5.5 }, { x: 0, y: 4.8, z: -2.0 });
+      });
+      document.getElementById('btn-cam-labqa').addEventListener('click', (e) => {
+        ['btn-cam-overview', 'btn-cam-clarifier', 'btn-cam-phe', 'btn-cam-labqa', 'btn-cam-packaging'].forEach(id => document.getElementById(id).classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        cueCamera({ x: 8, y: 7.0, z: 6 }, { x: 6.8, y: 2.4, z: 0.8 });
+      });
+      document.getElementById('btn-cam-packaging').addEventListener('click', (e) => {
+        ['btn-cam-overview', 'btn-cam-clarifier', 'btn-cam-phe', 'btn-cam-labqa', 'btn-cam-packaging'].forEach(id => document.getElementById(id).classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        cueCamera({ x: 11, y: 7.5, z: 9.5 }, { x: 7.5, y: 2.5, z: 6.0 });
+      });
+
+      // Pasteurization Process Mode Toggles
+      document.getElementById('btn-mode-htst').addEventListener('click', (e) => {
+        initAudio();
+        processMode = 'HTST';
+        document.getElementById('btn-mode-htst').classList.add('active');
+        document.getElementById('btn-mode-uht').classList.remove('active');
+        document.getElementById('badge-process-mode').textContent = 'HTST 72°C / 15s';
+        document.getElementById('badge-process-mode').className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono font-bold border border-emerald-500/30';
+        document.getElementById('hud-thermal-temp').textContent = '72.0°C (161.6°F) for 15.0s';
+        playPumpHum();
+      });
+
+      document.getElementById('btn-mode-uht').addEventListener('click', (e) => {
+        initAudio();
+        processMode = 'UHT';
+        document.getElementById('btn-mode-uht').classList.add('active');
+        document.getElementById('btn-mode-htst').classList.remove('active');
+        document.getElementById('badge-process-mode').textContent = 'UHT 138°C / 2s';
+        document.getElementById('badge-process-mode').className = 'text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-mono font-bold border border-rose-500/30';
+        document.getElementById('hud-thermal-temp').textContent = '138.0°C (280.4°F) for 2.0s';
+        playTone(600, 'triangle', 0.25, 0.04);
+      });
+
+      // Sound Toggle
+      const sfxBtn = document.getElementById('btn-sfx-toggle');
+      sfxBtn.addEventListener('click', () => {
+        initAudio();
+        audioEnabled = !audioEnabled;
+        sfxBtn.classList.toggle('active', audioEnabled);
+        sfxBtn.textContent = audioEnabled ? '🔊' : '🔇';
+        if (!audioEnabled && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel(); dialogueSpeaking = false;
+          isSpeaking = false;
+        }
+      });
+
+      // Subtitles Toggle
+      const subBtn = document.getElementById('btn-subtitles-toggle');
+      subBtn.addEventListener('click', () => {
+        subtitlesEnabled = !subtitlesEnabled;
+        subBtn.classList.toggle('active', subtitlesEnabled);
+        const dialogueBox = document.getElementById('dialogue-container');
+        if (subtitlesEnabled) {
+          dialogueBox.classList.remove('dialogue-hidden');
+        } else {
+          dialogueBox.classList.add('dialogue-hidden');
+        }
+      });
+
+      // Modals
+      const openModal = () => document.getElementById('modal-telemetry').classList.remove('opacity-0', 'pointer-events-none');
+      const closeModal = () => document.getElementById('modal-telemetry').classList.add('opacity-0', 'pointer-events-none');
+
+      document.getElementById('btn-info-modal').addEventListener('click', openModal);
+      document.getElementById('btn-close-telemetry').addEventListener('click', closeModal);
+      document.getElementById('btn-close-telemetry-x').addEventListener('click', closeModal);
+
+      window.addEventListener('click', () => initAudio(), { once: true });
+    }
+
+    function onResize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const aspect = w / h;
+      const d = 16;
+
+      camera.left = -d * aspect;
+      camera.right = d * aspect;
+      camera.top = d;
+      camera.bottom = -d;
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(w, h);
+    }
+
+    /* --- Main Animation Loop with Speech Completion Hold --- */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      TWEEN.update();
+
+      if (isPlaying) {
+        const activeBeat = STORY_BEATS[currentSpeechIdx];
+        const isAtBeatEnd = activeBeat && (storyTime >= activeBeat.end - 0.05);
+
+        // Hold timeline progression if speech is still uttering
+        if (!(isSpeaking && isAtBeatEnd)) {
+          const syncBeat = STORY_BEATS[currentSpeechIdx];
+          const waitingForLine = dialogueSpeaking && syncBeat && storyTime >= syncBeat.end - 0.24;
+          if (!waitingForLine) {
+            const nextBeat = STORY_BEATS[currentSpeechIdx + 1];
+            const quietGap = nextBeat ? nextBeat.start - storyTime : 0;
+            const tailCatchUp = !dialogueSpeaking && syncBeat && (syncBeat.end - storyTime > 1.8 || quietGap > 1.8) ? 2.0 : 1;
+            storyTime += delta * tailCatchUp;
+          }
+        }
+
+        if (storyTime > TOTAL_DURATION) {
+          storyTime = TOTAL_DURATION;
+          isPlaying = false;
+          document.getElementById('btn-play-pause').textContent = '▶';
+        }
+        updateStoryTimeline(storyTime);
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.onload = () => {
+      init();
+      animate();
+    };
+  </script>
+</body>
+</html>
