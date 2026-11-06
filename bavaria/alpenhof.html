@@ -1082,6 +1082,31 @@ const state = {
   money: 1200, o2: 250, xp: 10, workers: 0, hired: [], bess: 0, chapter: 1,
   labRewards: (function(){ try{ return JSON.parse(localStorage.getItem('alpenhof_lab_rewards') || '{}'); }catch(e){ return {}; } })(),
   isAdmin: !!(localStorage.getItem('so2_role') === 'admin' || window.location.search.includes('admin=1')),
+  siloLogistics: {
+    storageCapacity: 600,
+    storageLevel: 1,
+    inventory: {
+      fruits: 140,
+      vegetables: 110,
+      grapes: 60,
+      grains: 90
+    },
+    standStock: {
+      fruits: 35,
+      vegetables: 40
+    },
+    restaurantStock: {
+      fruits: 25,
+      vegetables: 35,
+      grapes: 20
+    },
+    stats: {
+      totalExportSales: 0,
+      totalLocalDeliveries: 0,
+      exportRevenue: 0,
+      localRevenue: 0
+    }
+  },
   dairyLogistics: {
     storageCapacity: 500,
     storageLevel: 1,
@@ -8035,6 +8060,19 @@ const AlpenMap = {
     }
 
     // 6. Passive Dairy Production from Alpen-Käserei & Grazing Cattle
+    // Passive Harvest & Silo Grain Aeration Ticking
+    if (Math.floor(this.time * 60) % 360 === 0) {
+      const sl = state.siloLogistics;
+      if (sl) {
+        const curTot = (sl.inventory.fruits || 0) + (sl.inventory.vegetables || 0) + (sl.inventory.grapes || 0) + (sl.inventory.grains || 0);
+        if (curTot < sl.storageCapacity) {
+          sl.inventory.grains = Math.min(sl.storageCapacity, (sl.inventory.grains || 0) + 1.2);
+          if (state.orchards) sl.inventory.fruits = Math.min(sl.storageCapacity, (sl.inventory.fruits || 0) + 1.0);
+          if (state.vegetables) sl.inventory.vegetables = Math.min(sl.storageCapacity, (sl.inventory.vegetables || 0) + 1.0);
+        }
+      }
+    }
+
     if (state.built['dairy_plant'] && state.cattle && state.cattle.animals && state.cattle.animals.length > 0) {
       if (Math.floor(this.time * 60) % 300 === 0) {
         const dl = state.dairyLogistics;
@@ -8701,9 +8739,14 @@ function openColdStorageModal(){
 
 function openSiloModal(){
   const built = !!state.built['silo'];
+  const sl = state.siloLogistics || {
+    storageCapacity: 600, storageLevel: 1,
+    inventory: { fruits: 140, vegetables: 110, grapes: 60, grains: 90 },
+    stats: { totalExportSales: 0, totalLocalDeliveries: 0, exportRevenue: 0, localRevenue: 0 }
+  };
 
-  let h = '<div class="modal-hdr"><h3>🏛️ Traditional Bavarian Grain Silo Towers</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
-  h += '<p style="font-size:0.82rem;color:#A5D6A7;margin-bottom:10px">Twin Volumetric Timber Silo Towers · Grain Storage & Mill Hopper · Aerated Grain Drying</p>';
+  let h = '<div class="modal-hdr"><h3>🏛️ Traditional Bavarian Grain & Harvest Silo Towers</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
+  h += '<p style="font-size:0.82rem;color:#A5D6A7;margin-bottom:10px">Twin Timber Stave Silos · Grain Storage, Fruit Silo Hoppers & Aeration Blowers</p>';
 
   if (!built) {
     h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--gold)">' +
@@ -8712,27 +8755,72 @@ function openSiloModal(){
          '<button class="btn btn-g" style="margin-top:10px;width:100%" onclick="buildSite(\'silo\', 120)">🔨 Erect Bavarian Grain Silos (€120 · +35 XP · +15 O₂/s)</button>' +
          '</div>';
   } else {
-    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--teal)">' +
-         '<div style="font-weight:800;color:#80CBC4;font-size:0.9rem;margin-bottom:6px">✓ Active Bavarian Grain Storage Facility</div>' +
-         '<div style="font-size:0.78rem;color:#E0F2F1;line-height:1.4">' +
-           '• <b>North Tower (Turbine Facing):</b> Grain intake elevator receiving heirloom Bavarian wheat & rye with automated cleaning screener.<br/>' +
-           '• <b>South Tower (Main Road Facing):</b> High-capacity storage hopper & gravity wagon chute for farm dispatch.<br/>' +
-           '• <b>Overhead Auger Conveyor:</b> Continuous recirculating aeration preserving optimal 14% seed moisture.' +
-         '</div>' +
-         '<div style="margin-top:10px;display:flex;gap:8px">' +
-           '<div style="flex:1;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;text-align:center">' +
-             '<div style="font-size:0.7rem;color:#B0BEC5">Wheat Reserve</div>' +
-             '<div style="font-size:1.1rem;font-weight:800;color:#FFD54F">2,400 kg</div>' +
+    const inv = sl.inventory;
+    const totalStored = Math.round((inv.fruits || 0) + (inv.vegetables || 0) + (inv.grapes || 0) + (inv.grains || 0));
+    const pct = Math.min(100, Math.round((totalStored / sl.storageCapacity) * 100));
+
+    // Capacity Meter & Upgrade Console
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:#FFA000;background:rgba(25,18,6,0.92)">' +
+           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+             '<b style="color:#FFB74D;font-size:0.88rem">🏛️ Silo Storage Capacity: Level ' + sl.storageLevel + ' (' + totalStored + ' / ' + sl.storageCapacity + ' kg)</b>' +
+             '<span style="font-weight:bold;color:' + (pct > 90 ? '#FF5252' : '#FFE082') + '">' + pct + '% Full</span>' +
            '</div>' +
-           '<div style="flex:1;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;text-align:center">' +
-             '<div style="font-size:0.7rem;color:#B0BEC5">Spelt & Barley</div>' +
-             '<div style="font-size:1.1rem;font-weight:800;color:#FFA726">1,850 kg</div>' +
+           '<div style="height:6px;background:rgba(255,255,255,0.1);border-radius:3px;margin-bottom:12px;overflow:hidden">' +
+             '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#FFA000,#76FF03);border-radius:3px"></div>' +
            '</div>' +
-           '<div style="flex:1;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;text-align:center">' +
-             '<div style="font-size:0.7rem;color:#B0BEC5">Moisture Level</div>' +
-             '<div style="font-size:1.1rem;font-weight:800;color:#81C784">13.8% Optimal</div>' +
+
+           // 4 Inventory Breakdown Cards
+           '<div class="grid-4" style="gap:8px;margin-bottom:12px;text-align:center">' +
+             '<div style="background:rgba(229,57,53,0.08);border:1px solid rgba(229,57,53,0.2);padding:8px 10px;border-radius:8px">' +
+               '<div style="font-size:0.70rem;color:#B0BEC5">🍎 Orchard Fruits</div>' +
+               '<div style="font-size:1.05rem;font-weight:800;color:#EF5350">' + Math.round(inv.fruits) + ' kg</div>' +
+             '</div>' +
+             '<div style="background:rgba(76,175,80,0.08);border:1px solid rgba(76,175,80,0.2);padding:8px 10px;border-radius:8px">' +
+               '<div style="font-size:0.70rem;color:#B0BEC5">🥦 Garden Veggies</div>' +
+               '<div style="font-size:1.05rem;font-weight:800;color:#81C784">' + Math.round(inv.vegetables) + ' kg</div>' +
+             '</div>' +
+             '<div style="background:rgba(186,104,200,0.08);border:1px solid rgba(186,104,200,0.2);padding:8px 10px;border-radius:8px">' +
+               '<div style="font-size:0.70rem;color:#B0BEC5">🍇 Wine Grapes</div>' +
+               '<div style="font-size:1.05rem;font-weight:800;color:#BA68C8">' + Math.round(inv.grapes) + ' kg</div>' +
+             '</div>' +
+             '<div style="background:rgba(255,213,79,0.08);border:1px solid rgba(255,213,79,0.2);padding:8px 10px;border-radius:8px">' +
+               '<div style="font-size:0.70rem;color:#B0BEC5">🌾 Grain & Spelt</div>' +
+               '<div style="font-size:1.05rem;font-weight:800;color:#FFD54F">' + Math.round(inv.grains) + ' kg</div>' +
+             '</div>' +
            '</div>' +
-         '</div>' +
+
+           // Upgrade capacity button
+           '<button class="btn btn-outline" style="width:100%;font-size:0.72rem;padding:5px;border-color:#FFA000;color:#FFB74D;margin-bottom:8px" onclick="expandSiloCapacity()">' +
+             '🏗️ Expand Timber Silo Capacity (+400 kg · Level ' + (sl.storageLevel + 1) + ' · €' + (sl.storageLevel * 75) + ')' +
+           '</button>' +
+         '</div>';
+
+    // Logistics Vehicle Dispatch Controls
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--gold);background:rgba(25,20,10,0.92)">' +
+           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+             '<b style="font-size:0.86rem;color:var(--gold)">🚛 Harvest Logistics & Distribution Network</b>' +
+             '<span class="badge" style="background:#FFA000;color:#000">Autonomous</span>' +
+           '</div>' +
+
+           '<div style="display:flex;flex-direction:column;gap:8px">' +
+             // Action 1: Wholesale Harvest Hauler
+             '<div style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,160,0,0.25);border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">' +
+               '<div>' +
+                 '<div style="font-size:0.82rem;font-weight:800;color:#FFB74D">🚛 Wholesale Grain & Harvest Transport Hauler</div>' +
+                 '<div style="font-size:0.71rem;color:#B0BEC5">Main Gate ➔ Main Arterial ➔ Silo Loading Apron (Worker Loads) ➔ Main Road Exit</div>' +
+               '</div>' +
+               '<button class="btn btn-g" style="font-size:0.75rem;padding:8px 14px;white-space:nowrap" onclick="dispatchHarvestTruck()">Dispatch Hauler</button>' +
+             '</div>' +
+
+             // Action 2: Local Farm Harvest Utility Cart
+             '<div style="background:rgba(0,0,0,0.3);border:1px solid rgba(129,199,132,0.25);border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">' +
+               '<div>' +
+                 '<div style="font-size:0.82rem;font-weight:800;color:#A5D6A7">🚜 Local Farm Harvest Cart & Trailer</div>' +
+                 '<div style="font-size:0.71rem;color:#B0BEC5">Farm Garage ➔ Silo Apron (Worker Loads) ➔ Central Subway ➔ Veg Stand & Gasthof Stuben</div>' +
+               '</div>' +
+               '<button class="btn btn-c" style="font-size:0.75rem;padding:8px 14px;white-space:nowrap" onclick="dispatchLocalHarvestCart()">Dispatch Harvest Cart</button>' +
+             '</div>' +
+           '</div>' +
          '</div>';
   }
 
@@ -8913,7 +9001,14 @@ function openVegModal(bedIdx, selectedSpot){
     h += '</div>';
 
     // Global Actions
-    h += '<button class="btn btn-a" style="width:100%;margin-bottom:12px" onclick="harvestAllVeg()">🧺 Harvest All 4 Triangular Beds Across Estate</button>';
+    h += '<button class="btn btn-a" style="width:100%;margin-bottom:10px" onclick="harvestAllVeg()">🧺 Harvest All 4 Triangular Beds Across Estate</button>' +
+         '<div class="card-box" style="margin-bottom:12px;border-color:#FFA726;background:rgba(30,20,10,0.88)">' +
+           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+             '<b style="font-size:0.82rem;color:#FFB74D">🏛️ Bavarian Silo Supply Stock</b>' +
+             '<span style="font-size:0.72rem;color:#C8E6C9">Stand: ' + Math.round(state.siloLogistics?.standStock?.vegetables || 0) + 'kg Veg · ' + Math.round(state.siloLogistics?.standStock?.fruits || 0) + 'kg Fruit</span>' +
+           '</div>' +
+           '<button class="btn btn-c" style="width:100%;font-size:0.74rem;padding:6px" onclick="dispatchLocalHarvestCart()">🚜 Request Harvest Cart Delivery from Silo</button>' +
+         '</div>';
   }
 
   // Educational Why Recall Card with Puff & Pip
@@ -9317,6 +9412,14 @@ window.harvestVegBed = function(bedIdx){
   state.money += totalRev;
   state.o2 += totalO2;
   state.vegetables.harvestedTotal += maturePlants.length;
+  if (state.siloLogistics) {
+    const sl = state.siloLogistics;
+    const curTot = (sl.inventory.fruits || 0) + (sl.inventory.vegetables || 0) + (sl.inventory.grapes || 0) + (sl.inventory.grains || 0);
+    const space = Math.max(0, sl.storageCapacity - curTot);
+    const stored = Math.min(space, maturePlants.length * 4);
+    sl.inventory.vegetables = (sl.inventory.vegetables || 0) + stored;
+    if (stored > 0) spawnFloatingBadge('🥦 +' + stored + 'kg Veg to Silo', 650, 480, '#81C784');
+  }
   grantXP({fruit: totalXP, oxygen: totalO2});
   toast('🧺 Harvested ' + maturePlants.length + ' crops from ' + bed.name + '! +€' + totalRev + ' · Dispatched to Gasthof Stuben');
   renderScoreboard();
@@ -9345,6 +9448,14 @@ window.harvestAllVeg = function(){
   state.money += totalRev;
   state.o2 += totalO2;
   state.vegetables.harvestedTotal += totalHarvested;
+  if (state.siloLogistics) {
+    const sl = state.siloLogistics;
+    const curTot = (sl.inventory.fruits || 0) + (sl.inventory.vegetables || 0) + (sl.inventory.grapes || 0) + (sl.inventory.grains || 0);
+    const space = Math.max(0, sl.storageCapacity - curTot);
+    const stored = Math.min(space, totalHarvested * 4);
+    sl.inventory.vegetables = (sl.inventory.vegetables || 0) + stored;
+    if (stored > 0) spawnFloatingBadge('🥦 +' + stored + 'kg Veg to Silo', 650, 480, '#81C784');
+  }
   grantXP({fruit: totalXP, oxygen: totalO2});
   toast('🎉 Grand Bauerngarten Harvest! ' + totalHarvested + ' crops collected (+€' + totalRev + ', +' + totalO2 + ' O₂)');
   renderScoreboard();
@@ -9462,6 +9573,10 @@ function openRestaurantModal(){
            '<div style="background:rgba(255,255,255,0.06);padding:6px;border-radius:6px;text-align:center"><span style="color:#FFCC80">🧀 ' + Math.round((state.dairyLogistics?.restaurantStock?.cheese || 0)) + ' Wheels</span> Cheese</div>' +
          '</div>' +
          '<button class="btn btn-c" style="width:100%;font-size:0.75rem;padding:6px" onclick="dispatchLocalDairyCart()">🚜 Request Dairy Express Pantry Delivery</button>' +
+         '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08);display:flex;justify-content:space-between;align-items:center">' +
+           '<span style="font-size:0.73rem;color:#FFE082">🥦 Harvest Pantry: ' + Math.round(state.siloLogistics?.restaurantStock?.vegetables || 0) + 'kg Veg · ' + Math.round(state.siloLogistics?.restaurantStock?.fruits || 0) + 'kg Fruits</span>' +
+           '<button class="btn btn-g" style="font-size:0.70rem;padding:4px 8px" onclick="dispatchLocalHarvestCart()">🚜 Restock Harvest</button>' +
+         '</div>' +
        '</div>';
 
     h += '<div style="display:flex;gap:8px;margin-bottom:12px">' +
@@ -10174,6 +10289,14 @@ window.harvestVineBed = function(bedIdx){
   state.money += yieldRevenue;
   state.o2 += 30;
   state.vineyard.harvested += matureVines.length;
+  if (state.siloLogistics) {
+    const sl = state.siloLogistics;
+    const curTot = (sl.inventory.fruits || 0) + (sl.inventory.vegetables || 0) + (sl.inventory.grapes || 0) + (sl.inventory.grains || 0);
+    const space = Math.max(0, sl.storageCapacity - curTot);
+    const stored = Math.min(space, matureVines.length * 3);
+    sl.inventory.grapes = (sl.inventory.grapes || 0) + stored;
+    if (stored > 0) spawnFloatingBadge('🍇 +' + stored + 'kg Grapes to Silo', 650, 480, '#BA68C8');
+  }
 
   // Reset to trellised for next vintage
   matureVines.forEach(v => { v.status = 'trellised'; });
@@ -10320,6 +10443,14 @@ window.harvestOrchardBed = function(plotId, idx) {
   o.totalYieldKg = (o.totalYieldKg || 0) + 18;
   state.fruitInventory = state.fruitInventory || {};
   state.fruitInventory[info.species] = (state.fruitInventory[info.species] || 0) + 18;
+  if (state.siloLogistics) {
+    const sl = state.siloLogistics;
+    const curTot = (sl.inventory.fruits || 0) + (sl.inventory.vegetables || 0) + (sl.inventory.grapes || 0) + (sl.inventory.grains || 0);
+    const space = Math.max(0, sl.storageCapacity - curTot);
+    const stored = Math.min(space, 18);
+    sl.inventory.fruits = (sl.inventory.fruits || 0) + stored;
+    if (stored > 0) spawnFloatingBadge('🧺 +' + stored + 'kg Fruit to Silo', 650, 480, '#FFA726');
+  }
 
   grantXP({ fruit: 15, oxygen: 8 });
   toast('🧺 Harvested Bed #' + (idx + 1) + '! +€' + rev + ' · 18 kg ' + info.name + ' gathered');
@@ -10345,6 +10476,14 @@ window.harvestEntirePlot = function(plotId) {
   });
   o.harvestsCount = (o.harvestsCount || 0) + matureBeds.length;
   o.totalYieldKg = (o.totalYieldKg || 0) + totalKg;
+  if (state.siloLogistics) {
+    const sl = state.siloLogistics;
+    const curTot = (sl.inventory.fruits || 0) + (sl.inventory.vegetables || 0) + (sl.inventory.grapes || 0) + (sl.inventory.grains || 0);
+    const space = Math.max(0, sl.storageCapacity - curTot);
+    const stored = Math.min(space, totalKg);
+    sl.inventory.fruits = (sl.inventory.fruits || 0) + stored;
+    if (stored > 0) spawnFloatingBadge('🧺 +' + stored + 'kg Fruit to Silo', 650, 480, '#FFA726');
+  }
   state.fruitInventory = state.fruitInventory || {};
   state.fruitInventory[info.species] = (state.fruitInventory[info.species] || 0) + totalKg;
 
@@ -11991,6 +12130,73 @@ window.addEventListener('message', function(e) {
    ========================================================================= */
 
 const VEHICLE_ROUTES = {
+  // Route 3: Wholesale Agricultural Harvest Transport Hauler (Main Gate -> Main Arterial -> Silo Hopper -> Main Road -> Gate)
+  harvest_truck: {
+    inbound: [
+      [1960, 960],
+      [1880, 945],  // Alps Main Gate
+      [1750, 890],
+      [1615, 820],
+      [1500, 770],
+      [1370, 720],
+      [1220, 700],
+      [1085, 690],  // Central Divider Subway approach
+      [920, 675],
+      [780, 665],   // Silo turnoff junction
+      [710, 610],
+      [650, 560]    // Loading Apron at Bavarian Silo Towers
+    ],
+    outbound: [
+      [650, 560],   // Silo Loading Apron
+      [710, 610],
+      [780, 665],   // Return to Main Arterial
+      [920, 675],
+      [1085, 690],
+      [1220, 700],
+      [1370, 720],
+      [1500, 770],
+      [1615, 820],
+      [1750, 890],
+      [1880, 945],  // Alps Main Gate
+      [1980, 970]   // Regional Market Highway Exit
+    ]
+  },
+
+  // Route 4: Local Farm Harvest Utility Cart (Farm Garage -> Silo -> Roadside Veg Stand -> Gasthof Stuben -> Garage)
+  local_harvest_cart: {
+    leg1_to_silo: [
+      [933, 237],  // Farm Garage Depot
+      [870, 310],
+      [750, 360],
+      [680, 460],
+      [650, 560]   // Stop 1: Silo Loading Apron
+    ],
+    leg2_to_veg_stand: [
+      [650, 560],
+      [710, 610],
+      [780, 665],
+      [920, 675],
+      [1085, 690], // Central Divider Subway
+      [1180, 580],
+      [1295, 468]  // Stop 2: Roadside Vegetable & Fruit Stand
+    ],
+    leg3_to_restaurant: [
+      [1295, 468],
+      [1420, 510],
+      [1550, 540],
+      [1640, 560]  // Stop 3: Gasthof Stuben Kitchen Pantry
+    ],
+    leg4_return_garage: [
+      [1640, 560],
+      [1550, 540],
+      [1420, 510],
+      [1295, 468],
+      [1180, 390],
+      [1060, 300],
+      [933, 237]   // Return: Farm Garage Depot
+    ]
+  },
+
   // Route 1: Wholesale Export Refrigerated Hauler (Main Gate -> Southern Bypass -> Cold Storage -> Main Road -> Gate)
   export_truck: {
     inbound: [
@@ -12167,6 +12373,117 @@ window.dispatchLocalDairyCart = function() {
   closeModal();
 };
 
+window.expandSiloCapacity = function() {
+  const sl = state.siloLogistics || { storageCapacity: 600, storageLevel: 1 };
+  const upgradeCost = sl.storageLevel * 75;
+  if (state.money < upgradeCost) {
+    toast('Need €' + upgradeCost + ' to expand Bavarian timber silo capacity');
+    return;
+  }
+  state.money -= upgradeCost;
+  sl.storageLevel++;
+  sl.storageCapacity += 400;
+  grantXP({ oxygen: 20, fruit: 25 });
+  toast('🏛️ Expanded Bavarian Silo Capacity to Level ' + sl.storageLevel + ' (' + sl.storageCapacity + ' kg total)!');
+  spawnFloatingBadge('Silo Upgraded', 650, 480, '#FFA726');
+  openSiloModal();
+  renderScoreboard();
+};
+
+window.dispatchHarvestTruck = function() {
+  if (state.vehicles && state.vehicles.some(v => v.type === 'harvest_truck')) {
+    toast('🚛 A wholesale harvest transport hauler is already en route along the road network!');
+    return;
+  }
+  const sl = state.siloLogistics;
+  if (!sl) return;
+  const inv = sl.inventory;
+
+  const fruitsToSell = Math.min(inv.fruits, Math.max(25, Math.floor(inv.fruits * 0.65)));
+  const vegToSell = Math.min(inv.vegetables, Math.max(20, Math.floor(inv.vegetables * 0.65)));
+  const grainsToSell = Math.min(inv.grains, Math.max(20, Math.floor(inv.grains * 0.6)));
+
+  if (fruitsToSell + vegToSell + grainsToSell === 0) {
+    toast('🏛️ Bavarian Silo needs at least 25 kg fruits, vegetables, or grain for an export hauler!');
+    return;
+  }
+
+  // Deduct from Silo storage
+  inv.fruits -= fruitsToSell;
+  inv.vegetables -= vegToSell;
+  inv.grains -= grainsToSell;
+
+  const totalPayout = Math.round(fruitsToSell * 1.85 + vegToSell * 1.45 + grainsToSell * 1.15);
+
+  const vehicle = {
+    id: 'harvest_truck_' + Date.now(),
+    type: 'harvest_truck',
+    name: 'Alpenhof Bavarian Grain & Harvest Transport Hauler',
+    x: VEHICLE_ROUTES.harvest_truck.inbound[0][0],
+    y: VEHICLE_ROUTES.harvest_truck.inbound[0][1],
+    angle: 0,
+    speed: 3.2,
+    phase: 'inbound',
+    waypoints: VEHICLE_ROUTES.harvest_truck.inbound,
+    targetIdx: 1,
+    cargo: { fruits: fruitsToSell, vegetables: vegToSell, grains: grainsToSell, payout: totalPayout },
+    status: 'moving',
+    loadTimer: 0,
+    wheelRot: 0,
+    worker: null
+  };
+
+  state.vehicles = state.vehicles || [];
+  state.vehicles.push(vehicle);
+
+  toast('🚛 Wholesale Harvest Hauler entered through Alps Main Gate! Navigating to Silo...');
+  spawnFloatingBadge('🚛 Transport Inbound', 1880, 920, '#FFA726');
+  closeModal();
+};
+
+window.dispatchLocalHarvestCart = function() {
+  if (state.vehicles && state.vehicles.some(v => v.type === 'local_harvest_cart')) {
+    toast('🚜 Local farm harvest utility cart is already on an active delivery route!');
+    return;
+  }
+  const sl = state.siloLogistics;
+  if (!sl) return;
+  const inv = sl.inventory;
+
+  const fruitsToSupply = Math.min(inv.fruits, 35);
+  const vegToSupply = Math.min(inv.vegetables, 40);
+
+  inv.fruits -= fruitsToSupply;
+  inv.vegetables -= vegToSupply;
+
+  const localRevenue = Math.round(fruitsToSupply * 2.10 + vegToSupply * 1.75);
+
+  const vehicle = {
+    id: 'harvest_cart_' + Date.now(),
+    type: 'local_harvest_cart',
+    name: 'Fendt Harvest Utility Cart & Produce Trailer',
+    x: VEHICLE_ROUTES.local_harvest_cart.leg1_to_silo[0][0],
+    y: VEHICLE_ROUTES.local_harvest_cart.leg1_to_silo[0][1],
+    angle: 0,
+    speed: 2.6,
+    phase: 'to_silo',
+    waypoints: VEHICLE_ROUTES.local_harvest_cart.leg1_to_silo,
+    targetIdx: 1,
+    cargo: { fruits: fruitsToSupply, vegetables: vegToSupply, rev: localRevenue },
+    status: 'moving',
+    loadTimer: 0,
+    wheelRot: 0,
+    worker: null
+  };
+
+  state.vehicles = state.vehicles || [];
+  state.vehicles.push(vehicle);
+
+  toast('🚜 Fendt Harvest Cart dispatched from Farm Garage! Navigating to Silo...');
+  spawnFloatingBadge('🚜 Harvest Cart Active', 933, 210, '#81C784');
+  closeModal();
+};
+
 window.expandColdStorageCapacity = function() {
   const dl = state.dairyLogistics;
   const upgradeCost = dl.storageLevel * 85;
@@ -12252,6 +12569,60 @@ window.updateVehicleLogistics = function() {
             v.status = 'moving';
             v.worker = null;
           }
+        } else if (v.type === 'harvest_truck') {
+          // Finished loading at Silo! Depart along outbound road network
+          v.phase = 'outbound';
+          v.waypoints = VEHICLE_ROUTES.harvest_truck.outbound;
+          v.targetIdx = 0;
+          v.status = 'moving';
+          v.worker = null;
+          toast('🚚 Harvest Hauler loaded with ' + v.cargo.fruits + 'kg fruits, ' + v.cargo.vegetables + 'kg vegetables and ' + v.cargo.grains + 'kg grain! Departing via Alps Main Gate...');
+          spawnFloatingBadge('📦 Loaded & Departing', v.x, v.y - 30, '#FFA726');
+        } else if (v.type === 'local_harvest_cart') {
+          if (v.phase === 'to_silo') {
+            // Finished loading at Silo, head to Roadside Produce Stand
+            v.phase = 'to_veg_stand';
+            v.waypoints = VEHICLE_ROUTES.local_harvest_cart.leg2_to_veg_stand;
+            v.targetIdx = 0;
+            v.status = 'moving';
+            v.worker = null;
+            toast('🚜 Farm Harvest Cart loaded! Navigating central divider subway to Roadside Produce Stand...');
+            spawnFloatingBadge('🥦 Produce Crates Loaded', v.x, v.y - 25, '#81C784');
+          } else if (v.phase === 'to_veg_stand') {
+            // Unloaded at Produce Stand!
+            state.siloLogistics.standStock.fruits += Math.round(v.cargo.fruits * 0.55);
+            state.siloLogistics.standStock.vegetables += Math.round(v.cargo.vegetables * 0.55);
+            const standPayout = Math.round(v.cargo.rev * 0.48);
+            state.money += standPayout;
+            state.siloLogistics.stats.localRevenue += standPayout;
+            spawnFloatingBadge('🪙 +€' + standPayout, 1295, 430, '#FFA726');
+            toast('🍎 Supplied Roadside Produce Stand! (+€' + standPayout + ' local harvest sales revenue)');
+
+            // Head to Gasthof Stuben restaurant
+            v.phase = 'to_restaurant';
+            v.waypoints = VEHICLE_ROUTES.local_harvest_cart.leg3_to_restaurant;
+            v.targetIdx = 0;
+            v.status = 'moving';
+            v.worker = null;
+          } else if (v.phase === 'to_restaurant') {
+            // Unloaded at Restaurant!
+            state.siloLogistics.restaurantStock.fruits += Math.round(v.cargo.fruits * 0.45);
+            state.siloLogistics.restaurantStock.vegetables += Math.round(v.cargo.vegetables * 0.45);
+            const restPayout = Math.round(v.cargo.rev * 0.52);
+            state.money += restPayout;
+            grantXP({ fruit: 20, oxygen: 15 });
+            state.siloLogistics.stats.localRevenue += restPayout;
+            state.siloLogistics.stats.totalLocalDeliveries++;
+            spawnFloatingBadge('🪙 +€' + restPayout, 1640, 520, '#FFB74D');
+            toast('🍽️ Supplied Gasthof Stuben kitchen with fresh harvest! (+€' + restPayout + ' banquet provisioning)');
+
+            // Return to Farm Garage Depot
+            v.phase = 'return_garage';
+            v.waypoints = VEHICLE_ROUTES.local_harvest_cart.leg4_return_garage;
+            v.targetIdx = 0;
+            v.status = 'moving';
+            v.worker = null;
+          }
         }
       }
       continue;
@@ -12271,6 +12642,17 @@ window.updateVehicleLogistics = function() {
         renderScoreboard();
       } else if (v.type === 'local_cart') {
         toast('🚜 Fendt Farm Utility Cart returned safely to Farm Garage!');
+        spawnFloatingBadge('Depot Reached', 933, 210, '#81C784');
+      } else if (v.type === 'harvest_truck') {
+        state.money += v.cargo.payout;
+        grantXP({ fruit: 35, oxygen: 25 });
+        state.siloLogistics.stats.totalExportSales++;
+        state.siloLogistics.stats.exportRevenue += v.cargo.payout;
+        spawnFloatingBadge('🪙 +€' + v.cargo.payout, 1880, 930, '#00E676');
+        toast('💰 Harvest export shipment complete! Received €' + v.cargo.payout + ' from wholesale regional distribution!');
+        renderScoreboard();
+      } else if (v.type === 'local_harvest_cart') {
+        toast('🚜 Fendt Harvest Utility Cart returned safely to Farm Garage!');
         spawnFloatingBadge('Depot Reached', 933, 210, '#81C784');
       }
       state.vehicles.splice(i, 1);
@@ -12296,6 +12678,18 @@ window.updateVehicleLogistics = function() {
         };
         toast('🚛 Hauler docked at Cold Storage loading apron. Assigning worker to load dairy crates...');
         continue;
+      } else if (v.type === 'harvest_truck' && v.phase === 'inbound' && v.targetIdx === v.waypoints.length - 1) {
+        // Silo Stop
+        v.status = 'loading';
+        v.loadTimer = 180;
+        v.worker = {
+          originX: 650, originY: 500,
+          destX: v.x, destY: v.y,
+          progress: 0,
+          item: '🍎'
+        };
+        toast('🚛 Harvest Hauler docked at Silo loading apron. Worker loading orchard fruit bushels & grain sacks...');
+        continue;
       } else if (v.type === 'local_cart') {
         if (v.phase === 'to_storage' && v.targetIdx === v.waypoints.length - 1) {
           v.status = 'loading';
@@ -12314,6 +12708,26 @@ window.updateVehicleLogistics = function() {
           v.loadTimer = 160;
           v.worker = { originX: v.x, originY: v.y, destX: 1640, destY: 560, progress: 0, item: '🧈' };
           toast('🍽️ Unloading butter and culinary dairy at Gasthof Stuben...');
+          continue;
+        }
+      } else if (v.type === 'local_harvest_cart') {
+        if (v.phase === 'to_silo' && v.targetIdx === v.waypoints.length - 1) {
+          v.status = 'loading';
+          v.loadTimer = 150;
+          v.worker = { originX: 650, originY: 500, destX: v.x, destY: v.y, progress: 0, item: '🥦' };
+          toast('🚜 Harvest Cart docked at Silo. Loading fresh garden veggies & orchard fruit crates...');
+          continue;
+        } else if (v.phase === 'to_veg_stand' && v.targetIdx === v.waypoints.length - 1) {
+          v.status = 'unloading';
+          v.loadTimer = 140;
+          v.worker = { originX: v.x, originY: v.y, destX: 1295, destY: 468, progress: 0, item: '🍎' };
+          toast('🍎 Unloading fresh orchard apples & garden vegetables at Roadside Produce Stand...');
+          continue;
+        } else if (v.phase === 'to_restaurant' && v.targetIdx === v.waypoints.length - 1) {
+          v.status = 'unloading';
+          v.loadTimer = 140;
+          v.worker = { originX: v.x, originY: v.y, destX: 1640, destY: 560, progress: 0, item: '🥕' };
+          toast('🍽️ Unloading fresh culinary harvest at Gasthof Stuben kitchen...');
           continue;
         }
       }
