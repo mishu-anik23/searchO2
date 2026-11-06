@@ -1082,6 +1082,53 @@ const state = {
   money: 1200, o2: 250, xp: 10, workers: 0, hired: [], bess: 0, chapter: 1,
   labRewards: (function(){ try{ return JSON.parse(localStorage.getItem('alpenhof_lab_rewards') || '{}'); }catch(e){ return {}; } })(),
   isAdmin: !!(localStorage.getItem('so2_role') === 'admin' || window.location.search.includes('admin=1')),
+  dailyDemand: {
+    day: 1,
+    juice: {
+      target: { grapes: 30, apples: 25, berries: 15 },
+      current: { grapes: 0, apples: 0, berries: 0 },
+      consumedToday: { grapes: 0, apples: 0, berries: 0 },
+      fulfilled: false,
+      reward: { money: 160, xp: 45 }
+    },
+    restaurant: {
+      target: { fish: 10, duck: 6, vegetables: 35, cheese: 8, grains: 20 },
+      current: { fish: 0, duck: 0, vegetables: 0, cheese: 0, grains: 0 },
+      consumedToday: { fish: 0, duck: 0, vegetables: 0, cheese: 0, grains: 0 },
+      fulfilled: false,
+      reward: { money: 260, xp: 70 }
+    },
+    cheese_shop: {
+      target: { milk: 25, cheese: 10, butter: 8, joghurt: 12 },
+      current: { milk: 0, cheese: 0, butter: 0, joghurt: 0 },
+      consumedToday: { milk: 0, cheese: 0, butter: 0, joghurt: 0 },
+      fulfilled: false,
+      reward: { money: 190, xp: 50 }
+    },
+    veg_stand: {
+      target: { vegetables: 40, fruits: 35, grains: 15 },
+      current: { vegetables: 0, fruits: 0, grains: 0 },
+      consumedToday: { vegetables: 0, fruits: 0, grains: 0 },
+      fulfilled: false,
+      reward: { money: 175, xp: 45 }
+    },
+    bbq: {
+      target: { fish: 8, duck: 5, vegetables: 20, cider: 12 },
+      current: { fish: 0, duck: 0, vegetables: 0, cider: 0 },
+      activeEvent: null,
+      eventProgress: 0,
+      touristHappiness: 100,
+      totalEventsHosted: 0
+    }
+  },
+  pondHarvest: {
+    trout: 14,
+    charr: 10,
+    duckEggs: 12,
+    duckMeat: 8,
+    harvestStep: 0,
+    isHarvesting: false
+  },
   siloLogistics: {
     storageCapacity: 600,
     storageLevel: 1,
@@ -1186,11 +1233,14 @@ const state = {
   ducks: { count: 6, ducklings: 4, eggsCollected: 0 },
   catXP: {oxygen: 15, fruit: 10, biodiversity: 8, veg: 6, flower: 5},
   labourPool: [
-    {id:'hans',  name:'Hans Weber',     role:'Master Orchardist', cost:120, skill:'fruit', icon:'🧑‍🌾'},
-    {id:'greta', name:'Greta Lindner',  role:'Vegetable Grower',  cost:100, skill:'veg',   icon:'👩‍🌾'},
-    {id:'lukas', name:'Lukas Gruber',   role:'Vintner & Cooper',  cost:130, skill:'vine',  icon:'🧔'},
-    {id:'anna',  name:'Anna Schultze',  role:'Florist & Botanist',cost:90,  skill:'flower',icon:'👩‍🔬'},
-    {id:'felix', name:'Felix Brunner',  role:'Clean Energy Tech', cost:150, skill:'energy',icon:'👷'}
+    {id:'hans',  name:'Hans Weber',     role:'Master Orchardist', cost:120, skill:'fruit', icon:'🧑‍🌾', station:'Streuobst Orchards', perk:'+25% Orchard Fruit Yield & Pruning Speed'},
+    {id:'greta', name:'Greta Lindner',  role:'Vegetable Grower',  cost:100, skill:'veg',   icon:'👩‍🌾', station:'Rhombus Bauerngarten', perk:'+30% Organic Vegetable Harvest & Rotation'},
+    {id:'lukas', name:'Lukas Gruber',   role:'Vintner & Cooper',  cost:130, skill:'vine',  icon:'🧔', station:'Bavarian Heritage Vineyard', perk:'+35% Grape Cluster Harvest & Must Yield'},
+    {id:'anna',  name:'Anna Schultze',  role:'Florist & Botanist',cost:90,  skill:'flower',icon:'👩‍🔬', station:'Oval Flower Garden', perk:'+40% Pollinator Health & Alpine Honey'},
+    {id:'felix', name:'Felix Brunner',  role:'Clean Energy Tech', cost:150, skill:'energy',icon:'👷', station:'Agrivoltaic Solar & BESS', perk:'+30% Solar Generation & Battery Retention'},
+    {id:'georg', name:'Georg Huber',    role:'Master Pond Keeper', cost:125, skill:'water', icon:'🎣', station:'Living Waters Alpine Lake', perk:'+40% Trout & Char Hatchery Yield & Duck Health'},
+    {id:'franz', name:'Franz Bichler',  role:'Alpine Grillmaster & Chef', cost:135, skill:'hospitality', icon:'👨‍🍳', station:'Gasthof Stuben & Hilltop BBQ', perk:'+35% Gastronomy Banquet Revenue & BBQ Event Payout'},
+    {id:'sepp',  name:'Sepp Obermeier', role:'Master Cheesemaker', cost:125, skill:'dairy', icon:'🧀', station:'Bio-Molkerei & Cold Storage', perk:'+30% Mountain Cheese Maturation & Shop Sales'}
   ]
 };
 
@@ -8060,6 +8110,24 @@ const AlpenMap = {
     }
 
     // 6. Passive Dairy Production from Alpen-Käserei & Grazing Cattle
+    // Daily Gastronomy & Marketplace Demand Consumption Ticking
+    if (Math.floor(this.time * 60) % 480 === 0) {
+      const dd = state.dailyDemand;
+      if (dd) {
+        if (dd.juice && dd.juice.current.grapes > 0) {
+          dd.juice.current.grapes = Math.max(0, dd.juice.current.grapes - 0.5);
+          dd.juice.consumedToday.grapes = (dd.juice.consumedToday.grapes || 0) + 0.5;
+        }
+        if (dd.restaurant && dd.restaurant.current.fish > 0) {
+          dd.restaurant.current.fish = Math.max(0, dd.restaurant.current.fish - 0.4);
+          dd.restaurant.consumedToday.fish = (dd.restaurant.consumedToday.fish || 0) + 0.4;
+        }
+        if (dd.cheese_shop && state.dairyLogistics && state.dairyLogistics.shopStock && state.dairyLogistics.shopStock.cheese > 0) {
+          state.dairyLogistics.shopStock.cheese = Math.max(0, state.dairyLogistics.shopStock.cheese - 0.2);
+        }
+      }
+    }
+
     // Passive Harvest & Silo Grain Aeration Ticking
     if (Math.floor(this.time * 60) % 360 === 0) {
       const sl = state.siloLogistics;
@@ -8395,6 +8463,23 @@ function openJuiceBarModal(activeTab){
             '<p style="font-size:0.74rem;color:#C8E6C9;margin-bottom:8px">Electric Fendt farm cart collects artisan Bergkäse from Cold Storage and delivers directly to this roadside shop via the Central Divider Subway.</p>' +
             '<button class="btn btn-c" style="width:100%;font-size:0.75rem;padding:7px" onclick="dispatchLocalDairyCart()">🚜 Dispatch Local Cart to Restock Cheese Shop & Restaurant</button>' +
           '</div>';
+     h += '<div class="card-box" style="margin-bottom:12px;border-color:#BA68C8;background:rgba(35,15,45,0.92)">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+              '<b style="font-size:0.84rem;color:#E1BEE7">🍇 Daily Vintage Demand & Vineyard Harvest Express</b>' +
+              '<span class="badge" style="background:#BA68C8;color:#FFF">' +
+                ((state.dailyDemand?.juice?.current?.grapes || 0) + ' / ' + (state.dailyDemand?.juice?.target?.grapes || 30) + ' kg Grapes') +
+              '</span>' +
+            '</div>' +
+            '<div style="font-size:0.74rem;color:#D1C4E9;margin-bottom:8px">' +
+              'Native Farm Menu: <b>Traubenschorle</b> (Silvaner/Riesling) · <b>Apfel-Direktsaft</b> · <b>Wildbeeren-Nektar</b>' +
+            '</div>' +
+            '<div class="prog-bar" style="height:6px;margin-bottom:8px">' +
+              '<div class="prog-fill" style="width:' + Math.min(100, Math.round(((state.dailyDemand?.juice?.current?.grapes || 0) / (state.dailyDemand?.juice?.target?.grapes || 30)) * 100)) + '%;background:#BA68C8"></div>' +
+            '</div>' +
+            '<button class="btn btn-g" style="width:100%;font-size:0.75rem;padding:6px 10px" onclick="dispatchVineyardCart()">' +
+              '🚜 Dispatch Vineyard Auto-Harvest Cart (Garage -> Vineyard -> Juice Bar)' +
+            '</button>' +
+          '</div>';
      h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--teal)">' +
          '<b>Shared Terrace Hospitality:</b><br/>' +
          '<span style="font-size:0.76rem;color:#C8E6C9">Guests relax on the shared wooden boardwalk connecting all 3 juice counters and the Gasthof Stuben restaurant terrace.</span>' +
@@ -8404,6 +8489,23 @@ function openJuiceBarModal(activeTab){
 
   // Educational Why Recall Card
        h += '<div class="card-box" style="margin-bottom:12px;border-color:#FFD54F;background:rgba(30,25,12,0.85)">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+              '<div class="card-box" style="margin-bottom:12px;border-color:#00E5FF;background:rgba(10,30,40,0.92)">' +
+         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+           '<b style="font-size:0.84rem;color:#80DEEA">🍽️ Daily Alpine Gastronomy Menu & Raw Demand</b>' +
+           '<span class="badge" style="background:#00BCD4;color:#000">Day ' + (state.dailyDemand?.day || 1) + '</span>' +
+         '</div>' +
+         '<div style="font-size:0.74rem;color:#B2EBF2;line-height:1.4;margin-bottom:8px">' +
+           '• <b>Forelle Blau & Gebratener Saibling</b> (' + (state.dailyDemand?.restaurant?.current?.fish || 0) + '/' + (state.dailyDemand?.restaurant?.target?.fish || 10) + ' kg Trout/Char)<br/>' +
+           '• <b>Knusprige Alpen-Ente mit Blaukraut</b> (' + (state.dailyDemand?.restaurant?.current?.duck || 0) + '/' + (state.dailyDemand?.restaurant?.target?.duck || 6) + ' Portions)<br/>' +
+           '• <b>Allgäuer Kässpatzen</b> (Bergkäse & Farm Butter) · <b>Bauerngarten Gemüse-Eintopf</b>' +
+         '</div>' +
+         '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+           '<button class="btn btn-c" style="flex:1;font-size:0.72rem;padding:5px 8px" onclick="dispatchPondCart()">🐟 Dispatch Lake Pond Cart</button>' +
+           '<button class="btn btn-g" style="flex:1;font-size:0.72rem;padding:5px 8px" onclick="dispatchLocalHarvestCart()">🥦 Dispatch Silo Produce Cart</button>' +
+         '</div>' +
+         '</div>' +
+         '<div class="card-box" style="margin-bottom:12px;border-color:#FFD54F;background:rgba(30,25,12,0.85)">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
               '<b style="font-size:0.84rem;color:var(--gold)">🧈 Gasthof Dairy Pantry: ' + (state.dairyLogistics?.restaurantStock?.butter || 25) + ' kg Butter · ' + (state.dairyLogistics?.restaurantStock?.cheese || 20) + ' Wheels Cheese</b>' +
               '<button class="btn btn-c" style="font-size:0.70rem;padding:4px 8px" onclick="dispatchLocalDairyCart()">🚜 Order Fresh Farm Delivery</button>' +
@@ -9007,6 +9109,7 @@ function openVegModal(bedIdx, selectedSpot){
              '<b style="font-size:0.82rem;color:#FFB74D">🏛️ Bavarian Silo Supply Stock</b>' +
              '<span style="font-size:0.72rem;color:#C8E6C9">Stand: ' + Math.round(state.siloLogistics?.standStock?.vegetables || 0) + 'kg Veg · ' + Math.round(state.siloLogistics?.standStock?.fruits || 0) + 'kg Fruit</span>' +
            '</div>' +
+           '<div style="font-size:0.72rem;color:#81C784;margin-bottom:6px">Daily Stand Demand: <b>40 kg Vegetables</b> · <b>35 kg Streuobst Fruits</b> · <b>15 kg Spelt</b></div>' +
            '<button class="btn btn-c" style="width:100%;font-size:0.74rem;padding:6px" onclick="dispatchLocalHarvestCart()">🚜 Request Harvest Cart Delivery from Silo</button>' +
          '</div>';
   }
@@ -9563,6 +9666,22 @@ function openRestaurantModal(){
          '<span style="font-size:0.78rem;color:#C8E6C9">Classical timber boardwalk active with dining guests, sun umbrellas open, village fountain flowing with crystal mountain water, and fresh vineyard grapes feeding the Traubensaft-Silo.</span>' +
          '</div>';
 
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:#00E5FF;background:rgba(10,30,40,0.92)">' +
+         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+           '<b style="font-size:0.84rem;color:#80DEEA">🍽️ Daily Alpine Gastronomy Menu & Raw Demand</b>' +
+           '<span class="badge" style="background:#00BCD4;color:#000">Day ' + (state.dailyDemand?.day || 1) + '</span>' +
+         '</div>' +
+         '<div style="font-size:0.74rem;color:#B2EBF2;line-height:1.4;margin-bottom:8px">' +
+           '• <b>Forelle Blau & Gebratener Saibling</b> (' + (state.dailyDemand?.restaurant?.current?.fish || 0) + '/' + (state.dailyDemand?.restaurant?.target?.fish || 10) + ' kg Trout/Char)<br/>' +
+           '• <b>Knusprige Alpen-Ente mit Blaukraut</b> (' + (state.dailyDemand?.restaurant?.current?.duck || 0) + '/' + (state.dailyDemand?.restaurant?.target?.duck || 6) + ' Portions)<br/>' +
+           '• <b>Allgäuer Kässpatzen</b> (Bergkäse & Farm Butter) · <b>Bauerngarten Gemüse-Eintopf</b>' +
+         '</div>' +
+         '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
+           '<button class="btn btn-c" style="flex:1;font-size:0.72rem;padding:5px 8px" onclick="dispatchPondCart()">🐟 Dispatch Lake Pond Cart</button>' +
+           '<button class="btn btn-g" style="flex:1;font-size:0.72rem;padding:5px 8px" onclick="dispatchLocalHarvestCart()">🥦 Dispatch Silo Produce Cart</button>' +
+         '</div>' +
+         '</div>';
+
     h += '<div class="card-box" style="margin-bottom:12px;border-color:#FFD54F;background:rgba(30,25,12,0.85)">' +
          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
            '<b style="font-size:0.84rem;color:#FFE082">🧈 Gasthof Kitchen Dairy Pantry</b>' +
@@ -9656,7 +9775,23 @@ function openBBQModal(){
          '<span style="font-size:0.78rem;color:#C8E6C9">Food kiosk active with pretzels & bratwurst, twin fire pits glowing, and panoramic benches hosting tourists and hikers.</span>' +
          '</div>';
 
-    h += '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:#FF7043;background:rgba(45,20,10,0.92)">' +
+         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+           '<b style="font-size:0.84rem;color:#FFAB91">🔥 Daily Grill Demand & Hosted BBQ Events</b>' +
+           '<span class="badge" style="background:#FF7043;color:#FFF">' +
+             ((state.bbq?.touristsServed || 0) + ' Tourists Served') +
+           '</span>' +
+         '</div>' +
+         '<div style="font-size:0.74rem;color:#FFCCBC;line-height:1.4;margin-bottom:8px">' +
+           'Grill Menu: <b>Steckerlfisch</b> (Trout on Sticks) · <b>Knusprige Enten-Spieße</b> · <b>Gemüsespieße</b> · <b>Apfel-Cider</b>' +
+         '</div>' +
+         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">' +
+           '<button class="btn btn-g" style="font-size:0.72rem;padding:6px" onclick="hostBBQEvent(\'summer_bbq\')">🎉 Alpen-Sommerfest (€240)</button>' +
+           '<button class="btn btn-c" style="font-size:0.72rem;padding:6px" onclick="hostBBQEvent(\'smokehouse_grill\')">🐟 Smokehouse Grill (€330)</button>' +
+         '</div>' +
+         '<button class="btn btn-a" style="width:100%;font-size:0.75rem;padding:6px" onclick="hostBBQEvent(\'autumn_banquet\')">🍖 Großer Herbst-Festschmaus (€520 · +140 XP)</button>' +
+         '</div>' +
+         '<div style="display:flex;gap:8px;margin-bottom:12px">' +
          '<button class="btn btn-c" style="flex:1" onclick="restockBBQFood()">🥨 Restock Food Trays (€25)</button>' +
          '<button class="btn btn-g" style="flex:1" onclick="hostBBQTourists()">🍖 Host BBQ Evening</button>' +
          '</div>';
@@ -9864,7 +9999,9 @@ function openLakeModal(){
            fish.trout + ' Bachforellen (Trout) · ' + fish.charr + ' Saiblinge · ' + fish.carp + ' Karpfen</div>' +
          '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
            '<button class="btn btn-g" style="font-size:0.72rem;padding:6px 10px" onclick="stockAlpineFish()">Stock Fingerlings (€35)</button>' +
-           '<button class="btn btn-c" style="font-size:0.72rem;padding:6px 10px" onclick="harvestAlpineFish()">🎣 Harvest Fish</button>' +
+           '<button class="btn btn-c" style="font-size:0.72rem;padding:6px 10px" onclick="harvestAlpineFish()">🎣 Quick Line Catch</button>' +
+           '<button class="btn btn-g" style="font-size:0.72rem;padding:6px 10px" onclick="executePondHarvestStep(1)">🕸️ Step 1: Deploy Net Traps</button>' +
+           '<button class="btn btn-g" style="font-size:0.72rem;padding:6px 10px" onclick="executePondHarvestStep(2)">🐟 Step 2: Grade Trout & Char</button>' +
          '</div>' +
          '</div>';
 
@@ -9875,7 +10012,9 @@ function openLakeModal(){
            ducks.count + ' Adult Mallards · ' + ducks.ducklings + ' Ducklings (Entenhaus Active)</div>' +
          '<div style="display:flex;gap:6px;flex-wrap:wrap">' +
            '<button class="btn btn-g" style="font-size:0.72rem;padding:6px 10px" onclick="breedDucklings()">Breed Ducklings (€20)</button>' +
-           '<button class="btn btn-a" style="font-size:0.72rem;padding:6px 10px" onclick="collectDuckEggs()">🥚 Collect Eggs</button>' +
+           '<button class="btn btn-a" style="font-size:0.72rem;padding:6px 10px" onclick="collectDuckEggs()">🥚 Quick Collect</button>' +
+           '<button class="btn btn-g" style="font-size:0.72rem;padding:6px 10px" onclick="executePondHarvestStep(3)">🦆 Step 3: Entenhaus Harvest</button>' +
+           '<button class="btn btn-c" style="font-size:0.72rem;padding:6px 10px;width:100%;margin-top:6px" onclick="dispatchPondCart()">🚚 Step 4: Dispatch Pond Cart (Lake -> Restaurant -> BBQ)</button>' +
          '</div>' +
          '</div>';
 
@@ -10588,6 +10727,8 @@ function openLabour(){
            '<span style="font-size:0.75rem;color:var(--gold)">€' + w.cost + '</span>' +
          '</div>' +
          '<div style="font-size:0.75rem;color:#CFD8DC;margin:4px 0">' + w.role + '</div>' +
+         (w.station ? '<div style="font-size:0.70rem;color:#81C784;margin-bottom:2px">📍 Station: <b>' + w.station + '</b></div>' : '') +
+         (w.perk ? '<div style="font-size:0.68rem;color:#FFD54F;margin-bottom:4px">⭐ Perk: ' + w.perk + '</div>' : '') +
          '<button class="btn ' + (hired ? 'btn-c' : 'btn-g') + '" style="width:100%;padding:6px;margin-top:6px" ' +
            (hired ? 'disabled' : 'onclick="hireWorker(\'' + w.id + '\',' + w.cost + ')\"') + '>' +
            (hired ? '✓ On Duty' : 'Recruit Artisan') +
@@ -10892,6 +11033,7 @@ function openDairyMarketModal(){
            '<div style="background:rgba(255,255,255,0.06);padding:6px;border-radius:6px;text-align:center"><span style="color:#FFCC80">🧀 ' + Math.round((state.dairyLogistics?.shopStock?.cheese || 0)) + ' Wheels</span> Cheese</div>' +
            '<div style="background:rgba(255,255,255,0.06);padding:6px;border-radius:6px;text-align:center"><span style="color:#CE93D8">🥣 ' + Math.round((state.dairyLogistics?.shopStock?.joghurt || 0)) + ' Jars</span> Joghurt</div>' +
          '</div>' +
+         '<div style="font-size:0.72rem;color:#FFD54F;margin-bottom:6px">Daily Demand Target: <b>Milk 25L</b> · <b>Cheese 10 Wheels</b> · <b>Joghurt 12 Jars</b></div>' +
          '<button class="btn btn-c" style="width:100%;font-size:0.75rem;padding:6px" onclick="dispatchLocalDairyCart()">🚜 Request Dairy Express Restock from Cold Storage</button>' +
        '</div>';
 
@@ -12130,6 +12272,63 @@ window.addEventListener('message', function(e) {
    ========================================================================= */
 
 const VEHICLE_ROUTES = {
+  // Route 5: Auto Harvesting Vineyard Grape Express (Farm Garage -> Vineyard Apron -> Juice Bar -> Garage)
+  vineyard_cart: {
+    leg1_to_vineyard: [
+      [933, 237],   // Farm Garage Depot
+      [1040, 240],  // Eastward path past Labour HQ
+      [1180, 260],  // Hillside Vineyard approach
+      [1320, 290]   // Stop 1: Vineyard Hillside Loading Apron
+    ],
+    leg2_to_juice_bar: [
+      [1320, 290],  // Vineyard Apron
+      [1315, 380],  // Scenic path descent
+      [1306, 490],  // Gastronomy terrace entrance
+      [1306, 601]   // Stop 2: Hof-Mosterei & Juice Bar Reception
+    ],
+    leg3_return_garage: [
+      [1306, 601],  // Juice Bar
+      [1200, 640],
+      [1085, 690],  // Central Divider Subway
+      [980, 520],
+      [940, 360],
+      [933, 237]   // Return to Farm Garage Depot
+    ]
+  },
+
+  // Route 6: Glacial Waters & Alpine Lake Harvest Logistics Cart (Farm Garage -> Pond Apron -> Gasthof Stuben -> Hilltop BBQ -> Garage)
+  pond_cart: {
+    leg1_to_pond: [
+      [933, 237],   // Farm Garage Depot
+      [870, 320],
+      [750, 420],
+      [680, 600],
+      [640, 750],
+      [630, 870]    // Stop 1: Living Waters Lake & Hatchery Pier
+    ],
+    leg2_to_restaurant: [
+      [630, 870],   // Pond Pier
+      [780, 930],   // Southern Shore Road
+      [950, 945],
+      [1120, 940],
+      [1300, 910],
+      [1500, 770],
+      [1640, 560]   // Stop 2: Gasthof Stuben Kitchen Delivery
+    ],
+    leg3_to_bbq: [
+      [1640, 560],   // Gasthof Stuben
+      [1700, 500],
+      [1750, 430],
+      [1760, 380]   // Stop 3: Hilltop Tourist BBQ Stand
+    ],
+    leg4_return_garage: [
+      [1760, 380],   // Hilltop BBQ
+      [1600, 320],   // Northern ridge road
+      [1400, 260],
+      [1150, 240],
+      [933, 237]    // Return: Farm Garage Depot
+    ]
+  },
   // Route 3: Wholesale Agricultural Harvest Transport Hauler (Main Gate -> Main Arterial -> Silo Hopper -> Main Road -> Gate)
   harvest_truck: {
     inbound: [
@@ -12484,6 +12683,150 @@ window.dispatchLocalHarvestCart = function() {
   closeModal();
 };
 
+
+window.dispatchVineyardCart = function() {
+  if (state.vehicles && state.vehicles.some(v => v.type === 'vineyard_cart')) {
+    toast('🚜 Vintage Grape Express is already active on the hillside road network!');
+    return;
+  }
+  let grapesToHarvest = 30;
+  if (state.siloLogistics && state.siloLogistics.inventory && state.siloLogistics.inventory.grapes > 0) {
+    const fromSilo = Math.min(state.siloLogistics.inventory.grapes, 15);
+    state.siloLogistics.inventory.grapes -= fromSilo;
+    grapesToHarvest += fromSilo;
+  }
+  const payout = Math.round(grapesToHarvest * 3.8);
+
+  const vehicle = {
+    id: 'vineyard_cart_' + Date.now(),
+    type: 'vineyard_cart',
+    name: 'Alpenhof Vintage Grape Express (Fendt 200 Vario)',
+    x: VEHICLE_ROUTES.vineyard_cart.leg1_to_vineyard[0][0],
+    y: VEHICLE_ROUTES.vineyard_cart.leg1_to_vineyard[0][1],
+    angle: 0,
+    speed: 2.8,
+    phase: 'to_vineyard',
+    waypoints: VEHICLE_ROUTES.vineyard_cart.leg1_to_vineyard,
+    targetIdx: 1,
+    cargo: { grapes: grapesToHarvest, payout: payout },
+    status: 'moving',
+    loadTimer: 0,
+    wheelRot: 0,
+    worker: null
+  };
+
+  state.vehicles = state.vehicles || [];
+  state.vehicles.push(vehicle);
+
+  toast('🚜 Vintage Grape Express dispatched from Farm Garage! Heading to Vineyard...');
+  spawnFloatingBadge('🍇 Grape Cart Dispatched', 933, 210, '#BA68C8');
+  if (typeof closeModal === 'function') closeModal();
+};
+
+window.dispatchPondCart = function() {
+  if (state.vehicles && state.vehicles.some(v => v.type === 'pond_cart')) {
+    toast('🚚 Glacial Waters & Poultry Express is already on an active delivery route!');
+    return;
+  }
+  const ph = state.pondHarvest || { trout: 14, charr: 10, duckEggs: 12, duckMeat: 8 };
+  const fishSupply = Math.max(10, (ph.trout || 14) + (ph.charr || 10));
+  const duckSupply = Math.max(6, ph.duckMeat || 8);
+  const rev = Math.round(fishSupply * 12 + duckSupply * 16);
+
+  const vehicle = {
+    id: 'pond_cart_' + Date.now(),
+    type: 'pond_cart',
+    name: 'Glacial Waters & Poultry Express (Insulated Utility Transporter)',
+    x: VEHICLE_ROUTES.pond_cart.leg1_to_pond[0][0],
+    y: VEHICLE_ROUTES.pond_cart.leg1_to_pond[0][1],
+    angle: 0,
+    speed: 2.7,
+    phase: 'to_pond',
+    waypoints: VEHICLE_ROUTES.pond_cart.leg1_to_pond,
+    targetIdx: 1,
+    cargo: { fish: fishSupply, duck: duckSupply, eggs: ph.duckEggs || 12, rev: rev },
+    status: 'moving',
+    loadTimer: 0,
+    wheelRot: 0,
+    worker: null
+  };
+
+  state.vehicles = state.vehicles || [];
+  state.vehicles.push(vehicle);
+
+  toast('🚚 Glacial Waters & Poultry Express dispatched from Farm Garage! Heading to Lake Pier...');
+  spawnFloatingBadge('🐟 Pond Cart Dispatched', 933, 210, '#29B6F6');
+  if (typeof closeModal === 'function') closeModal();
+};
+
+window.executePondHarvestStep = function(stepIdx) {
+  state.pondHarvest = state.pondHarvest || { trout: 14, charr: 10, duckEggs: 12, duckMeat: 8, harvestStep: 0 };
+  if (stepIdx === 1) {
+    state.pondHarvest.harvestStep = 1;
+    grantXP({ biodiversity: 15, oxygen: 10 });
+    toast('🕸️ Cold-water mesh traps deployed in deep glacial trenches of Living Waters Lake!');
+    spawnFloatingBadge('🕸️ Traps Deployed', 630, 850, '#29B6F6');
+  } else if (stepIdx === 2) {
+    state.pondHarvest.harvestStep = 2;
+    state.pondHarvest.trout = (state.pondHarvest.trout || 14) + 12;
+    state.pondHarvest.charr = (state.pondHarvest.charr || 10) + 8;
+    grantXP({ biodiversity: 20, fruit: 10 });
+    toast('🐟 Lifted net traps: 12 Bachforellen & 8 Saiblinge graded and iced!');
+    spawnFloatingBadge('🐟 Catch Graded', 630, 850, '#00E5FF');
+  } else if (stepIdx === 3) {
+    state.pondHarvest.harvestStep = 3;
+    state.pondHarvest.duckEggs = (state.pondHarvest.duckEggs || 12) + 14;
+    state.pondHarvest.duckMeat = (state.pondHarvest.duckMeat || 8) + 6;
+    grantXP({ biodiversity: 20, oxygen: 15 });
+    toast('🦆 Floating Entenhaus harvest complete: 14 organic eggs & 6 dressed alpine duck portions collected!');
+    spawnFloatingBadge('🦆 Eggs & Duck Packed', 630, 850, '#FFD54F');
+  }
+  openLakeModal();
+  if (typeof renderScoreboard === 'function') renderScoreboard();
+};
+
+window.hostBBQEvent = function(eventId) {
+  state.bbq = state.bbq || { stage: 4, progress: 0, touristsServed: 0 };
+  state.dailyDemand = state.dailyDemand || {};
+  state.dailyDemand.bbq = state.dailyDemand.bbq || { target: { fish: 8, duck: 5, vegetables: 20, cider: 12 }, current: { fish: 0, duck: 0, vegetables: 0, cider: 0 }, touristHappiness: 100, totalEventsHosted: 0 };
+
+  const events = {
+    summer_bbq: {
+      name: 'Alpen-Sommerfest BBQ',
+      payout: 240,
+      xp: { fruit: 25, biodiversity: 35 },
+      happiness: 35,
+      toast: '🔥 Alpen-Sommerfest BBQ hosted! Tourists enjoying wood-fired skewers and fresh cider!'
+    },
+    smokehouse_grill: {
+      name: "Fisherman's Smokehouse Grill",
+      payout: 330,
+      xp: { fruit: 35, biodiversity: 45 },
+      happiness: 50,
+      toast: '🐟 Fisherman\'s Smokehouse Grill hosted! Beechwood smoked trout & charr served to hikers!'
+    },
+    autumn_banquet: {
+      name: 'Großer Alpenhof Herbst-Festschmaus',
+      payout: 520,
+      xp: { fruit: 60, biodiversity: 80 },
+      happiness: 80,
+      toast: '🍖 Grand Autumn Roast Banquet hosted! Full hillside celebration with spit-roasted duck & mountain cheeses!'
+    }
+  };
+
+  const ev = events[eventId] || events.summer_bbq;
+  state.money += ev.payout;
+  grantXP(ev.xp);
+  state.bbq.touristsServed = (state.bbq.touristsServed || 0) + 24;
+  state.dailyDemand.bbq.totalEventsHosted = (state.dailyDemand.bbq.totalEventsHosted || 0) + 1;
+  state.dailyDemand.bbq.touristHappiness = Math.min(100, (state.dailyDemand.bbq.touristHappiness || 100) + ev.happiness);
+
+  toast(ev.toast + ' (+€' + ev.payout + ')');
+  spawnFloatingBadge('🔥 ' + ev.name + ' (+€' + ev.payout + ')', 1760, 340, '#FF7043');
+  openBBQModal();
+  if (typeof renderScoreboard === 'function') renderScoreboard();
+};
+
 window.expandColdStorageCapacity = function() {
   const dl = state.dairyLogistics;
   const upgradeCost = dl.storageLevel * 85;
@@ -12578,7 +12921,203 @@ window.updateVehicleLogistics = function() {
           v.worker = null;
           toast('🚚 Harvest Hauler loaded with ' + v.cargo.fruits + 'kg fruits, ' + v.cargo.vegetables + 'kg vegetables and ' + v.cargo.grains + 'kg grain! Departing via Alps Main Gate...');
           spawnFloatingBadge('📦 Loaded & Departing', v.x, v.y - 30, '#FFA726');
-        } else if (v.type === 'local_harvest_cart') {
+        } else if (v.type === 'vineyard_cart') {
+          if (v.phase === 'to_vineyard') {
+            v.phase = 'to_juice_bar';
+            v.waypoints = VEHICLE_ROUTES.vineyard_cart.leg2_to_juice_bar;
+            v.targetIdx = 0;
+            v.status = 'moving';
+            v.worker = null;
+            toast('🍇 Vintage Grape Express loaded with fresh Riesling & Silvaner grapes! Heading to Hof-Mosterei...');
+            spawnFloatingBadge('🍇 Grapes Loaded', v.x, v.y - 25, '#BA68C8');
+          } else if (v.phase === 'to_juice_bar') {
+            if (state.dailyDemand && state.dailyDemand.juice) {
+              state.dailyDemand.juice.current.grapes += v.cargo.grapes;
+              if (state.dailyDemand.juice.current.grapes >= state.dailyDemand.juice.target.grapes) {
+                state.dailyDemand.juice.fulfilled = true;
+              }
+            }
+            state.money += v.cargo.payout;
+            grantXP({ fruit: 30, oxygen: 15 });
+            toast('🧃 Unloaded ' + v.cargo.grapes + ' kg grapes at Hof-Mosterei! (+€' + v.cargo.payout + ' vintage processing bonus)');
+            spawnFloatingBadge('🪙 +€' + v.cargo.payout, 1306, 570, '#BA68C8');
+            v.phase = 'return_garage';
+            v.waypoints = VEHICLE_ROUTES.vineyard_cart.leg3_return_garage;
+            v.targetIdx = 0;
+            v.status = 'moving';
+            v.worker = null;
+          }
+        } else if (v.type === 'pond_cart') {
+          if (v.phase === 'to_pond') {
+            v.phase = 'to_restaurant';
+            v.waypoints = VEHICLE_ROUTES.pond_cart.leg2_to_restaurant;
+            v.targetIdx = 0;
+            v.status = 'moving';
+            v.worker = null;
+            toast('🐟 Chilled Fish & Duck Cart loaded! Navigating southern road to Gasthof Stuben...');
+            spawnFloatingBadge('🐟 Catch Loaded', v.x, v.y - 25, '#29B6F6');
+          } else if (v.phase === 'to_restaurant') {
+            if (state.dailyDemand && state.dailyDemand.restaurant) {
+              state.dailyDemand.restaurant.current.fish += Math.round(v.cargo.fish * 0.6);
+              state.dailyDemand.restaurant.current.duck += Math.round(v.cargo.duck * 0.6);
+            }
+            const restPay = Math.round(v.cargo.rev * 0.55);
+            state.money += restPay;
+            toast('🍽️ Delivered fresh trout & roast duck to Gasthof Stuben kitchen! (+€' + restPay + ')');
+            spawnFloatingBadge('🍽️ Kitchen Supplied', 1640, 520, '#00E5FF');
+            v.phase = 'to_bbq';
+            v.waypoints = VEHICLE_ROUTES.pond_cart.leg3_to_bbq;
+            v.targetIdx = 0;
+            v.status = 'moving';
+            v.worker = null;
+          } else if (v.phase === 'to_bbq') {
+            if (state.dailyDemand && state.dailyDemand.bbq) {
+              state.dailyDemand.bbq.current.fish += Math.round(v.cargo.fish * 0.4);
+              state.dailyDemand.bbq.current.duck += Math.round(v.cargo.duck * 0.4);
+            }
+            const bbqPay = Math.round(v.cargo.rev * 0.45);
+            state.money += bbqPay;
+            grantXP({ biodiversity: 25, oxygen: 15 });
+            toast('🍖 Delivered grilled trout skewers & duck portions to Hilltop BBQ! (+€' + bbqPay + ')');
+            spawnFloatingBadge('🍖 Fire Pits Supplied', 1760, 340, '#FF7043');
+            v.phase = 'return_garage';
+            v.waypoints = VEHICLE_ROUTES.pond_cart.leg4_return_garage;
+            v.targetIdx = 0;
+            v.status = 'moving';
+            v.worker = null;
+          }
+        } else if (v.type === 'vineyard_cart') {
+      // 1. Soft Ground Shadow
+      ctx.fillStyle = 'rgba(8, 18, 12, 0.38)';
+      ctx.beginPath();
+      ctx.ellipse(0, 2, 28, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Vintage Timber Bin Trailer
+      ctx.fillStyle = '#6D4C41';
+      ctx.beginPath();
+      ctx.roundRect(-22, -9, 22, 18, 2);
+      ctx.fill();
+      ctx.strokeStyle = '#4E342E';
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+
+      // Purple & Golden Grapes Cargo
+      ctx.fillStyle = '#7B1FA2';
+      ctx.beginPath();
+      ctx.arc(-14, -3, 3.5, 0, Math.PI * 2);
+      ctx.arc(-10, -4, 3, 0, Math.PI * 2);
+      ctx.arc(-12, -1, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#C0CA33';
+      ctx.beginPath();
+      ctx.arc(-14, 3, 3.5, 0, Math.PI * 2);
+      ctx.arc(-10, 4, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 3. Narrow-Tract Fendt 200 Vario Cab (Bordeaux Red & Green)
+      ctx.fillStyle = '#880E4F';
+      ctx.beginPath();
+      ctx.roundRect(0, -7, 14, 14, 2);
+      ctx.fill();
+      ctx.strokeStyle = '#4A148C';
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+
+      // Bonnet
+      ctx.fillStyle = '#4CAF50';
+      ctx.beginPath();
+      ctx.roundRect(14, -5, 11, 10, 2);
+      ctx.fill();
+
+      // Driver with Bavarian Vintner Hat
+      ctx.fillStyle = '#4E342E';
+      ctx.beginPath();
+      ctx.ellipse(5, 0, 3, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#76FF03';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(3, -2);
+      ctx.lineTo(1, -6);
+      ctx.stroke();
+
+      // Wheels
+      const vWheels = [
+        { x: -16, y: -10, r: 3.5 }, { x: -6, y: -10, r: 3.5 }, { x: 8, y: -9, r: 4.5 }, { x: 20, y: -7, r: 3 },
+        { x: -16, y: 10, r: 3.5 },  { x: -6, y: 10, r: 3.5 },  { x: 8, y: 9, r: 4.5 },  { x: 20, y: 7, r: 3 }
+      ];
+      vWheels.forEach(w => {
+        ctx.fillStyle = '#212121';
+        ctx.beginPath();
+        ctx.ellipse(w.x, w.y, w.r, w.r * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#E53935';
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, w.r * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+    } else if (v.type === 'pond_cart') {
+      // 1. Soft Ground Shadow
+      ctx.fillStyle = 'rgba(8, 18, 12, 0.40)';
+      ctx.beginPath();
+      ctx.ellipse(0, 2, 30, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Chilled Insulated Aquatic Food Box Trailer
+      ctx.fillStyle = '#E0F7FA';
+      ctx.beginPath();
+      ctx.roundRect(-24, -10, 24, 20, 3);
+      ctx.fill();
+      ctx.strokeStyle = '#00BCD4';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Ice stripe
+      ctx.fillStyle = '#0288D1';
+      ctx.fillRect(-22, -8, 20, 3);
+      ctx.fillRect(-22, 5, 20, 3);
+
+      // Silver fish tail
+      ctx.fillStyle = '#90A4AE';
+      ctx.beginPath();
+      ctx.moveTo(-12, -2);
+      ctx.lineTo(-4, -5);
+      ctx.lineTo(-4, 1);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. Utility Tug Cab
+      ctx.fillStyle = '#00838F';
+      ctx.beginPath();
+      ctx.roundRect(0, -8, 16, 16, 3);
+      ctx.fill();
+      ctx.strokeStyle = '#006064';
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+
+      // Windshield
+      ctx.fillStyle = '#B2EBF2';
+      ctx.fillRect(8, -6, 5, 12);
+
+      // Wheels
+      const pWheels = [
+        { x: -18, y: -11 }, { x: -8, y: -11 }, { x: 8, y: -10 },
+        { x: -18, y: 11 },  { x: -8, y: 11 },  { x: 8, y: 10 }
+      ];
+      pWheels.forEach(w => {
+        ctx.fillStyle = '#263238';
+        ctx.beginPath();
+        ctx.ellipse(w.x, w.y, 4, 2.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#00E5FF';
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+    } else if (v.type === 'local_harvest_cart') {
           if (v.phase === 'to_silo') {
             // Finished loading at Silo, head to Roadside Produce Stand
             v.phase = 'to_veg_stand';
@@ -12654,6 +13193,12 @@ window.updateVehicleLogistics = function() {
       } else if (v.type === 'local_harvest_cart') {
         toast('🚜 Fendt Harvest Utility Cart returned safely to Farm Garage!');
         spawnFloatingBadge('Depot Reached', 933, 210, '#81C784');
+      } else if (v.type === 'vineyard_cart') {
+        toast('🚜 Vintage Grape Express returned safely to Farm Garage!');
+        spawnFloatingBadge('Depot Reached', 933, 210, '#BA68C8');
+      } else if (v.type === 'pond_cart') {
+        toast('🚚 Glacial Waters & Poultry Express returned safely to Farm Garage!');
+        spawnFloatingBadge('Depot Reached', 933, 210, '#29B6F6');
       }
       state.vehicles.splice(i, 1);
       continue;
@@ -12708,6 +13253,40 @@ window.updateVehicleLogistics = function() {
           v.loadTimer = 160;
           v.worker = { originX: v.x, originY: v.y, destX: 1640, destY: 560, progress: 0, item: '🧈' };
           toast('🍽️ Unloading butter and culinary dairy at Gasthof Stuben...');
+          continue;
+        }
+      } else if (v.type === 'vineyard_cart') {
+        if (v.phase === 'to_vineyard' && v.targetIdx === v.waypoints.length - 1) {
+          v.status = 'loading';
+          v.loadTimer = 150;
+          v.worker = { originX: 1320, originY: 260, destX: v.x, destY: v.y, progress: 0, item: '🍇' };
+          toast('🍇 Vintner Lukas harvesting and loading ripe Silvaner & Riesling grape crates...');
+          continue;
+        } else if (v.phase === 'to_juice_bar' && v.targetIdx === v.waypoints.length - 1) {
+          v.status = 'unloading';
+          v.loadTimer = 140;
+          v.worker = { originX: v.x, originY: v.y, destX: 1306, destY: 601, progress: 0, item: '🧃' };
+          toast('🧃 Unloading fresh vintage grapes into Hof-Mosterei pressing hopper...');
+          continue;
+        }
+      } else if (v.type === 'pond_cart') {
+        if (v.phase === 'to_pond' && v.targetIdx === v.waypoints.length - 1) {
+          v.status = 'loading';
+          v.loadTimer = 160;
+          v.worker = { originX: 630, originY: 870, destX: v.x, destY: v.y, progress: 0, item: '🐟' };
+          toast('🎣 Fisherman Georg loading cold-water trout, charr & duck eggs into chilled crates...');
+          continue;
+        } else if (v.phase === 'to_restaurant' && v.targetIdx === v.waypoints.length - 1) {
+          v.status = 'unloading';
+          v.loadTimer = 140;
+          v.worker = { originX: v.x, originY: v.y, destX: 1640, destY: 560, progress: 0, item: '🐟' };
+          toast('🍽️ Unloading fresh lake trout & duck at Gasthof Stuben pantry...');
+          continue;
+        } else if (v.phase === 'to_bbq' && v.targetIdx === v.waypoints.length - 1) {
+          v.status = 'unloading';
+          v.loadTimer = 140;
+          v.worker = { originX: v.x, originY: v.y, destX: 1760, destY: 380, progress: 0, item: '🍖' };
+          toast('🍖 Grillmaster Franz receiving chilled fish & duck for the hilltop fire pits...');
           continue;
         }
       } else if (v.type === 'local_harvest_cart') {
