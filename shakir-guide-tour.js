@@ -1,20 +1,36 @@
 /**
- * SearchO2 — Shakir (OxyEco Forger) Chapter Scouting Tour for Guest Users
- * Implements Shakir, SearchO2 OxyEco Forger, as an interactive 3D Isometric Farm Guide.
- * 
- * Visuals grounded in C:\Users\AM\PycharmProjects\searchO2\shakir.html and shakir-img.jpg:
- * - 3D Anime messy spiky hair (#3D2314 with dimensional highlights)
- * - Layered explorer attire: Crisp white jacket (#F8FAFC) over grey undershirt (#9CA3AF)
- * - Signature SearchO2 CEO badge on chest strap: Golden ring (#EAB308) with emerald core (#22C55E)
- * - Royal navy blue backpack (#1E3A8A) with slate grey flap and straps
- * - Handheld high-tech cyan holographic scanner (#0EA5E9, screen #67E8F9)
- * - Farm cargo brown shorts (#78350F) with utility pocket
- * - Two-tone hiking boots: Dark brown lug sole (#3B2314) and forest green upper leather (#14532D)
- * - 4-way Isometric walking dynamics towards farm objects
- * - Wonder Touch with cyan scanner reach and contact ripple
- * - Cyan 3D blueprint reveals WITHOUT blueprint text
- * - Active scout cooldown with countdown floater & click-to-walk
- * - Warm, child-friendly CEO welcoming manner & educational dialogue
+ * SearchO2 — Shakir (OxyEco Forger) & Pip Squeak-a-Link Farm Exploration Tour
+ *
+ * Implements Shakir (SearchO2 OxyEco Forger, 18+ practical explainer) and
+ * Pip Squeak-a-Link (Alpine Harvest Field Mouse, Micromys minutus, Apprentice Mason & Safety Scout)
+ * as an interactive pair-explorer companion system across all 8 central European farm landmarks
+ * and their respective sub-challenges.
+ *
+ * Visual & Behavioral Standard:
+ * - Shakir: 3D anime messy spiky hair, layered white adventure jacket, SearchO2 CEO badge,
+ *   cyan scanning PDA & forging wonder stick.
+ * - Pip (Alpenhof Lab Standard):
+ *   * Alpine Harvest Field Mouse (Micromys minutus)
+ *   * Headwear: None (oversized rose-pink auricles: #F472B6, #FBCFE8, #9C744A)
+ *   * Clothing: Cyan-blue tropical Hawaiian floral shirt (#06B6D4) over hi-vis orange twill shorts (#EA580C)
+ *   * Footwear: Bright lime-green field sneakers (#84CC16) with high-traction waffle soles (#E2E8F0, #64748B)
+ *   * Signature tools: Twin high-candela green LED marshaling wands (#22C55E), yellow torque wrench (#FACC15)
+ *   * Posture: Strictly upright spine, straight stance, rigidly unified head root node.
+ *   * Diverse funny animations: Marshaling wand wave, excited toddler hop, ear twitch & sniff, torque wrench inspect.
+ * - Chapter-wise Sub-Challenges Journey:
+ *   * Ch. 1: Plot 1 Living Soil & Jute Tarpaulin Hidden Cache
+ *   * Ch. 2: Crew Craftsman Shed, Granary Storage Barn & Tractor Garage
+ *   * Ch. 3: Biodiversity Pollinator Garden, 3-Bed Rotational Crop Field & Boardwalk
+ *   * Ch. 4: Hydrological Retention Pond & Simmental Cattle Farm Pasture
+ *   * Ch. 5: BESS Clean Energy Microgrid Substation & Ridge Wind Turbines
+ *   * Ch. 6: Organic Grove Press Juice Bar & Alpenhof Gasthof Stube
+ *   * Ch. 7: Global Biome Gateway & Eco-Passport Expeditions
+ *   * Ch. 8: Orbital Oxygen Shuttle Launchpad & Space Greenhouses
+ * - Optimized Overlap & View Dynamics:
+ *   * Speech bubbles and subtitle dock dynamically position to avoid blocking Shakir or Pip.
+ *   * Smooth parametric multi-waypoint walking dynamics.
+ * - Celebratory Victory Modal:
+ *   * Awards prestigious title "Grand Planetary Eco-Forger", +500 XP, +1,000 Gold Coins, and +500 O2.
  */
 (function (global) {
   'use strict';
@@ -42,123 +58,461 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Chapter Guide Definitions & Children-Friendly CEO Dialogue
+  // Chapter & Sub-Challenge Spatial Journey Definitions
+  // Every chapter consists of sequential landmark spots visited and explained interactively!
   // ---------------------------------------------------------------------------
-  var SHAKIR_CHAPTERS = {
+  var CHAPTER_JOURNEY = {
     1: {
       chapter: 1,
-      key: 'plot',
-      title: 'The Living Soil & First Sprout',
-      landmark: 'Plot 1',
-      icon: '🌱',
-      skyIcon: '🌱',
-      forgerGreeting: "🌱 Greetings, Eco-Explorer! I am Shakir, your OxyEco Forger! Welcome to our virgin bedrock estate. Healthy living soil is teeming with microscopic life waiting to be awakened. When we aerate the earth and plant our first tree, it draws carbon from the sky and breathes the first fresh oxygen into our atmosphere! Tap Plot 1 to till the soil and sow your first seedling!",
-      ceoGreeting: "🌱 Greetings, Eco-Explorer! I am Shakir, your OxyEco Forger! Welcome to our virgin bedrock estate. Healthy living soil is teeming with microscopic life waiting to be awakened. When we aerate the earth and plant our first tree, it draws carbon from the sky and breathes the first fresh oxygen into our atmosphere! Tap Plot 1 to till the soil and sow your first seedling!",
-      dialogSummary: "Plot 1 is your farm's starting soil bed. Till the soil to clear weeds and plant oxygen-giving trees!",
-      funFact: "A single spoonful of healthy organic soil contains more helpful microbes than all humans on planet Earth!",
-      actionTip: "Aerate Plot 1 with your spade to forge fertile living humus!",
-      dreamMessage: "💭 As your OxyEco Forger, I dream of breathing living humus into virgin bedrock. Every single root we anchor will draw carbon from the skies and forge the first fresh oxygen for our planet!"
+      title: 'The Living Soil & Hidden Cache',
+      spots: [
+        {
+          key: 'plot',
+          landmark: 'Plot 1 Soil Bed',
+          icon: '🌱',
+          standPoint: { left: 24.5, top: 38.0 },
+          touchPoint: { left: 24.5, top: 28.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🌱 Look down at Plot 1, Pip! Living soil awaits!',
+            text: 'Look right here at Plot 1, Pip! Beneath our feet, this virgin soil is teeming with billions of microscopic helpers. When we aerate the ground and plant our first sapling, its roots lock carbon deep underground while its leaves forge the first fresh oxygen for our atmosphere!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'ear_sniff',
+            bubble: '🐭 Wait Shakir! Won\'t my waffle sneakers tickle them?!',
+            text: 'Wait Shakir! If billions of microscopic bugs live down in the dirt, won\'t my high-traction waffle sneakers tickle their little bug tummies when I marshaling-waddle across Plot 1?!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ Aerating gives them fresh air pockets! Plot 1 forged!',
+            text: 'Haha, not at all, Pip! Aerating the soil actually opens gentle air pockets so microbes can breathe, break down nutrients, and nourish our roots. Let\'s till this bed together!'
+          }
+        },
+        {
+          key: 'jute_tarp',
+          landmark: 'Jute Tarpaulin Tool Cache',
+          icon: '📦',
+          standPoint: { left: 14.5, top: 73.5 },
+          touchPoint: { left: 10.5, top: 72.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '📦 Beside the Farm Shed boundary sits our sealed Jute Tarpaulin!',
+            text: 'Look here, Pip! Right beside our Farm Shed boundary sits a heavy, weatherproof jute tarpaulin protecting our foundational heritage tools. It stays firmly sealed under breathable woven hemp while we survey our estate masterplan!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'wrench',
+            bubble: '🔧 Chief Safety Scout Pip confirms: ropes are sealed tight!',
+            text: 'Aha! Chief Safety Scout Pip reporting! All weatherproof hemp ropes are tied snug and double-checked! So our young eco-explorer will unlock and uncover this cache with their own hands once our whole survey walk is finished?!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ Exactly, Pip! Our founder will uncover it after our tour!',
+            text: 'Spot on, Pip! We only explain where the cache sits. Once our journey across all 8 chapters is complete and we step out through the farm gate, our founder will pull back these ropes themselves to equip their trenching spade and broadfork!'
+          }
+        }
+      ]
     },
     2: {
       chapter: 2,
-      key: 'crew_shed',
-      title: 'Crew Headquarters & Workshop',
-      landmark: 'Crew Shed',
-      icon: '🏡',
-      skyIcon: '🏡',
-      forgerGreeting: "🏡 Welcome to our Craftsman Workshop! Forging an entire living forest requires skilled hands and community harmony. Here, dedicated eco-workers join our mission to tend trees, gather harvests, and build sustainable shelters!",
-      ceoGreeting: "🏡 Welcome to our Craftsman Workshop! Forging an entire living forest requires skilled hands and community harmony. Here, dedicated eco-workers join our mission to tend trees, gather harvests, and build sustainable shelters!",
-      dialogSummary: "The Crew Shed houses your farming crew. Hired workers automate weeding, watering, and harvesting!",
-      funFact: "Working together in eco-teams makes tree planting 3x faster and keeps our community thriving!",
-      actionTip: "Recruit dedicated field laborers to accelerate your regenerative estate!",
-      dreamMessage: "💭 I dream of a bustling ecological guild where skilled eco-craftsmen forge sustainable tools, shelter field crews, and multiply our restorative power across the meadows!"
+      title: 'Crew Headquarters, Storage & Mechanization',
+      spots: [
+        {
+          key: 'crew_shed',
+          landmark: 'Crew Craftsman Shed',
+          icon: '🏡',
+          standPoint: { left: 14.0, top: 68.0 },
+          touchPoint: { left: 13.2, top: 58.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🏡 Look Pip! Our {farmName} Shield is mounted right here!',
+            text: 'Here\'s our Craftsman Crew Shed, Pip! Look above the heavy oak lintel—our proud farm emblem shield for {farmName} is mounted right here, just like I promised at the entrance gate! In this workshop, dedicated field laborers rest, sharpen tools, and coordinate automated weeding, watering, and harvesting!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'wrench',
+            bubble: '🔧 Chief Mason Pip reporting! The {farmName} shield shines!',
+            text: 'Aha! Chief Mason Pip reporting for duty! The {farmName} shield shines brighter than a fresh polished copper kettle! Does that mean I can assign five helper field mice to turn the compost while I take an afternoon chamomile cocoa break by the workshop hearth?!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ Teamwork makes tree planting 3x faster!',
+            text: 'You bet, little buddy! Working together in eco-crews multiplies planting speed by three, giving everyone time to build, learn, and keep our {farmName} estate thriving!'
+          }
+        },
+        {
+          key: 'storage',
+          landmark: 'Granary Storage Barn',
+          icon: '🌾',
+          standPoint: { left: 52.0, top: 22.0 },
+          touchPoint: { left: 52.0, top: 12.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🌾 Behold our Granary Storage Barn, Pip!',
+            text: 'Behold our Granary Storage Barn, Pip! Elevated timber footings and natural louvered airflow keep our harvested grains, rye sheaves, and botanical tree seeds dry and safe without dampness, mold, or spoilage!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'hop',
+            bubble: '🧺 Can field mice get their own miniature acorn silo?!',
+            text: 'Dry seed storage! That\'s music to my mouse ears! Can harvest field mice get their own certified miniature acorn silo right next to the wheat sacks?!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ Every grain preserved supports zero food waste!',
+            text: 'Every seed is precious, Pip! Storing food cleanly and locally ensures we never waste a single harvest and keeps our community resilient throughout winter!'
+          }
+        },
+        {
+          key: 'garage',
+          landmark: 'Tractor Garage & Maintenance',
+          icon: '🚜',
+          standPoint: { left: 88.0, top: 34.0 },
+          touchPoint: { left: 91.0, top: 22.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🚜 Our Clean Mechanization Garage, Pip!',
+            text: 'And over here is our Agricultural Mechanization Garage! We house 100% electric tractors and bio-lubricated implements so heavy soil aeration runs with pure kinetic torque and zero diesel smoke!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'wand_wave',
+            bubble: '🚦 Green marshaling wands up! Tractor bay clear for parking!',
+            text: 'Wands up! Pip\'s high-candela green LEDs will marshal the Fendt electric tractor right into stall number one! Clear the driveway, big wheels incoming!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ Clean machinery protects our pristine alpine air!',
+            text: 'Flawless marshaling, Pip! Electric mechanization saves thousands of hours of manual labor while keeping our meadow air crisp, fresh, and smoke-free!'
+          }
+        }
+      ]
     },
     3: {
       chapter: 3,
-      key: 'garden',
-      title: 'Biodiversity Garden & Pollinator Sanctuary',
-      landmark: 'Bio-Garden',
-      icon: '🌸',
-      skyIcon: '🌸',
-      forgerGreeting: "🌸 Listen closely! Hear the gentle hum of native pollinators? This is our Biodiversity Sanctuary. Fragrant blossoms and nectar corridors nourish honeybees and butterflies that cross-pollinate our orchards so every canopy flourishes!",
-      ceoGreeting: "🌸 Listen closely! Hear the gentle hum of native pollinators? This is our Biodiversity Sanctuary. Fragrant blossoms and nectar corridors nourish honeybees and butterflies that cross-pollinate our orchards so every canopy flourishes!",
-      dialogSummary: "The Bio-Garden attracts pollinators that boost fruit yield and improve farm reputation!",
-      funFact: "One out of every three bites of food we eat depends directly on pollinating bees and butterflies!",
-      actionTip: "Plant native flowering hedgerows to invite companion pollinators!",
-      dreamMessage: "💭 I dream of thousands of gentle native pollinators humming between wildflower corridors, carrying life between orchards and forging resilient biological diversity!"
+      title: 'Biodiversity Sanctuary & Rotational Crops',
+      spots: [
+        {
+          key: 'garden',
+          landmark: 'Biodiversity Pollinator Sanctuary',
+          icon: '🌸',
+          standPoint: { left: 38.0, top: 84.0 },
+          touchPoint: { left: 38.0, top: 72.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🌸 Listen to the gentle hum of pollinators, Pip!',
+            text: 'Listen closely, Pip! Hear that busy hum? This is our Biodiversity Sanctuary. We plant vibrant lavender, coneflowers, and berry hedgerows so native bumblebees and butterflies feast on sweet nectar and cross-pollinate our fruit orchards!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'wand_wave',
+            bubble: '🚦 Look at the busy bees! Runway 3 open for incoming pollinators!',
+            text: 'Look at the busy bees! Look Shakir, I can marshal incoming bumblebees with my high-candela green LED wands! Runway 3 open on the lavender petals for heavy nectar cargo landing!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ 1 in 3 bites of food depends on pollinators!',
+            text: 'Outstanding marshaling, Pip! One out of every three bites of food we eat depends directly on those winged friends. Flowering corridors ensure our whole estate flourishes!'
+          }
+        },
+        {
+          key: 'crop_field',
+          landmark: 'Rotational 3-Bed Crop Field',
+          icon: '🌾',
+          standPoint: { left: 52.0, top: 92.0 },
+          touchPoint: { left: 52.0, top: 82.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🌾 Cycling legumes, root crops & brassicas, Pip!',
+            text: 'Look across our Rotational 3-Bed Crop Field, Pip! By alternating nitrogen-fixing legumes, root vegetables, and leafy brassicas, we naturally enrich the soil without synthetic chemicals or soil exhaustion!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'ear_sniff',
+            bubble: '🥕 Mmm! Does nitrogen-fixing make sweet carrots crunchier?!',
+            text: 'Mmm, sweet clover and baby carrots! Does natural nitrogen-fixing make organic field carrots extra crunchy for toddler scouts?!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ Crop rotation stops pests and supercharges soil nutrition!',
+            text: 'Infinitely crunchier, Pip! Crop rotation breaks pest lifecycles naturally, producing nutrient-dense food that strengthens both humans and the living earth!'
+          }
+        },
+        {
+          key: 'garden_walk',
+          landmark: 'Heritage Timber Boardwalk',
+          icon: '🪵',
+          standPoint: { left: 32.0, top: 66.0 },
+          touchPoint: { left: 32.0, top: 59.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🪵 Permeable timber boardwalk protects soil mycelium!',
+            text: 'And step onto our Heritage Garden Boardwalk, Pip! Raised larch-wood decking lets visitors and gardeners walk through the blooming sanctuary without crushing delicate fungal mycelium networks in the humus below!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'hop',
+            bubble: '👟 Waffle sneakers love the wooden boardwalk planks!',
+            text: 'My lime-green waffle sneakers love this smooth larch wood! Zero mud, maximum traction, and all the underground mushroom threads stay happy and safe!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ Low-impact infrastructure preserves living soil integrity!',
+            text: 'Spot on, Pip! Low-impact infrastructure allows humans to observe and care for nature without disrupting the delicate ecological web underneath!'
+          }
+        }
+      ]
     },
     4: {
       chapter: 4,
-      key: 'pond',
-      title: 'Hydrological Eco-Pond & Reservoir',
-      landmark: 'Eco-Pond',
-      icon: '💧',
-      skyIcon: '💧',
-      forgerGreeting: "💧 Pure mountain water is life! Our natural hydrological pond captures clean rain and snowmelt runoff. Filtered through gravel and aquatic reeds, it provides drought-resilient hydration so seedlings never thirst!",
-      ceoGreeting: "💧 Pure mountain water is life! Our natural hydrological pond captures clean rain and snowmelt runoff. Filtered through gravel and aquatic reeds, it provides drought-resilient hydration so seedlings never thirst!",
-      dialogSummary: "The Eco-Pond stores fresh rainwater to irrigate all 6 farm plots throughout the seasons.",
-      funFact: "Trees drink water from underground and gently evaporate moisture from their leaves to help create fresh rain clouds!",
-      actionTip: "Conserve seasonal rainwater to nourish your botanical seedlings year-round!",
-      dreamMessage: "💭 I dream of pure mountain rainfall gathered in natural wetland basins, cooling the microclimate and quenching our growing canopies even under the summer sun!"
+      title: 'Hydrological Living Waters & Pasture',
+      spots: [
+        {
+          key: 'pond',
+          landmark: 'Hydrological Living Waters Eco-Pond',
+          icon: '💧',
+          standPoint: { left: 38.0, top: 32.0 },
+          touchPoint: { left: 38.0, top: 20.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '💧 Mountain water is pure life, Pip!',
+            text: 'Behold our Hydrological Eco-Pond, Pip! Every drop of alpine rain and snowmelt runoff collects here. Layered gravel beds and natural aquatic reeds filter the water, storing drought-proof hydration for all our botanical plots!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'hop',
+            bubble: '🫖 Can I fill my vintage copper alpine kettle here?!',
+            text: 'Ooh! Crisp mountain water! Can I fill my vintage copper alpine kettle right here to brew a big batch of wild mint tea for our thirsty planting crew?!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ Natural reeds purify water and cool the microclimate!',
+            text: 'Go right ahead, Pip! Natural reed beds cleanse runoff so thoroughly it revitalizes our trees, cools the local microclimate, and quenches every seedling throughout the dry summer!'
+          }
+        },
+        {
+          key: 'cattle_farm',
+          landmark: 'Simmental Cow Shed & Pasture',
+          icon: '🐄',
+          standPoint: { left: 8.0, top: 40.0 },
+          touchPoint: { left: 5.5, top: 28.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🐄 Closed-loop rotational pasture grazing, Pip!',
+            text: 'Here is our Simmental Cow Shed & Pasture! Heritage alpine cattle graze on native clover and rye grass, naturally aerating the pasture with their hooves while their aged manure enriches our bio-compost with active enzymes!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'hop',
+            bubble: '🐮 Hello friendly alpine cows! Safety scout Pip certified this fence!',
+            text: 'Hello gentle giant cows! Safety scout Pip personally inspected every timber fence post with his torque wrench — zero squeaks, certified safe!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ Circular bio-compost closes the nutrient loop!',
+            text: 'Wonderful work, Pip! Combining livestock rotation with organic farming closes our nutrient loop so nothing is imported and nothing is wasted!'
+          }
+        }
+      ]
     },
     5: {
       chapter: 5,
-      key: 'energy_storage',
       title: 'Clean Energy Storage & Renewables',
-      landmark: 'Solar & Wind BESS',
-      icon: '⚡',
-      skyIcon: '⚡',
-      forgerGreeting: "⚡ Clean kinetic energy! Look up at our silent wind turbines and bio-storage banks! All our irrigation pumps and estate equipment operate on 100% renewable wind and solar power — zero smoke, zero emissions!",
-      ceoGreeting: "⚡ Clean kinetic energy! Look up at our silent wind turbines and bio-storage banks! All our irrigation pumps and estate equipment operate on 100% renewable wind and solar power — zero smoke, zero emissions!",
-      dialogSummary: "The BESS (Battery Energy Storage System) stores clean solar and wind power for zero-emission farming.",
-      funFact: "In just 60 minutes, the sun provides enough clean solar energy to power our entire world for a full year!",
-      actionTip: "Harness natural mountain winds to power all estate irrigation pumps cleanly!",
-      dreamMessage: "💭 I dream of catching mountain breezes with silent aero-turbines, powering clean irrigation with 100% renewable energy and leaving zero smoke behind!"
+      spots: [
+        {
+          key: 'energy_storage',
+          landmark: 'BESS Microgrid Substation',
+          icon: '⚡',
+          standPoint: { left: 7.0, top: 68.0 },
+          touchPoint: { left: 4.5, top: 58.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '⚡ Silent wind turbines & clean batteries, Pip!',
+            text: 'Look up at our silent aero-turbines and solar bio-storage banks, Pip! All our irrigation pumps and estate lights run on 100% clean kinetic power — zero smoke, zero greenhouse emissions!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'wrench',
+            bubble: '🔧 Zero smoke?! No coughing for little field mice!',
+            text: 'Zero smoke?! That means no coughing for field mice and no smudgy soot on my Hawaiian floral shirt! Can I tighten the battery terminal bolts with my torque wrench?!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ 60 min of sunshine powers Earth for a whole year!',
+            text: 'Safety first, Apprentice Mason Pip! Just one hour of sunshine provides enough clean energy to power our entire world for a full year. Storing it in smart batteries keeps our alpine air crystal clear!'
+          }
+        },
+        {
+          key: 'wt_nw',
+          landmark: 'Ridge Aero-Turbines',
+          icon: '💨',
+          standPoint: { left: 24.0, top: 22.0 },
+          touchPoint: { left: 24.0, top: 10.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '💨 Silent mountain breezes generate kinetic electricity!',
+            text: 'Look up at our NW Ridge Wind Turbines, Pip! High-altitude alpine gusts turn these gearless aerodynamic composite blades, feeding continuous kinetic power straight into our microgrid day and night!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'wand_wave',
+            bubble: '🌪️ Clean wind power! Wands up for clean mountain breezes!',
+            text: 'Look at those sleek blades spin so quietly! Green marshaling wands up for clean mountain breezes!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ 100% Renewable energy powers all estate water pumps!',
+            text: 'Pure kinetic power, Pip! Harnessing natural wind allows our irrigation pumps and estate workshops to run with complete self-sufficiency!'
+          }
+        }
+      ]
     },
     6: {
       chapter: 6,
-      key: 'juice_bar',
-      title: 'Organic Grove Press & Artisan Kiosk',
-      landmark: 'Juice Bar',
-      icon: '🍎',
-      skyIcon: '🍎',
-      forgerGreeting: "🍎 Crisp, healthy abundance! When our fruit trees mature, our grove press transforms crisp apples and berries into nutrient-rich artisan juices. Friendly local neighbors visit our pavilion, supporting your farm with golden coins!",
-      ceoGreeting: "🍎 Crisp, healthy abundance! When our fruit trees mature, our grove press transforms crisp apples and berries into nutrient-rich artisan juices. Friendly local neighbors visit our pavilion, supporting your farm with golden coins!",
-      dialogSummary: "The Juice Bar transforms farm produce into artisan recipes, attracting eco-tourists and earning treasury income.",
-      funFact: "Eating fresh locally grown organic fruit reduces food transportation carbon emissions to nearly zero!",
-      actionTip: "Process fresh organic fruit to earn sustainable estate revenue!",
-      dreamMessage: "💭 I dream of branches laden with heritage apples and berries, crushed into vibrant, vitamin-rich juices that nourish our community and sustain our farm!"
+      title: 'Organic Grove Press & Gasthof Stube',
+      spots: [
+        {
+          key: 'juice_bar',
+          landmark: 'Organic Grove Press & Juice Bar',
+          icon: '🍎',
+          standPoint: { left: 67.0, top: 84.0 },
+          touchPoint: { left: 67.0, top: 72.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🍎 Crisp, sweet heritage abundance, Pip!',
+            text: 'Take a deep breath, Pip! Smell that fresh aroma? Our Organic Grove Press crushes heritage apples and berries into vitamin-rich artisan juices. Friendly eco-tourists stop by our kiosk, supporting our farm treasury with golden coins!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'ear_sniff',
+            bubble: '🍎 Do safety scouts get a free splash in our willow basket?!',
+            text: 'Mmm! Sweet apple cider! Do safety scouts with high-traction sneakers get a free splash in their willow baskets after inspecting the fruit crates?!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ Local fruit press cuts food transport emissions to zero!',
+            text: 'You definitely earned a generous glass, Pip! Crushing and enjoying organic fruit right on the farm cuts food transportation emissions to nearly zero and funds our next planting expansions!'
+          }
+        },
+        {
+          key: 'coffee_shop',
+          landmark: 'Alpenhof Gasthof Stuben & Terrace',
+          icon: '🍽️',
+          standPoint: { left: 67.0, top: 32.0 },
+          touchPoint: { left: 67.0, top: 20.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🍽️ Stone-pine Zirbe timber & farm-to-table hospitality!',
+            text: 'And here is our Alpenhof Gasthof Stube & Terrace, Pip! Crafted from aromatic Bavarian Zirbe stone-pine, its natural pinosylvin terpenes calm the heart rate while visitors enjoy farm-to-table organic meals!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'hop',
+            bubble: '🥣 Can I sit at the corner table by the warm stove?!',
+            text: 'Ahhh! Warm stone-pine aroma and hot veggie soup! Can Pip reserve a corner table right by the serpentine soapstone stove?!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ Psychophysical wellness and community connection in harmony!',
+            text: 'Of course, Pip! Regenerative farming isn\'t just about soil — it\'s about community wellness, gathering together, and restoring our relationship with the land!'
+          }
+        }
+      ]
     },
     7: {
       chapter: 7,
-      key: 'eco_passport',
       title: 'Global Biome Gateway & Eco-Passport',
-      landmark: 'Eco-Passport',
-      icon: '🌍',
-      skyIcon: '🌍',
-      forgerGreeting: "🌍 Behold your official SearchO2 Eco-Passport! Our German farm is just the threshold of a worldwide planetary restoration. As your estate flourishes, you will journey to protect the fragile coral reefs of Saint Martin and reforest degraded biomes!",
-      ceoGreeting: "🌍 Behold your official SearchO2 Eco-Passport! Our German farm is just the threshold of a worldwide planetary restoration. As your estate flourishes, you will journey to protect the fragile coral reefs of Saint Martin and reforest degraded biomes!",
-      dialogSummary: "Your Eco-Passport tracks global restoration milestones and unlocks new planetary biomes across the globe.",
-      funFact: "Earth has 14 diverse biomes, and every single one plays a vital role in balancing planetary climate!",
-      actionTip: "Earn exploration stamps to unlock worldwide planetary conservation biomes!",
-      dreamMessage: "💭 I dream beyond our German meadows — stamping your Eco-Passport as we restore coral reefs in Saint Martin and reforest degraded biomes across Earth!"
+      spots: [
+        {
+          key: 'eco_passport',
+          landmark: 'Global Biome Gateway & Eco-Passport',
+          icon: '🌍',
+          standPoint: { left: 79.0, top: 25.0 },
+          touchPoint: { left: 79.0, top: 12.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🌍 Behold our Global Eco-Passport Gateway, Pip!',
+            text: 'Behold our Global Eco-Passport, Pip! Our Central European farm is just the threshold. As our estate flourishes, our passport unlocks planetary conservation journeys — from Caribbean coral reefs in Saint Martin to tropical mangrove restoration!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'wand_wave',
+            bubble: '🧳 Pack my basket! Global Scout Pip is ready!',
+            text: 'Pack my willow basket and alpine kettle! Global Scout Pip is ready to stamp passports from the Bavarian Alps all the way to coral barrier reefs!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '✨ Earth has 14 biomes, and every restored acre matters!',
+            text: 'That\'s the true planetary spirit, Pip! Earth has fourteen distinct biomes, and every single restored ecosystem strengthens the global atmospheric web that sustains all living things!'
+          }
+        }
+      ]
     },
     8: {
       chapter: 8,
-      key: 'space_mission',
       title: 'Orbital Oxygen Shuttle & Biosphere',
-      landmark: 'Space Shuttle',
-      icon: '🚀',
-      skyIcon: '🚀',
-      forgerGreeting: "🚀 3... 2... 1... Atmospheric liftoff! When our farm generates surplus clean oxygen, we compress canisters of pure breathable air aboard shuttle transports to supply orbital stations and seed living green biodomes across the cosmos!",
-      ceoGreeting: "🚀 3... 2... 1... Atmospheric liftoff! When our farm generates surplus clean oxygen, we compress canisters of pure breathable air aboard shuttle transports to supply orbital stations and seed living green biodomes across the cosmos!",
-      dialogSummary: "The Orbital Shuttle exports compressed oxygen canisters to space habitats, contributing to interplanetary terraforming.",
-      funFact: "Scientists study closed-loop plant biospheres right now to prepare for human missions to Mars!",
-      actionTip: "Supply clean compressed oxygen to support off-world orbital biospheres!",
-      dreamMessage: "💭 I dream of pure atmospheric oxygen compressed into orbital canisters, launching aboard ecological shuttles to seed living biodomes across the stars!"
+      spots: [
+        {
+          key: 'space_mission',
+          landmark: 'Orbital Oxygen Shuttle Launchpad',
+          icon: '🚀',
+          standPoint: { left: 83.0, top: 84.0 },
+          touchPoint: { left: 83.0, top: 72.0 },
+          turn1: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🚀 3... 2... 1... Atmospheric liftoff, Pip!',
+            text: 'Look at the Orbital Oxygen Shuttle Launchpad, Pip! When our flourishing canopies forge surplus pure oxygen, we compress breathable air canisters aboard ecological transports to supply orbital stations and seed living green biodomes across the cosmos!'
+          },
+          turn2: {
+            speaker: 'pip', name: 'Pip', role: 'Toddler Safety Scout', avatar: '🐭', anim: 'wand_wave',
+            bubble: '🚀 Shuttle cleared for liftoff! Pure oxygen canisters secured!',
+            text: 'Rocket clear for atmospheric liftoff! Pip to Mission Control: pure Bavarian oxygen canisters secured for space greenhouse domes!'
+          },
+          turn3: {
+            speaker: 'shakir', name: 'Shakir', role: '18+ Eco Forger', avatar: '🧑‍🌾',
+            bubble: '🎉 From living soil to the stars — our masterplan is forged!',
+            text: 'Liftoff achieved! From humble microbes in living soil all the way to orbital biospheres, we are forging an oxygen-rich future together! Outstanding scouting, Pip!'
+          }
+        }
+      ]
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Guide State
+  // ---------------------------------------------------------------------------
+  var guideState = {
+    active: false,
+    currentChapter: 1,
+    currentSpotIdx: 0,
+    currentDialogueTurn: 1,
+    isWalking: false,
+    walkerEl: null,
+    pipEl: null,
+    speechBubbleEl: null,
+    pipBubbleEl: null,
+    cooldownTimer: null,
+    cooldownRemaining: 0,
+    cooldownActive: false,
+    dialogueTimer: null,
+    voiceEnabled: true,
+    subtitlesVisible: true,
+    currentWalkToken: 0,
+    sequenceTimers: [],
+    suppressAutoBoot: false
+  };
+
+  try {
+    var storedVoice = localStorage.getItem('searchO2_tour_voice_enabled');
+    if (storedVoice !== null) {
+      guideState.voiceEnabled = (storedVoice === '1' || storedVoice === 'true');
+    }
+  } catch (e) {}
+
+  function clearSequenceTimers() {
+    for (var i = 0; i < guideState.sequenceTimers.length; i++) {
+      clearTimeout(guideState.sequenceTimers[i]);
+    }
+    guideState.sequenceTimers = [];
+  }
+
+  function addSequenceTimer(fn, delayMs) {
+    var t = setTimeout(function () {
+      fn();
+    }, delayMs);
+    guideState.sequenceTimers.push(t);
+    return t;
+  }
+
+  // ---------------------------------------------------------------------------
+  // SVG Renderers: Shakir & Pip
+  // ---------------------------------------------------------------------------
   function renderShakirFigureSvg(opts) {
     opts = opts || {};
     var w = opts.w || 56;
@@ -166,9 +520,8 @@
     var uid = opts.unique || 'shakir_' + Math.floor(Math.random() * 100000);
 
     return (
-      '<svg class="walker-svg shakir-walker-svg" viewBox="0 0 72 108" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Shakir - SearchO2 CEO & Farm Guide">' +
+      '<svg class="walker-svg shakir-walker-svg" viewBox="0 0 72 108" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Shakir - SearchO2 OxyEco Forger">' +
         '<defs>' +
-          // 1. Skin Gradients
           '<linearGradient id="shG_' + uid + '_skin" x1="0" y1="0" x2="1" y2="1">' +
             '<stop offset="0%" stop-color="#F5C7A9"/>' +
             '<stop offset="40%" stop-color="#DFA07A"/>' +
@@ -179,67 +532,40 @@
             '<stop offset="0%" stop-color="#FF8A80" stop-opacity="0.55"/>' +
             '<stop offset="100%" stop-color="#FF8A80" stop-opacity="0"/>' +
           '</radialGradient>' +
-
-          // 2. Hair Gradients (Textured Dark Chocolate with Anime Highlights)
-          '<radialGradient id="shG_' + uid + '_hair" cx="35%" cy="25%" r="75%">' +
+          '<linearGradient id="shG_' + uid + '_hair" x1="0" y1="0" x2="0.8" y2="1">' +
             '<stop offset="0%" stop-color="#5A3622"/>' +
             '<stop offset="45%" stop-color="#3D2314"/>' +
-            '<stop offset="85%" stop-color="#24140A"/>' +
-            '<stop offset="100%" stop-color="#140A05"/>' +
-          '</radialGradient>' +
-          '<linearGradient id="shG_' + uid + '_hairSpike" x1="0" y1="0" x2="0.8" y2="1">' +
-            '<stop offset="0%" stop-color="#6B422B"/>' +
-            '<stop offset="60%" stop-color="#3D2314"/>' +
             '<stop offset="100%" stop-color="#1E1008"/>' +
           '</linearGradient>' +
-
-          // 3. Shirt Gradients (Crisp White Jacket over Slate Undershirt)
+          '<linearGradient id="shG_' + uid + '_hairSpike" x1="0" y1="0" x2="1" y2="1">' +
+            '<stop offset="0%" stop-color="#78472E"/>' +
+            '<stop offset="50%" stop-color="#4A2B18"/>' +
+            '<stop offset="100%" stop-color="#241309"/>' +
+          '</linearGradient>' +
           '<linearGradient id="shG_' + uid + '_shirtWhite" x1="0" y1="0" x2="1" y2="1">' +
             '<stop offset="0%" stop-color="#FFFFFF"/>' +
             '<stop offset="60%" stop-color="#F1F5F9"/>' +
-            '<stop offset="85%" stop-color="#E2E8F0"/>' +
             '<stop offset="100%" stop-color="#CBD5E1"/>' +
           '</linearGradient>' +
-          '<linearGradient id="shG_' + uid + '_shirtGray" x1="0" y1="0" x2="0.8" y2="1">' +
-            '<stop offset="0%" stop-color="#CBD5E1"/>' +
-            '<stop offset="50%" stop-color="#94A3B8"/>' +
+          '<linearGradient id="shG_' + uid + '_shirtGray" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#94A3B8"/>' +
             '<stop offset="100%" stop-color="#64748B"/>' +
           '</linearGradient>' +
-
-          // 4. Shorts Gradients (Farm Cargo Brown)
-          '<linearGradient id="shG_' + uid + '_shorts" x1="0" y1="0" x2="0.7" y2="1">' +
-            '<stop offset="0%" stop-color="#92400E"/>' +
-            '<stop offset="45%" stop-color="#78350F"/>' +
-            '<stop offset="85%" stop-color="#582408"/>' +
-            '<stop offset="100%" stop-color="#3C1704"/>' +
+          '<linearGradient id="shG_' + uid + '_shorts" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#9A4D1C"/>' +
+            '<stop offset="50%" stop-color="#78350F"/>' +
+            '<stop offset="100%" stop-color="#451A03"/>' +
           '</linearGradient>' +
-
-          // 5. Boots Gradients (Two-Tone: Forest Green Upper & Dark Brown Lug Sole)
-          '<linearGradient id="shG_' + uid + '_bootGreen" x1="0" y1="0" x2="1" y2="1">' +
-            '<stop offset="0%" stop-color="#22C55E"/>' +
-            '<stop offset="40%" stop-color="#166534"/>' +
-            '<stop offset="85%" stop-color="#14532D"/>' +
+          '<linearGradient id="shG_' + uid + '_bootGreen" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#166534"/>' +
+            '<stop offset="50%" stop-color="#14532D"/>' +
             '<stop offset="100%" stop-color="#052E16"/>' +
           '</linearGradient>' +
-          '<linearGradient id="shG_' + uid + '_bootSole" x1="0" y1="0" x2="0.6" y2="1">' +
-            '<stop offset="0%" stop-color="#5D4037"/>' +
-            '<stop offset="50%" stop-color="#3B2314"/>' +
-            '<stop offset="100%" stop-color="#1B0F08"/>' +
+          '<linearGradient id="shG_' + uid + '_bootSole" x1="0" y1="0" x2="1" y2="0">' +
+            '<stop offset="0%" stop-color="#3B2314"/>' +
+            '<stop offset="50%" stop-color="#22140A"/>' +
+            '<stop offset="100%" stop-color="#0F0904"/>' +
           '</linearGradient>' +
-
-          // 6. Backpack Gradients (Royal Navy Blue with Slate Flap)
-          '<linearGradient id="shG_' + uid + '_bagBlue" x1="0" y1="0" x2="1" y2="1">' +
-            '<stop offset="0%" stop-color="#2563EB"/>' +
-            '<stop offset="50%" stop-color="#1E3A8A"/>' +
-            '<stop offset="100%" stop-color="#0F172A"/>' +
-          '</linearGradient>' +
-          '<linearGradient id="shG_' + uid + '_bagFlap" x1="0" y1="0" x2="0.7" y2="1">' +
-            '<stop offset="0%" stop-color="#64748B"/>' +
-            '<stop offset="50%" stop-color="#475569"/>' +
-            '<stop offset="100%" stop-color="#1E293B"/>' +
-          '</linearGradient>' +
-
-          // 7. High-Tech Cyan Gadget / Scanner
           '<linearGradient id="shG_' + uid + '_device" x1="0" y1="0" x2="1" y2="1">' +
             '<stop offset="0%" stop-color="#38BDF8"/>' +
             '<stop offset="50%" stop-color="#0EA5E9"/>' +
@@ -250,8 +576,6 @@
             '<stop offset="50%" stop-color="#67E8F9"/>' +
             '<stop offset="100%" stop-color="#22D3EE"/>' +
           '</linearGradient>' +
-
-          // 8. SearchO2 CEO Badge (Gold Rim & Emerald Center)
           '<linearGradient id="shG_' + uid + '_badgeGold" x1="0" y1="0" x2="1" y2="1">' +
             '<stop offset="0%" stop-color="#FDE047"/>' +
             '<stop offset="50%" stop-color="#EAB308"/>' +
@@ -262,15 +586,11 @@
             '<stop offset="50%" stop-color="#22C55E"/>' +
             '<stop offset="100%" stop-color="#15803D"/>' +
           '</radialGradient>' +
-
-'          // 9. Charcoal Technical Gloves' +
           '<linearGradient id="shG_' + uid + '_glove" x1="0" y1="0" x2="1" y2="1">' +
             '<stop offset="0%" stop-color="#475569"/>' +
             '<stop offset="50%" stop-color="#334155"/>' +
             '<stop offset="100%" stop-color="#1E293B"/>' +
           '</linearGradient>' +
-
-          // 10. Wonder Stick Gradients (Forging Rod / Eco-Wand)
           '<linearGradient id="shG_' + uid + '_stickShaft" x1="0" y1="0" x2="1" y2="1">' +
             '<stop offset="0%" stop-color="#FDE047"/>' +
             '<stop offset="35%" stop-color="#F59E0B"/>' +
@@ -284,223 +604,82 @@
             '<stop offset="100%" stop-color="#064E3B"/>' +
           '</radialGradient>' +
         '</defs>' +
-
-        // 1. Soft Volumetric Ground Shadow
+        // Ground Shadow
         '<ellipse class="av-shadow" cx="36" cy="94" rx="19" ry="6" fill="rgba(15,23,42,0.32)"/>' +
-        '<ellipse class="av-shadow-core" cx="36" cy="94.5" rx="11" ry="3.5" fill="rgba(15,23,42,0.22)"/>' +
-
-        // 2. Left Leg & Forest Green Hiking Boot
+        // Legs & Boots
         '<g class="av-leg-left">' +
-          // Brown Cargo Shorts Leg
           '<rect x="23" y="58" width="9.5" height="13" rx="3.5" fill="url(#shG_' + uid + '_shorts)"/>' +
-          // Skin Knee
           '<rect x="24.5" y="69" width="7" height="9" rx="2" fill="url(#shG_' + uid + '_skin)"/>' +
-          // Dark Charcoal Ribbed Sock
           '<rect x="24" y="76" width="7.8" height="5.5" rx="1.5" fill="#1F2937"/>' +
-          '<line x1="24.5" y1="78" x2="31.5" y2="78" stroke="#374151" stroke-width="0.75"/>' +
-          // 3D Forest Green Boot Upper
           '<path d="M22.5 80 L33.5 80 L34.5 88 L21.5 88 Z" fill="url(#shG_' + uid + '_bootGreen)" stroke="#052E16" stroke-width="0.6"/>' +
-          // Boot Toe Cap
-          '<path d="M21 86 Q28 89.5 35 86 L35 89 Q28 92.5 21 89 Z" fill="#14532D" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>' +
-          // Lug Sole (Dark Brown Rubber)
           '<path d="M20.5 89 L35.5 89 L35 92.5 L21 92.5 Z" fill="url(#shG_' + uid + '_bootSole)"/>' +
         '</g>' +
-
-        // 3. Right Leg & Forest Green Hiking Boot (Slightly Forward Stride)
         '<g class="av-leg-right">' +
-          // Brown Cargo Shorts Leg
           '<rect x="39" y="58" width="9.5" height="13" rx="3.5" fill="url(#shG_' + uid + '_shorts)"/>' +
-          // Cargo Pocket Detail on Right Hip
-          '<rect x="46" y="61" width="3.2" height="6" rx="1.2" fill="#582408" stroke="#3C1704" stroke-width="0.5"/>' +
-          // Skin Knee
           '<rect x="40.5" y="69" width="7" height="9" rx="2" fill="url(#shG_' + uid + '_skin)"/>' +
-          // Dark Charcoal Ribbed Sock
           '<rect x="40" y="76" width="7.8" height="5.5" rx="1.5" fill="#1F2937"/>' +
-          '<line x1="40.5" y1="78" x2="47.5" y2="78" stroke="#374151" stroke-width="0.75"/>' +
-          // 3D Forest Green Boot Upper
           '<path d="M38.5 80 L49.5 80 L50.5 88 L37.5 88 Z" fill="url(#shG_' + uid + '_bootGreen)" stroke="#052E16" stroke-width="0.6"/>' +
-          // Boot Toe Cap
-          '<path d="M37 86 Q44 89.5 51 86 L51 89 Q44 92.5 37 89 Z" fill="#14532D" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>' +
-          // Lug Sole (Dark Brown Rubber)
           '<path d="M36.5 89 L51.5 89 L51 92.5 L37 92.5 Z" fill="url(#shG_' + uid + '_bootSole)"/>' +
         '</g>' +
-
-        // 4. Volumetric Torso Prism (Supports Front & Back 2.5D Isometric 360°)
+        // Torso
         '<g class="av-torso">' +
-          // --- Back View (Facing North / Facing Away) ---
-          '<g class="av-torso-back">' +
-            // Base White Jacket Back
-            '<path d="M21 34 L36 31 L51 34 L48 59 L24 59 Z" fill="url(#shG_' + uid + '_shirtWhite)" stroke="#CBD5E1" stroke-width="0.75"/>' +
-            // Full Royal Navy Blue Backpack
-            '<g class="av-backpack">' +
-              // Backpack Drop Shadow
-              '<rect x="23" y="33" width="26" height="23" rx="4.5" fill="rgba(15,23,42,0.35)"/>' +
-              // Main Blue Body
-              '<rect x="24" y="32" width="24" height="22" rx="4" fill="url(#shG_' + uid + '_bagBlue)" stroke="#0F172A" stroke-width="0.8"/>' +
-              // Top Slate Flap
-              '<path d="M23.5 32 Q36 30 48.5 32 L47.5 38.5 Q36 36.5 24.5 38.5 Z" fill="url(#shG_' + uid + '_bagFlap)" stroke="#1E293B" stroke-width="0.6"/>' +
-              // Outer Pocket
-              '<rect x="27.5" y="42" width="17" height="10" rx="2.5" fill="url(#shG_' + uid + '_bagBlue)" stroke="#1E293B" stroke-width="0.6"/>' +
-              // Dual Shoulder Straps
-              '<line x1="28" y1="32" x2="28" y2="54" stroke="#475569" stroke-width="1.8"/>' +
-              '<line x1="44" y1="32" x2="44" y2="54" stroke="#475569" stroke-width="1.8"/>' +
-              // Rolled Explorer Bedroll below pack
-              '<rect x="23.5" y="53" width="25" height="4.5" rx="2.2" fill="#14532D" stroke="#052E16" stroke-width="0.6"/>' +
-            '</g>' +
-          '</g>' +
-
-          // --- Front View (Facing South / Facing Camera) ---
           '<g class="av-torso-front">' +
-            // Inner Grey Undershirt Collar
             '<path d="M30 33 L36 38 L42 33 Z" fill="url(#shG_' + uid + '_shirtGray)"/>' +
-            // Main White Adventure Jacket
             '<path d="M21 34 L36 31 L51 34 L48 59 L24 59 Z" fill="url(#shG_' + uid + '_shirtWhite)" stroke="#CBD5E1" stroke-width="0.8"/>' +
-            // Lit Shoulder Yoke Facets
-            '<polygon class="av-torso-yoke" points="22,34 36,31 50,34 46,38 26,38" fill="#FFFFFF" opacity="0.65"/>' +
-            // Left Shaded Flank / Right Lit Flank
-            '<polygon class="av-torso-flank-left" points="21,34 26,38 28,59 24,59" fill="#CBD5E1" opacity="0.55"/>' +
-            '<polygon class="av-torso-flank-right" points="51,34 46,38 44,59 48,59" fill="#FFFFFF" opacity="0.45"/>' +
-            // Center Zip Seam
             '<line x1="36" y1="31" x2="36" y2="54" stroke="#94A3B8" stroke-width="1.1"/>' +
-
-            // Backpack Straps on Chest
             '<line x1="27" y1="34" x2="27" y2="56" stroke="#475569" stroke-width="2.2"/>' +
             '<line x1="45" y1="34" x2="45" y2="56" stroke="#475569" stroke-width="2.2"/>' +
-
-            // Signature SearchO2 CEO Badge (Gold rim + Emerald core with clean eco leaf)
             '<g class="shakir-ceo-badge" transform="translate(42, 40)">' +
               '<circle cx="4" cy="4" r="4.2" fill="url(#shG_' + uid + '_badgeGold)" stroke="#78350F" stroke-width="0.5"/>' +
               '<circle cx="4" cy="4" r="3.1" fill="url(#shG_' + uid + '_badgeGreen)"/>' +
-              '<circle cx="3.2" cy="3.2" r="1.1" fill="#FFFFFF" opacity="0.6"/>' +
             '</g>' +
-
-            // Cargo Shorts Waistband & Gold Buckle
             '<rect x="23" y="55" width="26" height="5" rx="1.5" fill="url(#shG_' + uid + '_shorts)"/>' +
             '<rect x="33.5" y="54.5" width="5" height="5.5" rx="1.2" fill="#EAB308" stroke="#CA8A04" stroke-width="0.6"/>' +
           '</g>' +
         '</g>' +
-
-        // 5. Left Arm (Relaxed Counter-Swing with Charcoal Technical Glove)
+        // Arms
         '<g class="av-arm-left">' +
-          // White Sleeve
           '<rect x="13.5" y="33" width="8" height="9" rx="3" fill="url(#shG_' + uid + '_shirtWhite)" stroke="#CBD5E1" stroke-width="0.6"/>' +
-          // Grey Undershirt Forearm
           '<rect x="14" y="41" width="7" height="12" rx="2.5" fill="url(#shG_' + uid + '_shirtGray)"/>' +
-          // Charcoal Technical Glove
           '<rect x="13.5" y="52" width="8" height="7.5" rx="2.8" fill="url(#shG_' + uid + '_glove)" stroke="#1E293B" stroke-width="0.5"/>' +
-          '<circle cx="15.5" cy="54" r="0.8" fill="#64748B"/>' +
         '</g>' +
-
-        // 6. Right Arm (Holding High-Tech Cyan Scanning PDA / Gadget)
         '<g class="av-arm-right shakir-scanner-arm">' +
-          // White Sleeve
           '<rect x="50.5" y="33" width="8" height="9" rx="3" fill="url(#shG_' + uid + '_shirtWhite)" stroke="#CBD5E1" stroke-width="0.6"/>' +
-          // Grey Undershirt Forearm
           '<rect x="51" y="41" width="7" height="11" rx="2.5" fill="url(#shG_' + uid + '_shirtGray)"/>' +
-          // Charcoal Technical Glove
           '<rect x="50.5" y="50" width="8" height="7.5" rx="2.8" fill="url(#shG_' + uid + '_glove)" stroke="#1E293B" stroke-width="0.5"/>' +
-
-          // High-Tech Handheld Cyan Scanner / Tracker (from shakir.html lines 322-328)
           '<g class="shakir-device" transform="translate(48, 52)">' +
-            // Chassis Box
             '<rect x="0" y="2" width="12" height="16" rx="2.8" fill="url(#shG_' + uid + '_device)" stroke="#0284C7" stroke-width="0.7"/>' +
-            // Holographic Screen
             '<rect x="1.5" y="3.5" width="9" height="10" rx="1.5" fill="url(#shG_' + uid + '_screen)" stroke="#0369A1" stroke-width="0.5"/>' +
-            // Holographic Scan Grid & Data Blips
-            '<line x1="2" y1="6.5" x2="9.5" y2="6.5" stroke="#FFFFFF" stroke-width="0.6" opacity="0.8"/>' +
-            '<line x1="2" y1="9.5" x2="9.5" y2="9.5" stroke="#FFFFFF" stroke-width="0.6" opacity="0.6"/>' +
-            '<circle cx="4" cy="5" r="0.8" fill="#16A34A"/>' +
-            '<circle cx="7.5" cy="5" r="0.8" fill="#22C55E"/>' +
-            // Antenna / Sensor Lens
-            '<rect x="4.5" y="0" width="3" height="2.5" rx="1" fill="#38BDF8"/>' +
-            '<circle cx="6" cy="1" r="0.75" fill="#67E8F9"/>' +
           '</g>' +
-
-          // Wonder Stick (Forging Rod / Eco-Wand for OxyEco Forger)
           '<g class="shakir-wonder-stick" transform="translate(54, 46)">' +
             '<rect x="-1.8" y="-24" width="3.6" height="34" rx="1.8" fill="url(#shG_' + uid + '_stickShaft)" stroke="#B45309" stroke-width="0.6"/>' +
             '<path d="M-1.8 -20 Q1.8 -16 -1.8 -12 Q1.8 -8 -1.8 -4 Q1.8 0 -1.8 4" fill="none" stroke="#10B981" stroke-width="1.1" stroke-linecap="round"/>' +
-            '<polygon points="-3.5,-24 3.5,-24 2.8,-27 -2.8,-27" fill="#F59E0B" stroke="#B45309" stroke-width="0.5"/>' +
-            '<circle cx="0" cy="-30" r="5" fill="url(#shG_' + uid + '_stickOrb)" stroke="#34D399" stroke-width="1.2" filter="drop-shadow(0 0 5px #10B981)"/>' +
-            '<polygon points="0,-33 1.2,-31 3.2,-31 1.6,-29.5 2.2,-27.5 0,-28.8 -2.2,-27.5 -1.6,-29.5 -3.2,-31 -1.2,-31" fill="#FFFFFF"/>' +
-            '<circle cx="-4" cy="-28" r="0.75" fill="#FDE047" opacity="0.9"/>' +
-            '<circle cx="4" cy="-32" r="0.75" fill="#67E8F9" opacity="0.9"/>' +
+            '<circle cx="0" cy="-30" r="5" fill="url(#shG_' + uid + '_stickOrb)" stroke="#34D399" stroke-width="1.2"/>' +
           '</g>' +
         '</g>' +
-
-        // 7. Volumetric Head, Messy Anime Hair Spikes & Welcoming Face
+        // Head
         '<g class="av-head">' +
-          // --- Back View (Facing North) ---
-          '<g class="av-head-back">' +
-            // Neck nape
-            '<path d="M32 28 L40 28 L40 33 L32 33 Z" fill="#C58562"/>' +
-            // Base Hair Dome
-            '<circle cx="36" cy="20" r="13" fill="url(#shG_' + uid + '_hair)" stroke="#1E1008" stroke-width="0.7"/>' +
-            // Rear Anime Hair Spikes
-            '<polygon points="26,16 23,8 30,12" fill="url(#shG_' + uid + '_hairSpike)"/>' +
-            '<polygon points="32,13 36,5 40,13" fill="url(#shG_' + uid + '_hairSpike)"/>' +
-            '<polygon points="42,14 48,8 45,17" fill="url(#shG_' + uid + '_hairSpike)"/>' +
-            '<polygon points="23,22 17,16 25,18" fill="url(#shG_' + uid + '_hairSpike)"/>' +
-            '<polygon points="47,20 54,16 47,24" fill="url(#shG_' + uid + '_hairSpike)"/>' +
-          '</g>' +
-
-          // --- Front View (Facing South / Facing Camera) ---
           '<g class="av-head-front">' +
-            // Neck
             '<path d="M32 28 L40 28 L40 33 L32 33 Z" fill="url(#shG_' + uid + '_skin)"/>' +
-            // 3D Isometric Ears
-            '<path class="av-ear-left" d="M22 19 Q18 21.5 22 24.5 Z" fill="#C58562" stroke="#A86B49" stroke-width="0.5"/>' +
-            '<path class="av-ear-right" d="M50 19 Q54 21.5 50 24.5 Z" fill="#DFA07A" stroke="#C58562" stroke-width="0.5"/>' +
-
-            // Main Head Dome
+            '<path class="av-ear-left" d="M22 18.5 Q17 21.5 22 25 Z" fill="#DFA07A" stroke="#A86B49" stroke-width="0.7"/>' +
+            '<path class="av-ear-right" d="M50 18.5 Q55 21.5 50 25 Z" fill="#E8B494" stroke="#C58562" stroke-width="0.7"/>' +
             '<circle cx="36" cy="20" r="12.5" fill="url(#shG_' + uid + '_skin)" stroke="#C58562" stroke-width="0.6"/>' +
-
-            // Cheerful CEO Eyes (Big, friendly anime style with double specular catches)
             '<g class="av-face-features">' +
-              // Left Eye
               '<ellipse cx="31.5" cy="20.5" rx="2.3" ry="2.7" fill="#1E293B"/>' +
               '<circle cx="31" cy="19.5" r="1" fill="#FFFFFF"/>' +
-              '<circle cx="32.5" cy="21.5" r="0.5" fill="#FFFFFF"/>' +
-              '<path d="M29.5 16.5 Q32 15 34.5 17" fill="none" stroke="#3D2314" stroke-width="1.1" stroke-linecap="round"/>' +
-
-              // Right Eye
               '<ellipse cx="40.5" cy="20.5" rx="2.3" ry="2.7" fill="#1E293B"/>' +
               '<circle cx="40" cy="19.5" r="1" fill="#FFFFFF"/>' +
-              '<circle cx="41.5" cy="21.5" r="0.5" fill="#FFFFFF"/>' +
-              '<path d="M37.5 17 Q40 15 42.5 16.5" fill="none" stroke="#3D2314" stroke-width="1.1" stroke-linecap="round"/>' +
-
-              // Cute Rounded Nose
               '<path d="M35 21.5 Q36 23.5 37 21.5" fill="none" stroke="#C58562" stroke-width="1.1" stroke-linecap="round"/>' +
-
-              // Cheerful Welcoming CEO Smile
               '<path d="M32 24.5 Q36 27.5 40 24.5" fill="none" stroke="#5A3622" stroke-width="1.5" stroke-linecap="round"/>' +
-
-              // Rosy Friendly Cheeks
               '<circle cx="28.5" cy="23.5" r="2.4" fill="url(#shG_' + uid + '_cheeks)"/>' +
               '<circle cx="43.5" cy="23.5" r="2.4" fill="url(#shG_' + uid + '_cheeks)"/>' +
             '</g>' +
-
-            // Iconic Messy Spiky Hair Structure (Front Volume & Dimensional Spikes from shakir.html)
             '<g class="shakir-hair-front">' +
-              // Hair Cap
               '<path d="M23 18 Q36 7 49 18 Q47 13 41 12 Q36 8 30 11 Q25 14 23 18 Z" fill="url(#shG_' + uid + '_hair)"/>' +
-
-              // Dimensional Spikes pointing outward and upward
-              // Left top spike
               '<polygon points="26,14 21,5 29,10" fill="url(#shG_' + uid + '_hairSpike)"/>' +
-              // Center-left high spike
               '<polygon points="29,11 31,3 36,9" fill="url(#shG_' + uid + '_hairSpike)"/>' +
-              // Center-right high spike
               '<polygon points="35,9 40,3 42,10" fill="url(#shG_' + uid + '_hairSpike)"/>' +
-              // Right top spike
               '<polygon points="42,10 49,6 45,15" fill="url(#shG_' + uid + '_hairSpike)"/>' +
-              // Left side spike framing face
-              '<polygon points="23,17 18,13 24,20" fill="url(#shG_' + uid + '_hairSpike)"/>' +
-              // Right side spike framing face
-              '<polygon points="48,17 53,13 47,21" fill="url(#shG_' + uid + '_hairSpike)"/>' +
-
-              // Front Messy Bangs curling over forehead
-              '<path d="M24 16 Q28 20 31 16 Q35 22 39 16 Q43 21 47 16" fill="none" stroke="url(#shG_' + uid + '_hairSpike)" stroke-width="3" stroke-linecap="round"/>' +
             '</g>' +
           '</g>' +
         '</g>' +
@@ -508,97 +687,170 @@
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Shakir Guide State Management
-  // ---------------------------------------------------------------------------
-  var guideState = {
-    active: false,
-    currentChapter: 1,
-    cooldownActive: false,
-    cooldownRemaining: 0,
-    cooldownTimer: null,
-    experienceUpdateTimer: null,
-    walkerEl: null,
-    speechBubbleEl: null,
-    currentWalkToken: 0,
-    dialogOpen: false,
-    sequenceTimers: []
-  };
+  function renderPipFigureSvg(opts) {
+    opts = opts || {};
+    var w = opts.w || 44;
+    var h = opts.h || 56;
+    var uid = opts.unique || 'pip_' + Math.floor(Math.random() * 100000);
 
-    // ---------------------------------------------------------------------------
-  // Sequence Timers & Cleanup Helpers
-  // ---------------------------------------------------------------------------
-  function clearSequenceTimers() {
-    if (guideState.sequenceTimers && guideState.sequenceTimers.length) {
-      guideState.sequenceTimers.forEach(function (t) {
-        clearTimeout(t);
-      });
-      guideState.sequenceTimers = [];
-    }
-    if (guideState.experienceUpdateTimer) {
-      clearTimeout(guideState.experienceUpdateTimer);
-      guideState.experienceUpdateTimer = null;
-    }
+    return (
+      '<svg class="walker-svg pip-mouse-svg" viewBox="0 0 140 170" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pip Squeak-a-Link - Safety Scout Mouse">' +
+        '<defs>' +
+          '<radialGradient id="pipG_' + uid + '_wand" cx="50%" cy="50%" r="50%">' +
+            '<stop offset="0%" stop-color="#4ADE80"/>' +
+            '<stop offset="70%" stop-color="#22C55E"/>' +
+            '<stop offset="100%" stop-color="#15803D"/>' +
+          '</radialGradient>' +
+          '<linearGradient id="pipG_' + uid + '_shirt" x1="0" y1="0" x2="1" y2="1">' +
+            '<stop offset="0%" stop-color="#22D3EE"/>' +
+            '<stop offset="100%" stop-color="#0891B2"/>' +
+          '</linearGradient>' +
+          '<linearGradient id="pipG_' + uid + '_shorts" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="#FB923C"/>' +
+            '<stop offset="100%" stop-color="#EA580C"/>' +
+          '</linearGradient>' +
+        '</defs>' +
+        // Ground shadow
+        '<ellipse cx="70" cy="164" rx="40" ry="6" fill="rgba(0,0,0,0.32)"/>' +
+        // Tail
+        '<g class="pip-tail">' +
+          '<path d="M 68 144 C 94 144, 118 135, 124 112 C 128 92, 114 78, 106 82 C 98 86, 104 98, 112 102 Z" fill="#F9A8D4" stroke="#F472B6" stroke-width="0.8"/>' +
+        '</g>' +
+        // Left Foot & Sneaker (Lime Green with Waffle Soles)
+        '<path d="M 50 148 L 62 148 L 64 160 L 44 160 Z" fill="#84CC16"/>' +
+        '<rect x="42" y="158" width="24" height="4" rx="1.5" fill="#E2E8F0" stroke="#94A3B8" stroke-width="0.8"/>' +
+        '<line x1="48" y1="160" x2="48" y2="162" stroke="#64748B" stroke-width="1.2"/>' +
+        '<line x1="54" y1="160" x2="54" y2="162" stroke="#64748B" stroke-width="1.2"/>' +
+        '<line x1="60" y1="160" x2="60" y2="162" stroke="#64748B" stroke-width="1.2"/>' +
+        // Right Foot & Sneaker (Lime Green with Waffle Soles)
+        '<path d="M 76 148 L 88 148 L 94 160 L 74 160 Z" fill="#84CC16"/>' +
+        '<rect x="72" y="158" width="24" height="4" rx="1.5" fill="#E2E8F0" stroke="#94A3B8" stroke-width="0.8"/>' +
+        '<line x1="78" y1="160" x2="78" y2="162" stroke="#64748B" stroke-width="1.2"/>' +
+        '<line x1="84" y1="160" x2="84" y2="162" stroke="#64748B" stroke-width="1.2"/>' +
+        '<line x1="90" y1="160" x2="90" y2="162" stroke="#64748B" stroke-width="1.2"/>' +
+        // Hi-Vis Orange Twill Shorts
+        '<path d="M 50 128 L 90 128 L 94 150 L 76 150 L 74 142 L 72 142 L 70 150 L 46 150 Z" fill="url(#pipG_' + uid + '_shorts)"/>' +
+        '<line x1="70" y1="128" x2="70" y2="142" stroke="#C2410C" stroke-width="1.5"/>' +
+        // Cyan Tropical Hawaiian Floral Shirt
+        '<path d="M 46 94 L 94 94 L 92 130 L 48 130 Z" fill="url(#pipG_' + uid + '_shirt)"/>' +
+        // Floral blossoms
+        '<circle cx="56" cy="104" r="2.5" fill="#FDE047"/>' +
+        '<circle cx="54" cy="102" r="1.5" fill="#FFFFFF"/>' +
+        '<circle cx="58" cy="102" r="1.5" fill="#FFFFFF"/>' +
+        '<circle cx="56" cy="106" r="1.5" fill="#FFFFFF"/>' +
+        '<circle cx="82" cy="108" r="2.5" fill="#FDE047"/>' +
+        '<circle cx="80" cy="106" r="1.5" fill="#FFFFFF"/>' +
+        '<circle cx="84" cy="106" r="1.5" fill="#FFFFFF"/>' +
+        '<circle cx="82" cy="110" r="1.5" fill="#FFFFFF"/>' +
+        '<circle cx="68" cy="118" r="2.5" fill="#FDE047"/>' +
+        '<circle cx="66" cy="116" r="1.5" fill="#FFFFFF"/>' +
+        '<circle cx="70" cy="116" r="1.5" fill="#FFFFFF"/>' +
+        '<ellipse cx="70" cy="104" rx="8" ry="10" fill="#F3E8D6"/>' +
+        // Insulated Yellow Electrical Torque Wrench on Hip
+        '<g class="pip-wrench-arm" transform="translate(42, 122)">' +
+          '<rect x="-2" y="0" width="5" height="18" rx="1.5" fill="#EAB308" stroke="#CA8A04" stroke-width="0.7"/>' +
+          '<path d="M -5 18 L 1 18 L 1 23 L -2 23 L -2 20 L -5 20 Z" fill="#94A3B8"/>' +
+        '</g>' +
+        // Unified Head Root Node
+        '<g class="pip-head-root">' +
+          '<g class="pip-ears">' +
+            '<circle cx="44" cy="46" r="18" fill="#9C744A"/>' +
+            '<circle cx="44" cy="46" r="12" fill="#F472B6"/>' +
+            '<circle cx="44" cy="46" r="7" fill="#FBCFE8"/>' +
+            '<circle cx="96" cy="46" r="18" fill="#9C744A"/>' +
+            '<circle cx="96" cy="46" r="12" fill="#F472B6"/>' +
+            '<circle cx="96" cy="46" r="7" fill="#FBCFE8"/>' +
+          '</g>' +
+          '<ellipse cx="70" cy="68" rx="22" ry="24" fill="#9C744A"/>' +
+          '<ellipse cx="70" cy="74" rx="14" ry="16" fill="#F3E8D6"/>' +
+          '<ellipse cx="70" cy="84" rx="4" ry="3.5" fill="#F472B6"/>' +
+          '<line x1="56" y1="83" x2="40" y2="80" stroke="#9C744A" stroke-width="1.2"/>' +
+          '<line x1="56" y1="86" x2="40" y2="87" stroke="#9C744A" stroke-width="1.2"/>' +
+          '<line x1="84" y1="83" x2="100" y2="80" stroke="#9C744A" stroke-width="1.2"/>' +
+          '<line x1="84" y1="86" x2="100" y2="87" stroke="#9C744A" stroke-width="1.2"/>' +
+          '<ellipse cx="61" cy="66" rx="4.5" ry="5.5" fill="#0F172A"/>' +
+          '<circle cx="62.5" cy="64.5" r="1.5" fill="#FFFFFF"/>' +
+          '<circle cx="59.5" cy="67.5" r="0.8" fill="#FFFFFF"/>' +
+          '<ellipse cx="79" cy="66" rx="4.5" ry="5.5" fill="#0F172A"/>' +
+          '<circle cx="80.5" cy="64.5" r="1.5" fill="#FFFFFF"/>' +
+          '<circle cx="77.5" cy="67.5" r="0.8" fill="#FFFFFF"/>' +
+        '</g>' +
+        // Marshaling Wands
+        '<g class="pip-wand-left">' +
+          '<rect x="22" y="80" width="8" height="36" rx="4" fill="url(#pipG_' + uid + '_wand)"/>' +
+          '<rect x="23" y="112" width="6" height="12" rx="2" fill="#EAB308"/>' +
+          '<circle cx="26" cy="80" r="6" fill="#4ADE80" opacity="0.65"/>' +
+          '<ellipse cx="28" cy="112" rx="5" ry="5" fill="#F3E8D6"/>' +
+        '</g>' +
+        '<g class="pip-wand-right">' +
+          '<rect x="108" y="80" width="8" height="36" rx="4" fill="url(#pipG_' + uid + '_wand)"/>' +
+          '<rect x="109" y="112" width="6" height="12" rx="2" fill="#EAB308"/>' +
+          '<circle cx="112" cy="80" r="6" fill="#4ADE80" opacity="0.65"/>' +
+          '<ellipse cx="110" cy="112" rx="5" ry="5" fill="#F3E8D6"/>' +
+        '</g>' +
+      '</svg>'
+    );
   }
 
-  function addSequenceTimer(fn, delay) {
-    var t = setTimeout(fn, delay);
-    guideState.sequenceTimers.push(t);
-    return t;
-  }
-
-  function clearChapterGhosts() {
-    hideShakirDreamCloud();
-    var ghosts = document.querySelectorAll('.s2-ghost-obj');
-    ghosts.forEach(function (g) {
-      if (g && g.parentNode) {
-        g.parentNode.removeChild(g);
-      }
-    });
-    var layer = document.getElementById('s2GhostLayer');
-    if (layer) {
-      layer.innerHTML = '';
-    }
-    if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.clearGhosts === 'function') {
-      try {
-        global.SearchO2HomeAvatar.clearGhosts(false);
-      } catch (e) {}
-    }
-    if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.hideObjectHoverModal === 'function') {
-      try {
-        global.SearchO2HomeAvatar.hideObjectHoverModal();
-      } catch (e) {}
-    }
-    var hoverModal = document.getElementById('s2ObjectHoverModal');
-    if (hoverModal) {
-      hoverModal.classList.add('hidden');
-    }
-  }
-
   // ---------------------------------------------------------------------------
-  // Ensure DOM Styles for Shakir & CEO Dialogs
+  // CSS Styles: Shakir, Pip, Non-Overlapping Bubbles, Dynamic Subtitle Dock & Victory Modal
   // ---------------------------------------------------------------------------
   function ensureShakirStyles() {
     if (document.getElementById('s2ShakirGuideStyles')) return;
     var style = document.createElement('style');
     style.id = 's2ShakirGuideStyles';
     style.textContent = [
-      // Shakir Walker Container
+      // Shakir Sprite
       '.s2-shakir-guide {',
       '  position: absolute;',
-      '  z-index: 50;',
-      '  pointer-events: auto;',
-      '  cursor: pointer;',
+      '  width: 56px;',
+      '  height: 104px;',
       '  transform: translate(-50%, -85%);',
-      '  transition: filter 0.25s cubic-bezier(0.2, 0.9, 0.3, 1);',
+      '  cursor: pointer;',
+      '  pointer-events: auto;',
+      '  z-index: 52;',
+      '  transition: filter 0.2s ease;',
       '  will-change: left, top, transform;',
       '  user-select: none;',
+      '}',
+      '.s2-shakir-guide .shakir-walker-svg {',
+      '  width: 56px !important;',
+      '  height: 104px !important;',
+      '  display: block !important;',
+      '  overflow: visible !important;',
+      '  flex-shrink: 0 !important;',
+      '  transform-origin: 36px 90px;',
       '}',
       '.s2-shakir-guide:hover {',
       '  filter: drop-shadow(0 6px 16px rgba(14, 165, 233, 0.55)) brightness(1.05);',
       '}',
 
-      // Shakir Head Badge
+      // Pip Companion Sprite
+      '.s2-pip-companion {',
+      '  position: absolute;',
+      '  width: 44px;',
+      '  height: 56px;',
+      '  transform: translate(-50%, -85%);',
+      '  cursor: pointer;',
+      '  pointer-events: auto;',
+      '  z-index: 51;',
+      '  transition: filter 0.2s ease;',
+      '  will-change: left, top, transform;',
+      '  user-select: none;',
+      '}',
+      '.s2-pip-companion .pip-mouse-svg {',
+      '  width: 44px !important;',
+      '  height: 56px !important;',
+      '  display: block !important;',
+      '  overflow: visible !important;',
+      '  flex-shrink: 0 !important;',
+      '  transform-origin: 70px 145px;',
+      '}',
+      '.s2-pip-companion:hover {',
+      '  filter: drop-shadow(0 4px 14px rgba(245, 158, 11, 0.55)) brightness(1.06);',
+      '}',
+
+      // Head Tags
       '.shakir-head-tag {',
       '  position: absolute;',
       '  top: -30px;',
@@ -614,21 +866,30 @@
       '  font-family: Nunito, system-ui, sans-serif;',
       '  white-space: nowrap;',
       '  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);',
-      '  display: flex;',
-      '  align-items: center;',
-      '  gap: 5px;',
       '  pointer-events: none;',
-      '  animation: shakirTagFloat 2.6s ease-in-out infinite;',
       '}',
-      '@keyframes shakirTagFloat {',
-      '  0%, 100% { transform: translateX(-50%) translateY(0); }',
-      '  50% { transform: translateX(-50%) translateY(-3px); }',
+      '.pip-head-tag {',
+      '  position: absolute;',
+      '  top: -22px;',
+      '  left: 50%;',
+      '  transform: translateX(-50%);',
+      '  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);',
+      '  color: #FFFFFF;',
+      '  border: 1px solid #FDE047;',
+      '  border-radius: 999px;',
+      '  padding: 2px 7px;',
+      '  font-size: 0.58rem;',
+      '  font-weight: 900;',
+      '  font-family: Nunito, system-ui, sans-serif;',
+      '  white-space: nowrap;',
+      '  box-shadow: 0 3px 8px rgba(217, 119, 6, 0.35);',
+      '  pointer-events: none;',
       '}',
 
-      // Floating Speech Bubble
+      // Non-Overlapping In-World Speech Bubbles
       '.shakir-speech-bubble {',
       '  position: absolute;',
-      '  bottom: 105%;',
+      '  bottom: 115%;',
       '  left: 50%;',
       '  transform: translateX(-50%) scale(1);',
       '  background: #FFFFFF;',
@@ -644,7 +905,7 @@
       '  width: max-content;',
       '  max-width: 250px;',
       '  text-align: center;',
-      '  z-index: 60;',
+      '  z-index: 65;',
       '  pointer-events: auto;',
       '  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);',
       '}',
@@ -664,596 +925,596 @@
       '  pointer-events: none;',
       '}',
 
-      // Directional Headings (360° Isometric Visual Perspective)
-      '.s2-shakir-guide.facing-north .av-torso-front,',
-      '.s2-shakir-guide.facing-north .av-head-front { display: none !important; }',
-      '.s2-shakir-guide.facing-north .av-torso-back,',
-      '.s2-shakir-guide.facing-north .av-head-back { display: block !important; }',
-      '.s2-shakir-guide.facing-south .av-torso-back,',
-      '.s2-shakir-guide.facing-south .av-head-back { display: none !important; }',
-      '.s2-shakir-guide.facing-south .av-torso-front,',
-      '.s2-shakir-guide.facing-south .av-head-front { display: block !important; }',
-      '.s2-shakir-guide:not(.facing-north) .av-torso-back,',
-      '.s2-shakir-guide:not(.facing-north) .av-head-back { display: none; }',
-      '.s2-shakir-guide:not(.facing-north) .av-torso-front,',
-      '.s2-shakir-guide:not(.facing-north) .av-head-front { display: block; }',
+      // Pip's speech bubble is offset cleanly to Pip's side so it NEVER covers Shakir's view
+      '.pip-speech-bubble {',
+      '  position: absolute;',
+      '  bottom: 112%;',
+      '  left: 50%;',
+      '  transform: translateX(-20%) scale(1);',
+      '  background: #FFFFFF;',
+      '  color: #0F172A;',
+      '  border: 2px solid #F59E0B;',
+      '  border-radius: 14px;',
+      '  padding: 6px 11px;',
+      '  font-size: 0.72rem;',
+      '  font-weight: 800;',
+      '  font-family: Nunito, system-ui, sans-serif;',
+      '  line-height: 1.3;',
+      '  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.28);',
+      '  width: max-content;',
+      '  max-width: 210px;',
+      '  text-align: center;',
+      '  z-index: 65;',
+      '  pointer-events: auto;',
+      '  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);',
+      '}',
+      '.pip-speech-bubble:after {',
+      '  content: "";',
+      '  position: absolute;',
+      '  top: 100%;',
+      '  left: 28%;',
+      '  transform: translateX(-50%);',
+      '  border-width: 6px;',
+      '  border-style: solid;',
+      '  border-color: #F59E0B transparent transparent transparent;',
+      '}',
+      '.pip-speech-bubble.hidden {',
+      '  opacity: 0;',
+      '  transform: translateX(-20%) scale(0.85);',
+      '  pointer-events: none;',
+      '}',
 
+      // Facing Directions
       '.s2-shakir-guide.facing-east .walker-svg { transform: scaleX(-1); }',
       '.s2-shakir-guide.facing-west .walker-svg { transform: scaleX(1); }',
+      '.s2-pip-companion.facing-east .pip-mouse-svg { transform: scaleX(-1); }',
+      '.s2-pip-companion.facing-west .pip-mouse-svg { transform: scaleX(1); }',
 
-      // Natural Human Walking Animation Dynamics
+      // Smooth Human Strolling Dynamic
       '.s2-shakir-guide.walking .shakir-walker-svg {',
-      '  animation: shakirWalkBob 0.6s ease-in-out infinite alternate;',
+      '  animation: shakirWalkBob 0.60s ease-in-out infinite alternate;',
       '}',
       '@keyframes shakirWalkBob {',
       '  0% { transform: translateY(0); }',
-      '  100% { transform: translateY(-5px); }',
+      '  100% { transform: translateY(-4px); }',
       '}',
       '.s2-shakir-guide.walking .av-leg-left {',
       '  transform-origin: 27px 58px;',
-      '  animation: shakirLegSwingLeft 0.6s ease-in-out infinite alternate;',
+      '  animation: shakirLegSwingLeft 0.60s ease-in-out infinite alternate;',
       '}',
       '.s2-shakir-guide.walking .av-leg-right {',
       '  transform-origin: 43px 58px;',
-      '  animation: shakirLegSwingRight 0.6s ease-in-out infinite alternate;',
+      '  animation: shakirLegSwingRight 0.60s ease-in-out infinite alternate;',
       '}',
       '@keyframes shakirLegSwingLeft {',
-      '  0% { transform: rotate(-18deg) translateY(-2px); }',
-      '  100% { transform: rotate(18deg) translateY(2px); }',
+      '  0% { transform: rotate(-16deg); }',
+      '  100% { transform: rotate(16deg); }',
       '}',
       '@keyframes shakirLegSwingRight {',
-      '  0% { transform: rotate(18deg) translateY(2px); }',
-      '  100% { transform: rotate(-18deg) translateY(-2px); }',
+      '  0% { transform: rotate(16deg); }',
+      '  100% { transform: rotate(-16deg); }',
       '}',
       '.s2-shakir-guide.walking .av-arm-left {',
       '  transform-origin: 17px 34px;',
-      '  animation: shakirArmSwingLeft 0.6s ease-in-out infinite alternate;',
+      '  animation: shakirArmSwingLeft 0.60s ease-in-out infinite alternate;',
       '}',
       '@keyframes shakirArmSwingLeft {',
-      '  0% { transform: rotate(20deg); }',
-      '  100% { transform: rotate(-20deg); }',
-      '}',
-      '.s2-shakir-guide.walking .shakir-scanner-arm {',
-      '  transform-origin: 54px 34px;',
-      '  animation: shakirArmSwingRight 0.6s ease-in-out infinite alternate;',
-      '}',
-      '@keyframes shakirArmSwingRight {',
-      '  0% { transform: rotate(-15deg) translateY(-1px); }',
-      '  100% { transform: rotate(10deg) translateY(1px); }',
+      '  0% { transform: rotate(16deg); }',
+      '  100% { transform: rotate(-16deg); }',
       '}',
 
-      // Wonder Touch Animation (Articulated Arm reaches upward with glowing cyan scanner)
+      // Pip Toddler Waddle Bobbing
+      '.s2-pip-companion.walking .pip-mouse-svg {',
+      '  animation: pipWaddleBob 0.42s ease-in-out infinite alternate;',
+      '}',
+      '@keyframes pipWaddleBob {',
+      '  0% { transform: translateY(0) rotate(-4deg); }',
+      '  100% { transform: translateY(-4px) rotate(4deg); }',
+      '}',
+
+      // Pip Diverse Animations
+      '.s2-pip-companion.pip-anim-wand-wave .pip-wand-left {',
+      '  transform-origin: 26px 112px;',
+      '  animation: pipWandSignalLeft 0.65s ease-in-out infinite alternate;',
+      '}',
+      '.s2-pip-companion.pip-anim-wand-wave .pip-wand-right {',
+      '  transform-origin: 110px 112px;',
+      '  animation: pipWandSignalRight 0.65s ease-in-out infinite alternate;',
+      '}',
+      '@keyframes pipWandSignalLeft {',
+      '  0% { transform: rotate(-18deg) translateY(0); }',
+      '  100% { transform: rotate(38deg) translateY(-8px); }',
+      '}',
+      '@keyframes pipWandSignalRight {',
+      '  0% { transform: rotate(38deg) translateY(-8px); }',
+      '  100% { transform: rotate(-18deg) translateY(0); }',
+      '}',
+      '.s2-pip-companion.pip-anim-hop .pip-mouse-svg {',
+      '  animation: pipHopBounce 0.55s cubic-bezier(0.2, 0.9, 0.3, 1) infinite;',
+      '}',
+      '@keyframes pipHopBounce {',
+      '  0%, 100% { transform: translateY(0) scaleY(1); }',
+      '  40% { transform: translateY(-14px) scaleY(1.08); }',
+      '  70% { transform: translateY(0) scaleY(0.92); }',
+      '}',
+      '.s2-pip-companion.pip-anim-whirl .pip-mouse-svg {',
+      '  animation: pipWhirlJump 0.75s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;',
+      '}',
+      '@keyframes pipWhirlJump {',
+      '  0% { transform: translateY(0) rotate(0deg) scale(1); }',
+      '  25% { transform: translateY(-16px) rotate(14deg) scale(1.12); }',
+      '  50% { transform: translateY(-24px) rotate(-14deg) scale(1.16); }',
+      '  75% { transform: translateY(-6px) rotate(6deg) scale(0.96); }',
+      '  100% { transform: translateY(0) rotate(0deg) scale(1); }',
+      '}',
+      '.s2-pip-companion.pip-anim-ear-sniff .pip-ears {',
+      '  transform-origin: 70px 46px;',
+      '  animation: pipEarFlutter 0.4s ease-in-out infinite alternate;',
+      '}',
+      '@keyframes pipEarFlutter {',
+      '  0% { transform: rotate(-6deg) scale(0.98); }',
+      '  100% { transform: rotate(6deg) scale(1.04); }',
+      '}',
+      '.s2-pip-companion.pip-anim-wrench .pip-wrench-arm {',
+      '  transform-origin: 42px 122px;',
+      '  animation: pipWrenchTinker 0.7s ease-in-out infinite alternate;',
+      '}',
+      '@keyframes pipWrenchTinker {',
+      '  0% { transform: rotate(0deg); }',
+      '  100% { transform: rotate(-40deg) translateY(-4px); }',
+      '}',
+
+      // Wonder Touch & Directing Beam
       '.s2-shakir-guide.wonder-touching .shakir-scanner-arm {',
       '  transform-origin: 54px 34px;',
       '  animation: shakirWonderReach 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;',
       '}',
       '@keyframes shakirWonderReach {',
       '  0% { transform: rotate(0); }',
-      '  50% { transform: rotate(-110deg) translateY(-8px) scale(1.08); }',
-      '  100% { transform: rotate(-100deg) translateY(-6px) scale(1.05); }',
+      '  50% { transform: rotate(-105deg) translateY(-8px) scale(1.08); }',
+      '  100% { transform: rotate(-95deg) translateY(-6px) scale(1.05); }',
       '}',
       '.s2-shakir-guide.wonder-touching .shakir-device {',
       '  filter: drop-shadow(0 0 10px #38BDF8) drop-shadow(0 0 20px #67E8F9);',
       '}',
-      '.s2-shakir-guide.wonder-touching .av-head {',
-      '  transform-origin: 36px 28px;',
-      '  transform: rotate(8deg) translateY(-2px);',
-      '  transition: transform 0.4s ease;',
+      '.shakir-wonder-beam {',
+      '  position: absolute;',
+      '  height: 3px;',
+      '  background: linear-gradient(90deg, #38BDF8 0%, #22C55E 70%, #FDE047 100%);',
+      '  transform-origin: 0 50%;',
+      '  pointer-events: none;',
+      '  z-index: 55;',
+      '  box-shadow: 0 0 12px #38BDF8, 0 0 20px #22C55E;',
+      '  animation: wonderBeamFlash 0.65s ease-out forwards;',
+      '}',
+      '@keyframes wonderBeamFlash {',
+      '  0% { opacity: 0; transform: scaleY(0.4); }',
+      '  40% { opacity: 1; transform: scaleY(1.4); }',
+      '  100% { opacity: 0; transform: scaleY(0.2); }',
+      '}',
+      '.s2-touch-ripple {',
+      '  position: absolute;',
+      '  width: 64px;',
+      '  height: 64px;',
+      '  transform: translate(-50%, -50%);',
+      '  pointer-events: none;',
+      '  z-index: 54;',
+      '  animation: touchRipplePop 1.2s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;',
+      '}',
+      '@keyframes touchRipplePop {',
+      '  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }',
+      '  100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }',
+      '}',
+      '.s2-sky-heading {',
+      '  position: absolute;',
+      '  transform: translate(-50%, -50%);',
+      '  background: rgba(15, 23, 42, 0.92);',
+      '  color: #F8FAFC;',
+      '  border: 1.5px solid #38BDF8;',
+      '  border-radius: 999px;',
+      '  padding: 6px 16px;',
+      '  font-size: 0.82rem;',
+      '  font-weight: 800;',
+      '  font-family: Nunito, system-ui, sans-serif;',
+      '  display: flex;',
+      '  align-items: center;',
+      '  gap: 8px;',
+      '  z-index: 65;',
+      '  pointer-events: none;',
+      '  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 14px rgba(56, 189, 248, 0.35);',
+      '  animation: skyHeadFade 3.2s cubic-bezier(0.2, 0.9, 0.3, 1) forwards;',
+      '}',
+      '@keyframes skyHeadFade {',
+      '  0% { opacity: 0; transform: translate(-50%, -35%); }',
+      '  12% { opacity: 1; transform: translate(-50%, -50%); }',
+      '  80% { opacity: 1; transform: translate(-50%, -50%); }',
+      '  100% { opacity: 0; transform: translate(-50%, -65%); }',
       '}',
 
-      // Hide blueprint text everywhere for guest mode
-      '.s2-ghost-obj .s2-ghost-blueprint-tag {',
+      // =========================================================================
+      // DYNAMICALLY POSITIONED SUBTITLE DOCK (NEVER BLOCKS SHAKIR OR PIP!)
+      // =========================================================================
+      '#shakirPipSubtitleDock,',
+      '#shakirPipSubtitleDock.dock-left,',
+      '#shakirPipSubtitleDock.dock-right {',
+      '  position: fixed;',
+      '  bottom: 18px;',
+      '  left: 88px !important;',
+      '  right: auto !important;',
+      '  z-index: 9250;',
+      '  width: min(620px, calc(100vw - 260px));',
+      '  max-width: 640px;',
+      '  background: linear-gradient(135deg, rgba(6, 36, 23, 0.96) 0%, rgba(3, 20, 13, 0.98) 100%);',
+      '  border: 1.5px solid rgba(52, 211, 153, 0.55);',
+      '  border-radius: 18px;',
+      '  padding: 10px 16px;',
+      '  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 18px rgba(52, 211, 153, 0.25);',
+      '  backdrop-filter: blur(12px);',
+      '  -webkit-backdrop-filter: blur(12px);',
+      '  font-family: Nunito, system-ui, -apple-system, sans-serif;',
+      '  color: #F8FAFC;',
+      '  display: flex;',
+      '  flex-direction: column;',
+      '  gap: 6px;',
+      '  transition: opacity 0.25s ease, transform 0.25s ease;',
+      '  box-sizing: border-box;',
+      '  pointer-events: auto;',
+      '}',
+      '#shakirPipSubtitleDock.minimized {',
       '  display: none !important;',
       '}',
+      '.sub-header-row {',
+      '  display: flex;',
+      '  align-items: center;',
+      '  justify-content: space-between;',
+      '  gap: 10px;',
+      '  border-bottom: 1px solid rgba(52, 211, 153, 0.25);',
+      '  padding-bottom: 5px;',
+      '}',
+      '.sub-speaker-info {',
+      '  display: flex;',
+      '  align-items: center;',
+      '  gap: 8px;',
+      '  min-width: 0;',
+      '  flex: 1;',
+      '}',
+      '.sub-speaker-avatar {',
+      '  width: 32px;',
+      '  height: 32px;',
+      '  border-radius: 50%;',
+      '  display: flex;',
+      '  align-items: center;',
+      '  justify-content: center;',
+      '  font-size: 1.15rem;',
+      '  background: rgba(15, 23, 42, 0.85);',
+      '  border: 1.5px solid #34D399;',
+      '  flex-shrink: 0;',
+      '  box-shadow: 0 0 10px rgba(52, 211, 153, 0.4);',
+      '}',
+      '.sub-speaker-avatar.shakir {',
+      '  border-color: #38BDF8;',
+      '  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);',
+      '}',
+      '.sub-speaker-avatar.pip {',
+      '  border-color: #F59E0B;',
+      '  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);',
+      '}',
+      '.sub-speaker-meta {',
+      '  display: flex;',
+      '  align-items: center;',
+      '  gap: 6px;',
+      '  min-width: 0;',
+      '  flex-wrap: wrap;',
+      '}',
+      '.sub-speaker-name {',
+      '  font-size: 0.82rem;',
+      '  font-weight: 900;',
+      '  white-space: nowrap;',
+      '}',
+      '.sub-speaker-name.shakir { color: #38BDF8; }',
+      '.sub-speaker-name.pip { color: #FDE047; }',
+      '.sub-speaker-role {',
+      '  font-size: 0.60rem;',
+      '  font-weight: 800;',
+      '  padding: 1px 6px;',
+      '  border-radius: 999px;',
+      '  white-space: nowrap;',
+      '  letter-spacing: 0.3px;',
+      '}',
+      '.sub-speaker-role.shakir {',
+      '  background: rgba(56, 189, 248, 0.2);',
+      '  color: #BAE6FD;',
+      '  border: 1px solid rgba(56, 189, 248, 0.4);',
+      '}',
+      '.sub-speaker-role.pip {',
+      '  background: rgba(245, 158, 11, 0.2);',
+      '  color: #FDE68A;',
+      '  border: 1px solid rgba(245, 158, 11, 0.4);',
+      '}',
+      '.sub-chapter-chip {',
+      '  font-size: 0.60rem;',
+      '  font-weight: 700;',
+      '  color: #A7F3D0;',
+      '  background: rgba(52, 211, 153, 0.15);',
+      '  padding: 1px 6px;',
+      '  border-radius: 6px;',
+      '  white-space: nowrap;',
+      '}',
+      '.sub-controls-group {',
+      '  display: flex;',
+      '  align-items: center;',
+      '  gap: 6px;',
+      '  flex-shrink: 0;',
+      '}',
+      '.sub-ctrl-btn {',
+      '  background: rgba(15, 23, 42, 0.7);',
+      '  border: 1px solid rgba(52, 211, 153, 0.4);',
+      '  color: #E2E8F0;',
+      '  border-radius: 8px;',
+      '  width: 26px;',
+      '  height: 26px;',
+      '  display: flex;',
+      '  align-items: center;',
+      '  justify-content: center;',
+      '  font-size: 0.76rem;',
+      '  cursor: pointer;',
+      '  transition: all 0.15s ease;',
+      '}',
+      '.sub-ctrl-btn:hover {',
+      '  background: rgba(52, 211, 153, 0.25);',
+      '  border-color: #34D399;',
+      '  color: #FFF;',
+      '}',
+      '.sub-next-btn {',
+      '  width: auto !important;',
+      '  padding: 0 9px !important;',
+      '  font-weight: 800 !important;',
+      '  font-size: 0.72rem !important;',
+      '  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;',
+      '  border: 1px solid #34D399 !important;',
+      '  color: #FFFFFF !important;',
+      '}',
+      '.sub-next-btn:hover {',
+      '  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;',
+      '  box-shadow: 0 0 10px rgba(52, 211, 153, 0.5) !important;',
+      '}',
+      '.sub-text-row {',
+      '  font-size: 0.78rem;',
+      '  line-height: 1.45;',
+      '  color: #F1F5F9;',
+      '  font-weight: 600;',
+      '  min-height: 38px;',
+      '}',
+      '.sub-progress-dots {',
+      '  display: flex;',
+      '  align-items: center;',
+      '  gap: 4px;',
+      '  margin-top: 2px;',
+      '}',
+      '.sub-dot {',
+      '  width: 6px;',
+      '  height: 6px;',
+      '  border-radius: 50%;',
+      '  background: rgba(255, 255, 255, 0.25);',
+      '  transition: all 0.2s ease;',
+      '}',
+      '.sub-dot.active {',
+      '  background: #34D399;',
+      '  box-shadow: 0 0 6px #34D399;',
+      '  width: 14px;',
+      '  border-radius: 999px;',
+      '}',
+      '.sub-dot.done {',
+      '  background: #10B981;',
+      '}',
 
-      // Shakir CEO Welcoming Dialog Modal
-      '.shakir-modal-backdrop {',
+      '@media (max-width: 768px) {',
+      '  #shakirPipSubtitleDock {',
+      '    bottom: 68px !important;',
+      '    left: 8px !important;',
+      '    right: 8px !important;',
+      '    width: auto !important;',
+      '    max-width: calc(100vw - 16px) !important;',
+      '    padding: 8px 12px !important;',
+      '  }',
+      '}',
+      '#modalLayer {',
+      '  position: relative;',
+      '  z-index: 100010 !important;',
+      '}',
+      '#modalOverlay.overlay,',
+      '.overlay#modalOverlay,',
+      '.overlay {',
+      '  position: fixed !important;',
+      '  inset: 0 !important;',
+      '  z-index: 100010 !important;',
+      '  display: flex !important;',
+      '  align-items: center !important;',
+      '  justify-content: center !important;',
+      '  pointer-events: auto !important;',
+      '}',
+      '.cartoon-roadmap-modal {',
+      '  position: relative;',
+      '  z-index: 100011 !important;',
+      '  pointer-events: auto !important;',
+      '}',
+      '.jute-tarp-spot-card.is-ready-uncover,',
+      '.jute-tarp-spot-card.pulse-glow {',
+      '  animation: tarpPulseGlow 1.8s infinite ease-in-out;',
+      '}',
+      '@keyframes tarpPulseGlow {',
+      '  0% { filter: drop-shadow(0 0 4px rgba(76, 175, 80, 0.4)); transform: scale(1); }',
+      '  50% { filter: drop-shadow(0 0 16px rgba(76, 175, 80, 0.9)); transform: scale(1.05); }',
+      '  100% { filter: drop-shadow(0 0 4px rgba(76, 175, 80, 0.4)); transform: scale(1); }',
+      '}',
+
+      // =========================================================================
+      // CELEBRATORY VICTORY REWARD MODAL (FULL MASTERPLAN REWARDS)
+      // =========================================================================
+      '.shakir-victory-backdrop {',
       '  position: fixed;',
       '  inset: 0;',
-      '  z-index: 99990;',
-      '  background: rgba(11, 31, 42, 0.68);',
-      '  backdrop-filter: blur(4px);',
+      '  z-index: 100015;',
+      '  background: rgba(3, 18, 12, 0.82);',
+      '  backdrop-filter: blur(8px);',
+      '  -webkit-backdrop-filter: blur(8px);',
       '  display: flex;',
       '  align-items: center;',
       '  justify-content: center;',
       '  padding: 16px;',
-      '  overflow-y: auto;',
-      '  -webkit-overflow-scrolling: touch;',
       '  box-sizing: border-box;',
-      '  animation: shakirFadeIn 0.25s ease;',
+      '  animation: vicFadeIn 0.3s ease;',
       '}',
-      '@keyframes shakirFadeIn {',
+      '@keyframes vicFadeIn {',
       '  from { opacity: 0; }',
       '  to { opacity: 1; }',
       '}',
-      '.shakir-modal-card {',
-      '  background: linear-gradient(180deg, #FFFFFF 0%, #F0FDF4 100%);',
-      '  border: 2.5px solid #38BDF8;',
-      '  border-radius: 24px;',
+      '.shakir-victory-card {',
+      '  background: radial-gradient(ellipse at 50% 0%, #0E3E28 0%, #062316 65%, #02120B 100%);',
+      '  border: 2px solid #34D399;',
+      '  border-radius: 26px;',
       '  max-width: 480px;',
       '  width: 100%;',
-      '  max-height: calc(100dvh - 32px);',
-      '  overflow-y: auto;',
-      '  -webkit-overflow-scrolling: touch;',
-      '  overscroll-behavior: contain;',
-      '  box-sizing: border-box;',
       '  padding: 24px;',
-      '  box-shadow: 0 20px 48px rgba(14, 165, 233, 0.25), 0 8px 16px rgba(0, 0, 0, 0.12);',
-      '  color: #1E293B;',
+      '  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 32px rgba(52, 211, 153, 0.4);',
+      '  text-align: center;',
+      '  color: #F8FAFC;',
       '  font-family: Nunito, system-ui, sans-serif;',
       '  position: relative;',
-      '  animation: shakirCardPop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);',
+      '  animation: vicCardPop 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);',
       '}',
-      '@keyframes shakirCardPop {',
-      '  from { transform: scale(0.92) translateY(12px); opacity: 0; }',
+      '@keyframes vicCardPop {',
+      '  from { transform: scale(0.9) translateY(20px); opacity: 0; }',
       '  to { transform: scale(1) translateY(0); opacity: 1; }',
       '}',
-      '.shakir-modal-header {',
-      '  display: flex;',
+      '.vic-banner-pill {',
+      '  display: inline-flex;',
       '  align-items: center;',
-      '  gap: 14px;',
-      '  margin-bottom: 16px;',
-      '}',
-      '.shakir-avatar-preview {',
-      '  width: 58px;',
-      '  height: 58px;',
-      '  border-radius: 50%;',
-      '  background: linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%);',
-      '  border: 2px solid #0EA5E9;',
-      '  display: flex;',
-      '  align-items: center;',
-      '  justify-content: center;',
-      '  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);',
-      '  flex-shrink: 0;',
-      '  overflow: hidden;',
-      '}',
-      '.shakir-modal-title {',
-      '  font-size: 1.15rem;',
-      '  font-weight: 900;',
-      '  color: #0369A1;',
-      '  line-height: 1.2;',
-      '}',
-      '.shakir-modal-subtitle {',
-      '  font-size: 0.74rem;',
-      '  font-weight: 800;',
-      '  color: #0284C7;',
-      '  letter-spacing: 0.3px;',
-      '}',
-      '.shakir-modal-body {',
-      '  font-size: 0.88rem;',
-      '  line-height: 1.5;',
-      '  color: #334155;',
-      '  margin-bottom: 18px;',
-      '  background: #FFFFFF;',
-      '  border: 1.5px solid #E2E8F0;',
-      '  border-radius: 16px;',
-      '  padding: 14px 16px;',
-      '}',
-      '.shakir-fun-fact-box {',
-      '  background: #FEF3C7;',
-      '  border: 1.5px solid #FCD34D;',
-      '  border-radius: 14px;',
-      '  padding: 10px 12px;',
-      '  font-size: 0.78rem;',
-      '  color: #92400E;',
-      '  margin-bottom: 18px;',
-      '  display: flex;',
-      '  align-items: flex-start;',
-      '  gap: 8px;',
-      '  line-height: 1.4;',
-      '}',
-      '.shakir-modal-actions {',
-      '  display: flex;',
-      '  flex-wrap: wrap;',
-      '  gap: 10px;',
-      '}',
-      '.shakir-btn-primary {',
-      '  flex: 1;',
-      '  min-width: 140px;',
-      '  background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);',
-      '  color: #FFFFFF;',
-      '  border: none;',
-      '  border-radius: 14px;',
-      '  padding: 12px 18px;',
-      '  font-weight: 900;',
-      '  font-size: 0.86rem;',
-      '  cursor: pointer;',
-      '  box-shadow: 0 6px 18px rgba(2, 132, 199, 0.35);',
-      '  transition: transform 0.15s ease, box-shadow 0.15s ease;',
-      '  display: flex;',
-      '  align-items: center;',
-      '  justify-content: center;',
       '  gap: 6px;',
+      '  background: rgba(253, 224, 71, 0.15);',
+      '  border: 1px solid #FDE047;',
+      '  color: #FDE047;',
+      '  font-size: 0.72rem;',
+      '  font-weight: 900;',
+      '  padding: 4px 12px;',
+      '  border-radius: 999px;',
+      '  text-transform: uppercase;',
+      '  letter-spacing: 0.5px;',
+      '  margin-bottom: 12px;',
       '}',
-      '.shakir-btn-primary:hover {',
-      '  transform: translateY(-2px);',
-      '  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.45);',
+      '.vic-title {',
+      '  font-size: 1.35rem;',
+      '  font-weight: 900;',
+      '  color: #6EE7B7;',
+      '  line-height: 1.25;',
+      '  margin-bottom: 6px;',
       '}',
-      '.shakir-btn-secondary {',
-      '  background: #F1F5F9;',
-      '  color: #475569;',
-      '  border: 1.5px solid #CBD5E1;',
-      '  border-radius: 14px;',
-      '  padding: 10px 14px;',
-      '  font-weight: 800;',
-      '  font-size: 0.82rem;',
-      '  cursor: pointer;',
-      '  transition: all 0.15s ease;',
+      '.vic-subtitle {',
+      '  font-size: 0.80rem;',
+      '  color: #CBD5E1;',
+      '  line-height: 1.4;',
+      '  margin-bottom: 18px;',
       '}',
-      '.shakir-btn-secondary:hover {',
-      '  background: #E2E8F0;',
-      '  color: #1E293B;',
-      '}',
-      // Tour Navigation HUD Dock (Meaningful Navigation)
-      '.shakir-tour-nav-dock {',
-      '  position: fixed;',
-      '  top: 72px;',
-      '  left: 50%;',
-      '  transform: translateX(-50%);',
-      '  z-index: 9200;',
-      '  background: rgba(15, 23, 42, 0.92);',
-      '  backdrop-filter: blur(8px);',
-      '  border: 1.5px solid #38BDF8;',
-      '  border-radius: 16px;',
-      '  padding: 8px 14px;',
+      '.vic-avatars-row {',
       '  display: flex;',
       '  align-items: center;',
-      '  gap: 12px;',
-      '  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35), 0 0 12px rgba(56, 189, 248, 0.3);',
-      '  color: #FFF;',
-      '  font-family: Nunito, system-ui, sans-serif;',
-      '  animation: shakirNavSlide 0.3s ease;',
+      '  justify-content: center;',
+      '  gap: 16px;',
+      '  margin-bottom: 18px;',
       '}',
-      '@keyframes shakirNavSlide {',
-      '  from { transform: translate(-50%, -15px); opacity: 0; }',
-      '  to { transform: translate(-50%, 0); opacity: 1; }',
-      '}',
-      '.shakir-nav-info {',
+      '.vic-avatar-box {',
       '  display: flex;',
       '  flex-direction: column;',
-      '  min-width: 130px;',
-      '}',
-      '.shakir-nav-tag {',
-      '  font-size: 0.65rem;',
-      '  font-weight: 800;',
-      '  color: #38BDF8;',
-      '  letter-spacing: 0.5px;',
-      '  text-transform: uppercase;',
-      '}',
-      '.shakir-nav-landmark {',
-      '  font-size: 0.84rem;',
-      '  font-weight: 900;',
-      '  color: #F8FAFC;',
-      '}',
-      '.shakir-nav-btn-group {',
-      '  display: flex;',
-      '  align-items: center;',
-      '  gap: 8px;',
-      '}',
-      '.shakir-nav-btn {',
-      '  background: #1E293B;',
-      '  color: #E2E8F0;',
-      '  border: 1px solid #475569;',
-      '  border-radius: 8px;',
-      '  padding: 6px 10px;',
-      '  font-size: 0.78rem;',
-      '  font-weight: 800;',
-      '  cursor: pointer;',
-      '  transition: all 0.2s;',
-      '  white-space: nowrap;',
-      '  display: inline-flex;',
       '  align-items: center;',
       '  gap: 4px;',
       '}',
-      '.shakir-nav-btn:hover {',
-      '  background: #0284C7;',
-      '  color: #FFF;',
-      '  border-color: #38BDF8;',
-      '}',
-      '.shakir-nav-btn.primary {',
-      '  background: #0284C7;',
-      '  color: #FFF;',
-      '  border-color: #38BDF8;',
-      '}',
-      '.shakir-nav-btn.danger {',
-      '  background: #7F1D1D;',
-      '  color: #FECACA;',
-      '  border-color: #EF4444;',
-      '}',
-      '.shakir-nav-btn.danger:hover {',
-      '  background: #DC2626;',
-      '  color: #FFF;',
-      '}',
-      '.shakir-nav-ch-badge {',
-      '  display: none;',
-      '}',
-      '.shakir-retrigger-pill {',
-      '  display: none !important;',
-      '}',
-      '.shakir-roadmap-list {',
-      '  display: grid;',
-      '  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));',
-      '  gap: 8px;',
-      '  max-height: 240px;',
-      '  overflow-y: auto;',
-      '  -webkit-overflow-scrolling: touch;',
-      '  touch-action: pan-y;',
-      '  padding: 6px 2px;',
-      '  margin: 10px 0;',
-      '}',
-      '.shakir-roadmap-item {',
-      '  background: #F8FAFC;',
-      '  border: 1.5px solid #E2E8F0;',
-      '  border-radius: 10px;',
-      '  padding: 8px 10px;',
-      '  display: flex;',
-      '  align-items: center;',
-      '  justify-content: space-between;',
-      '  cursor: pointer;',
-      '  transition: all 0.18s;',
-      '}',
-      '.shakir-roadmap-item:hover {',
-      '  background: #F0F9FF;',
-      '  border-color: #38BDF8;',
-      '  transform: translateY(-1px);',
-      '}',
-      '.shakir-roadmap-item.active {',
-      '  background: #E0F2FE;',
-      '  border-color: #0284C7;',
-      '}',
-      '.shakir-modal-close {',
-      '  position: absolute;',
-      '  top: 14px;',
-      '  right: 14px;',
-      '  background: #F1F5F9;',
-      '  border: none;',
-      '  color: #64748B;',
-      '  width: 32px;',
-      '  height: 32px;',
+      '.vic-avatar-circle {',
+      '  width: 56px;',
+      '  height: 56px;',
       '  border-radius: 50%;',
-      '  cursor: pointer;',
-      '  font-size: 1rem;',
-      '  font-weight: 800;',
       '  display: flex;',
       '  align-items: center;',
       '  justify-content: center;',
+      '  font-size: 1.8rem;',
+      '  background: rgba(15, 23, 42, 0.9);',
+      '  border: 2px solid #38BDF8;',
+      '  box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);',
       '}',
-      '@media (max-width: 860px), (max-height: 520px) {',
-      '  .shakir-modal-backdrop {',
-      '    background: transparent !important;',
-      '    backdrop-filter: none !important;',
-      '    pointer-events: none !important;',
-      '    padding: 0 !important;',
-      '    position: fixed !important;',
-      '    inset: 0 !important;',
-      '    display: block !important;',
-      '    z-index: 99990 !important;',
-      '  }',
-      '  .shakir-modal-card {',
-      '    pointer-events: auto !important;',
-      '    position: fixed !important;',
-      '    bottom: 12px !important;',
-      '    left: 12px !important;',
-      '    top: auto !important;',
-      '    right: auto !important;',
-      '    margin: 0 !important;',
-      '    width: auto !important;',
-      '    max-width: min(340px, calc(100vw - 84px)) !important;',
-      '    max-height: 220px !important;',
-      '    border-radius: 16px !important;',
-      '    padding: 10px 14px 12px !important;',
-      '    border: 2px solid #38BDF8 !important;',
-      '    background: rgba(255, 255, 255, 0.96) !important;',
-      '    backdrop-filter: blur(8px) !important;',
-      '    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 12px rgba(56, 189, 248, 0.3) !important;',
-      '    overflow-y: auto !important;',
-      '    -webkit-overflow-scrolling: touch !important;',
-      '  }',
-      '  .shakir-modal-header {',
-      '    margin-bottom: 8px !important;',
-      '    gap: 8px !important;',
-      '  }',
-      '  .shakir-avatar-preview {',
-      '    width: 36px !important;',
-      '    height: 36px !important;',
-      '  }',
-      '  .shakir-avatar-preview svg {',
-      '    width: 30px !important;',
-      '    height: 54px !important;',
-      '  }',
-      '  .shakir-modal-title {',
-      '    font-size: 0.88rem !important;',
-      '    line-height: 1.2 !important;',
-      '  }',
-      '  .shakir-modal-subtitle {',
-      '    font-size: 0.65rem !important;',
-      '  }',
-      '  .shakir-modal-body {',
-      '    padding: 8px 10px !important;',
-      '    margin-bottom: 8px !important;',
-      '    font-size: 0.74rem !important;',
-      '    line-height: 1.35 !important;',
-      '    border-radius: 12px !important;',
-      '  }',
-      '  .shakir-modal-body p {',
-      '    font-size: 0.78rem !important;',
-      '    margin: 0 0 4px 0 !important;',
-      '  }',
-      '  .shakir-fun-fact-box {',
-      '    padding: 6px 8px !important;',
-      '    margin-bottom: 8px !important;',
-      '    font-size: 0.70rem !important;',
-      '    line-height: 1.3 !important;',
-      '    border-radius: 10px !important;',
-      '    gap: 6px !important;',
-      '  }',
-      '  .shakir-roadmap-list {',
-      '    grid-template-columns: 1fr !important;',
-      '    gap: 5px !important;',
-      '    max-height: 180px !important;',
-      '    margin: 6px 0 !important;',
-      '    padding: 2px !important;',
-      '    overflow-y: auto !important;',
-      '    -webkit-overflow-scrolling: touch !important;',
-      '    touch-action: pan-y !important;',
-      '  }',
-      '  .shakir-roadmap-item {',
-      '    padding: 6px 8px !important;',
-      '    border-radius: 8px !important;',
-      '    gap: 6px !important;',
-      '    display: flex !important;',
-      '    align-items: center !important;',
-      '    justify-content: space-between !important;',
-      '  }',
-      '  .shakir-roadmap-item .roadmap-item-title {',
-      '    font-size: 0.74rem !important;',
-      '    font-weight: 800 !important;',
-      '    line-height: 1.2 !important;',
-      '    word-break: break-word !important;',
-      '  }',
-      '  .shakir-roadmap-item .roadmap-item-desc {',
-      '    font-size: 0.64rem !important;',
-      '    line-height: 1.25 !important;',
-      '    display: -webkit-box !important;',
-      '    -webkit-line-clamp: 2 !important;',
-      '    -webkit-box-orient: vertical !important;',
-      '    overflow: hidden !important;',
-      '  }',
-      '  .shakir-roadmap-item .roadmap-item-action {',
-      '    font-size: 0.66rem !important;',
-      '    white-space: nowrap !important;',
-      '    flex-shrink: 0 !important;',
-      '  }',
-      '  .shakir-modal-actions {',
-      '    display: flex !important;',
-      '    flex-wrap: wrap !important;',
-      '    gap: 6px !important;',
-      '    margin-top: 8px !important;',
-      '  }',
-      '  .shakir-btn-primary {',
-      '    padding: 8px 12px !important;',
-      '    font-size: 0.76rem !important;',
-      '    border-radius: 10px !important;',
-      '    min-width: 110px !important;',
-      '    flex: 1 !important;',
-      '  }',
-      '  .shakir-btn-secondary {',
-      '    padding: 7px 10px !important;',
-      '    font-size: 0.74rem !important;',
-      '    border-radius: 10px !important;',
-      '  }',
-      '  .shakir-modal-close {',
-      '    width: 28px !important;',
-      '    height: 28px !important;',
-      '    font-size: 0.85rem !important;',
-      '    top: 8px !important;',
-      '    right: 8px !important;',
-      '  }',
-      '  /* Mobile tour navigation: Icon-based horizontal bar right on top of cooldown icon floater */',
-      '  .shakir-tour-nav-dock {',
-      '    position: fixed !important;',
-      '    top: auto !important;',
-      '    left: auto !important;',
-      '    right: 12px !important;',
-      '    bottom: 146px !important;',
-      '    transform: none !important;',
-      '    width: auto !important;',
-      '    max-width: calc(100vw - 24px) !important;',
-      '    padding: 3px 6px !important;',
-      '    gap: 4px !important;',
-      '    border-radius: 9999px !important;',
-      '    background: rgba(15, 23, 42, 0.94) !important;',
-      '    border: 1.5px solid #38BDF8 !important;',
-      '    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 10px rgba(56, 189, 248, 0.3) !important;',
-      '    z-index: 99998 !important;',
-      '    animation: none !important;',
-      '    display: flex !important;',
-      '    align-items: center !important;',
-      '  }',
-      '  .shakir-nav-info {',
-      '    display: none !important;',
-      '  }',
-      '  .shakir-tour-nav-dock .nav-text {',
-      '    display: none !important;',
-      '  }',
-      '  .shakir-nav-btn-group {',
-      '    display: flex !important;',
-      '    align-items: center !important;',
-      '    gap: 3px !important;',
-      '  }',
-      '  .shakir-nav-btn {',
-      '    padding: 4px 6px !important;',
-      '    font-size: 0.76rem !important;',
-      '    min-width: 28px !important;',
-      '    height: 28px !important;',
-      '    border-radius: 8px !important;',
-      '    display: inline-flex !important;',
-      '    align-items: center !important;',
-      '    justify-content: center !important;',
-      '  }',
-      '  .shakir-nav-ch-badge {',
-      '    display: inline-flex !important;',
-      '    align-items: center !important;',
-      '    justify-content: center !important;',
-      '    background: rgba(56, 189, 248, 0.2) !important;',
-      '    border: 1px solid rgba(56, 189, 248, 0.4) !important;',
-      '    border-radius: 6px !important;',
-      '    padding: 2px 5px !important;',
-      '    font-size: 0.68rem !important;',
-      '    font-weight: 900 !important;',
-      '    color: #38BDF8 !important;',
-      '    white-space: nowrap !important;',
-      '    height: 24px !important;',
-      '  }',
-      '  .s2-shakir-guide {',
-      '    transform: translate(-50%, -85%) scale(0.88);',
-      '  }',
-      '  .shakir-head-tag {',
-      '    top: -22px;',
-      '    font-size: 0.60rem;',
-      '    padding: 2px 7px;',
-      '  }',
-      '  .shakir-speech-bubble {',
-      '    font-size: 0.70rem;',
-      '    padding: 6px 10px;',
-      '    max-width: 210px;',
-      '    bottom: 102%;',
-      '  }',
-      '  .shakir-retrigger-pill {',
-      '    display: none !important;',
-      '  }',
+      '.vic-avatar-circle.pip {',
+      '  border-color: #F59E0B;',
+      '  box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);',
       '}',
-      '@media (max-height: 520px) and (orientation: landscape) {',
-      '  .shakir-tour-nav-dock {',
-      '    bottom: 82px !important;',
-      '    right: 10px !important;',
-      '  }',
-      '  .shakir-modal-card {',
-      '    max-height: calc(100dvh - 12px) !important;',
-      '    padding: 8px 12px 12px !important;',
-      '  }',
-      '  .shakir-roadmap-list {',
-      '    grid-template-columns: repeat(2, 1fr) !important;',
-      '    max-height: 105px !important;',
-      '    gap: 4px !important;',
-      '  }',
-      '  .shakir-modal-body {',
-      '    padding: 6px 8px !important;',
-      '    margin-bottom: 6px !important;',
-      '    font-size: 0.70rem !important;',
-      '  }',
-      '  .shakir-fun-fact-box {',
-      '    padding: 4px 6px !important;',
-      '    margin-bottom: 6px !important;',
-      '    font-size: 0.66rem !important;',
-      '  }',
+      '.vic-avatar-tag {',
+      '  font-size: 0.68rem;',
+      '  font-weight: 800;',
+      '  color: #E2E8F0;',
+      '}',
+      '.vic-rewards-grid {',
+      '  display: grid;',
+      '  grid-template-columns: repeat(3, 1fr);',
+      '  gap: 8px;',
+      '  margin-bottom: 20px;',
+      '}',
+      '.vic-reward-item {',
+      '  background: rgba(15, 23, 42, 0.7);',
+      '  border: 1px solid rgba(52, 211, 153, 0.35);',
+      '  border-radius: 14px;',
+      '  padding: 10px 6px;',
+      '  display: flex;',
+      '  flex-direction: column;',
+      '  align-items: center;',
+      '  gap: 3px;',
+      '}',
+      '.vic-reward-val {',
+      '  font-size: 1.05rem;',
+      '  font-weight: 900;',
+      '  color: #FDE047;',
+      '}',
+      '.vic-reward-lbl {',
+      '  font-size: 0.64rem;',
+      '  font-weight: 800;',
+      '  color: #94A3B8;',
+      '  text-transform: uppercase;',
+      '}',
+      '.vic-title-badge-box {',
+      '  background: linear-gradient(135deg, rgba(234, 179, 8, 0.15) 0%, rgba(202, 138, 4, 0.25) 100%);',
+      '  border: 1.5px solid #FACC15;',
+      '  border-radius: 16px;',
+      '  padding: 10px 14px;',
+      '  margin-bottom: 20px;',
+      '  display: flex;',
+      '  align-items: center;',
+      '  justify-content: center;',
+      '  gap: 8px;',
+      '}',
+      '.vic-title-badge-text {',
+      '  font-size: 0.88rem;',
+      '  font-weight: 900;',
+      '  color: #FEF08A;',
+      '}',
+      '.vic-claim-btn {',
+      '  width: 100%;',
+      '  background: linear-gradient(135deg, #059669 0%, #047857 100%);',
+      '  border: 2px solid #34D399;',
+      '  color: #FFFFFF;',
+      '  border-radius: 14px;',
+      '  padding: 12px 18px;',
+      '  font-weight: 900;',
+      '  font-size: 0.95rem;',
+      '  cursor: pointer;',
+      '  box-shadow: 0 8px 24px rgba(5, 150, 105, 0.45);',
+      '  transition: transform 0.15s ease, box-shadow 0.15s ease;',
+      '}',
+      '.vic-claim-btn:hover {',
+      '  transform: translateY(-2px);',
+      '  box-shadow: 0 12px 32px rgba(5, 150, 105, 0.6);',
       '}'
     ].join('\n');
     document.head.appendChild(style);
   }
 
   // ---------------------------------------------------------------------------
-  // Layer & Spawn Helpers
+  // Layer & Walker Entity Spawning
   // ---------------------------------------------------------------------------
   function ensureWalkerLayer() {
     var scene = document.getElementById('fieldScene');
@@ -1269,20 +1530,15 @@
   }
 
   function spawnShakirWalker(at) {
+    ensureShakirStyles();
     var layer = ensureWalkerLayer();
     if (!layer) return null;
 
-    // Remove existing old player avatar if any exists
     var oldPlayer = document.getElementById('s2PlayerAvatar');
-    if (oldPlayer && oldPlayer.parentNode) {
-      oldPlayer.parentNode.removeChild(oldPlayer);
-    }
+    if (oldPlayer && oldPlayer.parentNode) oldPlayer.parentNode.removeChild(oldPlayer);
 
-    // Remove existing Shakir if present
     var oldShakir = document.getElementById('s2ShakirGuide');
-    if (oldShakir && oldShakir.parentNode) {
-      oldShakir.parentNode.removeChild(oldShakir);
-    }
+    if (oldShakir && oldShakir.parentNode) oldShakir.parentNode.removeChild(oldShakir);
 
     var el = document.createElement('div');
     el.className = 's2-shakir-guide human-walker-sprite facing-south';
@@ -1298,27 +1554,89 @@
 
     el.innerHTML =
       '<div class="shakir-head-tag"><span>🧑‍🌾 Shakir (OxyEco Forger)</span></div>' +
-      '<div class="shakir-speech-bubble" id="s2ShakirBubble">👋 Greetings Explorer! I\'m Shakir, your OxyEco Forger! Let\'s scout our masterplan!</div>' +
+      '<div class="shakir-speech-bubble" id="s2ShakirBubble">👋 Greetings Explorer! I\'m Shakir! Let\'s scout with Pip!</div>' +
       renderShakirFigureSvg({ w: 56, h: 104, unique: 'shakir_farm' });
 
     layer.appendChild(el);
     guideState.walkerEl = el;
     guideState.speechBubbleEl = el.querySelector('#s2ShakirBubble');
 
-    // Clicking Shakir opens his friendly CEO Dialogue
     el.onclick = function (e) {
       e.stopPropagation();
       openShakirDialogue();
     };
 
+    spawnPipCompanion({ left: posLeft, top: posTop });
     return el;
   }
 
+  function spawnPipCompanion(at) {
+    var layer = ensureWalkerLayer();
+    if (!layer) return null;
+
+    var oldPip = document.getElementById('s2PipCompanion');
+    if (oldPip && oldPip.parentNode) oldPip.parentNode.removeChild(oldPip);
+
+    var baseLeft = (at && typeof at.left === 'number') ? at.left : 48;
+    var baseTop = (at && typeof at.top === 'number') ? at.top : 42;
+
+    var pipEl = document.createElement('div');
+    pipEl.className = 's2-pip-companion mouse-walker-sprite facing-south';
+    pipEl.id = 's2PipCompanion';
+    pipEl.setAttribute('tabindex', '0');
+    pipEl.setAttribute('role', 'button');
+    pipEl.setAttribute('aria-label', 'Pip Squeak-a-Link - Alpine Harvest Field Mouse & Safety Scout');
+
+    pipEl.style.left = (baseLeft + 3.2) + '%';
+    pipEl.style.top = (baseTop + 1.2) + '%';
+
+    pipEl.innerHTML =
+      '<div class="pip-head-tag"><span>🐭 Pip (Safety Scout)</span></div>' +
+      '<div class="pip-speech-bubble hidden" id="s2PipBubble">👋 Hi Shakir! Ready for fieldwork!</div>' +
+      renderPipFigureSvg({ w: 44, h: 56, unique: 'pip_farm' });
+
+    layer.appendChild(pipEl);
+    guideState.pipEl = pipEl;
+    guideState.pipBubbleEl = pipEl.querySelector('#s2PipBubble');
+
+    pipEl.onclick = function (e) {
+      e.stopPropagation();
+      toggleSubtitles(true);
+    };
+
+    return pipEl;
+  }
+
+  function removePipCompanion() {
+    var pip = guideState.pipEl || document.getElementById('s2PipCompanion');
+    if (pip && pip.parentNode) pip.parentNode.removeChild(pip);
+    guideState.pipEl = null;
+    guideState.pipBubbleEl = null;
+  }
+
+  function playPipAnimation(animName, durationMs) {
+    var pip = guideState.pipEl || document.getElementById('s2PipCompanion');
+    if (!pip) return;
+
+    var valid = ['pip-anim-wand-wave', 'pip-anim-hop', 'pip-anim-whirl', 'pip-anim-ear-sniff', 'pip-anim-wrench'];
+    valid.forEach(function (c) { pip.classList.remove(c); });
+
+    var targetClass = 'pip-anim-' + animName.replace(/^pip-anim-/, '').replace('_', '-');
+    pip.classList.add(targetClass);
+
+    if (durationMs) {
+      setTimeout(function () {
+        if (pip) pip.classList.remove(targetClass);
+      }, durationMs);
+    }
+  }
+
   // ---------------------------------------------------------------------------
-  // Speech Bubble Controller
+  // Speech Bubbles Controller (Only 1 Active at a Time to Prevent Any Overlap)
   // ---------------------------------------------------------------------------
   var bubbleTimeout = null;
   function showShakirSpeechBubble(text, durationMs) {
+    hidePipSpeechBubble();
     var bubble = guideState.speechBubbleEl || document.getElementById('s2ShakirBubble');
     if (!bubble) return;
     bubble.innerHTML = text;
@@ -1337,91 +1655,156 @@
     if (bubble) bubble.classList.add('hidden');
   }
 
+  var pipBubbleTimeout = null;
+  function showPipSpeechBubble(text, durationMs) {
+    hideShakirSpeechBubble();
+    var bubble = guideState.pipBubbleEl || document.getElementById('s2PipBubble');
+    if (!bubble) return;
+    bubble.innerHTML = text;
+    bubble.classList.remove('hidden');
+
+    if (pipBubbleTimeout) clearTimeout(pipBubbleTimeout);
+    if (durationMs) {
+      pipBubbleTimeout = setTimeout(function () {
+        if (bubble) bubble.classList.add('hidden');
+      }, durationMs);
+    }
+  }
+
+  function hidePipSpeechBubble() {
+    var bubble = guideState.pipBubbleEl || document.getElementById('s2PipBubble');
+    if (bubble) bubble.classList.add('hidden');
+  }
+
   // ---------------------------------------------------------------------------
-  // Path Animation & Waypoint Navigation
+  // Continuous Parametric Smooth Walking Engine
   // ---------------------------------------------------------------------------
-  function walkPath(el, points, durationMs, onDone) {
+  function adjustSubtitleDockPlacement(characterLeft) {
+    var dock = document.getElementById('shakirPipSubtitleDock');
+    if (!dock) return;
+    // Always keep subtitle dock cleanly stretched at bottom-left to avoid right modals/HUD overlap
+    dock.classList.remove('dock-right');
+    dock.classList.add('dock-left');
+  }
+
+  function walkPathSmooth(el, points, durationMs, onDone) {
     if (!el || !points || points.length < 2) {
       if (onDone) onDone();
       return;
     }
+    var pipEl = guideState.pipEl || document.getElementById('s2PipCompanion');
     var myWalkToken = ++guideState.currentWalkToken;
     el.__walkToken = myWalkToken;
+    guideState.isWalking = true;
     el.classList.add('walking');
     el.classList.remove('wonder-touching');
-    guideState.isWalking = true;
-
-    if (typeof global.animateAlongWaypoints === 'function') {
-      var wps = points.map(function (p) {
-        return { x: p.left, y: p.top };
-      });
-      global.animateAlongWaypoints(el, wps, durationMs || 3600, function () {
-        if (el.__walkToken !== myWalkToken) return;
-        el.classList.remove('walking');
-        el.style.transform = 'translate(-50%, -85%)';
-        guideState.isWalking = false;
-        if (onDone) onDone();
-      });
-      return;
+    if (pipEl) {
+      pipEl.classList.add('walking');
+      pipEl.classList.remove('pip-anim-wand-wave', 'pip-anim-hop', 'pip-anim-ear-sniff', 'pip-anim-wrench');
     }
 
-    // Smooth fallback linear interpolation with heading dynamics
-    var i = 0;
-    function step() {
+    var segDistances = [];
+    var totalDist = 0;
+    for (var i = 0; i < points.length - 1; i++) {
+      var p0 = points[i];
+      var p1 = points[i + 1];
+      var d = Math.hypot(p1.left - p0.left, p1.top - p0.top);
+      segDistances.push(d);
+      totalDist += d;
+    }
+    if (totalDist === 0) totalDist = 1;
+
+    var startTime = performance.now();
+
+    function frame(now) {
       if (el.__walkToken !== myWalkToken) return;
-      i++;
-      if (i >= points.length) {
-        el.classList.remove('walking');
-        el.style.transform = 'translate(-50%, -85%)';
-        guideState.isWalking = false;
-        if (onDone) onDone();
-        return;
-      }
-      var prev = points[i - 1];
-      var curr = points[i];
-      var dur = Math.max(350, (durationMs || 3600) / (points.length - 1));
-      var t0 = performance.now();
+      var elapsed = now - startTime;
+      var globalT = Math.min(1, elapsed / durationMs);
 
-      var dx = curr.left - prev.left;
-      var dy = curr.top - prev.top;
-      var angle = Math.atan2(dy, dx) * 180 / Math.PI;
-      el.setAttribute('data-heading-angle', Math.round(angle));
+      // Smooth cubic ease-in-out curve
+      var eased = (globalT < 0.5)
+        ? (4 * globalT * globalT * globalT)
+        : (1 - Math.pow(-2 * globalT + 2, 3) / 2);
 
-      if (dy < -0.25) {
-        el.classList.add('facing-north');
-        el.classList.remove('facing-south');
-      } else if (dy > 0.25) {
-        el.classList.add('facing-south');
-        el.classList.remove('facing-north');
+      var targetDist = eased * totalDist;
+
+      var accumulated = 0;
+      var segIdx = 0;
+      while (segIdx < segDistances.length - 1 && accumulated + segDistances[segIdx] < targetDist) {
+        accumulated += segDistances[segIdx];
+        segIdx++;
       }
-      if (dx > 0.25) {
+
+      var segLen = segDistances[segIdx];
+      var segFraction = (segLen > 0) ? Math.min(1, Math.max(0, (targetDist - accumulated) / segLen)) : 1;
+      var sp0 = points[segIdx];
+      var sp1 = points[segIdx + 1];
+
+      var curX = sp0.left + (sp1.left - sp0.left) * segFraction;
+      var curY = sp0.top + (sp1.top - sp0.top) * segFraction;
+
+      var dx = sp1.left - sp0.left;
+
+      el.classList.add('facing-south');
+      el.classList.remove('facing-north');
+      if (pipEl) {
+        pipEl.classList.add('facing-south');
+        pipEl.classList.remove('facing-north');
+      }
+
+      var pipOffsetX = 3.2;
+      var pipOffsetY = 1.0;
+
+      if (dx > 0.15) {
         el.classList.add('facing-east');
         el.classList.remove('facing-west');
-      } else if (dx < -0.25) {
+        if (pipEl) {
+          pipEl.classList.add('facing-east');
+          pipEl.classList.remove('facing-west');
+        }
+        pipOffsetX = -3.2;
+        pipOffsetY = 1.2;
+      } else if (dx < -0.15) {
         el.classList.add('facing-west');
         el.classList.remove('facing-east');
+        if (pipEl) {
+          pipEl.classList.add('facing-west');
+          pipEl.classList.remove('facing-east');
+        }
+        pipOffsetX = 3.2;
+        pipOffsetY = 1.2;
       }
 
-      function tickAnim(t) {
-        if (el.__walkToken !== myWalkToken) return;
-        var p = Math.min(1, (t - t0) / dur);
-        var curX = prev.left + dx * p;
-        var curY = prev.top + dy * p;
-        el.style.left = curX + '%';
-        el.style.top = curY + '%';
-        if (p < 1) {
-          requestAnimationFrame(tickAnim);
-        } else {
-          step();
-        }
+      el.style.left = curX.toFixed(2) + '%';
+      el.style.top = curY.toFixed(2) + '%';
+
+      if (pipEl) {
+        pipEl.style.left = (curX + pipOffsetX).toFixed(2) + '%';
+        pipEl.style.top = (curY + pipOffsetY).toFixed(2) + '%';
       }
-      requestAnimationFrame(tickAnim);
+
+      adjustSubtitleDockPlacement(curX);
+
+      if (globalT < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        el.classList.remove('walking');
+        el.style.transform = 'translate(-50%, -85%)';
+        guideState.isWalking = false;
+
+        if (pipEl) {
+          pipEl.classList.remove('walking');
+          pipEl.style.transform = 'translate(-50%, -85%)';
+        }
+        if (onDone) onDone();
+      }
     }
-    step();
+
+    requestAnimationFrame(frame);
   }
 
   // ---------------------------------------------------------------------------
-  // Wonder Touch & Touch Ripple
+  // FX Helpers
   // ---------------------------------------------------------------------------
   function spawnTouchRipple(at) {
     if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.spawnTouchRipple === 'function') {
@@ -1448,6 +1831,25 @@
     }, 1300);
   }
 
+  function spawnDirectingBeam(from, to) {
+    var scene = document.getElementById('fieldScene');
+    if (!scene) return;
+    var beam = document.createElement('div');
+    beam.className = 'shakir-wonder-beam';
+    var dx = (to.left - from.left);
+    var dy = (to.top - from.top);
+    var dist = Math.hypot(dx, dy);
+    var angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    beam.style.left = from.left + '%';
+    beam.style.top = from.top + '%';
+    beam.style.width = dist + '%';
+    beam.style.transform = 'rotate(' + angle + 'deg)';
+    scene.appendChild(beam);
+    setTimeout(function () {
+      if (beam && beam.parentNode) beam.parentNode.removeChild(beam);
+    }, 700);
+  }
+
   function showSkyHeading(text, at, icon) {
     var scene = document.getElementById('fieldScene');
     if (!scene) return;
@@ -1470,7 +1872,800 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Cooldown System (Same Cooldown as Avatar Tour)
+  // Voice Synthesis Engine (Web Speech API)
+  // ---------------------------------------------------------------------------
+  var _activeUtterance = null;
+  var _speechFallbackTimer = null;
+  var _cachedVoices = [];
+
+  function getSpeechVoices() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      var v = window.speechSynthesis.getVoices() || [];
+      if (v.length > 0) _cachedVoices = v;
+    }
+    return _cachedVoices;
+  }
+
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = function () {
+      getSpeechVoices();
+    };
+    getSpeechVoices();
+  }
+
+  function stopDialogueVoice() {
+    if (_speechFallbackTimer) {
+      clearTimeout(_speechFallbackTimer);
+      _speechFallbackTimer = null;
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+    }
+    _activeUtterance = null;
+  }
+
+  function speakDialogueVoice(speaker, text, onEnd) {
+    stopDialogueVoice();
+
+    if (!guideState.voiceEnabled) {
+      _speechFallbackTimer = setTimeout(function () {
+        if (typeof onEnd === 'function') onEnd();
+      }, 3400);
+      return;
+    }
+
+    if (speaker === 'pip') {
+      if (global.KidsSustainabilityAcademy && typeof global.KidsSustainabilityAcademy.playPipMouseSFX === 'function') {
+        try { global.KidsSustainabilityAcademy.playPipMouseSFX(); } catch (e) {}
+      }
+    }
+
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      _speechFallbackTimer = setTimeout(function () {
+        if (typeof onEnd === 'function') onEnd();
+      }, 3600);
+      return;
+    }
+
+    var clean = text
+      .replace(/\b(slurp|byzzz|bzzzz|bzzz|whoosh|zoom|moo)\b/gi, '')
+      .replace(/squeak tastic/gi, 'fantastic')
+      .replace(/["“”*()]/g, '')
+      .replace(/-/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    var utter = new SpeechSynthesisUtterance(clean);
+    _activeUtterance = utter;
+
+    var voices = getSpeechVoices();
+    if (!voices || voices.length === 0) {
+      voices = window.speechSynthesis.getVoices() || [];
+    }
+
+    if (speaker === 'shakir') {
+      utter.pitch = 0.98;
+      utter.rate = 1.02;
+      var maleVoices = voices.filter(function (v) {
+        if (!v.lang || v.lang.indexOf('en') !== 0) return false;
+        var name = (v.name || '').toLowerCase();
+        return name.includes('male') || name.includes('david') || name.includes('mark') ||
+               name.includes('guy') || name.includes('george') || name.includes('google us english') ||
+               name.includes('natural');
+      });
+      var shakirVoice = maleVoices[0] || voices[0];
+      if (shakirVoice) utter.voice = shakirVoice;
+    } else {
+      utter.pitch = 1.80;
+      utter.rate = 1.12;
+      var boyVoices = voices.filter(function (v) {
+        if (!v.lang || v.lang.indexOf('en') !== 0) return false;
+        var name = (v.name || '').toLowerCase();
+        return name.includes('child') || name.includes('junior') || name.includes('guy') ||
+               name.includes('david') || name.includes('mark') || name.includes('male');
+      });
+      var pipVoice = boyVoices[0] || voices[0];
+      if (pipVoice) utter.voice = pipVoice;
+    }
+
+    var hasEnded = false;
+    function finish() {
+      if (hasEnded) return;
+      hasEnded = true;
+      if (_speechFallbackTimer) {
+        clearTimeout(_speechFallbackTimer);
+        _speechFallbackTimer = null;
+      }
+      if (typeof onEnd === 'function') onEnd();
+    }
+
+    utter.onend = finish;
+    utter.onerror = finish;
+
+    var estMs = Math.max(2800, (clean.length / 14) * 1000);
+    _speechFallbackTimer = setTimeout(finish, estMs + 1800);
+
+    try {
+      window.speechSynthesis.speak(utter);
+    } catch (e) {
+      finish();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Subtitle Dock UI Controller
+  // ---------------------------------------------------------------------------
+  function ensureSubtitleDock() {
+    ensureShakirStyles();
+    var dock = document.getElementById('shakirPipSubtitleDock');
+    if (!dock) {
+      dock = document.createElement('div');
+      dock.id = 'shakirPipSubtitleDock';
+      dock.className = 'dock-right';
+      dock.setAttribute('role', 'region');
+      dock.setAttribute('aria-label', 'Shakir and Pip Tour Subtitles');
+
+      dock.innerHTML =
+        '<div class="sub-header-row">' +
+          '<div class="sub-speaker-info">' +
+            '<div class="sub-speaker-avatar" id="subAvatar">🧑‍🌾</div>' +
+            '<div class="sub-speaker-meta">' +
+              '<span class="sub-speaker-name" id="subName">Shakir</span>' +
+              '<span class="sub-speaker-role" id="subRole">18+ Eco Forger</span>' +
+              '<span class="sub-chapter-chip" id="subChChip">Ch. 1 · Spot 1</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="sub-controls-group">' +
+            '<button type="button" class="sub-ctrl-btn" id="btnSubVoiceToggle" title="Toggle Spoken Voice">🔊</button>' +
+            '<button type="button" class="sub-ctrl-btn sub-next-btn" id="btnSubNextTurn" title="Next dialogue turn">Next ➔</button>' +
+            '<button type="button" class="sub-ctrl-btn" id="btnSubLeaveFarm" title="Conclude Tour &amp; Leave Farm through Gate" style="background:rgba(239,68,68,0.22);border:1px solid rgba(239,68,68,0.5);color:#FCA5A5;font-weight:700;">🚪 Exit</button>' +
+            '<button type="button" class="sub-ctrl-btn" id="btnSubMinimize" title="Minimize Subtitles to 💬">✕</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sub-text-row" id="subDialogueText">Welcome to our farm tour!</div>' +
+        '<div class="sub-progress-dots" id="subDots">' +
+          '<div class="sub-dot active" id="subDot1"></div>' +
+          '<div class="sub-dot" id="subDot2"></div>' +
+          '<div class="sub-dot" id="subDot3"></div>' +
+        '</div>';
+
+      document.body.appendChild(dock);
+
+      document.getElementById('btnSubVoiceToggle').onclick = function (e) {
+        e.stopPropagation();
+        toggleVoice();
+      };
+      document.getElementById('btnSubNextTurn').onclick = function (e) {
+        e.stopPropagation();
+        advanceDialogueTurn();
+      };
+      var leaveBtn = document.getElementById('btnSubLeaveFarm');
+      if (leaveBtn) {
+        leaveBtn.onclick = function (e) {
+          e.stopPropagation();
+          walkOutThroughGate();
+        };
+      }
+      document.getElementById('btnSubMinimize').onclick = function (e) {
+        e.stopPropagation();
+        toggleSubtitles(false);
+      };
+    }
+    ensureToolbarButton();
+    return dock;
+  }
+
+  function ensureToolbarButton() {
+    var btn = document.getElementById('btnToggleTourSubtitles');
+    if (!btn) {
+      var stack = document.querySelector('.bottom-buttons-stack');
+      var mpBtn = document.getElementById('btnToggleMarketplace');
+      if (stack) {
+        btn = document.createElement('button');
+        btn.id = 'btnToggleTourSubtitles';
+        btn.className = 'corner-toggle-btn corner-subtitles-btn';
+        btn.setAttribute('title', 'Toggle Tour Dialogue Subtitles (💬)');
+        btn.setAttribute('aria-label', 'Toggle Tour Subtitles');
+        btn.innerHTML = '<span class="corner-btn-icon">💬</span>';
+        if (mpBtn && mpBtn.parentNode === stack) {
+          stack.insertBefore(btn, mpBtn);
+        } else {
+          stack.appendChild(btn);
+        }
+      }
+    }
+    if (btn) {
+      btn.onclick = function (e) {
+        e.stopPropagation();
+        toggleSubtitles();
+      };
+      if (guideState.subtitlesVisible) btn.classList.add('active');
+      else btn.classList.remove('active');
+    }
+  }
+
+  function toggleSubtitles(forceVisible) {
+    var dock = ensureSubtitleDock();
+    if (typeof forceVisible === 'boolean') {
+      guideState.subtitlesVisible = forceVisible;
+    } else {
+      guideState.subtitlesVisible = !guideState.subtitlesVisible;
+    }
+    if (guideState.subtitlesVisible) {
+      dock.classList.remove('minimized');
+    } else {
+      dock.classList.add('minimized');
+    }
+    var btn = document.getElementById('btnToggleTourSubtitles');
+    if (btn) {
+      if (guideState.subtitlesVisible) btn.classList.add('active');
+      else btn.classList.remove('active');
+    }
+  }
+
+  function toggleVoice() {
+    guideState.voiceEnabled = !guideState.voiceEnabled;
+    try {
+      localStorage.setItem('searchO2_tour_voice_enabled', guideState.voiceEnabled ? '1' : '0');
+    } catch (e) {}
+
+    var btn = document.getElementById('btnSubVoiceToggle');
+    if (btn) {
+      btn.textContent = guideState.voiceEnabled ? '🔊' : '🔇';
+      btn.title = guideState.voiceEnabled ? 'Spoken Voice: On' : 'Spoken Voice: Off (Muted)';
+    }
+    if (!guideState.voiceEnabled) stopDialogueVoice();
+  }
+
+  function getActiveFarmName() {
+    try {
+      var raw = localStorage.getItem('searchO2_guest_farm_profile');
+      if (raw) {
+        var p = JSON.parse(raw);
+        if (p && p.name && p.name.trim()) return p.name.trim();
+      }
+    } catch (e) {}
+    if (typeof global.apiUser !== 'undefined' && global.apiUser && global.apiUser.farmName) {
+      return global.apiUser.farmName.trim();
+    }
+    if (typeof global.state !== 'undefined' && global.state && global.state.farmName) {
+      return global.state.farmName.trim();
+    }
+    return 'SearchO2';
+  }
+
+  function closeAllConflictingModals() {
+    if (typeof global.closeModal === 'function') {
+      try { global.closeModal(); } catch (e) {}
+    } else if (typeof window !== 'undefined' && typeof window.closeModal === 'function') {
+      try { window.closeModal(); } catch (e) {}
+    }
+    var overlay = document.getElementById('modalOverlay');
+    if (overlay) {
+      overlay.classList.add('hidden');
+      overlay.style.display = 'none';
+    }
+    var chapModal = document.getElementById('chapterExploreModal');
+    if (chapModal) { chapModal.classList.add('hidden'); chapModal.style.display = 'none'; }
+    var tourModal = document.getElementById('s2TourModal');
+    if (tourModal) { tourModal.classList.add('hidden'); }
+    var homeOverlay = document.getElementById('s2HomeOverlay');
+    if (homeOverlay) { homeOverlay.classList.add('hidden'); homeOverlay.style.display = 'none'; }
+    var hoverModal = document.getElementById('s2ObjectHoverModal');
+    if (hoverModal) { hoverModal.classList.add('hidden'); }
+    var lockedPopup = document.getElementById('stepInstructionPopupWrapper');
+    if (lockedPopup) { lockedPopup.classList.add('hidden'); }
+    var handover = document.getElementById('kidsAcademyHandoverModal');
+    if (handover && handover.parentNode) { handover.parentNode.removeChild(handover); }
+    var academy = document.getElementById('kidsAcademyModal');
+    if (academy) { academy.classList.remove('visible'); if (academy.parentNode) academy.parentNode.removeChild(academy); }
+    var rModal = document.getElementById('kidsAcademyRewardModal');
+    if (rModal && rModal.parentNode) { rModal.parentNode.removeChild(rModal); }
+    if (document.body) {
+      document.body.classList.remove('modal-open');
+    }
+  }
+
+  function updateSubtitleContent(ch, spotIdx, turnNum, turnData, totalSpots) {
+    var dock = ensureSubtitleDock();
+    if (guideState.subtitlesVisible) dock.classList.remove('minimized');
+
+    // Support single config object: updateSubtitleContent({ avatar, name, role, chip, text, currentTurn })
+    if (typeof ch === 'object' && ch !== null) {
+      var cfg = ch;
+      var aEl = document.getElementById('subAvatar');
+      var nEl = document.getElementById('subName');
+      var rEl = document.getElementById('subRole');
+      var cEl = document.getElementById('subChChip');
+      var tEl = document.getElementById('subDialogueText');
+      var nBtn = document.getElementById('btnSubNextTurn');
+      var isPipSub = (cfg.avatar === '🐭' || (cfg.name && cfg.name.includes('Pip')));
+
+      if (aEl) {
+        aEl.textContent = cfg.avatar || (isPipSub ? '🐭' : '🧑‍🌾');
+        aEl.className = 'sub-speaker-avatar ' + (isPipSub ? 'pip' : 'shakir');
+      }
+      if (nEl) {
+        nEl.textContent = cfg.name || (isPipSub ? 'Pip Squeak-a-Link' : 'Shakir');
+        nEl.className = 'sub-speaker-name ' + (isPipSub ? 'pip' : 'shakir');
+      }
+      if (rEl) {
+        rEl.textContent = cfg.role || (isPipSub ? 'Chief Safety Scout' : '18+ Eco Forger');
+        rEl.className = 'sub-speaker-role ' + (isPipSub ? 'pip' : 'shakir');
+      }
+      if (cEl) cEl.textContent = cfg.chip || 'Farm Gate · Completion';
+      if (tEl) tEl.innerHTML = cfg.text || '';
+      if (nBtn) nBtn.textContent = 'Next ➔';
+
+      var cTurn = cfg.currentTurn || 1;
+      for (var d0 = 1; d0 <= 3; d0++) {
+        var dot0 = document.getElementById('subDot' + d0);
+        if (dot0) {
+          dot0.className = 'sub-dot' + (d0 === cTurn ? ' active' : (d0 < cTurn ? ' done' : ''));
+        }
+      }
+      return;
+    }
+
+    var avatarEl = document.getElementById('subAvatar');
+    var nameEl = document.getElementById('subName');
+    var roleEl = document.getElementById('subRole');
+    var chipEl = document.getElementById('subChChip');
+    var textEl = document.getElementById('subDialogueText');
+    var nextBtn = document.getElementById('btnSubNextTurn');
+    var voiceBtn = document.getElementById('btnSubVoiceToggle');
+
+    if (voiceBtn) voiceBtn.textContent = guideState.voiceEnabled ? '🔊' : '🔇';
+
+    var farmName = getActiveFarmName();
+    var processedText = (turnData.text || '').replace(/\{farmName\}/g, '“' + farmName + '”');
+
+    var isPip = (turnData.speaker === 'pip');
+    if (avatarEl) {
+      avatarEl.textContent = turnData.avatar || (isPip ? '🐭' : '🧑‍🌾');
+      avatarEl.className = 'sub-speaker-avatar ' + (isPip ? 'pip' : 'shakir');
+    }
+    if (nameEl) {
+      nameEl.textContent = turnData.name || (isPip ? 'Pip Squeak-a-Link' : 'Shakir');
+      nameEl.className = 'sub-speaker-name ' + (isPip ? 'pip' : 'shakir');
+    }
+    if (roleEl) {
+      roleEl.textContent = turnData.role || (isPip ? 'Toddler Safety Scout' : '18+ Eco Forger');
+      roleEl.className = 'sub-speaker-role ' + (isPip ? 'pip' : 'shakir');
+    }
+    if (chipEl) {
+      chipEl.textContent = 'Ch. ' + ch + ' (' + (spotIdx + 1) + '/' + totalSpots + ') · Turn ' + turnNum + '/3';
+    }
+    if (textEl) textEl.innerHTML = processedText;
+    if (nextBtn) nextBtn.textContent = (turnNum < 3) ? 'Next ➔' : 'Complete ✨';
+
+    for (var d = 1; d <= 3; d++) {
+      var dot = document.getElementById('subDot' + d);
+      if (dot) {
+        dot.className = 'sub-dot' + (d === turnNum ? ' active' : (d < turnNum ? ' done' : ''));
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Chapter Journey Progression: Visiting Every Sub-Challenge
+  // ---------------------------------------------------------------------------
+  function playCurrentSpotDialogue(ch, spotIdx, turnNum) {
+    turnNum = turnNum || 1;
+    guideState.currentChapter = ch;
+    guideState.currentSpotIdx = spotIdx;
+    guideState.currentDialogueTurn = turnNum;
+
+    var chapterData = CHAPTER_JOURNEY[ch] || CHAPTER_JOURNEY[1];
+    var spots = chapterData.spots || [];
+    var currentSpot = spots[spotIdx] || spots[0];
+    var turnData = currentSpot['turn' + turnNum];
+    if (!turnData) return;
+
+    adjustSubtitleDockPlacement(currentSpot.standPoint.left);
+    updateSubtitleContent(ch, spotIdx, turnNum, turnData, spots.length);
+
+    var farmName = getActiveFarmName();
+    var bubbleText = (turnData.bubble || '').replace(/\{farmName\}/g, farmName);
+    var spokenText = (turnData.text || '').replace(/\{farmName\}/g, farmName);
+
+    if (turnData.speaker === 'shakir') {
+      showShakirSpeechBubble(bubbleText, 5000);
+      hidePipSpeechBubble();
+    } else {
+      showPipSpeechBubble(bubbleText, 5000);
+      hideShakirSpeechBubble();
+      if (turnData.anim) playPipAnimation(turnData.anim, 4000);
+    }
+
+    speakDialogueVoice(turnData.speaker, spokenText, function () {
+      if (!guideState.active || guideState.currentChapter !== ch || guideState.currentSpotIdx !== spotIdx || guideState.currentDialogueTurn !== turnNum) {
+        return;
+      }
+      guideState.dialogueTimer = setTimeout(function () {
+        advanceDialogueTurn();
+      }, 1400);
+    });
+  }
+
+  function advanceDialogueTurn() {
+    if (guideState.dialogueTimer) {
+      clearTimeout(guideState.dialogueTimer);
+      guideState.dialogueTimer = null;
+    }
+    stopDialogueVoice();
+
+    if (guideState.isExitingGate) {
+      if (guideState.exitTurn < 2) {
+        playGateFarewellTurn(2);
+      } else {
+        performFinalExitWalk();
+      }
+      return;
+    }
+
+    if (guideState.isGateEncounter) {
+      if (guideState.gateTurn < 3) {
+        playGateEncounterTurn(guideState.gateTurn + 1);
+      } else {
+        walkFromGateToPlot1();
+      }
+      return;
+    }
+
+    var ch = guideState.currentChapter || 1;
+    var spotIdx = guideState.currentSpotIdx || 0;
+    var turn = guideState.currentDialogueTurn || 1;
+    var chapterData = CHAPTER_JOURNEY[ch] || CHAPTER_JOURNEY[1];
+    var spots = chapterData.spots || [];
+    var currentSpot = spots[spotIdx] || spots[0];
+
+    if (guideState.isWalking) {
+      guideState.currentWalkToken++;
+      if (guideState.walkerEl) {
+        guideState.walkerEl.__walkToken = guideState.currentWalkToken;
+      }
+      if (guideState.isWalkingFromGateToPlot1) {
+        guideState.isWalkingFromGateToPlot1 = false;
+        guideState.isWalking = false;
+        var firstSpot = CHAPTER_JOURNEY[1].spots[0];
+        var el1 = guideState.walkerEl;
+        if (el1) {
+          el1.style.left = firstSpot.standPoint.left + '%';
+          el1.style.top = firstSpot.standPoint.top + '%';
+          el1.classList.remove('walking');
+        }
+        if (guideState.pipEl) {
+          guideState.pipEl.style.left = (firstSpot.standPoint.left + 3.2) + '%';
+          guideState.pipEl.style.top = (firstSpot.standPoint.top + 1.2) + '%';
+          guideState.pipEl.classList.remove('walking');
+        }
+        playCurrentSpotDialogue(1, 0, 1);
+        return;
+      }
+
+      var el = guideState.walkerEl;
+      if (el) {
+        el.style.left = currentSpot.standPoint.left + '%';
+        el.style.top = currentSpot.standPoint.top + '%';
+        el.classList.remove('walking');
+      }
+      if (guideState.pipEl) {
+        guideState.pipEl.style.left = (currentSpot.standPoint.left + 3.2) + '%';
+        guideState.pipEl.style.top = (currentSpot.standPoint.top + 1.2) + '%';
+        guideState.pipEl.classList.remove('walking');
+      }
+      guideState.isWalking = false;
+      playCurrentSpotDialogue(ch, spotIdx, 1);
+      return;
+    }
+
+    if (turn < 3) {
+      playCurrentSpotDialogue(ch, spotIdx, turn + 1);
+    } else {
+      // Turn 3 Finished for this spot!
+      // Trigger blueprint reveal & award XP
+      if (typeof global.exploreChapterObject === 'function') {
+        try { global.exploreChapterObject(currentSpot.key, true); } catch (e) {}
+      }
+      if (typeof global.state !== 'undefined' && global.state) {
+        global.state.exploredChapters = global.state.exploredChapters || {};
+        global.state.exploredChapters[ch] = true;
+        global.state.exploredChapterObjects = global.state.exploredChapterObjects || {};
+        global.state.exploredChapterObjects[currentSpot.key] = true;
+        global.state.xp = (global.state.xp || 0) + 15;
+      }
+      if (typeof global.SoundTrackEngine !== 'undefined') {
+        try { global.SoundTrackEngine.playSFX('achieve'); } catch (e) {}
+      }
+
+      // If chapter has more sub-challenges to visit, walk to the next one!
+      if (spotIdx + 1 < spots.length) {
+        walkToNextSubSpot(ch, spotIdx + 1);
+      } else {
+        // All sub-challenges in this chapter completed!
+        if (ch >= 8) {
+          showVictoryCelebration();
+        } else {
+          var nextCh = ch + 1;
+          startCooldown(ch, nextCh);
+          updateChapterCompletionSubtitle(ch, nextCh);
+        }
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Farm Gate Entrance Encounter (Introductory Discussion at Gate)
+  // ---------------------------------------------------------------------------
+  function startFarmGateEncounter() {
+    guideState.isGateEncounter = true;
+    guideState.gateTurn = 1;
+    guideState.isWalking = false;
+    guideState.isWalkingFromGateToPlot1 = false;
+
+    var gatePos = { left: 91.5, top: 52.0 };
+    var el = guideState.walkerEl;
+    var pipEl = guideState.pipEl;
+
+    if (el) {
+      el.style.left = gatePos.left + '%';
+      el.style.top = gatePos.top + '%';
+      el.classList.remove('walking');
+      el.classList.add('facing-south', 'facing-west');
+    }
+    if (pipEl) {
+      pipEl.style.left = (gatePos.left + 3.4) + '%';
+      pipEl.style.top = (gatePos.top + 1.2) + '%';
+      pipEl.classList.remove('walking');
+      pipEl.classList.remove('pip-anim-wand-wave', 'pip-anim-hop', 'pip-anim-whirl', 'pip-anim-ear-sniff', 'pip-anim-wrench');
+    }
+
+    renderTourNavDock(1);
+    adjustSubtitleDockPlacement(gatePos.left);
+    showSkyHeading('Farm Gate: Welcome & Estate Identity ⛩️', { left: 91.5, top: 44.0 }, '⛩️');
+
+    playGateEncounterTurn(1);
+  }
+
+  function playGateEncounterTurn(turn) {
+    guideState.gateTurn = turn;
+    var farmName = getActiveFarmName();
+    var gatePos = { left: 91.5, top: 52.0 };
+    adjustSubtitleDockPlacement(gatePos.left);
+
+    var dock = ensureSubtitleDock();
+    dock.classList.remove('hidden');
+
+    var avatarEl = document.getElementById('subAvatar');
+    var nameEl = document.getElementById('subName');
+    var roleEl = document.getElementById('subRole');
+    var chipEl = document.getElementById('subChChip');
+    var textEl = document.getElementById('subDialogueText');
+    var nextBtn = document.getElementById('btnSubNextTurn');
+    var voiceBtn = document.getElementById('btnSubVoiceToggle');
+
+    if (voiceBtn) voiceBtn.textContent = guideState.voiceEnabled ? '🔊' : '🔇';
+
+    if (turn === 1) {
+      hidePipSpeechBubble();
+      if (guideState.pipEl) guideState.pipEl.classList.remove('pip-anim-whirl', 'pip-anim-hop', 'pip-anim-wand-wave');
+
+      var bubble1 = '⛩️ Welcome to the Farm Gate, Pip! 🌾';
+      var text1 = 'Halt here, Pip! Right on this threshold is where our grand ceremonial Farm Gate will be built! In an upcoming chapter, I\'ll teach you the architectural craft of erecting timber beams and stone pillars.' +
+        ' And here is the most wonderful part: every aspiring farmer—whether exploring as an adventurous guest or logged in as an estate steward—can bestow their own graceful, unique farm name like our proud “' + farmName + '”! Whatever name you choose will be proudly forged onto our Chapter 2 sub-challenge gate shield and banner!';
+
+      showShakirSpeechBubble(bubble1, 6000);
+      if (avatarEl) { avatarEl.textContent = '🧑‍🌾'; avatarEl.className = 'sub-speaker-avatar shakir'; }
+      if (nameEl) { nameEl.textContent = 'Shakir'; nameEl.className = 'sub-speaker-name shakir'; }
+      if (roleEl) { roleEl.textContent = '18+ Eco Forger'; roleEl.className = 'sub-speaker-role shakir'; }
+      if (chipEl) chipEl.textContent = 'Farm Gate · Turn 1/3';
+      if (textEl) textEl.innerHTML = text1;
+      if (nextBtn) nextBtn.textContent = 'Next ➔';
+
+      for (var d1 = 1; d1 <= 3; d1++) {
+        var dot1 = document.getElementById('subDot' + d1);
+        if (dot1) dot1.className = 'sub-dot' + (d1 === 1 ? ' active' : '');
+      }
+
+      speakDialogueVoice('shakir', text1, function () {
+        if (!guideState.active || !guideState.isGateEncounter || guideState.gateTurn !== 1) return;
+        guideState.dialogueTimer = setTimeout(function () {
+          advanceDialogueTurn();
+        }, 1200);
+      });
+
+    } else if (turn === 2) {
+      hideShakirSpeechBubble();
+      playPipAnimation('whirl');
+
+      var bubble2 = '⭐ JUMPING JELLYBEANS! Our very own farm shield?! 🤩';
+      var text2 = 'JUMPING JELLYBEANS! Our very own estate name “' + farmName + '” shining on the gate shield?! *hops and whirls with glee* Oh boy, Shakir, will my harvest field mouse friends see our glorious banner from all the way across the alpine valley?!';
+
+      showPipSpeechBubble(bubble2, 5500);
+      if (avatarEl) { avatarEl.textContent = '🐭'; avatarEl.className = 'sub-speaker-avatar pip'; }
+      if (nameEl) { nameEl.textContent = 'Pip Squeak-a-Link'; nameEl.className = 'sub-speaker-name pip'; }
+      if (roleEl) { roleEl.textContent = 'Toddler Safety Scout'; roleEl.className = 'sub-speaker-role pip'; }
+      if (chipEl) chipEl.textContent = 'Farm Gate · Turn 2/3';
+      if (textEl) textEl.innerHTML = text2;
+      if (nextBtn) nextBtn.textContent = 'Next ➔';
+
+      for (var d2 = 1; d2 <= 3; d2++) {
+        var dot2 = document.getElementById('subDot' + d2);
+        if (dot2) dot2.className = 'sub-dot' + (d2 === 2 ? ' active' : (d2 < 2 ? ' done' : ''));
+      }
+
+      speakDialogueVoice('pip', text2, function () {
+        if (!guideState.active || !guideState.isGateEncounter || guideState.gateTurn !== 2) return;
+        guideState.dialogueTimer = setTimeout(function () {
+          advanceDialogueTurn();
+        }, 1200);
+      });
+
+    } else if (turn === 3) {
+      hidePipSpeechBubble();
+      if (guideState.pipEl) guideState.pipEl.classList.remove('pip-anim-whirl');
+
+      var bubble3 = '😄 Haha Pip, you are so cute and full of energy!';
+      var text3 = 'Haha, oh Pip, you are so cute and full of boundless energy! They certainly will, little buddy! Now that we\'ve greeted our future gate, come along—let\'s walk down the pathway to our very first chapter challenges at Plot 1!';
+
+      showShakirSpeechBubble(bubble3, 5000);
+      if (avatarEl) { avatarEl.textContent = '🧑‍🌾'; avatarEl.className = 'sub-speaker-avatar shakir'; }
+      if (nameEl) { nameEl.textContent = 'Shakir'; nameEl.className = 'sub-speaker-name shakir'; }
+      if (roleEl) { roleEl.textContent = '18+ Eco Forger'; roleEl.className = 'sub-speaker-role shakir'; }
+      if (chipEl) chipEl.textContent = 'Farm Gate · Turn 3/3';
+      if (textEl) textEl.innerHTML = text3;
+      if (nextBtn) nextBtn.textContent = 'Walk to Plot 1 ➔';
+
+      for (var d3 = 1; d3 <= 3; d3++) {
+        var dot3 = document.getElementById('subDot' + d3);
+        if (dot3) dot3.className = 'sub-dot' + (d3 === 3 ? ' active' : ' done');
+      }
+
+      speakDialogueVoice('shakir', text3, function () {
+        if (!guideState.active || !guideState.isGateEncounter || guideState.gateTurn !== 3) return;
+        guideState.dialogueTimer = setTimeout(function () {
+          advanceDialogueTurn();
+        }, 1500);
+      });
+    }
+  }
+
+  function walkFromGateToPlot1() {
+    guideState.isGateEncounter = false;
+    guideState.isWalkingFromGateToPlot1 = true;
+    hideShakirSpeechBubble();
+    hidePipSpeechBubble();
+    if (guideState.pipEl) guideState.pipEl.classList.remove('pip-anim-whirl', 'pip-anim-hop', 'pip-anim-wand-wave');
+
+    var el = guideState.walkerEl;
+    if (!el) return;
+
+    var firstSpot = CHAPTER_JOURNEY[1].spots[0];
+    var gatePos = { left: 91.5, top: 52.0 };
+
+    var waypoints = [
+      gatePos,
+      { left: 78.0, top: 51.0 },
+      { left: 62.0, top: 48.0 },
+      { left: 45.0, top: 40.0 },
+      firstSpot.standPoint
+    ];
+    var walkDuration = 6500;
+
+    showSkyHeading('Walking to Chapter 1: Pioneer Plot 1 🚶', firstSpot.standPoint, firstSpot.icon);
+    showShakirSpeechBubble('Come along Pip! To Plot 1! 🚶', 3500);
+
+    walkPathSmooth(el, waypoints, walkDuration, function () {
+      guideState.isWalkingFromGateToPlot1 = false;
+      if (!guideState.active) return;
+
+      el.classList.add('wonder-touching');
+      spawnTouchRipple(firstSpot.touchPoint);
+
+      if (typeof global.SoundTrackEngine !== 'undefined') {
+        try { global.SoundTrackEngine.playSFX('task'); } catch (e) {}
+      }
+
+      showSkyHeading('Wonder Stick: Ch. 1 ' + firstSpot.landmark, firstSpot.standPoint, firstSpot.icon);
+
+      addSequenceTimer(function () {
+        if (!guideState.active) return;
+        spawnDirectingBeam(firstSpot.standPoint, firstSpot.touchPoint);
+
+        addSequenceTimer(function () {
+          if (!guideState.active) return;
+
+          if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.showChapterGhosts === 'function') {
+            try { global.SearchO2HomeAvatar.showChapterGhosts(1, true); } catch (e) {}
+          }
+
+          if (el) el.classList.remove('wonder-touching');
+          playCurrentSpotDialogue(1, 0, 1);
+
+        }, 300);
+      }, 300);
+    });
+  }
+
+  function walkToNextSubSpot(ch, nextSpotIdx) {
+    guideState.currentSpotIdx = nextSpotIdx;
+    var chapterData = CHAPTER_JOURNEY[ch] || CHAPTER_JOURNEY[1];
+    var nextSpot = chapterData.spots[nextSpotIdx];
+    if (!nextSpot) return;
+
+    var el = guideState.walkerEl;
+    if (!el) return;
+
+    var from = {
+      left: parseFloat(el.style.left) || 48,
+      top: parseFloat(el.style.top) || 42
+    };
+    var to = nextSpot.standPoint;
+
+    var dist = Math.hypot(to.left - from.left, to.top - from.top);
+    var walkDuration = Math.max(3000, Math.min(5000, Math.round(dist * 110)));
+
+    showSkyHeading('Walking to ' + nextSpot.landmark + '... 🚶', to, nextSpot.icon);
+    showShakirSpeechBubble('Come along Pip! Let\'s inspect ' + nextSpot.landmark + '! 🚶', 3000);
+
+    walkPathSmooth(el, [from, to], walkDuration, function () {
+      if (!guideState.active) return;
+      el.classList.add('wonder-touching');
+      spawnTouchRipple(nextSpot.touchPoint);
+      spawnDirectingBeam(nextSpot.standPoint, nextSpot.touchPoint);
+
+      if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.showChapterGhosts === 'function') {
+        try { global.SearchO2HomeAvatar.showChapterGhosts(ch, true); } catch (e) {}
+      }
+
+      setTimeout(function () {
+        if (el) el.classList.remove('wonder-touching');
+        playCurrentSpotDialogue(ch, nextSpotIdx, 1);
+      }, 600);
+    });
+  }
+
+  function updateChapterCompletionSubtitle(ch, nextCh) {
+    var dock = ensureSubtitleDock();
+    var avatarEl = document.getElementById('subAvatar');
+    var nameEl = document.getElementById('subName');
+    var roleEl = document.getElementById('subRole');
+    var chipEl = document.getElementById('subChChip');
+    var textEl = document.getElementById('subDialogueText');
+    var nextBtn = document.getElementById('btnSubNextTurn');
+
+    var nextData = CHAPTER_JOURNEY[nextCh] || CHAPTER_JOURNEY[1];
+
+    if (avatarEl) {
+      avatarEl.textContent = '🌟';
+      avatarEl.className = 'sub-speaker-avatar shakir';
+    }
+    if (nameEl) {
+      nameEl.textContent = 'Chapter ' + ch + ' Fully Explored!';
+      nameEl.className = 'sub-speaker-name shakir';
+    }
+    if (roleEl) {
+      roleEl.textContent = 'All Sub-Challenges Mastered!';
+      roleEl.className = 'sub-speaker-role shakir';
+    }
+    if (chipEl) chipEl.textContent = 'Ch. ' + ch + ' Complete';
+    if (textEl) {
+      textEl.innerHTML = (ch < 8) ?
+        '✨ All landmarks in this chapter surveyed! Next chapter: <b>' + nextData.title + '</b>. Tap Next to stride forward!' :
+        '🎉 All 8 Chapters Mastered! Tap Next to claim your Grand Planetary Forger Victory!';
+    }
+    if (nextBtn) {
+      nextBtn.textContent = (ch < 8) ? ('Next: Ch. ' + nextCh + ' ➔') : 'Claim Victory 🏆';
+    }
+
+    for (var d = 1; d <= 3; d++) {
+      var dot = document.getElementById('subDot' + d);
+      if (dot) dot.className = 'sub-dot done';
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cooldown Controller
   // ---------------------------------------------------------------------------
   function clearCooldown() {
     if (guideState.cooldownTimer) {
@@ -1482,22 +2677,58 @@
 
     var pill = document.getElementById('s2CooldownIconPill');
     if (pill) pill.classList.add('hidden');
-    var popModal = document.getElementById('s2CooldownPopModal');
-    if (popModal) popModal.classList.add('hidden');
     var roadmapBtnTimer = document.getElementById('s2RoadmapGotItTimer');
     if (roadmapBtnTimer) roadmapBtnTimer.textContent = '';
   }
+
+  var CHAPTER_PRIMARY_KEY = {
+    1: 'plot',
+    2: 'crew_shed',
+    3: 'crop_field',
+    4: 'cattle_farm',
+    5: 'wind_turbine',
+    6: 'coffee_shop',
+    7: 'eco_passport',
+    8: 'space_mission'
+  };
 
   function startCooldown(fromCh, nextCh) {
     clearCooldown();
     guideState.cooldownActive = true;
     guideState.cooldownRemaining = 20;
 
-    // Use or build floater pill (20s duration)
-    if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.renderScoutCountdownFloater === 'function') {
+    // Minimize subtitle dock so the green chapter explore roadmap modal is clearly visible and uncluttered
+    toggleSubtitles(false);
+
+    // Open the green chapter explore roadmap modal for this chapter
+    var primaryKey = CHAPTER_PRIMARY_KEY[fromCh] || 'plot';
+    if (typeof global.openChapterRoadmapForObject === 'function') {
       try {
-        global.SearchO2HomeAvatar.renderScoutCountdownFloater(20, nextCh);
-      } catch (e) {}
+        global.openChapterRoadmapForObject(primaryKey);
+      } catch (e) {
+        console.warn('Failed to open chapter roadmap modal:', e);
+      }
+    } else if (typeof window !== 'undefined' && typeof window.openChapterRoadmapForObject === 'function') {
+      try {
+        window.openChapterRoadmapForObject(primaryKey);
+      } catch (e) {
+        console.warn('Failed to open chapter roadmap modal:', e);
+      }
+    }
+
+    // Ensure the modal overlay has top z-index and displays immediately with initial timer
+    setTimeout(function () {
+      var overlay = document.getElementById('modalOverlay');
+      if (overlay) {
+        overlay.style.zIndex = '100010';
+        overlay.style.display = 'flex';
+      }
+      var roadmapBtnTimer = document.getElementById('s2RoadmapGotItTimer');
+      if (roadmapBtnTimer) roadmapBtnTimer.textContent = '(20s)';
+    }, 10);
+
+    if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.renderScoutCountdownFloater === 'function') {
+      try { global.SearchO2HomeAvatar.renderScoutCountdownFloater(20, nextCh); } catch (e) {}
     }
 
     renderShakirCooldownPill(fromCh, nextCh);
@@ -1507,14 +2738,19 @@
       var rem = guideState.cooldownRemaining;
       updateShakirCooldownDisplay(rem, nextCh);
 
+      // If user dismissed modal early, restore subtitle dock
+      if (!document.getElementById('modalOverlay') && !guideState.subtitlesVisible) {
+        toggleSubtitles(true);
+      }
+
       if (rem <= 0) {
         clearCooldown();
         clearSequenceTimers();
         if (typeof global.closeModal === 'function') {
           try { global.closeModal(); } catch (e) {}
+        } else if (typeof window !== 'undefined' && typeof window.closeModal === 'function') {
+          try { window.closeModal(); } catch (e) {}
         }
-        closeGuideModal();
-        clearChapterGhosts();
         walkToNextChapter();
       }
     }, 1000);
@@ -1533,7 +2769,7 @@
       var tag = pill.querySelector('.scf-time-tag') || pill.querySelector('.scf-desc');
       if (tag) tag.textContent = '20s · Ch. ' + (nextCh <= 8 ? nextCh : 1);
       var title = pill.querySelector('.scf-title');
-      if (title) title.textContent = '🧑‍🌾 Shakir (OxyEco Forger)';
+      if (title) title.textContent = '🧑‍🌾 Shakir & Pip Tour';
 
       pill.onclick = function (e) {
         e.stopPropagation();
@@ -1548,22 +2784,10 @@
       var tag = pill.querySelector('.scf-time-tag') || pill.querySelector('.scf-desc');
       if (tag) tag.textContent = rem + 's · Ch. ' + (nextCh <= 8 ? nextCh : 1);
     }
-    var popModal = document.getElementById('s2CooldownPopModal');
-    if (popModal) {
-      var timerVal = popModal.querySelector('#s2CooldownTimerVal');
-      if (timerVal) timerVal.textContent = rem + 's';
-    }
-    var secSpan = document.getElementById('s2ScoutCountdownSec');
-    if (secSpan) secSpan.textContent = rem + 's';
     var roadmapBtnTimer = document.getElementById('s2RoadmapGotItTimer');
-    if (roadmapBtnTimer) {
-      roadmapBtnTimer.textContent = '(' + rem + 's)';
-    }
+    if (roadmapBtnTimer) roadmapBtnTimer.textContent = '(' + rem + 's)';
   }
 
-  // ---------------------------------------------------------------------------
-  // Ensure Farm Screen is Active & Visible (Immediate transition from Guest Mode)
-  // ---------------------------------------------------------------------------
   function ensureFarmScreenActive() {
     if (typeof global.switchScreen === 'function') {
       try { global.switchScreen('farm'); } catch (e) {}
@@ -1577,237 +2801,131 @@
     if (typeof global.currentScreen !== 'undefined') global.currentScreen = 'farm';
   }
 
-  function isMobileViewport() {
-    if (typeof window === 'undefined') return false;
-    return window.innerWidth <= 860 || window.innerHeight <= 520 ||
-      (window.matchMedia && window.matchMedia('(max-width: 860px), (max-height: 520px), (pointer: coarse)').matches);
-  }
-
   // ---------------------------------------------------------------------------
-  // Walk to Chapter Guided Tour
+  // Tour Walking Orchestration
   // ---------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------
-  // Wonder Stick Directing Beam & Dream Cloud Renderer
-  // ---------------------------------------------------------------------------
-  function spawnDirectingBeam(from, to) {
-    var scene = document.getElementById('fieldScene');
-    if (!scene) return;
-    var beam = document.createElement('div');
-    beam.className = 'shakir-wonder-beam';
-    var dx = (to.left - from.left);
-    var dy = (to.top - from.top);
-    var dist = Math.hypot(dx, dy);
-    var angle = Math.atan2(dy, dx) * (180 / Math.PI);
-    beam.style.left = from.left + '%';
-    beam.style.top = from.top + '%';
-    beam.style.width = dist + '%';
-    beam.style.transform = 'rotate(' + angle + 'deg)';
-    scene.appendChild(beam);
-    setTimeout(function () {
-      if (beam && beam.parentNode) beam.parentNode.removeChild(beam);
-    }, 700);
-  }
-
-  function renderShakirDreamCloud(ch, standPoint) {
-    hideShakirDreamCloud();
-    var scene = document.getElementById('fieldScene');
-    if (!scene) return;
-    var chData = SHAKIR_CHAPTERS[ch] || SHAKIR_CHAPTERS[1];
-    var dreamIsoIcon = '';
-    if (typeof global.getChapterIsometric3DIcon === 'function') {
-      try {
-        dreamIsoIcon = global.getChapterIsometric3DIcon(ch, chData.key);
-      } catch (e) {}
-    }
-
-    var cloud = document.createElement('div');
-    cloud.id = 's2ShakirDreamCloud';
-    cloud.className = 'shakir-dream-cloud';
-    cloud.style.left = standPoint.left + '%';
-    cloud.style.top = (standPoint.top - 16) + '%';
-
-    cloud.innerHTML =
-      '<div class="dream-cloud-content">' +
-        '<div class="dream-cloud-tag">💭 OxyEco Forger Dream · Ch. ' + ch + '</div>' +
-        '<div class="dream-cloud-body">' +
-          (dreamIsoIcon ? '<div class="dream-cloud-iso">' + dreamIsoIcon + '</div>' : '') +
-          '<div class="dream-cloud-text">' +
-            '<div class="dream-cloud-title">' + chData.icon + ' ' + chData.landmark + '</div>' +
-            '<div class="dream-cloud-quote">' + chData.dreamMessage + '</div>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="dream-cloud-tail">💭</div>';
-
-    cloud.onclick = function (e) {
-      e.stopPropagation();
-      if (typeof onGotItClicked === 'function') onGotItClicked();
-    };
-
-    scene.appendChild(cloud);
-  }
-
-  function hideShakirDreamCloud() {
-    var cloud = document.getElementById('s2ShakirDreamCloud');
-    if (cloud && cloud.parentNode) {
-      cloud.parentNode.removeChild(cloud);
-    }
-  }
-
-  function walkToChapter(targetCh) {
+  function startGuidedTour(targetCh) {
+    ensureShakirStyles();
     targetCh = parseInt(targetCh, 10);
     if (!targetCh || targetCh < 1 || targetCh > 8) targetCh = 1;
 
+    try {
+      sessionStorage.setItem('searchO2_shakir_welcomed', '1');
+      sessionStorage.setItem('searchO2_academy_video_played', '1');
+    } catch (e) {}
+
+    guideState.active = true;
+    guideState.suppressAutoBoot = true;
     ensureFarmScreenActive();
-    renderShakirReTriggerPill();
+    closeAllConflictingModals();
+
+    setTimeout(function () {
+      walkToChapter(targetCh);
+    }, 60);
+  }
+
+  function walkToChapter(targetCh) {
+    ensureShakirStyles();
+    targetCh = parseInt(targetCh, 10);
+    if (!targetCh || targetCh < 1 || targetCh > 8) targetCh = 1;
+
+    try {
+      sessionStorage.setItem('searchO2_shakir_welcomed', '1');
+      sessionStorage.setItem('searchO2_academy_video_played', '1');
+    } catch (e) {}
+
+    guideState.active = true;
+    guideState.suppressAutoBoot = true;
+    ensureFarmScreenActive();
+    closeAllConflictingModals();
+    ensureSubtitleDock();
+    toggleSubtitles(true);
     clearSequenceTimers();
     clearCooldown();
     clearChapterGhosts();
-    if (typeof global.closeModal === 'function') {
-      try { global.closeModal(); } catch (e) {}
-    }
-    closeGuideModal();
-    guideState.active = true;
+
     guideState.currentChapter = targetCh;
+    guideState.currentSpotIdx = 0;
     hideShakirSpeechBubble();
+    hidePipSpeechBubble();
 
-    // Target coordinates & Waypoints
-    var targets = getTargetCoordinates(targetCh);
-    var gatePos = { left: 92.5, top: 52.0 };
-    var meadowPos = { left: 70.0, top: 48.0 };
+    var chapterData = CHAPTER_JOURNEY[targetCh] || CHAPTER_JOURNEY[1];
+    var firstSpot = chapterData.spots[0];
 
+    var gatePos = { left: 91.5, top: 52.0 };
     var el = guideState.walkerEl;
     var waypoints = [];
-    var walkDuration = 3600;
+    var walkDuration = 4500;
 
     if (targetCh === 1) {
-      // Start Chapter 1: visually spawn outside Main Gate, walk into Plot 1!
       if (!el || !el.parentNode) {
         el = spawnShakirWalker(gatePos);
       } else {
         el.style.left = gatePos.left + '%';
         el.style.top = gatePos.top + '%';
+        if (guideState.pipEl) {
+          guideState.pipEl.style.left = (gatePos.left + 3.4) + '%';
+          guideState.pipEl.style.top = (gatePos.top + 1.2) + '%';
+        }
       }
-      waypoints = [gatePos, meadowPos, targets.standPoint];
-      walkDuration = 3200;
-      showSkyHeading('Shakir enters through Main Gate ⛩️', { left: 92.5, top: 45.0 }, '⛩️');
-      showShakirSpeechBubble('👋 Welcome to our farm! Walking through the main gate to Plot 1! ⛩️', 3400);
+      el.classList.add('facing-south', 'facing-west');
+
+      // Stop at the farm gate and begin the interactive entrance dialogue discussion!
+      startFarmGateEncounter();
+      return;
     } else {
       if (!el || !el.parentNode) {
         el = spawnShakirWalker(gatePos);
-        waypoints = [gatePos, meadowPos, targets.standPoint];
-        walkDuration = 4200;
+        waypoints = [gatePos, { left: 60.0, top: 48.0 }, firstSpot.standPoint];
+        walkDuration = 5200;
       } else {
         var from = {
           left: parseFloat(el.style.left) || 48,
           top: parseFloat(el.style.top) || 42
         };
         var mid = {
-          left: (from.left + targets.standPoint.left) / 2 + (Math.random() * 2 - 1),
-          top: (from.top + targets.standPoint.top) / 2 + (Math.random() * 2 - 1)
+          left: (from.left + firstSpot.standPoint.left) / 2 + (Math.random() * 2 - 1),
+          top: (from.top + firstSpot.standPoint.top) / 2 + (Math.random() * 2 - 1)
         };
-        var dist = Math.hypot(targets.standPoint.left - from.left, targets.standPoint.top - from.top);
-        walkDuration = Math.max(3000, Math.min(5200, Math.round(dist * 95)));
-        waypoints = [from, mid, targets.standPoint];
+        var dist = Math.hypot(firstSpot.standPoint.left - from.left, firstSpot.standPoint.top - from.top);
+        walkDuration = Math.max(3800, Math.min(6200, Math.round(dist * 120)));
+        waypoints = [from, mid, firstSpot.standPoint];
       }
-      var chDataInit = SHAKIR_CHAPTERS[targetCh] || SHAKIR_CHAPTERS[1];
-      showShakirSpeechBubble('Walking to ' + chDataInit.landmark + '... 🏃', 2400);
+      showShakirSpeechBubble('Walking to ' + firstSpot.landmark + '... 🏃', 2400);
     }
 
-    var chData = SHAKIR_CHAPTERS[targetCh] || SHAKIR_CHAPTERS[1];
     renderTourNavDock(targetCh);
 
-    walkPath(el, waypoints, walkDuration, function () {
+    walkPathSmooth(el, waypoints, walkDuration, function () {
       if (!guideState.active) return;
 
-      // 1. Wonder Stick Materialization: Indicating animation when reaching chapter spot!
-      el.classList.add('wonder-touching', 'has-wonder-stick', 'wonder-stick-manifest');
-      spawnTouchRipple(targets.touchPoint);
+      el.classList.add('wonder-touching');
+      spawnTouchRipple(firstSpot.touchPoint);
 
       if (typeof global.SoundTrackEngine !== 'undefined') {
         try { global.SoundTrackEngine.playSFX('task'); } catch (e) {}
       }
 
-      showSkyHeading(
-        'Wonder Stick: Ch. ' + targetCh + ' ' + chData.title + ' · Shakir (OxyEco Forger)',
-        targets.standPoint,
-        chData.icon
-      );
+      showSkyHeading('Wonder Stick: Ch. ' + targetCh + ' ' + firstSpot.landmark, firstSpot.standPoint, firstSpot.icon);
 
-      // 2. Direct stick to position: After receiving wonder stick, he directs that stick to position!
       addSequenceTimer(function () {
         if (!guideState.active) return;
-        el.classList.add('wonder-stick-directing');
-        spawnDirectingBeam(targets.standPoint, targets.touchPoint);
+        spawnDirectingBeam(firstSpot.standPoint, firstSpot.touchPoint);
 
-        // 3. Cyan Blueprint appears! Wonder touch completed!
         addSequenceTimer(function () {
           if (!guideState.active) return;
 
-          // Reveal 3D Cyan Ghost Blueprint for target chapter
           if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.showChapterGhosts === 'function') {
-            try {
-              global.SearchO2HomeAvatar.showChapterGhosts(targetCh, true);
-            } catch (e) {}
-          }
-          if (typeof global.SoundTrackEngine !== 'undefined') {
-            try { global.SoundTrackEngine.playSFX('achieve'); } catch (e) {}
+            try { global.SearchO2HomeAvatar.showChapterGhosts(targetCh, true); } catch (e) {}
           }
 
-          // Mark Chapter Exploration & Award XP (pass skipRoadmapModal=true)
-          if (typeof global.exploreChapterObject === 'function') {
-            try { global.exploreChapterObject(chData.key, true); } catch (e) {}
-          }
-          if (typeof global.state !== 'undefined' && global.state) {
-            global.state.exploredChapters = global.state.exploredChapters || {};
-            global.state.exploredChapters[targetCh] = true;
-            global.state.exploredChapterObjects = global.state.exploredChapterObjects || {};
-            global.state.exploredChapterObjects[chData.key] = true;
-            if (typeof global.state.xp === 'number' && global.state.xp === 0) global.state.xp = 5;
-          }
+          if (el) el.classList.remove('wonder-touching');
 
-          // Return arm to normal posture
-          if (el) {
-            el.classList.remove('wonder-touching');
-            el.classList.remove('wonder-stick-directing');
-          }
+          // Start interactive dialogue for Spot 1 of this chapter
+          playCurrentSpotDialogue(targetCh, 0, 1);
 
-          // =========================================================================
-          // IMMEDIATELY ACTIVATE COOLDOWN TIMER
-          // "after wonder touch cooldown timer will immidiately active all modals
-          // time elapse will be in between. when user click got it modal then some
-          // seconds will remain. if user still does not click then, green chapter
-          // progression modal will automatically close and shakir will start walking to next chapter."
-          // =========================================================================
-          var nextCh = (targetCh >= 8 ? 8 : targetCh + 1);
-          startCooldown(targetCh, nextCh);
-
-          // 1. Shakir modal opens 3s later (at t = 3000ms):
-          addSequenceTimer(function () {
-            if (!guideState.active) return;
-            openGuideDialog(targetCh);
-            renderShakirDreamCloud(targetCh, targets.standPoint);
-
-            // 2. 5s later (at t = 8000ms from wonder touch): Shakir modal auto-closes smoothly!
-            addSequenceTimer(function () {
-              if (!guideState.active) return;
-              closeGuideModal();
-              hideShakirDreamCloud();
-
-              // 3. 2s later (at t = 10000ms from wonder touch): Green experience chapter progression modal pops up!
-              addSequenceTimer(function () {
-                if (!guideState.active) return;
-                if (typeof global.openChapterRoadmapForObject === 'function') {
-                  try {
-                    global.openChapterRoadmapForObject(chData.key, true);
-                  } catch (err) {}
-                }
-              }, 2000); // 2s later
-            }, 5000); // 5s later
-          }, 3000); // 3s later
-
-        }, 250);
-      }, 250);
+        }, 300);
+      }, 300);
     });
   }
 
@@ -1816,12 +2934,9 @@
     clearSequenceTimers();
     clearCooldown();
     clearChapterGhosts();
-    closeGuideModal();
-    if (typeof global.closeModal === 'function') {
-      try { global.closeModal(); } catch (e) {}
-    }
+
     if (cur >= 8) {
-      walkOutThroughGate();
+      showVictoryCelebration();
     } else {
       walkToChapter(cur + 1);
     }
@@ -1833,470 +2948,376 @@
     clearChapterGhosts();
     if (typeof global.closeModal === 'function') {
       try { global.closeModal(); } catch (e) {}
+    } else if (typeof window !== 'undefined' && typeof window.closeModal === 'function') {
+      try { window.closeModal(); } catch (e) {}
     }
-    closeGuideModal();
     walkToNextChapter();
   }
 
+  // ---------------------------------------------------------------------------
+  // Celebratory Victory Reward Modal (Award Title, XP & Gold Coins)
+  // ---------------------------------------------------------------------------
+  function showVictoryCelebration() {
+    ensureShakirStyles();
+    stopDialogueVoice();
+    clearCooldown();
+
+    var existingVic = document.getElementById('s2VictoryModal');
+    if (existingVic && existingVic.parentNode) {
+      existingVic.parentNode.removeChild(existingVic);
+    }
+    var existingAcademyR = document.getElementById('kidsAcademyRewardModal');
+    if (existingAcademyR) {
+      existingAcademyR.classList.remove('visible');
+    }
+
+    var titleAwarded = 'Grand Planetary Eco-Forger';
+    var xpAwarded = 500;
+    var goldAwarded = 1000;
+    var o2Awarded = 500;
+
+    var modal = document.createElement('div');
+    modal.className = 'shakir-victory-backdrop';
+    modal.id = 's2VictoryModal';
+
+    modal.innerHTML =
+      '<div class="shakir-victory-card" role="dialog" aria-modal="true">' +
+        '<div class="vic-banner-pill">🏆 SEARCHO2 MASTERPLAN MASTERED</div>' +
+        '<div class="vic-title">Grand Planetary Eco-Forger!</div>' +
+        '<div class="vic-subtitle">All 8 Chapters & Sub-Challenges Successfully Explored with Shakir & Pip!</div>' +
+        '<div class="vic-avatars-row">' +
+          '<div class="vic-avatar-box">' +
+            '<div class="vic-avatar-circle">🧑‍🌾</div>' +
+            '<span class="vic-avatar-tag">Shakir (Master Forger)</span>' +
+          '</div>' +
+          '<div style="font-size:1.8rem;color:#FDE047;">★ ★ ★</div>' +
+          '<div class="vic-avatar-box">' +
+            '<div class="vic-avatar-circle pip">🐭</div>' +
+            '<span class="vic-avatar-tag">Pip (Chief AgTech Ranger)</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="vic-title-badge-box">' +
+          '<span style="font-size:1.2rem;">🏅</span>' +
+          '<span class="vic-title-badge-text">New Title: ' + titleAwarded + '</span>' +
+        '</div>' +
+        '<div class="vic-rewards-grid">' +
+          '<div class="vic-reward-item">' +
+            '<span class="vic-reward-val">+' + xpAwarded + '</span>' +
+            '<span class="vic-reward-lbl">Mastery XP</span>' +
+          '</div>' +
+          '<div class="vic-reward-item">' +
+            '<span class="vic-reward-val">+' + goldAwarded + ' 🪙</span>' +
+            '<span class="vic-reward-lbl">Gold Coins</span>' +
+          '</div>' +
+          '<div class="vic-reward-item">' +
+            '<span class="vic-reward-val">+' + o2Awarded + ' 🫧</span>' +
+            '<span class="vic-reward-lbl">Clean O₂</span>' +
+          '</div>' +
+        '</div>' +
+        '<button type="button" class="vic-claim-btn" id="btnClaimVictoryRewards">' +
+          '🎁 Claim All Rewards & Celebrate ➔' +
+        '</button>' +
+      '</div>';
+
+    document.body.appendChild(modal);
+
+    if (typeof global.SoundTrackEngine !== 'undefined') {
+      try { global.SoundTrackEngine.playSFX('achieve'); } catch (e) {}
+    }
+
+    document.getElementById('btnClaimVictoryRewards').onclick = function () {
+      // Award to game state
+      if (typeof global.state !== 'undefined' && global.state) {
+        global.state.money = (global.state.money || 0) + goldAwarded;
+        global.state.xp = (global.state.xp || 0) + xpAwarded;
+        global.state.playerTitle = titleAwarded;
+        global.state.allChaptersExplored = true;
+      }
+      try {
+        localStorage.setItem('searchO2_player_title', titleAwarded);
+      } catch (e) {}
+
+      if (typeof global.render === 'function') global.render();
+      if (typeof global.requestSave === 'function') global.requestSave();
+      if (typeof global.SoundTrackEngine !== 'undefined') {
+        try { global.SoundTrackEngine.playSFX('coin'); } catch (e) {}
+      }
+      if (typeof global.showNotification === 'function') {
+        global.showNotification('🏆', 'Title Unlocked: ' + titleAwarded + ' (+1,000 Coins & +500 XP)!', 'achievement');
+      }
+
+      if (modal.parentNode) modal.parentNode.removeChild(modal);
+      walkOutThroughGate();
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Farm Gate Farewell & Exit Sequence (Shakir & Pip Depart Through Gate)
+  // ---------------------------------------------------------------------------
   function walkOutThroughGate(onComplete) {
     ensureFarmScreenActive();
     clearSequenceTimers();
     clearCooldown();
-    clearChapterGhosts(); // Clean up rocket and all ghost blueprints
-    closeGuideModal();
-    hideShakirDreamCloud();
+    clearChapterGhosts();
     hideTourNavDock();
-    if (typeof global.closeModal === 'function') {
-      try { global.closeModal(); } catch (e) {}
-    }
+
+    guideState.isExitingGate = true;
+    guideState.exitTurn = 1;
+    guideState.exitOnComplete = onComplete;
 
     var gatePos = { left: 92.5, top: 52.0 };
-    var outsidePos = { left: 98.0, top: 52.0 };
     var el = guideState.walkerEl;
-    if (!el) {
-      if (onComplete) onComplete();
-      return;
-    }
-
-    // Cancel in-flight walk to cleanly take over gate departure
-    var myWalkToken = ++guideState.currentWalkToken;
-    el.__walkToken = myWalkToken;
-
-    showShakirSpeechBubble('🎉 All 8 Chapters Scouted! The masterplan is forged! Returning through the gate — now uncover the ancient Jute Tarpaulin tool cache! ⛩️', 5500);
-    showSkyHeading('Masterplan Survey Complete · Shakir Exits Through Main Gate ⛩️', gatePos, '⛩️');
-
     var from = {
-      left: parseFloat(el.style.left) || 80,
-      top: parseFloat(el.style.top) || 72
+      left: el ? (parseFloat(el.style.left) || 80) : 80,
+      top: el ? (parseFloat(el.style.top) || 72) : 72
     };
 
-    walkPath(el, [from, gatePos, outsidePos], 2400, function () {
-      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-      el.style.opacity = '0';
-      el.style.transform = 'translate(-50%, -85%) scale(0.6)';
+    if (!el) {
+      el = spawnShakirWalker(from);
+    }
 
-      setTimeout(function () {
-        if (el && el.parentNode) el.parentNode.removeChild(el);
-        guideState.walkerEl = null;
-        guideState.active = false;
+    if (Math.abs(from.left - gatePos.left) < 1 && Math.abs(from.top - gatePos.top) < 1) {
+      from = { left: gatePos.left - 4, top: gatePos.top };
+    }
 
-        // Ensure ghost layer is clean
-        clearChapterGhosts();
+    showSkyHeading('Walking to Farm Gate · Completion & Farewell ⛩️', gatePos, '⛩️');
 
-        // Mark all chapters explored
-        if (typeof global.state !== 'undefined' && global.state) {
-          global.state.allChaptersExplored = true;
-          global.state.exploredChapters = global.state.exploredChapters || {};
-          for (var i = 1; i <= 8; i++) global.state.exploredChapters[i] = true;
-        }
-        if (typeof global.render === 'function') global.render();
-        if (typeof global.requestSave === 'function') global.requestSave();
+    // Walk both avatars smoothly to the main farm gate
+    walkPathSmooth(el, [from, gatePos], 2400, function () {
+      el.classList.remove('walking');
+      el.classList.add('facing-south');
+      if (guideState.pipEl) {
+        guideState.pipEl.classList.remove('walking');
+        guideState.pipEl.classList.add('facing-south');
+        guideState.pipEl.style.left = (gatePos.left + 3.2) + '%';
+        guideState.pipEl.style.top = (gatePos.top + 1.0) + '%';
+      }
 
-        // Next unlock task: Jute Tarpaulin explore modal pops up!
-        if (typeof global.openJuteTarpModal === 'function') {
-          global.openJuteTarpModal();
-        }
-
-        if (typeof global.showNotification === 'function') {
-          global.showNotification('✨', 'All 8 Chapters Scouted! The hidden jute tarpaulin tool cache is ready to uncover!', 'achievement');
-        }
-
-        if (onComplete) onComplete();
-      }, 500);
+      // Start the Farewell Dialogue Interaction at the Main Gate
+      playGateFarewellTurn(1);
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // Target Coordinate Calculations
-  // ---------------------------------------------------------------------------
-  function getTargetCoordinates(ch) {
-    if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.getScoutMarkerTouchTarget === 'function') {
+  function playGateFarewellTurn(turnIdx) {
+    guideState.exitTurn = turnIdx;
+    ensureSubtitleDock();
+    toggleSubtitles(true);
+
+    var el = guideState.walkerEl;
+    var pipEl = guideState.pipEl;
+
+    if (turnIdx === 1) {
+      // Turn 1: Shakir speaks to Pip and explorer
+      var shakirLine = 'Ok Pip, our job is done! Now you know where, what, why, and how, and our each valued explorer knows as well! Now let us leave the grounds and let them build their own regenerative farm!';
+      var bubbleShakir = '⛩️ Our job is done, Pip! Now let each valued explorer build their own farm!';
+
+      updateSubtitleContent({
+        avatar: '🧑‍🌾',
+        name: 'Shakir',
+        role: '18+ Eco Forger',
+        chip: 'Farm Gate · Completion',
+        text: '“Ok Pip, our job is done! Now you know where, what, why, and how — and our valued explorer knows as well! Now let us leave the grounds and let them build their own regenerative farm!”',
+        currentTurn: 1
+      });
+
+      showShakirSpeechBubble(bubbleShakir, 6000);
+      if (pipEl) pipEl.classList.remove('pip-anim-hop', 'pip-anim-wand-wave');
+
+      speakDialogueVoice('shakir', shakirLine, function () {
+        setTimeout(function () {
+          if (!guideState.isExitingGate || guideState.exitTurn !== 1) return;
+          playGateFarewellTurn(2);
+        }, 500);
+      });
+    } else if (turnIdx === 2) {
+      // Turn 2: Pip replies with celebration & agreement
+      var pipLine = 'Aye aye, Shakir! Every blueprint, water trench, and soil bed is crystal clear! Over to our grand explorer to forge their haven! Let us head out through the gate!';
+      var bubblePip = '✨ All blueprints locked in, Shakir! Over to our explorer! Let\'s head out!';
+
+      updateSubtitleContent({
+        avatar: '🐭',
+        name: 'Pip Squeak-a-Link',
+        role: 'Chief Safety Scout',
+        chip: 'Farm Gate · Farewell',
+        text: '“Aye aye, Shakir! Every blueprint, water trench, and soil bed is crystal clear! Over to our grand explorer to forge their haven! Let\'s head out through the gate!”',
+        currentTurn: 2
+      });
+
+      showPipSpeechBubble(bubblePip, 6000);
+      if (pipEl) pipEl.classList.add('pip-anim-hop');
+
+      speakDialogueVoice('pip', pipLine, function () {
+        setTimeout(function () {
+          if (!guideState.isExitingGate || guideState.exitTurn !== 2) return;
+          performFinalExitWalk();
+        }, 600);
+      });
+    }
+  }
+
+  function performFinalExitWalk() {
+    clearSequenceTimers();
+    stopDialogueVoice();
+
+    var el = guideState.walkerEl;
+    var pipEl = guideState.pipEl;
+    var gatePos = { left: 92.5, top: 52.0 };
+    var outsidePos = { left: 104.0, top: 52.0 };
+
+    if (!el) {
+      finalizeTourDeparture();
+      return;
+    }
+
+    var bubble = document.getElementById('shakirSpeechBubble');
+    if (bubble) bubble.classList.add('hidden');
+    var pipBubble = document.getElementById('pipSpeechBubble');
+    if (pipBubble) pipBubble.classList.add('hidden');
+
+    showSkyHeading('Leaving Farm · Handover Complete ⛩️', gatePos, '⛩️');
+
+    // Walk outward past gate arch and smoothly fade out
+    walkPathSmooth(el, [gatePos, outsidePos], 2200, function () {
+      el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%, -85%) scale(0.5)';
+
+      if (pipEl) {
+        pipEl.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        pipEl.style.opacity = '0';
+        pipEl.style.transform = 'translate(-50%, -85%) scale(0.5)';
+      }
+
+      setTimeout(function () {
+        finalizeTourDeparture();
+      }, 600);
+    });
+  }
+
+  function finalizeTourDeparture() {
+    // 1. Remove walker avatars
+    var el = guideState.walkerEl || document.getElementById('s2ShakirGuide');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+    removePipCompanion();
+    guideState.walkerEl = null;
+    guideState.pipEl = null;
+    guideState.active = false;
+    guideState.isExitingGate = false;
+    guideState.cooldownActive = false;
+    guideState.cooldownRemaining = 0;
+
+    // 2. Smoothly vanish all sticky cooldown timer floaters, pills, and modals
+    clearCooldown();
+    var floater = document.getElementById('s2ScoutCountdownFloater');
+    if (floater && floater.parentNode) floater.parentNode.removeChild(floater);
+    var pill = document.getElementById('s2CooldownIconPill');
+    if (pill && pill.parentNode) pill.parentNode.removeChild(pill);
+    var popModal = document.getElementById('s2CooldownPopModal');
+    if (popModal && popModal.parentNode) popModal.parentNode.removeChild(popModal);
+    var navDock = document.getElementById('s2TourNavDock');
+    if (navDock && navDock.parentNode) navDock.parentNode.removeChild(navDock);
+
+    if (global.SearchO2HomeAvatar) {
       try {
-        var res = global.SearchO2HomeAvatar.getScoutMarkerTouchTarget(ch);
-        if (res && res.standPoint && res.touchPoint) return res;
+        if (typeof global.SearchO2HomeAvatar.clearScoutCooldown === 'function') global.SearchO2HomeAvatar.clearScoutCooldown();
+        if (typeof global.SearchO2HomeAvatar.hideScoutCountdownFloater === 'function') global.SearchO2HomeAvatar.hideScoutCountdownFloater();
+        if (typeof global.SearchO2HomeAvatar.clearGhosts === 'function') global.SearchO2HomeAvatar.clearGhosts();
       } catch (e) {}
     }
 
-    if (isMobileViewport()) {
-      var mobileCalibrated = {
-        1: { standPoint: { left: 42.0, top: 38.0 }, touchPoint: { left: 42.0, top: 30.0 } },
-        2: { standPoint: { left: 18.0, top: 72.0 }, touchPoint: { left: 16.0, top: 64.0 } },
-        3: { standPoint: { left: 40.0, top: 82.0 }, touchPoint: { left: 40.0, top: 72.0 } },
-        4: { standPoint: { left: 42.0, top: 40.0 }, touchPoint: { left: 42.0, top: 32.0 } },
-        5: { standPoint: { left: 10.0, top: 74.0 }, touchPoint: { left: 8.0, top: 66.0 } },
-        6: { standPoint: { left: 66.0, top: 82.0 }, touchPoint: { left: 66.0, top: 72.0 } },
-        7: { standPoint: { left: 80.0, top: 40.0 }, touchPoint: { left: 80.0, top: 32.0 } },
-        8: { standPoint: { left: 80.0, top: 82.0 }, touchPoint: { left: 80.0, top: 72.0 } }
-      };
-      if (mobileCalibrated[ch]) return mobileCalibrated[ch];
+    // 3. Smoothly vanish the subtitle dock and subtitle icon button
+    var dock = document.getElementById('shakirPipSubtitleDock');
+    if (dock) {
+      dock.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      dock.style.opacity = '0';
+      dock.style.transform = 'translateY(16px)';
+      setTimeout(function () {
+        if (dock && dock.parentNode) dock.parentNode.removeChild(dock);
+      }, 420);
+    }
+    var subBtn = document.getElementById('btnToggleTourSubtitles');
+    if (subBtn) {
+      subBtn.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      subBtn.style.opacity = '0';
+      subBtn.style.transform = 'scale(0.8)';
+      setTimeout(function () {
+        if (subBtn && subBtn.parentNode) subBtn.parentNode.removeChild(subBtn);
+      }, 420);
     }
 
-    var calibrated = {
-      1: { standPoint: { left: 40.5, top: 28.6 }, touchPoint: { left: 40.5, top: 21.6 } },
-      2: { standPoint: { left: 13.2, top: 74.0 }, touchPoint: { left: 13.2, top: 70.0 } },
-      3: { standPoint: { left: 38.0, top: 88.0 }, touchPoint: { left: 38.0, top: 86.0 } },
-      4: { standPoint: { left: 38.0, top: 36.0 }, touchPoint: { left: 38.0, top: 32.0 } },
-      5: { standPoint: { left: 4.6, top: 74.0 }, touchPoint: { left: 4.6, top: 70.0 } },
-      6: { standPoint: { left: 67.0, top: 88.0 }, touchPoint: { left: 67.0, top: 86.0 } },
-      7: { standPoint: { left: 82.7, top: 36.0 }, touchPoint: { left: 82.7, top: 32.0 } },
-      8: { standPoint: { left: 82.7, top: 88.0 }, touchPoint: { left: 82.7, top: 86.0 } }
-    };
-    return calibrated[ch] || { standPoint: { left: 48, top: 42 }, touchPoint: { left: 48, top: 36 } };
-  }
+    // 4. Vanish any remaining bubbles, heading banners, or victory modals
+    var bubble = document.getElementById('shakirSpeechBubble');
+    if (bubble && bubble.parentNode) bubble.parentNode.removeChild(bubble);
+    var pipBubble = document.getElementById('pipSpeechBubble');
+    if (pipBubble && pipBubble.parentNode) pipBubble.parentNode.removeChild(pipBubble);
+    var vic = document.getElementById('s2VictoryModal');
+    if (vic && vic.parentNode) vic.parentNode.removeChild(vic);
+    var skyHead = document.querySelector('.shakir-sky-heading');
+    if (skyHead && skyHead.parentNode) skyHead.parentNode.removeChild(skyHead);
 
-  function getInitialCoordinates(ch) {
-    var coords = getTargetCoordinates(ch);
-    return {
-      left: Math.max(15, coords.standPoint.left - 12),
-      top: Math.min(80, coords.standPoint.top + 6)
-    };
-  }
+    clearChapterGhosts();
 
-  // ---------------------------------------------------------------------------
-  // Children-Friendly CEO Modals & Dialogue Windows
-  // ---------------------------------------------------------------------------
-  function closeGuideModal() {
-    var modal = document.getElementById('s2ShakirModal');
-    if (modal && modal.parentNode) {
-      modal.parentNode.removeChild(modal);
+    // 5. Award full exploration state now that Shakir & Pip have officially left through the gate
+    if (typeof global.state !== 'undefined' && global.state) {
+      global.state.allChaptersExplored = true;
     }
-    guideState.dialogOpen = false;
+
+    // 6. Notify user that the Jute Tarpaulin is now ready to uncover manually by clicking it
+    if (typeof global.showNotification === 'function') {
+      global.showNotification('⛏️', 'Shakir & Pip have departed! Tap the Jute Tarpaulin beside the Farm Shed to uncover your tools!', 'achievement');
+    }
+
+    // 7. Re-render farm canvas so the Jute Tarpaulin spot transitions to ✨ Uncover Cache!
+    if (typeof global.render === 'function') {
+      try { global.render(); } catch (e) {}
+    }
+    if (typeof global.requestSave === 'function') {
+      try { global.requestSave(); } catch (e) {}
+    }
+
+    // 8. Add gentle pulse animation to the jute tarpaulin spot to guide the user
+    setTimeout(function () {
+      var tarpEl = document.querySelector('[data-building="jute_tarp"]') || document.querySelector('.jute-tarp-spot-card');
+      if (tarpEl) {
+        tarpEl.classList.add('pulse-glow');
+      }
+    }, 150);
+
+    if (typeof guideState.exitOnComplete === 'function') {
+      guideState.exitOnComplete();
+      guideState.exitOnComplete = null;
+    }
+  }
+
+  function clearChapterGhosts() {
+    if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.clearGhosts === 'function') {
+      try { global.SearchO2HomeAvatar.clearGhosts(); } catch (e) {}
+    }
   }
 
   function openGuideDialog(ch) {
-    if (!isGuestMode()) return;
-    ensureShakirStyles();
-    closeGuideModal();
-
-    var chData = SHAKIR_CHAPTERS[ch] || SHAKIR_CHAPTERS[1];
-    var nextCh = (ch >= 8) ? 1 : (ch + 1);
-    var nextData = SHAKIR_CHAPTERS[nextCh];
-
-    var modal = document.createElement('div');
-    modal.className = 'shakir-modal-backdrop';
-    modal.id = 's2ShakirModal';
-
-    modal.innerHTML =
-      '<div class="shakir-modal-card" role="dialog" aria-modal="true">' +
-        '<button type="button" class="shakir-modal-close" id="btnShakirClose" title="Close">✕</button>' +
-        '<div class="shakir-modal-header">' +
-          '<div class="shakir-avatar-preview">' +
-            renderShakirFigureSvg({ w: 48, h: 88, unique: 'shakir_head_preview' }) +
-          '</div>' +
-          '<div>' +
-            '<div class="shakir-modal-title">Shakir · OxyEco Forger</div>' +
-            '<div class="shakir-modal-subtitle">CH. ' + ch + ': ' + chData.title.toUpperCase() + '</div>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="shakir-modal-body">' +
-          '<p style="margin:0 0 10px 0;font-size:0.92rem;font-weight:700;color:#0F172A;">' + chData.ceoGreeting + '</p>' +
-          '<div style="font-size:0.80rem;color:#0284C7;font-weight:800;display:flex;align-items:center;gap:6px;">' +
-            '<span>⚒️ Forger Tip:</span> <span>' + chData.actionTip + '</span>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="shakir-fun-fact-box">' +
-          '<span style="font-size:1.2rem;line-height:1;">🌟</span>' +
-          '<div><b>Eco Fun Fact:</b> ' + chData.funFact + '</div>' +
-        '</div>' +
-
-        '<div class="shakir-modal-actions">' +
-          (ch < 8 ?
-            '<button type="button" class="shakir-btn-primary" id="btnShakirWalkNext"><span>Walk to Next Landmark (' + nextData.landmark + ') ➔</span></button>' :
-            '<button type="button" class="shakir-btn-primary" id="btnShakirRestartTour"><span>Restart Farm Tour (Ch. 1) ➔</span></button>'
-          ) +
-          '<button type="button" class="shakir-btn-secondary" id="btnShakirExploreArea">Explore Here</button>' +
-        '</div>' +
-      '</div>';
-
-    document.body.appendChild(modal);
-    guideState.dialogOpen = true;
-
-    modal.onclick = function (e) {
-      if (e.target === modal) closeGuideModal();
-    };
-    document.getElementById('btnShakirClose').onclick = closeGuideModal;
-
-    var walkBtn = document.getElementById('btnShakirWalkNext') || document.getElementById('btnShakirRestartTour');
-    if (walkBtn) {
-      walkBtn.onclick = function () {
-        walkToNextChapter();
-      };
-    }
-
-    var exploreBtn = document.getElementById('btnShakirExploreArea');
-    if (exploreBtn) {
-      exploreBtn.onclick = function () {
-        closeGuideModal();
-        showShakirSpeechBubble('Go ahead and explore! I\'m right here whenever you need me! 😊', 4000);
-      };
-    }
-  }
-
-  function openWelcomeModal() {
-    if (!isGuestMode()) {
-      removeGuide();
-      return;
-    }
-    ensureShakirStyles();
-    closeGuideModal();
-
-    var currentCh = guideState.currentChapter || 1;
-
-    // Generate 8-chapter landmark roadmap
-    var roadmapHtml = '<div class="shakir-roadmap-list">';
-    for (var i = 1; i <= 8; i++) {
-      var item = SHAKIR_CHAPTERS[i];
-      var isActive = (i === currentCh);
-      roadmapHtml +=
-        '<div class="shakir-roadmap-item' + (isActive ? ' active' : '') + '" data-goto-ch="' + i + '">' +
-          '<div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;">' +
-            '<span style="font-size:1.1rem;flex-shrink:0;">' + item.icon + '</span>' +
-            '<div style="min-width:0;flex:1;">' +
-              '<div class="roadmap-item-title" style="font-size:0.76rem;font-weight:900;color:#0F172A;word-break:break-word;">Ch. ' + i + ': ' + item.landmark + '</div>' +
-              '<div class="roadmap-item-desc" style="font-size:0.66rem;color:#64748B;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">' + item.title + '</div>' +
-            '</div>' +
-          '</div>' +
-          '<span class="roadmap-item-action" style="font-size:0.70rem;font-weight:800;color:' + (isActive ? '#0284C7' : '#94A3B8') + ';flex-shrink:0;white-space:nowrap;">' + (isActive ? '● Here' : 'Visit ➔') + '</span>' +
-        '</div>';
-    }
-    roadmapHtml += '</div>';
-
-    var modal = document.createElement('div');
-    modal.className = 'shakir-modal-backdrop';
-    modal.id = 's2ShakirModal';
-
-    modal.innerHTML =
-      '<div class="shakir-modal-card" style="max-width:540px;" role="dialog" aria-modal="true">' +
-        '<button type="button" class="shakir-modal-close" id="btnShakirClose" title="Close">✕</button>' +
-        '<div class="shakir-modal-header">' +
-          '<div class="shakir-avatar-preview">' +
-            renderShakirFigureSvg({ w: 48, h: 88, unique: 'shakir_welcome' }) +
-          '</div>' +
-          '<div>' +
-            '<div class="shakir-modal-title">Shakir · OxyEco Forger Guide</div>' +
-            '<div class="shakir-modal-subtitle">EXPLORE ALL 8 CENTRAL EUROPEAN FARM LANDMARKS</div>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="shakir-modal-body" style="padding:10px 14px;margin-bottom:12px;">' +
-          '<p style="margin:0 0 6px 0;font-size:0.90rem;font-weight:800;color:#0F172A;">' +
-            '👋 Welcome to SearchO2! Choose any landmark on the roadmap below or start a step-by-step tour:' +
-          '</p>' +
-          '<div style="font-size:0.75rem;color:#64748B;line-height:1.4;">' +
-            'Each chapter introduces vital regenerative ecology, clean microgrid technology, and our closed-loop oxygen economy.' +
-          '</div>' +
-        '</div>' +
-
-        '<div style="font-size:0.72rem;font-weight:800;color:#0284C7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Landmark Roadmap (Select to Tour)</div>' +
-        roadmapHtml +
-
-        '<div class="shakir-modal-actions" style="margin-top:14px;">' +
-          '<button type="button" class="shakir-btn-primary" id="btnShakirStartTour"><span>🧭 Start Guided Tour (Ch. ' + currentCh + ') ➔</span></button>' +
-          '<button type="button" class="shakir-btn-secondary" id="btnShakirLookAround">👀 Free Roam (Explore on My Own)</button>' +
-        '</div>' +
-      '</div>';
-
-    document.body.appendChild(modal);
-    guideState.dialogOpen = true;
-
-    modal.onclick = function (e) {
-      if (e.target === modal) closeGuideModal();
-    };
-    document.getElementById('btnShakirClose').onclick = closeGuideModal;
-
-    modal.querySelectorAll('[data-goto-ch]').forEach(function (btn) {
-      btn.onclick = function () {
-        var ch = parseInt(btn.getAttribute('data-goto-ch'), 10);
-        closeGuideModal();
-        walkToChapter(ch);
-      };
-    });
-
-    document.getElementById('btnShakirStartTour').onclick = function () {
-      closeGuideModal();
-      walkToChapter(currentCh);
-    };
-
-    document.getElementById('btnShakirLookAround').onclick = function () {
-      closeGuideModal();
-      hideTourNavDock();
-      renderShakirReTriggerPill();
-      showShakirSpeechBubble('Enjoy exploring the farm! Tap on me or the CEO Tour button anytime! 🧑‍💼', 4500);
-    };
+    ch = parseInt(ch, 10) || guideState.currentChapter || 1;
+    toggleSubtitles(true);
+    playCurrentSpotDialogue(ch, 0, 1);
   }
 
   function openShakirDialogue() {
-    if (!isGuestMode()) return;
-    openGuideDialog(guideState.currentChapter);
+    toggleSubtitles(true);
+    var ch = guideState.currentChapter || 1;
+    var spotIdx = guideState.currentSpotIdx || 0;
+    playCurrentSpotDialogue(ch, spotIdx, guideState.currentDialogueTurn || 1);
   }
 
   // ---------------------------------------------------------------------------
-  // Floating CEO Tour Re-Trigger Pill & Return Modal
+  // Top HUD Navigation Dock
   // ---------------------------------------------------------------------------
-  function renderShakirReTriggerPill() {
-    // As per user specification: CEO tour guide will ONLY be visible in guest mode login home globe page.
-    // Completely remove sticky pill from the farm and from mobile view.
-    var old = document.getElementById('s2ShakirReTriggerBtn');
-    if (old && old.parentNode) old.parentNode.removeChild(old);
-  }
-
-  function openReTriggerModal() {
-    if (!isGuestMode()) return;
-    ensureShakirStyles();
-    closeGuideModal();
-
-    var currentCh = guideState.currentChapter || 1;
-
-    // Generate 8-chapter landmark roadmap
-    var roadmapHtml = '<div class="shakir-roadmap-list">';
-    for (var i = 1; i <= 8; i++) {
-      var item = SHAKIR_CHAPTERS[i];
-      var isActive = (i === currentCh);
-      roadmapHtml +=
-        '<div class="shakir-roadmap-item' + (isActive ? ' active' : '') + '" data-retrigger-ch="' + i + '">' +
-          '<div style="display:flex;align-items:center;gap:6px;min-width:0;flex:1;">' +
-            '<span style="font-size:1.1rem;flex-shrink:0;">' + item.icon + '</span>' +
-            '<div style="min-width:0;flex:1;">' +
-              '<div class="roadmap-item-title" style="font-size:0.76rem;font-weight:900;color:#0F172A;word-break:break-word;">Ch. ' + i + ': ' + item.landmark + '</div>' +
-              '<div class="roadmap-item-desc" style="font-size:0.66rem;color:#64748B;line-height:1.2;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">' + item.title + '</div>' +
-            '</div>' +
-          '</div>' +
-          '<span class="roadmap-item-action" style="font-size:0.70rem;font-weight:800;color:' + (isActive ? '#0284C7' : '#94A3B8') + ';flex-shrink:0;white-space:nowrap;">' + (isActive ? '● Current' : 'Walk Here ➔') + '</span>' +
-        '</div>';
-    }
-    roadmapHtml += '</div>';
-
-    var modal = document.createElement('div');
-    modal.className = 'shakir-modal-backdrop';
-    modal.id = 's2ShakirModal';
-
-    modal.innerHTML =
-      '<div class="shakir-modal-card" style="max-width:540px;" role="dialog" aria-modal="true">' +
-        '<button type="button" class="shakir-modal-close" id="btnShakirClose" title="Close">✕</button>' +
-        '<div class="shakir-modal-header">' +
-          '<div class="shakir-avatar-preview">' +
-            renderShakirFigureSvg({ w: 48, h: 88, unique: 'shakir_retrigger' }) +
-          '</div>' +
-          '<div>' +
-            '<div class="shakir-modal-title">Shakir · OxyEco Forger Guide</div>' +
-            '<div class="shakir-modal-subtitle">GERMAN FARM EXPLORATION ROADMAP</div>' +
-          '</div>' +
-        '</div>' +
-
-        '<div class="shakir-modal-body" style="padding:12px 14px;margin-bottom:12px;background:#F0F9FF;border:1.5px solid #BAE6FD;border-radius:14px;">' +
-          '<p style="margin:0 0 6px 0;font-size:0.92rem;font-weight:800;color:#0369A1;">' +
-            '👋 Welcome back! Thanks for choosing to explore our farm together again!' +
-          '</p>' +
-          '<div style="font-size:0.76rem;color:#475569;line-height:1.45;">' +
-            'Where would you like to visit next? Choose any landmark on the roadmap below to start a direct guided walk, or restart the tour from the beginning:' +
-          '</div>' +
-        '</div>' +
-
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-          '<span style="font-size:0.72rem;font-weight:800;color:#0284C7;text-transform:uppercase;letter-spacing:0.5px;">Landmark Roadmap (Select to Walk)</span>' +
-        '</div>' +
-        roadmapHtml +
-
-        '<div class="shakir-modal-actions" style="margin-top:14px;">' +
-          '<button type="button" class="shakir-btn-primary" id="btnShakirRestartBeginning">' +
-            '<span>🔄 Restart from Beginning (Chapter 1) ➔</span>' +
-          '</button>' +
-          (currentCh > 1 && currentCh <= 8 ?
-            '<button type="button" class="shakir-btn-secondary" id="btnShakirContinueCurrent">' +
-              'Continue Tour (Ch. ' + currentCh + ') ➔' +
-            '</button>' : '') +
-          '<button type="button" class="shakir-btn-secondary" id="btnShakirCloseRetrigger">Close</button>' +
-        '</div>' +
-      '</div>';
-
-    document.body.appendChild(modal);
-    guideState.dialogOpen = true;
-
-    modal.onclick = function (e) {
-      if (e.target === modal) closeGuideModal();
-    };
-    document.getElementById('btnShakirClose').onclick = closeGuideModal;
-    var btnCloseRetrigger = document.getElementById('btnShakirCloseRetrigger');
-    if (btnCloseRetrigger) btnCloseRetrigger.onclick = closeGuideModal;
-
-    modal.querySelectorAll('[data-retrigger-ch]').forEach(function (btn) {
-      btn.onclick = function () {
-        var ch = parseInt(btn.getAttribute('data-retrigger-ch'), 10);
-        closeGuideModal();
-        walkToChapter(ch);
-      };
-    });
-
-    document.getElementById('btnShakirRestartBeginning').onclick = function () {
-      closeGuideModal();
-      walkToChapter(1);
-    };
-
-    var btnContinue = document.getElementById('btnShakirContinueCurrent');
-    if (btnContinue) {
-      btnContinue.onclick = function () {
-        closeGuideModal();
-        walkToChapter(currentCh);
-      };
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Boot & Lifecycle Integrations
-  // ---------------------------------------------------------------------------
-  function bootGuideOnFarm() {
-    if (!isGuestMode()) {
-      removeGuide();
-      return;
-    }
-    ensureShakirStyles();
-    renderShakirReTriggerPill();
-
-    // Prevent regular avatar system from launching avatar selection overlay
-    if (global.SearchO2HomeAvatar) {
-      if (typeof global.SearchO2HomeAvatar.hideHomeOverlay === 'function') {
-        global.SearchO2HomeAvatar.hideHomeOverlay();
-      }
-    }
-
-    var scene = document.getElementById('fieldScene');
-    if (!scene) return;
-
-    var existing = document.getElementById('s2ShakirGuide');
-    if (existing && (guideState.active || guideState.isWalking)) {
-      return;
-    }
-
-    var curCoords = getInitialCoordinates(guideState.currentChapter || 1);
-    spawnShakirWalker(curCoords);
-
-    // If first entry as guest, welcome with cheerful greeting
-    var greeted = sessionStorage.getItem('searchO2_shakir_welcomed');
-    if (!greeted) {
-      sessionStorage.setItem('searchO2_shakir_welcomed', '1');
-      setTimeout(function () {
-        openWelcomeModal();
-      }, 700);
-    } else {
-      showShakirSpeechBubble('👋 Welcome back! Click me to continue our tour!', 4000);
-    }
-  }
-
   function hideTourNavDock() {
     var nav = document.getElementById('s2ShakirTourNav');
-    if (nav && nav.parentNode) {
-      nav.parentNode.removeChild(nav);
-    }
+    if (nav && nav.parentNode) nav.parentNode.removeChild(nav);
   }
 
   function renderTourNavDock(targetCh) {
-    if (!isGuestMode()) {
-      hideTourNavDock();
-      return;
-    }
-    var chData = SHAKIR_CHAPTERS[targetCh] || SHAKIR_CHAPTERS[1];
+    var chapterData = CHAPTER_JOURNEY[targetCh] || CHAPTER_JOURNEY[1];
     var nav = document.getElementById('s2ShakirTourNav');
     if (!nav) {
       nav = document.createElement('div');
@@ -2304,51 +3325,130 @@
       nav.className = 'shakir-tour-nav-dock';
       document.body.appendChild(nav);
     }
+
     nav.innerHTML =
       '<div class="shakir-nav-info">' +
-        '<span class="shakir-nav-tag">🧭 OxyEco Forger Tour</span>' +
-        '<span class="shakir-nav-landmark">' + chData.icon + ' Ch. ' + targetCh + ': ' + chData.landmark + '</span>' +
+        '<span class="shakir-nav-tag">Scouting Masterplan</span>' +
+        '<span class="shakir-nav-landmark">Ch. ' + targetCh + ': ' + chapterData.title + '</span>' +
       '</div>' +
       '<div class="shakir-nav-btn-group">' +
-        '<button type="button" class="shakir-nav-btn" id="s2NavPrev" title="Walk to Previous Landmark"><span class="nav-icon">⏮️</span><span class="nav-text"> Prev</span></button>' +
-        '<span class="shakir-nav-ch-badge" id="s2NavChBadge" title="Current Landmark: ' + chData.landmark + '">' + chData.icon + ' Ch. ' + targetCh + '</span>' +
-        '<button type="button" class="shakir-nav-btn" id="s2NavNext" title="Walk to Next Landmark"><span class="nav-text">Next </span><span class="nav-icon">⏭️</span></button>' +
-        '<button type="button" class="shakir-nav-btn primary" id="s2NavRoadmap" title="View Landmark Roadmap"><span class="nav-icon">📜</span><span class="nav-text"> Roadmap</span></button>' +
-        '<button type="button" class="shakir-nav-btn danger" id="s2NavStop" title="Exit Tour and Free Roam"><span class="nav-icon">✕</span><span class="nav-text"> Free Roam</span></button>' +
+        '<span class="shakir-nav-ch-badge">' + targetCh + '/8</span>' +
+        (targetCh > 1 ? '<button type="button" class="shakir-nav-btn" id="btnTourPrev">◀ <span class="nav-text">Prev</span></button>' : '') +
+        '<button type="button" class="shakir-nav-btn" id="btnTourNext" style="background:#0284C7;border-color:#38BDF8;font-weight:900;">' +
+          (targetCh < 8 ? '<span class="nav-text">Next</span> ▶' : 'Finish 🏆') +
+        '</button>' +
+        '<button type="button" class="shakir-nav-btn" id="btnTourExit" title="Exit Tour">✕</button>' +
       '</div>';
 
-    document.getElementById('s2NavPrev').onclick = function () {
-      var prev = (targetCh <= 1) ? 8 : (targetCh - 1);
-      walkToChapter(prev);
-    };
-    document.getElementById('s2NavNext').onclick = function () {
-      var next = (targetCh >= 8) ? 1 : (targetCh + 1);
-      walkToChapter(next);
-    };
-    document.getElementById('s2NavRoadmap').onclick = function () {
-      openWelcomeModal();
-    };
-    document.getElementById('s2NavStop').onclick = function () {
-      hideTourNavDock();
-      renderShakirReTriggerPill();
-      showShakirSpeechBubble('Free Roam mode active! Tap on Shakir or visit the home globe anytime to resume! 😊', 4000);
-    };
+    var prevBtn = nav.querySelector('#btnTourPrev');
+    if (prevBtn) {
+      prevBtn.onclick = function (e) {
+        e.stopPropagation();
+        if (targetCh > 1) walkToChapter(targetCh - 1);
+      };
+    }
+    var nextBtn = nav.querySelector('#btnTourNext');
+    if (nextBtn) {
+      nextBtn.onclick = function (e) {
+        e.stopPropagation();
+        onGotItClicked();
+      };
+    }
+    var exitBtn = nav.querySelector('#btnTourExit');
+    if (exitBtn) {
+      exitBtn.onclick = function (e) {
+        e.stopPropagation();
+        removeGuide();
+      };
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Boot & Remove Handlers
+  // ---------------------------------------------------------------------------
+  function bootGuideOnFarm() {
+    if (guideState.active || guideState.isWalking || guideState.suppressAutoBoot) return;
+    if (global.KidsSustainabilityAcademy && typeof global.KidsSustainabilityAcademy.isOpen === 'function' && global.KidsSustainabilityAcademy.isOpen()) {
+      return;
+    }
+    if (document.getElementById('kidsAcademyModal') || document.getElementById('kidsAcademyHandoverModal')) {
+      return;
+    }
+
+    ensureShakirStyles();
+    ensureSubtitleDock();
+
+    if (global.SearchO2HomeAvatar && typeof global.SearchO2HomeAvatar.hideHomeOverlay === 'function') {
+      try { global.SearchO2HomeAvatar.hideHomeOverlay(); } catch (e) {}
+    }
+
+    var scene = document.getElementById('fieldScene');
+    if (!scene) return;
+
+    var firstSpot = CHAPTER_JOURNEY[1].spots[0];
+    spawnShakirWalker(firstSpot.standPoint);
+
+    var greeted = sessionStorage.getItem('searchO2_shakir_welcomed');
+    if (!greeted) {
+      sessionStorage.setItem('searchO2_shakir_welcomed', '1');
+      if (global.KidsSustainabilityAcademy && typeof global.KidsSustainabilityAcademy.triggerOnFarmStart === 'function') {
+        var triggered = global.KidsSustainabilityAcademy.triggerOnFarmStart(function () {
+          startGuidedTour(1);
+        });
+        if (!triggered) {
+          setTimeout(function () { startGuidedTour(1); }, 600);
+        }
+      } else {
+        setTimeout(function () { startGuidedTour(1); }, 600);
+      }
+    } else {
+      showShakirSpeechBubble('👋 Welcome back! Tap me or 💬 to explore!', 4000);
+    }
   }
 
   function removeGuide() {
+    clearSequenceTimers();
     clearCooldown();
-    closeGuideModal();
+    stopDialogueVoice();
     hideTourNavDock();
-    var walker = document.getElementById('s2ShakirGuide');
-    if (walker && walker.parentNode) {
-      walker.parentNode.removeChild(walker);
+    clearChapterGhosts();
+
+    var el = guideState.walkerEl || document.getElementById('s2ShakirGuide');
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+    removePipCompanion();
+
+    var floater = document.getElementById('s2ScoutCountdownFloater');
+    if (floater && floater.parentNode) floater.parentNode.removeChild(floater);
+    var pill = document.getElementById('s2CooldownIconPill');
+    if (pill && pill.parentNode) pill.parentNode.removeChild(pill);
+    var popModal = document.getElementById('s2CooldownPopModal');
+    if (popModal && popModal.parentNode) popModal.parentNode.removeChild(popModal);
+
+    var dock = document.getElementById('shakirPipSubtitleDock');
+    if (dock && dock.parentNode) dock.parentNode.removeChild(dock);
+
+    var subBtn = document.getElementById('btnToggleTourSubtitles');
+    if (subBtn && subBtn.parentNode) subBtn.parentNode.removeChild(subBtn);
+
+    var bubble = document.getElementById('shakirSpeechBubble');
+    if (bubble && bubble.parentNode) bubble.parentNode.removeChild(bubble);
+    var pipBubble = document.getElementById('pipSpeechBubble');
+    if (pipBubble && pipBubble.parentNode) pipBubble.parentNode.removeChild(pipBubble);
+
+    var vic = document.getElementById('s2VictoryModal');
+    if (vic && vic.parentNode) vic.parentNode.removeChild(vic);
+
+    if (global.SearchO2HomeAvatar) {
+      try {
+        if (typeof global.SearchO2HomeAvatar.clearScoutCooldown === 'function') global.SearchO2HomeAvatar.clearScoutCooldown();
+        if (typeof global.SearchO2HomeAvatar.hideScoutCountdownFloater === 'function') global.SearchO2HomeAvatar.hideScoutCountdownFloater();
+        if (typeof global.SearchO2HomeAvatar.clearGhosts === 'function') global.SearchO2HomeAvatar.clearGhosts();
+      } catch (e) {}
     }
-    var pill = document.getElementById('s2ShakirReTriggerBtn');
-    if (pill && pill.parentNode) {
-      pill.parentNode.removeChild(pill);
-    }
+
     guideState.active = false;
     guideState.walkerEl = null;
+    guideState.pipEl = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -2358,45 +3458,38 @@
     isGuestMode: isGuestMode,
     bootGuideOnFarm: bootGuideOnFarm,
     removeGuide: removeGuide,
+    startGuidedTour: startGuidedTour,
     walkToChapter: walkToChapter,
     walkToNextChapter: walkToNextChapter,
     onGotItClicked: onGotItClicked,
     clearChapterGhosts: clearChapterGhosts,
     walkOutThroughGate: walkOutThroughGate,
-    renderShakirDreamCloud: renderShakirDreamCloud,
-    hideShakirDreamCloud: hideShakirDreamCloud,
-    openWelcomeModal: openWelcomeModal,
-    openReTriggerModal: openReTriggerModal,
-    renderShakirReTriggerPill: renderShakirReTriggerPill,
+    finalizeTourDeparture: finalizeTourDeparture,
     openGuideDialog: openGuideDialog,
-    openWelcomeOrProgressModal: function () {
-      if (guideState.currentChapter && guideState.currentChapter > 1) {
-        openReTriggerModal();
-      } else {
-        openWelcomeModal();
-      }
-    },
     openShakirDialogue: openShakirDialogue,
+    playCurrentSpotDialogue: playCurrentSpotDialogue,
+    advanceDialogueTurn: advanceDialogueTurn,
+    toggleSubtitles: toggleSubtitles,
+    toggleVoice: toggleVoice,
+    showVictoryCelebration: showVictoryCelebration,
     renderShakirFigureSvg: renderShakirFigureSvg,
-    getGuideState: function () {
-      return guideState;
-    },
-    isTourActive: function () {
-      return guideState.active;
-    },
+    renderPipFigureSvg: renderPipFigureSvg,
+    playPipAnimation: playPipAnimation,
+    showShakirSpeechBubble: showShakirSpeechBubble,
+    showPipSpeechBubble: showPipSpeechBubble,
+    getGuideState: function () { return guideState; },
+    isTourActive: function () { return guideState.active; },
     isCooldownActive: function () {
       return guideState.cooldownActive && guideState.cooldownRemaining > 0;
     },
-    getCooldownRemaining: function () {
-      return guideState.cooldownRemaining;
-    }
+    getCooldownRemaining: function () { return guideState.cooldownRemaining; }
   };
 
   global.SearchO2ShakirGuide = SearchO2ShakirGuide;
 
-  // Auto-boot if already on farm and user is a guest
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
+      ensureToolbarButton();
       setTimeout(function () {
         if (isGuestMode()) {
           var farmScreen = document.getElementById('farmScreen');
@@ -2407,6 +3500,7 @@
       }, 900);
     });
   } else {
+    ensureToolbarButton();
     setTimeout(function () {
       if (isGuestMode()) {
         var farmScreen = document.getElementById('farmScreen');

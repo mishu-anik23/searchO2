@@ -2105,7 +2105,7 @@
         // Ch 6: Juice Bar (South Mid-East terrace)
         6: { standPoint: { left: 67.0, top: 88.0 }, touchPoint: { left: 67.0, top: 72.0 } },
         // Ch 7: Eco-Passport (Northeast pavilion)
-        7: { standPoint: { left: 82.5, top: 36.0 }, touchPoint: { left: 82.5, top: 20.0 } },
+        7: { standPoint: { left: 78.0, top: 22.0 }, touchPoint: { left: 78.0, top: 12.0 } },
         // Ch 8: Space Mission (Southeast launchpad)
         8: { standPoint: { left: 82.5, top: 88.0 }, touchPoint: { left: 82.5, top: 72.0 } }
       };
@@ -3474,9 +3474,7 @@
     var progress = document.getElementById('s2TourProgress');
     if (progress) progress.style.display = 'none';
 
-    if (typeof global.openJuteTarpModal === 'function') {
-      try { global.openJuteTarpModal(); } catch (e) {}
-    }
+    // Do NOT auto open jute tarp modal - user will manually click to uncover
     if (onComplete) onComplete();
   }
 
@@ -3815,8 +3813,10 @@
 
   function bootIntegration() {
     setTimeout(function () {
+      var farmScreen = document.getElementById('farmScreen');
+      var isFarmVisible = farmScreen && farmScreen.style.display !== 'none' && !farmScreen.classList.contains('hidden');
       if (isGuestMode()) {
-        if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.bootGuideOnFarm === 'function') {
+        if (isFarmVisible && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.bootGuideOnFarm === 'function') {
           global.SearchO2ShakirGuide.bootGuideOnFarm();
         }
         return;
@@ -3824,7 +3824,9 @@
       if (shouldShowHomeOverlay()) {
         showHomeOverlay();
       } else {
-        maybeResumeAvatarOnFarm();
+        if (isFarmVisible) {
+          maybeResumeAvatarOnFarm();
+        }
       }
     }, 800);
   }
@@ -3840,31 +3842,36 @@
     endTour: endTour,
     boot: bootIntegration,
     walkToNextScoutNow: function () {
-      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.walkToNextChapter === 'function') {
+      var isShakirActive = (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isTourActive === 'function' && global.SearchO2ShakirGuide.isTourActive());
+      if ((isGuestMode() || isShakirActive) && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.walkToNextChapter === 'function') {
         return global.SearchO2ShakirGuide.walkToNextChapter();
       }
       return walkToNextScoutNow();
     },
     skipScoutCooldown: function () {
-      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.walkToNextChapter === 'function') {
+      var isShakirActive = (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isTourActive === 'function' && global.SearchO2ShakirGuide.isTourActive());
+      if ((isGuestMode() || isShakirActive) && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.walkToNextChapter === 'function') {
         return global.SearchO2ShakirGuide.walkToNextChapter();
       }
       return walkToNextScoutNow();
     },
     isCooldownActive: function () {
-      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isCooldownActive === 'function') {
+      var isShakirActive = (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isTourActive === 'function' && global.SearchO2ShakirGuide.isTourActive());
+      if ((isGuestMode() || isShakirActive) && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isCooldownActive === 'function') {
         return global.SearchO2ShakirGuide.isCooldownActive();
       }
       return !!(tourState.active && tourState.cooldownActive && tourState.cooldownRemaining > 0);
     },
     getCooldownRemaining: function () {
-      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.getCooldownRemaining === 'function') {
+      var isShakirActive = (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isTourActive === 'function' && global.SearchO2ShakirGuide.isTourActive());
+      if ((isGuestMode() || isShakirActive) && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.getCooldownRemaining === 'function') {
         return global.SearchO2ShakirGuide.getCooldownRemaining();
       }
       return tourState.cooldownRemaining;
     },
     getTourState: function () {
-      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.getGuideState === 'function') {
+      var isShakirActive = (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isTourActive === 'function' && global.SearchO2ShakirGuide.isTourActive());
+      if ((isGuestMode() || isShakirActive) && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.getGuideState === 'function') {
         return global.SearchO2ShakirGuide.getGuideState();
       }
       return tourState;
@@ -3900,8 +3907,8 @@
     dockTopCapsules: dockTopCapsules,
     walkToChapter: walkToChapter,
     isTourActive: function () {
-      if (isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isTourActive === 'function') {
-        return global.SearchO2ShakirGuide.isTourActive();
+      if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.isTourActive === 'function' && global.SearchO2ShakirGuide.isTourActive()) {
+        return true;
       }
       return isTourActive();
     },
