@@ -1082,8 +1082,34 @@ const state = {
   money: 1200, o2: 250, xp: 10, workers: 0, hired: [], bess: 0, chapter: 1,
   labRewards: (function(){ try{ return JSON.parse(localStorage.getItem('alpenhof_lab_rewards') || '{}'); }catch(e){ return {}; } })(),
   isAdmin: !!(localStorage.getItem('so2_role') === 'admin' || window.location.search.includes('admin=1')),
-  labRewards: (function(){ try{ return JSON.parse(localStorage.getItem('alpenhof_lab_rewards') || '{}'); }catch(e){ return {}; } })(),
-  isAdmin: !!(localStorage.getItem('so2_role') === 'admin' || window.location.search.includes('admin=1')),
+  dairyLogistics: {
+    storageCapacity: 500,
+    storageLevel: 1,
+    inventory: {
+      milk: 180,
+      cheese: 40,
+      butter: 25,
+      joghurt: 60
+    },
+    shopStock: {
+      milk: 40,
+      cheese: 15,
+      joghurt: 30
+    },
+    restaurantStock: {
+      milk: 35,
+      cheese: 20,
+      butter: 25
+    },
+    stats: {
+      totalExportSales: 0,
+      totalLocalDeliveries: 0,
+      exportRevenue: 0,
+      localRevenue: 0
+    }
+  },
+  vehicles: [],
+  floatingBadges: [],
   fruitInventory: { cherry: 0, apple: 0, pear: 0, plum: 0, quince: 0, walnut: 0, totalKg: 0 },
   dialoguesSeen: {},
   exploration: { mistAlpha: 0.78, inspectedSites: {}, surveyedSites: {} },
@@ -8002,6 +8028,25 @@ const AlpenMap = {
     if (typeof checkChapterProgression === 'function' && Math.random() < 0.05) {
       checkChapterProgression();
     }
+
+    // 5. Active Vehicle Logistics & Loading Worker Simulation
+    if (typeof updateVehicleLogistics === 'function') {
+      updateVehicleLogistics();
+    }
+
+    // 6. Passive Dairy Production from Alpen-Käserei & Grazing Cattle
+    if (state.built['dairy_plant'] && state.cattle && state.cattle.animals && state.cattle.animals.length > 0) {
+      if (Math.floor(this.time * 60) % 300 === 0) {
+        const dl = state.dairyLogistics;
+        if (dl) {
+          const cap = dl.storageCapacity;
+          dl.inventory.milk = Math.min(cap, dl.inventory.milk + 3);
+          dl.inventory.cheese = Math.min(cap, dl.inventory.cheese + 0.6);
+          dl.inventory.butter = Math.min(cap, dl.inventory.butter + 0.4);
+          dl.inventory.joghurt = Math.min(cap, dl.inventory.joghurt + 0.8);
+        }
+      }
+    }
   },
 
   worldFromEvent(e){
@@ -8210,6 +8255,14 @@ const AlpenMap = {
       else if (s.action === 'shed') drawFarmBarn(ctx, s.x, s.y, built);
     });
 
+    // 4a. Enhanced Vehicle Network & Delivery Logistics Layer
+    if (typeof drawActiveVehicles === 'function') {
+      drawActiveVehicles(ctx, this.time);
+    }
+    if (typeof drawFloatingBadges === 'function') {
+      drawFloatingBadges(ctx, this.time);
+    }
+
     // 4b. Soft Translucent Animated Alpine Mist across Locked Exploration Zones
     drawAlpineMist(ctx, this.time);
 
@@ -8296,7 +8349,15 @@ function openJuiceBarModal(activeTab){
     }
 
     // Shared Terrace Hospitality Feature
-    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--teal)">' +
+         h += '<div class="card-box" style="margin-bottom:12px;border-color:#76FF03;background:rgba(20,35,20,0.92)">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+              '<b style="font-size:0.84rem;color:#B2FF59">🚜 Farm-to-Table Local Cart Delivery Status</b>' +
+              '<span class="badge" style="background:#76FF03;color:#000">Stocked (' + (state.dairyLogistics?.shopStock?.cheese || 15) + ' Wheels)</span>' +
+            '</div>' +
+            '<p style="font-size:0.74rem;color:#C8E6C9;margin-bottom:8px">Electric Fendt farm cart collects artisan Bergkäse from Cold Storage and delivers directly to this roadside shop via the Central Divider Subway.</p>' +
+            '<button class="btn btn-c" style="width:100%;font-size:0.75rem;padding:7px" onclick="dispatchLocalDairyCart()">🚜 Dispatch Local Cart to Restock Cheese Shop & Restaurant</button>' +
+          '</div>';
+     h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--teal)">' +
          '<b>Shared Terrace Hospitality:</b><br/>' +
          '<span style="font-size:0.76rem;color:#C8E6C9">Guests relax on the shared wooden boardwalk connecting all 3 juice counters and the Gasthof Stuben restaurant terrace.</span>' +
          '<button class="btn btn-a" style="width:100%;margin-top:8px" onclick="hostTerraceJuiceTasting()">🥂 Host 3-Counter Terrace Tasting Event (+€65 · +25 XP)</button>' +
@@ -8304,6 +8365,13 @@ function openJuiceBarModal(activeTab){
   }
 
   // Educational Why Recall Card
+       h += '<div class="card-box" style="margin-bottom:12px;border-color:#FFD54F;background:rgba(30,25,12,0.85)">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+              '<b style="font-size:0.84rem;color:var(--gold)">🧈 Gasthof Dairy Pantry: ' + (state.dairyLogistics?.restaurantStock?.butter || 25) + ' kg Butter · ' + (state.dairyLogistics?.restaurantStock?.cheese || 20) + ' Wheels Cheese</b>' +
+              '<button class="btn btn-c" style="font-size:0.70rem;padding:4px 8px" onclick="dispatchLocalDairyCart()">🚜 Order Fresh Farm Delivery</button>' +
+            '</div>' +
+            '<div style="font-size:0.72rem;color:#FFE082">Fresh butter and cooking milk delivered by local farm utility cart via Eastern Gastronomy Terrace road.</div>' +
+          '</div>';
   h += '<div class="card-box" style="border-color:rgba(255,213,79,0.35);background:rgba(25,20,10,0.65)">' +
        '<h4 style="font-size:0.80rem;color:var(--gold);margin-bottom:4px">🇩🇪 German Farm Recall Link: Value-Added Estate Juices & Polyculture Processing</h4>' +
        '<p style="font-size:0.75rem;color:#FFE082">Recalling Basic Farm Ch. 6 (Value-Added Farm Products), this 3-counter facility separates single-varietal estate grape juice from Streuobst tree cider and small-plot berry blends, multiplying crop value by 300% over raw wholesale produce.</p>' +
@@ -8537,9 +8605,14 @@ function collectDairyProducts(){
 /* Autonomous Bavarian Dairy Cold Storage Modal */
 function openColdStorageModal(){
   const built = !!state.built['cold_storage'];
+  const dl = state.dairyLogistics || {
+    storageCapacity: 500, storageLevel: 1,
+    inventory: { milk: 180, cheese: 40, butter: 25, joghurt: 60 },
+    stats: { totalExportSales: 0, totalLocalDeliveries: 0, exportRevenue: 0, localRevenue: 0 }
+  };
 
   let h = '<div class="modal-hdr"><h3>❄️ Subterranean Bavarian Dairy Cold Storage</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
-  h += '<p style="font-size:0.82rem;color:#80DEEA;margin-bottom:10px">Autonomous Geothermal Cryo-Vault · +3.8°C Steady Temperature · Bypass Roadside Milk Transports</p>';
+  h += '<p style="font-size:0.82rem;color:#80DEEA;margin-bottom:10px">Autonomous Geothermal Cryo-Vault · +3.8°C Steady Temperature · Bypass Roadside Transport Apron</p>';
 
   if (!built) {
     h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--cyan)">' +
@@ -8548,27 +8621,69 @@ function openColdStorageModal(){
          '<button class="btn btn-c" style="margin-top:10px;width:100%" onclick="buildSite(\'cold_storage\', 130)">🔨 Erect Geothermal Cold Storage (€130 · +38 XP · +18 O₂/s)</button>' +
          '</div>';
   } else {
-    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--cyan)">' +
-         '<div style="font-weight:800;color:#00E5FF;font-size:0.9rem;margin-bottom:6px">✓ Active Subterranean Cryo-Vault</div>' +
-         '<div style="font-size:0.78rem;color:#E0F2F1;line-height:1.4">' +
-           '• <b>Geothermal Heat Pumps:</b> Closed ground-loop refrigerant circulation maintains precision +3.8°C without consuming microgrid battery capacity.<br/>' +
-           '• <b>Direct Bypass Road Apron:</b> Milk transport trucks and refrigerated delivery wagons dock directly at the frost-sealed blast doors.<br/>' +
-           '• <b>Earth-Bermed Thermal Inertia:</b> 1.4m native alpine turf layer ensures 72-hour passive chilling even during extreme mountain weather.' +
-         '</div>' +
-         '<div style="margin-top:10px;display:flex;gap:8px">' +
-           '<div style="flex:1;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;text-align:center">' +
-             '<div style="font-size:0.7rem;color:#B0BEC5">Chilled Milk Reserve</div>' +
-             '<div style="font-size:1.1rem;font-weight:800;color:#80DEEA">3,800 L</div>' +
+    const inv = dl.inventory;
+    const totalUnits = Math.round(inv.milk + inv.cheese * 3 + inv.butter * 2 + inv.joghurt);
+    const pct = Math.min(100, Math.round((totalUnits / dl.storageCapacity) * 100));
+
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--cyan);background:rgba(8,24,36,0.92)">' +
+           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+             '<b style="color:#00E5FF;font-size:0.88rem">❄️ Cold Storage Capacity: Level ' + dl.storageLevel + ' (' + totalUnits + ' / ' + dl.storageCapacity + ' Units)</b>' +
+             '<span style="font-weight:bold;color:' + (pct > 90 ? '#FF5252' : '#80DEEA') + '">' + pct + '% Full</span>' +
            '</div>' +
-           '<div style="flex:1;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;text-align:center">' +
-             '<div style="font-size:0.7rem;color:#B0BEC5">Vault Temperature</div>' +
-             '<div style="font-size:1.1rem;font-weight:800;color:#00E5FF">+3.8°C</div>' +
+           '<div style="height:6px;background:rgba(255,255,255,0.1);border-radius:3px;margin-bottom:12px;overflow:hidden">' +
+             '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#00E5FF,#00E676);border-radius:3px"></div>' +
            '</div>' +
-           '<div style="flex:1;background:rgba(0,0,0,0.3);padding:8px;border-radius:6px;text-align:center">' +
-             '<div style="font-size:0.7rem;color:#B0BEC5">Thermal Inertia</div>' +
-             '<div style="font-size:1.1rem;font-weight:800;color:#81C784">99.4% Passive</div>' +
+
+           // 4 Inventory Breakdown Cards
+           '<div class="grid-2" style="gap:8px;margin-bottom:12px">' +
+             '<div style="background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);padding:8px 10px;border-radius:8px">' +
+               '<div style="font-size:0.70rem;color:#B0BEC5">🥛 Frische Alpenmilch</div>' +
+               '<div style="font-size:1.05rem;font-weight:800;color:#FFF">' + Math.round(inv.milk) + ' Liters</div>' +
+             '</div>' +
+             '<div style="background:rgba(255,213,79,0.08);border:1px solid rgba(255,213,79,0.2);padding:8px 10px;border-radius:8px">' +
+               '<div style="font-size:0.70rem;color:#B0BEC5">🧀 Bergkäse Wheels</div>' +
+               '<div style="font-size:1.05rem;font-weight:800;color:#FFD54F">' + Math.round(inv.cheese) + ' Wheels</div>' +
+             '</div>' +
+             '<div style="background:rgba(129,199,132,0.08);border:1px solid rgba(129,199,132,0.2);padding:8px 10px;border-radius:8px">' +
+               '<div style="font-size:0.70rem;color:#B0BEC5">🧈 Churned Butter</div>' +
+               '<div style="font-size:1.05rem;font-weight:800;color:#A5D6A7">' + Math.round(inv.butter) + ' kg</div>' +
+             '</div>' +
+             '<div style="background:rgba(206,147,216,0.08);border:1px solid rgba(206,147,216,0.2);padding:8px 10px;border-radius:8px">' +
+               '<div style="font-size:0.70rem;color:#B0BEC5">🥣 Probiotic Joghurt</div>' +
+               '<div style="font-size:1.05rem;font-weight:800;color:#CE93D8">' + Math.round(inv.joghurt) + ' Jars</div>' +
+             '</div>' +
            '</div>' +
-         '</div>' +
+
+           // Upgrade capacity button
+           '<button class="btn btn-outline" style="width:100%;font-size:0.72rem;padding:5px;border-color:#00E5FF;color:#00E5FF;margin-bottom:8px" onclick="expandColdStorageCapacity()">' +
+             '🏗️ Expand Geothermal Vault (+350 Units · Level ' + (dl.storageLevel + 1) + ' · €' + (dl.storageLevel * 85) + ')' +
+           '</button>' +
+         '</div>';
+
+    // Logistics Vehicle Dispatch Controls (2 Primary Operations)
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--gold);background:rgba(20,32,20,0.92)">' +
+           '<div style="font-weight:800;color:var(--gold);font-size:0.86rem;margin-bottom:6px">🚚 Active Road Logistics & Vehicle Dispatch</div>' +
+           '<p style="font-size:0.75rem;color:#C8E6C9;margin-bottom:10px">Dispatch vehicles to transport chilled dairy goods along the calibrated Alpenhof road network:</p>' +
+
+           '<div style="display:flex;flex-direction:column;gap:8px">' +
+             // Action 1: Wholesale Export Hauler
+             '<div style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,229,255,0.25);border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">' +
+               '<div>' +
+                 '<div style="font-size:0.82rem;font-weight:800;color:#80DEEA">🚛 Wholesale Refrigerated Hauler</div>' +
+                 '<div style="font-size:0.71rem;color:#B0BEC5">Enters Main Gate ➔ Southern Bypass ➔ Cold Storage (Worker Loads) ➔ Gate Exit</div>' +
+               '</div>' +
+               '<button class="btn btn-g" style="font-size:0.75rem;padding:8px 14px;white-space:nowrap" onclick="dispatchExportTruck()">Dispatch Hauler</button>' +
+             '</div>' +
+
+             // Action 2: Local Farm Utility Cart
+             '<div style="background:rgba(0,0,0,0.3);border:1px solid rgba(118,255,3,0.25);border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">' +
+               '<div>' +
+                 '<div style="font-size:0.82rem;font-weight:800;color:#B2FF59">🚜 Local Farm Dairy Cart & Trailer</div>' +
+                 '<div style="font-size:0.71rem;color:#B0BEC5">Farm Garage ➔ Cold Storage (Worker Collects) ➔ Central Subway ➔ Cheese Shop & Restaurant</div>' +
+               '</div>' +
+               '<button class="btn btn-c" style="font-size:0.75rem;padding:8px 14px;white-space:nowrap" onclick="dispatchLocalDairyCart()">Dispatch Local Cart</button>' +
+             '</div>' +
+           '</div>' +
          '</div>';
   }
 
@@ -9336,6 +9451,18 @@ function openRestaurantModal(){
          '<b>Status: <span style="color:var(--teal)">✓ Operational Eco-Village Gastronomy Hub</span></b><br/>' +
          '<span style="font-size:0.78rem;color:#C8E6C9">Classical timber boardwalk active with dining guests, sun umbrellas open, village fountain flowing with crystal mountain water, and fresh vineyard grapes feeding the Traubensaft-Silo.</span>' +
          '</div>';
+
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:#FFD54F;background:rgba(30,25,12,0.85)">' +
+         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+           '<b style="font-size:0.84rem;color:#FFE082">🧈 Gasthof Kitchen Dairy Pantry</b>' +
+           '<span style="font-size:0.75rem;color:#FFE082">Culinary Provisions</span>' +
+         '</div>' +
+         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.75rem;margin-bottom:8px">' +
+           '<div style="background:rgba(255,255,255,0.06);padding:6px;border-radius:6px;text-align:center"><span style="color:#A5D6A7">🧈 ' + Math.round((state.dairyLogistics?.restaurantStock?.butter || 0)) + ' kg</span> Farm Butter</div>' +
+           '<div style="background:rgba(255,255,255,0.06);padding:6px;border-radius:6px;text-align:center"><span style="color:#FFCC80">🧀 ' + Math.round((state.dairyLogistics?.restaurantStock?.cheese || 0)) + ' Wheels</span> Cheese</div>' +
+         '</div>' +
+         '<button class="btn btn-c" style="width:100%;font-size:0.75rem;padding:6px" onclick="dispatchLocalDairyCart()">🚜 Request Dairy Express Pantry Delivery</button>' +
+       '</div>';
 
     h += '<div style="display:flex;gap:8px;margin-bottom:12px">' +
          '<button class="btn btn-c" style="flex:1" onclick="dispenseGrapeJuice()">🍇 Dispense Fresh Grape Juice (€32)</button>' +
@@ -10616,6 +10743,19 @@ function openDairyMarketModal(){
          '</div>' +
          '</div>';
 
+    h += '<div class="card-box" style="margin-bottom:12px;border-color:#76FF03;background:rgba(20,35,20,0.92)">' +
+         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+           '<b style="font-size:0.84rem;color:#B2FF59">🚜 Farm-to-Table Local Cart Delivery Status</b>' +
+           '<span style="font-size:0.75rem;color:#C8E6C9">Cold Storage Supply Stock</span>' +
+         '</div>' +
+         '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:0.75rem;margin-bottom:8px">' +
+           '<div style="background:rgba(255,255,255,0.06);padding:6px;border-radius:6px;text-align:center"><span style="color:#90CAF9">🥛 ' + Math.round((state.dairyLogistics?.shopStock?.milk || 0)) + 'L</span> Milk</div>' +
+           '<div style="background:rgba(255,255,255,0.06);padding:6px;border-radius:6px;text-align:center"><span style="color:#FFCC80">🧀 ' + Math.round((state.dairyLogistics?.shopStock?.cheese || 0)) + ' Wheels</span> Cheese</div>' +
+           '<div style="background:rgba(255,255,255,0.06);padding:6px;border-radius:6px;text-align:center"><span style="color:#CE93D8">🥣 ' + Math.round((state.dairyLogistics?.shopStock?.joghurt || 0)) + ' Jars</span> Joghurt</div>' +
+         '</div>' +
+         '<button class="btn btn-c" style="width:100%;font-size:0.75rem;padding:6px" onclick="dispatchLocalDairyCart()">🚜 Request Dairy Express Restock from Cold Storage</button>' +
+       '</div>';
+
     h += '<div class="card-box" style="margin-bottom:12px;border-color:var(--teal)">' +
          '<b>Terrace Gastronomy Hospitality:</b><br/>' +
          '<span style="font-size:0.76rem;color:#C8E6C9">Host visiting hikers and tourists on the wooden deck for an afternoon Alpine Cheese & Milk Tasting platter.</span>' +
@@ -11843,6 +11983,572 @@ window.addEventListener('message', function(e) {
     claimLabModuleReward(e.data.moduleId);
   }
 });
+
+
+
+/* =========================================================================
+   ENHANCED ALPENHOF VEHICLE & ROAD LOGISTICS NETWORK
+   ========================================================================= */
+
+const VEHICLE_ROUTES = {
+  // Route 1: Wholesale Export Refrigerated Hauler (Main Gate -> Southern Bypass -> Cold Storage -> Main Road -> Gate)
+  export_truck: {
+    inbound: [
+      [1960, 960],
+      [1880, 945],
+      [1750, 890],
+      [1615, 820],
+      [1600, 840],
+      [1450, 880],
+      [1300, 910],
+      [1120, 940],
+      [950, 945],
+      [780, 930],
+      [620, 905],
+      [460, 860],
+      [340, 795],
+      [270, 730],
+      [190, 890]  // Loading Apron at Subterranean Cold Storage
+    ],
+    outbound: [
+      [270, 665],  // Turning Circle Junction
+      [360, 660],
+      [520, 660],
+      [635, 655],
+      [850, 660],
+      [1085, 690],
+      [1370, 720],
+      [1500, 770],
+      [1615, 820],
+      [1750, 890],
+      [1880, 945],
+      [1980, 970]  // Exit Campus
+    ]
+  },
+
+  // Route 2: Local Farm Electric Utility Cart (Farm Garage -> Cold Storage -> Cheese Shop -> Restaurant -> Garage)
+  local_cart: {
+    leg1_to_cold_storage: [
+      [933, 237],  // Farm Garage Depot
+      [870, 310],
+      [750, 360],
+      [635, 480],
+      [635, 655],
+      [480, 660],
+      [270, 665],
+      [190, 890]  // Stop 1: Cold Storage Loading Dock
+    ],
+    leg2_to_cheese_shop: [
+      [270, 665],
+      [480, 660],
+      [635, 655],
+      [850, 665],
+      [1085, 690], // Central Divider Subway
+      [1180, 580],
+      [1295, 468]  // Stop 2: Alpenhof Cheese Shop / Molkerei
+    ],
+    leg3_to_restaurant: [
+      [1295, 468],
+      [1420, 500],
+      [1540, 530],
+      [1640, 560]  // Stop 3: Gasthof Stuben Terrace Kitchen
+    ],
+    leg4_return_garage: [
+      [1640, 560],
+      [1500, 500],
+      [1350, 440],
+      [1180, 380],
+      [1050, 300],
+      [933, 237]  // Return to Farm Garage Depot
+    ]
+  }
+};
+
+window.spawnFloatingBadge = function(text, x, y, color) {
+  state.floatingBadges = state.floatingBadges || [];
+  state.floatingBadges.push({
+    text: text,
+    x: x,
+    y: y,
+    color: color || '#FFD54F',
+    life: 2.8
+  });
+};
+
+window.dispatchExportTruck = function() {
+  if (state.vehicles && state.vehicles.some(v => v.type === 'export_truck')) {
+    toast('🚛 A refrigerated export hauler is already en route along the road network!');
+    return;
+  }
+  const dl = state.dairyLogistics;
+  const inv = dl.inventory;
+  const milkToSell = Math.min(inv.milk, Math.max(25, Math.floor(inv.milk * 0.65)));
+  const cheeseToSell = Math.min(inv.cheese, Math.max(8, Math.floor(inv.cheese * 0.65)));
+  const butterToSell = Math.min(inv.butter, Math.max(5, Math.floor(inv.butter * 0.5)));
+
+  if (milkToSell + cheeseToSell === 0) {
+    toast('❄️ Cold Storage needs at least 25L milk or 8 wheels of cheese for an export hauler!');
+    return;
+  }
+
+  // Deduct products from subterranean storage
+  inv.milk -= milkToSell;
+  inv.cheese -= cheeseToSell;
+  inv.butter -= butterToSell;
+
+  const totalPayout = Math.round(milkToSell * 1.65 + cheeseToSell * 15.0 + butterToSell * 8.5);
+
+  const vehicle = {
+    id: 'truck_' + Date.now(),
+    type: 'export_truck',
+    name: 'Alpenhof Bio-Molkerei Refrigerated Hauler',
+    x: VEHICLE_ROUTES.export_truck.inbound[0][0],
+    y: VEHICLE_ROUTES.export_truck.inbound[0][1],
+    angle: 0,
+    speed: 3.2,
+    phase: 'inbound',
+    waypoints: VEHICLE_ROUTES.export_truck.inbound,
+    targetIdx: 1,
+    cargo: { milk: milkToSell, cheese: cheeseToSell, butter: butterToSell, payout: totalPayout },
+    status: 'moving',
+    loadTimer: 0,
+    wheelRot: 0,
+    worker: null
+  };
+
+  state.vehicles = state.vehicles || [];
+  state.vehicles.push(vehicle);
+
+  toast('🚛 Wholesale Refrigerated Hauler entered through Alps Main Gate! Navigating to Cold Storage...');
+  spawnFloatingBadge('🚛 Transport Inbound', 1880, 920, '#00E5FF');
+  closeModal();
+};
+
+window.dispatchLocalDairyCart = function() {
+  if (state.vehicles && state.vehicles.some(v => v.type === 'local_cart')) {
+    toast('🚜 Local farm utility cart is already on an active delivery route!');
+    return;
+  }
+  const dl = state.dairyLogistics;
+  const inv = dl.inventory;
+  const milkToSupply = Math.min(inv.milk, 35);
+  const cheeseToSupply = Math.min(inv.cheese, 12);
+  const butterToSupply = Math.min(inv.butter, 10);
+
+  inv.milk -= milkToSupply;
+  inv.cheese -= cheeseToSupply;
+  inv.butter -= butterToSupply;
+
+  const localRevenue = Math.round(milkToSupply * 1.85 + cheeseToSupply * 16.5 + butterToSupply * 9.5);
+
+  const vehicle = {
+    id: 'cart_' + Date.now(),
+    type: 'local_cart',
+    name: 'Fendt Electric Utility Cart & Timber Trailer',
+    x: VEHICLE_ROUTES.local_cart.leg1_to_cold_storage[0][0],
+    y: VEHICLE_ROUTES.local_cart.leg1_to_cold_storage[0][1],
+    angle: 0,
+    speed: 2.5,
+    phase: 'to_storage',
+    waypoints: VEHICLE_ROUTES.local_cart.leg1_to_cold_storage,
+    targetIdx: 1,
+    cargo: { milk: milkToSupply, cheese: cheeseToSupply, butter: butterToSupply, rev: localRevenue },
+    status: 'moving',
+    loadTimer: 0,
+    wheelRot: 0,
+    worker: null
+  };
+
+  state.vehicles = state.vehicles || [];
+  state.vehicles.push(vehicle);
+
+  toast('🚜 Fendt Farm Utility Cart dispatched from Farm Garage! Collecting dairy goods...');
+  spawnFloatingBadge('🚜 Local Cart Dispatched', 933, 210, '#76FF03');
+  closeModal();
+};
+
+window.expandColdStorageCapacity = function() {
+  const dl = state.dairyLogistics;
+  const upgradeCost = dl.storageLevel * 85;
+  if (state.money < upgradeCost) {
+    toast('Need €' + upgradeCost + ' to expand subterranean cold vault capacity');
+    return;
+  }
+  state.money -= upgradeCost;
+  dl.storageLevel++;
+  dl.storageCapacity += 350;
+  grantXP({ oxygen: 20, fruit: 20 });
+  toast('❄️ Expanded Geothermal Cold Vault to Level ' + dl.storageLevel + '! Capacity: ' + dl.storageCapacity + ' units');
+  renderScoreboard();
+  openColdStorageModal();
+};
+
+window.updateVehicleLogistics = function() {
+  if (!state.vehicles || state.vehicles.length === 0) return;
+
+  for (let i = state.vehicles.length - 1; i >= 0; i--) {
+    const v = state.vehicles[i];
+
+    if (v.status === 'loading' || v.status === 'unloading') {
+      v.loadTimer--;
+      // Animate worker sprite position
+      if (v.worker) {
+        v.worker.progress = ((180 - v.loadTimer) % 60) / 60;
+      }
+
+      if (v.loadTimer <= 0) {
+        // Complete current stop!
+        if (v.type === 'export_truck') {
+          // Finished loading at Cold Storage! Depart along outbound road network
+          v.phase = 'outbound';
+          v.waypoints = VEHICLE_ROUTES.export_truck.outbound;
+          v.targetIdx = 0;
+          v.status = 'moving';
+          v.worker = null;
+          toast('🚚 Refrigerated Hauler loaded with ' + v.cargo.cheese + ' cheese wheels and ' + v.cargo.milk + 'L milk! Departing via Main Gate...');
+          spawnFloatingBadge('📦 Loaded & Departing', v.x, v.y - 30, '#00E5FF');
+        } else if (v.type === 'local_cart') {
+          if (v.phase === 'to_storage') {
+            // Finished loading at storage, head to Cheese Shop
+            v.phase = 'to_cheese_shop';
+            v.waypoints = VEHICLE_ROUTES.local_cart.leg2_to_cheese_shop;
+            v.targetIdx = 0;
+            v.status = 'moving';
+            v.worker = null;
+            toast('🚜 Farm Cart loaded! Navigating central divider subway to Alpenhof Cheese Shop...');
+            spawnFloatingBadge('🧀 Dairy Casks Loaded', v.x, v.y - 25, '#FFD54F');
+          } else if (v.phase === 'to_cheese_shop') {
+            // Unloaded at Cheese Shop!
+            state.dairyLogistics.shopStock.cheese += Math.round(v.cargo.cheese * 0.6);
+            state.dairyLogistics.shopStock.milk += Math.round(v.cargo.milk * 0.6);
+            const shopPayout = Math.round(v.cargo.rev * 0.5);
+            state.money += shopPayout;
+            state.dairyLogistics.stats.localRevenue += shopPayout;
+            spawnFloatingBadge('🪙 +€' + shopPayout, 1295, 430, '#FFD54F');
+            toast('🧀 Supplied Alpenhof Cheese Shop! (+€' + shopPayout + ' local sales revenue)');
+
+            // Head to Gasthof Stuben restaurant
+            v.phase = 'to_restaurant';
+            v.waypoints = VEHICLE_ROUTES.local_cart.leg3_to_restaurant;
+            v.targetIdx = 0;
+            v.status = 'moving';
+            v.worker = null;
+          } else if (v.phase === 'to_restaurant') {
+            // Unloaded at Restaurant!
+            state.dairyLogistics.restaurantStock.butter += v.cargo.butter;
+            state.dairyLogistics.restaurantStock.cheese += Math.round(v.cargo.cheese * 0.4);
+            const restPayout = Math.round(v.cargo.rev * 0.5);
+            state.money += restPayout;
+            grantXP({ oxygen: 15, fruit: 20 });
+            state.dairyLogistics.stats.localRevenue += restPayout;
+            state.dairyLogistics.stats.totalLocalDeliveries++;
+            spawnFloatingBadge('🪙 +€' + restPayout, 1640, 520, '#76FF03');
+            toast('🍽️ Supplied Gasthof Stuben Restaurant kitchen! (+€' + restPayout + ' banquet provisioning)');
+
+            // Return to Farm Garage Depot
+            v.phase = 'return_garage';
+            v.waypoints = VEHICLE_ROUTES.local_cart.leg4_return_garage;
+            v.targetIdx = 0;
+            v.status = 'moving';
+            v.worker = null;
+          }
+        }
+      }
+      continue;
+    }
+
+    // Moving state: interpolate position towards current waypoint
+    const target = v.waypoints[v.targetIdx];
+    if (!target) {
+      // Completed route!
+      if (v.type === 'export_truck') {
+        state.money += v.cargo.payout;
+        grantXP({ oxygen: 25, fruit: 30 });
+        state.dairyLogistics.stats.totalExportSales++;
+        state.dairyLogistics.stats.exportRevenue += v.cargo.payout;
+        spawnFloatingBadge('🪙 +€' + v.cargo.payout, 1880, 930, '#00E676');
+        toast('💰 Export shipment complete! Received €' + v.cargo.payout + ' from wholesale regional distribution!');
+        renderScoreboard();
+      } else if (v.type === 'local_cart') {
+        toast('🚜 Fendt Farm Utility Cart returned safely to Farm Garage!');
+        spawnFloatingBadge('Depot Reached', 933, 210, '#81C784');
+      }
+      state.vehicles.splice(i, 1);
+      continue;
+    }
+
+    const dx = target[0] - v.x;
+    const dy = target[1] - v.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist < 6) {
+      // Reached waypoint!
+      // Check if this waypoint is a designated Stop:
+      if (v.type === 'export_truck' && v.phase === 'inbound' && v.targetIdx === v.waypoints.length - 1) {
+        // Cold Storage Stop
+        v.status = 'loading';
+        v.loadTimer = 180;
+        v.worker = {
+          originX: 180, originY: 945,
+          destX: v.x, destY: v.y,
+          progress: 0,
+          item: '🧀'
+        };
+        toast('🚛 Hauler docked at Cold Storage loading apron. Assigning worker to load dairy crates...');
+        continue;
+      } else if (v.type === 'local_cart') {
+        if (v.phase === 'to_storage' && v.targetIdx === v.waypoints.length - 1) {
+          v.status = 'loading';
+          v.loadTimer = 160;
+          v.worker = { originX: 180, originY: 945, destX: v.x, destY: v.y, progress: 0, item: '🥛' };
+          toast('🚜 Cart docked at Cold Storage. Loading fresh milk bottles and cheese wheels...');
+          continue;
+        } else if (v.phase === 'to_cheese_shop' && v.targetIdx === v.waypoints.length - 1) {
+          v.status = 'unloading';
+          v.loadTimer = 160;
+          v.worker = { originX: v.x, originY: v.y, destX: 1295, destY: 468, progress: 0, item: '🧀' };
+          toast('🧀 Unloading artisan cheese wheels at Alpenhof Cheese Shop...');
+          continue;
+        } else if (v.phase === 'to_restaurant' && v.targetIdx === v.waypoints.length - 1) {
+          v.status = 'unloading';
+          v.loadTimer = 160;
+          v.worker = { originX: v.x, originY: v.y, destX: 1640, destY: 560, progress: 0, item: '🧈' };
+          toast('🍽️ Unloading butter and culinary dairy at Gasthof Stuben...');
+          continue;
+        }
+      }
+
+      v.targetIdx++;
+    } else {
+      v.angle = Math.atan2(dy, dx);
+      const step = Math.min(dist, v.speed);
+      v.x += Math.cos(v.angle) * step;
+      v.y += Math.sin(v.angle) * step;
+      v.wheelRot += step * 0.18;
+    }
+  }
+};
+
+/* ================= 3D ISOMETRIC VEHICLE & WORKER RENDERING ================= */
+window.drawActiveVehicles = function(ctx, time) {
+  if (!state.vehicles || state.vehicles.length === 0) return;
+
+  state.vehicles.forEach(v => {
+    ctx.save();
+    ctx.translate(v.x, v.y);
+    ctx.rotate(v.angle);
+
+    if (v.type === 'export_truck') {
+      // 1. Soft Ground Shadow
+      ctx.fillStyle = 'rgba(8, 18, 12, 0.42)';
+      ctx.beginPath();
+      ctx.ellipse(-2, 3, 36, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Headlight Beams projecting forward onto road
+      const hGrad = ctx.createRadialGradient(28, 0, 4, 75, 0, 42);
+      hGrad.addColorStop(0, 'rgba(255, 255, 210, 0.35)');
+      hGrad.addColorStop(1, 'rgba(255, 255, 210, 0)');
+      ctx.fillStyle = hGrad;
+      ctx.beginPath();
+      ctx.moveTo(26, -7);
+      ctx.lineTo(85, -20);
+      ctx.lineTo(85, 20);
+      ctx.lineTo(26, 7);
+      ctx.fill();
+
+      // 3. Thermo-Container Trailer Body (White / Pale Cyan Insulated Body)
+      ctx.fillStyle = '#ECEFF1';
+      ctx.beginPath();
+      ctx.roundRect(-30, -11, 40, 22, 3);
+      ctx.fill();
+      ctx.strokeStyle = '#90A4AE';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Roof refrigeration unit (Carrier Transicold style)
+      ctx.fillStyle = '#37474F';
+      ctx.beginPath();
+      ctx.roundRect(-28, -8, 8, 16, 2);
+      ctx.fill();
+      ctx.fillStyle = '#00E5FF';
+      ctx.beginPath();
+      ctx.arc(-24, 0, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Livery Stripe
+      ctx.fillStyle = '#0288D1';
+      ctx.fillRect(-20, -10, 28, 4);
+      ctx.fillRect(-20, 6, 28, 4);
+
+      // 4. Cab Unit (Metallic Royal Blue)
+      ctx.fillStyle = '#1565C0';
+      ctx.beginPath();
+      ctx.roundRect(10, -9, 16, 18, 3);
+      ctx.fill();
+      ctx.strokeStyle = '#0D47A1';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Windshield (Cyan Tinted Glass)
+      ctx.fillStyle = '#80DEEA';
+      ctx.beginPath();
+      ctx.roundRect(17, -7, 7, 14, 2);
+      ctx.fill();
+
+      // Front Chrome Grille & Bumper
+      ctx.fillStyle = '#CFD8DC';
+      ctx.fillRect(25, -6, 2, 12);
+
+      // Roof amber beacons
+      ctx.fillStyle = '#FFA000';
+      ctx.beginPath();
+      ctx.arc(14, -7, 1.5, 0, Math.PI * 2);
+      ctx.arc(14, 7, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 5. Wheels (6 Wheels: 2 front, 4 rear duals)
+      const wheels = [
+        { x: -22, y: -12 }, { x: -10, y: -12 }, { x: 20, y: -10 },
+        { x: -22, y: 12 },  { x: -10, y: 12 },  { x: 20, y: 10 }
+      ];
+      wheels.forEach(w => {
+        ctx.fillStyle = '#212121';
+        ctx.beginPath();
+        ctx.ellipse(w.x, w.y, 4, 2.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#B0BEC5';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      });
+
+      // 6. Exhaust smoke puffs
+      const puffX = 8 + Math.sin(time * 6) * 2;
+      ctx.fillStyle = 'rgba(200, 215, 225, 0.35)';
+      ctx.beginPath();
+      ctx.arc(puffX, -10, 2.5 + Math.sin(time * 8) * 1, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else if (v.type === 'local_cart') {
+      // 1. Soft Ground Shadow
+      ctx.fillStyle = 'rgba(8, 18, 12, 0.38)';
+      ctx.beginPath();
+      ctx.ellipse(0, 2, 28, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Timber Cargo Flatbed Trailer (Weathered Larch Wood)
+      ctx.fillStyle = '#8D6E63';
+      ctx.beginPath();
+      ctx.roundRect(-22, -9, 22, 18, 2);
+      ctx.fill();
+      ctx.strokeStyle = '#5D4037';
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+
+      // Cargo on trailer: Golden Bergkäse cheese wheels & stainless milk churns
+      // Cheese wheel stack
+      ctx.fillStyle = '#FFA000';
+      ctx.beginPath();
+      ctx.ellipse(-14, -3, 4, 2.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#FFD54F';
+      ctx.beginPath();
+      ctx.ellipse(-14, -4.5, 3.5, 2.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Milk churns
+      ctx.fillStyle = '#CFD8DC';
+      ctx.beginPath();
+      ctx.arc(-8, 3, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#90A4AE';
+      ctx.beginPath();
+      ctx.arc(-8, 3, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Butter box
+      ctx.fillStyle = '#FFF59D';
+      ctx.fillRect(-18, 1, 5, 5);
+
+      // 3. Fendt Classic Bavarian Green Tractor Cab
+      ctx.fillStyle = '#2E7D32';
+      ctx.beginPath();
+      ctx.roundRect(0, -7, 16, 14, 2);
+      ctx.fill();
+      ctx.strokeStyle = '#1B5E20';
+      ctx.lineWidth = 1.0;
+      ctx.stroke();
+
+      // Yellow engine cowl stripe
+      ctx.fillStyle = '#FBC02D';
+      ctx.fillRect(8, -6, 6, 12);
+
+      // Driver seat with farmer / driver figure
+      ctx.fillStyle = '#4E342E';
+      ctx.fillRect(2, -4, 4, 8);
+      // Alpine felt hat
+      ctx.fillStyle = '#1B5E20';
+      ctx.beginPath();
+      ctx.arc(3, 0, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      // Gamsbart feather
+      ctx.fillStyle = '#FFD54F';
+      ctx.fillRect(2, -4, 1.5, 3);
+
+      // 4. Wheels (Large rear drive wheels, smaller front steering wheels)
+      const wheels = [
+        { x: -16, y: -10, r: 3.5 }, { x: 0, y: -9, r: 4.5 }, { x: 12, y: -8, r: 2.8 },
+        { x: -16, y: 10,  r: 3.5 }, { x: 0, y: 9,  r: 4.5 }, { x: 12, y: 8,  r: 2.8 }
+      ];
+      wheels.forEach(w => {
+        ctx.fillStyle = '#212121';
+        ctx.beginPath();
+        ctx.ellipse(w.x, w.y, w.r, w.r * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#FBC02D';
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    ctx.restore();
+
+    // Draw active loading/unloading worker if present
+    if (v.worker && (v.status === 'loading' || v.status === 'unloading')) {
+      const w = v.worker;
+      const walkT = Math.sin(time * 8);
+      const curX = w.originX + (w.destX - w.originX) * (0.5 + 0.5 * walkT);
+      const curY = w.originY + (w.destY - w.originY) * (0.5 + 0.5 * walkT);
+
+      ctx.save();
+      ctx.translate(curX, curY);
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(0, 3, 5, 2.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Worker Figure
+      ctx.fillStyle = '#1B5E20';
+      ctx.beginPath();
+      ctx.arc(0, -8, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Suspender overalls
+      ctx.fillStyle = '#3E2723';
+      ctx.fillRect(-3, -4, 6, 7);
+
+      // Floating Cargo icon above worker
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(w.item, 0, -16 + Math.sin(time * 6) * 2);
+
+      ctx.restore();
+    }
+  });
+};
 
 
 window.addEventListener('DOMContentLoaded', () => {
