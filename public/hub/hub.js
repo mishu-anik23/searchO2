@@ -190,7 +190,14 @@
     if (i > 0 && i < 60) return '<b>' + esc(s.slice(0, i + 1)) + '</b>' + esc(s.slice(i + 1));
     return esc(s);
   }
-  var REGION_LABEL = { germany: 'Germany', sweden: 'Sweden', brazil: 'Brazil', spain: 'Spain', saint_martin: 'Saint Martin' };
+  var REGION_LABEL = {
+    alpenhof: 'Alpenhof (Bavaria)',
+    germany: 'Base Farm (Germany)',
+    sweden: 'Sweden',
+    brazil: 'Brazil',
+    spain: 'Spain',
+    saint_martin: 'Saint Martin'
+  };
 
   /* ------------------------------------------------------------------ *
    * Selected map (shared with the game through localStorage)
@@ -275,6 +282,7 @@
    * ------------------------------------------------------------------ */
     var ROUTES = [
     { id: '', label: 'Home', title: 'Learning Hub', render: pageHome },
+    { id: 'alpenhof', label: '🏔️ Alpenhof Hub', title: 'Alpenhof Eco-Village', render: pageAlpenhof },
     { id: 'start', label: 'Getting Started', title: 'Getting Started', render: pageStart },
     { id: 'components', label: 'Components', title: 'Components', render: pageComponents },
     { id: 'library', label: 'Library', title: 'Plant Library', render: pageLibrary },
@@ -306,6 +314,15 @@
         a.removeAttribute('aria-current');
       }
     });
+    try {
+      $('#regionalBar .reg-item').forEach(function (el) {
+        if (r.id === 'alpenhof' && el.id === 'regLinkAlpenhof') {
+          el.classList.add('active');
+        } else if (r.id !== 'alpenhof' && el.id === 'regLinkAlpenhof') {
+          el.classList.remove('active');
+        }
+      });
+    } catch(e){}
     var pageTitle = r.title;
     if (r.id === 'feedback') {
       if (arg === 'playtest') pageTitle = 'Full Playtest Review';
@@ -363,7 +380,7 @@
     }
 
     // Bavaria
-    if (id === 'bavaria' || id === 'by') {
+    if (id === 'bavaria' || id === 'by' || id === 'alpenhof') {
       return '<svg class="s2-volumetric-flag" viewBox="0 0 28 20" width="' + w + '" height="' + h + '" xmlns="http://www.w3.org/2000/svg">' +
         '<defs>' +
           '<linearGradient id="fGlossBY_' + uid + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.32"/><stop offset="100%" stop-color="#000" stop-opacity="0.18"/></linearGradient>' +
@@ -740,7 +757,7 @@
         '</div>' +
         '<div class="ceo-info-col">' +
           '<div class="ceo-badge"><span class="pill gold">🧑‍🌾 Living Biome Master &amp; OxyEco Forger</span></div>' +
-          '<h2>Meet Shakir · OxyEco Forger of SearchO2</h2>' +
+          '<h2>Meet Shakir · Co-Founder, CEO &amp; OxyEco Forger of SearchO2</h2>' +
           '<p class="ceo-quote">"👋 Hello Eco-Explorers! I am Shakir, OxyEco Forger of SearchO2. I forged this green planet simulation so explorers of all ages can regenerate living biomes through real search-driven tree planting. In our guest mode, establish your basic farm anywhere in Germany with our interactive 3D OpenStreetMap locator, christen your official farm name (max 9 letters) on our volumetric 3D isometric gate banner, and I will guide you through our masterplan — from traditional Bavarian Alpine farming and vineyards to our Coral Reef Ranger journey on Saint Martin! Let us forge a greener planet together!"</p>' +
           '<div class="ceo-actions">' +
             '<a class="btn gold" href="../index.html?guest=1&amp;enter=farm">🚜 Meet Shakir on the Farm (OxyEco Forger Tour) ➔</a>' +
@@ -750,8 +767,34 @@
         '</div>' +
       '</section>' +
 
+      '<section class="alpenhof-home-banner">' +
+        '<div class="alpenhof-banner-badge"><span class="badge-icon">🏔️</span> <b>Featured Regional Expansion</b> · Bavaria: Alpenhof Eco-Village</div>' +
+        '<div class="alpenhof-banner-body">' +
+          '<div class="alpenhof-banner-avatars">' +
+            puffSvg(76) +
+            pipSvg(76) +
+          '</div>' +
+          '<div class="alpenhof-banner-text">' +
+            '<h3>Welcome to Alpenhof Alpine Eco-Village &amp; Research HQ!</h3>' +
+            '<p>Join <b>Professor Whisker Puff</b> (Chief Feline Agronomist) and <b>Apprentice Pip</b> (Eco-Tour Guide) in the Bavarian Alps! Explore 54 heirloom fruit tree beds with real-time lifecycle task bars, Living Waters glacial lake aquaculture with diving ducks, 13 interactive 3D Research HQ Labs, and authentic village gastronomy!</p>' +
+            '<div class="alpenhof-banner-tags">' +
+              '<span class="pill gold">🌳 54 Streuobst Beds</span>' +
+              '<span class="pill leaf">🦆 Living Waters Aquaculture</span>' +
+              '<span class="pill">🧀 Simmental Cheese Affinage</span>' +
+              '<span class="pill soil">🔬 13 3D Research Labs</span>' +
+              '<span class="pill coral">🚶 Real Road Visitors</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="alpenhof-banner-actions">' +
+            '<a class="btn gold" href="#/alpenhof">🏔️ Explore Alpenhof Hub ➔</a>' +
+            '<a class="btn" href="../bavaria/alpenhof.html">🎮 Play Alpenhof 3D</a>' +
+          '</div>' +
+        '</div>' +
+      '</section>' +
+
       mapBox() +
       '<nav class="doors" aria-label="Sections">' +
+      door('alpenhof', '🏔️', 'Alpenhof Eco-Village', 'Explore 54-bed Streuobst orchards, glacial lake aquaculture, 13 3D Research Labs & Professor Whisker Puff!', 'gold-highlight') +
       door('library', '📖', 'Plant Library', 'Facts, lifespans, diseases and cures for all ' + c.species + ' plants, plus a quiz.', 'big') +
       door('components', '🏗️', 'Components', 'What each building costs, how long it takes, and what it needs first.', 'soil') +
       door('start', '🌱', 'Getting Started', 'The eight chapters, from your first seed to the Moon.') +
@@ -767,6 +810,671 @@
   }
   function door(id, ico, title, text, cls) {
     return '<a class="door ' + (cls || '') + '" href="#/' + id + '"><span class="ico" aria-hidden="true">' + ico + '</span><h3>' + esc(title) + '</h3><p>' + esc(text) + '</p></a>';
+  }
+
+
+  /* ------------------------------------------------------------------ *
+   * ALPENHOF ECO-VILLAGE & RESEARCH HQ MEGA-PAGE
+   * ------------------------------------------------------------------ */
+  function pageAlpenhof() {
+    main.innerHTML =
+      '<div class="alpenhof-hub">' +
+        // Hero
+        '<section class="alp-hero">' +
+          '<div class="alp-hero-top">' +
+            '<span class="pill gold">✨ LIVE REGIONAL EXPANSION</span>' +
+            '<span class="pill leaf">🏔️ BAVARIA, GERMAN ALPS</span>' +
+            '<span class="pill">🗺️ Elevation: 1,120m</span>' +
+          '</div>' +
+          '<h1>Alpenhof Alpine Eco-Village &amp; Research HQ</h1>' +
+          '<p class="lead">Step into SearchO2\'s advanced Bavarian alpine simulation! Guided by <b>Professor Whisker Puff</b> (Chief Feline Agronomist) and <b>Apprentice Pip</b> (Eco-Tour Guide), cultivate 54 heirloom fruit tree beds across 6 Streuobst plots with realistic botanical lifecycles, manage 2-basin glacial lake aquaculture with diving ducks, tour 13 interactive 3D Research Labs, and serve hungry road visitors at Gasthof Stuben &amp; the Hilltop BBQ!</p>' +
+          '<div class="alp-telemetry-bar">' +
+            '<div class="alp-capsule"><span>🌳</span> <b>54</b> Orchard Beds</div>' +
+            '<div class="alp-capsule"><span>🌊</span> <b>2</b> Lake Basins</div>' +
+            '<div class="alp-capsule"><span>🦆</span> <b>6</b> Diving Ducks</div>' +
+            '<div class="alp-capsule"><span>🐟</span> <b>24</b> Trout &amp; Char</div>' +
+            '<div class="alp-capsule"><span>🌸</span> <b>3</b> Flower Ovals</div>' +
+            '<div class="alp-capsule"><span>🧀</span> <b>Simmental</b> Herd</div>' +
+            '<div class="alp-capsule"><span>⚡</span> <b>Pelton</b> Microgrid</div>' +
+            '<div class="alp-capsule"><span>🔬</span> <b>13</b> 3D Research Labs</div>' +
+          '</div>' +
+          '<div class="alp-hero-actions">' +
+            '<a class="btn gold" href="../bavaria/alpenhof.html" title="Launch Interactive 3D Alpenhof Game">🎮 Launch Alpenhof 3D Game ➔</a>' +
+            '<a class="btn" href="#alp-characters">🧑‍🔬 HQ Characters &amp; Artisans</a>' +
+            '<a class="btn ghost" href="#alp-rules">📜 Pip\'s 5 Eco-Rules</a>' +
+            '<a class="btn ghost" href="#alp-scenes">🔬 13 3D Research Labs</a>' +
+          '</div>' +
+        '</section>' +
+
+        // Mentors Dialogue Box
+        puffPipHero(
+          '🐾 Alpine Ecological Expedition',
+          'A Dialogue on Alpine Agroforestry & Circular Bio-Economy',
+          'Listen to the guidance of Professor Whisker Puff and Apprentice Pip as they inspect the 54-bed Streuobst orchards and glacial waters!',
+          'Meow-vellous observation, Pip! Our 54 Streuobst tree beds demonstrate the pinnacle of alpine agroforestry. Notice how the deep root channels of our heirloom walnut and apple trees pull moisture up into the topsoil, shielding our clover and herbs even during dry summer winds. And when leaves photosynthesize under crisp mountain sun, our atmospheric oxygen monitors jump by over 30%!',
+          'Squeak! Exactly, Professor Whisker Puff! And the visiting tourists love it too! As long as they follow Pip\'s Rule #1 and stay strictly on the cobblestone roads, our delicate soil stays fluffy and aerated! Plus, Hansel\'s granite bridge allows our heavy timber transporter and municipal clearance trucks to roll smoothly without blocking guests enjoying fresh grilled lake char at Gasthof Stuben!'
+        ) +
+
+        // Quick Jump Bar
+        '<nav class="alp-quick-nav" aria-label="Alpenhof sections">' +
+          '<a class="alp-jump-btn" href="#alp-characters">🧑‍🔬 HQ Characters &amp; Artisans</a>' +
+          '<a class="alp-jump-btn" href="#alp-rules">📜 Pip\'s 5 Eco-Rules</a>' +
+          '<a class="alp-jump-btn" href="#alp-facilities">🌳 Facilities &amp; Living Systems</a>' +
+          '<a class="alp-jump-btn" href="#alp-scenes">🔬 13 3D Research Labs</a>' +
+          '<a class="alp-jump-btn" href="#alp-challenges">🏆 6 Chapter Challenges</a>' +
+          '<a class="alp-jump-btn" href="#alp-learning">💡 Educational Outcomes</a>' +
+          '<a class="alp-jump-btn" href="#alp-regions">🌍 Regional Network</a>' +
+        '</nav>' +
+
+        // SECTION 1: CHARACTERS SPECIALIZATION
+        '<section id="alp-characters" class="alp-section-head">' +
+          '<h2><span>🧑‍🔬</span> HQ Researcher Characters &amp; Village Operation Professionals</h2>' +
+          '<p>Meet the eccentric scientists, artisans, and logistics experts who make Alpenhof flourish. Every character has a unique scientific specialization, workplace station, visual quirk, and in-game performance perk!</p>' +
+        '</section>' +
+        renderAlpenhofCharacters() +
+
+        // SECTION 2: PIP'S 5 RULES
+        '<section id="alp-rules" class="alp-section-head">' +
+          '<h2><span>📜</span> Apprentice Pip\'s 5 Cardinal Eco-Rules</h2>' +
+          '<p>Master Apprentice Pip\'s field rules to keep visitors safe, trees flourishing, lakes crystalline, and the village economy thriving!</p>' +
+        '</section>' +
+        renderPipsRules() +
+
+        // SECTION 3: FACILITIES & GAME MECHANISMS
+        '<section id="alp-facilities" class="alp-section-head">' +
+          '<h2><span>🌳</span> Living Facilities &amp; Alpenhof Game Mechanisms</h2>' +
+          '<p>From realistic 4-stage botanical lifecycles to 2-basin glacial lake aquaculture, discover the interconnected bio-systems operating at Alpenhof.</p>' +
+        '</section>' +
+        renderAlpenhofFacilities() +
+
+        // SECTION 4: 13 3D SCENES
+        '<section id="alp-scenes" class="alp-section-head">' +
+          '<h2><span>🔬</span> The 13 3D Research HQ Animation Labs</h2>' +
+          '<p>Explore the full suite of interactive 3D WebGL scenes featuring English audio dialogue, clean icon-only navigation, bottom-left compact subtitle modals, and inline CC toggles with zero visual obstruction.</p>' +
+        '</section>' +
+        render13ScenesGallery() +
+
+        // SECTION 5: CHAPTER CHALLENGES
+        '<section id="alp-challenges" class="alp-section-head">' +
+          '<h2><span>🏆</span> 6-Chapter Mastery Progression (Recalling Solo Founder Base Farm)</h2>' +
+          '<p>Progress step-by-step from breaking barren alpine crusts to establishing a zero-emission regional economic powerhouse.</p>' +
+        '</section>' +
+        renderAlpenhofChapters() +
+
+        // SECTION 6: LEARNING OUTCOMES FOR CHILDREN
+        '<section id="alp-learning">' +
+          renderAlpenhofLearningOutcomes() +
+        '</section>' +
+
+        // SECTION 7: REGIONAL MODULAR EXPANSION NAVIGATOR
+        '<section id="alp-regions">' +
+          renderRegionalExpansionModularNavigator() +
+        '</section>' +
+      '</div>';
+
+    bindAlpenhofInteractive();
+  }
+
+  function renderAlpenhofCharacters() {
+    var chars = [
+      {
+        id: 'puff',
+        name: 'Professor Whisker Puff',
+        role: 'Chief Feline Agronomist & Botanical Scientist',
+        avatar: '🐱',
+        color: '#F59E0B',
+        station: 'Central Research HQ & Greenhouse',
+        desc: 'Distinguished ginger cat wearing brass aviator flight goggles and a white lab coat dusted with dandelion pollen. Passionate about photosynthetic electron transport, mycorrhizal fungal networks, and canopy tree health.',
+        perk: '+30% Tree Photosynthetic Oxygen & Botanical Research Speed',
+        quote: '“Meow-vellous! According to my spectrophotometer, that mature walnut tree is exhaling pure Alpine oxygen!”'
+      },
+      {
+        id: 'pip',
+        name: 'Apprentice Pip',
+        role: 'Eager Mouse Sprout & Eco-Tour Guide',
+        avatar: '🐭',
+        color: '#10B981',
+        station: 'Alps Welcome Gate & Visitor Info Kiosk',
+        desc: 'Curious mouse sprout wearing a Tyrolean felt hat with an edelweiss pin, field binoculars, and explorer boots. Enforces road etiquette and guides visiting tourist crowds along the cobblestone network.',
+        perk: '+25% Visitor Walking Speed & +40% Guest Happiness Rating',
+        quote: '“Squeak! Watch your step, visitors! Stay on the road—don\'t squish Professor Whisker Puff\'s experimental clover!”'
+      },
+      {
+        id: 'shakir',
+        name: 'Shakir',
+        role: 'Master Energy & OxyEco Forging Engineer',
+        avatar: '🧑‍🌾',
+        color: '#3B82F6',
+        station: 'Pelton Hydro Turbine & Agrivoltaic Microgrid',
+        desc: 'Visionary engineer wearing high-visibility work overalls, solar diagnostic tablet, and turbine spanners. Synchronizes alpine stream hydro-power with battery energy storage systems.',
+        perk: '+35% Clean Microgrid Power Output & 0% Blackout Risk',
+        quote: '“Every drop of melted mountain glacier turns our Pelton turbine and powers our cold storage with zero emissions!”'
+      },
+      {
+        id: 'gretel',
+        name: 'Gretel Huber',
+        role: 'Farm Store, Dairy & Gasthof Stuben Overseer',
+        avatar: '👩‍🌾',
+        color: '#EC4899',
+        station: 'Gasthof Stuben & Farm Marketplace',
+        desc: 'Cheerful alpine host in a traditional Bavarian Dirndl apron carrying baskets of freshly baked crusty sourdough rye and smoked lake fish platters for hungry terrace diners.',
+        perk: '+35% Restaurant Revenue & High-Tier Wholesale Approval',
+        quote: '“A hungry hiker is an impatient hiker! Serve the fresh lake trout and cheese before they wander off to the cows!”'
+      },
+      {
+        id: 'lukas',
+        name: 'Lukas Baumgartner',
+        role: 'Master Juicer, Vintner & Cellarer',
+        avatar: '🧑‍🍳',
+        color: '#F97316',
+        station: 'Hof-Mosterei & 3-Counter Juice Bar',
+        desc: 'Jolly craftsman with rolled-up sleeves, wooden tasting paddles, and fruit-stained apron who turns orchard windfalls and mountain berries into sparkling ciders and fresh must.',
+        perk: '+30% Juice Bar Thirst Fulfillment & Cider Sales',
+        quote: '“Pressing 500 heirloom apples into sparkling sweet cider takes muscle, passion, and lots of bubbles!”'
+      },
+      {
+        id: 'vroni',
+        name: 'Vroni Maier',
+        role: 'Florist, Herbologist & Standl Overseer',
+        avatar: '👩‍🌾',
+        color: '#84CC16',
+        station: 'Alpenblumen-Standl & Rhombus Bauerngarten',
+        desc: 'Sunhat-wearing botanist with floral shears and mountain gentians woven into her braids. Sells fresh flower bouquets to tourists at the Standl to fund community eco-initiatives.',
+        perk: '+40% Flower Stand Sales (+€22 / +5 O₂) & Bee Pollination',
+        quote: '“Edelweiss brings good luck, Gentian brings deep blue smiles, and wild bumblebees do all the hard work!”'
+      },
+      {
+        id: 'hansel',
+        name: 'Hansel Vogl',
+        role: 'Master Stone Mason & Civil Engineer',
+        avatar: '👷',
+        color: '#8B5CF6',
+        station: 'Alpine Gorge Bridge & Logistics Dispatch',
+        desc: 'Burly alpine engineer in heavy granite leather boots and blueprints. Designed the arched stone gorge bridge and cobblestone avenues capable of supporting 10-ton timber trucks.',
+        perk: '+50% Heavy Hauler Truck Speed & Zero Bridge Congestion',
+        quote: '“If a bridge cannot carry our 10-ton timber truck loaded with Bavarian spruce, build it with bigger granite stones!”'
+      },
+      {
+        id: 'georg',
+        name: 'Georg Huber',
+        role: 'Living Lake Warden & Fish Ecologist',
+        avatar: '🎣',
+        color: '#06B6D4',
+        station: 'Living Waters Glacial Lake Basins',
+        desc: 'Patient angler in rubber chest waders with a long bamboo dip net. Monitors spawning cycles of Bavarian brown trout and arctic char, and protects diving mallard ducklings.',
+        perk: '+40% Lake Fish Population Balance & Duck Health',
+        quote: '“Cold glacial meltwater is crystal clear—trout love high oxygen levels as much as we do!”'
+      },
+      {
+        id: 'franz',
+        name: 'Franz Bichler',
+        role: 'Hilltop BBQ Grillmaster & Chef',
+        avatar: '👨‍🍳',
+        color: '#EF4444',
+        station: 'Hilltop Picnic BBQ Area',
+        desc: 'Barbecue enthusiast in a flame-resistant apron wielding extra-long beechwood tongs. Grills herb-stuffed trout and seasonal vegetable skewers over fragrant mountain wood embers.',
+        perk: '+35% BBQ Guest Dining Satisfaction & Cash Tip Generation',
+        quote: '“Nothing beats the smell of alpine herbs and fresh grilled fish over beechwood embers high up in the mountains!”'
+      },
+      {
+        id: 'sepp',
+        name: 'Sepp Obermeier',
+        role: 'Master Cheesemaker & Affineur',
+        avatar: '🧀',
+        color: '#EAB308',
+        station: 'Bio-Molkerei & Cold Storage Cellar',
+        desc: 'Traditional cheesemaker with wooden curd paddles who ages large wheels of raw-milk Bergkäse in natural stone caves at 11°C with 85% humidity.',
+        perk: '+30% Mountain Cheese Maturation Speed & Shop Revenue',
+        quote: '“Time and cool mountain air turn simple summer cow milk into golden, rich wheels of cheese!”'
+      },
+      {
+        id: 'felix',
+        name: 'Felix Brunner',
+        role: 'Clean Energy Microgrid Tech',
+        avatar: '⚡',
+        color: '#0284C7',
+        station: 'Agrivoltaic Solar & Battery BESS',
+        desc: 'Tech specialist equipped with infrared thermal cameras and multi-meters. Tunes bifacial solar panels and battery inverter frequencies.',
+        perk: '+30% Solar Generation & Battery Charge Retention',
+        quote: '“Harvesting clean electricity above the berry bushes gives us dual-harvest power with zero wasted land!”'
+      },
+      {
+        id: 'anna',
+        name: 'Anna Schultze',
+        role: 'Pollinator Biologist & Botanist',
+        avatar: '👩‍🔬',
+        color: '#D946EF',
+        station: 'Oval Flower Gardens & Apiary',
+        desc: 'Passionate entomologist who tracks solitary bee nesting tubes and alpine honeybee flight paths across the three flower ovals.',
+        perk: '+40% Pollinator Health & Wild Alpine Honey Harvest',
+        quote: '“A single healthy honeybee visits up to 1,500 apple blossoms in one day!”'
+      }
+    ];
+
+    return '<div class="alp-char-grid">' + chars.map(function(c) {
+      return '<div class="alp-char-card" id="char-' + c.id + '">' +
+        '<div class="alp-char-header">' +
+          '<div class="alp-char-avatar-ring" style="border-color:' + c.color + '; background:' + c.color + '15">' + c.avatar + '</div>' +
+          '<div class="alp-char-name-col">' +
+            '<h3>' + esc(c.name) + '</h3>' +
+            '<span class="alp-char-role" style="color:' + c.color + '">' + esc(c.role) + '</span>' +
+            '<span class="alp-char-station">📍 ' + esc(c.station) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<p class="alp-char-desc">' + esc(c.desc) + '</p>' +
+        '<div class="alp-char-quote-bubble">' + esc(c.quote) + '</div>' +
+        '<div class="alp-char-perk"><span>⚡</span> <b>Perk:</b> ' + esc(c.perk) + '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function renderPipsRules() {
+    var rules = [
+      {
+        num: 1,
+        ico: '🪨',
+        title: 'Stay Strictly on the Cobblestone Roads!',
+        text: 'All visitors, staff, and transport trucks must walk and drive only along designated cobblestone avenues and gravel sub-paths. Stepping onto farm beds compacts living topsoil, crushes aeration channels, and squishes friendly earthworms!',
+        tip: 'Protects Soil Humus & Prevents Root Suffocation'
+      },
+      {
+        num: 2,
+        ico: '💧',
+        title: 'Water Hydration & Prune Canopy in Time!',
+        text: 'Every tree bed requires active moisture monitoring. Soil hydration decays naturally over time. If hydration drops to zero, foliage withers and trees die into Dead Snags! Dead trees require the municipal flatbed truck for clearance.',
+        tip: 'Neglected Trees Die · Call Municipal Clearance Truck'
+      },
+      {
+        num: 3,
+        ico: '🦆',
+        title: 'Respect the Living Waters Equilibrium!',
+        text: 'Our 2-basin glacial lake sustains Bavarian brown trout, arctic char, and diving mallard ducks. Never over-harvest! Supply Gasthof Stuben (10 fish, 6 duck) and Hilltop BBQ (8 fish, 5 duck) in balance so wildlife can reproduce.',
+        tip: 'Maintain High Dissolved Oxygen & Water Ripples'
+      },
+      {
+        num: 4,
+        ico: '🥐',
+        title: 'Keep Service Swift & Guests Smiling!',
+        text: 'Visitors hike up steep trails and arrive hungry and thirsty! Keep Gasthof Stuben tables full and the Mosterei 3-counter juice bar pouring sparkling cider. Manage long queues and grant managerial trade proposals to boost farm reputation!',
+        tip: 'Balances Wholesale Deals with Guest Shelf Availability'
+      },
+      {
+        num: 5,
+        ico: '🌸',
+        title: 'Close the Sovereign Circular Bio-Loop!',
+        text: 'Nothing at Alpenhof goes to landfill! Pruned wood chips become mushroom compost or sustainable timber hauled by heavy transport trucks. Flower clippings sell as bouquets at the Standl (+€22, +5 O₂), and cow manure powers biogas turbines!',
+        tip: 'Zero Waste · 100% Clean Circular Bio-Economy'
+      }
+    ];
+
+    return '<div class="alp-rules-grid">' + rules.map(function(r) {
+      return '<div class="alp-rule-card">' +
+        '<div class="alp-rule-top">' +
+          '<div class="alp-rule-num">' + r.num + '</div>' +
+          '<h3 class="alp-rule-title">' + r.ico + ' ' + esc(r.title) + '</h3>' +
+        '</div>' +
+        '<p class="alp-rule-text">' + esc(r.text) + '</p>' +
+        '<span class="alp-rule-tip">💡 ' + esc(r.tip) + '</span>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function renderAlpenhofFacilities() {
+    return '<div class="alp-facilities-grid">' +
+      // Streuobst
+      '<div class="alp-facility-card">' +
+        '<h3><span>🌳</span> Streuobst Agroforestry (54 Planted Beds)</h3>' +
+        '<p>Six dedicated meadow plots (o1 to o6) containing 9 heirloom beds each. Features real-life botanical lifecycles calibrated to real hours instead of seconds!</p>' +
+        '<div class="alp-lifecycle-stepper">' +
+          '<div class="alp-step">🌱 Sprout</div>' +
+          '<div class="alp-step">🌿 Vegetative</div>' +
+          '<div class="alp-step">🌸 Flowering</div>' +
+          '<div class="alp-step active">🍎 Mature Harvest</div>' +
+        '</div>' +
+        '<ul class="alp-mechanic-list">' +
+          '<li><span>⏱️</span> <b>Real-Time Progress Bar:</b> Live remaining task timer showing exact completion % and (Xh Ym remaining).</li>' +
+          '<li><span>💧</span> <b>Hydration Watering:</b> (💧 Water Bed) restores soil moisture to 100% and accelerates vegetative growth.</li>' +
+          '<li><span>✂️</span> <b>Canopy Pruning:</b> (✂️ Prune Canopy) clears dead twigs and boosts sun penetration for sweet autumn fruit.</li>' +
+          '<li><span>💀</span> <b>Neglect Die-Off:</b> Unwatered trees wither into (💀 Dead Snag) requiring removal.</li>' +
+          '<li><span>🚛</span> <b>Municipal Clearance Truck:</b> Flatbed hauler dispatches via Alps Main Gate to haul away fallen dead snags.</li>' +
+          '<li><span>🪵</span> <b>Heavy Logging Transporter:</b> Loaded hauler carrying sold timber outside the farm through the main road.</li>' +
+        '</ul>' +
+      '</div>' +
+
+      // Living Waters
+      '<div class="alp-facility-card">' +
+        '<h3><span>🌊</span> Living Waters Glacial Lake (2-Basin Aquaculture)</h3>' +
+        '<p>Fed by pristine alpine snowmelt, the two connected lake basins form an active living aquatic sanctuary and regional aquaculture hub.</p>' +
+        '<ul class="alp-mechanic-list">' +
+          '<li><span>🐟</span> <b>Cold-Water Species:</b> Active swimming Bavarian Brown Trout &amp; Arctic Char responding to water temperature.</li>' +
+          '<li><span>🦆</span> <b>Diving Mallard Ducks:</b> Animated ducks diving for underwater plants with realistic water splash ripple rings.</li>' +
+          '<li><span>🍽️</span> <b>Dual Gastronomy Fulfillment:</b> Supplies Gasthof Stuben (10 fish, 6 ducks) and Hilltop BBQ (8 fish, 5 ducks).</li>' +
+          '<li><span>🌾</span> <b>Wetland Reed Bio-Filter:</b> Natural littoral reeds absorb pasture runoff and aerate lake water.</li>' +
+        '</ul>' +
+      '</div>' +
+
+      // Flower Gardens
+      '<div class="alp-facility-card">' +
+        '<h3><span>🌺</span> 3-Oval Alpine Flower Garden &amp; Standl Retail</h3>' +
+        '<p>Vibrant floral sanctuary designed with 3 symmetrical concentric oval beds flanking the main promenade, complete with an interactive retail flower kiosk.</p>' +
+        '<ul class="alp-mechanic-list">' +
+          '<li><span>🌼</span> <b>Heirloom Alpine Flora:</b> Cultivate Edelweiss, Alpine Asters, Mountain Gentian, and Arnica.</li>' +
+          '<li><span>💐</span> <b>Bouquet Harvesting:</b> Harvest blooms when petals mature to craft premium alpine floral arrangements.</li>' +
+          '<li><span>🏪</span> <b>Alpenblumen-Standl Retail:</b> Passing tourists automatically stop, browse, and purchase bouquets (+€22, +5 O₂).</li>' +
+          '<li><span>🐝</span> <b>Pollinator Halo:</b> Boosts nearby Streuobst fruit setting by +30% through wild bee attraction.</li>' +
+        '</ul>' +
+      '</div>' +
+
+      // Simmental Dairy
+      '<div class="alp-facility-card">' +
+        '<h3><span>🧀</span> Simmental Dairy Pastures &amp; Cheese Affinage</h3>' +
+        '<p>Heritage Bavarian dual-purpose cattle grazing on mountain clover pastures, with traditional cold stone cellar affinage.</p>' +
+        '<ul class="alp-mechanic-list">' +
+          '<li><span>🐄</span> <b>Pasture Rotation:</b> Cows rotate between alpine paddocks to allow grass and clover regeneration.</li>' +
+          '<li><span>🧀</span> <b>Cave-Aged Bergkäse:</b> 90-day cold cellar wheel maturation monitored by Sepp Obermeier.</li>' +
+          '<li><span>⚡</span> <b>Anaerobic Biogas Slurry:</b> Dairy manure feeds the digester, producing methane for electricity and fertile compost.</li>' +
+        '</ul>' +
+      '</div>' +
+
+      // Renewable Microgrid
+      '<div class="alp-facility-card">' +
+        '<h3><span>⚡</span> Pelton Hydro Turbine &amp; Agrivoltaic Microgrid</h3>' +
+        '<p>100% self-sufficient alpine energy infrastructure engineered by Shakir with zero fossil fuel backup.</p>' +
+        '<ul class="alp-mechanic-list">' +
+          '<li><span>🌊</span> <b>Pelton Stream Turbine:</b> High-head impulse water turbine generating steady baseline green energy.</li>' +
+          '<li><span>☀️</span> <b>Agrivoltaic Solar Pergolas:</b> Solar panels elevated above berry bushes provide shade and clean kilowatts.</li>' +
+          '<li><span>🔋</span> <b>Lithium BESS Energy Storage:</b> 480 kWh central battery system balances morning surges and night demand.</li>' +
+        '</ul>' +
+      '</div>' +
+
+      // Visitor Dynamics
+      '<div class="alp-facility-card">' +
+        '<h3><span>🚶</span> Volumetric 3D Visitor &amp; Tourism Dynamics</h3>' +
+        '<p>Living crowds visit Alpenhof, enjoying the scenery, dining at our restaurants, and supporting our farm economy.</p>' +
+        '<ul class="alp-mechanic-list">' +
+          '<li><span>🚪</span> <b>Spawn Point:</b> Visitors spawn at the Alps Welcome Gate upon unlocking Chapter 1.</li>' +
+          '<li><span>🛣️</span> <b>Strict Road Walking AI:</b> Visitors navigate smoothly along cobblestone roads and bridges with realistic body turns.</li>' +
+          '<li><span>🍽️</span> <b>Dining &amp; Shopping:</b> Guests order at Gasthof Stuben, Mosterei juice bar, and flower stand with queues and payment animations.</li>' +
+          '<li><span>🤝</span> <b>Managerial Trade Decisions:</b> Interactive modal offers for approving commercial wholesale vs. guest reservation.</li>' +
+        '</ul>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function render13ScenesGallery() {
+    var scenes = [
+      // Dairy
+      {
+        id: 'scene-1',
+        cat: 'dairy',
+        title: 'Smart Pastures & Herd Health',
+        file: 'dairy/Alpenhof_Smart_Pasture_Enhanced.html',
+        desc: 'Interactive 3D simulation of GPS-collared Simmental cattle, rotational alpine grazing dynamics, and clover pasture hydration.',
+        tags: ['Smart Dairy', 'GPS Herd Tracking', 'Pasture Health']
+      },
+      {
+        id: 'scene-2',
+        cat: 'dairy',
+        title: 'Curd Fermentation & Affinage',
+        file: 'dairy/pnp_alpenhof_cheese_curd_fermentation.html',
+        desc: 'Microbial cheese vat fermentation, rennet coagulation, curd cutting, and cave salt-brining physics.',
+        tags: ['Microbial Science', 'Enzyme Kinetics', 'Affinage']
+      },
+      {
+        id: 'scene-3',
+        cat: 'dairy',
+        title: 'HTST Pasteurization & Packaging',
+        file: 'dairy/pnp_alpenhof_dairy_htst_pasteurization_packaging.html',
+        desc: 'High-Temperature Short-Time plate heat exchange, thermal disinfection curves, and biodegradable milk packaging.',
+        tags: ['Thermal Engineering', 'Food Safety', 'Bio-Packaging']
+      },
+
+      // Energy
+      {
+        id: 'scene-4',
+        cat: 'energy',
+        title: 'BESS Microgrid & Turbine-Solar Integration',
+        file: 'energy/alpenhof_bess_microgrid_turbine_solar_enhanced.html',
+        desc: 'Central energy dispatcher balancing mountain stream Pelton hydro, agrivoltaic arrays, and lithium-iron BESS battery storage.',
+        tags: ['Microgrid', 'BESS Storage', 'Hydro-Solar Sync']
+      },
+      {
+        id: 'scene-5',
+        cat: 'energy',
+        title: 'BESS Energy Trade Simulation',
+        file: 'energy/pnp_alpenhof_bess_energy_trade.html',
+        desc: 'Peak-shaving algorithms, regional grid interconnects, green tariff spot-market trading, and municipal credits.',
+        tags: ['Clean Grid', 'Peak Shaving', 'Energy Economics']
+      },
+      {
+        id: 'scene-6',
+        cat: 'energy',
+        title: 'Agrivoltaic Solar Installation',
+        file: 'energy/pnp_alpenhof_solar_installation.html',
+        desc: 'Dual-use farm mechanics: tilt angle optimization, microclimate crop shading, and bifacial solar panel irradiance.',
+        tags: ['Agrivoltaics', 'Bifacial Solar', 'Land Multi-Use']
+      },
+      {
+        id: 'scene-7',
+        cat: 'energy',
+        title: 'Wind Turbine Microgrid Dynamics',
+        file: 'energy/pnp_alpenhof_wind_turbine_microgrid_simulation.html',
+        desc: 'Alpine valley wind shear, aerodynamic blade pitch regulation, yaw control, and harmonic grid damping.',
+        tags: ['Wind Aerodynamics', 'Pitch Regulation', 'Valley Currents']
+      },
+
+      // Infra
+      {
+        id: 'scene-8',
+        cat: 'infra',
+        title: 'Dairy Cold Storage Cellar',
+        file: 'infra/alpenhof_dairy_cold_storage.html',
+        desc: 'Subterranean stone cheese cave with passive geothermal cooling, humidity stratification, and aroma maturation.',
+        tags: ['Geothermal Cooling', 'Cave Affinage', 'Passive Climate']
+      },
+      {
+        id: 'scene-9',
+        cat: 'infra',
+        title: 'Grain Silo & Controlled Atmosphere',
+        file: 'infra/alpenhof_grain_silo_cold_storage.html',
+        desc: 'Controlled atmosphere nitrogen blanket grain storage, moisture telemetry, and fungal spore prevention.',
+        tags: ['Grain Preservation', 'Inert Atmosphere', 'Spore Prevention']
+      },
+      {
+        id: 'scene-10',
+        cat: 'infra',
+        title: 'Crew Shed & Ecological Headquarters',
+        file: 'infra/pnp_alpenhof_crewShed.html',
+        desc: 'Artisan operations hub, labor scheduling, tool ergonomics, and team safety orientation.',
+        tags: ['Labor Logistics', 'Artisan Hub', 'Workforce Safety']
+      },
+      {
+        id: 'scene-11',
+        cat: 'infra',
+        title: 'Farm Garage & Geothermal AgTech Workshop',
+        file: 'infra/pnp_alpenhof_farm_garage_geothermal_agtech.html',
+        desc: 'Electric tractor maintenance, autonomous robotic weeding implements, and geothermal ground-source heat pump loop.',
+        tags: ['Electric AgTech', 'Geothermal Loop', 'Automation']
+      },
+      {
+        id: 'scene-12',
+        cat: 'infra',
+        title: 'Gorge Stone Bridge Construction',
+        file: 'infra/pnp_alpenhof_gorge_bridge_construction.html',
+        desc: 'Civil engineering arch masonry, granite keystones, load distribution for heavy timber logging trucks, and river clearance.',
+        tags: ['Arch Masonry', 'Heavy Hauler Load', 'Civil Engineering']
+      },
+      {
+        id: 'scene-13',
+        cat: 'infra',
+        title: 'Living Pond Bio-Excavation & Aeration',
+        file: 'infra/pnp_alpenhof_pond_excavation.html',
+        desc: 'Natural bentonite clay pond sealing, littoral shelf grading, cascade oxygenation, and trout hatchery habitat creation.',
+        tags: ['Limnology', 'Clay Sealing', 'Trout Hatchery']
+      }
+    ];
+
+    return '<div class="alp-scene-filters" id="alpSceneFilters">' +
+      '<button class="chip" aria-pressed="true" data-cat="all">All Labs (13)</button>' +
+      '<button class="chip" aria-pressed="false" data-cat="dairy">🧀 Dairy &amp; Fermentation (3)</button>' +
+      '<button class="chip" aria-pressed="false" data-cat="energy">⚡ Renewable Microgrids (4)</button>' +
+      '<button class="chip" aria-pressed="false" data-cat="infra">🏗️ Civil Infrastructure (6)</button>' +
+    '</div>' +
+    '<div class="alp-scene-grid" id="alpSceneGrid">' + scenes.map(function(s) {
+      return '<div class="alp-scene-card" data-cat="' + s.cat + '">' +
+        '<h4><span>🔬</span> ' + esc(s.title) + '</h4>' +
+        '<p class="alp-scene-desc">' + esc(s.desc) + '</p>' +
+        '<div class="alp-scene-features">' +
+          s.tags.map(function(t) { return '<span class="alp-feat-tag">' + esc(t) + '</span>'; }).join('') +
+          '<span class="alp-feat-tag highlight">💬 English Accent Audio</span>' +
+          '<span class="alp-feat-tag highlight">🎛️ Inline CC Toggle</span>' +
+        '</div>' +
+        '<a class="alp-scene-cta" href="../bavaria/animation/' + s.file + '" target="_blank" rel="noopener"><span>▶️ Launch 3D Lab Simulation</span></a>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function renderAlpenhofChapters() {
+    var chs = [
+      {
+        id: 1,
+        title: 'Survey the Alpenhof Estate',
+        recall: 'Recalling Solo Founder Ch. 1',
+        desc: 'Survey your ancestral estate, break hardened alpine loam crusts, recommission the Farm Shed, hire Master Orchardist Hans Weber, aerate Plot 1, and plant heirloom fruit saplings.',
+        criteria: ['Recommission Farm Shed & Workshop', 'Hire Master Orchardist Hans Weber', 'Aerate Orchard Plot 1 (9 beds)', 'Accumulate €1,400 & 400 kg O₂']
+      },
+      {
+        id: 2,
+        title: 'Living Waters & Glacial Streams',
+        recall: 'Recalling Solo Founder Ch. 2',
+        desc: 'Restore the two glacial lake basins, stock Bavarian brown trout and arctic char, welcome diving mallard ducks, and fulfill your first fresh fish banquet delivery for Gasthof Stuben.',
+        criteria: ['Excavate Lake Basins & Aeration Weir', 'Hire Lake Warden Georg Huber', 'Stock 14 Trout & 10 Arctic Char', 'Deliver 10 Fish to Gasthof Stuben']
+      },
+      {
+        id: 3,
+        title: 'Alpine Heritage Gastronomy',
+        recall: 'Recalling Solo Founder Ch. 3',
+        desc: 'Open Gasthof Stuben for visitors, master cheese affinage with Sepp Obermeier, brew sweet cider with Lukas at the Mosterei, and approve your first commercial wholesale contracts.',
+        criteria: ['Open Gasthof Stuben Terrace', 'Hire Cheesemaker Sepp Obermeier', 'Age 10 Bergkäse Cheese Wheels', 'Approve 3 Managerial Trades']
+      },
+      {
+        id: 4,
+        title: 'Petal Power & Road Pedestrians',
+        recall: 'Recalling Solo Founder Ch. 4',
+        desc: 'Cultivate the 3-Oval Alpine Flower Gardens, open the Alpenblumen-Standl, welcome road tourists along the cobblestone network, and sell fresh bouquets (+€22, +5 O₂).',
+        criteria: ['Cultivate 3 Concentric Flower Ovals', 'Open Alpenblumen-Standl Retail Kiosk', 'Sell 15 Fresh Edelweiss Bouquets', 'Achieve 95% Road Crowd Happiness']
+      },
+      {
+        id: 5,
+        title: 'Heavy Timber & Clean Microgrids',
+        recall: 'Recalling Solo Founder Ch. 5',
+        desc: 'Build the arched stone gorge bridge with Hansel, commission the Pelton stream hydro turbine with Shakir, and dispatch the heavy logging truck with sustainably harvested timber.',
+        criteria: ['Construct Arched Stone Gorge Bridge', 'Commission Pelton Hydro Turbine', 'Connect 480 kWh BESS Storage', 'Dispatch Heavy Timber Transporter']
+      },
+      {
+        id: 6,
+        title: 'Zero-Carbon Village Sovereign',
+        recall: 'Recalling Solo Founder Ch. 6',
+        desc: 'Unite all 6 sectors into a 100% self-sufficient closed-loop circular bio-economy. Export green energy and high-purity O₂ credits to global SearchO2 planetary radar stations.',
+        criteria: ['Achieve 100% Microgrid Clean Power', 'Maintain 0% Soil Neglect Die-Off', 'Accumulate €25,000 Capital & 10,000 kg O₂', 'Sync with Planetary Earth Biome Globe']
+      }
+    ];
+
+    return '<div class="alp-chapters-grid">' + chs.map(function(c) {
+      return '<div class="alp-ch-card">' +
+        '<div class="alp-ch-header">' +
+          '<span class="alp-ch-badge">Chapter ' + c.id + '</span>' +
+          '<span class="alp-ch-recall">' + esc(c.recall) + '</span>' +
+        '</div>' +
+        '<h3>' + esc(c.title) + '</h3>' +
+        '<p class="alp-ch-desc">' + esc(c.desc) + '</p>' +
+        '<ul class="alp-ch-criteria">' +
+          c.criteria.map(function(cr) { return '<li><span>✔️</span> ' + esc(cr) + '</li>'; }).join('') +
+        '</ul>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function renderAlpenhofLearningOutcomes() {
+    return '<div class="alp-learning-box">' +
+      '<h3><span>💡</span> Scientific Learning Outcomes for Children &amp; Eco-Explorers</h3>' +
+      '<p>SearchO2 turns complex environmental science into fun, interactive discoveries aligned with real-world biology and physics curricula!</p>' +
+      '<div class="alp-outcomes-grid">' +
+        '<div class="alp-outcome-item">' +
+          '<b>🔬 Photosynthesis &amp; Oxygen Math</b>' +
+          '<p>Kids learn the exact chemical equation of life: 6 CO₂ + 6 H₂O + Sunlight ➔ C₆H₁₂O₆ (sugar) + 6 O₂. Trees do not just look pretty—they are living solar factories exhaling the oxygen we breathe!</p>' +
+        '</div>' +
+        '<div class="alp-outcome-item">' +
+          '<b>🔄 Circular Bio-Economy</b>' +
+          '<p>In a healthy farm, nothing is wasted: pruned branches become timber or mulch, animal manure powers biogas turbines, and kitchen vegetable peelings feed rich compost earthworms.</p>' +
+        '</div>' +
+        '<div class="alp-outcome-item">' +
+          '<b>🍽️ Food Miles &amp; Local Cuisine</b>' +
+          '<p>Catching trout in the glacial lake and serving it 50 meters away at Gasthof Stuben eliminates supply-chain diesel pollution, teaching children the tremendous climate value of local farm-to-table food.</p>' +
+        '</div>' +
+        '<div class="alp-outcome-item">' +
+          '<b>💧 Soil Hydration &amp; Neglect Consequences</b>' +
+          '<p>Plants depend on soil microbial moisture. Neglecting to water trees leads to wilt, yellow leaves, and dead snags, illustrating the real-world threats of drought and climate stress.</p>' +
+        '</div>' +
+        '<div class="alp-outcome-item">' +
+          '<b>🦆 Wetland Limnology &amp; Biodiversity</b>' +
+          '<p>Ducks eat insect pests, fish circulate nutrients, and littoral lake reeds filter water runoff. Children discover that biodiverse polycultures are far stronger than monoculture fields.</p>' +
+        '</div>' +
+        '<div class="alp-outcome-item">' +
+          '<b>⚡ Renewable Microgrid Balancing</b>' +
+          '<p>Combining mountain stream hydro turbines with agrivoltaic solar and central battery storage teaches children how modern green electrical grids remain reliable 24/7 without burning coal.</p>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderRegionalExpansionModularNavigator() {
+    return '<div class="alp-regions-modular">' +
+      '<h3><span>🌍</span> SearchO2 Modular Regional Expansion Network</h3>' +
+      '<p>Alpenhof is the first major regional expansion in SearchO2. Switch seamlessly between biomes or prepare for our upcoming tropical marine odyssey!</p>' +
+      '<div class="alp-region-cards">' +
+        '<div class="alp-reg-card current">' +
+          '<h4>🏔️ Bavaria: Alpenhof Eco-Village</h4>' +
+          '<p><b>Active Live Region.</b> 54 Streuobst beds, Living Waters glacial aquaculture, Simmental dairy, 13 3D Research HQ Labs, and alpine gastronomy.</p>' +
+          '<a class="btn gold" href="../bavaria/alpenhof.html">🎮 Play Alpenhof 3D</a>' +
+        '</div>' +
+        '<div class="alp-reg-card">' +
+          '<h4>🏝️ Saint Martin: Blue Lab</h4>' +
+          '<p><b>Next Regional Expansion.</b> Coral reef micro-fragmentation, mangrove nursery hydrodynamics, and Caribbean island oceanic microgrids.</p>' +
+          '<a class="btn" href="../saint-martin/blue-lab.html">🌊 Explore Blue Lab</a>' +
+        '</div>' +
+        '<div class="alp-reg-card">' +
+          '<h4>🌱 Solo Founder: Base Farm</h4>' +
+          '<p><b>Foundation Biome.</b> Central European grassland agroforestry, 6 crop plots, Farm Garage mechanization, and Chapter 1–8 milestones.</p>' +
+          '<a class="btn ghost" href="../index.html?guest=1&amp;enter=farm">🚜 Enter Base Farm</a>' +
+        '</div>' +
+        '<div class="alp-reg-card">' +
+          '<h4>🚀 Orbital: OxyForge Dome</h4>' +
+          '<p><b>Future Frontier.</b> Closed-loop Martian &amp; Lunar bio-regenerative life support systems generating breathable oxygen in deep space.</p>' +
+          '<span class="pill gold" style="width:fit-content">🛸 Coming Soon</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function bindAlpenhofInteractive() {
+    // 3D Scene category filtering
+    var filterBar = $('#alpSceneFilters');
+    if (filterBar) {
+      filterBar.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-cat]');
+        if (!btn) return;
+        var cat = btn.dataset.cat;
+        $$('#alpSceneFilters .chip').forEach(function(c) { c.setAttribute('aria-pressed', String(c === btn)); });
+        $$('#alpSceneGrid .alp-scene-card').forEach(function(card) {
+          if (cat === 'all' || card.dataset.cat === cat) {
+            card.style.display = 'flex';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    }
   }
 
   /* ------------------------------------------------------------------ *
@@ -861,7 +1569,7 @@
     D.species.forEach(function (s) { if (cats.indexOf(s.category) < 0) cats.push(s.category); });
     var f = { q: '', cat: 'all', region: 'all' };
     main.innerHTML =
-      '<div class="page-head"><h1>Plant Library</h1><p>' + D.species.length + ' plants from five biomes. Open one to see how much oxygen it makes at each stage.</p></div>' +
+      '<div class="page-head"><h1>Plant Library</h1><p>' + D.species.length + ' botanical species from six regional biomes. Explore real oxygen rates, Latin scientific names, and growing stages.</p></div>' +
       '<div class="toolbar"><label class="sr-only" for="libQ">Search plants</label><input id="libQ" class="search" type="search" placeholder="Search by name or Latin name">' +
       '<button class="btn gold" id="quizBtn" type="button">Take a quiz</button></div>' +
       '<div class="toolbar" id="catChips" role="group" aria-label="Plant type"><button class="chip" aria-pressed="true" data-v="all">All types</button>' +
@@ -879,6 +1587,14 @@
       });
       $('#libCount').textContent = list.length + ' of ' + D.species.length + ' plants';
       $('#packets').innerHTML = list.map(function (s) {
+        var isAlp = s.regions && s.regions.indexOf('alpenhof') >= 0;
+        var isBase = s.regions && s.regions.indexOf('germany') >= 0;
+        var sourceBadge = '';
+        if (isAlp) {
+          sourceBadge = '<span class="packet-source-tag alpenhof-tag">🏔️ Alpenhof</span>';
+        } else if (isBase) {
+          sourceBadge = '<span class="packet-source-tag base-farm-tag">🌱 Base Farm</span>';
+        }
         return '<button class="packet" type="button" data-key="' + s.key + '" style="--c:' + esc(s.canopy || '#6FA85A') + '">' +
           '<div class="top"></div>' +
           '<div class="packet-3d-box" aria-hidden="true">' + renderVolumetricTreeSvg(s, 112, 92) + '</div>' +
@@ -886,6 +1602,7 @@
           '<i>' + esc(s.sciName || '') + '</i>' +
           '<div class="packet-tags">' +
             '<span class="cat">' + esc(s.category) + '</span>' +
+            sourceBadge +
             '<span class="packet-region-tag" title="' + esc(REGION_LABEL[(s.regions && s.regions[0]) || 'germany'] || '') + '">' + get3DCountryFlagSvg((s.regions && s.regions[0]) || 'germany', 18, 12) + ' <span>' + esc(REGION_LABEL[(s.regions && s.regions[0]) || 'germany'] || (s.regions && s.regions[0]) || 'germany') + '</span></span>' +
           '</div>' +
         '</button>';
@@ -928,10 +1645,19 @@
     } else {
       facts = '<p class="muted">This plant does not have an encyclopedia entry in the game yet.</p>';
     }
+    var isAlp = s.regions && s.regions.indexOf('alpenhof') >= 0;
+    var isBase = s.regions && s.regions.indexOf('germany') >= 0;
+    var sourceHeader = '';
+    if (isAlp) {
+      sourceHeader = '<div class="packet-source-pill alpenhof-pill">🏔️ Alpenhof Alpine Biome · Bavaria</div>';
+    } else if (isBase) {
+      sourceHeader = '<div class="packet-source-pill base-farm-pill">🌱 Base Farm · Central Europe</div>';
+    }
     var regionTags = s.regions.map(function (r) {
       return '<span class="pill pill-flag">' + get3DCountryFlagSvg(r, 22, 15) + ' <span>' + esc(REGION_LABEL[r] || r) + '</span></span>';
     }).join('');
     openDrawer('<div class="species-3d-hero">' + renderVolumetricTreeSvg(s, 220, 160) + '</div>' +
+      sourceHeader +
       '<h2 id="drawerTitle"><span aria-hidden="true">' + s.icon + '</span> ' + esc(s.label) + '</h2>' +
       '<p class="muted"><i>' + esc(s.sciName || '') + '</i> · ' + esc(s.category) + (s.cost ? ' · €' + s.cost + ' to plant' : '') + '</p>' +
       '<div class="tags">' + regionTags + '</div>' +
