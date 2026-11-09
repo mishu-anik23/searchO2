@@ -1329,7 +1329,7 @@
           '<span class="alp-feat-tag highlight">💬 English Accent Audio</span>' +
           '<span class="alp-feat-tag highlight">🎛️ Inline CC Toggle</span>' +
         '</div>' +
-        '<a class="alp-scene-cta" href="../bavaria/animation/' + s.file + '" target="_blank" rel="noopener"><span>▶️ Launch 3D Lab Simulation</span></a>' +
+        '<a class="alp-scene-cta" href="../bavaria/animation/' + s.file + '?source=hub" target="_blank" rel="noopener"><span>▶️ Launch 3D Lab Simulation</span></a>' +
       '</div>';
     }).join('') + '</div>';
   }

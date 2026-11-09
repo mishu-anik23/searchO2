@@ -1930,6 +1930,19 @@
     var clean = text
       .replace(/\b(slurp|byzzz|bzzzz|bzzz|whoosh|zoom|moo)\b/gi, '')
       .replace(/squeak tastic/gi, 'fantastic')
+      .replace(/Squeak-tastic/gi, 'Fantastic')
+      .replace(/\bSearchO2\b/gi, 'Search O two')
+      .replace(/\bO2\b/g, 'oxygen')
+      .replace(/\bCO2\b/g, 'carbon dioxide')
+      .replace(/\bStreuobst\b/gi, 'meadow orchard')
+      .replace(/\bAlpenhof\b/gi, 'Alpen hof')
+      .replace(/€\s*(\d+)/g, '$1 euros')
+      .replace(/(\d+)\s*XP\b/gi, '$1 experience points')
+      .replace(/\bProf\.?\b/gi, 'Professor')
+      .replace(/\bDr\.?\b/gi, 'Doctor')
+      .replace(/&amp;/g, 'and')
+      .replace(/&/g, 'and')
+      .replace(/[—–]/g, ', ')
       .replace(/["“”*()]/g, '')
       .replace(/-/g, ' ')
       .replace(/\s+/g, ' ')
@@ -1942,28 +1955,57 @@
       voices = window.speechSynthesis.getVoices() || [];
     }
 
+    var normVoices = voices.map(function (v) {
+      return {
+        voice: v,
+        name: (v.name || '').toLowerCase(),
+        lang: (v.lang || '').toLowerCase().replace('_', '-')
+      };
+    });
+    var enVoices = normVoices.filter(function (nv) { return nv.lang.indexOf('en') === 0; });
+    if (enVoices.length === 0) enVoices = normVoices;
+
     if (speaker === 'shakir') {
       utter.pitch = 0.98;
       utter.rate = 1.02;
-      var maleVoices = voices.filter(function (v) {
-        if (!v.lang || v.lang.indexOf('en') !== 0) return false;
-        var name = (v.name || '').toLowerCase();
-        return name.includes('male') || name.includes('david') || name.includes('mark') ||
-               name.includes('guy') || name.includes('george') || name.includes('google us english') ||
-               name.includes('natural');
+      var maleVoices = enVoices.filter(function (nv) {
+        return nv.name.includes('male') || nv.name.includes('david') || nv.name.includes('mark') ||
+               nv.name.includes('guy') || nv.name.includes('george') || nv.name.includes('google us english') ||
+               nv.name.includes('natural');
       });
-      var shakirVoice = maleVoices[0] || voices[0];
+      var shakirVoice = maleVoices[0] ? maleVoices[0].voice : (enVoices[0] ? enVoices[0].voice : voices[0]);
       if (shakirVoice) utter.voice = shakirVoice;
+    } else if (speaker === 'puff' || speaker === 'cat') {
+      // Charming scholar girl voice
+      utter.pitch = 1.10;
+      utter.rate = 0.98;
+      var topPuff = ['jenny', 'aria', 'sonia', 'libby', 'maisie', 'samantha', 'victoria', 'karen', 'tessa', 'fiona', 'google uk english female', 'google us english'];
+      var foundPuff = null;
+      for (var pIdx = 0; pIdx < topPuff.length; pIdx++) {
+        var mP = enVoices.find(function(nv){ return nv.name.includes(topPuff[pIdx]); });
+        if (mP) { foundPuff = mP.voice; break; }
+      }
+      if (!foundPuff) {
+        var fV = enVoices.find(function(nv){ return nv.name.includes('female') || !nv.name.includes('male'); });
+        if (fV) foundPuff = fV.voice;
+      }
+      if (foundPuff) utter.voice = foundPuff;
     } else {
-      utter.pitch = 1.80;
-      utter.rate = 1.12;
-      var boyVoices = voices.filter(function (v) {
-        if (!v.lang || v.lang.indexOf('en') !== 0) return false;
-        var name = (v.name || '').toLowerCase();
-        return name.includes('child') || name.includes('junior') || name.includes('guy') ||
-               name.includes('david') || name.includes('mark') || name.includes('male');
+      // Pip: Toddler boy companion across desktop & mobile
+      utter.pitch = 1.38;
+      utter.rate = 1.08;
+      var childMatch = enVoices.find(function (nv) {
+        return nv.name.includes('junior') || nv.name.includes('child') || nv.name.includes('kid');
       });
-      var pipVoice = boyVoices[0] || voices[0];
+      var pipVoice = childMatch ? childMatch.voice : null;
+      if (!pipVoice) {
+        var boyNames = ['google uk english male', 'oliver', 'george', 'arthur', 'daniel', 'guy', 'david', 'mark'];
+        for (var bIdx = 0; bIdx < boyNames.length; bIdx++) {
+          var bM = enVoices.find(function(nv){ return nv.name.includes(boyNames[bIdx]); });
+          if (bM) { pipVoice = bM.voice; break; }
+        }
+      }
+      if (!pipVoice && enVoices[0]) pipVoice = enVoices[0].voice;
       if (pipVoice) utter.voice = pipVoice;
     }
 

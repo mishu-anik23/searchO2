@@ -160,7 +160,7 @@
 
 </style>
 </head>
-<body class="text-white"><a id="archive-home-link" href="../../index.html" title="Return to Alpenhof Research HQ archive" aria-label="Return to Alpenhof Research HQ" style="position:fixed;top:12px;left:12px;z-index:1000;padding:8px 12px;border:1px solid rgba(120,190,225,.45);border-radius:10px;background:rgba(5,17,30,.86);backdrop-filter:blur(8px);color:#dff4ff;text-decoration:none;font:600 12px/1.2 system-ui,sans-serif;box-shadow:0 5px 20px #0005">🏔️ Archive</a>
+<body class="text-white">
 
   <!-- 3D Canvas Viewport -->
   <div id="viewport-container"></div>
@@ -211,6 +211,13 @@
     <button id="btn-subtitles-toggle" class="icon-btn active" title="Toggle Subtitles">
       💬
     </button>
+
+    <div class="w-[1px] h-6 bg-slate-700 mx-1"></div>
+
+    <!-- Return to Research Lab -->
+    <a id="archive-home-link" href="#" onclick="returnToResearchLab(event)" class="icon-btn" title="Return to Research Lab" aria-label="Return to Research Lab">
+      🔬
+    </a>
   </nav>
 
   <!-- Dialogue Overlay Container -->
@@ -466,16 +473,31 @@
     ];
 
     /* --- Sound Synthesizer & Pip Childish Squeak SFX --- */
+    let ambienceNode = null;
+
     function initAudio() {
       try {
         if (!synth) {
           synth = new (window.AudioContext || window.webkitAudioContext)();
         }
+        if (synth && synth.state === 'suspended') {
+          synth.resume();
+        }
+        if (audioEnabled && !ambienceNode) {
+          startCheeseAmbience();
+        }
       } catch (e) {}
     }
 
+    // Auto unlock AudioContext on any user gesture across window and iframes
+    ['click', 'touchstart', 'pointerdown', 'keydown'].forEach(ev => {
+      window.addEventListener(ev, () => initAudio(), { passive: true });
+    });
+
     function playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.04) {
-      if (!audioEnabled || !synth) return;
+      if (!audioEnabled) return;
+      if (!synth) initAudio();
+      if (!synth) return;
       try {
         if (synth.state === 'suspended') synth.resume();
         const osc = synth.createOscillator();
@@ -492,7 +514,9 @@
     }
 
     function playPipSqueakSFX() {
-      if (!audioEnabled || !synth) return;
+      if (!audioEnabled) return;
+      if (!synth) initAudio();
+      if (!synth) return;
       try {
         if (synth.state === 'suspended') synth.resume();
         const osc1 = synth.createOscillator();
@@ -508,6 +532,7 @@
         osc1.stop(synth.currentTime + 0.11);
 
         setTimeout(() => {
+          if (!synth || !audioEnabled) return;
           const osc2 = synth.createOscillator();
           const gain2 = synth.createGain();
           osc2.type = 'triangle';
@@ -524,13 +549,69 @@
     }
 
     function playHarpSlicingSFX() {
-      playTone(320, 'sine', 0.25, 0.03);
-      setTimeout(() => playTone(540, 'triangle', 0.2, 0.025), 60);
+      playTone(440, 'sine', 0.2, 0.04);
+      setTimeout(() => playTone(660, 'triangle', 0.22, 0.035), 70);
+      setTimeout(() => playTone(880, 'sine', 0.18, 0.03), 140);
     }
 
     function playPressPneumaticSFX() {
-      playTone(140, 'sawtooth', 0.35, 0.03);
-      setTimeout(() => playTone(90, 'sine', 0.45, 0.035), 80);
+      playTone(120, 'sawtooth', 0.35, 0.035);
+      setTimeout(() => playTone(85, 'sine', 0.45, 0.035), 90);
+    }
+
+    function playVatSwirlSFX() {
+      playTone(220, 'sine', 0.4, 0.035);
+      setTimeout(() => playTone(310, 'triangle', 0.3, 0.025), 80);
+    }
+
+    function playBrineSplashSFX() {
+      playTone(520, 'sine', 0.2, 0.04);
+      setTimeout(() => playTone(280, 'triangle', 0.25, 0.03), 60);
+    }
+
+    function playAffinageWoodSFX() {
+      playTone(180, 'triangle', 0.35, 0.04);
+      setTimeout(() => playTone(260, 'sine', 0.3, 0.03), 80);
+    }
+
+    function playPackagingSealSFX() {
+      playTone(1200, 'sine', 0.15, 0.04);
+      setTimeout(() => playTone(1800, 'triangle', 0.12, 0.035), 60);
+    }
+
+    function playGoldCompletionSFX() {
+      playTone(523.25, 'triangle', 0.4, 0.04);
+      setTimeout(() => playTone(659.25, 'triangle', 0.4, 0.04), 90);
+      setTimeout(() => playTone(783.99, 'triangle', 0.5, 0.04), 180);
+      setTimeout(() => playTone(1046.50, 'triangle', 0.6, 0.05), 270);
+    }
+
+    function startCheeseAmbience() {
+      if (!audioEnabled || !synth) return;
+      try {
+        if (ambienceNode) return;
+        const osc = synth.createOscillator();
+        const gain = synth.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(58, synth.currentTime);
+        gain.gain.setValueAtTime(0.015, synth.currentTime);
+        osc.connect(gain);
+        gain.connect(synth.destination);
+        osc.start();
+        ambienceNode = { osc, gain };
+      } catch (e) {}
+    }
+
+    function stopCheeseAmbience() {
+      try {
+        if (ambienceNode) {
+          ambienceNode.gain.gain.setValueAtTime(0.0001, synth.currentTime + 0.1);
+          setTimeout(() => {
+            try { ambienceNode.osc.stop(); } catch(e){}
+            ambienceNode = null;
+          }, 120);
+        }
+      } catch(e) {}
     }
 
     let availableVoices = [];
@@ -1623,7 +1704,7 @@
           (beat.speaker === 'Puff' ? 'Professor Whisker Puff' :
           (beat.speaker === 'Pip' ? 'Pip Squeak-a-Link' : 'Alpenhof Fromagerie Team'));
         document.getElementById('speaker-role').textContent = beat.role;
-        document.getElementById('speech-emotion').textContent = beat.emotion;
+        const emoEl = document.getElementById('speech-emotion'); if (emoEl) emoEl.textContent = beat.emotion;
         document.getElementById('speech-text').textContent = `"${beat.text}"`;
 
         if (subtitlesEnabled) {
@@ -1638,8 +1719,17 @@
           new TWEEN.Tween(controls.target).to(beat.camera.target, 1100).easing(TWEEN.Easing.Cubic.Out).start();
         }
 
-        if (beat.emotion.includes('Harp') || beat.emotion.includes('Slicing')) playHarpSlicingSFX();
-        if (beat.emotion.includes('Press')) playPressPneumaticSFX();
+        if (beat.speaker === 'Pip') playPipSqueakSFX();
+        else if (beat.speaker === 'Puff') playTone(540, 'triangle', 0.22, 0.035);
+        else playTone(260, 'sine', 0.25, 0.04);
+
+        if (beat.emotion.includes('Inoculation') || beat.emotion.includes('Acidification')) playVatSwirlSFX();
+        else if (beat.emotion.includes('Harp') || beat.emotion.includes('Slicing')) playHarpSlicingSFX();
+        else if (beat.emotion.includes('Press') || beat.emotion.includes('Wheying')) playPressPneumaticSFX();
+        else if (beat.emotion.includes('Brine')) playBrineSplashSFX();
+        else if (beat.emotion.includes('Affinage') || beat.emotion.includes('Ripening')) playAffinageWoodSFX();
+        else if (beat.emotion.includes('Packaging') || beat.emotion.includes('Vacuum')) playPackagingSealSFX();
+        else if (beat.emotion.includes('Certified') || beat.emotion.includes('Heritage')) playGoldCompletionSFX();
       }
 
       /* =========================================================================
@@ -1829,9 +1919,15 @@
         audioEnabled = !audioEnabled;
         sfxBtn.classList.toggle('active', audioEnabled);
         sfxBtn.textContent = audioEnabled ? '🔊' : '🔇';
-        if (!audioEnabled && 'speechSynthesis' in window) {
-          window.speechSynthesis.cancel(); dialogueSpeaking = false;
-          isSpeaking = false;
+        if (audioEnabled) {
+          startCheeseAmbience();
+        } else {
+          stopCheeseAmbience();
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            dialogueSpeaking = false;
+            isSpeaking = false;
+          }
         }
       });
 
@@ -1914,6 +2010,23 @@
     window.onload = () => {
       init();
       animate();
+    };
+    window.returnToResearchLab = function(e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      try {
+        if (window.parent && window.parent !== window && typeof window.parent.openLabArchiveModal === 'function') {
+          window.parent.openLabArchiveModal();
+          return false;
+        }
+      } catch (err) {}
+      var ref = document.referrer || '';
+      var search = window.location.search || '';
+      if (ref.indexOf('/hub') !== -1 || search.indexOf('source=hub') !== -1) {
+        window.location.href = '../../hub/index.html#/alpenhof';
+        return false;
+      }
+      window.location.href = '../../bavaria/alpenhof.html#lab';
+      return false;
     };
   </script>
 

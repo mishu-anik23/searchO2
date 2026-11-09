@@ -187,6 +187,72 @@
     return _cachedVoices;
   }
 
+  function getCharacterVoice(character, voices) {
+    if (!voices || voices.length === 0) return null;
+    var normVoices = voices.map(function (v) {
+      return {
+        voice: v,
+        name: (v.name || '').toLowerCase(),
+        lang: (v.lang || '').toLowerCase().replace('_', '-')
+      };
+    });
+
+    var enVoices = normVoices.filter(function (nv) {
+      return nv.lang.indexOf('en') === 0;
+    });
+    if (enVoices.length === 0) enVoices = normVoices;
+
+    if (character === 'cat' || character === 'puff') {
+      // Professor Whisker Puff: Sweet, charming, articulate young scholar girl voice across Desktop & Mobile (iOS / Android / Chrome / Safari)
+      var maleKeywords = ['david', 'mark', 'guy', 'george', 'richard', 'james', 'john', 'charles', 'stefan', 'peter', 'male'];
+      var nonMale = enVoices.filter(function (nv) {
+        return !maleKeywords.some(function (k) { return nv.name.includes(k); });
+      });
+      if (nonMale.length === 0) nonMale = enVoices;
+
+      // 1. Top Tier Charming Natural / Expressive Female Voices
+      var topTierNames = [
+        'jenny', 'aria', 'sonia', 'libby', 'maisie', 'natasha', 'clara',
+        'samantha', 'victoria', 'karen', 'tessa', 'fiona', 'moira', 'chloe', 'ana',
+        'google uk english female', 'google us english', 'en-gb-x-rjs#female', 'en-us-x-sfg#female'
+      ];
+      for (var i = 0; i < topTierNames.length; i++) {
+        var match = nonMale.find(function (nv) { return nv.name.includes(topTierNames[i]); });
+        if (match) return match.voice;
+      }
+      // 2. Any voice tagged with "female", "natural", or "neural"
+      var femaleTagged = nonMale.find(function (nv) {
+        return nv.name.includes('female') || nv.name.includes('natural') || nv.name.includes('neural');
+      });
+      if (femaleTagged) return femaleTagged.voice;
+
+      // 3. Any UK/US English non-male voice
+      var ukOrUs = nonMale.find(function (nv) {
+        return nv.lang === 'en-gb' || nv.lang === 'en-us';
+      });
+      if (ukOrUs) return ukOrUs.voice;
+
+      return nonMale[0].voice;
+    } else {
+      // Pip Squeak-a-Link: High-energy curious toddler boy / apprentice voice across Desktop & Mobile
+      var childMatch = enVoices.find(function (nv) {
+        return nv.name.includes('junior') || nv.name.includes('child') || nv.name.includes('kid');
+      });
+      if (childMatch) return childMatch.voice;
+
+      var boyNames = ['google uk english male', 'oliver', 'george', 'arthur', 'daniel', 'guy', 'david', 'mark'];
+      for (var j = 0; j < boyNames.length; j++) {
+        var bMatch = enVoices.find(function (nv) { return nv.name.includes(boyNames[j]); });
+        if (bMatch) return bMatch.voice;
+      }
+
+      var maleTagged = enVoices.find(function (nv) { return nv.name.includes('male'); });
+      if (maleTagged) return maleTagged.voice;
+
+      return enVoices[0].voice;
+    }
+  }
+
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.onvoiceschanged = function () {
       getSpeechVoices();
@@ -255,10 +321,20 @@
       .replace(/\b(slurp|byzzz|bzzzz|bzzz|whoosh|zoom|moo)\b/gi, '')
       .replace(/squeak tastic/gi, 'fantastic')
       .replace(/Squeak-tastic/gi, 'Fantastic')
-      .replace(/-/g, ' ')
-      .replace(/O2/g, 'O two')
-      .replace(/CO2/g, 'C O two')
+      .replace(/\bSearchO2\b/gi, 'Search O two')
+      .replace(/\bO2\b/g, 'oxygen')
+      .replace(/\bCO2\b/g, 'carbon dioxide')
+      .replace(/\bStreuobst\b/gi, 'meadow orchard')
+      .replace(/\bAlpenhof\b/gi, 'Alpen hof')
+      .replace(/€\s*(\d+)/g, '$1 euros')
+      .replace(/(\d+)\s*XP\b/gi, '$1 experience points')
+      .replace(/\bProf\.?\b/gi, 'Professor')
+      .replace(/\bDr\.?\b/gi, 'Doctor')
+      .replace(/&amp;/g, 'and')
+      .replace(/&/g, 'and')
+      .replace(/[—–]/g, ', ')
       .replace(/["“”*()]/g, '')
+      .replace(/-/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
     var utter = new SpeechSynthesisUtterance(clean);
@@ -272,50 +348,19 @@
       voices = window.speechSynthesis.getVoices() || [];
     }
 
-    if (character === 'cat') {
-      // Professor Whisker Puff: 11-year-old scholar girl with crisp, articulate English accent
-      utter.pitch = 1.18;
+    if (character === 'cat' || character === 'puff') {
+      // Professor Whisker Puff: Sweet, charming, articulate young scholar girl voice
+      utter.pitch = 1.10;
       utter.rate = 0.98;
 
-      var femaleVoices = voices.filter(function (v) {
-        if (!v.lang || v.lang.indexOf('en') !== 0) return false;
-        var name = (v.name || '').toLowerCase();
-        if (name.includes('david') || name.includes('mark') || name.includes('guy') || 
-            name.includes('george') || name.includes('male') || name.includes('richard')) {
-          return false;
-        }
-        return true;
-      });
-
-      // 1st Priority: Clear British / UK English female voices (Hazel, Libby, Sonia, UK Female) for a scholar girl accent
-      var catVoice = femaleVoices.find(function (v) {
-        var n = (v.name || '').toLowerCase();
-        var l = (v.lang || '').toLowerCase();
-        return (l.indexOf('en-gb') === 0 || l.indexOf('en_uk') === 0 || n.includes('uk') || n.includes('great britain')) &&
-               (n.includes('hazel') || n.includes('libby') || n.includes('sonia') || n.includes('female') || n.includes('natural'));
-      }) || femaleVoices.find(function (v) {
-        var n = (v.name || '').toLowerCase();
-        return n.includes('hazel') || n.includes('libby') || n.includes('sonia');
-      }) || femaleVoices.find(function (v) {
-        var n = (v.name || '').toLowerCase();
-        return n.includes('jenny') || n.includes('aria') || n.includes('zira') || n.includes('google us english') || n.includes('natural');
-      }) || femaleVoices[0];
-
+      var catVoice = getCharacterVoice('cat', voices);
       if (catVoice) utter.voice = catVoice;
     } else {
-      // Pip Squeak-a-Link: High-energy curious toddler boy
-      utter.pitch = 1.80;
-      utter.rate = 1.12;
+      // Pip Squeak-a-Link: High-energy curious toddler boy companion
+      utter.pitch = 1.38;
+      utter.rate = 1.08;
 
-      var boyVoices = voices.filter(function (v) {
-        if (!v.lang || v.lang.indexOf('en') !== 0) return false;
-        var name = (v.name || '').toLowerCase();
-        if (name.includes('junior') || name.includes('child')) return true;
-        return name.includes('david') || name.includes('mark') || name.includes('male') ||
-               name.includes('guy') || name.includes('george') || name.includes('google uk english male');
-      });
-
-      var mouseVoice = boyVoices[0];
+      var mouseVoice = getCharacterVoice('pip', voices);
       if (mouseVoice) utter.voice = mouseVoice;
     }
 
@@ -489,12 +534,12 @@
       '  user-select: none;',
       '}',
       '.instruction-point-icon-btn {',
-      '  width: 52px;',
-      '  height: 52px;',
+      '  width: 36px;',
+      '  height: 36px;',
       '  border-radius: 50%;',
       '  background: radial-gradient(circle at 35% 35%, #059669 0%, #065F46 65%, #022C22 100%);',
-      '  border: 2.5px solid #34D399;',
-      '  box-shadow: 0 10px 25px rgba(6, 95, 70, 0.45), 0 0 18px rgba(52, 211, 153, 0.4);',
+      '  border: 2px solid #34D399;',
+      '  box-shadow: 0 6px 16px rgba(6, 95, 70, 0.45), 0 0 12px rgba(52, 211, 153, 0.35);',
       '  cursor: pointer;',
       '  display: flex;',
       '  align-items: center;',
@@ -506,12 +551,12 @@
       '.instruction-point-icon-btn:hover {',
       '  transform: scale(1.12) translateY(-2px);',
       '  border-color: #FACC15;',
-      '  box-shadow: 0 14px 30px rgba(6, 95, 70, 0.55), 0 0 25px rgba(250, 204, 21, 0.6);',
+      '  box-shadow: 0 8px 20px rgba(6, 95, 70, 0.55), 0 0 16px rgba(250, 204, 21, 0.55);',
       '}',
       '.ip-char-pair {',
-      '  font-size: 1.55rem;',
+      '  font-size: 1.05rem;',
       '  line-height: 1;',
-      '  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));',
+      '  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));',
       '  pointer-events: none;',
       '}',
       '.ip-pulse-ring {',
@@ -1150,8 +1195,8 @@
       '  .academy-controls-row { flex-wrap: wrap; gap: 4px; }',
       '  .timeline-indicators-row { gap: 6px; }',
       '  .timeline-indicator { font-size: 0.65rem; }',
-      '  .instruction-point-icon-btn { width: 44px; height: 44px; }',
-      '  .ip-char-pair { font-size: 1.35rem; }',
+      '  .instruction-point-icon-btn { width: 32px; height: 32px; }',
+      '  .ip-char-pair { font-size: 0.92rem; }',
       '  .instruction-point-tooltip { width: 250px; }',
       '  .handover-stage-box { flex-direction: column; align-items: center; }',
       '  .actor-box { width: 95%; }',

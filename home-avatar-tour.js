@@ -32,6 +32,10 @@
       country: 'Brazil',
       heritage: 'Brazilian riverside',
       dress: 'Bright cotton shirt & river sandals',
+      managerTitle: 'Junior Agro-Ecologist & River Scout',
+      managerBio: 'Young river explorer who monitors Amazonian seedling nursery humidity and waters vulnerable sprouts.',
+      managerSpecialty: 'Soil Aeration & River Nursery Care',
+      dailyWage: 20,
       skin: '#C68642',
       hair: '#2C1810',
       top: '#E53935',
@@ -50,6 +54,10 @@
       country: 'Senegal',
       heritage: 'West African print',
       dress: 'Ankara-pattern dress & coral beads',
+      managerTitle: 'Bright Microbiome & Seed Guardian',
+      managerBio: 'Sahel green wall caretaker who ensures biochar compost is turned and seeds are protected from desiccation.',
+      managerSpecialty: 'Compost Biology & Pollinator Hedgerow Care',
+      dailyWage: 20,
       skin: '#5D4037',
       hair: '#1A1A1A',
       top: '#FF8F00',
@@ -68,6 +76,10 @@
       country: 'Japan',
       heritage: 'Japanese school jacket',
       dress: 'Navy gakuran-style jacket & sneakers',
+      managerTitle: 'Smart Mechanization & Equipment Lead',
+      managerBio: 'Apprentice mechanic coordinating tractor paths, battery recharge stations, and precision furrowing.',
+      managerSpecialty: 'Electric Tractor Routing & Precision Harrowing',
+      dailyWage: 25,
       skin: '#E0BEA0',
       hair: '#1A1A1A',
       top: '#1A237E',
@@ -86,6 +98,10 @@
       country: 'Andes / Peru',
       heritage: 'Andean scarf',
       dress: 'Woven alpaca scarf & earth-tone skirt',
+      managerTitle: 'Terrace Irrigation & Botanical Specialist',
+      managerBio: 'Andean terrace cultivator experienced in contour ditch water distribution and native companion planting.',
+      managerSpecialty: 'High-Altitude Andean Soil Moisture & Water Catchment',
+      dailyWage: 25,
       skin: '#A0522D',
       hair: '#3E2723',
       top: '#00897B',
@@ -104,6 +120,10 @@
       country: 'Ireland',
       heritage: 'Irish field kit',
       dress: 'Tweed work vest, rolled sleeves & field boots',
+      managerTitle: 'Field Operations & Toolcraft Supervisor',
+      managerBio: 'Dedicated field manager managing tool sharpening, pasture fence maintenance, and daily cattle fodder distribution.',
+      managerSpecialty: 'Pasture Fencing, Tool Maintenance & Hay Silage',
+      dailyWage: 30,
       skin: '#F5D0A9',
       hair: '#BF360C',
       top: '#2E7D32',
@@ -122,6 +142,10 @@
       country: 'China',
       heritage: 'Chinese work tunic',
       dress: 'Indigo cotton work tunic & sash',
+      managerTitle: 'Microgrid & Hydro-Ponics Engineer',
+      managerBio: 'Precision agro-tech engineer overseeing sensor-based drip watering, microgrid battery trades, and crop telemetry.',
+      managerSpecialty: 'Solar-Wind Balancing, Clean Battery Storage & BESS Trade',
+      dailyWage: 35,
       skin: '#E8C4A2',
       hair: '#212121',
       top: '#283593',
@@ -140,6 +164,10 @@
       country: 'Morocco / Maghreb',
       heritage: 'Maghrebi sash',
       dress: 'Linen tunic, desert sash & leather babouche',
+      managerTitle: 'Drought-Resilient Oasis Custodian',
+      managerBio: 'Expert in fog harvesting, deep root watering, and preventing soil crusting in arid and sunny biomes.',
+      managerSpecialty: 'Subsurface Irrigation & Deep-Root Agroforestry',
+      dailyWage: 30,
       skin: '#8D6E63',
       hair: '#1A1A1A',
       top: '#FFF8E1',
@@ -158,6 +186,10 @@
       country: 'Bengal / South Asia',
       heritage: 'South Asian kurta',
       dress: 'Saffron kurta, flowing dupatta & brass bangle',
+      managerTitle: 'Senior Agronomy Director & Living Estate Manager',
+      managerBio: 'Master pomologist and soil moisture specialist from the fertile Ganges-Brahmaputra delta. Skilled in Streuobst canopy pruning, tree longevity, multi-plot moisture balance, and organic wholesale negotiations.',
+      managerSpecialty: 'Streuobst Canopy Pruning, Multi-Plot Hydration Balance & Wholesale Commerce',
+      dailyWage: 35,
       skin: '#C68642',
       hair: '#3E2723',
       top: '#FF8F00',
@@ -176,6 +208,10 @@
       country: 'Sweden / Nordic',
       heritage: 'Nordic wool vest',
       dress: 'Chunky knit wool vest, field trousers & boots',
+      managerTitle: 'Nordic Silviculture & Bio-Char Master',
+      managerBio: 'Taiga forestry veteran adept in subarctic tree health, cold-hardy pruning, and thermal composting.',
+      managerSpecialty: 'Boreal Conifer Health, Bio-Char Soil Inoculation & Woodlot Care',
+      dailyWage: 35,
       skin: '#F5D0A9',
       hair: '#78909C',
       top: '#546E7A',
@@ -194,6 +230,10 @@
       country: 'East Africa / Madagascar',
       heritage: 'East African wrap',
       dress: 'Kitenge wrap, matching headscarf & beaded collar',
+      managerTitle: 'Living Biodiversity & Agro-Forestry Director',
+      managerBio: 'Madagascar native species coordinator who balances nitrogen-fixing trees, pollinator flora, and livestock forage.',
+      managerSpecialty: 'Multi-Story Canopy Stratification & Drought Flora',
+      dailyWage: 35,
       skin: '#4E342E',
       hair: '#1A1A1A',
       top: '#C62828',
@@ -212,6 +252,10 @@
       country: 'Japan',
       heritage: 'Japanese happi',
       dress: 'Master indigo happi coat, bamboo staff & sandals',
+      managerTitle: 'Master Horticulturist & Elder Advisor',
+      managerBio: 'Lifetime orchard master versed in tree graft healing, restorative sap flow, and multi-generational agro-forest vitality.',
+      managerSpecialty: 'Heirloom Seed Preservation & Zen Soil Rebalancing',
+      dailyWage: 40,
       skin: '#E0BEA0',
       hair: '#ECEFF1',
       top: '#1A237E',
@@ -230,6 +274,10 @@
       country: 'Spain / Mediterranean',
       heritage: 'Mediterranean shawl',
       dress: 'Olive linen dress, sun shawl & straw hat',
+      managerTitle: 'Senior Pomologist & Olive Grove Warden',
+      managerBio: 'Mediterranean olive and orchard matriarch with deep expertise in dryland tree pruning, pressing, and farmers market co-ops.',
+      managerSpecialty: 'Citrus Streuobst Health, Natural Pest Control & Co-Op Sales',
+      dailyWage: 40,
       skin: '#D4A574',
       hair: '#CFD8DC',
       top: '#ECEFF1',
@@ -594,7 +642,15 @@
     cooldownActive: false,
     cooldownRemaining: 0,
     cooldownTimer: null,
-    pendingNextChapter: null
+    pendingNextChapter: null,
+    managerPreviewMode: false,
+    managerActiveTab: 'roster',
+    semiAutomation: {
+      autoWater: true,
+      autoPrune: true,
+      autoFeedCattle: true,
+      autoAssignLabor: true
+    }
   };
 
   // Helper: Escape HTML utility
@@ -1545,6 +1601,652 @@
     }).join('');
   }
 
+  // ---------------------------------------------------------------------------
+  // Living Assistant & Paid Farm Manager System (Eco-Passport Gated)
+  // ---------------------------------------------------------------------------
+  var DEFAULT_MANAGER_TASKS = [
+    { id: 1, type: 'water', text: 'Hydrated 4 thirsty crop beds to 85% optimal moisture', time: '10:45 AM', icon: '💧', status: 'Optimal' },
+    { id: 2, type: 'prune', text: 'Pruned 3 mature Streuobst apple canopies (+12 O₂ generated)', time: '10:46 AM', icon: '✂️', status: 'Healthy' },
+    { id: 3, type: 'cattle', text: 'Distributed alpine hay & fresh water to cattle paddock', time: '10:47 AM', icon: '🐄', status: 'Satisfied' },
+    { id: 4, type: 'labor', text: 'Assigned 2 idle laborers to organic weed removal & aeration', time: '10:48 AM', icon: '👷', status: 'Dispatched' }
+  ];
+
+  function isEcoPassportUnlocked() {
+    if (tourState.managerPreviewMode) return true;
+    try {
+      if (localStorage.getItem('searchO2_ecopassport_unlocked') === '1') return true;
+      if (localStorage.getItem('searchO2_manager_unlocked') === '1') return true;
+    } catch (e) {}
+    if (typeof state !== 'undefined' && state) {
+      if (state.ecoPassportUnlocked) return true;
+      if (typeof state.totalO2 === 'number' && state.totalO2 >= 1000) return true;
+      if (state.exploredChapters && (state.exploredChapters[7] || state.exploredChapters['7'])) return true;
+    }
+    if (getSuccessfulExplorations() >= 7) return true;
+    return false;
+  }
+
+  function getWhiskerPuffFigureSvg(w, h) {
+    if (global.KidsSustainabilityAcademy && typeof global.KidsSustainabilityAcademy.getWhiskerPuffSvg === 'function') {
+      return global.KidsSustainabilityAcademy.getWhiskerPuffSvg(w, h);
+    }
+    w = w || 110; h = h || 135;
+    return '<svg class="whisker-puff-svg" viewBox="0 0 160 190" width="' + w + '" height="' + h + '" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<ellipse cx="80" cy="184" rx="52" ry="6" fill="rgba(0,0,0,0.35)"/>' +
+      '<g class="whisker-tail"><path d="M 38 152 C 16 142, 10 118, 22 98 C 28 88, 38 84, 42 92 C 44 98, 36 108, 30 115 C 24 125, 26 140, 42 152 Z" fill="#E07A2B"/><path d="M 22 98 C 28 88, 38 84, 42 92 C 44 98, 36 108, 30 115 Z" fill="#FFFFFF"/></g>' +
+      '<path d="M 54 135 L 106 135 L 118 174 L 42 174 Z" fill="#065F46"/>' +
+      '<path d="M 58 135 L 52 174 M 72 135 L 70 174 M 88 135 L 90 174 M 102 135 L 108 174" stroke="#044E3B" stroke-width="2"/>' +
+      '<path d="M 50 88 L 110 88 L 114 140 L 46 140 Z" fill="#F8FAFC"/>' +
+      '<path d="M 52 90 L 70 90 L 76 136 L 48 136 Z" fill="#1E3A8A"/>' +
+      '<path d="M 108 90 L 90 90 L 84 136 L 112 136 Z" fill="#1E3A8A"/>' +
+      '<circle cx="80" cy="100" r="3.2" fill="#F59E0B" stroke="#B45309" stroke-width="0.8"/>' +
+      '<circle cx="80" cy="114" r="3.2" fill="#F59E0B" stroke="#B45309" stroke-width="0.8"/>' +
+      '<circle cx="80" cy="128" r="3.2" fill="#F59E0B" stroke="#B45309" stroke-width="0.8"/>' +
+      '<circle cx="42" cy="34" r="14" fill="#D97706"/>' +
+      '<circle cx="118" cy="34" r="14" fill="#D97706"/>' +
+      '<ellipse cx="44" cy="46" rx="6" ry="3.5" fill="#9333EA" transform="rotate(-15 44 46)"/>' +
+      '<ellipse cx="40" cy="48" rx="5" ry="3" fill="#D946EF" transform="rotate(20 40 48)"/>' +
+      '<ellipse cx="116" cy="46" rx="6" ry="3.5" fill="#9333EA" transform="rotate(15 116 46)"/>' +
+      '<ellipse cx="120" cy="48" rx="5" ry="3" fill="#D946EF" transform="rotate(-20 120 48)"/>' +
+      '<g class="whisker-head"><polygon points="54,62 42,22 72,44" fill="#E07A2B"/><polygon points="52,56 46,28 66,45" fill="#FBCFE8"/><polygon points="106,62 118,22 88,44" fill="#1F2937"/><polygon points="108,56 114,28 94,45" fill="#FBCFE8"/><ellipse cx="80" cy="68" rx="36" ry="32" fill="#FFFFFF"/><path d="M 44 68 C 44 50, 58 40, 72 42 C 65 55, 60 70, 50 78 C 46 76, 44 72, 44 68 Z" fill="#E07A2B"/><path d="M 116 68 C 116 50, 102 40, 88 42 C 95 55, 100 70, 110 78 C 114 76, 116 72, 116 68 Z" fill="#1F2937"/><ellipse cx="74" cy="78" rx="7" ry="5.5" fill="#F8FAFC"/><ellipse cx="86" cy="78" rx="7" ry="5.5" fill="#F8FAFC"/><polygon points="80,75 77,72 83,72" fill="#F472B6"/><line x1="56" y1="78" x2="38" y2="76" stroke="#94A3B8" stroke-width="1.2"/><line x1="56" y1="81" x2="36" y2="83" stroke="#94A3B8" stroke-width="1.2"/><line x1="104" y1="78" x2="122" y2="76" stroke="#94A3B8" stroke-width="1.2"/><line x1="104" y1="81" x2="124" y2="83" stroke="#94A3B8" stroke-width="1.2"/><ellipse cx="68" cy="62" rx="4.5" ry="5.5" fill="#047857"/><circle cx="66.5" cy="60.5" r="1.5" fill="#FFFFFF"/><ellipse cx="92" cy="62" rx="4.5" ry="5.5" fill="#047857"/><circle cx="90.5" cy="60.5" r="1.5" fill="#FFFFFF"/><circle cx="68" cy="62" r="12" stroke="#111827" stroke-width="2.5" fill="rgba(147,197,253,0.2)"/><circle cx="92" cy="62" r="12" stroke="#111827" stroke-width="2.5" fill="rgba(147,197,253,0.2)"/><line x1="80" y1="62" x2="80" y2="62" stroke="#111827" stroke-width="2.5"/><path d="M 80 62 Q 80 59 80 62" stroke="#111827" stroke-width="2.5"/><line x1="56" y1="60" x2="48" y2="57" stroke="#111827" stroke-width="2"/><line x1="104" y1="60" x2="112" y2="57" stroke="#111827" stroke-width="2"/></g>' +
+      '<g class="whisker-tool"><rect x="115" y="118" width="22" height="34" rx="5" fill="#1E293B" stroke="#0EA5E9" stroke-width="1.8"/><rect x="119" y="122" width="14" height="12" rx="2" fill="#0284C7"/><line x1="122" y1="126" x2="130" y2="126" stroke="#67E8F9" stroke-width="1.5"/><line x1="122" y1="130" x2="128" y2="130" stroke="#A5F3FC" stroke-width="1.2"/><circle cx="126" cy="146" r="3" fill="#10B981"/><path d="M 126 149 L 126 172" stroke="#34D399" stroke-width="2" stroke-dasharray="2 2"/><ellipse cx="116" cy="132" rx="6" ry="6" fill="#FFFFFF"/></g>' +
+      '<ellipse cx="46" cy="122" rx="6.5" ry="6.5" fill="#E07A2B"/>' +
+    '</svg>';
+  }
+
+  function getPipMouseFigureSvg(w, h) {
+    if (global.KidsSustainabilityAcademy && typeof global.KidsSustainabilityAcademy.getPipSvg === 'function') {
+      return global.KidsSustainabilityAcademy.getPipSvg(w, h);
+    }
+    w = w || 95; h = h || 120;
+    return '<svg class="pip-mouse-svg" viewBox="0 0 140 170" width="' + w + '" height="' + h + '" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<ellipse cx="70" cy="164" rx="42" ry="6" fill="rgba(0,0,0,0.35)"/>' +
+      '<g class="pip-tail"><path d="M 68 144 C 94 144, 118 135, 124 112 C 128 92, 114 78, 106 82 C 98 86, 104 98, 112 102 Z" fill="#F9A8D4"/></g>' +
+      '<path d="M 50 148 L 62 148 L 64 160 L 44 160 Z" fill="#84CC16"/>' +
+      '<rect x="42" y="158" width="24" height="4" rx="1.5" fill="#E2E8F0" stroke="#94A3B8" stroke-width="0.8"/>' +
+      '<line x1="48" y1="160" x2="48" y2="162" stroke="#64748B" stroke-width="1"/><line x1="54" y1="160" x2="54" y2="162" stroke="#64748B" stroke-width="1"/><line x1="60" y1="160" x2="60" y2="162" stroke="#64748B" stroke-width="1"/>' +
+      '<path d="M 76 148 L 88 148 L 94 160 L 74 160 Z" fill="#84CC16"/>' +
+      '<rect x="72" y="158" width="24" height="4" rx="1.5" fill="#E2E8F0" stroke="#94A3B8" stroke-width="0.8"/>' +
+      '<line x1="78" y1="160" x2="78" y2="162" stroke="#64748B" stroke-width="1"/><line x1="84" y1="160" x2="84" y2="162" stroke="#64748B" stroke-width="1"/><line x1="90" y1="160" x2="90" y2="162" stroke="#64748B" stroke-width="1"/>' +
+      '<path d="M 50 128 L 90 128 L 94 150 L 76 150 L 74 142 L 72 142 L 70 150 L 46 150 Z" fill="#EA580C"/>' +
+      '<line x1="70" y1="128" x2="70" y2="142" stroke="#C2410C" stroke-width="1.5"/>' +
+      '<path d="M 46 94 L 94 94 L 92 130 L 48 130 Z" fill="#06B6D4"/>' +
+      '<circle cx="56" cy="104" r="2.5" fill="#FDE047"/><circle cx="54" cy="102" r="1.5" fill="#FFFFFF"/><circle cx="58" cy="102" r="1.5" fill="#FFFFFF"/><circle cx="56" cy="106" r="1.5" fill="#FFFFFF"/>' +
+      '<circle cx="82" cy="108" r="2.5" fill="#FDE047"/><circle cx="80" cy="106" r="1.5" fill="#FFFFFF"/><circle cx="84" cy="106" r="1.5" fill="#FFFFFF"/><circle cx="82" cy="110" r="1.5" fill="#FFFFFF"/>' +
+      '<circle cx="68" cy="118" r="2.5" fill="#FDE047"/><circle cx="66" cy="116" r="1.5" fill="#FFFFFF"/><circle cx="70" cy="116" r="1.5" fill="#FFFFFF"/><ellipse cx="70" cy="104" rx="8" ry="10" fill="#F3E8D6"/>' +
+      '<circle cx="44" cy="46" r="18" fill="#9C744A"/><circle cx="44" cy="46" r="12" fill="#F472B6"/><circle cx="44" cy="46" r="7" fill="#FBCFE8"/>' +
+      '<circle cx="96" cy="46" r="18" fill="#9C744A"/><circle cx="96" cy="46" r="12" fill="#F472B6"/><circle cx="96" cy="46" r="7" fill="#FBCFE8"/>' +
+      '<ellipse cx="70" cy="68" rx="22" ry="24" fill="#9C744A"/><ellipse cx="70" cy="74" rx="14" ry="16" fill="#F3E8D6"/><ellipse cx="70" cy="84" rx="4" ry="3.5" fill="#F472B6"/>' +
+      '<line x1="56" y1="83" x2="40" y2="80" stroke="#9C744A" stroke-width="1.2"/><line x1="56" y1="86" x2="40" y2="87" stroke="#9C744A" stroke-width="1.2"/>' +
+      '<line x1="84" y1="83" x2="100" y2="80" stroke="#9C744A" stroke-width="1.2"/><line x1="84" y1="86" x2="100" y2="87" stroke="#9C744A" stroke-width="1.2"/>' +
+      '<ellipse cx="61" cy="66" rx="4.5" ry="5.5" fill="#0F172A"/><circle cx="62.5" cy="64.5" r="1.5" fill="#FFFFFF"/><circle cx="59.5" cy="67.5" r="0.8" fill="#FFFFFF"/>' +
+      '<ellipse cx="79" cy="66" rx="4.5" ry="5.5" fill="#0F172A"/><circle cx="80.5" cy="64.5" r="1.5" fill="#FFFFFF"/><circle cx="77.5" cy="67.5" r="0.8" fill="#FFFFFF"/>' +
+      '<g class="pip-wand-left wand-light"><rect x="22" y="80" width="8" height="36" rx="4" fill="#22C55E"/><rect x="23" y="112" width="6" height="12" rx="2" fill="#EAB308"/><circle cx="26" cy="80" r="6" fill="#4ADE80" opacity="0.6"/><ellipse cx="28" cy="112" rx="5" ry="5" fill="#F3E8D6"/></g>' +
+      '<g class="pip-wand-right wand-light"><rect x="108" y="80" width="8" height="36" rx="4" fill="#22C55E"/><rect x="109" y="112" width="6" height="12" rx="2" fill="#EAB308"/><circle cx="112" cy="80" r="6" fill="#4ADE80" opacity="0.6"/><ellipse cx="110" cy="112" rx="5" ry="5" fill="#F3E8D6"/></g>' +
+    '</svg>';
+  }
+
+  function speakPuffPipLockedOrientation() {
+    var text = "Hello estate founder! I am Professor Whisker Puff, and this is Pip! Your Living Assistant and Paid Farm Manager unlocks once you earn your Eco-Passport for your next farm. You can test out semi-automated pruning, watering, cattle feeding, and commercial directives right now in preview mode!";
+    if (global.KidsSustainabilityAcademy && typeof global.KidsSustainabilityAcademy.playDialogueVoice === 'function') {
+      try {
+        global.KidsSustainabilityAcademy.playDialogueVoice(text, 'puff');
+        return;
+      } catch (e) {}
+    }
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try {
+        window.speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(text);
+        u.pitch = 1.10;
+        u.rate = 0.98;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+  }
+
+  function getActiveFarmManager() {
+    try {
+      var raw = localStorage.getItem('searchO2_hired_manager');
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        var found = AVATAR_ROSTER.find(function (a) { return a.id === parsed.id; });
+        if (found) return found;
+      }
+    } catch (e) {}
+    if (tourState.avatar) return tourState.avatar;
+    var persisted = loadPersistedAvatar();
+    if (persisted) return persisted;
+    return AVATAR_ROSTER.find(function (a) { return a.id === 'av_priya_woman'; }) || AVATAR_ROSTER[0];
+  }
+
+  function setActiveFarmManager(av) {
+    if (!av) return;
+    try {
+      localStorage.setItem('searchO2_hired_manager', JSON.stringify({
+        id: av.id,
+        name: av.name,
+        managerTitle: av.managerTitle,
+        dailyWage: av.dailyWage,
+        hiredAt: Date.now()
+      }));
+    } catch (e) {}
+    tourState.avatarId = av.id;
+    tourState.avatar = av;
+    persistAvatar(av);
+    logManagerTask('hire', '👔 Selected ' + av.name + ' as Living Farm Manager (' + (av.managerTitle || 'Director') + ' · €' + (av.dailyWage || 35) + '/day)', '👤', 'Active');
+  }
+
+  function getManagerTasks() {
+    try {
+      var raw = localStorage.getItem('searchO2_manager_tasks');
+      if (raw) {
+        var arr = JSON.parse(raw);
+        if (Array.isArray(arr) && arr.length > 0) return arr;
+      }
+    } catch (e) {}
+    return DEFAULT_MANAGER_TASKS.slice();
+  }
+
+  function logManagerTask(type, text, icon, status) {
+    var tasks = getManagerTasks();
+    var now = new Date();
+    var timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    tasks.unshift({
+      id: Date.now(),
+      type: type || 'general',
+      text: text,
+      time: timeStr,
+      icon: icon || '📋',
+      status: status || 'Done'
+    });
+    if (tasks.length > 25) tasks = tasks.slice(0, 25);
+    try {
+      localStorage.setItem('searchO2_manager_tasks', JSON.stringify(tasks));
+    } catch (e) {}
+    return tasks;
+  }
+
+  function executeSemiAutomationSweep(manualTrigger) {
+    var actionsCount = 0;
+    var manager = getActiveFarmManager();
+
+    // 1. Water dry plots to prevent death
+    if (tourState.semiAutomation.autoWater && typeof state !== 'undefined' && state && state.plots && Array.isArray(state.plots)) {
+      state.plots.forEach(function (p, idx) {
+        if (!p) return;
+        var waterNeeds = (p.waterHours !== undefined && p.waterHours < 3) || (p.health !== undefined && p.health < 80);
+        if (waterNeeds && p.status !== 'dead') {
+          p.waterHours = 4;
+          p.health = Math.min(100, (p.health || 80) + 15);
+          actionsCount++;
+        }
+      });
+      logManagerTask('water', '💧 Hydrated thirsty plots to optimal moisture (prevented crop withering)', '💧', 'Hydrated');
+    }
+
+    // 2. Prune overgrown canopies & weeds
+    if (tourState.semiAutomation.autoPrune && typeof state !== 'undefined' && state) {
+      var prunedPlots = 0;
+      if (state.plots && Array.isArray(state.plots)) {
+        state.plots.forEach(function (p) {
+          if (!p) return;
+          if (p.weedHours && p.weedHours > 0) {
+            p.weedHours = 0;
+            prunedPlots++;
+          }
+          if (p.status === 'overgrown') {
+            p.status = 'ready';
+            prunedPlots++;
+          }
+        });
+      }
+      state.totalO2 = (state.totalO2 || 0) + 15;
+      logManagerTask('prune', '✂️ Pruned Streuobst canopies & cleared overgrowth (+15 O₂ generated)', '🌳', 'Healthy');
+    }
+
+    // 3. Feed cattle livestock
+    if (tourState.semiAutomation.autoFeedCattle && typeof state !== 'undefined' && state) {
+      state.cattle = state.cattle || {};
+      state.cattle.fed = true;
+      state.cattle.hunger = 0;
+      state.cattle.health = 100;
+      logManagerTask('cattle', '🐄 Distributed alpine hay & fresh water to cattle paddock', '🐄', 'Satisfied');
+    }
+
+    // 4. Assign idle labor
+    if (tourState.semiAutomation.autoAssignLabor && typeof state !== 'undefined' && state) {
+      if (Array.isArray(state.laborers) || Array.isArray(state.workers)) {
+        var workers = state.laborers || state.workers;
+        workers.forEach(function (w, idx) {
+          if (w && !w.assignedPlot && w.status === 'idle') {
+            w.assignedPlot = idx % (state.plots ? state.plots.length : 1);
+            w.status = 'active';
+          }
+        });
+      }
+      logManagerTask('labor', '👷 Dispatched idle workers to organic soil aeration & weeding', '👷', 'Dispatched');
+    }
+
+    if (typeof requestSave === 'function') {
+      try { requestSave(); } catch (e) {}
+    }
+    if (typeof updateHud === 'function') {
+      try { updateHud(); } catch (e) {}
+    }
+
+    if (manualTrigger && typeof showNotification === 'function') {
+      showNotification('🌾', (manager ? manager.name : 'Farm Manager') + ' ran full Semi-Automation sweep! Plots hydrated, trees pruned, cattle fed.', 'success', null);
+    }
+
+    var host = document.getElementById('s2ManagerHost');
+    if (host && isEcoPassportUnlocked()) {
+      renderManagerSection();
+    }
+  }
+
+  function forwardAdministrativeDirective(directiveType) {
+    var manager = getActiveFarmManager();
+    var managerName = manager ? manager.name : 'Assistant';
+
+    if (directiveType === 'outside_selling') {
+      if (typeof state !== 'undefined' && state) {
+        state.balance = (state.balance || 0) + 350;
+      }
+      logManagerTask('directive', '🛒 Outside Selling: Forwarded harvest to town farmers market (+€350.00)', '💰', '+€350.00');
+      if (typeof showNotification === 'function') {
+        showNotification('🛒', managerName + ' fulfilled Outside Selling directive! Market revenue: +€350.00 cash.', 'success', null);
+      }
+    } else if (directiveType === 'wholesale') {
+      if (typeof state !== 'undefined' && state) {
+        state.balance = (state.balance || 0) + 600;
+      }
+      logManagerTask('directive', '📦 Commercial Wholesale: Fulfilled organic supermarket contract (+€600.00)', '📦', '+€600.00');
+      if (typeof showNotification === 'function') {
+        showNotification('📦', managerName + ' signed Wholesale contract! Bulk shipment cleared: +€600.00 cash.', 'success', null);
+      }
+    } else if (directiveType === 'energy_trade') {
+      if (typeof state !== 'undefined' && state) {
+        state.balance = (state.balance || 0) + 200;
+        state.totalO2 = (state.totalO2 || 0) + 15;
+      }
+      logManagerTask('directive', '⚡ Clean Energy Trade: Exported surplus microgrid energy to grid (+€200.00 · +15 O₂)', '⚡', '+€200 / +15 O₂');
+      if (typeof showNotification === 'function') {
+        showNotification('⚡', managerName + ' executed Energy Trade directive! Surplus power sold for +€200.00 and +15 O₂!', 'success', null);
+      }
+    } else if (directiveType === 'procurement') {
+      if (typeof state !== 'undefined' && state) {
+        state.seedlings = (state.seedlings || 0) + 10;
+        state.balance = Math.max(0, (state.balance || 0) - 50);
+      }
+      logManagerTask('directive', '🌰 Heirloom Procurement: Procured 10 rare heirloom saplings (-€50.00 · +10 Saplings)', '🌱', '+10 Saplings');
+      if (typeof showNotification === 'function') {
+        showNotification('🌰', managerName + ' procured 10 Heirloom saplings for orchard canopy resilience!', 'success', null);
+      }
+    }
+
+    if (typeof requestSave === 'function') {
+      try { requestSave(); } catch (e) {}
+    }
+    if (typeof updateHud === 'function') {
+      try { updateHud(); } catch (e) {}
+    }
+
+    renderManagerSection();
+  }
+
+  function buildManagerLockedModalHtml() {
+    var curO2 = (typeof state !== 'undefined' && state && typeof state.totalO2 === 'number') ? state.totalO2 : 0;
+    var reqO2 = 1000;
+    var pct = Math.min(100, Math.max(12, Math.round((curO2 / reqO2) * 100)));
+
+    return (
+      '<div class="s2-manager-locked-card" id="s2ManagerLockedCard">' +
+        '<div class="s2-locked-badge">🔒 ECO-PASSPORT LOCKED ASSISTANT</div>' +
+        '<div class="s2-locked-title">Living Assistant &amp; Paid Farm Manager</div>' +
+        '<div class="s2-locked-sub">Hire a dedicated living manager to run your estate semi-autonomously when you progress to your next farm! Unlocks with your <b>Eco-Passport</b> (Chapter 7 / 1,000+ O₂).</div>' +
+        '<div class="s2-puff-pip-stage">' +
+          '<div class="s2-actor-avatar-wrap s2-puff-anim" title="Professor Whisker Puff">' +
+            getWhiskerPuffFigureSvg(100, 125) +
+            '<span class="s2-actor-tag">Prof. Whisker Puff</span>' +
+          '</div>' +
+          '<div class="s2-actor-avatar-wrap s2-pip-anim" title="Pip Squeak-a-Link">' +
+            getPipMouseFigureSvg(85, 110) +
+            '<span class="s2-actor-tag">Pip Squeak-a-Link</span>' +
+          '</div>' +
+          '<div class="s2-speech-bubble-dialog">' +
+            '<p><b>"Meow-llo, Estate Founder!</b> Pip and I are preparing your Living Assistant station! Once you unlock your Eco-Passport for your next farm, your hired manager will prune trees to prevent foliage decay, water plots so crops never wither, feed cattle, and organize daily tasks while you make high-level commercial trades!"</p>' +
+            '<div class="s2-speech-bubble-actions">' +
+              '<button type="button" class="s2-btn-speech-play" id="s2BtnSpeakPuffPip">🔊 Listen to Professor Puff</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="s2-locked-meter-wrap">' +
+          '<div class="s2-locked-meter-label">' +
+            '<span>Eco-Passport Progress:</span>' +
+            '<span>' + Math.round(curO2).toLocaleString() + ' / ' + reqO2.toLocaleString() + ' O₂ (' + pct + '%)</span>' +
+          '</div>' +
+          '<div class="s2-locked-meter-bar">' +
+            '<div class="s2-locked-meter-fill" style="width: ' + pct + '%"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="s2-locked-actions">' +
+          '<button type="button" class="s2-btn-preview-unlock" id="s2BtnPreviewManagerUnlock">✨ Preview &amp; Test Mode (Unlock Manager Station)</button>' +
+          '<button type="button" class="s2-btn-roadmap" id="s2BtnViewPassportRoadmap">🧭 View Eco-Passport Roadmap ➔</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  function buildManagerDashboardHtml() {
+    var manager = getActiveFarmManager();
+    var tasks = getManagerTasks();
+    var activeTab = tourState.managerActiveTab || 'roster';
+    var curO2 = (typeof state !== 'undefined' && state && typeof state.totalO2 === 'number') ? state.totalO2 : 1240;
+    var curBalance = (typeof state !== 'undefined' && state && typeof state.balance === 'number') ? state.balance : 850;
+
+    var previewBadge = tourState.managerPreviewMode
+      ? '<span class="s2-preview-badge">✨ PREVIEW / TEST MODE ACTIVE <button type="button" id="s2BtnResetLock" class="s2-btn-reset-lock" title="Reset lock state">Reset Lock</button></span>'
+      : '<span class="s2-unlocked-badge">🟢 ECO-PASSPORT CERTIFIED</span>';
+
+    var tabsHtml =
+      '<div class="s2-manager-tabs">' +
+        '<button type="button" class="s2-manager-tab-btn' + (activeTab === 'roster' ? ' active' : '') + '" data-mtab="roster">👤 Hired Assistant (' + esc(manager.name) + ')</button>' +
+        '<button type="button" class="s2-manager-tab-btn' + (activeTab === 'taskboard' ? ' active' : '') + '" data-mtab="taskboard">📋 Daily Task Board</button>' +
+        '<button type="button" class="s2-manager-tab-btn' + (activeTab === 'stats' ? ' active' : '') + '" data-mtab="stats">📊 Farm Statistics</button>' +
+        '<button type="button" class="s2-manager-tab-btn' + (activeTab === 'directives' ? ' active' : '') + '" data-mtab="directives">⚡ Executive Directives</button>' +
+      '</div>';
+
+    var tabContentHtml = '';
+
+    if (activeTab === 'roster') {
+      tabContentHtml =
+        '<div class="s2-active-manager-card">' +
+          '<div class="s2-active-manager-fig">' +
+            avatarFigureSvg(manager, { w: 90, h: 120 }) +
+            '<div class="s2-manager-wage-pill">€' + (manager.dailyWage || 35) + ' / day</div>' +
+          '</div>' +
+          '<div class="s2-active-manager-body">' +
+            '<div class="s2-active-manager-header">' +
+              '<span class="s2-am-title">' + manager.regionFlag + ' ' + esc(manager.name) + ' · ' + esc(manager.managerTitle || 'Estate Manager') + '</span>' +
+              '<span class="s2-am-status">🟢 ON DUTY</span>' +
+            '</div>' +
+            '<div class="s2-am-meta">' + manager.adjective + ' ' + manager.gender + ' · ' + manager.ageBand + ' yrs · ' + esc(manager.country || manager.regionName) + ' · Heritage: ' + esc(manager.heritage) + '</div>' +
+            '<div class="s2-am-bio">' + esc(manager.managerBio || 'Dedicated estate caretaker.') + '</div>' +
+            '<div class="s2-am-specialty"><b>Primary Specialty:</b> ' + esc(manager.managerSpecialty || 'Canopy Care & Irrigation Balance') + '</div>' +
+            '<div class="s2-am-switch-hint">💡 To switch your living assistant, click any avatar card from the 12 global roster cards below!</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="s2-semi-section-title">⚙️ Assistant Semi-Automation Settings (Routine Farm Care)</div>' +
+        '<div class="s2-semi-grid">' +
+          '<div class="s2-semi-card">' +
+            '<div class="s2-semi-info">' +
+              '<div class="s2-semi-name">🌳 Streuobst Tree Pruning</div>' +
+              '<div class="s2-semi-desc">Prunes overgrown canopies to prevent foliage decay &amp; optimize clean O₂ generation.</div>' +
+            '</div>' +
+            '<label class="s2-switch">' +
+              '<input type="checkbox" id="s2TogglePrune"' + (tourState.semiAutomation.autoPrune ? ' checked' : '') + '>' +
+              '<span class="s2-slider"></span>' +
+            '</label>' +
+          '</div>' +
+          '<div class="s2-semi-card">' +
+            '<div class="s2-semi-info">' +
+              '<div class="s2-semi-name">💧 Soil &amp; Plot Hydration</div>' +
+              '<div class="s2-semi-desc">Monitors plot moisture to prevent crop withering, drought distress &amp; tree death.</div>' +
+            '</div>' +
+            '<label class="s2-switch">' +
+              '<input type="checkbox" id="s2ToggleWater"' + (tourState.semiAutomation.autoWater ? ' checked' : '') + '>' +
+              '<span class="s2-slider"></span>' +
+            '</label>' +
+          '</div>' +
+          '<div class="s2-semi-card">' +
+            '<div class="s2-semi-info">' +
+              '<div class="s2-semi-name">🐄 Cattle Livestock Feeding</div>' +
+              '<div class="s2-semi-desc">Replenishes meadow forage, hay troughs &amp; freshwater for animal welfare.</div>' +
+            '</div>' +
+            '<label class="s2-switch">' +
+              '<input type="checkbox" id="s2ToggleFeed"' + (tourState.semiAutomation.autoFeedCattle ? ' checked' : '') + '>' +
+              '<span class="s2-slider"></span>' +
+            '</label>' +
+          '</div>' +
+          '<div class="s2-semi-card">' +
+            '<div class="s2-semi-info">' +
+              '<div class="s2-semi-name">👷 Field Laborer Dispatch</div>' +
+              '<div class="s2-semi-desc">Assigns idle workers to weeding, soil aeration, and compost turning.</div>' +
+            '</div>' +
+            '<label class="s2-switch">' +
+              '<input type="checkbox" id="s2ToggleLabor"' + (tourState.semiAutomation.autoAssignLabor ? ' checked' : '') + '>' +
+              '<span class="s2-slider"></span>' +
+            '</label>' +
+          '</div>' +
+        '</div>' +
+        '<div class="s2-semi-action-row">' +
+          '<button type="button" class="s2-btn-sweep" id="s2BtnRunSweep">⚡ Run Semi-Automation Sweep Now</button>' +
+        '</div>';
+    } else if (activeTab === 'taskboard') {
+      var taskItemsHtml = tasks.map(function (t) {
+        return (
+          '<div class="s2-task-item">' +
+            '<span class="s2-ti-icon">' + (t.icon || '📋') + '</span>' +
+            '<div class="s2-ti-body">' +
+              '<div class="s2-ti-text">' + esc(t.text) + '</div>' +
+              '<div class="s2-ti-time">' + esc(t.time) + ' · Assistant Action</div>' +
+            '</div>' +
+            '<span class="s2-ti-status">' + esc(t.status || 'Done') + '</span>' +
+          '</div>'
+        );
+      }).join('');
+
+      tabContentHtml =
+        '<div class="s2-taskboard-card">' +
+          '<div class="s2-taskboard-header">' +
+            '<span>📋 Daily Semi-Automated Task Log</span>' +
+            '<span class="s2-task-count">' + tasks.length + ' Recorded Actions</span>' +
+          '</div>' +
+          '<div class="s2-task-list">' + taskItemsHtml + '</div>' +
+        '</div>';
+    } else if (activeTab === 'stats') {
+      tabContentHtml =
+        '<div class="s2-stats-grid">' +
+          '<div class="s2-stat-tile">' +
+            '<div class="s2-stat-icon">💧</div>' +
+            '<div class="s2-stat-label">Soil Hydration Index</div>' +
+            '<div class="s2-stat-val">88% Optimal</div>' +
+            '<div class="s2-stat-sub">Multi-plot auto-watering active</div>' +
+          '</div>' +
+          '<div class="s2-stat-tile">' +
+            '<div class="s2-stat-icon">🌳</div>' +
+            '<div class="s2-stat-label">Tree Canopy Vitality</div>' +
+            '<div class="s2-stat-val">97% High Vigor</div>' +
+            '<div class="s2-stat-sub">Pruning prevents foliar decay</div>' +
+          '</div>' +
+          '<div class="s2-stat-tile">' +
+            '<div class="s2-stat-icon">🐄</div>' +
+            '<div class="s2-stat-label">Livestock Health</div>' +
+            '<div class="s2-stat-val">100% Fed</div>' +
+            '<div class="s2-stat-sub">Ration troughs full &amp; clean</div>' +
+          '</div>' +
+          '<div class="s2-stat-tile">' +
+            '<div class="s2-stat-icon">👷</div>' +
+            '<div class="s2-stat-label">Labor Utilization</div>' +
+            '<div class="s2-stat-val">100% Dispatched</div>' +
+            '<div class="s2-stat-sub">Zero idle laborers</div>' +
+          '</div>' +
+          '<div class="s2-stat-tile">' +
+            '<div class="s2-stat-icon">💰</div>' +
+            '<div class="s2-stat-label">Assistant Wage</div>' +
+            '<div class="s2-stat-val">€' + (manager.dailyWage || 35) + ' / day</div>' +
+            '<div class="s2-stat-sub">Treasury: €' + Math.round(curBalance).toLocaleString() + '</div>' +
+          '</div>' +
+          '<div class="s2-stat-tile">' +
+            '<div class="s2-stat-icon">🌿</div>' +
+            '<div class="s2-stat-label">Clean O₂ Generation</div>' +
+            '<div class="s2-stat-val">' + Math.round(curO2).toLocaleString() + ' O₂</div>' +
+            '<div class="s2-stat-sub">Eco-Passport certified</div>' +
+          '</div>' +
+        '</div>';
+    } else if (activeTab === 'directives') {
+      tabContentHtml =
+        '<div class="s2-directives-intro">' +
+          '<b>Executive Decision Center:</b> You formulate high-level commercial and strategic trade decisions; your Living Assistant executes them immediately in the field.' +
+        '</div>' +
+        '<div class="s2-directives-grid">' +
+          '<div class="s2-directive-card">' +
+            '<div class="s2-dir-icon">🛒</div>' +
+            '<div class="s2-dir-title">Outside Town Market Selling</div>' +
+            '<div class="s2-dir-desc">Forward harvested organic fruits &amp; vegetables to the regional weekend farmers market.</div>' +
+            '<div class="s2-dir-return"><b>Yield:</b> <span class="cash-pos">+€350.00 cash</span></div>' +
+            '<button type="button" class="s2-btn-directive" data-directive="outside_selling">Forward Directive ➔</button>' +
+          '</div>' +
+          '<div class="s2-directive-card">' +
+            '<div class="s2-dir-icon">📦</div>' +
+            '<div class="s2-dir-title">Commercial Wholesale Contract</div>' +
+            '<div class="s2-dir-desc">Sign bulk distribution delivery contract with regional organic supermarket co-op.</div>' +
+            '<div class="s2-dir-return"><b>Yield:</b> <span class="cash-pos">+€600.00 cash</span></div>' +
+            '<button type="button" class="s2-btn-directive" data-directive="wholesale">Forward Directive ➔</button>' +
+          '</div>' +
+          '<div class="s2-directive-card">' +
+            '<div class="s2-dir-icon">⚡</div>' +
+            '<div class="s2-dir-title">Clean Microgrid Energy Trade</div>' +
+            '<div class="s2-dir-desc">Export surplus wind and solar stored in BESS battery to municipal green power grid.</div>' +
+            '<div class="s2-dir-return"><b>Yield:</b> <span class="cash-pos">+€200.00 cash</span> &amp; <span class="o2-pos">+15 O₂</span></div>' +
+            '<button type="button" class="s2-btn-directive" data-directive="energy_trade">Forward Directive ➔</button>' +
+          '</div>' +
+          '<div class="s2-directive-card">' +
+            '<div class="s2-dir-icon">🌰</div>' +
+            '<div class="s2-dir-title">Heirloom Seedling Procurement</div>' +
+            '<div class="s2-dir-desc">Authorize assistant to procure 10 rare heirloom saplings to expand biodiversity.</div>' +
+            '<div class="s2-dir-return"><b>Cost:</b> €50.00 · <b>Yield:</b> +10 Heirloom Saplings</div>' +
+            '<button type="button" class="s2-btn-directive" data-directive="procurement">Forward Directive ➔</button>' +
+          '</div>' +
+        '</div>';
+    }
+
+    return (
+      '<div class="s2-manager-dashboard">' +
+        '<div class="s2-manager-dash-header">' +
+          '<div class="s2-mdh-title">' +
+            '<span>🌿 Living Assistant &amp; Paid Farm Manager Station</span>' +
+            previewBadge +
+          '</div>' +
+          '<div class="s2-mdh-sub">Autonomous Routine Care · Pruning, Watering, Feeding &amp; Labor · Executive Strategic Directives</div>' +
+        '</div>' +
+        tabsHtml +
+        '<div class="s2-manager-tab-content">' + tabContentHtml + '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderManagerSection() {
+    var host = document.getElementById('s2ManagerHost');
+    if (!host) return;
+
+    if (!isEcoPassportUnlocked()) {
+      host.innerHTML = buildManagerLockedModalHtml();
+
+      var btnSpeak = document.getElementById('s2BtnSpeakPuffPip');
+      if (btnSpeak) {
+        btnSpeak.onclick = function () {
+          speakPuffPipLockedOrientation();
+        };
+      }
+
+      var btnPreview = document.getElementById('s2BtnPreviewManagerUnlock');
+      if (btnPreview) {
+        btnPreview.onclick = function () {
+          tourState.managerPreviewMode = true;
+          renderManagerSection();
+          if (typeof showNotification === 'function') {
+            showNotification('✨', 'Manager Preview & Test Mode Activated! Dashboard is fully interactive.', 'success', null);
+          }
+        };
+      }
+
+      var btnRoadmap = document.getElementById('s2BtnViewPassportRoadmap');
+      if (btnRoadmap) {
+        btnRoadmap.onclick = function () {
+          if (typeof showNotification === 'function') {
+            showNotification('🧭', 'Advance through Chapters 1 to 7 to unlock the full Eco-Passport and recruit estate managers!', 'bank', null);
+          }
+        };
+      }
+      return;
+    }
+
+    // Unlocked or Preview Mode
+    host.innerHTML = buildManagerDashboardHtml();
+
+    // Tab buttons
+    host.querySelectorAll('[data-mtab]').forEach(function (btn) {
+      btn.onclick = function () {
+        tourState.managerActiveTab = btn.getAttribute('data-mtab');
+        renderManagerSection();
+      };
+    });
+
+    // Reset lock button (if in preview mode)
+    var btnResetLock = document.getElementById('s2BtnResetLock');
+    if (btnResetLock) {
+      btnResetLock.onclick = function (e) {
+        if (e) e.stopPropagation();
+        tourState.managerPreviewMode = false;
+        renderManagerSection();
+      };
+    }
+
+    // Semi automation toggles
+    var togglePrune = document.getElementById('s2TogglePrune');
+    if (togglePrune) {
+      togglePrune.onchange = function () {
+        tourState.semiAutomation.autoPrune = !!togglePrune.checked;
+      };
+    }
+    var toggleWater = document.getElementById('s2ToggleWater');
+    if (toggleWater) {
+      toggleWater.onchange = function () {
+        tourState.semiAutomation.autoWater = !!toggleWater.checked;
+      };
+    }
+    var toggleFeed = document.getElementById('s2ToggleFeed');
+    if (toggleFeed) {
+      toggleFeed.onchange = function () {
+        tourState.semiAutomation.autoFeedCattle = !!toggleFeed.checked;
+      };
+    }
+    var toggleLabor = document.getElementById('s2ToggleLabor');
+    if (toggleLabor) {
+      toggleLabor.onchange = function () {
+        tourState.semiAutomation.autoAssignLabor = !!toggleLabor.checked;
+      };
+    }
+
+    // Manual sweep button
+    var btnSweep = document.getElementById('s2BtnRunSweep');
+    if (btnSweep) {
+      btnSweep.onclick = function () {
+        executeSemiAutomationSweep(true);
+      };
+    }
+
+    // Directive buttons
+    host.querySelectorAll('[data-directive]').forEach(function (btn) {
+      btn.onclick = function () {
+        var dType = btn.getAttribute('data-directive');
+        forwardAdministrativeDirective(dType);
+      };
+    });
+  }
+
+  var _managerHeartbeatTimer = null;
+  function initManagerHeartbeat() {
+    if (_managerHeartbeatTimer) return;
+    _managerHeartbeatTimer = setInterval(function () {
+      if (isEcoPassportUnlocked() && !isGuestMode()) {
+        executeSemiAutomationSweep(false);
+      }
+    }, 45000);
+  }
+
   function buildHomeOverlayHtml() {
     var biomeCards = renderBiomeCardsHtml();
 
@@ -1559,13 +2261,14 @@
     }).join('');
 
     return (
-      '<div class="s2-home-overlay" id="s2HomeOverlay" role="dialog" aria-label="Choose your explorer">' +
+      '<div class="s2-home-overlay" id="s2HomeOverlay" role="dialog" aria-label="Living Assistant and Explorer Station">' +
         '<div class="s2-home-sky" id="s2HomeSky"></div>' +
         '<div class="s2-home-header">' +
-          '<h1>🌿 searchO2 · Choose Your Explorer</h1>' +
-          '<div class="sub">Volumetric 3D isometric farm adventure · walk the meadow · survey every chapter</div>' +
+          '<h1>🌿 searchO2 · Living Assistant &amp; Paid Farm Manager</h1>' +
+          '<div class="sub">Autonomous routine farm care · interactive task board &amp; executive commercial trade directives</div>' +
         '</div>' +
         '<div class="s2-home-body">' +
+          '<div id="s2ManagerHost"></div>' +
           '<div class="s2-world-map-card s2-circular-globe-card">' +
             '<div class="s2-world-map-inner">' +
               '<div class="s2-world-map-title">' +
@@ -1588,8 +2291,8 @@
             '</div>' +
           '</div>' +
           '<div class="s2-biome-row" id="s2BiomeRow">' + biomeCards + '</div>' +
-          '<div class="s2-avatar-section-title">👤 Select Your 3D Explorer Avatar</div>' +
-          '<div class="s2-avatar-section-sub">12 diverse characters grouped by world region · ages 8–90 · regional dress · matching adjectives</div>' +
+          '<div class="s2-avatar-section-title">👤 Select Your Living Assistant / 3D Explorer</div>' +
+          '<div class="s2-avatar-section-sub">12 diverse global managers · specialized agricultural backgrounds · ages 8–90 · daily fee</div>' +
           '<div class="s2-filter-dock">' +
             '<div class="s2-filter-label">🌍 Filter by Global Region:</div>' +
             '<div class="s2-region-filters" id="s2RegionFilters">' + regionChips + '</div>' +
@@ -1600,7 +2303,7 @@
         '</div>' +
         '<div class="s2-home-footer">' +
           '<button type="button" class="s2-btn-ghost" id="s2SkipAvatar">Skip for now</button>' +
-          '<button type="button" class="s2-btn-primary" id="s2ConfirmAvatar" disabled>Enter farm through the gate ➔</button>' +
+          '<button type="button" class="s2-btn-primary" id="s2ConfirmAvatar" disabled>Confirm Avatar &amp; Enter Farm ➔</button>' +
         '</div>' +
       '</div>' +
       '<div class="s2-tour-progress" id="s2TourProgress">' +
@@ -1701,6 +2404,7 @@
             '<div class="s2-avatar-name">' + av.name + '</div>' +
             '<div class="s2-avatar-adj">' + av.adjective + '</div>' +
             '<div class="s2-avatar-meta">' + av.gender + ' · ' + av.ageBand + ' yrs</div>' +
+            '<div class="s2-avatar-manager-badge">👔 €' + (av.dailyWage || 35) + '/day · ' + esc(av.managerTitle || 'Manager') + '</div>' +
             '<div class="s2-avatar-heritage" title="' + av.heritage + '">Heritage: ' + av.heritage + '</div>' +
             '<div class="s2-avatar-dress" title="' + av.dress + '">' + av.dress + '</div>' +
           '</button>';
@@ -1718,7 +2422,11 @@
       btn.onclick = function () {
         tourState.avatarId = btn.getAttribute('data-avatar');
         tourState.avatar = AVATAR_ROSTER.find(function (a) { return a.id === tourState.avatarId; }) || null;
+        if (tourState.avatar) {
+          setActiveFarmManager(tourState.avatar);
+        }
         renderAvatarGrid();
+        renderManagerSection();
       };
     });
   }
@@ -1825,16 +2533,11 @@
     var params = (typeof window !== 'undefined' && window.location && window.location.search) ? new URLSearchParams(window.location.search) : null;
     var forceHome = !!force || (params && (params.get('mode') === 'home' || params.has('home') || params.get('screen') === 'home'));
 
-    if (isGuestMode() && !forceHome) {
-      if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.openWelcomeOrProgressModal === 'function') {
-        global.SearchO2ShakirGuide.openWelcomeOrProgressModal();
-      }
-      return;
-    }
     // In logged-in mode, ensure Shakir CEO guide is removed so only player Avatar Journey exists
-    if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.removeGuide === 'function') {
+    if (!isGuestMode() && global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.removeGuide === 'function') {
       try { global.SearchO2ShakirGuide.removeGuide(); } catch (e) {}
     }
+
     var existing = document.getElementById('s2HomeOverlay');
     if (!existing) {
       var wrap = document.createElement('div');
@@ -1844,11 +2547,21 @@
       }
       dockTopCapsules();
     }
+
+    if (isGuestMode() && !forceHome) {
+      if (global.SearchO2ShakirGuide && typeof global.SearchO2ShakirGuide.openWelcomeOrProgressModal === 'function') {
+        global.SearchO2ShakirGuide.openWelcomeOrProgressModal();
+      }
+      return;
+    }
+
     var overlay = document.getElementById('s2HomeOverlay');
     if (overlay) overlay.classList.remove('hidden');
     sprinkleStars();
     renderAvatarGrid();
+    renderManagerSection();
     wireBiomeCards();
+    initManagerHeartbeat();
 
     // Initialize 3D Circular Globe
     HomeAvatarGlobe.init('s2HomeGlobeCanvas');
@@ -1964,10 +2677,24 @@
   }
 
   function confirmAvatarAndStartTour() {
-    var av = tourState.avatar;
+    var av = tourState.avatar || getActiveFarmManager();
     if (!av) return;
     persistAvatar(av);
+    setActiveFarmManager(av);
     hideHomeOverlay();
+
+    // In logged-in mode, do NOT start the tutorial chapter walking tour that crashes on non-tutorial estates!
+    if (!isGuestMode()) {
+      executeSemiAutomationSweep(true);
+      if (typeof switchScreen === 'function') {
+        try { switchScreen('farm'); } catch (e) {}
+      }
+      if (typeof showNotification === 'function') {
+        showNotification('👔', av.name + ' (' + (av.managerTitle || 'Farm Manager') + ') is actively managing your estate!', 'success', null);
+      }
+      return;
+    }
+
     try {
       localStorage.removeItem('searchO2_chapter_tour_done');
     } catch(e) {}
@@ -1979,7 +2706,11 @@
     }
 
     setTimeout(function () {
-      startChapterTour(av);
+      try {
+        startChapterTour(av);
+      } catch (err) {
+        console.warn('[SearchO2HomeAvatar] startChapterTour non-blocking fallback:', err);
+      }
     }, 400);
   }
 
@@ -3933,6 +4664,23 @@
     getSuccessfulExplorations: getSuccessfulExplorations,
     incrementSuccessfulExplorations: incrementSuccessfulExplorations,
     avatarLeaveFarm: avatarLeaveFarm,
+    getActiveManager: getActiveFarmManager,
+    setActiveManager: setActiveFarmManager,
+    hireManager: setActiveFarmManager,
+    isEcoPassportUnlocked: isEcoPassportUnlocked,
+    previewUnlockManager: function (preview) {
+      tourState.managerPreviewMode = (preview !== false);
+      renderManagerSection();
+    },
+    executeSemiAutomationSweep: executeSemiAutomationSweep,
+    forwardDirective: forwardAdministrativeDirective,
+    getManagerTasks: getManagerTasks,
+    openManagerModal: function () {
+      showHomeOverlay(true);
+    },
+    getWhiskerPuffSvg: getWhiskerPuffFigureSvg,
+    getPipSvg: getPipMouseFigureSvg,
+    renderManagerSection: renderManagerSection,
     Globe: HomeAvatarGlobe,
     REGIONS: REGIONS,
     AVATAR_ROSTER: AVATAR_ROSTER
