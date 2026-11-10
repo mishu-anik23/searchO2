@@ -16338,6 +16338,12 @@ var GlobeEngine = (function(){
         return;
       }
       rotateTo(b.lat, b.lon, function(){
+        try {
+          if (apiUser) localStorage.setItem('searchO2_user', JSON.stringify(apiUser));
+          sessionStorage.setItem('searchO2_admin_elevated', '1');
+          sessionStorage.setItem('searchO2_admin_email', (apiUser && apiUser.email) ? apiUser.email : 'searcho2.online@gmail.com');
+          sessionStorage.setItem('searchO2_admin_role', (apiUser && apiUser.role) ? apiUser.role : 'admin');
+        } catch(e){}
         window.location.href = 'bavaria/alpenhof.html';
       });
       return;
@@ -16422,7 +16428,8 @@ var GlobeEngine = (function(){
     resetView: function(){
       zoom = 1.0;
       rotateTo(51.16, 10.45);
-    }
+    },
+    handleRegionClick: handleRegionClick
   };
 })();
 window.GlobeEngine = GlobeEngine;
@@ -21795,15 +21802,17 @@ function isAdminUser() {
   if (!apiUser) {
     var elv = sessionStorage.getItem('searchO2_admin_elevated') === '1';
     var em = (sessionStorage.getItem('searchO2_admin_email') || '').toLowerCase().trim();
-    if (elv && em === 'searcho2.online@gmail.com') return true;
+    if (elv && (em === 'searcho2.online@gmail.com' || sessionStorage.getItem('searchO2_admin_role') === 'admin')) return true;
+    var userFromLs = null;
+    try { userFromLs = JSON.parse(localStorage.getItem('searchO2_user') || 'null'); } catch(e){}
+    if (userFromLs && (userFromLs.role === 'admin' || (userFromLs.email || '').toLowerCase().trim() === 'searcho2.online@gmail.com')) return true;
     return false;
   }
   var userEmail = (apiUser.email || '').toLowerCase().trim();
-  if (userEmail !== 'searcho2.online@gmail.com') return false;
   var hasAdminRole = apiUser.role === 'admin';
   var hasElevated = sessionStorage.getItem('searchO2_admin_elevated') === '1';
   var hasAdminToken = !!localStorage.getItem('searchO2_admin_token');
-  return (hasAdminRole || hasElevated || hasAdminToken);
+  return (hasAdminRole || userEmail === 'searcho2.online@gmail.com' || hasElevated || hasAdminToken);
 }
 window.isAdminUser = isAdminUser;
 
@@ -21882,6 +21891,12 @@ var ApiClient = {
     .then(function(data){
       if (data.user){
         apiUser = data.user;
+        try { localStorage.setItem('searchO2_user', JSON.stringify(apiUser)); } catch(e){}
+        if (apiUser.role === 'admin' || (apiUser.email || '').toLowerCase().trim() === 'searcho2.online@gmail.com') {
+          sessionStorage.setItem('searchO2_admin_elevated', '1');
+          sessionStorage.setItem('searchO2_admin_email', apiUser.email || 'searcho2.online@gmail.com');
+          sessionStorage.setItem('searchO2_admin_role', apiUser.role || 'admin');
+        }
         render();
         self.connectWs();
         self.syncFarm();
@@ -41418,11 +41433,18 @@ function topbarStatsHtml(){
       '<span class="kid-stat-lbl">Journey</span>' +
     '</div>',
 
-    '<div class="kid-stat-card kid-card-action" onclick="if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.showHomeOverlay(true)" style="cursor:pointer;" title="Your 3D Avatar Explorer (Click to Change) · Successful Tours: ' + succCount + '">' +
-      '<span class="kid-stat-icon">👤</span>' +
-      '<span class="kid-stat-val">' + avName + '</span>' +
-      '<span class="kid-stat-lbl">' + avAdj + ' · 🏆 ' + succCount + '</span>' +
-    '</div>',
+    ((!apiUser || apiUser.role === 'guest') ?
+      '<div class="kid-stat-card kid-card-action" onclick="if(window.SearchO2ShakirGuide)SearchO2ShakirGuide.openWelcomeOrProgressModal()" style="cursor:pointer;background:linear-gradient(135deg,#E0F2FE,#BAE6FD);border:1.5px solid #38BDF8;" title="Shakir · SearchO2 Co-Founder &amp; CEO Guide (Tap to talk)">' +
+        '<span class="kid-stat-icon">🧑‍💼</span>' +
+        '<span class="kid-stat-val" style="color:#0369A1;font-weight:900;">Shakir</span>' +
+        '<span class="kid-stat-lbl" style="color:#0284C7;font-weight:800;">Co-Founder &amp; CEO</span>' +
+      '</div>' :
+      '<div class="kid-stat-card kid-card-action" onclick="if(window.SearchO2HomeAvatar)SearchO2HomeAvatar.showHomeOverlay(true)" style="cursor:pointer;" title="Your 3D Avatar Explorer (Click to Change) · Successful Tours: ' + succCount + '">' +
+        '<span class="kid-stat-icon">👤</span>' +
+        '<span class="kid-stat-val">' + avName + '</span>' +
+        '<span class="kid-stat-lbl">' + avAdj + ' · 🏆 ' + succCount + '</span>' +
+      '</div>'
+    ),
 
     '<div class="kid-stat-card kid-card-rep" title="Total Successful Farm Explorations Completed">' +
       '<span class="kid-stat-icon">🏆</span>' +
@@ -41547,6 +41569,26 @@ function countPendingTasks(){
   if (state.buildings && state.buildings.pond && state.buildings.pond.built && !state.buildings.pond.specialization) n++;
   return n;
 }
+function handleAlpenhofDockClick(){
+  var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
+  if (isAdmin){
+    try {
+      if (apiUser) localStorage.setItem('searchO2_user', JSON.stringify(apiUser));
+      sessionStorage.setItem('searchO2_admin_elevated', '1');
+      sessionStorage.setItem('searchO2_admin_email', (apiUser && apiUser.email) ? apiUser.email : 'searcho2.online@gmail.com');
+      sessionStorage.setItem('searchO2_admin_role', (apiUser && apiUser.role) ? apiUser.role : 'admin');
+    } catch(e){}
+    window.location.href = 'bavaria/alpenhof.html';
+  } else {
+    if (typeof window.showAdminRestrictedModal === 'function'){
+      window.showAdminRestrictedModal('bavaria', 'Alpenhof Journey (Bavaria)');
+    } else {
+      showNotification('🔒', 'Alpenhof (Bavaria) is reserved for Headquarters Administration.', 'bank', null);
+    }
+  }
+}
+window.handleAlpenhofDockClick = handleAlpenhofDockClick;
+
 function dockHtml(){
   var taskCount = countPendingTasks();
   var taskBadge = taskCount ? '<span class="badge">'+Math.min(9,taskCount)+'</span>' : '';
@@ -41556,7 +41598,7 @@ function dockHtml(){
   return '<button type="button" class="dock-btn" data-navscreen="region_select" title="Planetary Biome Map" style="background:#E8F5E9;border-color:#4CAF50;color:#1B5E20;">' +
       '<span class="dock-icon">🗺️</span><span class="dock-label">World Map</span>' +
     '</button>' +
-    '<button type="button" class="dock-btn" onclick="window.location.href=\'bavaria/alpenhof.html\'" title="🏔️ Alpenhof Research HQ · 3D Knowledge Lab &amp; Alpine Meadow" style="background:#E0F2FE;border-color:#38BDF8;color:#0369A1;">' +
+    '<button type="button" class="dock-btn" onclick="handleAlpenhofDockClick()" data-tip="🏔️ Alpenhof Research HQ · 3D Knowledge Lab &amp; Alpine Meadow" title="🏔️ Alpenhof Research HQ · 3D Knowledge Lab &amp; Alpine Meadow" style="background:#E0F2FE;border-color:#38BDF8;color:#0369A1;">' +
       '<span class="dock-icon">🏔️</span><span class="dock-label">Alpenhof HQ</span>' +
     '</button>' +
     '<button type="button" class="dock-btn'+(openPanel==='library'?' active':'')+'" data-panel="library" title="Living Botanical Encyclopedia (72 Species) & Pop Quiz">' +
@@ -41769,7 +41811,7 @@ function showGameTooltip(el, text){
   if (el.closest && el.closest('.icon-dock, .top-left-tray, .corner-menu')) {
     var tray = el.closest('.icon-dock') || el.closest('.top-left-tray') || el.closest('.corner-menu');
     var trayRect = tray.getBoundingClientRect();
-    tip.style.left = (trayRect.right + 12) + 'px';
+    tip.style.left = Math.max(12, Math.min(screenW - tipW - 12, trayRect.right + 12)) + 'px';
     tip.style.top = Math.max(8, Math.min(screenH - tipH - 8, r.top)) + 'px';
     tip.classList.remove('tip-above', 'tip-below');
     return;
@@ -41832,17 +41874,24 @@ function initGameTooltips(){
   }
 
   if (typeof document !== 'undefined' && document && document.addEventListener){
-    // Pointer hover for desktop
+    // Pointer hover for desktop (supports data-tip and raw title instantly)
     document.addEventListener('pointerover', function(e){
-      var target = (e.target && e.target.closest) ? e.target.closest('[data-tip]') : null;
+      var target = (e.target && e.target.closest) ? (e.target.closest('[data-tip]') || e.target.closest('[title]')) : null;
       if (target){
-        var tipText = target.getAttribute('data-tip');
-        if (tipText) showGameTooltip(target, tipText);
+        var tipText = target.getAttribute('data-tip') || target.getAttribute('title');
+        if (tipText) {
+          if (target.hasAttribute('title')) {
+            target.setAttribute('data-tip', tipText);
+            target.setAttribute('data-tip-converted', '1');
+            target.removeAttribute('title');
+          }
+          showGameTooltip(target, tipText);
+        }
       }
     }, true);
 
     document.addEventListener('pointerout', function(e){
-      var target = (e.target && e.target.closest) ? e.target.closest('[data-tip]') : null;
+      var target = (e.target && e.target.closest) ? (e.target.closest('[data-tip]') || e.target.closest('[data-tip-converted]')) : null;
       if (target && target === activeTooltipTarget){
         hideGameTooltip();
       }
@@ -43477,9 +43526,39 @@ function wireEvents(){
         switchScreen('farm');
         showNotification('🇩🇪', 'Teleported to your Central European Farm in Germany!', 'bank', null);
       } else if (id === 'bavaria'){
-        window.location.href = 'bavaria/alpenhof.html';
+        var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
+        if (isAdmin) {
+          try {
+            if (apiUser) localStorage.setItem('searchO2_user', JSON.stringify(apiUser));
+            sessionStorage.setItem('searchO2_admin_elevated', '1');
+            sessionStorage.setItem('searchO2_admin_email', (apiUser && apiUser.email) ? apiUser.email : 'searcho2.online@gmail.com');
+            sessionStorage.setItem('searchO2_admin_role', (apiUser && apiUser.role) ? apiUser.role : 'admin');
+          } catch(e){}
+          window.location.href = 'bavaria/alpenhof.html';
+        } else {
+          if (typeof window.showAdminRestrictedModal === 'function') {
+            window.showAdminRestrictedModal('bavaria', 'Alpenhof Journey (Bavaria)');
+          } else {
+            showNotification('🔒', 'Alpenhof (Bavaria) is reserved for Headquarters Administration.', 'bank', null);
+          }
+        }
       } else if (id === 'saint_martin'){
-        window.location.href = 'saint-martin/blue-lab.html';
+        var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
+        if (isAdmin) {
+          try {
+            if (apiUser) localStorage.setItem('searchO2_user', JSON.stringify(apiUser));
+            sessionStorage.setItem('searchO2_admin_elevated', '1');
+            sessionStorage.setItem('searchO2_admin_email', (apiUser && apiUser.email) ? apiUser.email : 'searcho2.online@gmail.com');
+            sessionStorage.setItem('searchO2_admin_role', (apiUser && apiUser.role) ? apiUser.role : 'admin');
+          } catch(e){}
+          window.location.href = 'saint-martin/blue-lab.html';
+        } else {
+          if (typeof window.showAdminRestrictedModal === 'function') {
+            window.showAdminRestrictedModal('saint_martin', "Saint Martin's Blue Lab");
+          } else {
+            showNotification('🔒', "Saint Martin's Blue Lab is reserved for Headquarters Administration.", 'bank', null);
+          }
+        }
       } else {
         var reg = REGIONAL_BIOMES.find(function(x){ return x.id === id; });
         if (reg){
@@ -43526,8 +43605,23 @@ function wireEvents(){
             window.location.href = 'saint-martin/blue-lab.html';
           });
         } else if (reg.id === 'bavaria'){
+          var isAdmin = typeof isAdminUser === 'function' ? isAdminUser() : false;
           GlobeEngine.rotateTo(reg.lat, reg.lon, function(){
-            window.location.href = 'bavaria/alpenhof.html';
+            if (isAdmin) {
+              try {
+                if (apiUser) localStorage.setItem('searchO2_user', JSON.stringify(apiUser));
+                sessionStorage.setItem('searchO2_admin_elevated', '1');
+                sessionStorage.setItem('searchO2_admin_email', (apiUser && apiUser.email) ? apiUser.email : 'searcho2.online@gmail.com');
+                sessionStorage.setItem('searchO2_admin_role', (apiUser && apiUser.role) ? apiUser.role : 'admin');
+              } catch(e){}
+              window.location.href = 'bavaria/alpenhof.html';
+            } else {
+              if (typeof window.showAdminRestrictedModal === 'function') {
+                window.showAdminRestrictedModal('bavaria', 'Alpenhof Journey (Bavaria)');
+              } else {
+                showNotification('🔒', 'Alpenhof (Bavaria) is reserved for Headquarters Administration.', 'bank', null);
+              }
+            }
           });
         } else {
           GlobeEngine.rotateTo(reg.lat, reg.lon);

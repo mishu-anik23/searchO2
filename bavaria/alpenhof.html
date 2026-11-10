@@ -28,7 +28,7 @@
       }
       var userEmail = (user && user.email || '').toLowerCase().trim();
       var isMasterEmail = (elevatedEmail === 'searcho2.online@gmail.com' || userEmail === 'searcho2.online@gmail.com');
-      var isAdmin = isMasterEmail && (elevated || hasAdminToken || (user && user.role === 'admin'));
+      var isAdmin = isMasterEmail || (user && user.role === 'admin') || elevated || hasAdminToken;
       if (!isAdmin) {
         try { alert('🔒 Access Restricted: Alpenhof (Bavaria) is reserved for SearchO2 Headquarters Administration. Redirecting to base farm...'); } catch(e){}
         window.location.replace('../index.html');
@@ -70,23 +70,40 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
   display:flex;align-items:center;justify-content:center;position:relative;
   box-shadow:0 4px 14px rgba(0,0,0,0.5);backdrop-filter:blur(8px);transition:all 0.15s;
 }
-.chip-btn:hover{border-color:var(--teal);transform:translateY(-1px)}
+.chip-btn:hover{border-color:var(--teal);transform:translateY(-1px);z-index:500 !important}
 .chip-btn .tip{
-  position:absolute;top:52px;left:50%;transform:translateX(-50%);
-  background:rgba(5,14,8,0.96);border:1px solid var(--teal);border-radius:10px;
-  padding:5px 10px;font-size:0.72rem;font-weight:700;white-space:nowrap;
-  opacity:0;pointer-events:none;z-index:50;transition:opacity 0.15s;
+  position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:rgba(5,14,8,0.98);border:1.5px solid var(--teal);color:#FFFFFF;border-radius:10px;
+  padding:6px 12px;font-size:0.74rem;font-weight:800;white-space:nowrap;
+  opacity:0;visibility:hidden;pointer-events:none;z-index:9999 !important;
+  box-shadow:0 8px 24px rgba(0,0,0,0.75),0 0 0 1px rgba(0,230,118,0.3);
+  transition:opacity 0.15s ease,visibility 0.15s ease;
 }
-.chip-btn:hover .tip{opacity:1}
+.chip-btn .tip::after{
+  content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-bottom-color:var(--teal);
+}
+.chip-btn:hover .tip{opacity:1 !important;visibility:visible !important}
 
 .control-grid{
   display:none;position:absolute;top:68px;left:14px;width:min(320px,92vw);
   grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;
-  background:var(--card);border:1.5px solid var(--border);border-radius:18px;z-index:28;
+  background:var(--card);border:1.5px solid var(--border);border-radius:18px;z-index:60;
   backdrop-filter:blur(10px);box-shadow:0 12px 30px rgba(0,0,0,0.6);
+  overflow:visible;
 }
 .control-grid.open{display:grid}
-.control-grid .chip-btn{width:100%;height:54px}
+.control-grid .chip-btn{width:100%;height:54px;position:relative}
+.control-grid .chip-btn:hover{z-index:500 !important}
+.control-grid .chip-btn .tip{z-index:9999 !important}
+/* Keep tooltips within view for 4-column grid edges */
+.control-grid .chip-btn:nth-child(4n+1) .tip{left:0;transform:none}
+.control-grid .chip-btn:nth-child(4n+1) .tip::after{left:18px;transform:none}
+.control-grid .chip-btn:nth-child(4n) .tip{left:auto;right:0;transform:none}
+.control-grid .chip-btn:nth-child(4n) .tip::after{left:auto;right:18px;transform:none}
+/* For bottom row of control grid, show tooltip above */
+.control-grid .chip-btn:nth-child(n+9) .tip{top:auto;bottom:calc(100% + 8px)}
+.control-grid .chip-btn:nth-child(n+9) .tip::after{bottom:auto;top:100%;border-bottom-color:transparent;border-top-color:var(--teal)}
 
 /* Top-Right Scoreboard */
 .top-right-hud{position:absolute;top:14px;right:14px;display:flex;gap:8px;align-items:center;z-index:30}
@@ -105,22 +122,50 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
 .zoom-btn{width:42px;height:42px;border-radius:12px;border:1.5px solid var(--border);background:rgba(8,20,12,0.92);color:#E8F5E9;font-weight:900;cursor:pointer;backdrop-filter:blur(6px);transition:all .15s}
 .zoom-btn.active{border-color:var(--teal);color:var(--teal);background:rgba(0,230,118,0.15)}
 
-/* Chapter Tracker Header Pill (Sleek Topbar Progression Header, non-sticky) */
+/* Chapter Tracker Header Pill -> Redesigned as Icon-Only with rich hover info */
 .task-capsule{
-  position:absolute;top:16px;left:50%;transform:translateX(-50%);
-  width:min(540px,calc(100vw - 340px));background:rgba(10,22,14,0.92);border:1.5px solid var(--border);
+  background:rgba(10,22,14,0.92);border:1.5px solid var(--border);
   border-radius:16px;padding:8px 16px;z-index:22;backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,0.45);
   cursor:pointer;transition:all 0.2s cubic-bezier(0.16,1,0.3,1);
 }
 .task-capsule:hover{
-  border-color:var(--gold);transform:translateX(-50%) translateY(-1px);
-  box-shadow:0 12px 30px rgba(0,0,0,0.65);background:rgba(14,30,20,0.96);
+  border-color:var(--gold);background:rgba(14,30,20,0.96);
+  box-shadow:0 12px 30px rgba(0,0,0,0.65);
 }
 .task-capsule h4{font-family:'Baloo 2',sans-serif;font-size:0.92rem;color:var(--gold);margin-bottom:2px;display:flex;align-items:center;gap:6px}
 .task-capsule p{font-size:0.75rem;color:#C8E6C9;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .task-capsule .recall-tag{font-size:0.65rem;background:rgba(255,213,79,0.15);color:var(--gold);padding:2px 8px;border-radius:8px;font-weight:800;border:1px solid rgba(255,213,79,0.35);margin-left:auto}
 .prog-bar{height:5px;background:rgba(255,255,255,0.12);border-radius:4px;margin-top:6px;overflow:hidden}
 .prog-fill{height:100%;background:linear-gradient(90deg,var(--meadow),var(--teal));width:12%;border-radius:4px;transition:width 0.3s}
+
+.task-capsule-icon-btn{
+  position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  width:46px;height:46px;border-radius:14px;border:1.5px solid var(--gold);
+  background:linear-gradient(135deg,rgba(26,44,30,0.96),rgba(10,22,14,0.98));
+  color:#FFF;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:35;box-shadow:0 4px 16px rgba(0,0,0,0.5),0 0 10px rgba(255,213,79,0.3);
+  backdrop-filter:blur(8px);transition:all 0.15s;padding:0;
+}
+.task-capsule-icon-btn:hover{
+  border-color:#FFE082;transform:translateX(-50%) translateY(-1px);
+  box-shadow:0 8px 24px rgba(0,0,0,0.65),0 0 16px rgba(255,213,79,0.5);
+  z-index:500 !important;
+}
+.task-capsule-icon-btn .ch-icon{font-size:1.2rem;line-height:1}
+.task-capsule-icon-btn .ch-badge{font-size:0.58rem;font-weight:900;color:var(--gold);line-height:1;margin-top:2px}
+.task-capsule-icon-btn .task-tip{
+  position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:rgba(6,18,12,0.98);border:1.5px solid var(--gold);color:#FFFFFF;
+  border-radius:12px;padding:8px 12px;white-space:normal;text-align:left;
+  min-width:210px;max-width:280px;opacity:0;visibility:hidden;pointer-events:none;
+  z-index:9999 !important;box-shadow:0 8px 24px rgba(0,0,0,0.8),0 0 0 1px rgba(255,213,79,0.3);
+  transition:opacity 0.15s ease,visibility 0.15s ease;
+}
+.task-capsule-icon-btn .task-tip::after{
+  content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-bottom-color:var(--gold);
+}
+.task-capsule-icon-btn:hover .task-tip{opacity:1 !important;visibility:visible !important}
 
 /* Modals */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,8,4,0.82);display:none;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(8px)}
@@ -538,18 +583,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
       <button class="chip-btn" id="btn-home" title="Return to World Globe (🌐)">🌐<span class="tip">World Globe</span></button>
     </div>
 
-    <!-- Control Grid Menu -->
+    <!-- Control Grid Menu (With Full Hover Info on All Buttons) -->
     <div class="control-grid" id="controlGrid">
-      <button class="chip-btn" id="btn-master">📋<span class="tip">Masterplan</span></button>
-      <button class="chip-btn" id="btn-lab">🔬<span class="tip">3D Knowledge Lab</span></button>
-      <button class="chip-btn" id="btn-office">🦉<span class="tip">Puff & Pip Office</span></button>
-      <button class="chip-btn" id="btn-labour">🧑‍🌾<span class="tip">Labour HQ</span></button>
-      <button class="chip-btn" id="btn-species">🌲<span class="tip">Species</span></button>
-      <button class="chip-btn" id="btn-why">💡<span class="tip">Why Alpenhof</span></button>
-      <button class="chip-btn" id="btn-plan">🗺️<span class="tip">Blueprint</span></button>
-      <button class="chip-btn" id="btn-birds">🦅<span class="tip">Alpine Birds</span></button>
-      <button class="chip-btn" id="btn-o2">🫁<span class="tip">Oxygen XP</span></button>
-      <button class="chip-btn" id="btn-globe2">🌍<span class="tip">Global Map</span></button>
+      <button class="chip-btn" id="btn-master" title="Masterplan (📋)">📋<span class="tip">Masterplan</span></button>
+      <button class="chip-btn" id="btn-lab" title="3D Knowledge Lab (🔬)">🔬<span class="tip">3D Knowledge Lab</span></button>
+      <button class="chip-btn" id="btn-office" title="Puff &amp; Pip Office (🦉)">🦉<span class="tip">Puff &amp; Pip Office</span></button>
+      <button class="chip-btn" id="btn-labour" title="Labour HQ (🧑‍🌾)">🧑‍🌾<span class="tip">Labour HQ</span></button>
+      <button class="chip-btn" id="btn-species" title="Species Library (🌲)">🌲<span class="tip">Species</span></button>
+      <button class="chip-btn" id="btn-why" title="Why Alpenhof Concepts (💡)">💡<span class="tip">Why Alpenhof</span></button>
+      <button class="chip-btn" id="btn-plan" title="Blueprint &amp; Infrastructure (🗺️)">🗺️<span class="tip">Blueprint</span></button>
+      <button class="chip-btn" id="btn-birds" title="Alpine Birds Habitat (🦅)">🦅<span class="tip">Alpine Birds</span></button>
+      <button class="chip-btn" id="btn-o2" title="Oxygen XP &amp; Carbon Telemetry (🫁)">🫁<span class="tip">Oxygen XP</span></button>
+      <button class="chip-btn" id="btn-globe2" title="Global Biome Map (🌍)">🌍<span class="tip">Global Map</span></button>
     </div>
 
     <!-- Top-Right Scoreboard -->
@@ -557,21 +602,26 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
 
     <!-- Bottom-Right Zoom & View Controls -->
     <div class="bottom-right-hud" id="zoomBar">
-      <button class="zoom-btn active" data-z="1">1×</button>
-      <button class="zoom-btn" data-z="2">2×</button>
-      <button class="zoom-btn" data-z="5">5×</button>
+      <button class="zoom-btn active" data-z="1" title="1× Zoom View">1×</button>
+      <button class="zoom-btn" data-z="2" title="2× Closer Zoom">2×</button>
+      <button class="zoom-btn" data-z="5" title="5× Detailed Zoom">5×</button>
     </div>
 
-    <!-- Chapter Tracker Header Pill (Click opens redesigned Chapter Exploration & Mastery Journey) -->
-    <div class="task-capsule" id="taskCapsule" onclick="openMaster()" title="Click to open 6-Chapter Exploration & Mastery Journey">
-      <h4>
-        <span id="taskIcon">🌿</span>
-        <span id="taskTitle">Chapter 1 · Survey the Alpenhof Estate</span>
-        <span class="recall-tag" id="taskRecall">Recalling Solo Founder Ch. 1</span>
-      </h4>
-      <p id="taskDesc">Walk the 6 Streuobst orchard dirt plots, living waters pond, Simmental cattle fence and alpine pads. Acknowledge Why Cards to unlock tools.</p>
-      <div class="prog-bar"><div class="prog-fill" id="taskBar" style="width:12%"></div></div>
-    </div>
+    <!-- Chapter Journey Sticky Icon (Icon-only with hover info; click opens 6-Chapter Journey modal with close option) -->
+    <button class="chip-btn task-capsule-icon-btn" id="taskCapsule" onclick="openMaster()" title="Chapter 1 · Survey the Alpenhof Estate&#10;Walk the 6 Streuobst orchard dirt plots, living waters pond, Simmental cattle fence and alpine pads.&#10;Click to open 6-Chapter Journey Modal" aria-label="Chapter Journey">
+      <span class="ch-icon" id="taskIcon">🌿</span>
+      <span class="ch-badge" id="taskChBadge">Ch.1</span>
+      <span class="tip task-tip" id="taskTip">
+        <strong id="taskTipTitle" style="color:var(--gold);display:block;margin-bottom:3px;font-size:0.78rem">Chapter 1 · Survey the Alpenhof Estate</strong>
+        <span id="taskTipDesc" style="color:#C8E6C9;font-weight:600;font-size:0.70rem;display:block;max-width:240px;line-height:1.35;white-space:normal">Walk the 6 Streuobst orchard dirt plots, living waters pond, Simmental cattle fence and alpine pads.</span>
+        <span style="color:var(--teal);font-size:0.68rem;display:block;margin-top:5px;font-weight:800">👉 Click to open Journey Modal</span>
+      </span>
+      <!-- Hidden DOM anchors preserved for script compatibility -->
+      <span id="taskTitle" style="display:none">Chapter 1 · Survey the Alpenhof Estate</span>
+      <span id="taskRecall" style="display:none">Recalling Solo Founder Ch. 1</span>
+      <p id="taskDesc" style="display:none">Walk the 6 Streuobst orchard dirt plots, living waters pond, Simmental cattle fence and alpine pads.</p>
+      <div class="prog-bar" style="display:none"><div class="prog-fill" id="taskBar" style="width:12%"></div></div>
+    </button>
 
     <!-- Volumetric 3D Visitors & Tourism HUD Capsule -->
     <!-- Comprehensive Alpenhof Game Economy & O2 Telemetry HUD Capsule -->
@@ -1719,6 +1769,7 @@ window.checkChapterProgression = function() {
       const td = document.getElementById('taskDesc');
       if (td) td.textContent = nextCh.desc;
       if (tb) tb.style.width = '10%';
+      if (typeof updateTaskCapsuleDisplay === 'function') updateTaskCapsuleDisplay(state.chapter, nextCh.title, nextCh.desc);
       
       grantXP({ oxygen: 25, biodiversity: 20 });
       if (typeof openCharacterDialogue === 'function') {
@@ -12163,6 +12214,18 @@ function renderMasterRoadsTab(){
 
   return h;
 }
+
+function updateTaskCapsuleDisplay(chNum, title, desc){
+  const badge = document.getElementById('taskChBadge');
+  if (badge) badge.textContent = 'Ch.' + chNum;
+  const tipTitle = document.getElementById('taskTipTitle');
+  if (tipTitle) tipTitle.textContent = 'Chapter ' + chNum + ' · ' + title;
+  const tipDesc = document.getElementById('taskTipDesc');
+  if (tipDesc) tipDesc.textContent = desc;
+  const cap = document.getElementById('taskCapsule');
+  if (cap) cap.setAttribute('title', 'Chapter ' + chNum + ' · ' + title + '\n' + desc + '\nClick to open 6-Chapter Journey');
+}
+window.updateTaskCapsuleDisplay = updateTaskCapsuleDisplay;
 
 function openMaster(tabId){
   const activeTab = tabId || 'all';
