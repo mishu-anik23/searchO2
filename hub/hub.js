@@ -283,6 +283,7 @@
     var ROUTES = [
     { id: '', label: 'Home', title: 'Learning Hub', render: pageHome },
     { id: 'alpenhof', label: '🏔️ Alpenhof Hub', title: 'Alpenhof Eco-Village', render: pageAlpenhof },
+    { id: 'saint-martin', label: '🏝️ Blue Lab Hub', title: 'Saint Martin Blue Lab', render: pageBlueLab },
     { id: 'start', label: 'Getting Started', title: 'Getting Started', render: pageStart },
     { id: 'components', label: 'Components', title: 'Components', render: pageComponents },
     { id: 'library', label: 'Library', title: 'Plant Library', render: pageLibrary },
@@ -315,13 +316,26 @@
       }
     });
     try {
-      $('#regionalBar .reg-item').forEach(function (el) {
-        if (r.id === 'alpenhof' && el.id === 'regLinkAlpenhof') {
-          el.classList.add('active');
-        } else if (r.id !== 'alpenhof' && el.id === 'regLinkAlpenhof') {
-          el.classList.remove('active');
+      var isAlp = (r.id === 'alpenhof');
+      var isBlue = (r.id === 'saint-martin' || r.id === 'bluelab');
+      var elAlp = document.getElementById('regLinkAlpenhof');
+      var elBlue = document.getElementById('regLinkSaintMartin');
+      if (elAlp) elAlp.classList.toggle('active', isAlp);
+      if (elBlue) elBlue.classList.toggle('active', isBlue);
+
+      var regActionBtn = document.getElementById('regActionBtn');
+      var regActionLabel = document.getElementById('regActionLabel');
+      if (regActionBtn && regActionLabel) {
+        if (isBlue) {
+          regActionBtn.href = '../saint-martin/blue-lab.html';
+          regActionBtn.title = 'Launch Saint Martin Blue Lab 3D Marine Simulation';
+          regActionLabel.textContent = 'Play Blue Lab 3D';
+        } else {
+          regActionBtn.href = '../bavaria/alpenhof.html';
+          regActionBtn.title = 'Launch Alpenhof Eco-Village 3D Simulation';
+          regActionLabel.textContent = 'Play Alpenhof 3D';
         }
-      });
+      }
     } catch(e){}
     var pageTitle = r.title;
     if (r.id === 'feedback') {
@@ -781,7 +795,7 @@
               '<span class="pill gold">🌳 54 Streuobst Beds</span>' +
               '<span class="pill leaf">🦆 Living Waters Aquaculture</span>' +
               '<span class="pill">🧀 Simmental Cheese Affinage</span>' +
-              '<span class="pill soil">🔬 13 3D Research Labs</span>' +
+              '<span class="pill soil">🔬 14 3D Research Labs</span>' +
               '<span class="pill coral">🚶 Real Road Visitors</span>' +
             '</div>' +
           '</div>' +
@@ -794,7 +808,8 @@
 
       mapBox() +
       '<nav class="doors" aria-label="Sections">' +
-      door('alpenhof', '🏔️', 'Alpenhof Eco-Village', 'Explore 54-bed Streuobst orchards, glacial lake aquaculture, 13 3D Research Labs & Professor Whisker Puff!', 'gold-highlight') +
+      door('alpenhof', '🏔️', 'Alpenhof Eco-Village', 'Explore 54-bed Streuobst orchards, glacial lake aquaculture, 14 3D Research Labs & Professor Whisker Puff!', 'gold-highlight') +
+      door('saint-martin', '🏝️', 'Saint Martin Blue Lab', 'Explore coral reef sanctuary, twin decagon orchards, mangrove stilt-roots, and 10 3D Research HQ Labs!', 'gold-highlight') +
       door('library', '📖', 'Plant Library', 'Facts, lifespans, diseases and cures for all ' + c.species + ' plants, plus a quiz.', 'big') +
       door('components', '🏗️', 'Components', 'What each building costs, how long it takes, and what it needs first.', 'soil') +
       door('start', '🌱', 'Getting Started', 'The eight chapters, from your first seed to the Moon.') +
@@ -816,6 +831,553 @@
   /* ------------------------------------------------------------------ *
    * ALPENHOF ECO-VILLAGE & RESEARCH HQ MEGA-PAGE
    * ------------------------------------------------------------------ */
+
+  /* ------------------------------------------------------------------ *
+   * SAINT MARTIN'S ISLAND · BLUE LAB PAGE IMPLEMENTATION
+   * ------------------------------------------------------------------ */
+  function pageBlueLab() {
+    main.innerHTML =
+      '<div class="alp-page bl-hub-theme">' +
+        // Hero Section
+        '<section class="alp-hero">' +
+          '<div class="alp-hero-top">' +
+            '<span class="alp-hero-pill">🏝️ Bay of Bengal · Saint Martin\'s Island</span>' +
+            '<span class="alp-hero-badge">20.6237° N, 92.3234° E · Oceanic Coral Sanctuary</span>' +
+          '</div>' +
+          '<h1>SearchO2 Blue Lab · Marine Bio-Economy HQ</h1>' +
+          '<p class="lead">Step onto Bangladesh\'s solitary oceanic coral island: twin decagon agroforestry orchards (Mangrove & Fruit), closed-loop marine RAS lagoons, offshore floating solar & wind microgrids, and 10 state-of-the-art 3D Research HQ Labs!</p>' +
+          '<div class="alp-telemetry-bar">' +
+            '<div class="alp-capsule"><span>🔬</span> <b>10 Research Labs</b> (3D WebGL)</div>' +
+            '<div class="alp-capsule"><span>🪸</span> <b>Coral Reef Indices</b> (SHI ≥ 90%)</div>' +
+            '<div class="alp-capsule"><span>🌴</span> <b>Twin Decagons</b> (20 Sub-Plots)</div>' +
+            '<div class="alp-capsule"><span>⚡</span> <b>Zero-Fossil Microgrid</b> (500 kWh BESS)</div>' +
+            '<div class="alp-capsule"><span>🦞</span> <b>Closed-Loop Marine RAS</b> (Zero Waste)</div>' +
+          '</div>' +
+          '<div class="alp-hero-actions">' +
+            '<a class="btn primary" href="../saint-martin/blue-lab.html" title="Enter Interactive 3D Island Simulation">🎮 Enter Blue Lab 3D Island ➔</a>' +
+            '<a class="btn ghost" href="#bl-scenes">🔬 10 3D Research Labs</a>' +
+          '</div>' +
+        '</section>' +
+
+        // Mentors Dialogue Box
+        puffPipHero(
+          '🌊 Oceanic Ecological Expedition',
+          'A Dialogue on Intertidal Agroforestry & Blue Bio-Economy',
+          'Listen to the guidance of Tariq the Fishing Cat, Dr. Nabila Rahman, and Prof. Whisker Puff as they inspect the coral sanctuary and mangrove decagons!',
+          'Purr-fect salinity readings, Dr. Nabila! Notice how our Mangrove Decagon stilt-roots (Rhizophora mucronata) dissipate 65% of wave impact energy while trapping nutrient-rich marine silt! That natural sediment barrier keeps the water crystalline clear for our lagoon coral polyps, boosting the Sea Health Index past 90%!',
+          'Exactly, Tariq! And by integrating our closed-loop Marine RAS with cryogenic -38°C IQF processing and clean SWRO desalination powered entirely by offshore wind and floating solar, Saint Martin demonstrates that coastal communities can achieve thriving zero-carbon prosperity without disturbing marine ecology!'
+        ) +
+
+        // Quick Jump Bar
+        '<nav class="alp-quick-nav" aria-label="Blue Lab sections">' +
+          '<a class="alp-jump-btn" href="#bl-characters">🧑‍🔬 HQ Characters &amp; Specialists</a>' +
+          '<a class="alp-jump-btn" href="#bl-facilities">🏗️ Living Facilities &amp; Build Objects</a>' +
+          '<a class="alp-jump-btn" href="#bl-scenes">🔬 10 3D Research Labs</a>' +
+          '<a class="alp-jump-btn" href="#bl-challenges">🏆 5 Chapter Masterplans</a>' +
+          '<a class="alp-jump-btn" href="#bl-learning">💡 Marine Learning Outcomes</a>' +
+          '<a class="alp-jump-btn" href="#bl-regions">🌍 Regional Network</a>' +
+        '</nav>' +
+
+        // SECTION 1: CHARACTERS SPECIALIZATION
+        '<section id="bl-characters" class="alp-section-head">' +
+          '<h2><span>🧑‍🔬</span> Specialist Animal Scientists &amp; Blue Lab Operation Leads</h2>' +
+          '<p>Meet the eccentric local animal characters and marine scientists leading Saint Martin\'s ecological revolution. Every character features a unique scientific background, visual attire, research facility, and gameplay perk!</p>' +
+        '</section>' +
+        renderBlueLabCharacters() +
+
+        // SECTION 2: LIVING FACILITIES & BUILD OBJECTS
+        '<section id="bl-facilities" class="alp-section-head">' +
+          '<h2><span>🏗️</span> Living Facilities &amp; Blue Lab Build Architecture</h2>' +
+          '<p>From cyclone-resilient halophyte solar greenhouses to closed-loop MBBR aquaculture and smart cold-chain dispatch, explore the 10 interconnected facilities powering Saint Martin.</p>' +
+        '</section>' +
+        renderBlueLabFacilities() +
+
+        // SECTION 3: 10 3D SCENES
+        '<section id="bl-scenes" class="alp-section-head">' +
+          '<h2><span>🔬</span> The 10 3D Research HQ Animation Labs</h2>' +
+          '<p>Dive into all 10 interactive 3D WebGL simulations extracted from Blue Lab HQ. Features English audio dialogue, clean icon-only navigation, bottom-left compact subtitle modals, and inline CC toggles with zero visual obstruction.</p>' +
+        '</section>' +
+        renderBlueLabScenesGallery() +
+
+        // SECTION 4: CHAPTER CHALLENGES
+        '<section id="bl-challenges" class="alp-section-head">' +
+          '<h2><span>🏆</span> 5-Chapter Coastal &amp; Oceanic Mastery Progression</h2>' +
+          '<p>Progress step-by-step from surveying delicate lagoon corals to achieving a certified zero-emission global trade corridor connecting with our German farm!</p>' +
+        '</section>' +
+        renderBlueLabChapters() +
+
+        // SECTION 5: LEARNING OUTCOMES FOR CHILDREN
+        '<section id="bl-learning">' +
+          renderBlueLabLearningOutcomes() +
+        '</section>' +
+
+        // SECTION 6: REGIONAL MODULAR EXPANSION NAVIGATOR
+        '<section id="bl-regions">' +
+          renderRegionalExpansionModularNavigator() +
+        '</section>' +
+      '</div>';
+
+    bindBlueLabInteractive();
+  }
+
+  function renderBlueLabCharacters() {
+    var chars = [
+      {
+        id: 'tariq',
+        name: 'Tariq the Fishing Cat',
+        role: 'Chief Marine Logistics & Coastal Fleet Specialist',
+        avatar: '🐈',
+        color: '#00E5FF',
+        station: 'Modern Cargo Jetty & Seashore CNG Terminal',
+        desc: 'Native wetland wildcat (Prionailurus viverrinus) wearing water-resistant marine dungarees and brass nautical calipers. Master of coastal navigation, hydrophone streamer soft-start protocols, and low-carbon CNG logistics.',
+        perk: '+35% Coastal Vessel Speed & Dolphin MMO Zone Safety',
+        quote: '“Purr-fect hydrophone readings! Always ramp up airguns gradually—never scare our dolphin pods in the Bay of Bengal!”'
+      },
+      {
+        id: 'nabila',
+        name: 'Dr. Nabila Rahman',
+        role: 'Coastal Botanist & Mangrove Halophyte Ecologist',
+        avatar: '🦌',
+        color: '#00E676',
+        station: 'Botanical Biodiversity Garden & Solar Polyhouse',
+        desc: 'Dedicated coastal deer botanist with field binoculars, magnifying loupe, and seed pouches. Expert in Rhizophora stilt-root propagation, Avicennia pneumatophores, and Pandanus Kewra dune stabilization.',
+        perk: '+40% Mangrove Growth Rate & +25 kg Blue Carbon Sequestration',
+        quote: '“Mangrove stilt-roots are nature’s hydraulic dampers. They protect our island while locking carbon for centuries!”'
+      },
+      {
+        id: 'kabir',
+        name: 'Captain Kabir',
+        role: 'Master Diver & RAS Aquaculture Lead',
+        avatar: '🦀',
+        color: '#FF5252',
+        station: 'Marine RAS Facility & Mud Crab Lagoon',
+        desc: 'Seasoned mud crab master diver wearing heavy-duty brass dive helmet and scuba gauges. Specializes in moving-bed biofilm reactors (MBBR), protein skimmer foam fractionation, and Giant Tiger Shrimp cultivation.',
+        perk: '+30% Aquaculture Yield & Zero Bacterial Pathogen Contamination',
+        quote: '“Keep the nitrifying bio-filter active! Nitrosomonas and Nitrobacter turn toxic ammonia into safe plant nutrients!”'
+      },
+      {
+        id: 'quills',
+        name: 'Dr. Sparky Quills',
+        role: 'Renewable Offshore Grid & SCADA Microgrid Engineer',
+        avatar: '🦔',
+        color: '#FFD54F',
+        station: 'Hybrid Microgrid BESS Substation (500 kWh)',
+        desc: 'Energetic porcupine electrical engineer wearing insulated rubber gloves and neon safety vest. Synchronizes bifacial floating solar, offshore wind turbines, and 250 kWh LFP battery storage.',
+        perk: '+35% Microgrid Energy Inversion Efficiency & Zero Brownouts',
+        quote: '“Zaaap! Clean ocean breeze plus blazing tropical sunshine equals pure 100% renewable power for Saint Martin!”'
+      },
+      {
+        id: 'lila',
+        name: 'Dr. Lila Brine',
+        role: 'Marine Desalination Chemist & Mineral Brine Geochemist',
+        avatar: '🐬',
+        color: '#80DEEA',
+        station: 'SWRO Desalination Core & Solar Salt Crystallizers',
+        desc: 'Graceful coastal dolphin geochemist equipped with digital refractometer and titanium sampling flasks. Oversees isobaric energy-recovery reverse osmosis and culinary salt crystallization.',
+        perk: '+45% Pure Drinking Water Recovery & +50 kg Gourmet Sea Salt Yield',
+        quote: '“Zero liquid discharge! Every liter of seawater gives fresh drinking water, gourmet table salt, and magnesium!”'
+      },
+      {
+        id: 'puff',
+        name: 'Prof. Whisker Puff',
+        role: 'Lead Astrobiologist & Marine Ecological Mentor',
+        avatar: '🦉',
+        color: '#FFB300',
+        station: 'Coral Sanctuary Diving Base & Blue Lab Observatory',
+        desc: 'Distinguished scholarly owl in tropical research safari attire. Evaluates Sea Health Indices (SHI), dissolved oxygen dynamics, and symbiosis between coral polyps and zooxanthellae.',
+        perk: '+30% Island Research Velocity & Coral Bleaching Resilience',
+        quote: '“Observe the coral polyp tentacles! When dissolved oxygen stays above 85%, our reef sanctuary thrives with dazzling colors!”'
+      },
+      {
+        id: 'pip',
+        name: 'Pip Squeak',
+        role: 'Field Scout & Junior Diver Assistant',
+        avatar: '🐥',
+        color: '#FF4081',
+        station: 'Lagoon Reef Shallows & Ecotourism Pier',
+        desc: 'Enthusiastic chick scout equipped with junior snorkel, underwater slate, and coral counting clicker. Delights visitors, checks fish nurseries, and inspects seaweed mariculture rafts.',
+        perk: '+25% Tourist Happiness & +35 XP Discovery Bonus per Polyp Scanned',
+        quote: '“Look at that baby clownfish in the sea anemone! Blue Lab is the coolest, friendliest island on Earth!”'
+      }
+    ];
+
+    return '<div class="alp-char-grid">' + chars.map(function(c) {
+      return '<div class="alp-char-card" style="border-top:3px solid ' + c.color + '">' +
+        '<div class="alp-char-header">' +
+          '<div class="alp-char-avatar-ring" style="background:' + c.color + '22;border-color:' + c.color + '">' +
+            '<span>' + c.avatar + '</span>' +
+          '</div>' +
+          '<div class="alp-char-name-col">' +
+            '<h3>' + esc(c.name) + '</h3>' +
+            '<span class="alp-char-role" style="color:' + c.color + '">' + esc(c.role) + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="alp-char-station">📍 <b>HQ Station:</b> ' + esc(c.station) + '</div>' +
+        '<p class="alp-char-desc">' + esc(c.desc) + '</p>' +
+        '<div class="alp-char-quote-bubble">' + esc(c.quote) + '</div>' +
+        '<div class="alp-char-perk"><b>⚡ In-Game Perk:</b> ' + esc(c.perk) + '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function renderBlueLabFacilities() {
+    var facilities = [
+      {
+        icon: '🚢',
+        title: 'Modern Cargo Jetty & Seashore CNG',
+        sub: 'Seashore CNG Exploration & Supply Berth',
+        desc: 'Deepwater supply pier accommodating solar-electric catamarans and low-carbon CNG vessels with 250-bar cascade storage and acoustic bubble curtains.',
+        sim: 'so2bl_cng_field_progression.html',
+        ch: 1,
+        color: '#00E5FF'
+      },
+      {
+        icon: '🌾',
+        title: 'Coastal Solar Greenhouse',
+        sub: 'Agro-Photovoltaics & Halophyte Drip',
+        desc: 'Cat-5 hurricane-proof polyhouse utilizing semi-transparent PV roof glass, seawater evaporative cooling pads, and desalted drip fertigation for high-yield vegetables.',
+        sim: 'so2bl_coastal_solar_greenhouse.html',
+        ch: 2,
+        color: '#76FF03'
+      },
+      {
+        icon: '🌸',
+        title: 'Mangrove Biodiversity & Oxy-Garden',
+        sub: 'Intertidal Halophyte Living Bio-Shield',
+        desc: 'Propagates Rhizophora, Avicennia, and fragrant Pandanus Kewra. Traps coastal silt runoff, expands blue carbon sinks, and produces sweet beach honey.',
+        sim: 'so2bl_garden_mangrove_biodiversity.html',
+        ch: 1,
+        color: '#FF4081'
+      },
+      {
+        icon: '🦐',
+        title: 'Seafood & Cryogenic IQF Facility',
+        sub: '-38°C Liquid Nitrogen Quick Freezing',
+        desc: 'Shoreline export plant featuring sanitary ozone wash, automated optical sizing, and ultra-fast cryogenic freezing preserving cellular tissue for European export.',
+        sim: 'so2bl_iqf_processing_export_plant.html',
+        ch: 4,
+        color: '#FF5252'
+      },
+      {
+        icon: '🦀',
+        title: 'Marine RAS & Mud Crab Lagoon',
+        sub: 'Closed-Loop Biofilter Aquaculture',
+        desc: 'Zero-discharge aquaculture with mechanical drum screens, MBBR bio-media, and protein fractionators cultivating Giant Tiger Shrimp and Day Octopuses.',
+        sim: 'so2bl_marine_ras_facility.html',
+        ch: 2,
+        color: '#FF7043'
+      },
+      {
+        icon: '⚡',
+        title: 'Hybrid Microgrid & BESS Substation',
+        sub: '500 kWh LFP Marine Energy Storage',
+        desc: 'Integrates 120 kW offshore floating solar, twin 150 kW marine wind turbines, and smart SCADA power conditioning to supply 100% clean island power.',
+        sim: 'so2bl_microgrid.html',
+        ch: 3,
+        color: '#FFD54F'
+      },
+      {
+        icon: '🧪',
+        title: 'SWRO Desalination & Solar Salt Flats',
+        sub: 'Isobaric Recovery & Mineral Crystallization',
+        desc: 'Seawater Reverse Osmosis with 98.6% salt rejection delivering 80,000 L/day pure water, feeding brine into tiered evaporator beds for gourmet salt harvest.',
+        sim: 'so2bl_salt_brine_desalination_lab.html',
+        ch: 4,
+        color: '#80DEEA'
+      },
+      {
+        icon: '🥗',
+        title: 'Seaweed Longline Mariculture',
+        sub: 'Sub-Sea Macroalgae Cultivation',
+        desc: 'Offshore bamboo longlines cultivating Kappaphycus and Gracilaria kelp. Acts as a marine nitrogen biofilter while yielding high-value carrageenan biopolymers.',
+        sim: 'so2bl_seaweed_farming_diving.html',
+        ch: 2,
+        color: '#AEEA00'
+      },
+      {
+        icon: '🏚️',
+        title: 'Smart Cold-Chain Coastal Warehouse',
+        sub: 'Multi-Zone Thermal Storage & AGVs',
+        desc: 'Stratified cold storage (+4°C produce, -18°C frozen, -26°C deep IQF holding) utilizing phase-change thermal batteries and automated robotic pallet shuttles.',
+        sim: 'so2bl_smart_cold_chain_coastal_warehouse.html',
+        ch: 4,
+        color: '#FFA726'
+      },
+      {
+        icon: '🦪',
+        title: 'Marine Pearl Oyster Mariculture',
+        sub: 'Pinctada Pearl Farming in Coral Lagoon',
+        desc: 'Eco-positive oyster farming using suspended lantern nets. Filters coastal water, promotes aragonite nacre growth, and yields lustrous organic South Sea pearls.',
+        sim: 'so2bl_sustainable_pearl_farming.html',
+        ch: 2,
+        color: '#E0F7FA'
+      }
+    ];
+
+    return '<div class="alp-facilities-grid">' + facilities.map(function(f) {
+      return '<div class="alp-facility-card">' +
+        '<h3><span>' + f.icon + '</span> ' + esc(f.title) + '</h3>' +
+        '<span style="display:inline-block;font-size:0.72rem;font-weight:800;color:' + f.color + ';margin-bottom:6px;">' + esc(f.sub) + ' · Unlocks Ch. ' + f.ch + '</span>' +
+        '<p>' + esc(f.desc) + '</p>' +
+        '<div style="margin-top:10px;"><a class="alp-scene-cta" href="../saint-martin/research/' + f.sim + '?source=hub" target="_blank" rel="noopener"><span>🔬 Explore 3D Simulation</span></a></div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function renderBlueLabScenesGallery() {
+    var blueLabScenes = [
+      {
+        id: 'bl-scene-1',
+        cat: 'energy',
+        title: 'Seashore CNG Field, Marine Jetty & Acoustic Soft-Start',
+        file: 'so2bl_cng_field_progression.html',
+        desc: '3D seashore exploration, acoustic soft-start cetacean protection (BSH SEL ≤ 160 dB), geopolymer reef jetty, and low-carbon CNG coastal supply fleet.',
+        tags: ['Seismic Soft-Start', 'Dolphin MMO Zone', '250-bar CNG', 'Geopolymer Jetty'],
+        runtime: '7 Min',
+        reward: '+€180 · +60 XP · +45 O₂'
+      },
+      {
+        id: 'bl-scene-2',
+        cat: 'flora',
+        title: 'Cyclone-Resilient Coastal Solar Greenhouse',
+        file: 'so2bl_coastal_solar_greenhouse.html',
+        desc: 'Agro-photovoltaic greenhouse with desalted drip fertigation, halophyte cultivars, passive seawater evaporative cooling pads, and Cat-5 hurricane bracing.',
+        tags: ['Coastal Greenhouse', 'Halophyte Drip', 'Agri-PV Glazing', 'Storm Resistance'],
+        runtime: '6 Min',
+        reward: '+€150 · +50 XP · +40 O₂'
+      },
+      {
+        id: 'bl-scene-3',
+        cat: 'flora',
+        title: 'Mangrove Biodiversity Nursery & Coastal Oxy-Economy',
+        file: 'so2bl_garden_mangrove_biodiversity.html',
+        desc: 'Rhizophora and Avicennia intertidal stilt-root propagation, coastal Pandanus Kewra buffer, blue carbon sediment sequestration, and ecotourism boardwalks.',
+        tags: ['Mangrove Nursery', 'Pneumatophores', 'Blue Carbon', 'Keya Floral Buffer'],
+        runtime: '8 Min',
+        reward: '+€160 · +55 XP · +50 O₂'
+      },
+      {
+        id: 'bl-scene-4',
+        cat: 'economy',
+        title: 'Cryogenic -38°C IQF Processing & Export Plant',
+        file: 'so2bl_iqf_processing_export_plant.html',
+        desc: 'Individual Quick Freezing liquid nitrogen spiral tunnel, sanitary ozone wash, automated optical grading, MAP packaging, and cold-chain compliance.',
+        tags: ['Cryogenic IQF', 'Ozone Sanitization', 'Micro-Crystals', 'Global Export'],
+        runtime: '6 Min',
+        reward: '+€200 · +65 XP · +35 O₂'
+      },
+      {
+        id: 'bl-scene-5',
+        cat: 'aquaculture',
+        title: 'Closed-Loop Marine RAS Facility & Water Treatment',
+        file: 'so2bl_marine_ras_facility.html',
+        desc: 'Recirculating Aquaculture System for Giant Tiger Shrimp & Day Octopus, drum screens, MBBR bio-filters (nitrification), protein skimmer foam fractionation, and UV loops.',
+        tags: ['Marine RAS', 'Biofilter MBBR', 'Penaeus Monodon', 'Zero Ocean Discharge'],
+        runtime: '8 Min',
+        reward: '+€190 · +60 XP · +40 O₂'
+      },
+      {
+        id: 'bl-scene-6',
+        cat: 'energy',
+        title: 'Hybrid Offshore Wind, Floating PV & 250 kWh BESS Microgrid',
+        file: 'so2bl_microgrid.html',
+        desc: 'Coastal microgrid integration: 120 kW floating solar, twin offshore wind turbines, marine current tidal generators, 250 kWh LFP BESS container, and intelligent SCADA.',
+        tags: ['Offshore Wind', 'Floating Solar', '250 kWh BESS', 'SCADA EMS'],
+        runtime: '7 Min',
+        reward: '+€220 · +70 XP · +60 O₂'
+      },
+      {
+        id: 'bl-scene-7',
+        cat: 'economy',
+        title: 'Seawater Reverse Osmosis & Solar Salt Brine Recovery',
+        file: 'so2bl_salt_brine_desalination_lab.html',
+        desc: 'SWRO seawater desalination with isobaric energy recovery, concentrated mineral brine electrodialysis, food-grade gourmet sea salt crystallization, and zero liquid discharge.',
+        tags: ['SWRO Desalination', 'Isobaric Recovery', 'Mineral Brine', 'Zero Liquid Discharge'],
+        runtime: '6 Min',
+        reward: '+€170 · +55 XP · +35 O₂'
+      },
+      {
+        id: 'bl-scene-8',
+        cat: 'aquaculture',
+        title: 'Seaweed Longline Mariculture & Scientific Scuba Expedition',
+        file: 'so2bl_seaweed_farming_diving.html',
+        desc: 'Sub-sea macroalgae lines (Kappaphycus & Gracilaria), scientific scuba diving surveys, biofilter nitrogen assimilation, and high-value carrageenan biopolymer harvest.',
+        tags: ['Seaweed Longlines', 'Scientific Scuba', 'Nitrogen Biofilter', 'Agar Biopolymers'],
+        runtime: '7 Min',
+        reward: '+€160 · +50 XP · +45 O₂'
+      },
+      {
+        id: 'bl-scene-9',
+        cat: 'economy',
+        title: 'Multi-Zone Smart Cold-Chain Coastal Warehouse & AGVs',
+        file: 'so2bl_smart_cold_chain_coastal_warehouse.html',
+        desc: 'Thermal stratification (+4°C chilled, -18°C frozen, -26°C deep IQF holding), phase change materials (PCM), autonomous robotic AGV pallet shuttles, and solar charging.',
+        tags: ['Smart Cold Chain', 'PCM Storage', 'AGV Pallet Shuttles', 'Thermal Stratification'],
+        runtime: '6 Min',
+        reward: '+€190 · +60 XP · +35 O₂'
+      },
+      {
+        id: 'bl-scene-10',
+        cat: 'aquaculture',
+        title: 'Sustainable Pearl Oyster Mariculture & Coral Lagoon Ecology',
+        file: 'so2bl_sustainable_pearl_farming.html',
+        desc: 'Pinctada margaritifera & Pteria penguin mariculture, gentle mantle grafting, suspended lantern net lines in coral lagoons, and biogenic aragonite nacre biomineralization.',
+        tags: ['Pearl Mariculture', 'Pinctada Oysters', 'Aragonite Nacre', 'Lagoon Ecology'],
+        runtime: '7 Min',
+        reward: '+€210 · +65 XP · +40 O₂'
+      }
+    ];
+
+    return '<div class="alp-scene-filters" id="blSceneFilters">' +
+      '<button class="chip" aria-pressed="true" data-cat="all">All Labs (10)</button>' +
+      '<button class="chip" aria-pressed="false" data-cat="energy">⚡ Ocean Energy &amp; Microgrid (2)</button>' +
+      '<button class="chip" aria-pressed="false" data-cat="aquaculture">🦐 Marine Aquaculture &amp; Mariculture (3)</button>' +
+      '<button class="chip" aria-pressed="false" data-cat="flora">🌿 Coastal Flora &amp; Blue Carbon (2)</button>' +
+      '<button class="chip" aria-pressed="false" data-cat="economy">❄️ Cold-Chain &amp; Blue Economy (3)</button>' +
+    '</div>' +
+    '<div class="alp-scene-grid" id="blSceneGrid">' + blueLabScenes.map(function(s) {
+      return '<div class="alp-scene-card" data-cat="' + s.cat + '">' +
+        '<h4><span>🔬</span> ' + esc(s.title) + '</h4>' +
+        '<span style="font-size:0.72rem;font-weight:800;color:var(--bl-cyan);margin-bottom:4px;display:block;">⏱️ ' + s.runtime + ' · 🎁 ' + s.reward + '</span>' +
+        '<p class="alp-scene-desc">' + esc(s.desc) + '</p>' +
+        '<div class="alp-scene-features">' +
+          s.tags.map(function(t) { return '<span class="alp-feat-tag">' + esc(t) + '</span>'; }).join('') +
+          '<span class="alp-feat-tag highlight">💬 English Accent Audio</span>' +
+          '<span class="alp-feat-tag highlight">🎛️ Inline CC Toggle</span>' +
+        '</div>' +
+        '<a class="alp-scene-cta" href="../saint-martin/research/' + s.file + '?source=hub" target="_blank" rel="noopener"><span>▶️ Launch 3D Lab Simulation</span></a>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function renderBlueLabChapters() {
+    var chs = [
+      {
+        id: 1,
+        title: 'Reef Survey & The First Decagon',
+        sub: 'Establishing Coral Baseline & Intertidal Stilt-Roots',
+        desc: 'Deploy underwater scuba survey across the lagoon coral sanctuary, till intertidal sandy loam in Mangrove Decagon 1, and clear West beach mud rock shelf.',
+        criteria: [
+          'Inspect Coral Sanctuary Polyp Health (Diving Stand)',
+          'Till & Aerate Mangrove Decagon 1 (10 Sub-Plots)',
+          'Clear Beach Sand Mud Rock Shelf & Build North Storage',
+          'Achieve Sea Health Index (SHI) ≥ 85%'
+        ]
+      },
+      {
+        id: 2,
+        title: 'Sub-Sea Agriculture & East Dune Orchard',
+        sub: 'Mariculture Rafts & Closed-Loop Lagoon',
+        desc: 'Construct Freshwater Lake & Mud Crab RAS Lagoon, deploy bamboo seaweed mariculture rafts, and aerate sandy loam in Decagon 2 Coastal Fruit Orchard.',
+        criteria: [
+          'Construct Mud Crab RAS Lagoon (MBBR Biofilter)',
+          'Deploy Seaweed Longline Mariculture Rafts',
+          'Till Decagon 2 Coastal Fruit Orchard (Coconut & Palmyra)',
+          'Harvest First Batch of Gracilaria & Mud Crabs'
+        ]
+      },
+      {
+        id: 3,
+        title: 'Off-Grid Clean Microgrid & Agro-Canopy',
+        sub: 'Hybrid Offshore Generation & 500 kWh BESS',
+        desc: 'Erect twin 150 kW offshore marine wind turbines, assemble 120 kW floating PV pontoon array, and commission the 500 kWh battery storage substation.',
+        criteria: [
+          'Assemble 120 kW Offshore Floating Solar Array',
+          'Erect Offshore Wind Turbine North (150 kW Marine Tower)',
+          'Commission 500 kWh BESS Microgrid Substation',
+          'Achieve 100% Zero-Fossil Island Electricity Autonomy'
+        ]
+      },
+      {
+        id: 4,
+        title: 'Zero-Carbon Processing & Algae Scrubber',
+        sub: 'Cryogenic IQF Freezing & SWRO Desalination',
+        desc: 'Construct shoreline -38°C IQF seafood cryo-freezer, excavate tiered solar salt crystallizers, and erect reverse osmosis desalination pressure tubes.',
+        criteria: [
+          'Construct Seafood -38°C IQF Cryo-Freezing Plant',
+          'Excavate Solar Marine Salt Evaporator Flats',
+          'Commission SWRO Desalination Core & Water Silos',
+          'Achieve 80,000 L/Day Potable Water Distribution'
+        ]
+      },
+      {
+        id: 5,
+        title: 'Global Trade Passport & German Farm Corridor',
+        sub: 'Planetary Biome Certification & Export Bridge',
+        desc: 'Maintain pristine Sea Health Index (SHI ≥ 90%), press 20 L cold-pressed virgin coconut oil, and synchronize continental export corridor with Base Farm.',
+        criteria: [
+          'Sea Health Index Equilibrium (SHI ≥ 90% across all sectors)',
+          'Press 20 L Cold-Pressed Virgin Organic Coconut Oil',
+          'Synchronize Trade Route via 3D Biome Globe',
+          'Master All 10 3D Research HQ Scientific Simulations'
+        ]
+      }
+    ];
+
+    return '<div class="alp-chapters-grid">' + chs.map(function(c) {
+      return '<div class="alp-chapter-card">' +
+        '<div class="alp-chapter-header">' +
+          '<span class="alp-ch-badge">Chapter ' + c.id + '</span>' +
+          '<h3>' + esc(c.title) + '</h3>' +
+        '</div>' +
+        '<span style="font-size:0.75rem;font-weight:800;color:var(--bl-cyan);margin-bottom:6px;display:block;">' + esc(c.sub) + '</span>' +
+        '<p class="alp-chapter-desc">' + esc(c.desc) + '</p>' +
+        '<div class="alp-criteria-list">' +
+          '<b>Sub-Challenges &amp; Milestones:</b>' +
+          '<ul>' + c.criteria.map(function(cr) { return '<li>' + esc(cr) + '</li>'; }).join('') + '</ul>' +
+        '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function renderBlueLabLearningOutcomes() {
+    return '<div class="alp-learning-box">' +
+      '<h3><span>💡</span> Scientific Learning Outcomes for Children &amp; Eco-Explorers</h3>' +
+      '<p>SearchO2 Blue Lab turns marine biology, ocean thermodynamics, and sustainable aquaculture into fascinating, hands-on scientific discoveries!</p>' +
+      '<div class="alp-outcomes-grid">' +
+        '<div class="alp-outcome-item">' +
+          '<b>🌊 Blue Carbon Sequestration</b>' +
+          '<p>Kids discover that coastal mangrove forests trap and store carbon in wet sediment up to 10 times faster than mature tropical rainforests. Stilt roots protect shorelines while saving our atmosphere!</p>' +
+        '</div>' +
+        '<div class="alp-outcome-item">' +
+          '<b>🧪 Osmotic Pressure &amp; SWRO Physics</b>' +
+          '<p>Learn how high-pressure pumps force salty ocean water through semi-permeable membranes (0.0001 microns wide!), rejecting sodium ions while letting pure water molecules flow into drinking silos.</p>' +
+        '</div>' +
+        '<div class="alp-outcome-item">' +
+          '<b>❄️ Cryogenic Flash Freezing (-38°C)</b>' +
+          '<p>Explore thermodynamic heat transfer: freezing seafood in seconds creates microscopic ice crystals that do not pierce fragile cell walls, locking in fresh nutrients without chemical preservatives.</p>' +
+        '</div>' +
+        '<div class="alp-outcome-item">' +
+          '<b>🔄 Nitrification in Marine RAS Biofilters</b>' +
+          '<p>Understand microbial bio-filters: aquatic animals exhale ammonia (NH₃), which beneficial Nitrosomonas bacteria oxidize into nitrite (NO₂⁻), then Nitrobacter converts into plant-feeding nitrate (NO₃⁻)!</p>' +
+        '</div>' +
+        '<div class="alp-outcome-item">' +
+          '<b>🐬 Acoustic Soft-Start Seismic Protocol</b>' +
+          '<p>Witness marine acoustics in action: firing survey airguns with gentle 20-minute ramp-up soft starts gives dolphins and whales time to swim safely out of the 500-meter marine mammal zone.</p>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function bindBlueLabInteractive() {
+    var filterBar = document.getElementById('blSceneFilters');
+    if (filterBar) {
+      filterBar.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-cat]');
+        if (!btn) return;
+        var cat = btn.dataset.cat;
+        document.querySelectorAll('#blSceneFilters .chip').forEach(function(c) { c.setAttribute('aria-pressed', String(c === btn)); });
+        document.querySelectorAll('#blSceneGrid .alp-scene-card').forEach(function(card) {
+          if (cat === 'all' || card.dataset.cat === cat) {
+            card.style.display = 'flex';
+          } else {
+            card.style.display = 'none';
+          }
+        });
+      });
+    }
+  }
+
   function pageAlpenhof() {
     main.innerHTML =
       '<div class="alpenhof-hub">' +
@@ -842,7 +1404,7 @@
             '<a class="btn gold" href="../bavaria/alpenhof.html" title="Launch Interactive 3D Alpenhof Game">🎮 Launch Alpenhof 3D Game ➔</a>' +
             '<a class="btn" href="#alp-characters">🧑‍🔬 HQ Characters &amp; Artisans</a>' +
             '<a class="btn ghost" href="#alp-rules">📜 Pip\'s 5 Eco-Rules</a>' +
-            '<a class="btn ghost" href="#alp-scenes">🔬 13 3D Research Labs</a>' +
+            '<a class="btn ghost" href="#alp-scenes">🔬 14 3D Research Labs</a>' +
           '</div>' +
         '</section>' +
 
@@ -860,7 +1422,7 @@
           '<a class="alp-jump-btn" href="#alp-characters">🧑‍🔬 HQ Characters &amp; Artisans</a>' +
           '<a class="alp-jump-btn" href="#alp-rules">📜 Pip\'s 5 Eco-Rules</a>' +
           '<a class="alp-jump-btn" href="#alp-facilities">🌳 Facilities &amp; Living Systems</a>' +
-          '<a class="alp-jump-btn" href="#alp-scenes">🔬 13 3D Research Labs</a>' +
+          '<a class="alp-jump-btn" href="#alp-scenes">🔬 14 3D Research Labs</a>' +
           '<a class="alp-jump-btn" href="#alp-challenges">🏆 6 Chapter Challenges</a>' +
           '<a class="alp-jump-btn" href="#alp-learning">💡 Educational Outcomes</a>' +
           '<a class="alp-jump-btn" href="#alp-regions">🌍 Regional Network</a>' +
@@ -889,7 +1451,7 @@
 
         // SECTION 4: 13 3D SCENES
         '<section id="alp-scenes" class="alp-section-head">' +
-          '<h2><span>🔬</span> The 13 3D Research HQ Animation Labs</h2>' +
+          '<h2><span>🔬</span> The 14 3D Research HQ Animation Labs</h2>' +
           '<p>Explore the full suite of interactive 3D WebGL scenes featuring English audio dialogue, clean icon-only navigation, bottom-left compact subtitle modals, and inline CC toggles with zero visual obstruction.</p>' +
         '</section>' +
         render13ScenesGallery() +
@@ -1311,14 +1873,23 @@
         file: 'infra/pnp_alpenhof_pond_excavation.html',
         desc: 'Natural bentonite clay pond sealing, littoral shelf grading, cascade oxygenation, and trout hatchery habitat creation.',
         tags: ['Limnology', 'Clay Sealing', 'Trout Hatchery']
+      },
+      {
+        id: 'scene-14',
+        cat: 'viticulture',
+        title: 'Bavarian Viticulture & Franconian Terroir',
+        file: 'viticulture/pnp_alpenhof_bavarian_viticulture_terroir.html',
+        desc: 'Triassic Triad geology (Muschelkalk & Buntsandstein), 50% hillside hydrology drainage, Vitis vinifera canopy trellising, and 15th-century wooden Baumkelter winepress physics.',
+        tags: ['Franconian Terroir', 'Slope Hydrology', 'Baumkelter Press']
       }
     ];
 
     return '<div class="alp-scene-filters" id="alpSceneFilters">' +
-      '<button class="chip" aria-pressed="true" data-cat="all">All Labs (13)</button>' +
+      '<button class="chip" aria-pressed="true" data-cat="all">All Labs (14)</button>' +
       '<button class="chip" aria-pressed="false" data-cat="dairy">🧀 Dairy &amp; Fermentation (3)</button>' +
       '<button class="chip" aria-pressed="false" data-cat="energy">⚡ Renewable Microgrids (4)</button>' +
       '<button class="chip" aria-pressed="false" data-cat="infra">🏗️ Civil Infrastructure (6)</button>' +
+      '<button class="chip" aria-pressed="false" data-cat="viticulture">🍇 Viticulture &amp; Terroir (1)</button>' +
     '</div>' +
     '<div class="alp-scene-grid" id="alpSceneGrid">' + scenes.map(function(s) {
       return '<div class="alp-scene-card" data-cat="' + s.cat + '">' +
@@ -1435,7 +2006,7 @@
       '<div class="alp-region-cards">' +
         '<div class="alp-reg-card current">' +
           '<h4>🏔️ Bavaria: Alpenhof Eco-Village</h4>' +
-          '<p><b>Active Live Region.</b> 54 Streuobst beds, Living Waters glacial aquaculture, Simmental dairy, 13 3D Research HQ Labs, and alpine gastronomy.</p>' +
+          '<p><b>Active Live Region.</b> 54 Streuobst beds, Living Waters glacial aquaculture, Simmental dairy, 14 3D Research HQ Labs, and alpine gastronomy.</p>' +
           '<a class="btn gold" href="../bavaria/alpenhof.html">🎮 Play Alpenhof 3D</a>' +
         '</div>' +
         '<div class="alp-reg-card">' +

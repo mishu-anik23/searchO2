@@ -28,7 +28,7 @@
       }
       var userEmail = (user && user.email || '').toLowerCase().trim();
       var isMasterEmail = (elevatedEmail === 'searcho2.online@gmail.com' || userEmail === 'searcho2.online@gmail.com');
-      var isAdmin = isMasterEmail && (elevated || hasAdminToken || (user && user.role === 'admin'));
+      var isAdmin = isMasterEmail || (user && user.role === 'admin') || elevated || hasAdminToken;
       if (!isAdmin) {
         try { alert('🔒 Access Restricted: Alpenhof (Bavaria) is reserved for SearchO2 Headquarters Administration. Redirecting to base farm...'); } catch(e){}
         window.location.replace('../index.html');
@@ -70,23 +70,40 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
   display:flex;align-items:center;justify-content:center;position:relative;
   box-shadow:0 4px 14px rgba(0,0,0,0.5);backdrop-filter:blur(8px);transition:all 0.15s;
 }
-.chip-btn:hover{border-color:var(--teal);transform:translateY(-1px)}
+.chip-btn:hover{border-color:var(--teal);transform:translateY(-1px);z-index:500 !important}
 .chip-btn .tip{
-  position:absolute;top:52px;left:50%;transform:translateX(-50%);
-  background:rgba(5,14,8,0.96);border:1px solid var(--teal);border-radius:10px;
-  padding:5px 10px;font-size:0.72rem;font-weight:700;white-space:nowrap;
-  opacity:0;pointer-events:none;z-index:50;transition:opacity 0.15s;
+  position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:rgba(5,14,8,0.98);border:1.5px solid var(--teal);color:#FFFFFF;border-radius:10px;
+  padding:6px 12px;font-size:0.74rem;font-weight:800;white-space:nowrap;
+  opacity:0;visibility:hidden;pointer-events:none;z-index:9999 !important;
+  box-shadow:0 8px 24px rgba(0,0,0,0.75),0 0 0 1px rgba(0,230,118,0.3);
+  transition:opacity 0.15s ease,visibility 0.15s ease;
 }
-.chip-btn:hover .tip{opacity:1}
+.chip-btn .tip::after{
+  content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-bottom-color:var(--teal);
+}
+.chip-btn:hover .tip{opacity:1 !important;visibility:visible !important}
 
 .control-grid{
   display:none;position:absolute;top:68px;left:14px;width:min(320px,92vw);
   grid-template-columns:repeat(4,1fr);gap:8px;padding:12px;
-  background:var(--card);border:1.5px solid var(--border);border-radius:18px;z-index:28;
+  background:var(--card);border:1.5px solid var(--border);border-radius:18px;z-index:60;
   backdrop-filter:blur(10px);box-shadow:0 12px 30px rgba(0,0,0,0.6);
+  overflow:visible;
 }
 .control-grid.open{display:grid}
-.control-grid .chip-btn{width:100%;height:54px}
+.control-grid .chip-btn{width:100%;height:54px;position:relative}
+.control-grid .chip-btn:hover{z-index:500 !important}
+.control-grid .chip-btn .tip{z-index:9999 !important}
+/* Keep tooltips within view for 4-column grid edges */
+.control-grid .chip-btn:nth-child(4n+1) .tip{left:0;transform:none}
+.control-grid .chip-btn:nth-child(4n+1) .tip::after{left:18px;transform:none}
+.control-grid .chip-btn:nth-child(4n) .tip{left:auto;right:0;transform:none}
+.control-grid .chip-btn:nth-child(4n) .tip::after{left:auto;right:18px;transform:none}
+/* For bottom row of control grid, show tooltip above */
+.control-grid .chip-btn:nth-child(n+9) .tip{top:auto;bottom:calc(100% + 8px)}
+.control-grid .chip-btn:nth-child(n+9) .tip::after{bottom:auto;top:100%;border-bottom-color:transparent;border-top-color:var(--teal)}
 
 /* Top-Right Scoreboard */
 .top-right-hud{position:absolute;top:14px;right:14px;display:flex;gap:8px;align-items:center;z-index:30}
@@ -105,22 +122,194 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
 .zoom-btn{width:42px;height:42px;border-radius:12px;border:1.5px solid var(--border);background:rgba(8,20,12,0.92);color:#E8F5E9;font-weight:900;cursor:pointer;backdrop-filter:blur(6px);transition:all .15s}
 .zoom-btn.active{border-color:var(--teal);color:var(--teal);background:rgba(0,230,118,0.15)}
 
-/* Chapter Tracker Header Pill (Sleek Topbar Progression Header, non-sticky) */
+/* Chapter Tracker Header Pill -> Redesigned as Icon-Only with rich hover info */
 .task-capsule{
-  position:absolute;top:16px;left:50%;transform:translateX(-50%);
-  width:min(540px,calc(100vw - 340px));background:rgba(10,22,14,0.92);border:1.5px solid var(--border);
+  background:rgba(10,22,14,0.92);border:1.5px solid var(--border);
   border-radius:16px;padding:8px 16px;z-index:22;backdrop-filter:blur(10px);box-shadow:0 8px 24px rgba(0,0,0,0.45);
   cursor:pointer;transition:all 0.2s cubic-bezier(0.16,1,0.3,1);
 }
 .task-capsule:hover{
-  border-color:var(--gold);transform:translateX(-50%) translateY(-1px);
-  box-shadow:0 12px 30px rgba(0,0,0,0.65);background:rgba(14,30,20,0.96);
+  border-color:var(--gold);background:rgba(14,30,20,0.96);
+  box-shadow:0 12px 30px rgba(0,0,0,0.65);
 }
 .task-capsule h4{font-family:'Baloo 2',sans-serif;font-size:0.92rem;color:var(--gold);margin-bottom:2px;display:flex;align-items:center;gap:6px}
 .task-capsule p{font-size:0.75rem;color:#C8E6C9;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .task-capsule .recall-tag{font-size:0.65rem;background:rgba(255,213,79,0.15);color:var(--gold);padding:2px 8px;border-radius:8px;font-weight:800;border:1px solid rgba(255,213,79,0.35);margin-left:auto}
 .prog-bar{height:5px;background:rgba(255,255,255,0.12);border-radius:4px;margin-top:6px;overflow:hidden}
 .prog-fill{height:100%;background:linear-gradient(90deg,var(--meadow),var(--teal));width:12%;border-radius:4px;transition:width 0.3s}
+
+.task-capsule-icon-btn{
+  position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  width:46px;height:46px;border-radius:14px;border:1.5px solid var(--gold);
+  background:linear-gradient(135deg,rgba(26,44,30,0.96),rgba(10,22,14,0.98));
+  color:#FFF;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:35;box-shadow:0 4px 16px rgba(0,0,0,0.5),0 0 10px rgba(255,213,79,0.3);
+  backdrop-filter:blur(8px);transition:all 0.15s;padding:0;
+}
+.task-capsule-icon-btn:hover{
+  border-color:#FFE082;transform:translateX(-50%) translateY(-1px);
+  box-shadow:0 8px 24px rgba(0,0,0,0.65),0 0 16px rgba(255,213,79,0.5);
+  z-index:500 !important;
+}
+.task-capsule-icon-btn .ch-icon{font-size:1.2rem;line-height:1}
+.task-capsule-icon-btn .ch-badge{font-size:0.58rem;font-weight:900;color:var(--gold);line-height:1;margin-top:2px}
+.task-capsule-icon-btn .task-tip{
+  position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:rgba(6,18,12,0.98);border:1.5px solid var(--gold);color:#FFFFFF;
+  border-radius:12px;padding:8px 12px;white-space:normal;text-align:left;
+  min-width:210px;max-width:280px;opacity:0;visibility:hidden;pointer-events:none;
+  z-index:9999 !important;box-shadow:0 8px 24px rgba(0,0,0,0.8),0 0 0 1px rgba(255,213,79,0.3);
+  transition:opacity 0.15s ease,visibility 0.15s ease;
+}
+.task-capsule-icon-btn .task-tip::after{
+  content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-bottom-color:var(--gold);
+}
+.task-capsule-icon-btn:hover .task-tip{opacity:1 !important;visibility:visible !important}
+
+
+/* Compact Icon-Only HUD Controls & Floating Trade Badges */
+.hud-icon-btn {
+  position: absolute;
+  top: 14px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1.5px solid var(--border);
+  background: linear-gradient(135deg, rgba(20, 36, 26, 0.96), rgba(8, 18, 12, 0.98));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 35;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+}
+#economyHudBtn {
+  left: calc(50% + 32px);
+  border-color: #FFD54F;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 10px rgba(255, 213, 79, 0.25);
+}
+#visitorHudBtn {
+  left: calc(50% + 84px);
+  border-color: #00E676;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5), 0 0 10px rgba(0, 230, 118, 0.25);
+}
+.hud-icon-btn:hover {
+  transform: translateY(-2px) scale(1.04);
+  z-index: 500 !important;
+}
+#economyHudBtn:hover {
+  border-color: #FFE082;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.65), 0 0 16px rgba(255, 213, 79, 0.45);
+}
+#visitorHudBtn:hover {
+  border-color: #69F0AE;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.65), 0 0 16px rgba(0, 230, 118, 0.45);
+}
+.trade-pulse-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #FFD54F;
+  color: #1A1200;
+  font-size: 10px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 8px #FFD54F;
+  animation: tradePulse 1.8s infinite ease-in-out;
+  border: 1.5px solid #06120C;
+}
+@keyframes tradePulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 4px #FFD54F; }
+  50% { transform: scale(1.15); box-shadow: 0 0 12px #FFD54F; }
+}
+
+/* Floating Periodic Managerial Trade Popup Badge */
+.floating-trade-popup {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(8, 22, 16, 0.94);
+  border: 1.5px solid #00E676;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.7), 0 0 18px rgba(0, 230, 118, 0.35);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 8px 14px 8px 10px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideInTradePopup 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 340px;
+}
+@keyframes slideInTradePopup {
+  0% { transform: translateY(30px) scale(0.9); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.floating-trade-popup:hover {
+  transform: translateY(-2px) scale(1.02);
+  border-color: #69F0AE;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.8), 0 0 24px rgba(0, 230, 118, 0.5);
+}
+.trade-popup-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(0, 230, 118, 0.18);
+  border: 1px solid rgba(0, 230, 118, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.trade-popup-body {
+  flex: 1;
+  min-width: 0;
+}
+.trade-popup-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #A7F3D0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.trade-popup-desc {
+  font-size: 0.68rem;
+  color: #C8E6C9;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.trade-popup-btn {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #1B5E20;
+  color: #A7F3D0;
+  border: 1px solid #00E676;
+  white-space: nowrap;
+}
+@media (max-width:768px){
+  #taskCapsule { left: calc(50% - 48px); }
+  #economyHudBtn { left: 50%; }
+  #visitorHudBtn { left: calc(50% + 48px); }
+  .floating-trade-popup { bottom: 80px; right: 12px; max-width: 280px; }
+}
 
 /* Modals */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,8,4,0.82);display:none;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(8px)}
@@ -200,7 +389,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
 @keyframes rotatePhoneAnim{0%{transform:rotate(0deg)}50%{transform:rotate(-90deg)}100%{transform:rotate(0deg)}}
 
 @media (max-width:768px){
-  .task-capsule{top:64px;bottom:auto;left:8px;right:8px;transform:none;width:auto;padding:8px 12px}.task-capsule:hover{transform:none}
+  .task-capsule{top:14px;padding:8px 12px}
   .bottom-right-hud{bottom:auto;top:14px;right:68px}
   .scoreboard{top:auto;bottom:75px;right:8px;left:8px;width:auto}
   .control-grid{top:auto;bottom:75px;left:8px;right:8px;width:auto}
@@ -538,18 +727,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
       <button class="chip-btn" id="btn-home" title="Return to World Globe (🌐)">🌐<span class="tip">World Globe</span></button>
     </div>
 
-    <!-- Control Grid Menu -->
+    <!-- Control Grid Menu (With Full Hover Info on All Buttons) -->
     <div class="control-grid" id="controlGrid">
-      <button class="chip-btn" id="btn-master">📋<span class="tip">Masterplan</span></button>
-      <button class="chip-btn" id="btn-lab">🔬<span class="tip">3D Knowledge Lab</span></button>
-      <button class="chip-btn" id="btn-office">🦉<span class="tip">Puff & Pip Office</span></button>
-      <button class="chip-btn" id="btn-labour">🧑‍🌾<span class="tip">Labour HQ</span></button>
-      <button class="chip-btn" id="btn-species">🌲<span class="tip">Species</span></button>
-      <button class="chip-btn" id="btn-why">💡<span class="tip">Why Alpenhof</span></button>
-      <button class="chip-btn" id="btn-plan">🗺️<span class="tip">Blueprint</span></button>
-      <button class="chip-btn" id="btn-birds">🦅<span class="tip">Alpine Birds</span></button>
-      <button class="chip-btn" id="btn-o2">🫁<span class="tip">Oxygen XP</span></button>
-      <button class="chip-btn" id="btn-globe2">🌍<span class="tip">Global Map</span></button>
+      <button class="chip-btn" id="btn-master" title="Masterplan (📋)">📋<span class="tip">Masterplan</span></button>
+      <button class="chip-btn" id="btn-lab" title="3D Knowledge Lab (🔬)">🔬<span class="tip">3D Knowledge Lab</span></button>
+      <button class="chip-btn" id="btn-office" title="Puff &amp; Pip Office (🦉)">🦉<span class="tip">Puff &amp; Pip Office</span></button>
+      <button class="chip-btn" id="btn-labour" title="Labour HQ (🧑‍🌾)">🧑‍🌾<span class="tip">Labour HQ</span></button>
+      <button class="chip-btn" id="btn-species" title="Species Library (🌲)">🌲<span class="tip">Species</span></button>
+      <button class="chip-btn" id="btn-why" title="Why Alpenhof Concepts (💡)">💡<span class="tip">Why Alpenhof</span></button>
+      <button class="chip-btn" id="btn-plan" title="Blueprint &amp; Infrastructure (🗺️)">🗺️<span class="tip">Blueprint</span></button>
+      <button class="chip-btn" id="btn-birds" title="Alpine Birds Habitat (🦅)">🦅<span class="tip">Alpine Birds</span></button>
+      <button class="chip-btn" id="btn-o2" title="Oxygen XP &amp; Carbon Telemetry (🫁)">🫁<span class="tip">Oxygen XP</span></button>
+      <button class="chip-btn" id="btn-globe2" title="Global Biome Map (🌍)">🌍<span class="tip">Global Map</span></button>
     </div>
 
     <!-- Top-Right Scoreboard -->
@@ -557,40 +746,53 @@ html,body{width:100%;height:100%;overflow:hidden;background:#051009;font-family:
 
     <!-- Bottom-Right Zoom & View Controls -->
     <div class="bottom-right-hud" id="zoomBar">
-      <button class="zoom-btn active" data-z="1">1×</button>
-      <button class="zoom-btn" data-z="2">2×</button>
-      <button class="zoom-btn" data-z="5">5×</button>
+      <button class="zoom-btn active" data-z="1" title="1× Zoom View">1×</button>
+      <button class="zoom-btn" data-z="2" title="2× Closer Zoom">2×</button>
+      <button class="zoom-btn" data-z="5" title="5× Detailed Zoom">5×</button>
     </div>
 
-    <!-- Chapter Tracker Header Pill (Click opens redesigned Chapter Exploration & Mastery Journey) -->
-    <div class="task-capsule" id="taskCapsule" onclick="openMaster()" title="Click to open 6-Chapter Exploration & Mastery Journey">
-      <h4>
-        <span id="taskIcon">🌿</span>
-        <span id="taskTitle">Chapter 1 · Survey the Alpenhof Estate</span>
-        <span class="recall-tag" id="taskRecall">Recalling Solo Founder Ch. 1</span>
-      </h4>
-      <p id="taskDesc">Walk the 6 Streuobst orchard dirt plots, living waters pond, Simmental cattle fence and alpine pads. Acknowledge Why Cards to unlock tools.</p>
-      <div class="prog-bar"><div class="prog-fill" id="taskBar" style="width:12%"></div></div>
-    </div>
+    <!-- Chapter Journey Sticky Icon (Icon-only with hover info; click opens 6-Chapter Journey modal with close option) -->
+    <button class="chip-btn task-capsule-icon-btn" id="taskCapsule" onclick="openMaster()" title="Chapter 1 · Survey the Alpenhof Estate&#10;Walk the 6 Streuobst orchard dirt plots, living waters pond, Simmental cattle fence and alpine pads.&#10;Click to open 6-Chapter Journey Modal" aria-label="Chapter Journey">
+      <span class="ch-icon" id="taskIcon">🌿</span>
+      <span class="ch-badge" id="taskChBadge">Ch.1</span>
+      <span class="tip task-tip" id="taskTip">
+        <strong id="taskTipTitle" style="color:var(--gold);display:block;margin-bottom:3px;font-size:0.78rem">Chapter 1 · Survey the Alpenhof Estate</strong>
+        <span id="taskTipDesc" style="color:#C8E6C9;font-weight:600;font-size:0.70rem;display:block;max-width:240px;line-height:1.35;white-space:normal">Walk the 6 Streuobst orchard dirt plots, living waters pond, Simmental cattle fence and alpine pads.</span>
+        <span style="color:var(--teal);font-size:0.68rem;display:block;margin-top:5px;font-weight:800">👉 Click to open Journey Modal</span>
+      </span>
+      <!-- Hidden DOM anchors preserved for script compatibility -->
+      <span id="taskTitle" style="display:none">Chapter 1 · Survey the Alpenhof Estate</span>
+      <span id="taskRecall" style="display:none">Recalling Solo Founder Ch. 1</span>
+      <p id="taskDesc" style="display:none">Walk the 6 Streuobst orchard dirt plots, living waters pond, Simmental cattle fence and alpine pads.</p>
+      <div class="prog-bar" style="display:none"><div class="prog-fill" id="taskBar" style="width:12%"></div></div>
+    </button>
 
-    <!-- Volumetric 3D Visitors & Tourism HUD Capsule -->
-    <!-- Comprehensive Alpenhof Game Economy & O2 Telemetry HUD Capsule -->
-    <div id="economyHudCapsule" class="task-capsule" onclick="openAlpenEconomyModal()" title="View Alpenhof Farm Economy & Oxygen Breakdown" style="top:70px;left:calc(50% + 270px);transform:none;cursor:pointer;background:rgba(10,26,38,0.92);border-color:#FFD54F;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:24px;border:1.5px solid #FFD54F;box-shadow:0 6px 20px rgba(0,0,0,0.5);z-index:50">
-      <span style="font-size:1.1rem">📊</span>
-      <div class="task-body">
-        <div id="economyHudTitle" class="task-title" style="color:#FFE082;font-weight:700;font-size:0.80rem">Economy: € / O₂ Active</div>
-        <div id="economyHudSub" class="task-recall" style="color:#FFF9C4;font-size:0.70rem">🌾 6 Revenue Systems</div>
+    <!-- Compact Icon-Only HUD Buttons with Micro-Tooltips & Notification Badges -->
+    <button id="economyHudBtn" class="hud-icon-btn" onclick="openAlpenEconomyModal()" title="Alpenhof Farm Economy: € / O₂ Realtime Telemetry & Breakdown" aria-label="Farm Economy">
+      📊
+      <div class="hud-micro-tip">
+        <strong style="color:#FFE082;display:block">Alpenhof Economy</strong>
+        <span style="color:#FFF9C4;font-size:0.68rem">€ / O₂ Realtime Audit</span>
       </div>
-      <span style="font-size:0.72rem;padding:3px 8px;border-radius:6px;background:#E65100;color:#FFF;font-weight:700">Audit 💶</span>
-    </div>
+    </button>
 
-    <div id="visitorHudCapsule" class="task-capsule" onclick="openManagerialTradeModal()" title="View Active Farm Visitors & Pending Store Managerial Trades" style="top:16px;left:calc(50% + 270px);transform:none;cursor:pointer;background:rgba(12,30,22,0.88);border-color:#00E676;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:24px;border:1.5px solid #00E676;box-shadow:0 6px 20px rgba(0,0,0,0.5)">
-      <span style="font-size:1.1rem">👥</span>
-      <div class="task-body">
-        <div id="visitorHudTitle" class="task-title" style="color:#A7F3D0;font-weight:700;font-size:0.80rem">Visitors: Active · 96% Sat</div>
-        <div id="visitorHudSub" class="task-recall" style="color:#C8E6C9;font-size:0.70rem">🏪 Store Managerial Trades Active</div>
+    <button id="visitorHudBtn" class="hud-icon-btn" onclick="openManagerialTradeModal()" title="Managerial Trade: Store Requests & Farm Visitors" aria-label="Managerial Trade">
+      🏪
+      <span id="tradeBadgeCount" class="trade-pulse-badge" style="display:none">0</span>
+      <div class="hud-micro-tip">
+        <strong style="color:#A7F3D0;display:block">Managerial Trade</strong>
+        <span style="color:#C8E6C9;font-size:0.68rem">Guest & Store Orders</span>
       </div>
-      <span style="font-size:0.72rem;padding:3px 8px;border-radius:6px;background:#1B5E20;color:#A7F3D0;font-weight:700">Trade ⚖️</span>
+    </button>
+
+    <!-- Sleek Floating Trade Popup (appears periodically at interval when trade is pending, onclick opens modal) -->
+    <div id="floatingTradePopup" class="floating-trade-popup" onclick="openManagerialTradeModal()" style="display:none">
+      <span style="font-size:1.15rem;animation:tradePulse 1.8s infinite">⚖️</span>
+      <div style="flex:1;min-width:0">
+        <div id="floatingTradeTitle" style="font-size:0.75rem;font-weight:800;color:#A7F3D0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">⚖️ New Trade Offer</div>
+        <div id="floatingTradeDesc" style="font-size:0.68rem;color:#E8F5E9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Review store order</div>
+      </div>
+      <span style="font-size:0.68rem;padding:2px 6px;border-radius:4px;background:#00E676;color:#022C19;font-weight:800">Review</span>
     </div>
   </div>
 
@@ -1719,6 +1921,7 @@ window.checkChapterProgression = function() {
       const td = document.getElementById('taskDesc');
       if (td) td.textContent = nextCh.desc;
       if (tb) tb.style.width = '10%';
+      if (typeof updateTaskCapsuleDisplay === 'function') updateTaskCapsuleDisplay(state.chapter, nextCh.title, nextCh.desc);
       
       grantXP({ oxygen: 25, biodiversity: 20 });
       if (typeof openCharacterDialogue === 'function') {
@@ -8744,7 +8947,7 @@ const AlpenMap = {
     for(const s of SITES){
       const mx = (s.markerX !== undefined) ? s.markerX : s.x;
       const my = (s.markerY !== undefined) ? s.markerY : (s.y - 58);
-      const radius = s.action === 'pond' ? 120 : s.action === 'vine' ? 90 : 52;
+      const radius = s.action === 'pond' ? 120 : s.action === 'vine' ? 90 : s.action === 'orchard' ? 88 : 52;
       if (Math.hypot(cx - s.x, cy - s.y) < radius || Math.hypot(cx - mx, cy - my) < 22){
         if (typeof isSiteInLockedZone === 'function' && isSiteInLockedZone(s.id)) {
           const z = getSiteZone(s.id);
@@ -11026,7 +11229,38 @@ const ORCHARD_HEIRLOOMS = {
   o6: { name: 'Geisenheim Black Walnut', species: 'beech', icon: '🌰', slope: 'SE Lower Valley Meadow', harvestRevenue: 45, desc: 'Heavy winter walnut trees providing valuable nut timber and cold-pressed walnut oil.' }
 };
 
+
+/* ================= ORCHARD PLOT CHAPTER UNLOCK ENGINE ================= */
+window.isPlotUnlocked = function(plotId) {
+  if (state.isAdmin) return true;
+  if (plotId === 'o1') return true;
+  if (plotId === 'o2' || plotId === 'o3') return state.chapter >= 2;
+  if (plotId === 'o4') return state.chapter >= 3;
+  if (plotId === 'o5' || plotId === 'o6') return state.chapter >= 4;
+  return false;
+};
+
+window.explainLockedPlot = function(plotId) {
+  const info = ORCHARD_HEIRLOOMS[plotId] || { name: 'Streuobst Plot', slope: 'Alpine Slope' };
+  const reqCh = (plotId === 'o2' || plotId === 'o3') ? 2 : (plotId === 'o4' ? 3 : 4);
+  const plotNum = plotId.replace('o', '');
+  openCharacterDialogue('puff_pip', '🔒 Streuobst Plot ' + plotNum + ' Shrouded in Mountain Mist', [
+    {
+      name: 'Professor Whisker Puff (🦉)',
+      text: 'Halt, eager pioneer! Orchard Plot ' + plotNum + ' (' + info.slope + ') is currently veiled in thick alpine morning mist. In Chapter 1, our ecological focus is concentrated on aerating Plot 1 and recommissioning the Timber Farm Shed!'
+    },
+    {
+      name: 'Pip Squeak-a-Link (🐥)',
+      text: 'Complete all Chapter 1 objectives: Recommission the Farm Shed (€120), hire Master Orchardist Hans Weber, and aerate Plot 1. Once accomplished, the morning mist will disperse from Plots 2 and 3!'
+    }
+  ]);
+};
+
 function openOrchardModal(s){
+  if (!isPlotUnlocked(s.plot)) {
+    explainLockedPlot(s.plot);
+    return;
+  }
   const o = state.orchards[s.plot];
   const info = ORCHARD_HEIRLOOMS[s.plot] || ORCHARD_HEIRLOOMS['o1'];
   
@@ -12164,6 +12398,18 @@ function renderMasterRoadsTab(){
   return h;
 }
 
+function updateTaskCapsuleDisplay(chNum, title, desc){
+  const badge = document.getElementById('taskChBadge');
+  if (badge) badge.textContent = 'Ch.' + chNum;
+  const tipTitle = document.getElementById('taskTipTitle');
+  if (tipTitle) tipTitle.textContent = 'Chapter ' + chNum + ' · ' + title;
+  const tipDesc = document.getElementById('taskTipDesc');
+  if (tipDesc) tipDesc.textContent = desc;
+  const cap = document.getElementById('taskCapsule');
+  if (cap) cap.setAttribute('title', 'Chapter ' + chNum + ' · ' + title + '\n' + desc + '\nClick to open 6-Chapter Journey');
+}
+window.updateTaskCapsuleDisplay = updateTaskCapsuleDisplay;
+
 function openMaster(tabId){
   const activeTab = tabId || 'all';
   let h = '<div class="modal-hdr"><h3>📋 6-Chapter Alpine Mastery Journey</h3><button class="btn-close" onclick="closeModal()">✕</button></div>';
@@ -12209,7 +12455,8 @@ function openMaster(tabId){
                '<div style="height:5px;background:rgba(255,255,255,0.1);border-radius:3px;margin-bottom:8px;overflow:hidden">' +
                  '<div style="width:' + progressPct + '%;height:100%;background:linear-gradient(90deg,var(--teal),var(--gold));border-radius:3px;transition:width 0.4s ease"></div>' +
                '</div>' +
-               '<div style="display:flex;flex-direction:column;gap:5px">';
+               '<div style="margin-bottom:8px"><button class="btn btn-g" style="width:100%;font-size:0.74rem;padding:6px;background:linear-gradient(135deg,rgba(255,213,79,0.25),rgba(0,230,118,0.2));border:1px solid var(--gold);color:var(--gold)" onclick="openChapter1ConceptModal(0)">🎓 View Professor Puff &amp; Pip\'s Interactive Chapter 1 Visual Guide</button></div>' +
+                '<div style="display:flex;flex-direction:column;gap:5px">';
         c.criteria.forEach(crit => {
           const done = crit.check(state);
           h += '<div style="display:flex;align-items:center;gap:8px;font-size:0.75rem">' +
@@ -13899,6 +14146,63 @@ window.boostPipTour = function() {
   }
 };
 
+
+/* ================= PERIODIC MANAGERIAL TRADE NOTIFICATION ENGINE ================= */
+let tradeNoticeInterval = null;
+
+function checkPeriodicTradePopup() {
+  if (typeof activeManagerialTrades === 'undefined' || activeManagerialTrades.length === 0) {
+    const badge = document.getElementById('tradeBadgeCount');
+    if (badge) badge.style.display = 'none';
+    const popup = document.getElementById('floatingTradePopup');
+    if (popup) popup.style.display = 'none';
+    return;
+  }
+
+  // Update badge count
+  const badge = document.getElementById('tradeBadgeCount');
+  if (badge) {
+    badge.textContent = activeManagerialTrades.length;
+    badge.style.display = 'flex';
+  }
+
+  // If a modal is already open, do not show floating popup
+  const modalOver = document.getElementById('modalOverlay');
+  if (modalOver && modalOver.style.display === 'flex') return;
+
+  const t = activeManagerialTrades[0];
+  const popup = document.getElementById('floatingTradePopup');
+  const title = document.getElementById('floatingTradeTitle');
+  const desc = document.getElementById('floatingTradeDesc');
+
+  if (popup && title && desc) {
+    title.textContent = '⚖️ ' + t.buyer.split('(')[0].trim();
+    desc.textContent = t.title;
+    popup.style.display = 'flex';
+
+    // Auto-dismiss popup after 8 seconds
+    setTimeout(() => {
+      if (popup && popup.style.display === 'flex') {
+        popup.style.opacity = '0';
+        popup.style.transform = 'translateY(16px)';
+        setTimeout(() => {
+          if (popup) {
+            popup.style.display = 'none';
+            popup.style.opacity = '1';
+            popup.style.transform = 'none';
+          }
+        }, 300);
+      }
+    }, 8000);
+  }
+}
+
+// Start periodic trade popup check every 25 seconds
+if (!tradeNoticeInterval) {
+  tradeNoticeInterval = setInterval(checkPeriodicTradePopup, 25000);
+  setTimeout(checkPeriodicTradePopup, 3500);
+}
+
 /* ================= MANAGERIAL SHOP TRADE CONSOLE ================= */
 window.openManagerialTradeModal = function(tradeId) {
   const trade = activeManagerialTrades.find(t => t.id === tradeId) || activeManagerialTrades[0];
@@ -14552,6 +14856,204 @@ function openWhy(){
 
   openModal(h, true);
 }
+
+
+/* ================= INTERACTIVE CHAPTER 1 IN-DEPTH VISUAL JOURNEY MODAL ================= */
+window.openChapter1ConceptModal = function(stepIdx = 0) {
+  const steps = [
+    {
+      num: 1,
+      title: "Alpine Topography & 50% Slope Hydrology",
+      subtitle: "850m Foothills · Sun Reflection & Soil Drainage",
+      svg: `<svg viewBox="0 0 540 220" style="width:100%;max-height:200px;border-radius:12px;background:linear-gradient(180deg,#0a1b2a 0%,#132b1f 100%);">
+        <!-- Mountain Peak -->
+        <polygon points="40,220 180,40 320,220" fill="#1e3a4f" opacity="0.6"/>
+        <polygon points="140,90 180,40 220,90" fill="#e2e8f0" opacity="0.9"/>
+        <!-- 50% Terraced Slope -->
+        <path d="M120,220 L160,160 L240,150 L270,110 L360,105 L420,60 L540,60 L540,220 Z" fill="#2d4a34"/>
+        <path d="M120,220 L160,160 L240,150 L270,110 L360,105" stroke="#8d6e63" stroke-width="4" fill="none"/>
+        <!-- Sun Rays -->
+        <circle cx="460" cy="50" r="28" fill="#f59e0b" filter="drop-shadow(0 0 16px #f59e0b)"/>
+        <line x1="430" y1="65" x2="280" y2="120" stroke="#fef08a" stroke-width="2.5" stroke-dasharray="6,4" opacity="0.8"/>
+        <line x1="440" y1="75" x2="200" y2="165" stroke="#fef08a" stroke-width="2.5" stroke-dasharray="6,4" opacity="0.8"/>
+        <!-- Rainwater Drainage Arrows -->
+        <path d="M350,110 Q280,140 220,165 T140,215" stroke="#38bdf8" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <!-- Labels -->
+        <rect x="20" y="20" width="160" height="30" rx="6" fill="rgba(15,23,42,0.85)" stroke="#38bdf8"/>
+        <text x="100" y="39" fill="#7dd3fc" font-size="11" font-weight="bold" text-anchor="middle">50% Rapid Drainage</text>
+        <rect x="340" y="165" width="180" height="30" rx="6" fill="rgba(15,23,42,0.85)" stroke="#f59e0b"/>
+        <text x="430" y="184" fill="#fef08a" font-size="11" font-weight="bold" text-anchor="middle">☀️ +28% Solar Capture</text>
+      </svg>`,
+      puffText: "Welcome to our ancestral Alpenhof estate! At 850m elevation, our 50% south-facing slopes catch morning sunbeams while mountain ridges shield against icy downdrafts. Rainwater cascades down rapidly, preventing soil waterlogging and fungal mildew!",
+      pipText: "Look at the natural drainage lines! Gravity keeps our soil aerated, which is why heirloom fruit canopies thrive on this mountainside!",
+      takeaway: "Alpine Slope Physics: 50% southern inclines warm soil up to 3 weeks earlier in spring, providing the thermal energy needed for root sprout and early mycorrhizal symbiosis."
+    },
+    {
+      num: 2,
+      title: "Shattering Loam Crusts & Deep Aeration Tilth",
+      subtitle: "Impermeable Clay vs. Porous Aerated Soil Beds",
+      svg: `<svg viewBox="0 0 540 220" style="width:100%;max-height:200px;border-radius:12px;background:linear-gradient(180deg,#111827 0%,#1a2e22 100%);">
+        <!-- Left: Crust -->
+        <rect x="25" y="45" width="225" height="150" rx="8" fill="#3e2723"/>
+        <rect x="25" y="45" width="225" height="24" rx="4" fill="#2d1b17" stroke="#d97706" stroke-width="2"/>
+        <text x="137" y="61" fill="#fca5a5" font-size="11" font-weight="bold" text-anchor="middle">🪨 Hard Impermeable Loam Crust</text>
+        <text x="137" y="105" fill="#ef4444" font-size="11" text-anchor="middle">❌ Zero Air Infiltration</text>
+        <text x="137" y="130" fill="#fca5a5" font-size="10" text-anchor="middle">Roots Suffocate · Water Pools</text>
+        <!-- Center Divider -->
+        <line x1="270" y1="30" x2="270" y2="200" stroke="#4ade80" stroke-width="2" stroke-dasharray="4,4"/>
+        <!-- Right: Aerated -->
+        <rect x="290" y="45" width="225" height="150" rx="8" fill="#2e4233" stroke="#22c55e" stroke-width="2"/>
+        <!-- Crumbly Pores -->
+        <circle cx="340" cy="80" r="12" fill="#152e1f"/>
+        <circle cx="430" cy="95" r="16" fill="#152e1f"/>
+        <circle cx="370" cy="140" r="14" fill="#152e1f"/>
+        <circle cx="470" cy="150" r="10" fill="#152e1f"/>
+        <text x="402" y="61" fill="#86efac" font-size="11" font-weight="bold" text-anchor="middle">⛏️ Shattered &amp; Aerated Tilth</text>
+        <text x="402" y="120" fill="#4ade80" font-size="11" text-anchor="middle">✓ Porous Oxygen &amp; Mycelium</text>
+        <text x="402" y="145" fill="#bbf7d0" font-size="10" text-anchor="middle">Roots Plunge Deep · Earthworms Active</text>
+      </svg>`,
+      puffText: "Over long Bavarian winters, freeze-thaw cycles compress alpine loam into a hardened crust. Driving our forged steel spade shatters this crust into fluffy, crumbly tilth with 25% air macropores!",
+      pipText: "In Chapter 1, we must aerate all 9 circular beds in Plot 1! Once the crust is shattered, baby tree roots can spread out and breathe freely!",
+      takeaway: "Soil Tilth Chemistry: Aeration restores gaseous diffusion, allowing soil earthworms and aerobic nitrogen-fixing bacteria to mobilize phosphorus and calcium."
+    },
+    {
+      num: 3,
+      title: "Streuobst Polyculture & Heirloom Canopy",
+      subtitle: "3×3 Circular Stone Beds · Staggered Bloom Architecture",
+      svg: `<svg viewBox="0 0 540 220" style="width:100%;max-height:200px;border-radius:12px;background:linear-gradient(180deg,#0e2418 0%,#1b3a24 100%);">
+        <!-- 3 Trees Layout -->
+        <!-- Tree 1: Cherry -->
+        <circle cx="100" cy="95" r="42" fill="#dc2626" opacity="0.85"/>
+        <circle cx="100" cy="95" r="32" fill="#ef4444" opacity="0.9"/>
+        <text x="100" y="100" font-size="24" text-anchor="middle">🍒</text>
+        <rect x="94" y="135" width="12" height="35" fill="#5c3826"/>
+        <text x="100" y="190" fill="#fecaca" font-size="11" font-weight="bold" text-anchor="middle">Kordia Cherry</text>
+        <!-- Tree 2: Apple -->
+        <circle cx="270" cy="80" r="48" fill="#16a34a" opacity="0.85"/>
+        <circle cx="270" cy="80" r="36" fill="#22c55e" opacity="0.9"/>
+        <text x="270" y="85" font-size="26" text-anchor="middle">🍎</text>
+        <rect x="264" y="125" width="12" height="45" fill="#5c3826"/>
+        <text x="270" y="190" fill="#bbf7d0" font-size="11" font-weight="bold" text-anchor="middle">Roter Boskoop Apple</text>
+        <!-- Tree 3: Pear -->
+        <circle cx="440" cy="90" r="44" fill="#ca8a04" opacity="0.85"/>
+        <circle cx="440" cy="90" r="34" fill="#eab308" opacity="0.9"/>
+        <text x="440" y="95" font-size="24" text-anchor="middle">🍐</text>
+        <rect x="434" y="132" width="12" height="38" fill="#5c3826"/>
+        <text x="440" y="190" fill="#fef08a" font-size="11" font-weight="bold" text-anchor="middle">Williams Christ Pear</text>
+      </svg>`,
+      puffText: "Bavarian Streuobstwiese is a multi-strata polyculture. By interplanting Kordia sweet cherries, Boskoop apples, and Williams pears, we stagger flowering periods so late spring frosts can never wipe out our harvests!",
+      pipText: "Plant at least 3 heirloom saplings in Plot 1! As they mature from sprout to flowering, they start generating fresh oxygen and high-value fruit for our village!",
+      takeaway: "Ecological Stability: Mixed heirloom orchards resist disease outbreaks naturally, attract wild bumblebees, and produce timber with zero chemical pesticides."
+    },
+    {
+      num: 4,
+      title: "Estate Recommissioning & Hans Weber",
+      subtitle: "Shed Workshop · Master Pomologist · Chapter 1 Goals",
+      svg: `<svg viewBox="0 0 540 220" style="width:100%;max-height:200px;border-radius:12px;background:linear-gradient(180deg,#18281d 0%,#283e2e 100%);">
+        <!-- 4 Steps Milestones -->
+        <g transform="translate(40,40)">
+          <rect x="0" y="0" width="100" height="90" rx="10" fill="rgba(15,23,42,0.85)" stroke="#f59e0b" stroke-width="2"/>
+          <text x="50" y="32" font-size="22" text-anchor="middle">🏚️</text>
+          <text x="50" y="58" fill="#fde68a" font-size="10" font-weight="bold" text-anchor="middle">Recommission</text>
+          <text x="50" y="74" fill="#94a3b8" font-size="9" text-anchor="middle">Farm Shed (€120)</text>
+        </g>
+        <path d="M145,85 L165,85" stroke="#f59e0b" stroke-width="3" marker-end="url(#arrow)"/>
+        <g transform="translate(170,40)">
+          <rect x="0" y="0" width="100" height="90" rx="10" fill="rgba(15,23,42,0.85)" stroke="#10b981" stroke-width="2"/>
+          <text x="50" y="32" font-size="22" text-anchor="middle">🧑‍🌾</text>
+          <text x="50" y="58" fill="#a7f3d0" font-size="10" font-weight="bold" text-anchor="middle">Hire Hans</text>
+          <text x="50" y="74" fill="#94a3b8" font-size="9" text-anchor="middle">Crew Shed (€120)</text>
+        </g>
+        <path d="M275,85 L295,85" stroke="#10b981" stroke-width="3"/>
+        <g transform="translate(300,40)">
+          <rect x="0" y="0" width="100" height="90" rx="10" fill="rgba(15,23,42,0.85)" stroke="#38bdf8" stroke-width="2"/>
+          <text x="50" y="32" font-size="22" text-anchor="middle">⛏️</text>
+          <text x="50" y="58" fill="#bae6fd" font-size="10" font-weight="bold" text-anchor="middle">Aerate Plot 1</text>
+          <text x="50" y="74" fill="#94a3b8" font-size="9" text-anchor="middle">9 Circular Beds</text>
+        </g>
+        <path d="M405,85 L425,85" stroke="#38bdf8" stroke-width="3"/>
+        <g transform="translate(430,40)">
+          <rect x="0" y="0" width="80" height="90" rx="10" fill="rgba(15,23,42,0.85)" stroke="#a855f7" stroke-width="2"/>
+          <text x="40" y="32" font-size="22" text-anchor="middle">🌱</text>
+          <text x="40" y="58" fill="#e9d5ff" font-size="10" font-weight="bold" text-anchor="middle">Plant 3 Trees</text>
+          <text x="40" y="74" fill="#94a3b8" font-size="9" text-anchor="middle">€1,400 &amp; 400 O₂</text>
+        </g>
+        <!-- Chapter 1 Target Badge -->
+        <rect x="40" y="150" width="470" height="45" rx="10" fill="rgba(0,0,0,0.5)" stroke="rgba(255,255,255,0.1)"/>
+        <text x="275" y="170" fill="#fde68a" font-size="11" font-weight="bold" text-anchor="middle">🎯 Chapter 1 Target: Only Plot 1 Unlocks First!</text>
+        <text x="275" y="186" fill="#94a3b8" font-size="9.5" text-anchor="middle">Plots 2 to 6 remain mystically shrouded in mountain mist until Chapter 2 &amp; beyond.</text>
+      </svg>`,
+      puffText: "Here is your Chapter 1 Roadmap: First, repair the Timber Farm Shed to shelter our vintage Fendt tractor. Second, visit the Crew Shed and hire Hans Weber (+25% fruit yield). Third, aerate all 9 beds in Plot 1, plant 3 trees, and amass €1,400 capital!",
+      pipText: "Only Plot 1 is accessible right now, so we can give it all our love and care! Once Chapter 1 is mastered, the mist will lift across the entire eastern mountain slopes!",
+      takeaway: "Mastery Flow: Completing all 5 criteria automatically unlocks Chapter 2, opens Orchards 2 & 3, and unveils the Southern Bypass logistics corridor."
+    }
+  ];
+
+  const s = steps[stepIdx] || steps[0];
+
+  let h = '<div class="modal-hdr">' +
+            '<div style="display:flex;align-items:center;gap:10px">' +
+              '<span style="font-size:1.8rem;background:rgba(255,213,79,0.15);border:1px solid var(--gold);padding:4px 8px;border-radius:12px">🦉</span>' +
+              '<div>' +
+                '<h3 style="margin:0;font-size:1.1rem;color:var(--gold)">Chapter 1 Journey Guide: ' + s.title + '</h3>' +
+                '<div style="font-size:0.72rem;color:#A5D6A7">' + s.subtitle + ' · Step ' + (stepIdx + 1) + ' of 4</div>' +
+              '</div>' +
+            '</div>' +
+            '<button class="btn-close" onclick="closeModal()">✕</button>' +
+          '</div>';
+
+  // Step Indicator Pills
+  h += '<div class="why-tabs" style="margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap">';
+  steps.forEach((st, idx) => {
+    h += '<button class="why-tab ' + (idx === stepIdx ? 'active' : '') + '" style="font-size:0.72rem;padding:4px 10px" onclick="openChapter1ConceptModal(' + idx + ')">' +
+         '[' + st.num + '] ' + st.title.split('&')[0].trim() + '</button>';
+  });
+  h += '</div>';
+
+  // Visual SVG Diagram
+  h += '<div style="margin-bottom:12px;border:1px solid rgba(255,213,79,0.3);border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.5)">' + s.svg + '</div>';
+
+  // Dialogue between Professor Puff and Pip
+  h += '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">';
+  h += '<div style="background:rgba(18,34,24,0.92);border:1px solid var(--gold);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start">' +
+         '<span style="font-size:1.6rem;line-height:1">🦉</span>' +
+         '<div>' +
+           '<strong style="color:var(--gold);font-size:0.78rem;display:block;margin-bottom:2px">Professor Whisker Puff (Chief Astrobiologist):</strong>' +
+           '<p style="margin:0;font-size:0.75rem;color:#E8F5E9;line-height:1.4">' + s.puffText + '</p>' +
+         '</div>' +
+       '</div>';
+
+  h += '<div style="background:rgba(10,26,38,0.92);border:1px solid var(--cyan);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start">' +
+         '<span style="font-size:1.6rem;line-height:1">🐥</span>' +
+         '<div>' +
+           '<strong style="color:var(--cyan);font-size:0.78rem;display:block;margin-bottom:2px">Pip Squeak-a-Link (Safety Scout):</strong>' +
+           '<p style="margin:0;font-size:0.75rem;color:#E0F7FA;line-height:1.4">' + s.pipText + '</p>' +
+         '</div>' +
+       '</div>';
+  h += '</div>';
+
+  // Takeaway Box
+  h += '<div style="background:rgba(255,213,79,0.08);border-left:3px solid var(--gold);padding:8px 12px;border-radius:4px;font-size:0.72rem;color:#FFF9C4;margin-bottom:14px">' +
+         '<b>💡 Agronomic Science Takeaway:</b> ' + s.takeaway +
+       '</div>';
+
+  // Bottom Navigation Buttons
+  h += '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">';
+  if (stepIdx > 0) {
+    h += '<button class="btn btn-c" style="flex:1" onclick="openChapter1ConceptModal(' + (stepIdx - 1) + ')">← Previous Concept</button>';
+  } else {
+    h += '<button class="btn btn-c" style="flex:1;opacity:0.5" disabled>← Previous Concept</button>';
+  }
+
+  if (stepIdx < steps.length - 1) {
+    h += '<button class="btn btn-g" style="flex:1" onclick="openChapter1ConceptModal(' + (stepIdx + 1) + ')">Next Concept ➔</button>';
+  } else {
+    h += '<button class="btn btn-g" style="flex:1;background:linear-gradient(135deg,var(--gold),#F57C00);color:#1A1200;font-weight:900" onclick="closeModal();toast(&apos;🚀 Chapter 1 Exploration Started! Focus on Plot 1 &amp; Farm Shed&apos;)">🚀 Begin Chapter 1 Exploration</button>';
+  }
+  h += '</div>';
+
+  openModal(h, true);
+};
 
 /* UI Wiring */
 document.getElementById('btn-start').onclick = () => {

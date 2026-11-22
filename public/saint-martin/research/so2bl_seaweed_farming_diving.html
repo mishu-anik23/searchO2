@@ -1,0 +1,2158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>searchO2 Blue Lab — Seaweed Farm & Diver Expedition</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  * { box-sizing: border-box; }
+  body, html {
+    margin: 0; padding: 0; overflow: hidden;
+    width: 100vw; height: 100vh;
+    background: #02121e;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    user-select: none;
+  }
+  #canvas-container { position: absolute; inset: 0; z-index: 1; }
+  .code-font { font-family: 'Fira Code', monospace; }
+
+  .glass {
+    background: rgba(5, 23, 38, 0.78);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+  }
+
+  .icon-btn {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px;
+    background: rgba(8, 47, 73, 0.7);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    color: #7dd3fc;
+    transition: all .2s cubic-bezier(.16,1,.3,1);
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover {
+    background: rgba(14, 116, 144, 0.75);
+    border-color: #38bdf8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(56,189,248,0.3);
+  }
+  .icon-btn.active {
+    background: linear-gradient(135deg, rgba(13,148,136,0.8), rgba(6,182,212,0.8));
+    border-color: #2dd4bf;
+    color: #ccfbf1;
+    box-shadow: 0 0 16px rgba(45,212,191,0.45);
+  }
+
+  .popover {
+    position: absolute;
+    top: 52px; right: 0;
+    width: 308px;
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px 13px;
+    border-radius: 14px;
+    opacity: 0; pointer-events: none;
+    transform: translateY(-6px) scale(0.98);
+    transition: all .22s cubic-bezier(.16,1,.3,1);
+    z-index: 35;
+    font-size: 11px;
+    color: #bae6fd;
+    overscroll-behavior: contain;
+  }
+  .popover.show { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+  .popover-left { right: auto; left: 0; }
+  .popover::-webkit-scrollbar { width: 4px; }
+  .popover::-webkit-scrollbar-thumb { background: rgba(56,189,248,.4); border-radius: 4px; }
+
+  @media (max-width: 400px) {
+    .popover { width: calc(100vw - 30px); }
+  }
+
+  .pop-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(56,189,248,0.18);
+    margin-bottom: 10px;
+  }
+  .pop-title {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: .07em; text-transform: uppercase;
+    color: #7dd3fc;
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .live-chip {
+    display: flex; align-items: center; gap: 4px;
+    font-family: 'Fira Code', monospace;
+    font-size: 8px; letter-spacing: .1em;
+    color: #34d399;
+    background: rgba(16,185,129,.12);
+    border: 1px solid rgba(52,211,153,.35);
+    border-radius: 999px; padding: 2px 7px;
+  }
+  .live-dot { width: 5px; height: 5px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px #34d399; animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  .chip {
+    font-family: 'Fira Code', monospace;
+    font-size: 8.5px; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .chip-amber { background: rgba(245,158,11,.15); color: #fcd34d; border: 1px solid rgba(245,158,11,.4); }
+  .chip-cyan  { background: rgba(6,182,212,.15);  color: #67e8f9; border: 1px solid rgba(6,182,212,.4); }
+  .chip-emerald { background: rgba(16,185,129,.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,.4); }
+  .chip-teal  { background: rgba(45,212,191,.15); color: #5eead4; border: 1px solid rgba(45,212,191,.4); }
+
+  .pop-desc { margin: 0 0 9px 0; line-height: 1.55; color: #bae6fd; font-size: 10.5px; }
+
+  .info-row {
+    display: flex; justify-content: space-between;
+    padding: 4px 0; font-size: 10px;
+    border-bottom: 1px dashed rgba(56,189,248,.1);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row span:first-child { color: #38bdf8; font-family: 'Fira Code', monospace; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
+  .info-row span:last-child { color: #e0f2fe; font-family: 'Fira Code', monospace; font-weight: 600; }
+
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .metric-card {
+    background: rgba(2, 15, 26, 0.65);
+    border: 1px solid rgba(14, 116, 144, 0.45);
+    border-radius: 10px;
+    padding: 7px 8px;
+    min-width: 0;
+  }
+  .m-label {
+    display: block;
+    font-family: 'Fira Code', monospace;
+    font-size: 8px; letter-spacing: .07em;
+    text-transform: uppercase; color: #38bdf8;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .m-value {
+    display: block;
+    font-family: 'Fira Code', monospace;
+    font-size: 12.5px; font-weight: 700;
+    color: #e0f2fe; margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .m-sub { display: block; font-size: 8px; color: #7dd3fc; opacity: .65; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .pop-foot {
+    margin-top: 9px; padding-top: 8px;
+    border-top: 1px solid rgba(56,189,248,0.15);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px;
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; color: #7dd3fc;
+  }
+  .pop-foot b { color: #e0f2fe; font-weight: 600; }
+
+  .proto-list, .sum-list { display: flex; flex-direction: column; gap: 2px; }
+  .proto-row {
+    display: flex; align-items: flex-start; gap: 6px;
+    font-size: 10px; color: #bae6fd; line-height: 1.45;
+    padding: 4px 0;
+    border-bottom: 1px dashed rgba(56,189,248,.08);
+  }
+  .proto-row:last-child { border-bottom: none; }
+  .tick { color: #34d399; font-weight: 700; font-size: 10px; flex-shrink: 0; margin-top: 1px; }
+
+  .sum-title {
+    font-size: 12px; font-weight: 700; color: #f0f9ff;
+    margin-bottom: 7px; letter-spacing: .01em;
+  }
+  .sum-row {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    font-size: 10px; color: #bae6fd;
+    padding: 4px 0;
+    border-bottom: 1px dashed rgba(56,189,248,.08);
+  }
+  .sum-row:last-child { border-bottom: none; }
+  .sum-row span:last-child { color: #e0f2fe; font-family: 'Fira Code', monospace; font-weight: 600; font-size: 9.5px; text-align: right; }
+
+  @keyframes flashBorder {
+    0% { box-shadow: 0 0 0 0 rgba(45,212,191,.6); }
+    100% { box-shadow: 0 0 0 10px rgba(45,212,191,0); }
+  }
+  .popover.flash { animation: flashBorder .7s ease-out; }
+
+  .hud-tl { position: absolute; top: 14px; left: 14px; z-index: 20; }
+  .hud-tr { position: absolute; top: 14px; right: 14px; z-index: 20; display: flex; gap: 8px; }
+  .hud-bl { position: absolute; bottom: 78px; left: 14px; z-index: 20; display: flex; gap: 8px; }
+
+  .subtitle-bar {
+    position: absolute;
+    bottom: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: min(940px, 94vw);
+    padding: 7px 10px 7px 9px;
+    border-radius: 14px;
+    display: flex; align-items: center; gap: 10px;
+    z-index: 20;
+    font-size: 11px;
+    line-height: 1.42;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .sub-avatar {
+    width: 32px; height: 32px; flex-shrink: 0;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    background: linear-gradient(135deg, rgba(251,191,36,0.9), rgba(45,212,191,0.9));
+    box-shadow: 0 0 12px rgba(45,212,191,0.35);
+  }
+  .sub-body { flex: 1; min-width: 0; }
+  .sub-speaker {
+    font-size: 9px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: #fbbf24;
+    font-family: 'Fira Code', monospace;
+  }
+  .sub-text {
+    color: #e0f2fe; font-size: 11px;
+    margin: 1px 0 0 0; font-weight: 400;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .sub-nav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .sub-nav button {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: rgba(8,47,73,0.7);
+    border: 1px solid rgba(56,189,248,0.25);
+    color: #7dd3fc; font-size: 10px;
+    cursor: pointer; transition: all .15s;
+  }
+  .sub-nav button:hover { background: rgba(14,116,144,0.75); border-color: #38bdf8; }
+  .sub-nav .idx {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; color: #7dd3fc;
+    min-width: 34px; text-align: center;
+  }
+
+  #toast {
+    position: fixed; top: 66px; left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: linear-gradient(135deg, rgba(13,148,136,0.96), rgba(6,182,212,0.96));
+    color: #f0fdfa; padding: 7px 18px;
+    border-radius: 999px; font-weight: 600; font-size: 11px;
+    box-shadow: 0 8px 24px rgba(13,148,136,0.5);
+    border: 1px solid rgba(153,246,228,0.5);
+    opacity: 0; pointer-events: none;
+    transition: all .35s cubic-bezier(.16,1,.3,1);
+    z-index: 60;
+    max-width: 88vw; text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body class="text-sky-100">
+
+  <div id="canvas-container"></div>
+
+  <div class="hud-tl">
+    <button class="icon-btn" id="btn-info" title="About the expedition">🌊</button>
+    <div class="popover glass popover-left" id="pop-info">
+      <div class="pop-head">
+        <div class="pop-title"><span>🌊</span> searchO2 Blue Lab</div>
+        <span class="live-chip"><span class="live-dot"></span>LIVE</span>
+      </div>
+      <p class="pop-desc">Regenerative seaweed mariculture — build the coastal jetty, rig longlines, mature a kelp canopy and harvest selectively with the dive team.</p>
+      <div class="info-row"><span>Crew</span><span>Puff · Pip · Kavi</span></div>
+      <div class="info-row"><span>Sector</span><span>Subsea 4</span></div>
+      <div class="info-row"><span>Phase</span><span id="info-phase">1 / 4</span></div>
+      <div class="info-row"><span>Narration</span><span id="info-voice">Auto</span></div>
+    </div>
+  </div>
+
+  <div class="hud-tr">
+    <a id="archive-home-link" href="#" onclick="returnToBlueLab(event)" class="icon-btn" title="Return to Blue Lab" aria-label="Return to Blue Lab" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">🔬</a>
+    <button class="icon-btn" id="btn-telemetry" title="Biome telemetry">📊</button>
+    <button class="icon-btn" id="btn-protocol" title="Harvest feasibility">🌿</button>
+    <button class="icon-btn" id="btn-outcome" title="Stage summary">📋</button>
+    <button class="icon-btn active" id="btn-voice" title="Narration: auto-advance">🔁</button>
+    <button class="icon-btn active" id="btn-audio" title="Sound effects">🔊</button>
+    <button class="icon-btn" id="btn-view" title="Dive / surface view">🤿</button>
+
+    <div class="popover glass" id="pop-telemetry">
+      <div class="pop-head">
+        <div class="pop-title"><span>📊</span> Biome Telemetry</div>
+        <span class="live-chip"><span class="live-dot"></span>LIVE</span>
+      </div>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <span class="m-label">Depth / Photic</span>
+          <span class="m-value" id="t-depth">6.8 m</span>
+          <span class="m-sub">Optimal 4–12 m</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Water Temp</span>
+          <span class="m-value" id="t-temp">21.4 °C</span>
+          <span class="m-sub">Optimal 18–24 °C</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Flow Velocity</span>
+          <span class="m-value" id="t-flow">0.38 m/s</span>
+          <span class="m-sub">Nutrient flush</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Carbon Drawdown</span>
+          <span class="m-value" id="t-carbon">+418 kg/ha</span>
+          <span class="m-sub">Aqueous CO₂ fixed</span>
+        </div>
+      </div>
+      <div class="pop-foot"><span>Dissolved O₂ <b id="t-o2">8.4 mg/L</b></span><span>PSU 32</span></div>
+    </div>
+
+    <div class="popover glass" id="pop-protocol">
+      <div class="pop-head">
+        <div class="pop-title"><span>🌿</span> Harvest Feasibility</div>
+        <span class="chip chip-teal" id="p-ready-badge">Ready</span>
+      </div>
+      <div class="proto-list">
+        <div class="proto-row"><span class="tick">✓</span> Frond length &gt; 2.5 m — biomass density target reached</div>
+        <div class="proto-row"><span class="tick">✓</span> Meristem protection — cut 20 cm above holdfast</div>
+        <div class="proto-row"><span class="tick">✓</span> Biofouling clearance — epiphytic balance checked</div>
+        <div class="proto-row"><span class="tick">✓</span> Diver rigging — nitrox, tether &amp; shears</div>
+      </div>
+      <div class="pop-foot"><span>Readiness</span><b id="p-ready">Rigging grid</b></div>
+    </div>
+
+    <div class="popover glass" id="pop-outcome">
+      <div class="pop-head">
+        <div class="pop-title"><span>📋</span> Stage Summary</div>
+        <span class="chip chip-cyan" id="o-phase">Phase 1</span>
+      </div>
+      <div class="sum-title" id="o-title">Jetty &amp; Staging</div>
+      <div class="sum-list" id="o-body"></div>
+      <div class="pop-foot"><span>Next</span><b id="o-foot">Longline rigging</b></div>
+    </div>
+  </div>
+
+  <div class="hud-bl">
+    <button class="icon-btn active" data-stage="1" title="1 · Jetty">🏗️</button>
+    <button class="icon-btn" data-stage="2" title="2 · Longline">⚓</button>
+    <button class="icon-btn" data-stage="3" title="3 · Maturation">🌱</button>
+    <button class="icon-btn" data-stage="4" title="4 · Harvest">🤿</button>
+  </div>
+
+  <div class="subtitle-bar glass">
+    <div class="sub-avatar" id="sub-avatar">🐾</div>
+    <div class="sub-body">
+      <div class="sub-speaker" id="sub-speaker">Prof. Whisker Puff</div>
+      <p class="sub-text" id="sub-text">Welcome aboard.</p>
+    </div>
+    <div class="sub-nav">
+      <button id="sub-prev" title="Previous">◀</button>
+      <span class="idx" id="sub-idx">1/10</span>
+      <button id="sub-next" title="Next">▶</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+/* =========================================================================
+   searchO2 BLUE LAB — Enhanced Seaweed Mariculture Simulation
+   ========================================================================= */
+
+let scene, camera, renderer, controls;
+let waterPlane, causticMesh, bubbleField;
+let jettyGroup, farmGroup, diversGroup, fishGroup;
+let kelpPlants = [], wildKelp = [];
+let whiskerPuffGroup, peepSqueakGroup, captainKaviGroup;
+let audioCtx = null, sfxOn = true;
+let voiceMode = 'auto';
+let voiceIdx = 2;
+let userInteracted = false;
+let pendingAdvance = false;
+let speechToken = 0;
+let voicesCache = [];
+let advanceTimer = null;
+let currentUtterance = null;
+let currentStage = 1, currentDialogue = 0;
+let clock = new THREE.Clock();
+let diverBreathTimer = 0;
+
+const M = (geo, mat, x=0, y=0, z=0) => {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z);
+  return m;
+};
+
+/* -------------------- Voice profiles -------------------- */
+/* Puff = 7-year-old girl (bright, curious, articulate) */
+/* Pip  = 5-year-old toddler (higher, slower, giggly)    */
+/* Kavi = adult male coastal expert                       */
+const VOICE_PROFILES = {
+  'Prof. Whisker Puff': { pitch: 1.72, rate: 1.04, hints: ['female','samantha','zira','karen','google uk english female','susan','hazel','tessa','moira'] },
+  'Pip Squeak':         { pitch: 1.92, rate: 0.90, hints: ['female','samantha','google uk english female','karen','tessa'] },
+  'Captain Kavi':       { pitch: 0.78, rate: 0.96, hints: ['male','daniel','alex','google uk english male','david','fred','rishi'] }
+};
+
+function loadVoices() {
+  if ('speechSynthesis' in window) {
+    voicesCache = window.speechSynthesis.getVoices() || [];
+  }
+}
+if ('speechSynthesis' in window) {
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+function pickVoice(speaker) {
+  const prof = VOICE_PROFILES[speaker] || { hints: [] };
+  const en = voicesCache.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+  for (const hint of prof.hints) {
+    const hit = en.find(v => v.name.toLowerCase().includes(hint));
+    if (hit) return hit;
+  }
+  return en[0] || null;
+}
+
+/* -------------------- SFX -------------------- */
+function playSfx(type) {
+  if (!sfxOn) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
+
+    if (type === 'bubble') {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(300 + Math.random()*220, now);
+      osc.frequency.exponentialRampToValueAtTime(760 + Math.random()*320, now + 0.13);
+      g.gain.setValueAtTime(0.05, now);
+      g.gain.exponentialRampToValueAtTime(0.0008, now + 0.15);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.15);
+    } else if (type === 'sonar') {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1240, now);
+      g.gain.setValueAtTime(0.1, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.65);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.65);
+    } else if (type === 'regulator') {
+      const bufSize = audioCtx.sampleRate * 0.35;
+      const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = (Math.random()*2-1) * Math.exp(-i / (bufSize * 0.4));
+      const src = audioCtx.createBufferSource(); src.buffer = buf;
+      const filt = audioCtx.createBiquadFilter(); filt.type = 'bandpass'; filt.frequency.value = 620;
+      const g = audioCtx.createGain(); g.gain.value = 0.07;
+      src.connect(filt); filt.connect(g); g.connect(audioCtx.destination);
+      src.start(now);
+    }
+  } catch(e) {}
+}
+
+/* -------------------- Dialogues -------------------- */
+const DIALOGUES = [
+  { speaker:"Prof. Whisker Puff", role:"Lead Astrobiologist", avatar:"🐾", stage:1,
+    cam:{ pos:[-6, 2.6, 13], look:[-14, -0.6, 2] }, divers:[-14, -1.6, 3],
+    text:"“Welcome aboard, team! This timber jetty is our nerve center — davit winch, mooring bollards and a tender boat. From here we launch the entire kelp operation.”" },
+
+  { speaker:"Captain Kavi", role:"Coastal Mariculturist", avatar:"🧔🏽‍♂️", stage:1,
+    cam:{ pos:[-2, 2.1, 11], look:[-13, -0.5, 2.6] }, divers:[-13, -1.6, 3.6],
+    text:"“Currents here run about 0.35 m/s — a perfect nutrient flush. The pier shelters our gear from breaking waves and lets us move harvested seaweed fast before it degrades.”" },
+
+  { speaker:"Pip Squeak", role:"Recon & Sensor Operator", avatar:"🐭", stage:1,
+    cam:{ pos:[1, 1.6, 10], look:[-12, -0.7, 3.2] }, divers:[-11, -1.4, 5],
+    text:"“Ooooh! A big boat! Vroom vroom! Can I honk the horn? Please please please? *honk honk* Tee hee! I'm a sailor now!”" },
+
+  { speaker:"Captain Kavi", role:"Coastal Mariculturist", avatar:"🧔🏽‍♂️", stage:2,
+    cam:{ pos:[10, -2.6, 14], look:[8, -6.1, 1] }, divers:[4, -4.6, 4],
+    text:"“Now look down — 500 kg concrete deadweights on the seabed. Risers stretch up to the surface buoys, suspending our horizontal backline 5 to 8 meters below the waves.”" },
+
+  { speaker:"Prof. Whisker Puff", role:"Lead Astrobiologist", avatar:"🐾", stage:2,
+    cam:{ pos:[13, -3.2, 12], look:[8, -6.0, 0.6] }, divers:[8, -5.0, 3],
+    text:"“Beautiful rigging. Seeded spore-strings are wound around the dropper ropes — at 6 meters we get maximum photon penetration while the canopy stays safe from UV bleach.”" },
+
+  { speaker:"Pip Squeak", role:"Recon & Sensor Operator", avatar:"🐭", stage:2,
+    cam:{ pos:[12.5, -3.0, 9], look:[9, -6.0, 1] }, divers:[9, -5.2, 2],
+    text:"“Look look! Little green blobs on the rope! Are they baby plants? Can I pat one? ...No patting? Okay okay, I'll be super gentle. Like a butterfly!”" },
+
+  { speaker:"Prof. Whisker Puff", role:"Lead Astrobiologist", avatar:"🐾", stage:3,
+    cam:{ pos:[15.5, -2.8, 11], look:[8, -6.0, 0.6] }, divers:[8, -5.0, 2],
+    text:"“Photosynthetic fixation is in overdrive. This Saccharina canopy absorbs aqueous CO₂ and pumps oxygen straight into the sanctuary — nature's carbon pump.”" },
+
+  { speaker:"Pip Squeak", role:"Recon & Sensor Operator", avatar:"🐭", stage:3,
+    cam:{ pos:[13, -3.6, 7.5], look:[8, -5.8, 0.6] }, divers:[9, -5.2, 1.6],
+    text:"“Bubbles! *pffff* I made bubbles too! Why do the plants burp? Is it 'cause they're happy? I think they're happy!”" },
+
+  { speaker:"Captain Kavi", role:"Coastal Mariculturist", avatar:"🧔🏽‍♂️", stage:4,
+    cam:{ pos:[11, -4.3, 7], look:[8, -5.5, 0.5] }, divers:[8, -5.5, 1.2],
+    text:"“Suit up — it's harvest time! Fronds passed 2.8 meters. Golden rule: never rip the holdfast. Cut 20 centimeters above the meristem so the kelp regrows fast.”" },
+
+  { speaker:"Pip Squeak", role:"Recon & Sensor Operator", avatar:"🐭", stage:4,
+    cam:{ pos:[14, -2.6, 12], look:[8, -5.5, 1] }, divers:[8, -5.0, 2],
+    text:"“FISHIES! So many fishies! They live in our garden now! I didn't squish any seaweed — I cutted only the tops, like Kavi said! We did it, we did it!”" }
+];
+
+/* -------------------- Stage summaries -------------------- */
+const SUMMARIES = {
+  1: { title:"Jetty & Staging", phase:"Phase 1",
+       rows:[["Jetty deck","Built"],["Davit winch","Online"],["Tender boat","Moored"],["Mooring bollards","6 rigged"]],
+       foot:"Longline rigging" },
+  2: { title:"Longline Rigging", phase:"Phase 2",
+       rows:[["Longlines","3 deployed"],["Anchor mass","500 kg × 6"],["Suspended depth","5.8 m"],["Spore ropes","Seeded"]],
+       foot:"Canopy maturation" },
+  3: { title:"Canopy Maturation", phase:"Phase 3",
+       rows:[["Frond length","2.8 m"],["Carbon drawdown","+418 kg/ha"],["Dissolved O₂","8.4 mg/L"],["Canopy health","Optimal"]],
+       foot:"Selective harvest" },
+  4: { title:"Selective Harvest", phase:"Phase 4",
+       rows:[["Cut height","20 cm ↑ meristem"],["Carbon locked","+520 kg/ha"],["Holdfasts","Intact"],["Fish nursery","Preserved"]],
+       foot:"Expedition complete" }
+};
+
+/* -------------------- Scene init -------------------- */
+function init() {
+  const container = document.getElementById('canvas-container');
+  const W = window.innerWidth, H = window.innerHeight;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x062231);
+  scene.fog = new THREE.FogExp2(0x073248, 0.014);
+
+  camera = new THREE.PerspectiveCamera(48, W/H, 0.1, 500);
+  camera.position.set(-6, 2.6, 13);
+
+  renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.25;
+  container.appendChild(renderer.domElement);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.maxPolarAngle = Math.PI/2 + 0.15;
+  controls.minDistance = 3;
+  controls.maxDistance = 130;
+  controls.target.set(-14, -0.6, 2);
+
+  buildSky();
+  buildLighting();
+  buildSeabed();
+  buildJetty();
+  buildFarm();
+  buildCharacters();
+  buildParticles();
+  buildFish();
+  buildWildKelp();
+
+  setupUI();
+  renderSummary(1);
+  applyStage(1, true, false);
+  showDialogue(0, true);
+
+  window.addEventListener('resize', onResize);
+
+  // Unlock speech on first interaction
+  window.addEventListener('pointerdown', (e) => {
+    if (!userInteracted) {
+      userInteracted = true;
+      if (e.target === renderer.domElement && voiceMode !== 'off') {
+        speakCurrent();
+      }
+    }
+  }, true);
+
+  animate();
+}
+
+function onResize() {
+  const W = window.innerWidth, H = window.innerHeight;
+  camera.aspect = W/H; camera.updateProjectionMatrix();
+  renderer.setSize(W, H);
+}
+
+/* -------------------- Sky dome -------------------- */
+function buildSky() {
+  const geo = new THREE.SphereGeometry(220, 32, 20);
+  const colors = [];
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i) / 220;
+    let c;
+    if (y > 0.1) c = new THREE.Color(0x7ec8f0).lerp(new THREE.Color(0xbfe8ff), Math.min(1, y));
+    else c = new THREE.Color(0x0a3a52).lerp(new THREE.Color(0x7ec8f0), Math.max(0, (y+0.4)/0.5));
+    colors.push(c.r, c.g, c.b);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  const mat = new THREE.MeshBasicMaterial({ vertexColors:true, side: THREE.BackSide, fog: false });
+  scene.add(new THREE.Mesh(geo, mat));
+
+  const sunGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(14, 20, 20),
+    new THREE.MeshBasicMaterial({ color: 0xfff7d6, transparent:true, opacity:0.55, fog:false })
+  );
+  sunGlow.position.set(70, 95, 60);
+  scene.add(sunGlow);
+}
+
+/* -------------------- Lighting -------------------- */
+function buildLighting() {
+  scene.add(new THREE.AmbientLight(0x1a6a8a, 1.1));
+
+  const sun = new THREE.DirectionalLight(0xfff4d6, 2.3);
+  sun.position.set(30, 55, 25);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 200;
+  const d = 40;
+  sun.shadow.camera.left = -d; sun.shadow.camera.right = d;
+  sun.shadow.camera.top = d; sun.shadow.camera.bottom = -d;
+  sun.shadow.bias = -0.0004;
+  scene.add(sun);
+
+  const torch = new THREE.PointLight(0x38bdf8, 2.4, 30);
+  torch.position.set(8, -5, 4);
+  scene.add(torch);
+
+  const lantern = new THREE.PointLight(0xfbbf24, 1.6, 16);
+  lantern.position.set(-22, 5.2, 3);
+  scene.add(lantern);
+
+  const fill = new THREE.PointLight(0x0ea5e9, 1.2, 60);
+  fill.position.set(0, 12, 0);
+  scene.add(fill);
+}
+
+/* -------------------- Seabed -------------------- */
+function buildSeabed() {
+  const sandGeo = new THREE.PlaneGeometry(180, 180, 64, 64);
+  sandGeo.rotateX(-Math.PI/2);
+  const pos = sandGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const d = Math.sin(x*0.07)*Math.cos(z*0.07)*0.9 + Math.sin(x*0.21)*0.3;
+    const slope = (x < -12) ? Math.min(11, (-x-12)*0.30) : 0;
+    pos.setY(i, -12.0 + d + slope);
+  }
+  sandGeo.computeVertexNormals();
+
+  const seabed = new THREE.Mesh(sandGeo,
+    new THREE.MeshStandardMaterial({ color: 0xcaa97c, roughness: 0.92, metalness: 0.03 }));
+  seabed.receiveShadow = true;
+  scene.add(seabed);
+
+  const rockColors = [0x3d3934, 0x4a4038, 0x5c5048, 0x2f2b28];
+  for (let r = 0; r < 28; r++) {
+    const rock = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(1.2 + Math.random()*2.4, 1),
+      new THREE.MeshStandardMaterial({ color: rockColors[r%4], roughness: 0.9 })
+    );
+    rock.position.set(-38 + Math.random()*16, -7 + Math.random()*8, -45 + Math.random()*90);
+    rock.scale.set(1.2, 0.75, 1.35);
+    rock.rotation.set(Math.random(), Math.random(), Math.random());
+    rock.castShadow = true;
+    scene.add(rock);
+  }
+
+  for (let p = 0; p < 60; p++) {
+    const peb = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(0.15 + Math.random()*0.3, 0),
+      new THREE.MeshStandardMaterial({ color: 0x9a8a6e, roughness: 0.95 })
+    );
+    peb.position.set((Math.random()-0.5)*90, -11.6 + Math.random()*0.4, (Math.random()-0.5)*90);
+    peb.rotation.set(Math.random(), Math.random(), Math.random());
+    scene.add(peb);
+  }
+
+  for (let s = 0; s < 8; s++) {
+    const star = new THREE.Group();
+    const armMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.8 });
+    for (let a = 0; a < 5; a++) {
+      const arm = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.7, 6), armMat);
+      arm.rotation.z = Math.PI/2;
+      arm.rotation.y = (a/5)*Math.PI*2;
+      arm.position.set(Math.cos((a/5)*Math.PI*2)*0.32, 0, Math.sin((a/5)*Math.PI*2)*0.32);
+      star.add(arm);
+    }
+    star.position.set((Math.random()-0.5)*70, -11.5, (Math.random()-0.5)*70);
+    star.rotation.x = -Math.PI/2;
+    scene.add(star);
+  }
+
+  for (let an = 0; an < 10; an++) {
+    const anem = new THREE.Group();
+    anem.add(M(new THREE.CylinderGeometry(0.28, 0.35, 0.4, 10),
+      new THREE.MeshStandardMaterial({ color: 0xbe185d, roughness: 0.7 })));
+    for (let t = 0; t < 12; t++) {
+      const tent = M(new THREE.CylinderGeometry(0.025, 0.04, 0.65, 5),
+        new THREE.MeshStandardMaterial({ color: 0xf472b6, emissive: 0xf472b6, emissiveIntensity: 0.25 }),
+        Math.cos(t/12*Math.PI*2)*0.22, 0.4, Math.sin(t/12*Math.PI*2)*0.22);
+      tent.rotation.z = Math.cos(t/12*Math.PI*2)*0.3;
+      tent.rotation.x = Math.sin(t/12*Math.PI*2)*0.3;
+      anem.add(tent);
+    }
+    anem.position.set((Math.random()-0.5)*60, -11.4, (Math.random()-0.5)*60);
+    scene.add(anem);
+  }
+
+  const waterGeo = new THREE.PlaneGeometry(180, 180, 90, 90);
+  waterGeo.rotateX(-Math.PI/2);
+  waterPlane = new THREE.Mesh(waterGeo, new THREE.MeshPhysicalMaterial({
+    color: 0x0ea5e9, transparent: true, opacity: 0.6,
+    roughness: 0.1, metalness: 0.1, transmission: 0.85, ior: 1.333,
+    side: THREE.DoubleSide, depthWrite: false
+  }));
+  waterPlane.position.y = 0;
+  scene.add(waterPlane);
+
+  for (let sb = 0; sb < 10; sb++) {
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 3.8, 20, 12, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0x67e8f9, transparent: true, opacity: 0.09,
+        side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending
+      })
+    );
+    beam.position.set(-18 + sb*4.2, -6, -12 + Math.sin(sb)*10);
+    beam.rotation.z = 0.16; beam.rotation.x = -0.13;
+    scene.add(beam);
+  }
+}
+
+/* -------------------- Jetty -------------------- */
+function buildJetty() {
+  jettyGroup = new THREE.Group();
+  jettyGroup.position.set(-24, 0, 0);
+
+  const timber = new THREE.MeshStandardMaterial({ color: 0x6b4a30, roughness: 0.8 });
+  const darkWood = new THREE.MeshStandardMaterial({ color: 0x3d2718, roughness: 0.85 });
+  const iron = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.4, metalness: 0.85 });
+  const yellow = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.5 });
+  const orange = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4 });
+
+  const deck = M(new THREE.BoxGeometry(22, 0.5, 7.5), timber, 0, 2.4, 0);
+  deck.castShadow = true; deck.receiveShadow = true;
+  jettyGroup.add(deck);
+
+  for (let p = -10.5; p <= 10.5; p += 0.85) {
+    const plank = M(new THREE.BoxGeometry(0.78, 0.07, 7.3), darkWood, p, 2.67, 0);
+    plank.receiveShadow = true;
+    jettyGroup.add(plank);
+  }
+
+  for (let px = -9; px <= 9; px += 4.5) {
+    [-3.2, 3.2].forEach(pz => {
+      const pylon = M(new THREE.CylinderGeometry(0.38, 0.46, 15, 14), darkWood, px, -4.5, pz);
+      pylon.castShadow = true;
+      jettyGroup.add(pylon);
+      const barn = M(new THREE.TorusGeometry(0.48, 0.09, 8, 16),
+        new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.95 }), px, -0.6, pz);
+      barn.rotation.x = Math.PI/2;
+      jettyGroup.add(barn);
+    });
+  }
+
+  for (let bx = -9; bx <= 9; bx += 3.6) {
+    jettyGroup.add(M(new THREE.CylinderGeometry(0.18, 0.24, 0.75, 12), iron, bx, 2.95, 3.4));
+    jettyGroup.add(M(new THREE.SphereGeometry(0.26, 12, 12), iron, bx, 3.34, 3.4));
+  }
+
+  const ladder = new THREE.Group();
+  ladder.position.set(9.8, 0, 0);
+  [-0.6, 0.6].forEach(lx => ladder.add(M(new THREE.CylinderGeometry(0.05, 0.05, 6.8, 10), iron, 0, 0.6, lx)));
+  for (let r = -2.2; r <= 3.2; r += 0.5) {
+    const rung = M(new THREE.CylinderGeometry(0.04, 0.04, 1.2, 8), yellow, 0, r, 0);
+    rung.rotation.x = Math.PI/2;
+    ladder.add(rung);
+  }
+  jettyGroup.add(ladder);
+
+  const crane = new THREE.Group();
+  crane.position.set(7.5, 2.65, -2.6);
+  crane.add(M(new THREE.CylinderGeometry(0.5, 0.6, 0.6, 14), iron));
+  crane.add(M(new THREE.CylinderGeometry(0.2, 0.2, 3.4, 12), yellow, 0, 1.8, 0));
+  const arm = M(new THREE.BoxGeometry(3.6, 0.24, 0.26), yellow, 1.4, 3.4, 0);
+  arm.rotation.z = -0.15; crane.add(arm);
+  crane.add(M(new THREE.CylinderGeometry(0.02, 0.02, 2.8), iron, 2.8, 1.8, 0));
+  const hook = M(new THREE.TorusGeometry(0.18, 0.045, 8, 16, Math.PI*1.5), iron, 2.8, 0.4, 0);
+  hook.rotation.z = Math.PI/2; crane.add(hook);
+  jettyGroup.add(crane);
+
+  const boat = new THREE.Group();
+  boat.position.set(4.5, 0.35, 6.2);
+  boat.rotation.y = 0.25;
+  const hullGeo = new THREE.CylinderGeometry(1.6, 1.1, 7.5, 12, 1, false, 0, Math.PI);
+  hullGeo.rotateZ(Math.PI/2);
+  boat.add(M(hullGeo, new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 })));
+  boat.add(M(new THREE.BoxGeometry(6.8, 0.15, 2.6), timber, 0, 0.6, 0));
+  boat.add(M(new THREE.BoxGeometry(0.6, 1.2, 0.5), iron, -3.6, 0.6, 0));
+  for (let sp = 0; sp < 3; sp++) {
+    const spool = M(new THREE.CylinderGeometry(0.4, 0.4, 0.5, 12),
+      new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 }), -1 + sp*1.1, 0.9, 0.2);
+    spool.rotation.x = Math.PI/2;
+    boat.add(spool);
+  }
+  jettyGroup.add(boat);
+
+  const ring = M(new THREE.TorusGeometry(0.5, 0.14, 10, 20), orange, -7, 3.4, 3.3);
+  ring.rotation.x = Math.PI/2;
+  jettyGroup.add(ring);
+  for (let c = 0; c < 3; c++) {
+    const crate = M(new THREE.BoxGeometry(0.9, 0.9, 0.9), timber, -5 + c*1.1, 3.0, -2.6);
+    crate.castShadow = true;
+    jettyGroup.add(crate);
+  }
+
+  scene.add(jettyGroup);
+}
+
+/* -------------------- ENHANCED Kelp geometry -------------------- */
+function makeKelpBladeGeo(length, width, phase) {
+  const segs = 12;
+  const geo = new THREE.PlaneGeometry(width, length, 6, segs);
+  geo.translate(0, -length/2, 0);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i);
+    const t = -y / length;
+    // Kelp blade silhouette: narrow base, wide middle, tapered tip
+    const taperProfile = Math.sin(Math.min(1, t*1.05) * Math.PI * 0.9) * 0.85 + 0.35;
+    pos.setX(i, x * taperProfile);
+    // Ruffled edges / gentle folds
+    const ruffle = Math.sin(t * Math.PI * 4 + phase + x * 5) * 0.05 * width;
+    pos.setZ(i, ruffle);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function buildKelpPlant(x, y, z, scaleMult) {
+  const plant = new THREE.Group();
+  plant.position.set(x, y, z);
+
+  const kelpColors = [0x22c55e, 0x16a34a, 0x15803d, 0x10b981, 0x34d399, 0x4ade80, 0x65a30d];
+  const color = kelpColors[Math.floor(Math.random()*kelpColors.length)];
+
+  const stipeH = (0.5 + Math.random()*0.55) * scaleMult;
+  plant.add(M(new THREE.CylinderGeometry(0.045*scaleMult, 0.08*scaleMult, stipeH, 6),
+    new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.85 }), 0, -stipeH/2, 0));
+
+  const hold = M(new THREE.SphereGeometry(0.13*scaleMult, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.95 }), 0, -stipeH, 0);
+  hold.scale.set(1.1, 0.55, 1.1);
+  plant.add(hold);
+
+  const nBlades = 4 + Math.floor(Math.random()*3);
+  for (let b = 0; b < nBlades; b++) {
+    const length = (2.2 + Math.random()*1.6) * scaleMult;
+    const width = (0.5 + Math.random()*0.35) * scaleMult;
+    const phase = Math.random()*Math.PI*2;
+    const bladeMat = new THREE.MeshStandardMaterial({
+      color, emissive: color, emissiveIntensity: 0.22,
+      roughness: 0.55, metalness: 0.0, side: THREE.DoubleSide,
+      transparent: true, opacity: 0.96
+    });
+    const blade = new THREE.Mesh(makeKelpBladeGeo(length, width, phase), bladeMat);
+    blade.position.y = -stipeH;
+    blade.rotation.y = (b/nBlades)*Math.PI*2 + Math.random()*0.6;
+    blade.rotation.z = 0.15 + Math.random()*0.35;
+    blade.userData = { baseRotZ: blade.rotation.z, baseRotX: blade.rotation.x, phase, speed: 0.9 + Math.random()*0.9 };
+    plant.add(blade);
+
+    // Pneumatocysts (gas bladders) — bright lime spheres along the frond
+    const nBl = 2 + Math.floor(Math.random()*2);
+    for (let bl = 0; bl < nBl; bl++) {
+      const t = (bl+1)/(nBl+1);
+      const bladder = M(new THREE.SphereGeometry(0.08*scaleMult, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xd9f99d, emissive: 0x65a30d, emissiveIntensity: 0.5, roughness: 0.5 }),
+        0, -t*length, 0.01*scaleMult);
+      bladder.scale.set(1, 0.8, 1);
+      blade.add(bladder);
+    }
+
+    // Side leaflets / frills along the blade edge
+    const nFrills = 3;
+    for (let fr = 0; fr < nFrills; fr++) {
+      const t = (fr+0.7)/(nFrills+0.7);
+      const side = fr % 2 === 0 ? 1 : -1;
+      const frillGeo = new THREE.PlaneGeometry(0.14*scaleMult, 0.42*scaleMult);
+      frillGeo.translate(0, -0.21*scaleMult, 0);
+      const frill = new THREE.Mesh(frillGeo, bladeMat);
+      const edge = (width/2) * (Math.sin(Math.min(1, t*1.05) * Math.PI * 0.9) * 0.85 + 0.35);
+      frill.position.set(side * edge * 0.9, -t*length, 0);
+      frill.rotation.z = side * 0.5;
+      frill.userData = { baseRotZ: side*0.5, baseRotX: 0, phase: phase + fr, speed: 0.9 + Math.random()*0.9 };
+      blade.add(frill);
+    }
+  }
+
+  plant.userData.baseScale = 1;
+  return plant;
+}
+
+/* -------------------- Farm -------------------- */
+function buildFarm() {
+  farmGroup = new THREE.Group();
+  farmGroup.position.set(8, 0, 0);
+
+  const concrete = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.95 });
+  const cableMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6, metalness: 0.7 });
+  const buoyMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.35, emissive: 0xf97316, emissiveIntensity: 0.1 });
+  const dropperMat = new THREE.MeshStandardMaterial({ color: 0x059669, roughness: 0.85 });
+
+  const lineSpacingZ = 9.0;
+  const lineLengthX = 32.0;
+  const targetY = -5.8;
+
+  for (let row = -1; row <= 1; row++) {
+    const zPos = row * lineSpacingZ;
+
+    [-lineLengthX/2 - 4, lineLengthX/2 + 4].forEach((ax, idx) => {
+      const anchor = M(new THREE.BoxGeometry(2.2, 1.4, 2.2), concrete, ax, -11.3, zPos);
+      anchor.castShadow = true;
+      farmGroup.add(anchor);
+      const shackle = M(new THREE.TorusGeometry(0.35, 0.09, 8, 16), cableMat, ax, -10.4, zPos);
+      shackle.rotation.x = Math.PI/2;
+      farmGroup.add(shackle);
+
+      const start = new THREE.Vector3(ax, -10.4, zPos);
+      const end = new THREE.Vector3(idx === 0 ? -lineLengthX/2 : lineLengthX/2, targetY, zPos);
+      const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+      const dist = start.distanceTo(end);
+      const riser = M(new THREE.CylinderGeometry(0.05, 0.05, dist, 8), cableMat, mid.x, mid.y, mid.z);
+      riser.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), end.clone().sub(start).normalize());
+      farmGroup.add(riser);
+    });
+
+    const backline = M(new THREE.CylinderGeometry(0.07, 0.07, lineLengthX, 12), cableMat, 0, targetY, zPos);
+    backline.rotation.z = Math.PI/2;
+    farmGroup.add(backline);
+
+    for (let bx = -lineLengthX/2 + 2; bx <= lineLengthX/2 - 2; bx += 5.5) {
+      const buoy = M(new THREE.SphereGeometry(0.6, 16, 16), buoyMat, bx, 0.15, zPos);
+      buoy.scale.set(1, 1.3, 1);
+      buoy.castShadow = true;
+      buoy.userData = { baseY: 0.15, phase: Math.random()*Math.PI*2 };
+      farmGroup.add(buoy);
+
+      farmGroup.add(M(new THREE.CylinderGeometry(0.03, 0.03, Math.abs(targetY), 6), cableMat, bx, targetY/2, zPos));
+
+      const dropperDepth = 4.8;
+      farmGroup.add(M(new THREE.CylinderGeometry(0.045, 0.045, dropperDepth, 8), dropperMat, bx, targetY - dropperDepth/2, zPos));
+      farmGroup.add(M(new THREE.SphereGeometry(0.22, 10, 10), concrete, bx, targetY - dropperDepth, zPos));
+
+      for (let ky = 0.6; ky < dropperDepth - 0.3; ky += 1.0) {
+        const plant = buildKelpPlant(
+          bx + (Math.random()-0.5)*0.2,
+          targetY - ky,
+          zPos + (Math.random()-0.5)*0.2,
+          1
+        );
+        plant.rotation.y = Math.random()*Math.PI*2;
+        farmGroup.add(plant);
+        kelpPlants.push(plant);
+      }
+    }
+  }
+  scene.add(farmGroup);
+}
+
+/* -------------------- Wild kelp -------------------- */
+function buildWildKelp() {
+  for (let i = 0; i < 14; i++) {
+    const x = -34 + Math.random()*60;
+    const z = -40 + Math.random()*80;
+    if (x > -18 && x < 30 && Math.abs(z) < 16) continue;
+    const plant = buildKelpPlant(x, -11.2, z, 0.9 + Math.random()*0.6);
+    plant.rotation.y = Math.random()*Math.PI*2;
+    scene.add(plant);
+    wildKelp.push(plant);
+  }
+}
+
+/* -------------------- Characters -------------------- */
+function buildCharacters() {
+  diversGroup = new THREE.Group();
+  diversGroup.position.set(8, -5.5, 0);
+
+  whiskerPuffGroup = buildWhiskerPuff();
+  whiskerPuffGroup.position.set(-2.5, 0, 1.8);
+  whiskerPuffGroup.userData.basePos = whiskerPuffGroup.position.clone();
+  diversGroup.add(whiskerPuffGroup);
+
+  peepSqueakGroup = buildPeepSqueak();
+  peepSqueakGroup.position.set(0.8, 0.4, 2.5);
+  peepSqueakGroup.userData.basePos = peepSqueakGroup.position.clone();
+  diversGroup.add(peepSqueakGroup);
+
+  captainKaviGroup = buildCaptainKavi();
+  captainKaviGroup.position.set(3.5, -0.4, 0.5);
+  captainKaviGroup.userData.basePos = captainKaviGroup.position.clone();
+  diversGroup.add(captainKaviGroup);
+
+  scene.add(diversGroup);
+}
+
+/* ---------- Prof. Whisker Puff (7-year-old calico cat girl, aligned goggles) ---------- */
+function buildWhiskerPuff() {
+  const g = new THREE.Group();
+  g.name = "Whisker";
+
+  const ginger = new THREE.MeshStandardMaterial({ color: 0xde7d34, roughness: 0.7 });
+  const white  = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+  const patchMat = new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.7 });
+  const suit   = new THREE.MeshStandardMaterial({ color: 0x0f766e, roughness: 0.4 });
+  const metal  = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.85, roughness: 0.25 });
+  const yellowTank = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.35, metalness: 0.2 });
+  const rubber = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
+  const pink   = new THREE.MeshStandardMaterial({ color: 0xf9a8d4, roughness: 0.55 });
+  const black  = new THREE.MeshStandardMaterial({ color: 0x0b0b0b, roughness: 0.5 });
+  const glass  = new THREE.MeshPhysicalMaterial({
+    color: 0xbae6fd, transparent: true, opacity: 0.34,
+    roughness: 0.06, transmission: 0.94, ior: 1.45
+  });
+  const lensMat = new THREE.MeshPhysicalMaterial({
+    color: 0x7dd3fc, transparent: true, opacity: 0.32,
+    roughness: 0.1, transmission: 0.9, ior: 1.4
+  });
+  const goldEye = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xf59e0b, emissiveIntensity: 0.4 });
+
+  // Body
+  const body = M(new THREE.SphereGeometry(0.85, 20, 20), suit, 0, 0, 0);
+  body.scale.set(1.0, 1.25, 0.95);
+  g.add(body);
+
+  const chest = M(new THREE.SphereGeometry(0.7, 16, 16), white, 0, 0.1, 0.48);
+  chest.scale.set(0.75, 1.0, 0.5);
+  g.add(chest);
+
+  [-0.32, 0.32].forEach(sx => {
+    const strap = M(new THREE.BoxGeometry(0.16, 1.15, 0.1), rubber, sx, 0.25, 0.55);
+    strap.rotation.z = sx > 0 ? -0.12 : 0.12;
+    g.add(strap);
+  });
+  const belt = M(new THREE.TorusGeometry(0.82, 0.09, 8, 24), rubber, 0, -0.35, 0);
+  belt.rotation.x = Math.PI/2;
+  belt.scale.set(1, 1, 0.9);
+  g.add(belt);
+  [-0.45, 0.45].forEach(wx => {
+    g.add(M(new THREE.BoxGeometry(0.22, 0.26, 0.18), yellowTank, wx, -0.35, 0.62));
+  });
+
+  // Tail
+  const tailCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, -0.55, -0.55),
+    new THREE.Vector3(0.15, -0.95, -0.95),
+    new THREE.Vector3(0.55, -1.15, -1.15),
+    new THREE.Vector3(0.9, -1.0, -1.35)
+  ]);
+  const tail = new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 12, 0.09, 8, false), ginger);
+  g.add(tail);
+  g.userData.tail = tail;
+
+  // Head
+  const head = new THREE.Group();
+  head.position.set(0, 1.15, 0.15);
+
+  const skull = M(new THREE.SphereGeometry(0.72, 22, 22), ginger);
+  skull.scale.set(1.12, 0.95, 1.0);
+  head.add(skull);
+
+  // Calico patch
+  const patch = M(new THREE.SphereGeometry(0.35, 14, 14), patchMat, -0.28, 0.25, 0.52);
+  head.add(patch);
+
+  // Ears — ginger left, dark right, pink inners
+  const earGeo = new THREE.ConeGeometry(0.24, 0.48, 4);
+  const earL = M(earGeo, ginger, -0.45, 0.65, 0);
+  earL.rotation.z = 0.3;
+  head.add(earL);
+  const earLInner = M(new THREE.ConeGeometry(0.13, 0.3, 4), pink, -0.45, 0.66, 0.06);
+  earLInner.rotation.z = 0.3;
+  head.add(earLInner);
+
+  const earR = M(earGeo, patchMat, 0.45, 0.65, 0);
+  earR.rotation.z = -0.3;
+  head.add(earR);
+  const earRInner = M(new THREE.ConeGeometry(0.13, 0.3, 4), pink, 0.45, 0.66, 0.06);
+  earRInner.rotation.z = -0.3;
+  head.add(earRInner);
+
+  // Muzzle — lower, less protruding so goggles clear it
+  const muzzle = M(new THREE.SphereGeometry(0.3, 16, 16), white, 0, -0.15, 0.52);
+  muzzle.scale.set(1.2, 0.65, 0.6);
+  head.add(muzzle);
+
+  // Nose
+  const nose = M(new THREE.ConeGeometry(0.07, 0.09, 6), pink, 0, -0.08, 0.73);
+  nose.rotation.x = Math.PI;
+  head.add(nose);
+
+  // Mouth
+  const mouth = M(new THREE.TorusGeometry(0.08, 0.012, 6, 12, Math.PI), black, 0, -0.22, 0.67);
+  mouth.rotation.z = Math.PI;
+  head.add(mouth);
+
+  // Whiskers — from muzzle sides
+  [-1, 1].forEach(side => {
+    for (let w = 0; w < 3; w++) {
+      const whisk = M(new THREE.CylinderGeometry(0.005, 0.005, 0.38, 4), white,
+        side * 0.34, -0.14 + w*0.05, 0.6);
+      whisk.rotation.z = Math.PI/2;
+      whisk.rotation.y = side * (0.2 + w*0.12);
+      head.add(whisk);
+    }
+  });
+
+  // ---- EYES + GOGGLES — symmetric, clearly forward of muzzle ----
+  [-0.19, 0.19].forEach(ex => {
+    // Eyeball
+    const sclera = M(new THREE.SphereGeometry(0.14, 14, 14), white, ex, 0.12, 0.65);
+    sclera.scale.set(1, 1, 0.7);
+    head.add(sclera);
+
+    // Iris (flat disc, in front of sclera)
+    const iris = M(new THREE.CircleGeometry(0.085, 20), goldEye, ex, 0.12, 0.752);
+    head.add(iris);
+
+    // Pupil
+    const pupil = M(new THREE.CircleGeometry(0.043, 16), black, ex, 0.12, 0.753);
+    head.add(pupil);
+
+    // Highlight
+    const spark = M(new THREE.CircleGeometry(0.015, 10),
+      new THREE.MeshBasicMaterial({ color: 0xffffff }), ex + 0.025, 0.145, 0.754);
+    head.add(spark);
+
+    // Goggle rim (in front of everything)
+    const rim = M(new THREE.TorusGeometry(0.18, 0.03, 8, 20), rubber, ex, 0.12, 0.76);
+    head.add(rim);
+
+    // Lens — just inside the rim
+    const lens = M(new THREE.CircleGeometry(0.155, 24), lensMat, ex, 0.12, 0.77);
+    head.add(lens);
+  });
+
+  // Goggle bridge
+  head.add(M(new THREE.BoxGeometry(0.18, 0.045, 0.05), rubber, 0, 0.12, 0.77));
+
+  // Goggle strap around head
+  const strap = M(new THREE.TorusGeometry(0.74, 0.032, 8, 28), rubber, 0, 0.12, 0.02);
+  strap.rotation.x = Math.PI/2;
+  strap.scale.set(1.05, 1, 0.95);
+  head.add(strap);
+
+  // Bubble helmet
+  const helmet = M(new THREE.SphereGeometry(1.05, 26, 26), glass, 0, 0.06, 0.08);
+  head.add(helmet);
+
+  // Brass neck ring
+  const neckRing = M(new THREE.TorusGeometry(0.85, 0.09, 12, 26), metal, 0, -0.72, 0.06);
+  neckRing.rotation.x = Math.PI/2;
+  head.add(neckRing);
+
+  // Regulator
+  const reg = M(new THREE.CylinderGeometry(0.13, 0.13, 0.16, 12), metal, 0, -0.22, 0.9);
+  reg.rotation.z = Math.PI/2;
+  head.add(reg);
+
+  g.add(head);
+
+  // Tanks
+  const tankGroup = new THREE.Group();
+  tankGroup.position.set(0, 0.15, -0.9);
+  [-0.32, 0.32].forEach(tx => {
+    tankGroup.add(M(new THREE.CylinderGeometry(0.26, 0.26, 1.6, 16), yellowTank, tx, 0, 0));
+    tankGroup.add(M(new THREE.SphereGeometry(0.26, 12, 12, 0, Math.PI*2, 0, Math.PI/2), metal, tx, 0.8, 0));
+    tankGroup.add(M(new THREE.CylinderGeometry(0.09, 0.09, 0.14, 8), metal, tx, 0.95, 0));
+    const gauge = M(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 12), black, tx + (tx > 0 ? 0.28 : -0.28), 0.3, 0);
+    gauge.rotation.z = Math.PI/2;
+    tankGroup.add(gauge);
+  });
+  const manifold = M(new THREE.CylinderGeometry(0.07, 0.07, 0.85, 8), metal, 0, 0.88, 0);
+  manifold.rotation.z = Math.PI/2;
+  tankGroup.add(manifold);
+
+  const hoseCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.22, 0.88, 0),
+    new THREE.Vector3(0.72, 0.82, 0.5),
+    new THREE.Vector3(0.35, 0.95, 1.0)
+  ]);
+  tankGroup.add(new THREE.Mesh(new THREE.TubeGeometry(hoseCurve, 14, 0.05, 8, false), rubber));
+
+  g.add(tankGroup);
+
+  // Legs & flippers
+  g.userData.flippers = [];
+  [-0.45, 0.45].forEach(fx => {
+    const leg = M(new THREE.CylinderGeometry(0.18, 0.14, 0.6, 10), suit, fx, -1.0, -0.15);
+    leg.rotation.x = 0.4;
+    g.add(leg);
+
+    const flipper = M(new THREE.BoxGeometry(0.42, 0.06, 1.15), rubber, fx, -1.4, 0.35);
+    flipper.rotation.x = -0.3;
+    flipper.userData = { baseX: -0.3, phase: Math.random()*Math.PI*2 };
+    g.add(flipper);
+    g.userData.flippers.push(flipper);
+  });
+
+  // Arms
+  g.add(M(new THREE.SphereGeometry(0.22, 10, 10), white, -0.75, -0.1, 0.55));
+
+  const rightArm = new THREE.Group();
+  rightArm.position.set(0.75, -0.1, 0.55);
+  rightArm.add(M(new THREE.SphereGeometry(0.22, 10, 10), white));
+  const consolePad = M(new THREE.BoxGeometry(0.35, 0.22, 0.06),
+    new THREE.MeshStandardMaterial({ color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 0.9 }),
+    0.18, 0.1, 0.15);
+  rightArm.add(consolePad);
+  const compass = M(new THREE.CylinderGeometry(0.09, 0.09, 0.04, 12), metal, -0.05, 0.12, 0.2);
+  compass.rotation.x = Math.PI/2;
+  rightArm.add(compass);
+  g.add(rightArm);
+
+  g.userData.regulatorLocal = new THREE.Vector3(0, 0.93, 1.05);
+  g.userData.bubbleState = makeBubbleEmitter(g, 14, g.userData.regulatorLocal);
+
+  return g;
+}
+
+/* ---------- Pip Squeak (5-year-old toddler mouse diver) ---------- */
+function buildPeepSqueak() {
+  const peep = new THREE.Group();
+  peep.name = "Pip";
+  peep.scale.set(0.55, 0.55, 0.55);
+  peep.userData.baseScale = 0.55;
+
+  const fur   = new THREE.MeshStandardMaterial({ color: 0xa8714b, roughness: 0.8 });
+  const lightFur = new THREE.MeshStandardMaterial({ color: 0xd6b48f, roughness: 0.85 });
+  const pink  = new THREE.MeshStandardMaterial({ color: 0xf9a8d4, roughness: 0.55 });
+  const glass = new THREE.MeshPhysicalMaterial({
+    color: 0x7dd3fc, transparent: true, opacity: 0.34,
+    roughness: 0.08, transmission: 0.95
+  });
+  const cyanSuit = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.3 });
+  const orange = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.5 });
+  const darkStrap = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.7 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x0b0b0b, roughness: 0.4 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+  const silver = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
+  const lensMat = new THREE.MeshPhysicalMaterial({
+    color: 0x67e8f9, transparent: true, opacity: 0.35,
+    roughness: 0.08, transmission: 0.9, ior: 1.4
+  });
+
+  // Body — plump toddler
+  const body = M(new THREE.SphereGeometry(0.5, 18, 18), cyanSuit);
+  body.scale.set(0.92, 1.2, 0.9);
+  peep.add(body);
+
+  [-0.18, 0.18].forEach(sx => {
+    const strap = M(new THREE.BoxGeometry(0.09, 0.75, 0.06), darkStrap, sx, 0.1, 0.42);
+    strap.rotation.z = sx > 0 ? -0.1 : 0.1;
+    peep.add(strap);
+  });
+  const belt = M(new THREE.TorusGeometry(0.48, 0.05, 8, 20), darkStrap, 0, -0.12, 0);
+  belt.rotation.x = Math.PI/2;
+  belt.scale.set(1, 1, 0.9);
+  peep.add(belt);
+
+  const tailCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, -0.35, -0.4),
+    new THREE.Vector3(0.15, -0.55, -0.7),
+    new THREE.Vector3(0.05, -0.75, -0.85)
+  ]);
+  peep.add(new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 8, 0.035, 6, false), pink));
+
+  // Head
+  const head = new THREE.Group();
+  head.position.set(0, 0.68, 0.1);
+
+  const skull = M(new THREE.SphereGeometry(0.4, 16, 16), fur);
+  head.add(skull);
+
+  const muzzle = M(new THREE.SphereGeometry(0.2, 12, 12), lightFur, 0, -0.1, 0.28);
+  muzzle.scale.set(1.05, 0.8, 0.9);
+  head.add(muzzle);
+
+  // Ears with pink inner
+  [-0.28, 0.28].forEach(ex => {
+    const ear = M(new THREE.CylinderGeometry(0.21, 0.21, 0.035, 14), fur, ex, 0.27, -0.02);
+    ear.rotation.set(0.28, 0, ex > 0 ? -0.42 : 0.42);
+    head.add(ear);
+    const inner = M(new THREE.CylinderGeometry(0.13, 0.13, 0.02, 12), pink, ex, 0.285, 0.0);
+    inner.rotation.set(0.28, 0, ex > 0 ? -0.42 : 0.42);
+    head.add(inner);
+  });
+
+  // Big toddler eyes
+  [-0.15, 0.15].forEach(ex => {
+    const eye = M(new THREE.SphereGeometry(0.12, 12, 12), white, ex, 0.07, 0.28);
+    eye.scale.set(1, 1.1, 0.7);
+    head.add(eye);
+    const pupil = M(new THREE.SphereGeometry(0.062, 10, 10), black, ex, 0.07, 0.37);
+    pupil.scale.set(1, 1.15, 0.5);
+    head.add(pupil);
+    const spark = M(new THREE.SphereGeometry(0.022, 6, 6), white, ex + 0.035, 0.11, 0.395);
+    head.add(spark);
+  });
+
+  // Nose + buck teeth
+  head.add(M(new THREE.SphereGeometry(0.05, 8, 8), pink, 0, -0.02, 0.47));
+  head.add(M(new THREE.BoxGeometry(0.05, 0.075, 0.03), white, -0.03, -0.13, 0.45));
+  head.add(M(new THREE.BoxGeometry(0.05, 0.075, 0.03), white, 0.03, -0.13, 0.45));
+
+  // Whiskers
+  [-1, 1].forEach(side => {
+    for (let w = 0; w < 3; w++) {
+      const whisk = M(new THREE.CylinderGeometry(0.004, 0.004, 0.26, 4), lightFur,
+        side * 0.24, -0.04 + w*0.04, 0.42);
+      whisk.rotation.z = Math.PI/2;
+      whisk.rotation.y = side * (0.25 + w*0.12);
+      head.add(whisk);
+    }
+  });
+
+  // Blush
+  [-0.28, 0.28].forEach(ex => {
+    const blush = M(new THREE.CircleGeometry(0.055, 12),
+      new THREE.MeshBasicMaterial({ color: 0xfb7185, transparent: true, opacity: 0.55 }),
+      ex, -0.06, 0.34);
+    head.add(blush);
+  });
+
+  // Inherited diving goggle frames (parent design cue)
+  [-0.15, 0.15].forEach(ex => {
+    const rim = M(new THREE.TorusGeometry(0.13, 0.022, 6, 16), darkStrap, ex, 0.07, 0.4);
+    head.add(rim);
+  });
+  head.add(M(new THREE.BoxGeometry(0.06, 0.03, 0.03), darkStrap, 0, 0.07, 0.4));
+
+  // Clear diving orb (helmet)
+  const orb = M(new THREE.SphereGeometry(0.7, 22, 22), glass);
+  head.add(orb);
+  const orbRim = M(new THREE.TorusGeometry(0.5, 0.045, 8, 24), silver, 0, -0.5, 0);
+  orbRim.rotation.x = Math.PI/2;
+  head.add(orbRim);
+
+  // Antenna + blinking beacon
+  head.add(M(new THREE.CylinderGeometry(0.015, 0.015, 0.3, 6), silver, 0, 0.76, 0));
+  const beacon = M(new THREE.SphereGeometry(0.06, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0x22d3ee, emissive: 0x22d3ee, emissiveIntensity: 1 }),
+    0, 0.93, 0);
+  head.add(beacon);
+  peep.userData.antenna = beacon;
+
+  peep.add(head);
+
+  // Orange mini tank
+  peep.add(M(new THREE.CylinderGeometry(0.17, 0.17, 0.85, 12), orange, 0, 0.1, -0.58));
+  peep.add(M(new THREE.SphereGeometry(0.17, 10, 10, 0, Math.PI*2, 0, Math.PI/2), silver, 0, 0.525, -0.58));
+  peep.add(M(new THREE.CylinderGeometry(0.05, 0.05, 0.1, 8), silver, 0, 0.6, -0.58));
+  const hoseCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0.62, -0.58),
+    new THREE.Vector3(0.3, 0.7, -0.2),
+    new THREE.Vector3(0.15, 0.85, 0.35)
+  ]);
+  peep.add(new THREE.Mesh(new THREE.TubeGeometry(hoseCurve, 10, 0.03, 6, false), darkStrap));
+
+  // Wrist computer
+  peep.add(M(new THREE.BoxGeometry(0.14, 0.09, 0.05),
+    new THREE.MeshStandardMaterial({ color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 0.8 }),
+    -0.5, -0.05, 0.25));
+
+  // Arms
+  [-0.5, 0.5].forEach(ax => {
+    peep.add(M(new THREE.SphereGeometry(0.13, 8, 8), fur, ax, 0.02, 0.22));
+  });
+
+  // Flippers
+  peep.userData.flippers = [];
+  [-0.22, 0.22].forEach(fx => {
+    const flipper = M(new THREE.BoxGeometry(0.27, 0.05, 0.72), orange, fx, -0.68, 0.18);
+    flipper.rotation.x = -0.25;
+    flipper.userData = { baseX: -0.25, phase: Math.random()*Math.PI*2 };
+    peep.add(flipper);
+    peep.userData.flippers.push(flipper);
+
+    peep.add(M(new THREE.BoxGeometry(0.08, 0.06, 0.08), darkStrap, fx, -0.6, -0.1));
+  });
+
+  peep.userData.regulatorLocal = new THREE.Vector3(0, 0.6, 0.55);
+  peep.userData.bubbleState = makeBubbleEmitter(peep, 10, peep.userData.regulatorLocal);
+
+  return peep;
+}
+
+/* ---------- Captain Kavi ---------- */
+function buildCaptainKavi() {
+  const kavi = new THREE.Group();
+  kavi.name = "Kavi";
+
+  const skin = new THREE.MeshStandardMaterial({ color: 0x8d5524, roughness: 0.75 });
+  const wetsuit = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.35 });
+  const orange = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4, emissive: 0xf97316, emissiveIntensity: 0.05 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x0b0b0b, roughness: 0.4 });
+  const lensMat = new THREE.MeshPhysicalMaterial({
+    color: 0x67e8f9, transparent: true, opacity: 0.4,
+    roughness: 0.08, transmission: 0.9, ior: 1.4
+  });
+
+  kavi.add(M(new THREE.BoxGeometry(1.2, 1.8, 0.7), wetsuit));
+  kavi.add(M(new THREE.BoxGeometry(1.3, 1.4, 0.85), orange, 0, 0.15, 0.05));
+  [-0.38, 0.38].forEach(px => kavi.add(M(new THREE.BoxGeometry(0.34, 0.3, 0.18), dark, px, -0.15, 0.5)));
+  [-0.28, 0.28].forEach(px => kavi.add(M(new THREE.BoxGeometry(0.12, 0.08, 0.06), steel, px, 0.55, 0.48)));
+
+  const belt = M(new THREE.TorusGeometry(0.72, 0.08, 8, 20), dark, 0, -0.5, 0);
+  belt.rotation.x = Math.PI/2;
+  belt.scale.set(1, 1, 0.85);
+  kavi.add(belt);
+  [-0.42, 0, 0.42].forEach(wx => kavi.add(M(new THREE.BoxGeometry(0.16, 0.2, 0.14), steel, wx, -0.5, 0.5)));
+
+  const head = new THREE.Group();
+  head.position.set(0, 1.45, 0);
+
+  const skull = M(new THREE.SphereGeometry(0.48, 18, 18), skin);
+  skull.scale.set(0.92, 1.05, 0.92);
+  head.add(skull);
+  head.add(M(new THREE.SphereGeometry(0.53, 18, 18), wetsuit, 0, 0.06, -0.06));
+
+  [-0.46, 0.46].forEach(ex => head.add(M(new THREE.SphereGeometry(0.09, 8, 8), skin, ex, 0, 0)));
+
+  [-0.17, 0.17].forEach(ex => {
+    const sclera = M(new THREE.SphereGeometry(0.085, 10, 10), white, ex, 0.06, 0.4);
+    sclera.scale.set(1, 1, 0.6);
+    head.add(sclera);
+    head.add(M(new THREE.SphereGeometry(0.04, 8, 8), black, ex, 0.06, 0.47));
+    head.add(M(new THREE.SphereGeometry(0.012, 6, 6), white, ex + 0.02, 0.085, 0.49));
+    const brow = M(new THREE.BoxGeometry(0.16, 0.035, 0.05), dark, ex, 0.18, 0.42);
+    brow.rotation.z = ex > 0 ? -0.15 : 0.15;
+    head.add(brow);
+  });
+
+  const nose = M(new THREE.ConeGeometry(0.06, 0.14, 6), skin, 0, -0.02, 0.46);
+  nose.rotation.x = Math.PI/2;
+  head.add(nose);
+
+  [-0.07, 0.07].forEach(mx => {
+    const m = M(new THREE.BoxGeometry(0.15, 0.06, 0.05), dark, mx, -0.13, 0.45);
+    m.rotation.z = mx > 0 ? -0.2 : 0.2;
+    head.add(m);
+  });
+
+  const maskStrap = M(new THREE.TorusGeometry(0.5, 0.04, 8, 24), dark, 0, 0.06, 0.03);
+  maskStrap.rotation.x = Math.PI/2;
+  maskStrap.scale.set(1.02, 1, 0.95);
+  head.add(maskStrap);
+  [-0.17, 0.17].forEach(ex => {
+    head.add(M(new THREE.TorusGeometry(0.13, 0.028, 8, 16), dark, ex, 0.06, 0.47));
+    head.add(M(new THREE.CircleGeometry(0.11, 16), lensMat, ex, 0.06, 0.485));
+  });
+  head.add(M(new THREE.BoxGeometry(0.1, 0.04, 0.04), dark, 0, 0.06, 0.47));
+
+  const reg = M(new THREE.CylinderGeometry(0.09, 0.09, 0.32, 10), steel, 0, -0.25, 0.44);
+  reg.rotation.z = Math.PI/2;
+  head.add(reg);
+  head.add(M(new THREE.BoxGeometry(0.16, 0.08, 0.08), dark, 0, -0.25, 0.55));
+
+  kavi.add(head);
+
+  kavi.add(M(new THREE.CylinderGeometry(0.32, 0.32, 2.0, 18),
+    new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8, roughness: 0.25 }), 0, 0.2, -0.75));
+  kavi.add(M(new THREE.SphereGeometry(0.32, 12, 12, 0, Math.PI*2, 0, Math.PI/2), steel, 0, 1.2, -0.75));
+  kavi.add(M(new THREE.CylinderGeometry(0.1, 0.1, 0.18, 8), steel, 0, 1.4, -0.75));
+  kavi.add(M(new THREE.BoxGeometry(0.2, 0.18, 0.18), steel, 0.22, 1.2, -0.65));
+  kavi.add(M(new THREE.CylinderGeometry(0.06, 0.06, 0.18, 8), dark, 0.38, 1.2, -0.65));
+
+  const hoseCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.3, 1.15, -0.62),
+    new THREE.Vector3(0.62, 0.95, -0.3),
+    new THREE.Vector3(0.35, 1.05, 0.35),
+    new THREE.Vector3(0.1, 1.2, 0.5)
+  ]);
+  kavi.add(new THREE.Mesh(new THREE.TubeGeometry(hoseCurve, 16, 0.045, 8, false), dark));
+
+  const gaugeGroup = new THREE.Group();
+  gaugeGroup.position.set(0.5, 0.85, 0.2);
+  gaugeGroup.add(M(new THREE.BoxGeometry(0.18, 0.12, 0.08), dark));
+  gaugeGroup.add(M(new THREE.CylinderGeometry(0.045, 0.045, 0.02, 10), steel, -0.04, 0, 0.05));
+  gaugeGroup.add(M(new THREE.CylinderGeometry(0.045, 0.045, 0.02, 10), steel, 0.04, 0, 0.05));
+  kavi.add(gaugeGroup);
+
+  kavi.userData.flippers = [];
+  [-0.78, 0.78].forEach((ax, idx) => {
+    const arm = M(new THREE.CylinderGeometry(0.18, 0.16, 1.2, 8), wetsuit, ax, 0.35, 0.3);
+    arm.rotation.x = -0.4;
+    kavi.add(arm);
+    kavi.add(M(new THREE.SphereGeometry(0.17, 8, 8), dark, ax, -0.25, 0.65));
+
+    const leg = M(new THREE.CylinderGeometry(0.22, 0.18, 1.4, 8), wetsuit, ax*0.5, -1.4, -0.1);
+    leg.rotation.x = 0.3;
+    kavi.add(leg);
+
+    const flipper = M(new THREE.BoxGeometry(0.46, 0.07, 1.45), orange, ax*0.5, -2.1, 0.4);
+    flipper.rotation.x = -0.3;
+    flipper.userData = { baseX: -0.3, phase: Math.random()*Math.PI*2 };
+    kavi.add(flipper);
+    kavi.userData.flippers.push(flipper);
+
+    kavi.add(M(new THREE.BoxGeometry(0.12, 0.1, 0.12), dark, ax*0.5, -1.95, -0.12));
+  });
+
+  const shears = new THREE.Group();
+  shears.position.set(-0.88, 0.1, 0.82);
+  const bladeA = M(new THREE.BoxGeometry(0.09, 0.58, 0.05), steel);
+  bladeA.rotation.z = 0.22;
+  shears.add(bladeA);
+  const bladeB = M(new THREE.BoxGeometry(0.09, 0.58, 0.05), steel);
+  bladeB.rotation.z = -0.22;
+  shears.add(bladeB);
+  shears.add(M(new THREE.BoxGeometry(0.14, 0.14, 0.06), dark, 0, -0.32, 0));
+  kavi.add(shears);
+
+  const bag = M(new THREE.CylinderGeometry(0.52, 0.68, 1.4, 12, 1, false),
+    new THREE.MeshStandardMaterial({ color: 0x15803d, wireframe: true, roughness: 0.8 }),
+    0.9, -0.35, 0.6);
+  kavi.add(bag);
+
+  kavi.userData.regulatorLocal = new THREE.Vector3(0, 1.2, 0.52);
+  kavi.userData.bubbleState = makeBubbleEmitter(kavi, 16, kavi.userData.regulatorLocal);
+
+  return kavi;
+}
+
+/* -------------------- Bubble emitter -------------------- */
+function resetBubblePos(origin) {
+  return {
+    x: origin.x + (Math.random()-0.5)*0.12,
+    y: origin.y + (Math.random()-0.5)*0.08,
+    z: origin.z + (Math.random()-0.5)*0.12
+  };
+}
+
+function makeBubbleEmitter(parent, count, originLocal) {
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  const data = [];
+  for (let i = 0; i < count; i++) {
+    const p = resetBubblePos(originLocal);
+    positions[i*3+0] = p.x;
+    positions[i*3+1] = p.y;
+    positions[i*3+2] = p.z;
+    data.push({ speed: 0.5 + Math.random()*0.6, drift: (Math.random()-0.5)*0.15, phase: Math.random()*Math.PI*2, life: Math.random()*3 });
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 32; canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#a5f3fc';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(16, 16, 11, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.beginPath(); ctx.arc(13, 13, 3, 0, Math.PI*2); ctx.fill();
+  const tex = new THREE.CanvasTexture(canvas);
+
+  const points = new THREE.Points(geo, new THREE.PointsMaterial({
+    size: 0.28, map: tex, transparent: true, opacity: 0.8,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  }));
+  parent.add(points);
+
+  return { points, data, origin: originLocal.clone(), count };
+}
+
+/* -------------------- Particles & fish -------------------- */
+function buildParticles() {
+  const geo = new THREE.PlaneGeometry(130, 130, 32, 32);
+  geo.rotateX(-Math.PI/2);
+  causticMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+    color: 0x38bdf8, transparent: true, opacity: 0.16,
+    blending: THREE.AdditiveBlending, wireframe: true
+  }));
+  causticMesh.position.y = -11.6;
+  scene.add(causticMesh);
+
+  const count = 300;
+  const geoB = new THREE.BufferGeometry();
+  const pos = new Float32Array(count*3);
+  for (let i = 0; i < count; i++) {
+    pos[i*3+0] = (Math.random()-0.5)*50;
+    pos[i*3+1] = -11 + Math.random()*11;
+    pos[i*3+2] = (Math.random()-0.5)*50;
+  }
+  geoB.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 24; canvas.height = 24;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#67e8f9'; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(12, 12, 9, 0, Math.PI*2); ctx.stroke();
+  const tex = new THREE.CanvasTexture(canvas);
+
+  bubbleField = new THREE.Points(geoB, new THREE.PointsMaterial({
+    size: 0.3, map: tex, transparent: true, opacity: 0.75,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  }));
+  scene.add(bubbleField);
+}
+
+function buildFish() {
+  fishGroup = new THREE.Group();
+  const colors = [0x38bdf8, 0xfcd34d, 0xf472b6, 0x34d399, 0xfdba74];
+  for (let i = 0; i < 24; i++) {
+    const fish = new THREE.Mesh(
+      new THREE.ConeGeometry(0.1 + Math.random()*0.06, 0.5 + Math.random()*0.3, 5),
+      new THREE.MeshStandardMaterial({ color: colors[i%5], roughness: 0.35, metalness: 0.5 })
+    );
+    fish.rotation.x = Math.PI/2;
+    fish.position.set(
+      4 + (Math.random()-0.5)*26,
+      -3.5 - Math.random()*5,
+      (Math.random()-0.5)*22
+    );
+    fish.userData = {
+      speed: 0.6 + Math.random()*0.7,
+      phase: Math.random()*Math.PI*2,
+      baseY: fish.position.y
+    };
+    fishGroup.add(fish);
+  }
+  scene.add(fishGroup);
+}
+
+/* -------------------- Stage application -------------------- */
+function applyStage(s, initial, announce) {
+  currentStage = s;
+
+  document.querySelectorAll('.hud-bl .icon-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.stage) === s);
+  });
+
+  const d = { depth:'6.8 m', temp:'21.4 °C', flow:'0.38 m/s', carbon:'+418 kg/ha', o2:'8.4 mg/L', ready:'Matured >2.8 m', chip:'chip-emerald' };
+  if (s === 1) Object.assign(d, { depth:'0.0 m', temp:'23.1 °C', flow:'0.22 m/s', carbon:'Staging', o2:'—', ready:'Rigging grid', chip:'chip-amber' });
+  if (s === 2) Object.assign(d, { depth:'5.8 m', temp:'21.8 °C', flow:'0.34 m/s', carbon:'+45 kg/ha', o2:'7.9 mg/L', ready:'Spore seeding', chip:'chip-cyan' });
+  if (s === 3) Object.assign(d, { depth:'6.5 m', temp:'21.4 °C', flow:'0.38 m/s', carbon:'+418 kg/ha', o2:'8.4 mg/L', ready:'Matured >2.8 m', chip:'chip-emerald' });
+  if (s === 4) Object.assign(d, { depth:'6.8 m', temp:'21.2 °C', flow:'0.35 m/s', carbon:'+520 kg/ha', o2:'8.8 mg/L', ready:'Harvesting active', chip:'chip-teal' });
+
+  document.getElementById('t-depth').textContent = d.depth;
+  document.getElementById('t-temp').textContent = d.temp;
+  document.getElementById('t-flow').textContent = d.flow;
+  document.getElementById('t-carbon').textContent = d.carbon;
+  document.getElementById('t-o2').textContent = d.o2;
+  document.getElementById('p-ready').textContent = d.ready;
+  const badge = document.getElementById('p-ready-badge');
+  badge.className = 'chip ' + d.chip;
+  badge.textContent = s === 1 ? 'Rigging' : s === 2 ? 'Seeding' : s === 3 ? 'Ready' : 'Active';
+  document.getElementById('info-phase').textContent = s + ' / 4';
+
+  renderSummary(s);
+
+  kelpPlants.forEach((plant, i) => {
+    const target = s === 1 ? 0.06 : s === 2 ? 0.35 : s === 3 ? 1.0 : (i % 2 === 0 ? 0.7 : 1.0);
+    new TWEEN.Tween(plant.scale)
+      .to({ x: target, y: target, z: target }, initial ? 1 : 1400)
+      .easing(TWEEN.Easing.Cubic.InOut)
+      .start();
+  });
+
+  if (announce) {
+    showToast(getStageToast(s));
+    playSfx('sonar');
+  }
+}
+
+function getStageToast(s) {
+  if (s === 1) return '🏗️ Stage 1 · Jetty & Staging Online';
+  if (s === 2) return '⚓ Stage 2 · Longlines Rigged';
+  if (s === 3) return '🌱 Stage 3 · Canopy Maturation';
+  return '🤿 Stage 4 · Selective Harvest';
+}
+
+function renderSummary(s) {
+  const sum = SUMMARIES[s];
+  document.getElementById('o-title').textContent = sum.title;
+  document.getElementById('o-phase').textContent = sum.phase;
+  document.getElementById('o-body').innerHTML = sum.rows
+    .map(r => `<div class="sum-row"><span>${r[0]}</span><span>${r[1]}</span></div>`)
+    .join('');
+  document.getElementById('o-foot').textContent = sum.foot;
+
+  const pop = document.getElementById('pop-outcome');
+  pop.classList.remove('flash');
+  void pop.offsetWidth;
+  pop.classList.add('flash');
+}
+
+/* -------------------- Dialogue + camera choreography -------------------- */
+function showDialogue(idx, initial) {
+  if (idx < 0 || idx >= DIALOGUES.length) return;
+  currentDialogue = idx;
+  const d = DIALOGUES[idx];
+
+  document.getElementById('sub-avatar').textContent = d.avatar;
+  document.getElementById('sub-speaker').textContent = d.speaker;
+  document.getElementById('sub-text').textContent = d.text;
+  document.getElementById('sub-idx').textContent = (idx+1) + '/' + DIALOGUES.length;
+
+  if (d.stage !== currentStage) applyStage(d.stage, initial, false);
+
+  new TWEEN.Tween(camera.position)
+    .to({ x: d.cam.pos[0], y: d.cam.pos[1], z: d.cam.pos[2] }, initial ? 1 : 1600)
+    .easing(TWEEN.Easing.Cubic.InOut)
+    .start();
+  new TWEEN.Tween(controls.target)
+    .to({ x: d.cam.look[0], y: d.cam.look[1], z: d.cam.look[2] }, initial ? 1 : 1600)
+    .easing(TWEEN.Easing.Cubic.InOut)
+    .start();
+
+  new TWEEN.Tween(diversGroup.position)
+    .to({ x: d.divers[0], y: d.divers[1], z: d.divers[2] }, initial ? 1 : 1600)
+    .easing(TWEEN.Easing.Cubic.InOut)
+    .start();
+
+  if (!initial) speakCurrent();
+}
+
+/* -------------------- Speech engine (continuous auto-advance) -------------------- */
+function clearAdvanceTimer() {
+  if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
+}
+
+function stopSpeech() {
+  speechToken++;
+  clearAdvanceTimer();
+  if ('speechSynthesis' in window) {
+    try { window.speechSynthesis.cancel(); } catch(e) {}
+  }
+  currentUtterance = null;
+  pendingAdvance = false;
+}
+
+function estimateDuration(text, rate) {
+  // ~14 characters per second at rate 1
+  return Math.max(1400, (text.length / (14 * (rate || 1))) * 1000);
+}
+
+function speakCurrent() {
+  // Always start clean
+  speechToken++;
+  clearAdvanceTimer();
+  if ('speechSynthesis' in window) {
+    try { window.speechSynthesis.cancel(); } catch(e) {}
+  }
+  currentUtterance = null;
+  pendingAdvance = false;
+
+  if (!userInteracted) return;
+
+  const d = DIALOGUES[currentDialogue];
+  if (!d) return;
+
+  // Silent autoplay (voice off or speech unsupported)
+  if (voiceMode === 'off' || !('speechSynthesis' in window)) {
+    if (voiceMode === 'auto') {
+      const token = speechToken;
+      advanceTimer = setTimeout(() => {
+        if (token !== speechToken) return;
+        advanceTimer = null;
+        if (currentDialogue < DIALOGUES.length - 1) showDialogue(currentDialogue + 1, false);
+      }, estimateDuration(d.text, 1) + 600);
+    }
+    return;
+  }
+
+  try {
+    const token = speechToken;
+    const clean = d.text
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
+      .replace(/[“”"]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const u = new SpeechSynthesisUtterance(clean);
+    const prof = VOICE_PROFILES[d.speaker] || { pitch: 1, rate: 1 };
+    u.pitch = prof.pitch;
+    u.rate = prof.rate;
+    u.volume = 1;
+    const v = pickVoice(d.speaker);
+    if (v) u.voice = v;
+    currentUtterance = u;
+
+    const finish = () => {
+      if (token !== speechToken) return;
+      clearAdvanceTimer();
+      const shouldAdvance = pendingAdvance || voiceMode === 'auto';
+      pendingAdvance = false;
+      if (shouldAdvance && currentDialogue < DIALOGUES.length - 1) {
+        advanceTimer = setTimeout(() => {
+          advanceTimer = null;
+          if (token === speechToken) showDialogue(currentDialogue + 1, false);
+        }, 340);
+      }
+    };
+
+    u.onend = finish;
+    u.onerror = () => { if (token === speechToken) finish(); };
+
+    // Hard fallback in case onend never fires (some browsers drop it)
+    const est = estimateDuration(clean, u.rate);
+    advanceTimer = setTimeout(() => {
+      if (token !== speechToken) return;
+      advanceTimer = null;
+      if (window.speechSynthesis.speaking) {
+        advanceTimer = setTimeout(() => {
+          if (token === speechToken) finish();
+        }, 3000);
+      } else {
+        finish();
+      }
+    }, est + 1500);
+
+    window.speechSynthesis.speak(u);
+  } catch (e) {
+    if (voiceMode === 'auto') {
+      const token = speechToken;
+      advanceTimer = setTimeout(() => {
+        if (token === speechToken && currentDialogue < DIALOGUES.length - 1) {
+          showDialogue(currentDialogue + 1, false);
+        }
+      }, estimateDuration(d.text, 1) + 600);
+    }
+  }
+}
+
+/* -------------------- UI wiring -------------------- */
+function setupUI() {
+  const popIds = ['pop-info', 'pop-telemetry', 'pop-protocol', 'pop-outcome'];
+
+  function closeAll() {
+    popIds.forEach(id => document.getElementById(id).classList.remove('show'));
+    ['btn-info','btn-telemetry','btn-protocol','btn-outcome'].forEach(id => {
+      document.getElementById(id).classList.remove('active');
+    });
+  }
+
+  function togglePopover(btnId, popId) {
+    const btn = document.getElementById(btnId);
+    const pop = document.getElementById(popId);
+    const isOpen = pop.classList.contains('show');
+    closeAll();
+    if (!isOpen) {
+      pop.classList.add('show');
+      btn.classList.add('active');
+    }
+  }
+
+  document.getElementById('btn-info').addEventListener('click', () => togglePopover('btn-info', 'pop-info'));
+  document.getElementById('btn-telemetry').addEventListener('click', () => togglePopover('btn-telemetry', 'pop-telemetry'));
+  document.getElementById('btn-protocol').addEventListener('click', () => togglePopover('btn-protocol', 'pop-protocol'));
+  document.getElementById('btn-outcome').addEventListener('click', () => togglePopover('btn-outcome', 'pop-outcome'));
+
+  document.getElementById('btn-audio').addEventListener('click', function() {
+    sfxOn = !sfxOn;
+    this.textContent = sfxOn ? '🔊' : '🔇';
+    this.classList.toggle('active', sfxOn);
+  });
+
+  // Voice mode cycle: auto → off → on → auto
+  const voiceBtn = document.getElementById('btn-voice');
+  const voiceIcons = ['🔇', '🗣️', '🔁'];
+  const voiceTitles = ['Narration off', 'Narration on (manual next)', 'Narration auto-advance'];
+  const voiceLabels = ['Off', 'On', 'Auto'];
+  function updateVoiceBtn() {
+    voiceBtn.textContent = voiceIcons[voiceIdx];
+    voiceBtn.title = voiceTitles[voiceIdx];
+    voiceBtn.classList.toggle('active', voiceIdx > 0);
+    document.getElementById('info-voice').textContent = voiceLabels[voiceIdx];
+  }
+  updateVoiceBtn();
+  voiceBtn.addEventListener('click', () => {
+    voiceIdx = (voiceIdx + 1) % 3;
+    voiceMode = ['off', 'on', 'auto'][voiceIdx];
+    if (voiceMode === 'off') stopSpeech();
+    updateVoiceBtn();
+    if (voiceMode !== 'off') speakCurrent();
+  });
+
+  let isDive = false;
+  document.getElementById('btn-view').addEventListener('click', function() {
+    isDive = !isDive;
+    this.textContent = isDive ? '⛵' : '🤿';
+    this.classList.toggle('active', isDive);
+    if (isDive) {
+      new TWEEN.Tween(camera.position).to({ x: 12, y: -4.5, z: 9 }, 1400).easing(TWEEN.Easing.Cubic.InOut).start();
+      new TWEEN.Tween(controls.target).to({ x: 8, y: -5.5, z: 0 }, 1400).easing(TWEEN.Easing.Cubic.InOut).start();
+    } else {
+      new TWEEN.Tween(camera.position).to({ x: -6, y: 2.6, z: 13 }, 1400).easing(TWEEN.Easing.Cubic.InOut).start();
+      new TWEEN.Tween(controls.target).to({ x: -14, y: -0.6, z: 2 }, 1400).easing(TWEEN.Easing.Cubic.InOut).start();
+    }
+    playSfx('sonar');
+  });
+
+  document.querySelectorAll('.hud-bl .icon-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = parseInt(btn.dataset.stage);
+      const idx = DIALOGUES.findIndex(d => d.stage === s);
+      if (idx !== -1) {
+        stopSpeech();
+        showDialogue(idx, false);
+        applyStage(s, false, false);
+        showToast(getStageToast(s));
+      }
+    });
+  });
+
+  document.getElementById('sub-prev').addEventListener('click', () => {
+    if (currentDialogue > 0) {
+      stopSpeech();
+      showDialogue(currentDialogue - 1, false);
+    }
+  });
+
+  document.getElementById('sub-next').addEventListener('click', () => {
+    if (pendingAdvance) {
+      // Force-skip
+      stopSpeech();
+      if (currentDialogue < DIALOGUES.length - 1) showDialogue(currentDialogue + 1, false);
+      return;
+    }
+    if (currentDialogue < DIALOGUES.length - 1) {
+      if (voiceMode !== 'off' && 'speechSynthesis' in window && window.speechSynthesis.speaking) {
+        pendingAdvance = true;
+        showToast('⏳ Finishing narration…');
+        return;
+      }
+      showDialogue(currentDialogue + 1, false);
+    }
+  });
+
+  document.getElementById('canvas-container').addEventListener('pointerdown', () => closeAll());
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* -------------------- Animation helpers -------------------- */
+function animateFlippers(char, t, speed, amp) {
+  (char.userData.flippers || []).forEach(f => {
+    if (f.userData && f.userData.phase !== undefined) {
+      f.rotation.x = f.userData.baseX + Math.sin(t*speed + f.userData.phase) * amp;
+    }
+  });
+}
+
+function updateBubbleEmitter(char, dt, t) {
+  if (!char || !char.userData.bubbleState) return;
+  const st = char.userData.bubbleState;
+  const arr = st.points.geometry.attributes.position.array;
+  for (let i = 0; i < st.count; i++) {
+    const d = st.data[i];
+    d.life += dt;
+    arr[i*3+1] += d.speed * dt;
+    arr[i*3+0] += d.drift * dt;
+    arr[i*3+2] += Math.sin(t*2 + d.phase) * 0.003;
+    if (arr[i*3+1] > st.origin.y + 2.6 || d.life > 4) {
+      const p = resetBubblePos(st.origin);
+      arr[i*3+0] = p.x;
+      arr[i*3+1] = p.y;
+      arr[i*3+2] = p.z;
+      d.life = 0;
+    }
+  }
+  st.points.geometry.attributes.position.needsUpdate = true;
+}
+
+/* -------------------- Animate -------------------- */
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  const t = clock.getElapsedTime();
+
+  TWEEN.update();
+
+  // Water surface waves
+  if (waterPlane) {
+    const v = waterPlane.geometry.attributes.position;
+    for (let i = 0; i < v.count; i++) {
+      const u = v.getX(i), w = v.getZ(i);
+      v.setY(i, Math.sin(u*0.16 + t*1.5)*0.18 + Math.cos(w*0.2 + t*1.2)*0.15);
+    }
+    v.needsUpdate = true;
+  }
+
+  // Kelp sway — traverse nested children (blades + frills)
+  const swayKelp = (arr) => arr.forEach(plant => {
+    plant.traverse(child => {
+      if (child.userData && child.userData.speed !== undefined) {
+        const d = child.userData;
+        child.rotation.z = d.baseRotZ + Math.sin(t*d.speed + d.phase) * 0.28;
+        child.rotation.x = d.baseRotX + Math.cos(t*d.speed*0.85 + d.phase) * 0.13;
+      }
+    });
+  });
+  swayKelp(kelpPlants);
+  swayKelp(wildKelp);
+
+  // Caustics
+  if (causticMesh) {
+    causticMesh.material.opacity = 0.13 + Math.sin(t*2.2)*0.05;
+    causticMesh.position.x = Math.sin(t*0.35)*1.8;
+    causticMesh.position.z = Math.cos(t*0.3)*1.8;
+  }
+
+  // Ambient bubbles
+  if (bubbleField) {
+    const arr = bubbleField.geometry.attributes.position.array;
+    for (let i = 0; i < arr.length/3; i++) {
+      arr[i*3+1] += 0.045 + Math.sin(t + i)*0.008;
+      arr[i*3+0] += 0.007;
+      if (arr[i*3+1] > 0.1) {
+        arr[i*3+1] = -11.0;
+        arr[i*3+0] = (Math.random()-0.5)*50;
+      }
+    }
+    bubbleField.geometry.attributes.position.needsUpdate = true;
+  }
+
+  // Buoys bobbing
+  if (farmGroup) {
+    farmGroup.traverse(o => {
+      if (o.userData && o.userData.baseY !== undefined) {
+        o.position.y = o.userData.baseY + Math.sin(t*1.4 + o.userData.phase)*0.12;
+      }
+    });
+  }
+
+  // ---- Characters ----
+  if (whiskerPuffGroup) {
+    const b = whiskerPuffGroup.userData.basePos;
+    whiskerPuffGroup.position.set(b.x, b.y + Math.sin(t*1.2)*0.14, b.z);
+    whiskerPuffGroup.rotation.z = Math.cos(t*0.9)*0.05;
+    whiskerPuffGroup.rotation.y = Math.sin(t*0.45)*0.18;
+    if (whiskerPuffGroup.userData.tail) whiskerPuffGroup.userData.tail.rotation.y = Math.sin(t*1.6)*0.4;
+    animateFlippers(whiskerPuffGroup, t, 3.2, 0.35);
+  }
+
+  if (captainKaviGroup) {
+    const b = captainKaviGroup.userData.basePos;
+    captainKaviGroup.position.set(b.x, b.y + Math.sin(t*1.1 + 1)*0.12, b.z);
+    captainKaviGroup.rotation.z = Math.sin(t*0.8)*0.04;
+    captainKaviGroup.rotation.y = Math.sin(t*0.3)*0.1;
+    animateFlippers(captainKaviGroup, t, 3.0, 0.3);
+  }
+
+  // ---- Pip: 5-year-old playful, varied underwater motion ----
+  if (peepSqueakGroup) {
+    const b = peepSqueakGroup.userData.basePos;
+
+    const px = b.x + Math.sin(t*1.7)*0.7 + Math.sin(t*3.1)*0.15;
+    const py = b.y + Math.sin(t*2.2)*0.35 + Math.cos(t*1.1)*0.1;
+    const pz = b.z + Math.cos(t*1.3)*0.55;
+    peepSqueakGroup.position.set(px, py, pz);
+
+    peepSqueakGroup.rotation.y = Math.sin(t*1.6)*0.7;
+    peepSqueakGroup.rotation.z = Math.sin(t*2.4)*0.4;
+
+    // Periodic barrel roll
+    const cyc = t % 5.2;
+    peepSqueakGroup.rotation.x = cyc < 1.3 ? (cyc/1.3)*Math.PI*2 : 0;
+
+    // Excited bounce
+    const pulse = 1 + Math.max(0, Math.sin(t*0.9))**8 * 0.08;
+    const baseScale = peepSqueakGroup.userData.baseScale || 0.55;
+    peepSqueakGroup.scale.setScalar(baseScale * pulse);
+
+    animateFlippers(peepSqueakGroup, t, 5.5, 0.6);
+
+    if (peepSqueakGroup.userData.antenna) {
+      peepSqueakGroup.userData.antenna.material.emissiveIntensity = 0.4 + Math.abs(Math.sin(t*5))*0.8;
+    }
+  }
+
+  // Diver bubble streams
+  updateBubbleEmitter(whiskerPuffGroup, dt, t);
+  updateBubbleEmitter(peepSqueakGroup, dt, t);
+  updateBubbleEmitter(captainKaviGroup, dt, t);
+
+  // Regulator breathing SFX
+  diverBreathTimer += dt;
+  if (diverBreathTimer > 6.0 && currentStage >= 2) {
+    diverBreathTimer = 0;
+    playSfx('regulator');
+  }
+
+  // Fish schooling
+  if (fishGroup) {
+    fishGroup.children.forEach(f => {
+      const d = f.userData;
+      f.position.x += Math.cos(t*d.speed*0.7 + d.phase)*0.03;
+      f.position.z += Math.sin(t*d.speed*0.7 + d.phase)*0.03;
+      f.position.y = d.baseY + Math.sin(t*d.speed + d.phase)*0.3;
+      f.rotation.y = t*d.speed*0.5 + d.phase;
+    });
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+/* -------------------- Boot -------------------- */
+window.addEventListener('load', () => {
+  init();
+});
+</script>
+
+<script>
+window.returnToBlueLab = function(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.closeModal === 'function') {
+      window.parent.closeModal();
+      return false;
+    }
+  } catch(err) {}
+  var ref = document.referrer || '';
+  var search = window.location.search || '';
+  if (ref.indexOf('/hub') !== -1 || search.indexOf('source=hub') !== -1) {
+    window.location.href = '../../hub/index.html#/saint-martin';
+    return false;
+  }
+  window.location.href = '../blue-lab.html';
+  return false;
+};
+window.returnToResearchLab = window.returnToBlueLab;
+</script>
+
+</body>
+</html>

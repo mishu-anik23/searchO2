@@ -520,6 +520,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--deep);font-fam
     <!-- Top-Left: Menu Trigger (Icon Only, No Text, No Background Clutter) -->
     <div class="top-left-hud">
       <button class="chip-btn icon-square" id="btn-menu" title="Open 4xN Operational Menu">☰</button>
+      <button class="chip-btn icon-square" id="btn-blue-research" onclick="openBlueLabResearchModal()" title="Blue Lab 3D Research Simulations (10 Labs)" style="border-color:#00E5FF;color:#00E5FF;box-shadow:0 0 10px rgba(0,229,255,0.4);display:inline-flex;align-items:center;justify-content:center;">🔬</button>
       <!-- Hidden proxy buttons for programmatic / test access -->
       <div id="legacy-menu-proxies" style="display:none;">
         <button class="chip-btn" id="btn-blueprint" onclick="openBlueprintModal()">🗺️</button>
@@ -686,6 +687,24 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--deep);font-fam
       <button class="btn-close" id="coral-explore-close">✕</button>
     </div>
     <div id="coral-explore-content"></div>
+  </div>
+</div>
+
+
+<!-- BLUE LAB 3D RESEARCH HQ LABS MODAL -->
+<div class="modal-overlay" id="blue-research-modal">
+  <div class="modal-card wide" style="max-width:840px;max-height:88vh;overflow-y:auto;">
+    <div class="modal-hdr" style="position:sticky;top:0;background:rgba(10,25,38,0.98);z-index:10;padding-bottom:10px;border-bottom:1.5px solid rgba(0,229,255,0.3);">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:1.8rem;background:rgba(0,229,255,0.15);padding:6px 10px;border-radius:12px;border:1px solid var(--teal)">🔬</span>
+        <div>
+          <h3 style="margin:0;font-size:1.1rem;color:var(--teal)">Blue Lab 3D Research HQ Simulations</h3>
+          <div style="font-size:0.75rem;color:#80DEEA">10 Interactive Scientific WebGL Laboratories &amp; Specialist Animal Mentors</div>
+        </div>
+      </div>
+      <button class="btn-close" id="blue-research-close">✕</button>
+    </div>
+    <div id="blue-research-content" style="padding-top:12px;"></div>
   </div>
 </div>
 
@@ -2232,7 +2251,7 @@ function openConstructionModal(type){
 
   title.innerHTML = `${why.icon} ${why.name}`;
 
-  let html = '<div style="display:flex;flex-direction:column;gap:12px;">';
+  let html = '<div style="display:flex;flex-direction:column;gap:12px;">' + simBanner;
 
   // Ecological & Engineering Why Card
   html += `
@@ -2469,6 +2488,192 @@ function toggleHireWorker(wid){
   toast(w.hired?('🧑‍🌾 Hired '+w.name):('Released '+w.name));
 }
 
+
+/* ================= BLUE LAB 3D RESEARCH HQ SIMULATIONS & DYNAMIC HUD ================= */
+const BLUE_RESEARCH_SIMS = [
+  {
+    id: 'cng',
+    title: 'Seashore CNG Field & Marine Jetty',
+    file: 'so2bl_cng_field_progression.html',
+    mentor: '🐈 Tariq (Fishing Cat)',
+    facility: 'Modern Cargo Jetty & CNG Terminal',
+    taskId: '1.3',
+    desc: 'Seismic soft-start acoustic wave shielding (BSH SEL ≤ 160 dB), dolphin MMO zone, geopolymer reef jetty, and 250-bar CNG cascade.',
+    reward: '+€180 · +60 XP · +45 O₂'
+  },
+  {
+    id: 'greenhouse',
+    title: 'Coastal Solar Greenhouse',
+    file: 'so2bl_coastal_solar_greenhouse.html',
+    mentor: '🦌 Dr. Nabila Rahman',
+    facility: 'Vegetable & Crop Garden',
+    taskId: '2.3',
+    desc: 'Semi-transparent PV roof glazing, passive seawater evaporative cooling pads, desalted drip fertigation, and Cat-5 storm resilience.',
+    reward: '+€150 · +50 XP · +40 O₂'
+  },
+  {
+    id: 'mangrove',
+    title: 'Mangrove Biodiversity & Oxy-Garden',
+    file: 'so2bl_garden_mangrove_biodiversity.html',
+    mentor: '🦌 Dr. Nabila Rahman',
+    facility: 'Botanical Flower Garden',
+    taskId: '1.2',
+    desc: 'Intertidal Rhizophora stilt-roots, Avicennia pneumatophores, Pandanus Kewra dune buffer, and coastal blue carbon sediment sinks.',
+    reward: '+€160 · +55 XP · +50 O₂'
+  },
+  {
+    id: 'iqf',
+    title: 'Seafood & Cryogenic -38°C IQF Plant',
+    file: 'so2bl_iqf_processing_export_plant.html',
+    mentor: '🦀 Captain Kabir & Farhana',
+    facility: 'Seafood & IQF Facility',
+    taskId: '4.1',
+    desc: 'Cryogenic liquid nitrogen spiral freezer (-38°C), ozone sanitization, automated optical grading, and MAP export packing.',
+    reward: '+€200 · +65 XP · +35 O₂'
+  },
+  {
+    id: 'ras',
+    title: 'Closed-Loop Marine RAS Facility',
+    file: 'so2bl_marine_ras_facility.html',
+    mentor: '🦀 Captain Kabir',
+    facility: 'Mud Crab & Shrimp RAS Lagoon',
+    taskId: '2.1',
+    desc: 'Moving-bed biofilm reactors (MBBR), mechanical drum screens, protein skimmer foam fractionation, and UV loops cultivating Giant Tiger Shrimp.',
+    reward: '+€190 · +60 XP · +40 O₂'
+  },
+  {
+    id: 'microgrid',
+    title: 'Hybrid Offshore Wind, Floating PV & BESS',
+    file: 'so2bl_microgrid.html',
+    mentor: '🦔 Dr. Sparky Quills',
+    facility: 'Microgrid BESS Substation',
+    taskId: '3.3',
+    desc: '120 kW floating solar, twin offshore wind turbines, marine current tidal generators, 250 kWh LFP BESS, and smart SCADA EMS dispatch.',
+    reward: '+€220 · +70 XP · +60 O₂'
+  },
+  {
+    id: 'desal',
+    title: 'SWRO Desalination & Solar Salt Brine',
+    file: 'so2bl_salt_brine_desalination_lab.html',
+    mentor: '🐬 Dr. Lila Brine',
+    facility: 'Desalination Core & Salt Flats',
+    taskId: '4.3',
+    desc: 'Isobaric energy-recovery reverse osmosis, 80,000 L/day potable water, concentrated brine electrodialysis, and gourmet sea salt.',
+    reward: '+€170 · +55 XP · +35 O₂'
+  },
+  {
+    id: 'seaweed',
+    title: 'Seaweed Longlines & Scuba Diving',
+    file: 'so2bl_seaweed_farming_diving.html',
+    mentor: '🦉 Prof. Whisker Puff & Pip',
+    facility: 'Seaweed Mariculture Rafts',
+    taskId: '2.2',
+    desc: 'Sub-sea macroalgae lines (Kappaphycus & Gracilaria), scientific scuba diving surveys, nitrogen bio-filtration, and carrageenan harvest.',
+    reward: '+€160 · +50 XP · +45 O₂'
+  },
+  {
+    id: 'warehouse',
+    title: 'Smart Cold-Chain Coastal Warehouse',
+    file: 'so2bl_smart_cold_chain_coastal_warehouse.html',
+    mentor: '🐈 Tariq & Prof. Whisker Puff',
+    facility: 'North Storage & Silos',
+    taskId: '1.3',
+    desc: 'Multi-zone thermal stratification (+4°C chilled, -18°C frozen, -26°C deep IQF holding), phase-change materials, and AGV robotic shuttles.',
+    reward: '+€190 · +60 XP · +35 O₂'
+  },
+  {
+    id: 'pearl',
+    title: 'Sustainable Pearl Oyster Mariculture',
+    file: 'so2bl_sustainable_pearl_farming.html',
+    mentor: '🦉 Prof. Whisker Puff & Pip',
+    facility: 'Marine Pearl Oyster Farm',
+    taskId: '2.1',
+    desc: 'Pinctada margaritifera mariculture, gentle mantle grafting, suspended lantern nets in coral lagoons, and aragonite nacre biomineralization.',
+    reward: '+€210 · +65 XP · +40 O₂'
+  }
+];
+
+window.completeTask = function(taskId) {
+  let matched = false;
+  MISSIONS.forEach(m => {
+    m.subs.forEach(s => {
+      if (s.id === taskId && !s.done) {
+        s.done = true;
+        matched = true;
+        grantXP({ marine: s.xp || 30 });
+        toast('✓ Sub-Challenge ' + s.id + ' Completed: ' + s.title + ' (+' + (s.xp || 30) + ' XP)');
+      }
+    });
+  });
+  if (matched) {
+    updateMissionHUD();
+    renderTaskHud();
+    renderScoreboard();
+  }
+};
+
+window.launchBlueResearchSim = function(file, taskId) {
+  if (taskId) completeTask(taskId);
+  state.money += 50;
+  state.globalO2 += 25;
+  grantXP({ marine: 40 });
+  renderScoreboard();
+  window.open('research/' + file + '?source=bluelab', '_blank');
+};
+
+window.openBlueLabResearchModal = function() {
+  const modal = document.getElementById('blue-research-modal');
+  const body = document.getElementById('blue-research-content');
+  if (!modal || !body) return;
+
+  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(360px, 1fr));gap:12px;">';
+  BLUE_RESEARCH_SIMS.forEach(s => {
+    html += '<div style="background:rgba(12,32,50,0.85);border:1.2px solid rgba(0,229,255,0.25);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;justify-content:space-between;gap:8px;">' +
+      '<div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+          '<span style="font-weight:900;color:var(--teal);font-size:0.92rem;">🔬 ' + s.title + '</span>' +
+          '<span style="font-size:0.72rem;padding:2px 8px;border-radius:6px;background:rgba(0,230,118,0.2);color:var(--emerald);font-weight:800;">' + s.reward + '</span>' +
+        '</div>' +
+        '<div style="font-size:0.74rem;color:var(--gold);font-weight:700;margin-bottom:4px;">Lead Mentor: ' + s.mentor + ' · ' + s.facility + '</div>' +
+        '<p style="font-size:0.76rem;color:#CFD8DC;margin:0;line-height:1.35;">' + s.desc + '</p>' +
+      '</div>' +
+      '<button class="btn btn-c" onclick="launchBlueResearchSim(\'' + s.file + '\', \'' + s.taskId + '\')" style="width:100%;padding:7px;font-size:0.78rem;font-weight:800;">▶️ Launch 3D Simulation</button>' +
+    '</div>';
+  });
+  html += '</div>';
+
+  body.innerHTML = html;
+  modal.classList.add('open');
+};
+
+window.claimChapterReward = function() {
+  const m = MISSIONS[state.currentChapter - 1];
+  if (!m) return;
+  const doneCount = m.subs.filter(s => s.done).length;
+  if (doneCount < m.subs.length) {
+    toast('⚠️ Complete all ' + m.subs.length + ' Chapter ' + m.ch + ' sub-challenges first! (' + doneCount + '/' + m.subs.length + ' Done)');
+    return;
+  }
+  const rewardMoney = 200 + state.currentChapter * 100;
+  const rewardXP = 150 + state.currentChapter * 50;
+  const rewardO2 = 120 + state.currentChapter * 40;
+  state.money += rewardMoney;
+  state.globalO2 += rewardO2;
+  grantXP({ marine: Math.round(rewardXP / 2), farming: Math.round(rewardXP / 2) });
+
+  toast('🎉 Chapter ' + m.ch + ' Completed! +€' + rewardMoney + ', +' + rewardXP + ' XP, +' + rewardO2 + ' kg O₂!');
+
+  if (state.currentChapter < MISSIONS.length) {
+    state.currentChapter++;
+    toast('🚀 Advancing to Chapter ' + state.currentChapter + ': ' + MISSIONS[state.currentChapter - 1].title + '!');
+  } else {
+    toast('🏆 All 5 Saint Martin Blue Lab Chapters Mastered! Global Trade Passport Granted!');
+  }
+  updateMissionHUD();
+  renderTaskHud();
+  renderScoreboard();
+};
+
 /* ================= 13. 5-CHAPTER MASTERPLAN MODAL ================= */
 function openMasterplanModal(){
   const body=document.getElementById('master-body');
@@ -2509,42 +2714,60 @@ function openMasterplanModal(){
 }
 
 function updateMissionHUD(){
-  const m=MISSIONS[state.currentChapter-1];
-  if(!m)return;
-  const doneCount=m.subs.filter(s=>s.done).length;
-  const pct=Math.round((doneCount/m.subs.length)*100);
-  const taskTxt=document.getElementById('task-txt');
-  if(taskTxt){
-    taskTxt.innerHTML='Ch. '+m.ch+': <b>'+m.title+'</b> ('+pct+'%)';
+  const m = MISSIONS[state.currentChapter - 1] || MISSIONS[0];
+  const doneCount = m.subs.filter(s => s.done).length;
+  const pct = Math.round((doneCount / m.subs.length) * 100);
+  const taskTxt = document.getElementById('task-txt');
+  if (taskTxt) {
+    const chIcons = ['🪸', '🦀', '⚡', '❄️', '🌐'];
+    const chIcon = chIcons[(m.ch - 1) % chIcons.length];
+    taskTxt.innerHTML = chIcon + ' Ch. ' + m.ch + ': <b>' + m.title + '</b> (' + pct + '% · ' + doneCount + '/' + m.subs.length + ' Done)';
+  }
+  const taskCapsule = document.getElementById('task-capsule');
+  if (taskCapsule) {
+    const chBorders = ['#00E5FF', '#00E676', '#FFD54F', '#80DEEA', '#FF5252'];
+    taskCapsule.style.borderColor = chBorders[(m.ch - 1) % chBorders.length];
   }
 }
 
 function renderTaskHud(){
-  const m=MISSIONS[state.currentChapter-1];
-  if(!m)return;
-  const doneCount=m.subs.filter(s=>s.done).length;
-  const pct=Math.round((doneCount/m.subs.length)*100);
-  const titleEl=document.getElementById('task-hud-ch-name');
-  const pctEl=document.getElementById('task-hud-pct');
-  const barEl=document.getElementById('task-hud-bar');
-  if(titleEl)titleEl.textContent='Chapter '+m.ch+': '+m.title;
-  if(pctEl)pctEl.textContent=pct+'% Complete';
-  if(barEl)barEl.style.width=pct+'%';
+  const m = MISSIONS[state.currentChapter - 1] || MISSIONS[0];
+  const doneCount = m.subs.filter(s => s.done).length;
+  const pct = Math.round((doneCount / m.subs.length) * 100);
+  const titleEl = document.getElementById('task-hud-ch-name');
+  const pctEl = document.getElementById('task-hud-pct');
+  const barEl = document.getElementById('task-hud-bar');
+  if (titleEl) titleEl.textContent = 'Chapter ' + m.ch + ': ' + m.title;
+  if (pctEl) pctEl.textContent = pct + '% Complete (' + doneCount + '/' + m.subs.length + ' Done)';
+  if (barEl) barEl.style.width = pct + '%';
 
-  const itemsEl=document.getElementById('task-list-items');
-  if(!itemsEl)return;
-  itemsEl.innerHTML='';
-  m.subs.forEach(s=>{
-    const div=document.createElement('div');
-    div.className='task-item'+(s.done?' done':'');
-    div.innerHTML=
+  const itemsEl = document.getElementById('task-list-items');
+  if (!itemsEl) return;
+  itemsEl.innerHTML = '';
+  m.subs.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'task-item' + (s.done ? ' done' : '');
+    div.innerHTML =
       '<div>' +
-        '<div class="title">'+(s.done?'✓ ':'○ ')+'Sub-Challenge '+s.id+': '+s.title+'</div>' +
-        '<div class="sub">'+s.focus+'</div>' +
+        '<div class="title">' + (s.done ? '✓ ' : '○ ') + 'Sub-Challenge ' + s.id + ': ' + s.title + '</div>' +
+        '<div class="sub">' + s.focus + '</div>' +
       '</div>' +
-      '<span class="badge">'+(s.done?'DONE':'+'+s.xp+' XP')+'</span>';
+      '<span class="badge">' + (s.done ? 'DONE' : '+' + s.xp + ' XP') + '</span>';
     itemsEl.appendChild(div);
   });
+
+  const claimBtn = document.getElementById('task-hud-claim');
+  if (claimBtn) {
+    if (doneCount === m.subs.length) {
+      claimBtn.textContent = 'Claim Chapter ' + m.ch + ' Reward! 🎁';
+      claimBtn.className = 'btn btn-gold';
+      claimBtn.style.animation = 'pulse 1.2s infinite';
+    } else {
+      claimBtn.textContent = 'Claim Reward (' + doneCount + '/' + m.subs.length + ')';
+      claimBtn.className = 'btn btn-c';
+      claimBtn.style.animation = 'none';
+    }
+  }
 }
 
 function toggleTaskHud(){
@@ -6340,6 +6563,13 @@ function openCropModal(){
   const body=document.getElementById('crop-modal-content');
   if(!body)return;
 
+  const simBanner = '<div style="margin-bottom:12px;padding:10px 14px;background:rgba(0,229,255,0.12);border:1.2px solid var(--teal);border-radius:12px;display:flex;justify-content:space-between;align-items:center;">' +
+      '<div>' +
+        '<div style="font-weight:900;color:var(--teal);font-size:0.85rem">🔬 3D Coastal Solar Greenhouse Simulation</div>' +
+        '<div style="font-size:0.72rem;color:#CFD8DC">Halophyte drip fertigation, agro-PV glazing &amp; storm bracing</div>' +
+      '</div>' +
+      '<button class="btn btn-c" onclick="launchBlueResearchSim(\'so2bl_coastal_solar_greenhouse.html\', \'2.3\')" style="padding:6px 12px;font-size:0.75rem">Launch 3D Lab ▶</button>' +
+    '</div>';
   const bedNames = [
     'Bed 1: North Ridge Bed (8 Micro-Plots)',
     'Bed 2: Central-North Hydro Bed (8 Micro-Plots)',
@@ -6415,6 +6645,13 @@ function openStorageModal(){
   if(!body)return;
   body.innerHTML=
     '<div class="modal-hdr"><h3>🏚️ North Storage Silos & Harvest Bank</h3><button class="btn-close" onclick="document.getElementById(\'storage-modal\').classList.remove(\'open\')">✕</button></div>' +
+    '<div style="margin-bottom:12px;padding:10px 14px;background:rgba(0,229,255,0.12);border:1.2px solid var(--teal);border-radius:12px;display:flex;justify-content:space-between;align-items:center;">' +
+      '<div>' +
+        '<div style="font-weight:900;color:var(--teal);font-size:0.85rem">🔬 3D Smart Cold-Chain Coastal Warehouse Simulation</div>' +
+        '<div style="font-size:0.72rem;color:#CFD8DC">Multi-zone thermal storage, PCM &amp; AGV automated shuttles</div>' +
+      '</div>' +
+      '<button class="btn btn-c" onclick="launchBlueResearchSim(\'so2bl_smart_cold_chain_coastal_warehouse.html\', \'1.3\')" style="padding:6px 12px;font-size:0.75rem">Launch 3D Lab ▶</button>' +
+    '</div>' +
     '<div class="grid-3" style="font-size:0.8rem;">' +
       '<div class="card-box">Tomatoes: <b>'+state.storage.tomatoes+' kg</b></div>' +
       '<div class="card-box">Sweet Potato: <b>'+state.storage.sweetPotatoes+' kg</b></div>' +
@@ -9894,6 +10131,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     ['menu-close','floatMenu'],
     ['task-hud-close','task-hud'],
     ['modern-jetty-close','modern-jetty-modal'],
+    ['blue-research-close','blue-research-modal'],
     ['coral-explore-close','coral-explore-modal']
   ];
   modalCloses.forEach(([btnId, modalId])=>{

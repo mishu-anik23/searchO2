@@ -1,0 +1,2292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saint Martin Island — SearchO2 Blue Lab Hybrid Microgrid & Marine Ecology Station</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js + OrbitControls + TWEEN.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      background: #02101d;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+    }
+    #viewport-container {
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+    .bubble-font { font-family: 'Fredoka', cursive; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Sleek Holographic Glassmorphism */
+    .glass-panel {
+      background: rgba(6, 22, 38, 0.86);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    }
+    .ctrl-btn {
+      background: rgba(10, 34, 58, 0.88);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 10px;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #e0f2fe;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+    .ctrl-btn:hover {
+      background: rgba(14, 165, 233, 0.32);
+      border-color: rgba(56, 189, 248, 0.75);
+      transform: translateY(-1px);
+    }
+    .ctrl-btn.active {
+      background: linear-gradient(135deg, #0284c7, #0d9488);
+      color: #021d24;
+      border-color: #7dd3fc;
+      font-weight: 700;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.45);
+    }
+
+    /* Live Voice Pulse Ring */
+    @keyframes pulseRing {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.75); }
+      70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .mic-live {
+      animation: pulseRing 1.5s infinite;
+      background: linear-gradient(135deg, #059669, #10b981) !important;
+      color: #022c22 !important;
+      border-color: #6ee7b7 !important;
+    }
+
+    /* Dialogue Card */
+    .dialogue-box {
+      transition: opacity 0.28s ease, transform 0.28s ease;
+    }
+    .dialogue-box.fade-out {
+      opacity: 0;
+      transform: translate(-50%, 14px) scale(0.98);
+      pointer-events: none;
+    }
+    .dialogue-box.fade-in {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+      pointer-events: auto;
+    }
+
+    /* 3D Projected Hotspot Labels */
+    .hotspot-marker {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      z-index: 15;
+      pointer-events: auto;
+      cursor: pointer;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    .hotspot-marker:hover {
+      transform: translate(-50%, -54%) scale(1.06);
+      z-index: 25;
+    }
+    .hotspot-pill {
+      background: rgba(6, 24, 42, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(56, 189, 248, 0.65);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #f0f9ff;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    }
+    .hotspot-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 8px #38bdf8;
+    }
+
+    /* Custom Scrollbar for Modal */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(6, 22, 38, 0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 3px; }
+  </style>
+</head>
+<body class="text-slate-100">
+
+  <!-- Full-Screen Widescreen 3D Canvas -->
+  <div id="viewport-container"></div>
+
+  <!-- Projected 3D Interactive Field Hotspots Layer -->
+  <div id="hotspots-layer" class="fixed inset-0 pointer-events-none z-10 overflow-hidden"></div>
+
+  <!-- Top Left: Station Header & System Schematic Trigger -->
+  <header class="fixed top-4 left-4 z-20 flex flex-wrap items-center gap-2 pointer-events-auto">
+    <div class="glass-panel px-3.5 py-2 rounded-xl flex items-center gap-3">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <h1 class="text-xs md:text-sm font-extrabold tracking-wide text-sky-300 uppercase">SearchO2 Blue Lab — Saint Martin's Island</h1>
+        </div>
+        <p class="text-[10px] text-slate-300 font-mono">20.6237° N, 92.3234° E | Coral Reef Ecological Microgrid</p>
+      </div>
+      <button id="btn-open-architecture" class="ctrl-btn text-[11px] bg-sky-500/20 border-sky-400/50 text-sky-200">
+        System Schematics
+      </button>
+    </div>
+  </header>
+
+  <!-- Top Right: Camera Views, Live Voice Comms & Audio Toggles -->
+  <nav class="fixed top-4 right-4 z-20 flex flex-wrap items-center justify-end gap-1.5 pointer-events-auto max-w-[60vw]">
+    <a id="archive-home-link" href="#" onclick="returnToBlueLab(event)" class="ctrl-btn" title="Return to Blue Lab" aria-label="Return to Blue Lab" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">🔬</a>
+    <button id="cam-overview" class="ctrl-btn active" data-cam="overview">Wide Lagoon</button>
+    <button id="cam-solar" class="ctrl-btn" data-cam="solar">Offshore Solar</button>
+    <button id="cam-jetty" class="ctrl-btn" data-cam="jetty">Jetty & Vessel</button>
+    <button id="cam-offshore-wind" class="ctrl-btn" data-cam="offshoreWind">Sea Turbine</button>
+    <button id="cam-bess" class="ctrl-btn" data-cam="bess">BESS & Lab</button>
+    <button id="cam-coral" class="ctrl-btn" data-cam="coral">Reef & Hatchery</button>
+    <div class="w-[1px] h-6 bg-sky-800/70 mx-0.5 hidden sm:block"></div>
+    <button id="btn-live-voice" class="ctrl-btn border-emerald-400/50 text-emerald-300" title="Real-Time Two-Way Voice Comms with Engineering Team">
+      Live Voice Comms
+    </button>
+    <button id="btn-subtitles" class="ctrl-btn active" title="Toggle Research Transcript">Subtitles</button>
+    <button id="btn-audio" class="ctrl-btn active" title="Toggle Voice Synthesis & Telemetry Audio">Audio ON</button>
+  </nav>
+
+  <!-- Top-Right Telemetry & Stage Action HUD (Below Nav) -->
+  <aside id="telemetry-hud" class="fixed top-16 right-4 z-20 w-80 md:w-96 glass-panel p-4 rounded-2xl border border-sky-400/35 pointer-events-auto transition-all duration-300">
+    <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-sky-900/70">
+      <div>
+        <span id="hud-stage-badge" class="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-400/30">STAGE 01 // GRID TOPOLOGY</span>
+        <h2 id="hud-title" class="bubble-font text-sm font-bold text-white mt-1">Hybrid Marine Microgrid Overview</h2>
+      </div>
+      <button id="btn-stage-graphic" class="ctrl-btn text-[11px] bg-teal-500/20 border-teal-400/50 text-teal-200">
+        Inspect Diagram
+      </button>
+    </div>
+
+    <!-- Real-Time Telemetry Bars -->
+    <div class="grid grid-cols-3 gap-1.5 mb-2.5 text-center font-mono">
+      <div class="bg-slate-950/75 p-2 rounded-xl border border-sky-900/60">
+        <span class="text-[9px] text-slate-400 block">OFFSHORE PV</span>
+        <strong id="val-solar" class="text-xs text-amber-300">38.4 kW</strong>
+      </div>
+      <div class="bg-slate-950/75 p-2 rounded-xl border border-sky-900/60">
+        <span class="text-[9px] text-slate-400 block">DUAL WIND</span>
+        <strong id="val-wind" class="text-xs text-cyan-300">52.8 kW</strong>
+      </div>
+      <div class="bg-slate-950/75 p-2 rounded-xl border border-sky-900/60">
+        <span class="text-[9px] text-slate-400 block">BESS SOC</span>
+        <strong id="val-bess" class="text-xs text-emerald-400">86% (103 kWh)</strong>
+      </div>
+    </div>
+
+    <!-- Power Routing Split -->
+    <div class="bg-slate-950/70 p-2.5 rounded-xl border border-sky-900/60 mb-2.5">
+      <div class="flex justify-between text-[10px] mb-1 font-mono">
+        <span class="text-slate-300">Subsea & Coastal Power Allocation</span>
+        <span id="hud-flow-status" class="text-emerald-300">Charging BESS + Lab Loads</span>
+      </div>
+      <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden flex">
+        <div id="bar-solar" class="bg-amber-400 h-full transition-all duration-500" style="width: 36%"></div>
+        <div id="bar-wind" class="bg-cyan-400 h-full transition-all duration-500" style="width: 44%"></div>
+        <div id="bar-bess" class="bg-emerald-400 h-full transition-all duration-500" style="width: 20%"></div>
+      </div>
+    </div>
+
+    <!-- Interactive Field Action Trigger for Current Stage -->
+    <div class="flex items-center justify-between gap-2 bg-sky-950/60 p-2 rounded-xl border border-sky-500/30">
+      <span id="hud-action-label" class="text-[11px] text-sky-100 font-medium leading-tight">Field Action: Test Lagoon Buoyancy & Telemetry</span>
+      <button id="btn-field-action" class="ctrl-btn text-[11px] bg-sky-400 text-slate-950 font-bold hover:bg-sky-300 shrink-0">
+        Execute
+      </button>
+    </div>
+  </aside>
+
+  <!-- Live Voice Comms Drawer (Appears when Live Voice Comms is active) -->
+  <aside id="live-comms-panel" class="fixed top-16 left-4 z-30 w-80 md:w-96 glass-panel p-4 rounded-2xl border-2 border-emerald-400/60 hidden pointer-events-auto">
+    <div class="flex items-center justify-between pb-2 mb-2 border-b border-emerald-800/60">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+        <h3 class="text-xs font-bold text-emerald-300 uppercase tracking-wider">Real-Time Research Voice Link</h3>
+      </div>
+      <button id="btn-close-comms" class="text-xs text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-900">Close</button>
+    </div>
+    <p id="voice-status-text" class="text-[11px] text-slate-200 mb-2.5">
+      Speak directly to Dr. Sparky Quills, Prof. Puff, or Pip about offshore solar construction, BESS storage, or coral protection—or type below.
+    </p>
+    <div class="flex items-center gap-2 mb-2">
+      <button id="btn-mic-record" class="ctrl-btn flex-1 py-2 border-emerald-400/60 text-emerald-200 font-bold">
+        Hold / Click to Speak
+      </button>
+    </div>
+    <form id="voice-text-form" class="flex gap-1.5">
+      <input id="voice-text-input" type="text" placeholder="Ask a technical question..." class="flex-1 bg-slate-950/90 border border-sky-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400">
+      <button type="submit" class="ctrl-btn bg-cyan-500 text-slate-950 font-bold">Send</button>
+    </form>
+  </aside>
+
+  <!-- Bottom-Left: Interactive Stage Navigator & Timeline Scrubber -->
+  <footer class="fixed bottom-4 left-4 z-20 glass-panel p-3 rounded-2xl flex flex-col gap-2 pointer-events-auto w-80 md:w-96">
+    <div class="flex items-center gap-2 text-xs">
+      <button id="btn-play-pause" class="w-8 h-8 rounded-xl bg-sky-400 hover:bg-sky-300 text-slate-950 font-bold flex items-center justify-center shadow transition" title="Play / Pause Briefing">
+        ⏸
+      </button>
+      <button id="btn-restart" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition" title="Restart Briefing">
+        ↺
+      </button>
+      <span id="time-display" class="font-mono text-cyan-300 w-12 text-center text-xs font-bold">00:00</span>
+      <input id="story-scrubber" type="range" min="0" max="115" step="0.1" value="0" class="flex-1 cursor-pointer accent-cyan-400">
+    </div>
+    <!-- 5 Interactive Research Stages -->
+    <div class="grid grid-cols-5 gap-1 pt-1.5 border-t border-sky-900/60">
+      <button class="stage-jump-btn py-1.5 rounded-lg text-[10px] font-bold bg-cyan-500 text-slate-950 transition" data-stage="0">1. Overview</button>
+      <button class="stage-jump-btn py-1.5 rounded-lg text-[10px] font-bold bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition" data-stage="1">2. Solar PV</button>
+      <button class="stage-jump-btn py-1.5 rounded-lg text-[10px] font-bold bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition" data-stage="2">3. Dual Wind</button>
+      <button class="stage-jump-btn py-1.5 rounded-lg text-[10px] font-bold bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition" data-stage="3">4. BESS Core</button>
+      <button class="stage-jump-btn py-1.5 rounded-lg text-[10px] font-bold bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition" data-stage="4">5. Ecology</button>
+    </div>
+  </footer>
+
+  <!-- Bottom-Center / Right: Synchronized International Research Dialogue Card -->
+  <aside id="dialogue-container" class="dialogue-box fixed bottom-4 left-1/2 md:left-[62%] -translate-x-1/2 z-20 pointer-events-auto max-w-xl w-[92%] md:w-[54%] glass-panel p-4 rounded-2xl border border-cyan-400/40 flex items-start gap-3.5 fade-in">
+    <div id="speaker-avatar" class="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl bg-slate-950 border border-cyan-400/60 shadow-inner">
+      🦔
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex flex-wrap items-center justify-between gap-1 mb-1">
+        <div class="flex items-center gap-2">
+          <span id="speaker-name" class="bubble-font text-sm font-bold text-cyan-300">Dr. Sparky Quills</span>
+          <span id="speaker-role" class="text-[10px] px-2 py-0.5 rounded bg-sky-500/20 text-sky-200 border border-sky-400/25 font-mono">Chief Electrical Grid Engineer</span>
+        </div>
+        <span id="speech-emotion" class="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-slate-950 text-emerald-300 border border-emerald-500/30">Telemetry Sync</span>
+      </div>
+      <p id="speech-text" class="text-xs md:text-[13px] text-slate-100 leading-relaxed font-normal">
+        "Initializing SearchO2 Blue Lab grid telemetry. Our isolated coastal architecture integrates offshore floating photovoltaics, dual marine wind turbines, and IP67 LiFePO4 battery storage."
+      </p>
+    </div>
+  </aside>
+
+  <!-- Explanatory Graphic & Engineering Schematic Modal -->
+  <div id="graphic-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="glass-panel border-2 border-cyan-400/50 rounded-3xl p-5 md:p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-sky-800/70">
+        <div>
+          <span id="modal-tag" class="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">TECHNICAL SCHEMATIC</span>
+          <h2 id="modal-title" class="bubble-font text-lg md:text-xl font-bold text-white mt-1">Saint Martin Blue Lab Architecture</h2>
+        </div>
+        <button id="btn-close-graphic-modal" class="ctrl-btn bg-slate-900 text-slate-200 hover:bg-red-500/30 hover:border-red-400">Close</button>
+      </div>
+
+      <!-- Stage Selector Tabs inside Modal -->
+      <div class="flex flex-wrap gap-1.5 mb-4">
+        <button class="modal-tab-btn ctrl-btn active text-[11px]" data-tab="0">Full Grid Topology</button>
+        <button class="modal-tab-btn ctrl-btn text-[11px]" data-tab="1">Offshore Solar Construction</button>
+        <button class="modal-tab-btn ctrl-btn text-[11px]" data-tab="2">Jetty & Offshore Wind</button>
+        <button class="modal-tab-btn ctrl-btn text-[11px]" data-tab="3">BESS Storage & PCS</button>
+        <button class="modal-tab-btn ctrl-btn text-[11px]" data-tab="4">Coral & Turtle Ecology</button>
+      </div>
+
+      <!-- Dynamic Inline SVG Engineering Diagram Container -->
+      <div id="modal-svg-container" class="bg-slate-950/90 rounded-2xl p-4 border border-sky-800/70 mb-4 flex items-center justify-center">
+        <!-- Populated dynamically via JS -->
+      </div>
+
+      <!-- Detailed Engineering & Ecological Breakdown -->
+      <div id="modal-details-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+        <!-- Populated dynamically via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Field Action Feedback Banner -->
+  <div id="action-toast" class="fixed bottom-24 right-4 z-30 glass-panel border border-emerald-400/60 px-4 py-2.5 rounded-xl text-xs text-emerald-200 font-medium shadow-xl opacity-0 pointer-events-none transition-opacity duration-300">
+    Action executed.
+  </div>
+
+  <script>
+    /* =========================================================================
+       SAINT MARTIN'S ISLAND SEARCHO2 BLUE LAB — INTERACTIVE 3D SIMULATION
+       Widescreen Coastal Environment, Coral Reefs, Wooden Jetty, SearchO2 Boat,
+       Offshore Floating Solar, Dual Marine Wind, BESS & Real-Time Voice Comms
+       ========================================================================= */
+
+    let scene, camera, renderer, controls;
+    let waterMesh, waterGeo, initialWaterZ;
+    let floatingSolarGroup, jettyTurbine, offshoreTurbine, searchO2Boat;
+    let bessHousing, rackStatusLEDs = [], pcsInverter;
+    let coralIncubatorGroup, desalinationUnit, coldStorageUnit;
+    let electronPulses = [], reefFish = [], coralClusters = [], hotspotObjects = [];
+
+    // Characters
+    let quillsGroup, quillsHead, quillsArmR, quillsArmL, quillsLegL, quillsLegR;
+    let puffGroup, puffHead, puffArmR, puffArmL, puffLegL, puffLegR;
+    let pipGroup, pipHead, pipArmR, pipArmL, pipLegL, pipLegR, pipWrench;
+
+    // Timeline & Audio State
+    let storyTime = 0;
+    const TOTAL_DURATION = 115;
+    let isPlaying = true;
+    let audioEnabled = true;
+    let subtitlesEnabled = true;
+    let synth = null;
+    let currentBeatIdx = -1;
+    let isSpeaking = false;
+    let isLiveVoiceOpen = false;
+    let speechFinishTimestamp = 0;
+
+    // Camera Presets for Full Widescreen Island & Ocean Views
+    const CAMERA_PRESETS = {
+      overview: { pos: { x: 24, y: 17, z: 26 }, target: { x: -1, y: 1.5, z: -2 } },
+      solar: { pos: { x: -4, y: 9, z: 6 }, target: { x: -10.5, y: 0.4, z: -4.5 } },
+      jetty: { pos: { x: 18, y: 10, z: 8 }, target: { x: 8.5, y: 2.2, z: -4.5 } },
+      offshoreWind: { pos: { x: -5, y: 11, z: -5 }, target: { x: -16.5, y: 4.5, z: -15.5 } },
+      bess: { pos: { x: 6, y: 6.5, z: 11 }, target: { x: -1.5, y: 1.6, z: 3.5 } },
+      coral: { pos: { x: 11, y: 7.5, z: 13 }, target: { x: 3.5, y: 1.0, z: 5.5 } }
+    };
+
+    // International Research Dialogue Script (No Local Greetings, Smooth Multi-Sentence Pacing)
+    const STORY_BEATS = [
+      {
+        start: 0,
+        end: 13.5,
+        stage: 0,
+        speaker: 'Quills',
+        avatar: '🦔',
+        role: 'Chief Electrical Grid Engineer',
+        emotion: 'Grid Telemetry Online',
+        text: "Welcome to the SearchO2 Blue Lab renewable microgrid on Saint Martin's Island. Our autonomous architecture integrates an offshore floating solar array, two marine wind turbines, and an IP67-sealed Lithium Iron Phosphate battery system to eliminate fossil fuel dependency.",
+        cam: 'overview',
+        aim: new THREE.Vector3(-2, 1.5, -2)
+      },
+      {
+        start: 13.5,
+        end: 26.5,
+        stage: 0,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Chief Marine & Astrobiologist',
+        emotion: 'Ecosystem Assessment',
+        text: "This coastal lagoon contains living scleractinian coral colonies and critical nesting beaches for endangered Olive Ridley sea turtles. By replacing diesel generators with silent marine renewables, we eliminate hydrocarbon runoff, thermal plumes, and substrate vibration.",
+        cam: 'coral',
+        aim: new THREE.Vector3(-4, 0.2, -3)
+      },
+      {
+        start: 26.5,
+        end: 40.0,
+        stage: 1,
+        speaker: 'Quills',
+        avatar: '🦔',
+        role: 'Chief Electrical Grid Engineer',
+        emotion: 'Offshore PV Engineering',
+        text: "Examine the forty-kilowatt-peak offshore floating solar plant moored in the lagoon. It is constructed from marine-grade C5-M anodized aluminum frames mounted on high-density polyethylene pontoons, utilizing flexible subsea mooring tethers that never contact the coral seabed.",
+        cam: 'solar',
+        aim: new THREE.Vector3(-10.5, 0.4, -4.5)
+      },
+      {
+        start: 40.0,
+        end: 52.0,
+        stage: 1,
+        speaker: 'Pip',
+        avatar: '🌺',
+        role: 'Junior Field Technician',
+        emotion: 'Subsea Telemetry Check',
+        text: "Water evaporation beneath the floating modules cools the photovoltaic cells by eight degrees Celsius, boosting conversion efficiency by eleven percent while transmitting direct current ashore through our armored subsea umbilical cable.",
+        cam: 'solar',
+        aim: new THREE.Vector3(-10.5, 0.4, -4.5)
+      },
+      {
+        start: 52.0,
+        end: 65.5,
+        stage: 2,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Chief Marine & Astrobiologist',
+        emotion: 'Aerodynamic Complementarity',
+        text: "To maintain continuous generation across diurnal cycles, we operate two distinct thirty-kilowatt wind turbines. The jetty-head turbine captures morning thermal sea breezes right alongside the SearchO2 research vessel, while the offshore monopile turbine harvests open Bay of Bengal wind currents.",
+        cam: 'jetty',
+        aim: new THREE.Vector3(8.5, 4.0, -5.5)
+      },
+      {
+        start: 65.5,
+        end: 78.0,
+        stage: 2,
+        speaker: 'Quills',
+        avatar: '🦔',
+        role: 'Chief Electrical Grid Engineer',
+        emotion: 'Offshore Monopile Sync',
+        text: "Out at the offshore monopile foundation, a scour-protected steel transition piece supports the marine nacelle. Subsea medium-voltage cables route three-phase alternating current directly into our onshore Power Conversion System without disturbing benthic habitats.",
+        cam: 'offshoreWind',
+        aim: new THREE.Vector3(-16.5, 4.5, -15.5)
+      },
+      {
+        start: 78.0,
+        end: 92.0,
+        stage: 3,
+        speaker: 'Quills',
+        avatar: '🦔',
+        role: 'Chief Electrical Grid Engineer',
+        emotion: 'BESS & PCS Rectification',
+        text: "Inside the Blue Lab energy hub, our bidirectional PCS inverter rectifies variable wind AC and regulates solar DC onto a five-hundred-twelve-volt copper busbar. Surplus kilowatt-hours are stored in twenty-four cobalt-free LiFePO4 battery modules totaling one hundred twenty kilowatt-hours.",
+        cam: 'bess',
+        aim: new THREE.Vector3(-2.5, 1.6, 3.8)
+      },
+      {
+        start: 92.0,
+        end: 104.5,
+        stage: 4,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Chief Marine & Astrobiologist',
+        emotion: 'Local Facility Delivery',
+        text: "From the BESS reserve, clean regulated power continuously operates our coral nursery thermal bio-incubators, reverse-osmosis freshwater desalination pumps, community cold-chain refrigeration, and the shore-power charging station for the SearchO2 operation boat.",
+        cam: 'coral',
+        aim: new THREE.Vector3(4.5, 1.2, 5.5)
+      },
+      {
+        start: 104.5,
+        end: 115.0,
+        stage: 4,
+        speaker: 'Pip',
+        avatar: '🌺',
+        role: 'Junior Field Technician',
+        emotion: '24/7 Island Resilience',
+        text: "Even during overcast monsoon nights when solar irradiance drops to zero, both wind turbines and our stored battery reserve sustain uninterrupted power across the entire Blue Lab research station and coral sanctuary.",
+        cam: 'overview',
+        aim: new THREE.Vector3(0, 1.5, 0)
+      }
+    ];
+
+    // Stage Metadata & Interactive Field Actions
+    const STAGE_CONFIG = [
+      {
+        badge: "STAGE 01 // GRID TOPOLOGY",
+        title: "Hybrid Marine Microgrid Overview",
+        actionLabel: "Field Action: Run Full Lagoon Telemetry Sweep",
+        actionToast: "Telemetry Sweep Complete: Offshore PV (38.4 kW) + Dual Wind (52.8 kW) synchronized at 50.00 Hz.",
+        solarPct: 38, windPct: 42, bessPct: 20,
+        flowStatus: "Balanced Hybrid Generation"
+      },
+      {
+        badge: "STAGE 02 // OFFSHORE FLOATING PV",
+        title: "Lagoon Floating Solar & Subsea Tether",
+        actionLabel: "Field Action: Inspect Pontoon Mooring Tension",
+        actionToast: "Elastic Mooring Tension Nominal (4.2 kN). Zero benthic coral contact verified via subsea sonar.",
+        solarPct: 68, windPct: 17, bessPct: 15,
+        flowStatus: "Peak Solar DC Injection"
+      },
+      {
+        badge: "STAGE 03 // DUAL MARINE WIND",
+        title: "Jetty-Side & Offshore Monopile Turbines",
+        actionLabel: "Field Action: Optimize Pitch for Sea Breeze",
+        actionToast: "Blade Pitch Adjusted to 4.5°: Jetty & Monopile turbines generating 56.4 kW combined AC output.",
+        solarPct: 18, windPct: 67, bessPct: 15,
+        flowStatus: "Dual Wind Base-Load Active"
+      },
+      {
+        badge: "STAGE 04 // BESS STORAGE & PCS",
+        title: "120 kWh IP67 LiFePO4 Battery Core",
+        actionLabel: "Field Action: Execute Cell Balancing & Charge",
+        actionToast: "24 LiFePO4 Modules Balanced (3.32V/cell). Surplus wind & solar stored for nocturnal monsoon reserve.",
+        solarPct: 25, windPct: 25, bessPct: 50,
+        flowStatus: "High-Rate BESS Charging (+44 kW)"
+      },
+      {
+        badge: "STAGE 05 // ECOLOGY & LOCAL LOADS",
+        title: "Coral Nursery, Desalination & Vessel Charge",
+        actionLabel: "Field Action: Charge SearchO2 Boat & Chill Tanks",
+        actionToast: "Coral Bio-Incubators stabilized at 26.5°C; SearchO2 Operation Boat shore charger active at 15 kW.",
+        solarPct: 33, windPct: 33, bessPct: 34,
+        flowStatus: "100% Clean Island Load Delivery"
+      }
+    ];
+
+    /* --- Audio & Smooth Speech Synthesis Engine --- */
+    function initAudio() {
+      try {
+        if (!synth) synth = new (window.AudioContext || window.webkitAudioContext)();
+        if (synth && synth.state === 'suspended') synth.resume();
+      } catch (e) {}
+    }
+
+    function playFxTone(freq, type = 'sine', dur = 0.16, vol = 0.04) {
+      if (!audioEnabled || !synth) return;
+      try {
+        const osc = synth.createOscillator();
+        const gain = synth.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, synth.currentTime);
+        gain.gain.setValueAtTime(vol, synth.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(synth.destination);
+        osc.start();
+        osc.stop(synth.currentTime + dur);
+      } catch (e) {}
+    }
+
+    let availableVoices = [];
+    function loadVoices() {
+      if ('speechSynthesis' in window) {
+        availableVoices = window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => {
+          availableVoices = window.speechSynthesis.getVoices();
+        };
+      }
+    }
+    loadVoices();
+
+    function speakTextSmooth(text, speaker, onCompleteCallback = null) {
+      if (!('speechSynthesis' in window) || !audioEnabled) {
+        isSpeaking = false;
+        if (onCompleteCallback) onCompleteCallback();
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      isSpeaking = true;
+
+      // Select crisp distinct voices for each researcher
+      if (speaker === 'Pip') {
+        utterance.pitch = 1.48;
+        utterance.rate = 1.08;
+        const v = availableVoices.find(voice => (voice.name.includes('Google UK English Female') || voice.name.includes('Samantha')) && voice.lang.startsWith('en'));
+        if (v) utterance.voice = v;
+        playFxTone(780, 'triangle', 0.12, 0.03);
+      } else if (speaker === 'Puff') {
+        utterance.pitch = 1.18;
+        utterance.rate = 0.98;
+        const v = availableVoices.find(voice => (voice.name.includes('Victoria') || voice.name.includes('Karen') || voice.name.includes('Female')) && voice.lang.startsWith('en'));
+        if (v) utterance.voice = v;
+        playFxTone(540, 'sine', 0.14, 0.03);
+      } else {
+        utterance.pitch = 0.96;
+        utterance.rate = 1.0;
+        const v = availableVoices.find(voice => (voice.name.includes('Daniel') || voice.name.includes('Google UK English Male') || voice.name.includes('Arthur')) && voice.lang.startsWith('en'));
+        if (v) utterance.voice = v;
+        playFxTone(320, 'sine', 0.15, 0.03);
+      }
+
+      utterance.onstart = () => { isSpeaking = true; };
+      utterance.onend = () => {
+        isSpeaking = false;
+        speechFinishTimestamp = performance.now();
+        if (onCompleteCallback) onCompleteCallback();
+      };
+      utterance.onerror = () => {
+        isSpeaking = false;
+        if (onCompleteCallback) onCompleteCallback();
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    /* --- Three.js Widescreen Scene Initialization --- */
+    function init() {
+      const container = document.getElementById('viewport-container');
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x03192b);
+      scene.fog = new THREE.FogExp2(0x03192b, 0.0085);
+
+      // Widescreen Perspective Camera for expansive beach, jetty, coral & deep sea horizon
+      camera = new THREE.PerspectiveCamera(42, w / h, 0.2, 450);
+      camera.position.set(24, 17, 26);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.22;
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.055;
+      controls.maxPolarAngle = Math.PI / 2.08;
+      controls.minDistance = 6;
+      controls.maxDistance = 68;
+      controls.target.set(-1, 1.5, -2);
+
+      setupLighting();
+      buildCoastalEnvironmentAndOcean();
+      buildCoralReefAndMarineLife();
+      buildWoodenJettyAndSearchO2Boat();
+      buildOffshoreFloatingSolarPlant();
+      buildDualMarineWindTurbines();
+      buildBlueLabStationAndBESS();
+      buildCharacters();
+      register3DHotspots();
+      setupUIEvents();
+
+      window.addEventListener('resize', onResize);
+    }
+
+    /* --- Tropical Coastal Lighting --- */
+    function setupLighting() {
+      const hemi = new THREE.HemisphereLight(0xbae6fd, 0x0f766e, 0.95);
+      scene.add(hemi);
+
+      const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.65);
+      sunLight.position.set(32, 42, 26);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.width = 2048;
+      sunLight.shadow.mapSize.height = 2048;
+      sunLight.shadow.camera.near = 5;
+      sunLight.shadow.camera.far = 110;
+      const d = 32;
+      sunLight.shadow.camera.left = -d;
+      sunLight.shadow.camera.right = d;
+      sunLight.shadow.camera.top = d;
+      sunLight.shadow.camera.bottom = -d;
+      sunLight.shadow.bias = -0.0004;
+      scene.add(sunLight);
+
+      // Caustic Cyan Subsea Bounce Light
+      const lagoonBounce = new THREE.DirectionalLight(0x22d3ee, 0.55);
+      lagoonBounce.position.set(-18, 6, -18);
+      scene.add(lagoonBounce);
+    }
+
+    /* --- Wide Beach, Coastal Vegetation, Seabed & Animated Lagoon Ocean --- */
+    function buildCoastalEnvironmentAndOcean() {
+      // Deep Seabed Floor across wide horizon
+      const seabed = new THREE.Mesh(
+        new THREE.PlaneGeometry(180, 180),
+        new THREE.MeshStandardMaterial({ color: 0x0b3954, roughness: 0.9 })
+      );
+      seabed.rotation.x = -Math.PI / 2;
+      seabed.position.y = -0.8;
+      seabed.receiveShadow = true;
+      scene.add(seabed);
+
+      // Shallow Sandy Lagoon Shelf (visible through clear water)
+      const lagoonShelf = new THREE.Mesh(
+        new THREE.CylinderGeometry(24, 28, 0.7, 32),
+        new THREE.MeshStandardMaterial({ color: 0xc2b280, roughness: 0.95 })
+      );
+      lagoonShelf.position.set(1, -0.42, 1);
+      lagoonShelf.receiveShadow = true;
+      scene.add(lagoonShelf);
+
+      // Saint Martin Island Sandy Beach & Elevated Coastal Terrace
+      const beachGeo = new THREE.CylinderGeometry(16, 19, 1.1, 32);
+      const beachMat = new THREE.MeshStandardMaterial({ color: 0xe6ccb2, roughness: 0.92 });
+      const beachIsland = new THREE.Mesh(beachGeo, beachMat);
+      beachIsland.position.set(3.5, 0.15, 7.5);
+      beachIsland.scale.set(1.35, 1, 0.95);
+      beachIsland.receiveShadow = true;
+      scene.add(beachIsland);
+
+      // Upper Vegetated Coastal Dune Terrace
+      const terrace = new THREE.Mesh(
+        new THREE.CylinderGeometry(12.5, 14.5, 0.6, 28),
+        new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.88 })
+      );
+      terrace.position.set(3.5, 0.65, 9.2);
+      terrace.scale.set(1.3, 1, 0.85);
+      terrace.receiveShadow = true;
+      scene.add(terrace);
+
+      // Animated Translucent Ocean Water Plane (Wave Vertex Displacement)
+      waterGeo = new THREE.PlaneGeometry(180, 180, 72, 72);
+      initialWaterZ = new Float32Array(waterGeo.attributes.position.count);
+      for (let i = 0; i < waterGeo.attributes.position.count; i++) {
+        initialWaterZ[i] = waterGeo.attributes.position.getZ(i);
+      }
+
+      const waterMat = new THREE.MeshPhysicalMaterial({
+        color: 0x0284c7,
+        emissive: 0x0369a1,
+        emissiveIntensity: 0.18,
+        roughness: 0.12,
+        metalness: 0.15,
+        transparent: true,
+        opacity: 0.74,
+        transmission: 0.35
+      });
+      waterMesh = new THREE.Mesh(waterGeo, waterMat);
+      waterMesh.rotation.x = -Math.PI / 2;
+      waterMesh.position.y = 0.32;
+      waterMesh.receiveShadow = true;
+      scene.add(waterMesh);
+
+      // Coastal Coconut Palms & Pandanus Trees on the Beach
+      const palmCoords = [
+        [11.5, 0.8, 7.2], [13.2, 0.75, 9.5], [-6.8, 0.7, 9.8],
+        [-8.5, 0.65, 11.4], [9.2, 0.85, 12.2], [14.5, 0.6, 5.8]
+      ];
+      palmCoords.forEach(([px, py, pz]) => {
+        const palm = createCoconutPalm();
+        palm.position.set(px, py, pz);
+        palm.rotation.y = Math.random() * Math.PI * 2;
+        scene.add(palm);
+      });
+
+      // Coastal Rocks & Boulders along Shoreline
+      const rockMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.88 });
+      const rockCoords = [
+        [12.2, 0.35, 1.5], [13.0, 0.3, 2.8], [-8.8, 0.3, 4.5],
+        [-10.2, 0.28, 6.2], [4.8, 0.35, 1.8], [10.8, 0.32, -0.5]
+      ];
+      rockCoords.forEach(([rx, ry, rz]) => {
+        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.65 + Math.random() * 0.45, 1), rockMat);
+        rock.position.set(rx, ry, rz);
+        rock.scale.set(1.3, 0.75, 1.1);
+        rock.castShadow = true;
+        scene.add(rock);
+      });
+
+      // Coastal Meteorological & Marine Radar Mast on Beach
+      const mastGroup = new THREE.Group();
+      mastGroup.position.set(11.8, 0.85, 5.5);
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.06, 0.1, 4.8, 10),
+        new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.7 })
+      );
+      pole.position.y = 2.4;
+      mastGroup.add(pole);
+      const anemometer = new THREE.Mesh(
+        new THREE.BoxGeometry(0.8, 0.08, 0.08),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8 })
+      );
+      anemometer.position.y = 4.7;
+      mastGroup.add(anemometer);
+      scene.add(mastGroup);
+    }
+
+    function createCoconutPalm() {
+      const group = new THREE.Group();
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+      const leafMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.65, side: THREE.DoubleSide });
+
+      for (let i = 0; i < 6; i++) {
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.14 - i * 0.01, 0.17 - i * 0.01, 0.75, 8), trunkMat);
+        seg.position.set(Math.sin(i * 0.12) * 0.25, 0.35 + i * 0.7, 0);
+        seg.rotation.z = -0.08;
+        seg.castShadow = true;
+        group.add(seg);
+      }
+
+      const crown = new THREE.Group();
+      crown.position.set(0.2, 4.4, 0);
+      for (let f = 0; f < 7; f++) {
+        const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 2.2), leafMat);
+        frond.position.y = -0.3;
+        frond.position.z = 0.95;
+        frond.rotation.x = Math.PI / 2.6;
+        const pivot = new THREE.Group();
+        pivot.rotation.y = (f / 7) * Math.PI * 2;
+        pivot.add(frond);
+        crown.add(pivot);
+      }
+      group.add(crown);
+      return group;
+    }
+
+    /* --- Realistic 3D Coral Reef Structures & Swimming Lagoon Fish --- */
+    function buildCoralReefAndMarineLife() {
+      const coralZones = [
+        { x: -5.5, z: -1.5 }, { x: -8.2, z: -0.5 }, { x: -12.5, z: -7.5 },
+        { x: -14.0, z: -2.0 }, { x: 2.5, z: -3.2 }, { x: 4.2, z: -6.8 },
+        { x: 11.2, z: -3.5 }, { x: -3.8, z: -6.5 }, { x: -9.5, z: -8.8 }
+      ];
+
+      coralZones.forEach((zone, idx) => {
+        const cluster = new THREE.Group();
+        cluster.position.set(zone.x, -0.18, zone.z);
+
+        // 1. Branching Acropora Staghorn Coral
+        const stagMat = new THREE.MeshStandardMaterial({
+          color: idx % 2 === 0 ? 0xf43f5e : 0xfb7185,
+          roughness: 0.55
+        });
+        for (let b = 0; b < 5; b++) {
+          const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.08, 0.55, 6), stagMat);
+          const ang = (b / 5) * Math.PI * 2;
+          branch.position.set(Math.cos(ang) * 0.22, 0.25, Math.sin(ang) * 0.22);
+          branch.rotation.set(Math.sin(ang) * 0.4, 0, -Math.cos(ang) * 0.4);
+          cluster.add(branch);
+        }
+
+        // 2. Grooved Brain Coral Dome
+        const brainMat = new THREE.MeshStandardMaterial({
+          color: idx % 3 === 0 ? 0xf59e0b : 0x14b8a6,
+          roughness: 0.75
+        });
+        const brain = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), brainMat);
+        brain.scale.set(1.2, 0.7, 1.1);
+        brain.position.set(0.42, 0.14, 0.25);
+        cluster.add(brain);
+
+        // 3. Tubular Sea Sponge
+        const spongeMat = new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.65 });
+        const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.48, 8), spongeMat);
+        tube.position.set(-0.35, 0.22, 0.28);
+        cluster.add(tube);
+
+        scene.add(cluster);
+        coralClusters.push(cluster);
+      });
+
+      // Animated Schools of Tropical Reef Fish swimming through the lagoon
+      const fishColors = [0xfacc15, 0x38bdf8, 0xf97316, 0x2dd4bf];
+      for (let i = 0; i < 18; i++) {
+        const fish = new THREE.Mesh(
+          new THREE.ConeGeometry(0.08, 0.26, 6),
+          new THREE.MeshBasicMaterial({ color: fishColors[i % fishColors.length] })
+        );
+        fish.rotation.z = Math.PI / 2;
+        const centerX = (i % 2 === 0) ? -6.5 : 4.5;
+        const centerZ = (i % 2 === 0) ? -3.5 : -4.0;
+        scene.add(fish);
+        reefFish.push({
+          mesh: fish,
+          cx: centerX,
+          cz: centerZ,
+          radius: 1.8 + (i % 4) * 0.65,
+          speed: 0.6 + (i % 5) * 0.14,
+          phase: i * 0.8
+        });
+      }
+    }
+
+    /* --- Prominent Wooden Jetty & SearchO2 Operation Boat Moored Alongside --- */
+    function buildWoodenJettyAndSearchO2Boat() {
+      const jettyGroup = new THREE.Group();
+
+      const timberMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.78 });
+      const plankMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.72 });
+      const pilingMat = new THREE.MeshStandardMaterial({ color: 0x292524, roughness: 0.85 });
+      const concretePierMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.55, metalness: 0.15 });
+
+      // Main Wooden Jetty Walkway extending from Beach (x=7.5, z=4.5) out over lagoon to (x=7.5, z=-5.5)
+      const deckLength = 11.5;
+      const deckWidth = 2.6;
+      const deckBase = new THREE.Mesh(new THREE.BoxGeometry(deckWidth, 0.2, deckLength), timberMat);
+      deckBase.position.set(7.5, 0.88, -0.5);
+      deckBase.castShadow = true;
+      deckBase.receiveShadow = true;
+      jettyGroup.add(deckBase);
+
+      // Individual Wooden Planks & Side Safety Rails + Solar Bollard Lights
+      for (let z = -5.8; z <= 4.8; z += 0.45) {
+        const plank = new THREE.Mesh(new THREE.BoxGeometry(deckWidth + 0.08, 0.05, 0.34), plankMat);
+        plank.position.set(7.5, 1.0, z);
+        plank.receiveShadow = true;
+        jettyGroup.add(plank);
+      }
+
+      // Timber Support Pilings & Cross-Braces
+      for (let z = -5.5; z <= 4.5; z += 2.0) {
+        [-1.1, 1.1].forEach(offsetX => {
+          const piling = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 2.2, 10), pilingMat);
+          piling.position.set(7.5 + offsetX, -0.1, z);
+          piling.castShadow = true;
+          jettyGroup.add(piling);
+
+          // Mooring Bollard Posts
+          if (Math.abs(z) % 4 < 1) {
+            const bollard = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.11, 0.11, 0.45, 10),
+              new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.5 })
+            );
+            bollard.position.set(7.5 + offsetX, 1.22, z);
+            jettyGroup.add(bollard);
+          }
+        });
+      }
+
+      // Reinforced Concrete & Riprap Pier Dolphin on the Jetty Angle/Corner (for Jetty Wind Turbine)
+      const dolphinPad = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.75, 3.8), concretePierMat);
+      dolphinPad.position.set(8.5, 0.72, -6.5);
+      dolphinPad.castShadow = true;
+      dolphinPad.receiveShadow = true;
+      jettyGroup.add(dolphinPad);
+
+      // Riprap Armour Stones around the Jetty Corner
+      const armourMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.9 });
+      for (let a = 0; a < 14; a++) {
+        const angle = (a / 14) * Math.PI * 2;
+        const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55 + (a % 3) * 0.15), armourMat);
+        stone.position.set(8.5 + Math.cos(angle) * 2.35, 0.38, -6.5 + Math.sin(angle) * 2.35);
+        jettyGroup.add(stone);
+      }
+
+      scene.add(jettyGroup);
+
+      // --- SearchO2 Marine Operation Boat Waiting at the Jetty ---
+      searchO2Boat = new THREE.Group();
+      searchO2Boat.position.set(10.6, 0.36, -1.8);
+
+      // Sleek Marine Hull (White & Ocean Teal)
+      const hullMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.25, metalness: 0.15 });
+      const tealTrimMat = new THREE.MeshStandardMaterial({ color: 0x0d9488, roughness: 0.3 });
+      const deckMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.5 });
+
+      const mainHull = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.68, 4.6), hullMat);
+      mainHull.position.y = 0.24;
+      mainHull.castShadow = true;
+      searchO2Boat.add(mainHull);
+
+      // Bow Taper Cone
+      const bow = new THREE.Mesh(new THREE.ConeGeometry(1.3, 1.5, 4), hullMat);
+      bow.rotation.x = -Math.PI / 2;
+      bow.rotation.y = Math.PI / 4;
+      bow.scale.set(1.0, 1.0, 0.52);
+      bow.position.set(0, 0.24, -2.85);
+      searchO2Boat.add(bow);
+
+      // Teal Hull Waterline Stripe
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.16, 4.65), tealTrimMat);
+      stripe.position.y = 0.16;
+      searchO2Boat.add(stripe);
+
+      // Forward Research Wheelhouse & Solar Canopy Roof
+      const cabin = new THREE.Mesh(
+        new THREE.BoxGeometry(1.35, 0.85, 1.65),
+        new THREE.MeshPhysicalMaterial({ color: 0x0f172a, roughness: 0.15, metalness: 0.6 })
+      );
+      cabin.position.set(0, 0.92, -0.65);
+      cabin.castShadow = true;
+      searchO2Boat.add(cabin);
+
+      const canopy = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.08, 2.2), tealTrimMat);
+      canopy.position.set(0, 1.38, -0.55);
+      searchO2Boat.add(canopy);
+
+      // Solar Charging Panel on Boat Roof + Radar Mast
+      const boatPv = new THREE.Mesh(
+        new THREE.BoxGeometry(1.35, 0.04, 1.85),
+        new THREE.MeshStandardMaterial({ color: 0x0369a1, metalness: 0.85, roughness: 0.15 })
+      );
+      boatPv.position.set(0, 1.43, -0.55);
+      searchO2Boat.add(boatPv);
+
+      // Aft Deck Scientific Sampling Crate & Lifebuoy
+      const sampleBox = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.45, 0.85), deckMat);
+      sampleBox.position.set(0, 0.76, 1.15);
+      searchO2Boat.add(sampleBox);
+
+      const lifebuoy = new THREE.Mesh(
+        new THREE.TorusGeometry(0.24, 0.06, 8, 16),
+        new THREE.MeshStandardMaterial({ color: 0xf97316 })
+      );
+      lifebuoy.rotation.y = Math.PI / 2;
+      lifebuoy.position.set(-0.96, 0.55, 0.6);
+      searchO2Boat.add(lifebuoy);
+
+      // Mooring Lines connecting SearchO2 Boat to Jetty Bollards
+      const ropeMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
+      const line1Curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(8.6, 1.25, -3.5),
+        new THREE.Vector3(9.6, 0.85, -3.2),
+        new THREE.Vector3(10.0, 0.65, -3.0)
+      ]);
+      const line2Curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(8.6, 1.25, 0.2),
+        new THREE.Vector3(9.6, 0.85, 0.1),
+        new THREE.Vector3(10.0, 0.65, 0.0)
+      ]);
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(line1Curve, 10, 0.025, 6, false), ropeMat));
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(line2Curve, 10, 0.025, 6, false), ropeMat));
+
+      // Shore-Power Charging Conduit from Jetty to Boat
+      const boatChargeCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(7.5, 0.92, -1.5),
+        new THREE.Vector3(9.1, 0.82, -1.6),
+        new THREE.Vector3(10.1, 0.68, -1.6)
+      ]);
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(boatChargeCurve, 12, 0.045, 8, false), new THREE.MeshStandardMaterial({ color: 0x10b981 })));
+      for (let i = 0; i < 3; i++) {
+        const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), new THREE.MeshBasicMaterial({ color: 0x34d399 }));
+        scene.add(pulse);
+        electronPulses.push({ mesh: pulse, curve: boatChargeCurve, offset: i * 0.33, type: 'boatCharge' });
+      }
+
+      scene.add(searchO2Boat);
+    }
+
+    /* --- Offshore Floating Solar Plant (Articulated Pontoon Array) --- */
+    function buildOffshoreFloatingSolarPlant() {
+      floatingSolarGroup = new THREE.Group();
+      floatingSolarGroup.position.set(-10.5, 0.34, -4.5);
+
+      const hdpeMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.38 });
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.8, roughness: 0.25 });
+      const pvMat = new THREE.MeshStandardMaterial({
+        color: 0x0c4a6e,
+        emissive: 0x0369a1,
+        emissiveIntensity: 0.28,
+        metalness: 0.88,
+        roughness: 0.14
+      });
+
+      // 3x4 Modular Marine Pontoon Solar Rafts
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 4; c++) {
+          const raft = new THREE.Group();
+          raft.position.set(-2.85 + c * 1.9, 0.04, -1.8 + r * 1.8);
+
+          [-0.65, 0.65].forEach(px => {
+            const floatTube = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.55, 12), hdpeMat);
+            floatTube.rotation.x = Math.PI / 2;
+            floatTube.position.x = px;
+            raft.add(floatTube);
+          });
+
+          const walkGrate = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.25), frameMat);
+          walkGrate.position.set(0, 0.14, 0.65);
+          raft.add(walkGrate);
+
+          const panelPivot = new THREE.Group();
+          panelPivot.position.y = 0.3;
+          panelPivot.rotation.x = -Math.PI / 11;
+
+          const border = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.04, 1.15), frameMat);
+          panelPivot.add(border);
+          const cells = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.048, 1.07), pvMat);
+          panelPivot.add(cells);
+
+          raft.add(panelPivot);
+          floatingSolarGroup.add(raft);
+        }
+      }
+
+      // Corner Navigation Marker Buoys on Floating Solar Array
+      const buoyMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+      [[-3.6, -2.5], [3.6, -2.5], [-3.6, 2.5], [3.6, 2.5]].forEach(([bx, bz]) => {
+        const buoy = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 10), buoyMat);
+        buoy.position.set(bx, 0.42, bz);
+        floatingSolarGroup.add(buoy);
+      });
+
+      scene.add(floatingSolarGroup);
+
+      // Armored Subsea Umbilical Cable to Blue Lab PCS
+      const subseaSolarCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-10.5, 0.25, -4.5),
+        new THREE.Vector3(-6.8, -0.05, -0.5),
+        new THREE.Vector3(-3.2, 0.3, 2.8),
+        new THREE.Vector3(0.6, 0.85, 4.2)
+      ]);
+      scene.add(new THREE.Mesh(
+        new THREE.TubeGeometry(subseaSolarCurve, 28, 0.075, 8, false),
+        new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 })
+      ));
+
+      for (let i = 0; i < 5; i++) {
+        const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), new THREE.MeshBasicMaterial({ color: 0xfde047 }));
+        scene.add(pulse);
+        electronPulses.push({ mesh: pulse, curve: subseaSolarCurve, offset: i * 0.2, type: 'solar' });
+      }
+    }
+
+    /* --- Dual Marine Wind Turbines (Jetty-Side + Offshore Seashore Monopile) --- */
+    function createMarineWindTurbine(x, y, z, isOffshoreMonopile = false) {
+      const group = new THREE.Group();
+      group.position.set(x, y, z);
+
+      if (isOffshoreMonopile) {
+        // Steel Monopile Driven into Seabed
+        const pile = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.46, 0.5, 3.6, 16),
+          new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7 })
+        );
+        pile.position.y = 0.6;
+        group.add(pile);
+
+        // High-Visibility Marine Yellow Transition Piece & Service Deck
+        const transition = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.42, 0.46, 1.5, 16),
+          new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.35 })
+        );
+        transition.position.y = 2.3;
+        group.add(transition);
+
+        const serviceDeck = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.95, 0.95, 0.14, 16),
+          new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 })
+        );
+        serviceDeck.position.y = 3.05;
+        group.add(serviceDeck);
+
+        // Offshore Water Wake Ring
+        const wakeRing = new THREE.Mesh(
+          new THREE.RingGeometry(0.75, 1.65, 24),
+          new THREE.MeshBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.45, side: THREE.DoubleSide })
+        );
+        wakeRing.rotation.x = -Math.PI / 2;
+        wakeRing.position.y = 0.35;
+        group.add(wakeRing);
+      }
+
+      const towerH = isOffshoreMonopile ? 9.2 : 8.4;
+      const baseOffset = isOffshoreMonopile ? 3.1 : 0.35;
+
+      const tower = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.22, 0.4, towerH, 16),
+        new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.45, roughness: 0.28 })
+      );
+      tower.position.y = baseOffset + towerH / 2;
+      tower.castShadow = true;
+      group.add(tower);
+
+      const nacelle = new THREE.Mesh(
+        new THREE.BoxGeometry(0.75, 0.78, 1.65),
+        new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.55 })
+      );
+      nacelle.position.set(0, baseOffset + towerH, 0);
+      nacelle.castShadow = true;
+      group.add(nacelle);
+
+      const hub = new THREE.Mesh(
+        new THREE.ConeGeometry(0.36, 0.72, 16),
+        new THREE.MeshStandardMaterial({ color: 0x0369a1, metalness: 0.7 })
+      );
+      hub.rotation.x = -Math.PI / 2;
+      hub.position.set(0, baseOffset + towerH, 0.95);
+      group.add(hub);
+
+      const rotor = new THREE.Group();
+      rotor.position.set(0, baseOffset + towerH, 0.95);
+
+      const bladeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.22 });
+      const tipMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4 });
+
+      for (let b = 0; b < 3; b++) {
+        const arm = new THREE.Group();
+        arm.rotation.z = (b / 3) * Math.PI * 2;
+
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.22, 3.5, 0.045), bladeMat);
+        blade.position.y = 1.95;
+        blade.rotation.y = 0.22;
+        arm.add(blade);
+
+        const tip = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.5, 0.048), tipMat);
+        tip.position.y = 3.55;
+        arm.add(tip);
+
+        rotor.add(arm);
+      }
+
+      group.add(rotor);
+      group.userData.rotor = rotor;
+      scene.add(group);
+      return group;
+    }
+
+    function buildDualMarineWindTurbines() {
+      // 1. Jetty-Side Angled Wind Turbine mounted on Concrete Dolphin at Jetty Head
+      jettyTurbine = createMarineWindTurbine(8.5, 0.72, -6.5, false);
+      jettyTurbine.rotation.y = -0.35; // Angled toward prevailing coastal sea breeze
+
+      // Cable Conduit running right along the Wooden Jetty deck to the Blue Lab PCS
+      const jettyWindCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(8.5, 0.95, -6.5),
+        new THREE.Vector3(7.5, 0.95, -4.5),
+        new THREE.Vector3(7.5, 0.95, 3.5),
+        new THREE.Vector3(2.8, 0.88, 4.2),
+        new THREE.Vector3(0.6, 0.88, 4.2)
+      ]);
+      scene.add(new THREE.Mesh(
+        new THREE.TubeGeometry(jettyWindCurve, 26, 0.065, 8, false),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8 })
+      ));
+      for (let i = 0; i < 4; i++) {
+        const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), new THREE.MeshBasicMaterial({ color: 0x7dd3fc }));
+        scene.add(pulse);
+        electronPulses.push({ mesh: pulse, curve: jettyWindCurve, offset: i * 0.25, type: 'windJetty' });
+      }
+
+      // 2. Distant Seashore Offshore Monopile Wind Turbine (Prominent in Sea Horizon)
+      offshoreTurbine = createMarineWindTurbine(-16.5, 0.0, -15.5, true);
+      offshoreTurbine.rotation.y = 0.42;
+
+      const offshoreWindCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-16.5, 0.1, -15.5),
+        new THREE.Vector3(-11.0, -0.05, -8.5),
+        new THREE.Vector3(-5.0, 0.15, 1.5),
+        new THREE.Vector3(0.6, 0.88, 4.2)
+      ]);
+      scene.add(new THREE.Mesh(
+        new THREE.TubeGeometry(offshoreWindCurve, 28, 0.075, 8, false),
+        new THREE.MeshStandardMaterial({ color: 0x06b6d4 })
+      ));
+      for (let i = 0; i < 5; i++) {
+        const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.095, 8, 8), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
+        scene.add(pulse);
+        electronPulses.push({ mesh: pulse, curve: offshoreWindCurve, offset: i * 0.2, type: 'windOffshore' });
+      }
+    }
+
+    /* --- Blue Lab Station, IP67 BESS Cabinets, PCS & Local Island Loads --- */
+    function buildBlueLabStationAndBESS() {
+      // Concrete Engineering Pad on Beach Terrace
+      const pad = new THREE.Mesh(
+        new THREE.BoxGeometry(11.5, 0.35, 7.2),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.65 })
+      );
+      pad.position.set(-1.0, 0.72, 4.8);
+      pad.receiveShadow = true;
+      scene.add(pad);
+
+      // IP67/C5-M Marine LiFePO4 BESS Battery Cabinets (120 kWh)
+      bessHousing = new THREE.Group();
+      bessHousing.position.set(-3.2, 0.9, 4.2);
+
+      const cabMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.32, metalness: 0.45 });
+      const packMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6 });
+      const glassMat = new THREE.MeshPhysicalMaterial({
+        color: 0x7dd3fc,
+        transparent: true,
+        opacity: 0.28,
+        transmission: 0.75,
+        roughness: 0.1
+      });
+
+      const glassDoor = new THREE.Mesh(new THREE.BoxGeometry(5.0, 2.6, 0.05), glassMat);
+      glassDoor.position.set(0, 1.35, 0.92);
+      bessHousing.add(glassDoor);
+
+      for (let c = 0; c < 4; c++) {
+        const cx = -1.75 + c * 1.18;
+        const cab = new THREE.Mesh(new THREE.BoxGeometry(1.05, 2.55, 1.7), cabMat);
+        cab.position.set(cx, 1.3, 0);
+        cab.castShadow = true;
+        bessHousing.add(cab);
+
+        for (let m = 0; m < 6; m++) {
+          const my = 0.28 + m * 0.38;
+          const mod = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.24, 1.52), packMat);
+          mod.position.set(cx, my, 0.06);
+          bessHousing.add(mod);
+
+          const led = new THREE.Mesh(
+            new THREE.SphereGeometry(0.032, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0x10b981 })
+          );
+          led.position.set(cx + 0.36, my, 0.85);
+          bessHousing.add(led);
+          rackStatusLEDs.push(led);
+        }
+      }
+
+      // Marine HVAC Thermal Unit
+      const hvac = new THREE.Mesh(
+        new THREE.BoxGeometry(4.8, 0.42, 1.5),
+        new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 })
+      );
+      hvac.position.set(0, 2.8, 0);
+      bessHousing.add(hvac);
+      scene.add(bessHousing);
+
+      // 50 kW Bidirectional PCS Inverter Cabinet
+      pcsInverter = new THREE.Group();
+      pcsInverter.position.set(0.6, 0.9, 4.2);
+
+      const pcsBody = new THREE.Mesh(
+        new THREE.BoxGeometry(1.75, 2.5, 1.4),
+        new THREE.MeshStandardMaterial({ color: 0x0c4a6e, roughness: 0.3, metalness: 0.5 })
+      );
+      pcsBody.position.y = 1.25;
+      pcsBody.castShadow = true;
+      pcsInverter.add(pcsBody);
+
+      const screen = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.15, 0.68),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.65 })
+      );
+      screen.position.set(0, 1.65, 0.71);
+      pcsInverter.add(screen);
+      scene.add(pcsInverter);
+
+      // Overhead Copper Busbar Spine connecting PCS & BESS
+      const copperMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.9, roughness: 0.2 });
+      const busP = new THREE.Mesh(new THREE.BoxGeometry(5.1, 0.08, 0.08), copperMat);
+      busP.position.set(-1.3, 3.55, 4.2);
+      scene.add(busP);
+      const busN = new THREE.Mesh(new THREE.BoxGeometry(5.1, 0.08, 0.08), copperMat);
+      busN.position.set(-1.3, 3.55, 4.0);
+      scene.add(busN);
+
+      // --- Blue Lab Research Dome & Local Facility Loads ---
+      const labBuilding = new THREE.Group();
+      labBuilding.position.set(3.2, 0.9, 8.8);
+      const walls = new THREE.Mesh(
+        new THREE.BoxGeometry(4.4, 2.4, 3.4),
+        new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.5 })
+      );
+      walls.position.y = 1.2;
+      walls.castShadow = true;
+      labBuilding.add(walls);
+
+      const roof = new THREE.Mesh(
+        new THREE.BoxGeometry(4.8, 0.25, 3.8),
+        new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 })
+      );
+      roof.position.y = 2.5;
+      labBuilding.add(roof);
+      scene.add(labBuilding);
+
+      // Coral Nursery Bio-Incubator Tanks + Desalination Skid (x=3.6, z=5.5)
+      coralIncubatorGroup = new THREE.Group();
+      coralIncubatorGroup.position.set(3.6, 0.9, 5.5);
+
+      const tankMat = new THREE.MeshPhysicalMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.5,
+        roughness: 0.1
+      });
+      for (let t = 0; t < 2; t++) {
+        const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.68, 0.85, 16), tankMat);
+        tank.position.set(-0.85 + t * 1.7, 0.42, 0);
+        coralIncubatorGroup.add(tank);
+
+        const polyp = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(0.28),
+          new THREE.MeshStandardMaterial({ color: t === 0 ? 0xf43f5e : 0x14b8a6 })
+        );
+        polyp.position.set(-0.85 + t * 1.7, 0.35, 0);
+        coralIncubatorGroup.add(polyp);
+      }
+
+      // Reverse-Osmosis Freshwater Desalination Module
+      desalinationUnit = new THREE.Mesh(
+        new THREE.BoxGeometry(1.1, 0.95, 0.85),
+        new THREE.MeshStandardMaterial({ color: 0x0d9488, metalness: 0.4 })
+      );
+      desalinationUnit.position.set(2.1, 0.48, 0);
+      coralIncubatorGroup.add(desalinationUnit);
+      scene.add(coralIncubatorGroup);
+
+      // Power Delivery Conduit from PCS to Coral Incubators, Desalination & Blue Lab
+      const facilityCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0.6, 0.9, 4.2),
+        new THREE.Vector3(2.2, 0.9, 4.8),
+        new THREE.Vector3(3.6, 0.9, 5.5),
+        new THREE.Vector3(3.2, 0.9, 7.5)
+      ]);
+      scene.add(new THREE.Mesh(
+        new THREE.TubeGeometry(facilityCurve, 20, 0.06, 8, false),
+        new THREE.MeshStandardMaterial({ color: 0x10b981 })
+      ));
+      for (let i = 0; i < 4; i++) {
+        const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 8), new THREE.MeshBasicMaterial({ color: 0x34d399 }));
+        scene.add(pulse);
+        electronPulses.push({ mesh: pulse, curve: facilityCurve, offset: i * 0.25, type: 'facility' });
+      }
+    }
+
+    /* --- Articulated 3D Characters: Dr. Sparky Quills, Prof. Puff, Pip Squeak --- */
+    function buildCharacters() {
+      // 1. Dr. Sparky Quills (Chief Electrical Grid Engineer)
+      quillsGroup = new THREE.Group();
+      const furBrown = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+      const bellyTan = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.7 });
+      const vestMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 });
+      const spineDark = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+      const spineTip = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.55 });
+
+      const qTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.6, 1.3, 16), furBrown);
+      qTorso.position.y = 1.38;
+      qTorso.castShadow = true;
+      quillsGroup.add(qTorso);
+
+      const qVest = new THREE.Mesh(new THREE.CylinderGeometry(0.49, 0.63, 0.95, 16), vestMat);
+      qVest.position.y = 1.42;
+      quillsGroup.add(qVest);
+
+      quillsHead = new THREE.Group();
+      quillsHead.position.set(0, 2.22, 0.04);
+      quillsHead.add(new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), furBrown));
+      const qSnout = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.5, 12), bellyTan);
+      qSnout.rotation.x = 1.35;
+      qSnout.position.set(0, -0.07, 0.42);
+      quillsHead.add(qSnout);
+      [-0.16, 0.16].forEach(gx => {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.03, 8, 16), new THREE.MeshStandardMaterial({ color: 0x38bdf8 }));
+        rim.position.set(gx, 0.07, 0.46);
+        quillsHead.add(rim);
+      });
+      for (let s = 0; s < 24; s++) {
+        const spine = new THREE.Group();
+        const angU = Math.PI * 0.25 + (s / 24) * Math.PI * 0.85;
+        const angV = (s % 6 - 2.5) * 0.32;
+        const shaft = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.46, 5), spineDark);
+        shaft.position.y = 0.23;
+        spine.add(shaft);
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.032, 6, 6), spineTip);
+        tip.position.y = 0.46;
+        spine.add(tip);
+        spine.position.set(Math.sin(angV) * 0.44, Math.cos(angU) * 0.55 + 0.14, -Math.sin(angU) * 0.44);
+        spine.rotation.set(-angU + Math.PI / 2, 0, angV);
+        qTorso.add(spine);
+      }
+      quillsGroup.add(quillsHead);
+
+      quillsLegL = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.12, 0.72, 10), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+      quillsLegL.position.set(-0.24, 0.36, 0);
+      quillsGroup.add(quillsLegL);
+      quillsLegR = quillsLegL.clone();
+      quillsLegR.position.x = 0.24;
+      quillsGroup.add(quillsLegR);
+
+      quillsArmR = new THREE.Group();
+      quillsArmR.position.set(0.62, 1.45, 0);
+      const qArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.65, 8), furBrown);
+      qArmMesh.position.y = -0.3;
+      quillsArmR.add(qArmMesh);
+      quillsGroup.add(quillsArmR);
+
+      quillsGroup.position.set(1.2, 0.9, 6.8);
+      scene.add(quillsGroup);
+
+      // 2. Professor Whisker Puff (Chief Marine & Astrobiologist)
+      puffGroup = new THREE.Group();
+      const calicoGinger = new THREE.MeshStandardMaterial({ color: 0xe07a38, roughness: 0.65 });
+      const calicoWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+      const labCoat = new THREE.MeshStandardMaterial({ color: 0x0d9488, roughness: 0.5 });
+
+      const pBody = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.58, 1.2, 16), calicoWhite);
+      pBody.position.y = 1.38;
+      pBody.castShadow = true;
+      puffGroup.add(pBody);
+
+      const pCoat = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.62, 0.85, 16), labCoat);
+      pCoat.position.y = 1.46;
+      puffGroup.add(pCoat);
+
+      puffHead = new THREE.Group();
+      puffHead.position.set(0, 2.22, 0.04);
+      const pHeadMesh = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), calicoGinger);
+      pHeadMesh.scale.set(1.12, 0.94, 1.02);
+      puffHead.add(pHeadMesh);
+      [-0.2, 0.2].forEach(gx => {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.03, 8, 18), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+        rim.position.set(gx, 0.04, 0.58);
+        puffHead.add(rim);
+      });
+      const earGeo = new THREE.ConeGeometry(0.2, 0.38, 4);
+      const earL = new THREE.Mesh(earGeo, calicoGinger);
+      earL.position.set(-0.38, 0.52, 0.04);
+      earL.rotation.z = 0.35;
+      puffHead.add(earL);
+      const earR = new THREE.Mesh(earGeo, new THREE.MeshStandardMaterial({ color: 0x27272a }));
+      earR.position.set(0.38, 0.52, 0.04);
+      earR.rotation.z = -0.35;
+      puffHead.add(earR);
+      puffGroup.add(puffHead);
+
+      puffLegL = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.7, 10), calicoWhite);
+      puffLegL.position.set(-0.22, 0.35, 0);
+      puffGroup.add(puffLegL);
+      puffLegR = puffLegL.clone();
+      puffLegR.position.x = 0.22;
+      puffGroup.add(puffLegR);
+
+      puffGroup.position.set(-1.6, 0.9, 6.8);
+      scene.add(puffGroup);
+
+      // 3. Pip Squeak (Junior Field Technician)
+      pipGroup = new THREE.Group();
+      const mouseBrown = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.75 });
+      const mousePink = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.5 });
+      const shirtMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.6 });
+
+      const mTorso = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 14), mouseBrown);
+      mTorso.scale.set(0.9, 1.15, 0.9);
+      mTorso.position.y = 0.9;
+      pipGroup.add(mTorso);
+
+      const mShirt = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.38, 0.42, 14), shirtMat);
+      mShirt.position.y = 0.95;
+      pipGroup.add(mShirt);
+
+      pipHead = new THREE.Group();
+      pipHead.position.set(0, 1.28, 0.04);
+      pipHead.add(new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 14), mouseBrown));
+      [-0.2, 0.2].forEach((ex, idx) => {
+        const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.025, 12), mousePink);
+        ear.position.set(ex, 0.2, -0.02);
+        ear.rotation.set(0.2, idx === 0 ? 0.35 : -0.35, idx === 0 ? -0.4 : 0.4);
+        pipHead.add(ear);
+      });
+      pipGroup.add(pipHead);
+
+      pipArmR = new THREE.Group();
+      pipArmR.position.set(0.32, 1.02, 0);
+      const pawR = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.048, 0.32, 8), mouseBrown);
+      pawR.position.y = -0.16;
+      pipArmR.add(pawR);
+      pipGroup.add(pipArmR);
+
+      pipGroup.position.set(-0.2, 0.9, 6.4);
+      scene.add(pipGroup);
+    }
+
+    /* --- 3D Interactive Field Hotspots (Projected to Screen Overlay) --- */
+    function register3DHotspots() {
+      const hotspotDefs = [
+        { id: 'hs-solar', label: 'Offshore Floating Solar (40 kWp)', pos: new THREE.Vector3(-10.5, 1.6, -4.5), tab: 1, cam: 'solar' },
+        { id: 'hs-jetty-wind', label: 'Jetty-Side Turbine (30 kW)', pos: new THREE.Vector3(8.5, 5.5, -6.5), tab: 2, cam: 'jetty' },
+        { id: 'hs-sea-wind', label: 'Offshore Monopile Turbine (30 kW)', pos: new THREE.Vector3(-16.5, 6.2, -15.5), tab: 2, cam: 'offshoreWind' },
+        { id: 'hs-boat', label: 'SearchO2 Operation Vessel', pos: new THREE.Vector3(10.6, 2.2, -1.8), tab: 4, cam: 'jetty' },
+        { id: 'hs-bess', label: 'IP67 LiFePO4 BESS (120 kWh)', pos: new THREE.Vector3(-3.2, 3.8, 4.2), tab: 3, cam: 'bess' },
+        { id: 'hs-coral', label: 'Coral Nursery & Desalination', pos: new THREE.Vector3(3.6, 2.5, 5.5), tab: 4, cam: 'coral' }
+      ];
+
+      const layer = document.getElementById('hotspots-layer');
+      hotspotDefs.forEach(def => {
+        const el = document.createElement('div');
+        el.className = 'hotspot-marker';
+        el.innerHTML = `<div class="hotspot-pill"><span class="hotspot-dot"></span><span>${def.label}</span></div>`;
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          initAudio();
+          focusCameraPreset(def.cam);
+          openGraphicModal(def.tab);
+        });
+        layer.appendChild(el);
+        hotspotObjects.push({ el, pos: def.pos });
+      });
+    }
+
+    function updateProjectedHotspots() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      hotspotObjects.forEach(item => {
+        const projected = item.pos.clone().project(camera);
+        if (projected.z > 1) {
+          item.el.style.opacity = '0';
+          item.el.style.pointerEvents = 'none';
+        } else {
+          const x = (projected.x * 0.5 + 0.5) * w;
+          const y = (-(projected.y * 0.5) + 0.5) * h;
+          item.el.style.left = `${x}px`;
+          item.el.style.top = `${y}px`;
+          item.el.style.opacity = '1';
+          item.el.style.pointerEvents = 'auto';
+        }
+      });
+    }
+
+    /* --- Explanatory Graphic Modals with Custom Inline SVG Engineering Diagrams --- */
+    const GRAPHIC_MODAL_DATA = [
+      {
+        tag: "ARCHITECTURE // FULL ISLAND MICROGRID",
+        title: "Saint Martin SearchO2 Blue Lab Hybrid Microgrid Topology",
+        svg: `
+          <svg viewBox="0 0 720 260" class="w-full h-auto max-h-64">
+            <defs>
+              <linearGradient id="gSolar" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#d97706"/></linearGradient>
+              <linearGradient id="gWind" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#0284c7"/></linearGradient>
+              <linearGradient id="gBess" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#059669"/></linearGradient>
+            </defs>
+            <rect x="20" y="20" width="175" height="62" rx="12" fill="rgba(245,158,11,0.15)" stroke="#f59e0b" stroke-width="2"/>
+            <text x="107" y="45" fill="#fde047" font-size="12" font-weight="bold" text-anchor="middle">OFFSHORE FLOATING PV</text>
+            <text x="107" y="65" fill="#cbd5e1" font-size="10" text-anchor="middle">40 kWp HDPE Pontoon Array</text>
+
+            <rect x="20" y="100" width="175" height="62" rx="12" fill="rgba(56,189,248,0.15)" stroke="#38bdf8" stroke-width="2"/>
+            <text x="107" y="125" fill="#7dd3fc" font-size="12" font-weight="bold" text-anchor="middle">JETTY WIND TURBINE</text>
+            <text x="107" y="145" fill="#cbd5e1" font-size="10" text-anchor="middle">30 kW Pier Concrete Dolphin</text>
+
+            <rect x="20" y="180" width="175" height="62" rx="12" fill="rgba(6,182,212,0.15)" stroke="#06b6d4" stroke-width="2"/>
+            <text x="107" y="205" fill="#67e8f9" font-size="12" font-weight="bold" text-anchor="middle">OFFSHORE MONOPILE</text>
+            <text x="107" y="225" fill="#cbd5e1" font-size="10" text-anchor="middle">30 kW Sea Breeze Turbine</text>
+
+            <path d="M195 51 L265 110" stroke="#fbbf24" stroke-width="3" stroke-dasharray="6 4"/>
+            <path d="M195 131 L265 131" stroke="#38bdf8" stroke-width="3" stroke-dasharray="6 4"/>
+            <path d="M195 211 L265 152" stroke="#22d3ee" stroke-width="3" stroke-dasharray="6 4"/>
+
+            <rect x="265" y="75" width="180" height="112" rx="16" fill="rgba(14,165,233,0.18)" stroke="#38bdf8" stroke-width="2.5"/>
+            <text x="355" y="105" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle">50 kW BIDIRECTIONAL PCS</text>
+            <text x="355" y="125" fill="#7dd3fc" font-size="10" text-anchor="middle">AC/DC Rectification &amp; MPPT</text>
+            <rect x="285" y="138" width="140" height="36" rx="8" fill="url(#gBess)"/>
+            <text x="355" y="160" fill="#022c22" font-size="11" font-weight="bold" text-anchor="middle">120 kWh LiFePO4 BESS</text>
+
+            <path d="M445 110 L515 65" stroke="#34d399" stroke-width="3"/>
+            <path d="M445 131 L515 131" stroke="#34d399" stroke-width="3"/>
+            <path d="M445 152 L515 198" stroke="#34d399" stroke-width="3"/>
+
+            <rect x="515" y="32" width="185" height="54" rx="12" fill="rgba(16,185,129,0.15)" stroke="#10b981" stroke-width="2"/>
+            <text x="607" y="55" fill="#6ee7b7" font-size="11" font-weight="bold" text-anchor="middle">CORAL BIO-INCUBATORS</text>
+            <text x="607" y="72" fill="#cbd5e1" font-size="10" text-anchor="middle">26.5°C Precision Chilling</text>
+
+            <rect x="515" y="104" width="185" height="54" rx="12" fill="rgba(16,185,129,0.15)" stroke="#10b981" stroke-width="2"/>
+            <text x="607" y="127" fill="#6ee7b7" font-size="11" font-weight="bold" text-anchor="middle">RO DESALINATION &amp; LAB</text>
+            <text x="607" y="144" fill="#cbd5e1" font-size="10" text-anchor="middle">12,000 L/Day Clean Water</text>
+
+            <rect x="515" y="176" width="185" height="54" rx="12" fill="rgba(16,185,129,0.15)" stroke="#10b981" stroke-width="2"/>
+            <text x="607" y="199" fill="#6ee7b7" font-size="11" font-weight="bold" text-anchor="middle">SEARCHO2 JETTY CHARGER</text>
+            <text x="607" y="216" fill="#cbd5e1" font-size="10" text-anchor="middle">15 kW Marine Shore Power</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Zero-Diesel Coastal Autonomy", text: "100 kW combined renewable generation (40 kWp offshore solar + 60 kW dual marine wind) paired with 120 kWh LiFePO4 storage guarantees 100% power availability without fuel barges." },
+          { title: "Subsea & Jetty Conduit Architecture", text: "Armored XLPE marine cables route along natural sandy channels and the wooden jetty substructure, preventing physical contact with living coral heads." }
+        ]
+      },
+      {
+        tag: "CONSTRUCTION // OFFSHORE FLOATING SOLAR",
+        title: "Offshore Floating PV Pontoon & Coral-Safe Mooring Design",
+        svg: `
+          <svg viewBox="0 0 720 250" class="w-full h-auto max-h-64">
+            <rect x="0" y="95" width="720" height="115" fill="rgba(2,132,199,0.22)"/>
+            <path d="M0 95 Q 90 87, 180 95 T 360 95 T 540 95 T 720 95" fill="none" stroke="#38bdf8" stroke-width="3"/>
+            <rect x="0" y="210" width="720" height="40" fill="#78350f" opacity="0.6"/>
+
+            <rect x="170" y="78" width="110" height="22" rx="10" fill="#0284c7" stroke="#7dd3fc" stroke-width="2"/>
+            <rect x="305" y="78" width="110" height="22" rx="10" fill="#0284c7" stroke="#7dd3fc" stroke-width="2"/>
+            <rect x="440" y="78" width="110" height="22" rx="10" fill="#0284c7" stroke="#7dd3fc" stroke-width="2"/>
+
+            <line x1="180" y1="74" x2="270" y2="52" stroke="#f59e0b" stroke-width="6"/>
+            <line x1="315" y1="74" x2="405" y2="52" stroke="#f59e0b" stroke-width="6"/>
+            <line x1="450" y1="74" x2="540" y2="52" stroke="#f59e0b" stroke-width="6"/>
+            <text x="360" y="34" fill="#fde047" font-size="12" font-weight="bold" text-anchor="middle">15° TILT BIFACIAL MARINE PV MODULES (EVAPORATIVE COOLING +11%)</text>
+
+            <path d="M180 100 Q 140 155, 110 210" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-dasharray="5 3"/>
+            <path d="M540 100 Q 580 155, 610 210" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-dasharray="5 3"/>
+            <polygon points="110,200 100,215 120,215" fill="#94a3b8"/>
+            <polygon points="610,200 600,215 620,215" fill="#94a3b8"/>
+
+            <circle cx="310" cy="202" r="14" fill="#f43f5e"/>
+            <circle cx="345" cy="204" r="12" fill="#14b8a6"/>
+            <circle cx="385" cy="202" r="15" fill="#f59e0b"/>
+            <text x="350" y="236" fill="#fda4af" font-size="11" font-weight="bold" text-anchor="middle">LIVING CORAL REEF ZONE — UNTOUCHED BY ELASTIC MOORING TETHERS</text>
+          </svg>
+        `,
+        cards: [
+          { title: "HDPE Pontoons & C5-M Anodized Alloy", text: "UV-stabilized high-density polyethylene floats support 3x4 articulated PV tables that flex smoothly with lagoon swells without structural fatigue." },
+          { title: "Subsea Helical Sand Anchors", text: "Elastic catenary tethers anchor into sandy lagoon pockets outside coral heads, maintaining constant tension across tidal shifts while preserving benthic sunlight." }
+        ]
+      },
+      {
+        tag: "AERODYNAMICS // DUAL MARINE WIND",
+        title: "Jetty-Angled Turbine & Offshore Monopile Foundation",
+        svg: `
+          <svg viewBox="0 0 720 250" class="w-full h-auto max-h-64">
+            <rect x="0" y="150" width="720" height="75" fill="rgba(2,132,199,0.25)"/>
+            <rect x="0" y="225" width="720" height="25" fill="#334155"/>
+
+            <rect x="440" y="130" width="240" height="18" fill="#92400e"/>
+            <rect x="460" y="148" width="12" height="77" fill="#44403c"/>
+            <rect x="520" y="148" width="12" height="77" fill="#44403c"/>
+            <rect x="580" y="135" width="75" height="90" fill="#64748b"/>
+            <line x1="617" y1="135" x2="617" y2="42" stroke="#f8fafc" stroke-width="7"/>
+            <circle cx="617" cy="42" r="7" fill="#0284c7"/>
+            <line x1="617" y1="42" x2="585" y2="15" stroke="#ffffff" stroke-width="4"/>
+            <line x1="617" y1="42" x2="652" y2="22" stroke="#ffffff" stroke-width="4"/>
+            <line x1="617" y1="42" x2="617" y2="82" stroke="#ffffff" stroke-width="4"/>
+            <text x="560" y="116" fill="#7dd3fc" font-size="11" font-weight="bold" text-anchor="middle">JETTY ANGLE TURBINE (30 kW)</text>
+
+            <rect x="152" y="122" width="16" height="118" fill="#eab308"/>
+            <rect x="142" y="122" width="36" height="6" fill="#facc15"/>
+            <line x1="160" y1="122" x2="160" y2="32" stroke="#f8fafc" stroke-width="7"/>
+            <circle cx="160" cy="32" r="7" fill="#0284c7"/>
+            <line x1="160" y1="32" x2="128" y2="8" stroke="#ffffff" stroke-width="4"/>
+            <line x1="160" y1="32" x2="195" y2="14" stroke="#ffffff" stroke-width="4"/>
+            <line x1="160" y1="32" x2="160" y2="74" stroke="#ffffff" stroke-width="4"/>
+            <text x="160" y="105" fill="#fde047" font-size="11" font-weight="bold" text-anchor="middle">OFFSHORE MONOPILE (30 kW)</text>
+
+            <path d="M168 220 Q 380 232, 600 220" fill="none" stroke="#22d3ee" stroke-width="3" stroke-dasharray="6 4"/>
+            <text x="380" y="208" fill="#67e8f9" font-size="10" font-weight="bold" text-anchor="middle">ARMORED SUBSEA &amp; JETTY-ROUTED 3-PHASE AC FEEDERS</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Jetty-Head Dolphin Turbine", text: "Mounted on a riprap-armored concrete dolphin at the angled corner of the wooden jetty, capturing morning thermal sea breezes with zero land footprint." },
+          { title: "Offshore Monopile Marine Turbine", text: "Installed in deeper offshore waters with a high-visibility yellow transition piece, harvesting steady Bay of Bengal afternoon and nocturnal monsoon winds." }
+        ]
+      },
+      {
+        tag: "STORAGE // IP67 LiFePO4 BESS & PCS",
+        title: "120 kWh Solid-State Energy Storage & Next-Day Reserve",
+        svg: `
+          <svg viewBox="0 0 720 250" class="w-full h-auto max-h-64">
+            <rect x="40" y="35" width="280" height="180" rx="14" fill="rgba(15,23,42,0.9)" stroke="#38bdf8" stroke-width="2.5"/>
+            <text x="180" y="60" fill="#7dd3fc" font-size="12" font-weight="bold" text-anchor="middle">4 MODULAR LiFePO4 RACKS (120 kWh)</text>
+            <rect x="60" y="75" width="52" height="120" rx="6" fill="#1e293b" stroke="#10b981"/>
+            <rect x="122" y="75" width="52" height="120" rx="6" fill="#1e293b" stroke="#10b981"/>
+            <rect x="184" y="75" width="52" height="120" rx="6" fill="#1e293b" stroke="#10b981"/>
+            <rect x="246" y="75" width="52" height="120" rx="6" fill="#1e293b" stroke="#10b981"/>
+            <text x="180" y="208" fill="#6ee7b7" font-size="10" text-anchor="middle">512V Nominal DC | 6,000+ Cycles | Zero Cobalt</text>
+
+            <line x1="320" y1="100" x2="410" y2="100" stroke="#ef4444" stroke-width="5"/>
+            <line x1="320" y1="145" x2="410" y2="145" stroke="#94a3b8" stroke-width="5"/>
+            <text x="365" y="88" fill="#fca5a5" font-size="10" font-weight="bold" text-anchor="middle">+512V BUS</text>
+
+            <rect x="410" y="45" width="270" height="160" rx="14" fill="rgba(12,74,110,0.6)" stroke="#06b6d4" stroke-width="2.5"/>
+            <text x="545" y="72" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">50 kW HYBRID PCS &amp; BMS</text>
+            <text x="545" y="102" fill="#fde047" font-size="11" text-anchor="middle">1. Absorbs Midday Solar &amp; Wind Surpluses</text>
+            <text x="545" y="128" fill="#67e8f9" font-size="11" text-anchor="middle">2. Suppresses Voltage Flicker on Island Bus</text>
+            <text x="545" y="154" fill="#6ee7b7" font-size="11" text-anchor="middle">3. Discharges Overnight &amp; During Storm Lulls</text>
+            <text x="545" y="182" fill="#cbd5e1" font-size="10" text-anchor="middle">IP67 Salt-Fog &amp; Humidity Sealed Enclosure</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Multi-Source Surplus Buffering", text: "When midday offshore solar and dual wind turbines peak simultaneously, excess energy charges the 24 LiFePO4 packs instead of curtailing turbine output." },
+          { title: "Tropical Marine Durability", text: "LiFePO4 chemistry eliminates thermal runaway risk in high ambient heat, while IP67 enclosures with dehumidifying HVAC protect electronics from salt spray." }
+        ]
+      },
+      {
+        tag: "CONSERVATION // SAINT MARTIN ECOLOGY",
+        title: "Coral Reef & Olive Ridley Turtle Protection Impact",
+        svg: `
+          <svg viewBox="0 0 720 250" class="w-full h-auto max-h-64">
+            <rect x="30" y="30" width="205" height="190" rx="14" fill="rgba(244,63,94,0.14)" stroke="#f43f5e" stroke-width="2"/>
+            <text x="132" y="58" fill="#fda4af" font-size="12" font-weight="bold" text-anchor="middle">CORAL NURSERY TANKS</text>
+            <text x="132" y="88" fill="#f1f5f9" font-size="11" text-anchor="middle">• 26.5°C Thermal Stability</text>
+            <text x="132" y="114" fill="#f1f5f9" font-size="11" text-anchor="middle">• Prevents Bleaching Stress</text>
+            <text x="132" y="140" fill="#f1f5f9" font-size="11" text-anchor="middle">• Zero Diesel Bilge Runoff</text>
+            <text x="132" y="185" fill="#6ee7b7" font-size="11" font-weight="bold" text-anchor="middle">100% REEF-SAFE POWER</text>
+
+            <rect x="257" y="30" width="205" height="190" rx="14" fill="rgba(16,185,129,0.14)" stroke="#10b981" stroke-width="2"/>
+            <text x="360" y="58" fill="#6ee7b7" font-size="12" font-weight="bold" text-anchor="middle">SEA TURTLE SANCTUARY</text>
+            <text x="360" y="88" fill="#f1f5f9" font-size="11" text-anchor="middle">• Zero Acoustic Vibration</text>
+            <text x="360" y="114" fill="#f1f5f9" font-size="11" text-anchor="middle">• Dark-Sky Beach Compliance</text>
+            <text x="360" y="140" fill="#f1f5f9" font-size="11" text-anchor="middle">• No Fuel Barge Beachings</text>
+            <text x="360" y="185" fill="#7dd3fc" font-size="11" font-weight="bold" text-anchor="middle">OLIVE RIDLEY PROTECTED</text>
+
+            <rect x="485" y="30" width="205" height="190" rx="14" fill="rgba(56,189,248,0.14)" stroke="#38bdf8" stroke-width="2"/>
+            <text x="587" y="58" fill="#7dd3fc" font-size="12" font-weight="bold" text-anchor="middle">COMMUNITY &amp; VESSEL</text>
+            <text x="587" y="88" fill="#f1f5f9" font-size="11" text-anchor="middle">• 12,000 L/Day RO Water</text>
+            <text x="587" y="114" fill="#f1f5f9" font-size="11" text-anchor="middle">• Artisanal Fish Cold-Chain</text>
+            <text x="587" y="140" fill="#f1f5f9" font-size="11" text-anchor="middle">• SearchO2 Electric Boat</text>
+            <text x="587" y="185" fill="#fde047" font-size="11" font-weight="bold" text-anchor="middle">-145 TONS CO₂ / YEAR</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Preserving Saint Martin's Living Reefs", text: "Continuous clean electricity powers water circulation and thermal chillers for Acropora coral propagation while eliminating toxic diesel generator spills." },
+          { title: "Quiet, Dark-Sky Nesting Beaches", text: "Solid-state BESS discharge produces zero low-frequency engine rumble, safeguarding nesting sea turtles and hatching navigation along the sandy shore." }
+        ]
+      }
+    ];
+
+    function openGraphicModal(tabIndex = 0) {
+      const modal = document.getElementById('graphic-modal');
+      modal.classList.remove('hidden');
+      renderGraphicModalTab(tabIndex);
+    }
+
+    function renderGraphicModalTab(tabIndex) {
+      const data = GRAPHIC_MODAL_DATA[tabIndex] || GRAPHIC_MODAL_DATA[0];
+      document.getElementById('modal-tag').textContent = data.tag;
+      document.getElementById('modal-title').textContent = data.title;
+      document.getElementById('modal-svg-container').innerHTML = data.svg;
+
+      const grid = document.getElementById('modal-details-grid');
+      grid.innerHTML = data.cards.map(c => `
+        <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-sky-800/60">
+          <h4 class="font-bold text-sky-300 mb-1">${c.title}</h4>
+          <p class="text-slate-300 leading-relaxed">${c.text}</p>
+        </div>
+      `).join('');
+
+      document.querySelectorAll('.modal-tab-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx === tabIndex);
+      });
+    }
+
+    /* --- Real-Time Two-Way Voice Conversation (Gemini API + SpeechRecognition) --- */
+    async function askBlueLabAI(userQuery) {
+      const statusEl = document.getElementById('voice-status-text');
+      statusEl.textContent = `Transmitting query to Blue Lab Engineering Team: "${userQuery}"...`;
+
+      // Pause automated tour while answering user's real-time voice question
+      const wasPlaying = isPlaying;
+      isPlaying = false;
+      document.getElementById('btn-play-pause').textContent = '▶';
+
+      const systemPrompt = `You are Dr. Sparky Quills (Chief Electrical Grid Engineer) and Professor Whisker Puff (Chief Marine Biologist) at the SearchO2 Blue Lab on Saint Martin's Island.
+Respond in 2 to 3 clear, authoritative, international scientific sentences (no local greetings).
+Explain how the microgrid operates: 40 kWp offshore floating solar on HDPE pontoons, two 30 kW marine wind turbines (one on the wooden jetty dolphin, one offshore monopile), 120 kWh IP67 LiFePO4 BESS with 50 kW bidirectional PCS, powering coral nursery bio-incubators, RO desalination, cold storage, and the SearchO2 vessel while protecting coral reefs and Olive Ridley sea turtles.`;
+
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      try {
+        let responseText = "";
+        const payload = {
+          contents: [{ parts: [{ text: userQuery }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] }
+        };
+
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        }
+
+        if (!responseText) {
+          responseText = "Our 40-kilowatt-peak offshore floating solar array and dual 30-kilowatt jetty and offshore wind turbines feed a 50-kilowatt bidirectional PCS inverter. Surplus energy is stored in our 120-kilowatt-hour IP67 LiFePO4 battery bank to sustain coral bio-incubators, desalination, and the SearchO2 boat with zero diesel emissions.";
+        }
+
+        // Display in Dialogue Card & Speak Smoothly without Cutoff
+        document.getElementById('speaker-avatar').textContent = '🦔';
+        document.getElementById('speaker-name').textContent = 'Dr. Sparky Quills (Live Comms)';
+        document.getElementById('speaker-role').textContent = 'Real-Time Engineering Response';
+        document.getElementById('speech-emotion').textContent = 'Live Link Active';
+        document.getElementById('speech-text').textContent = `"${responseText}"`;
+        statusEl.textContent = "Live voice response active. Ask another question or close drawer to resume briefing.";
+
+        speakTextSmooth(responseText, 'Quills', () => {
+          if (wasPlaying && !isLiveVoiceOpen) {
+            isPlaying = true;
+            document.getElementById('btn-play-pause').textContent = '⏸';
+          }
+        });
+      } catch (err) {
+        const fallback = "Energy from the offshore floating solar pontoons and both marine wind turbines is rectified through our 50-kilowatt PCS and stored in 120 kilowatt-hours of LiFePO4 batteries, ensuring uninterrupted power for Saint Martin's coral nursery and desalination facilities.";
+        document.getElementById('speech-text').textContent = `"${fallback}"`;
+        speakTextSmooth(fallback, 'Quills');
+      }
+    }
+
+    function setupRealTimeVoiceComms() {
+      const commsPanel = document.getElementById('live-comms-panel');
+      const liveBtn = document.getElementById('btn-live-voice');
+      const micBtn = document.getElementById('btn-mic-record');
+      const statusText = document.getElementById('voice-status-text');
+
+      liveBtn.addEventListener('click', () => {
+        initAudio();
+        isLiveVoiceOpen = !isLiveVoiceOpen;
+        commsPanel.classList.toggle('hidden', !isLiveVoiceOpen);
+        liveBtn.classList.toggle('active', isLiveVoiceOpen);
+        if (isLiveVoiceOpen) {
+          isPlaying = false;
+          document.getElementById('btn-play-pause').textContent = '▶';
+          window.speechSynthesis.cancel();
+        }
+      });
+
+      document.getElementById('btn-close-comms').addEventListener('click', () => {
+        isLiveVoiceOpen = false;
+        commsPanel.classList.add('hidden');
+        liveBtn.classList.remove('active');
+      });
+
+      // Browser SpeechRecognition (Web Speech API)
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      let recognition = null;
+      if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+          micBtn.classList.add('mic-live');
+          micBtn.textContent = 'Listening... Speak Now';
+          statusText.textContent = 'Microphone active — ask your question clearly...';
+        };
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          document.getElementById('voice-text-input').value = transcript;
+          askBlueLabAI(transcript);
+        };
+        recognition.onerror = () => {
+          micBtn.classList.remove('mic-live');
+          micBtn.textContent = 'Click to Speak';
+          statusText.textContent = 'Voice input unavailable or permission denied. You may type your question below.';
+        };
+        recognition.onend = () => {
+          micBtn.classList.remove('mic-live');
+          micBtn.textContent = 'Click to Speak';
+        };
+      }
+
+      micBtn.addEventListener('click', () => {
+        initAudio();
+        window.speechSynthesis.cancel();
+        if (recognition) {
+          try { recognition.start(); } catch (e) {}
+        } else {
+          statusText.textContent = 'Speech recognition not supported in this browser. Type your question below.';
+        }
+      });
+
+      document.getElementById('voice-text-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        initAudio();
+        const input = document.getElementById('voice-text-input');
+        const q = input.value.trim();
+        if (q) {
+          askBlueLabAI(q);
+          input.value = '';
+        }
+      });
+    }
+
+    /* --- Camera Transitions & HUD Synchronization --- */
+    function focusCameraPreset(presetKey) {
+      const preset = CAMERA_PRESETS[presetKey];
+      if (!preset) return;
+      new TWEEN.Tween(camera.position).to(preset.pos, 1100).easing(TWEEN.Easing.Cubic.Out).start();
+      new TWEEN.Tween(controls.target).to(preset.target, 1100).easing(TWEEN.Easing.Cubic.Out).start();
+
+      document.querySelectorAll('[data-cam]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.cam === presetKey);
+      });
+    }
+
+    let currentActiveStage = 0;
+    function updateStageHUD(stageIdx) {
+      currentActiveStage = stageIdx;
+      const cfg = STAGE_CONFIG[stageIdx] || STAGE_CONFIG[0];
+      document.getElementById('hud-stage-badge').textContent = cfg.badge;
+      document.getElementById('hud-title').textContent = cfg.title;
+      document.getElementById('hud-action-label').textContent = cfg.actionLabel;
+      document.getElementById('hud-flow-status').textContent = cfg.flowStatus;
+
+      document.getElementById('bar-solar').style.width = `${cfg.solarPct}%`;
+      document.getElementById('bar-wind').style.width = `${cfg.windPct}%`;
+      document.getElementById('bar-bess').style.width = `${cfg.bessPct}%`;
+
+      document.querySelectorAll('.stage-jump-btn').forEach((btn, idx) => {
+        if (idx === stageIdx) {
+          btn.className = 'stage-jump-btn py-1.5 rounded-lg text-[10px] font-bold bg-cyan-500 text-slate-950 transition shadow';
+        } else {
+          btn.className = 'stage-jump-btn py-1.5 rounded-lg text-[10px] font-bold bg-slate-800/90 text-slate-300 hover:bg-slate-700 transition';
+        }
+      });
+    }
+
+    function showActionToast(msg) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      setTimeout(() => { toast.style.opacity = '0'; }, 4200);
+    }
+
+    /* --- Timeline Synchronization (Zero Dialogue Cutoffs) --- */
+    function updateStoryTimeline(time) {
+      const scrubber = document.getElementById('story-scrubber');
+      if (Math.abs(parseFloat(scrubber.value) - time) > 0.4) scrubber.value = time;
+
+      const mins = Math.floor(time / 60);
+      const secs = Math.floor(time % 60);
+      document.getElementById('time-display').textContent =
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      // Live Telemetry Fluctuations
+      const solarKw = (37.2 + Math.sin(time * 0.7) * 2.4).toFixed(1);
+      const windKw = (51.5 + Math.cos(time * 0.9) * 3.8).toFixed(1);
+      const socPct = Math.min(98, Math.round(84 + (time / TOTAL_DURATION) * 12));
+      const socKwh = Math.round((socPct / 100) * 120);
+      document.getElementById('val-solar').textContent = `${solarKw} kW`;
+      document.getElementById('val-wind').textContent = `${windKw} kW`;
+      document.getElementById('val-bess').textContent = `${socPct}% (${socKwh} kWh)`;
+
+      // Determine active beat
+      const idx = STORY_BEATS.findIndex(b => time >= b.start && time < b.end);
+      if (idx !== -1 && idx !== currentBeatIdx) {
+        currentBeatIdx = idx;
+        const beat = STORY_BEATS[idx];
+        const dialogueBox = document.getElementById('dialogue-container');
+
+        dialogueBox.classList.remove('fade-in');
+        dialogueBox.classList.add('fade-out');
+
+        setTimeout(() => {
+          document.getElementById('speaker-avatar').textContent = beat.avatar;
+          document.getElementById('speaker-name').textContent =
+            beat.speaker === 'Quills' ? 'Dr. Sparky Quills' :
+            (beat.speaker === 'Puff' ? 'Professor Whisker Puff' : 'Pip Squeak');
+          document.getElementById('speaker-role').textContent = beat.role;
+          document.getElementById('speech-emotion').textContent = beat.emotion;
+          document.getElementById('speech-text').textContent = `"${beat.text}"`;
+
+          if (subtitlesEnabled) {
+            dialogueBox.classList.remove('fade-out');
+            dialogueBox.classList.add('fade-in');
+          }
+        }, 160);
+
+        updateStageHUD(beat.stage);
+        focusCameraPreset(beat.cam);
+        speakTextSmooth(beat.text, beat.speaker);
+      }
+
+      // Orient Characters Smoothly Toward Active Focus Point
+      const activeBeat = STORY_BEATS[currentBeatIdx] || STORY_BEATS[0];
+      if (activeBeat && activeBeat.aim) {
+        [quillsGroup, puffGroup, pipGroup].forEach(char => {
+          if (!char) return;
+          const dx = activeBeat.aim.x - char.position.x;
+          const dz = activeBeat.aim.z - char.position.z;
+          const targetRot = Math.atan2(dx, dz);
+          char.rotation.y = THREE.MathUtils.lerp(char.rotation.y, targetRot, 0.05);
+        });
+      }
+    }
+
+    /* --- UI Event Listeners --- */
+    function setupUIEvents() {
+      const playBtn = document.getElementById('btn-play-pause');
+      playBtn.addEventListener('click', () => {
+        initAudio();
+        isPlaying = !isPlaying;
+        playBtn.textContent = isPlaying ? '⏸' : '▶';
+        if (!isPlaying && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          isSpeaking = false;
+        }
+      });
+
+      document.getElementById('btn-restart').addEventListener('click', () => {
+        initAudio();
+        storyTime = 0;
+        currentBeatIdx = -1;
+        isPlaying = true;
+        playBtn.textContent = '⏸';
+        updateStoryTimeline(0);
+      });
+
+      document.getElementById('story-scrubber').addEventListener('input', (e) => {
+        initAudio();
+        storyTime = parseFloat(e.target.value);
+        currentBeatIdx = -1;
+        updateStoryTimeline(storyTime);
+      });
+
+      // Stage Jump Buttons
+      const stageStartTimes = [0, 26.6, 52.1, 78.1, 92.1];
+      document.querySelectorAll('.stage-jump-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          initAudio();
+          const s = parseInt(btn.dataset.stage, 10);
+          storyTime = stageStartTimes[s] || 0;
+          currentBeatIdx = -1;
+          isPlaying = true;
+          playBtn.textContent = '⏸';
+          updateStoryTimeline(storyTime);
+        });
+      });
+
+      // Camera Preset Buttons
+      document.querySelectorAll('[data-cam]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          initAudio();
+          focusCameraPreset(btn.dataset.cam);
+        });
+      });
+
+      // Graphic Modal Triggers
+      document.getElementById('btn-open-architecture').addEventListener('click', () => openGraphicModal(0));
+      document.getElementById('btn-stage-graphic').addEventListener('click', () => openGraphicModal(currentActiveStage));
+      document.getElementById('btn-close-graphic-modal').addEventListener('click', () => {
+        document.getElementById('graphic-modal').classList.add('hidden');
+      });
+      document.querySelectorAll('.modal-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => renderGraphicModalTab(parseInt(btn.dataset.tab, 10)));
+      });
+
+      // Interactive Field Action Button
+      document.getElementById('btn-field-action').addEventListener('click', () => {
+        initAudio();
+        playFxTone(660, 'sine', 0.2, 0.05);
+        const cfg = STAGE_CONFIG[currentActiveStage] || STAGE_CONFIG[0];
+        showActionToast(cfg.actionToast);
+        // Pulse all BESS LEDs bright cyan briefly
+        rackStatusLEDs.forEach(led => led.material.color.setHex(0x38bdf8));
+      });
+
+      // Audio & Subtitle Toggles
+      const audioBtn = document.getElementById('btn-audio');
+      audioBtn.addEventListener('click', () => {
+        initAudio();
+        audioEnabled = !audioEnabled;
+        audioBtn.textContent = audioEnabled ? 'Audio ON' : 'Audio OFF';
+        audioBtn.classList.toggle('active', audioEnabled);
+        if (!audioEnabled && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          isSpeaking = false;
+        }
+      });
+
+      const subBtn = document.getElementById('btn-subtitles');
+      subBtn.addEventListener('click', () => {
+        subtitlesEnabled = !subtitlesEnabled;
+        subBtn.classList.toggle('active', subtitlesEnabled);
+        const box = document.getElementById('dialogue-container');
+        box.classList.toggle('fade-out', !subtitlesEnabled);
+        box.classList.toggle('fade-in', subtitlesEnabled);
+      });
+
+      setupRealTimeVoiceComms();
+    }
+
+    function onResize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+
+    /* --- Main 60 FPS Simulation & Environmental Animation Loop --- */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+      TWEEN.update();
+
+      // 1. Timeline Progression: Hold at end of current beat until speech synthesis completes (Zero Dialogue Cuts!)
+      if (isPlaying) {
+        const nextBeat = STORY_BEATS[currentBeatIdx + 1];
+        if (nextBeat && isSpeaking && storyTime + delta >= nextBeat.start - 0.15) {
+          // Wait smoothly while narrator finishes the final sentence
+        } else {
+          storyTime += delta;
+        }
+
+        if (storyTime >= TOTAL_DURATION) {
+          storyTime = TOTAL_DURATION;
+          isPlaying = false;
+          document.getElementById('btn-play-pause').textContent = '▶';
+        }
+        updateStoryTimeline(storyTime);
+      }
+
+      // 2. Animated Coastal Lagoon Waves
+      if (waterGeo && initialWaterZ) {
+        const pos = waterGeo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i);
+          const y = pos.getY(i);
+          const wave = Math.sin(x * 0.28 + elapsed * 1.6) * 0.06 + Math.cos(y * 0.24 + elapsed * 1.3) * 0.05;
+          pos.setZ(i, initialWaterZ[i] + wave);
+        }
+        pos.needsUpdate = true;
+      }
+
+      // 3. Offshore Floating Solar Pontoon Undulation
+      if (floatingSolarGroup) {
+        floatingSolarGroup.position.y = 0.34 + Math.sin(elapsed * 1.7) * 0.045;
+        floatingSolarGroup.rotation.z = Math.sin(elapsed * 1.3) * 0.018;
+        floatingSolarGroup.rotation.x = Math.cos(elapsed * 1.1) * 0.014;
+      }
+
+      // 4. SearchO2 Operation Boat Gentle Bobbing at Jetty
+      if (searchO2Boat) {
+        searchO2Boat.position.y = 0.36 + Math.sin(elapsed * 2.1 + 0.5) * 0.04;
+        searchO2Boat.rotation.z = Math.sin(elapsed * 1.8) * 0.025;
+        searchO2Boat.rotation.x = Math.cos(elapsed * 1.5) * 0.015;
+      }
+
+      // 5. Continuous Aerodynamic Rotation for Both Wind Turbines
+      if (jettyTurbine && jettyTurbine.userData.rotor) {
+        jettyTurbine.userData.rotor.rotation.z += 0.036;
+      }
+      if (offshoreTurbine && offshoreTurbine.userData.rotor) {
+        offshoreTurbine.userData.rotor.rotation.z += 0.042;
+      }
+
+      // 6. Energy Flow Pulses along Subsea, Jetty & Facility Conduits
+      electronPulses.forEach(ep => {
+        const t = (elapsed * 0.45 + ep.offset) % 1.0;
+        const pt = ep.curve.getPoint(t);
+        ep.mesh.position.copy(pt);
+      });
+
+      // 7. BESS Status LED Heartbeat
+      rackStatusLEDs.forEach((led, idx) => {
+        const active = Math.sin(elapsed * 4.5 + idx * 0.5) > -0.2;
+        led.material.color.setHex(active ? 0x10b981 : 0x064e3b);
+      });
+
+      // 8. Swimming Reef Fish & Gentle Coral Sway
+      reefFish.forEach(f => {
+        const angle = elapsed * f.speed + f.phase;
+        f.mesh.position.set(
+          f.cx + Math.cos(angle) * f.radius,
+          0.02 + Math.sin(elapsed * 2 + f.phase) * 0.05,
+          f.cz + Math.sin(angle) * f.radius
+        );
+        f.mesh.rotation.y = -angle;
+      });
+
+      // 9. Character Subtle Breathing & Arm Gestures
+      if (quillsArmR) quillsArmR.rotation.x = Math.sin(elapsed * 2.2) * 0.12 + 0.25;
+      if (pipArmR) pipArmR.rotation.x = Math.cos(elapsed * 2.8) * 0.15 + 0.2;
+
+      updateProjectedHotspots();
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.onload = () => {
+      init();
+      updateStoryTimeline(0);
+      animate();
+    };
+  </script>
+
+<script>
+window.returnToBlueLab = function(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.closeModal === 'function') {
+      window.parent.closeModal();
+      return false;
+    }
+  } catch(err) {}
+  var ref = document.referrer || '';
+  var search = window.location.search || '';
+  if (ref.indexOf('/hub') !== -1 || search.indexOf('source=hub') !== -1) {
+    window.location.href = '../../hub/index.html#/saint-martin';
+    return false;
+  }
+  window.location.href = '../blue-lab.html';
+  return false;
+};
+window.returnToResearchLab = window.returnToBlueLab;
+</script>
+
+</body>
+</html>

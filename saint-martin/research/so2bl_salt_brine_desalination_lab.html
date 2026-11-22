@@ -1,0 +1,1937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>searchO2 Blue Lab — Salt Brine & Desalination Expedition</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  * { box-sizing: border-box; }
+  body, html {
+    margin: 0; padding: 0; overflow: hidden;
+    width: 100vw; height: 100vh;
+    background: #02121e;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    user-select: none;
+  }
+  #canvas-container { position: absolute; inset: 0; z-index: 1; }
+  .code-font { font-family: 'Fira Code', monospace; }
+
+  .glass {
+    background: rgba(5, 23, 38, 0.78);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+  }
+
+  .icon-btn {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px;
+    background: rgba(8, 47, 73, 0.7);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    color: #7dd3fc;
+    transition: all .2s cubic-bezier(.16,1,.3,1);
+    cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover {
+    background: rgba(14, 116, 144, 0.75);
+    border-color: #38bdf8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(56,189,248,0.3);
+  }
+  .icon-btn.active {
+    background: linear-gradient(135deg, rgba(13,148,136,0.8), rgba(6,182,212,0.8));
+    border-color: #2dd4bf;
+    color: #ccfbf1;
+    box-shadow: 0 0 16px rgba(45,212,191,0.45);
+  }
+
+  .popover {
+    position: absolute;
+    top: 52px; right: 0;
+    width: 320px;
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px 13px;
+    border-radius: 14px;
+    opacity: 0; pointer-events: none;
+    transform: translateY(-6px) scale(0.98);
+    transition: all .22s cubic-bezier(.16,1,.3,1);
+    z-index: 35;
+    font-size: 11px;
+    color: #bae6fd;
+    overscroll-behavior: contain;
+  }
+  .popover.show { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
+  .popover-left { right: auto; left: 0; }
+  .popover::-webkit-scrollbar { width: 4px; }
+  .popover::-webkit-scrollbar-thumb { background: rgba(56,189,248,.4); border-radius: 4px; }
+
+  @media (max-width: 400px) {
+    .popover { width: calc(100vw - 30px); }
+  }
+
+  .pop-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(56,189,248,0.18);
+    margin-bottom: 10px;
+  }
+  .pop-title {
+    font-family: 'Fira Code', monospace;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: .07em; text-transform: uppercase;
+    color: #7dd3fc;
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .live-chip {
+    display: flex; align-items: center; gap: 4px;
+    font-family: 'Fira Code', monospace;
+    font-size: 8px; letter-spacing: .1em;
+    color: #34d399;
+    background: rgba(16,185,129,.12);
+    border: 1px solid rgba(52,211,153,.35);
+    border-radius: 999px; padding: 2px 7px;
+  }
+  .live-dot { width: 5px; height: 5px; border-radius: 50%; background: #34d399; box-shadow: 0 0 6px #34d399; animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  .chip {
+    font-family: 'Fira Code', monospace;
+    font-size: 8.5px; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .chip-amber { background: rgba(245,158,11,.15); color: #fcd34d; border: 1px solid rgba(245,158,11,.4); }
+  .chip-cyan  { background: rgba(6,182,212,.15);  color: #67e8f9; border: 1px solid rgba(6,182,212,.4); }
+  .chip-emerald { background: rgba(16,185,129,.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,.4); }
+  .chip-teal  { background: rgba(45,212,191,.15); color: #5eead4; border: 1px solid rgba(45,212,191,.4); }
+  .chip-rose  { background: rgba(244,63,94,.15); color: #fda4af; border: 1px solid rgba(244,63,94,.4); }
+
+  .pop-desc { margin: 0 0 9px 0; line-height: 1.55; color: #bae6fd; font-size: 10.5px; }
+
+  .info-row {
+    display: flex; justify-content: space-between;
+    padding: 4px 0; font-size: 10px;
+    border-bottom: 1px dashed rgba(56,189,248,.1);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row span:first-child { color: #38bdf8; font-family: 'Fira Code', monospace; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; }
+  .info-row span:last-child { color: #e0f2fe; font-family: 'Fira Code', monospace; font-weight: 600; }
+
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .metric-card {
+    background: rgba(2, 15, 26, 0.65);
+    border: 1px solid rgba(14, 116, 144, 0.45);
+    border-radius: 10px;
+    padding: 7px 8px;
+    min-width: 0;
+  }
+  .m-label {
+    display: block;
+    font-family: 'Fira Code', monospace;
+    font-size: 8px; letter-spacing: .07em;
+    text-transform: uppercase; color: #38bdf8;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .m-value {
+    display: block;
+    font-family: 'Fira Code', monospace;
+    font-size: 12.5px; font-weight: 700;
+    color: #e0f2fe; margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .m-sub { display: block; font-size: 8px; color: #7dd3fc; opacity: .65; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .pop-foot {
+    margin-top: 9px; padding-top: 8px;
+    border-top: 1px solid rgba(56,189,248,0.15);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px;
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; color: #7dd3fc;
+  }
+  .pop-foot b { color: #e0f2fe; font-weight: 600; }
+
+  .proto-list, .sum-list { display: flex; flex-direction: column; gap: 2px; }
+  .proto-row {
+    display: flex; align-items: flex-start; gap: 6px;
+    font-size: 10px; color: #bae6fd; line-height: 1.45;
+    padding: 4px 0;
+    border-bottom: 1px dashed rgba(56,189,248,.08);
+  }
+  .proto-row:last-child { border-bottom: none; }
+  .tick { color: #34d399; font-weight: 700; font-size: 10px; flex-shrink: 0; margin-top: 1px; }
+
+  .sum-title {
+    font-size: 12px; font-weight: 700; color: #f0f9ff;
+    margin-bottom: 7px; letter-spacing: .01em;
+  }
+  .sum-row {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    font-size: 10px; color: #bae6fd;
+    padding: 4px 0;
+    border-bottom: 1px dashed rgba(56,189,248,.08);
+  }
+  .sum-row:last-child { border-bottom: none; }
+  .sum-row span:last-child { color: #e0f2fe; font-family: 'Fira Code', monospace; font-weight: 600; font-size: 9.5px; text-align: right; }
+
+  @keyframes flashBorder {
+    0% { box-shadow: 0 0 0 0 rgba(45,212,191,.6); }
+    100% { box-shadow: 0 0 0 10px rgba(45,212,191,0); }
+  }
+  .popover.flash { animation: flashBorder .7s ease-out; }
+
+  .hud-tl { position: absolute; top: 14px; left: 14px; z-index: 20; }
+  .hud-tr { position: absolute; top: 14px; right: 14px; z-index: 20; display: flex; gap: 8px; }
+  .hud-bl { position: absolute; bottom: 78px; left: 14px; z-index: 20; display: flex; gap: 8px; }
+
+  .subtitle-bar {
+    position: absolute;
+    bottom: 14px; left: 50%;
+    transform: translateX(-50%);
+    width: min(940px, 94vw);
+    padding: 7px 10px 7px 9px;
+    border-radius: 14px;
+    display: flex; align-items: center; gap: 10px;
+    z-index: 20;
+    font-size: 11px;
+    line-height: 1.42;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .sub-avatar {
+    width: 32px; height: 32px; flex-shrink: 0;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px;
+    background: linear-gradient(135deg, rgba(251,191,36,0.9), rgba(45,212,191,0.9));
+    box-shadow: 0 0 12px rgba(45,212,191,0.35);
+  }
+  .sub-body { flex: 1; min-width: 0; }
+  .sub-speaker {
+    font-size: 9px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: #fbbf24;
+    font-family: 'Fira Code', monospace;
+  }
+  .sub-text {
+    color: #e0f2fe; font-size: 11px;
+    margin: 1px 0 0 0; font-weight: 400;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .sub-nav { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .sub-nav button {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: rgba(8,47,73,0.7);
+    border: 1px solid rgba(56,189,248,0.25);
+    color: #7dd3fc; font-size: 10px;
+    cursor: pointer; transition: all .15s;
+  }
+  .sub-nav button:hover { background: rgba(14,116,144,0.75); border-color: #38bdf8; }
+  .sub-nav .idx {
+    font-family: 'Fira Code', monospace;
+    font-size: 9px; color: #7dd3fc;
+    min-width: 34px; text-align: center;
+  }
+
+  #toast {
+    position: fixed; top: 66px; left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: linear-gradient(135deg, rgba(13,148,136,0.96), rgba(6,182,212,0.96));
+    color: #f0fdfa; padding: 7px 18px;
+    border-radius: 999px; font-weight: 600; font-size: 11px;
+    box-shadow: 0 8px 24px rgba(13,148,136,0.5);
+    border: 1px solid rgba(153,246,228,0.5);
+    opacity: 0; pointer-events: none;
+    transition: all .35s cubic-bezier(.16,1,.3,1);
+    z-index: 60;
+    max-width: 88vw; text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body class="text-sky-100">
+
+  <div id="canvas-container"></div>
+
+  <div class="hud-tl">
+    <button class="icon-btn" id="btn-info" title="About the expedition">🌊</button>
+    <div class="popover glass popover-left" id="pop-info">
+      <div class="pop-head">
+        <div class="pop-title"><span>🌊</span> searchO2 Blue Lab</div>
+        <span class="live-chip"><span class="live-dot"></span>LIVE</span>
+      </div>
+      <p class="pop-desc">Thermal desalination + salt-brine recovery. Intake seawater, flash-evaporate, condense pure distillate, crystallise &amp; pack food-grade salt after QoS, then store and distribute drinking water.</p>
+      <div class="info-row"><span>Crew</span><span>Puff · Pip · Lila</span></div>
+      <div class="info-row"><span>Sector</span><span>Coastal 7 — MED/MSF</span></div>
+      <div class="info-row"><span>Phase</span><span id="info-phase">1 / 4</span></div>
+      <div class="info-row"><span>Narration</span><span id="info-voice">Auto</span></div>
+    </div>
+  </div>
+
+  <div class="hud-tr">
+    <a id="archive-home-link" href="#" onclick="returnToBlueLab(event)" class="icon-btn" title="Return to Blue Lab" aria-label="Return to Blue Lab" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">🔬</a>
+    <button class="icon-btn" id="btn-telemetry" title="Process telemetry">📊</button>
+    <button class="icon-btn" id="btn-protocol" title="Process readiness">⚙️</button>
+    <button class="icon-btn" id="btn-outcome" title="Stage summary">📋</button>
+    <button class="icon-btn active" id="btn-voice" title="Narration: auto-advance">🔁</button>
+    <button class="icon-btn active" id="btn-audio" title="Sound effects">🔊</button>
+    <button class="icon-btn" id="btn-view" title="Dive / surface view">🤿</button>
+
+    <div class="popover glass" id="pop-telemetry">
+      <div class="pop-head">
+        <div class="pop-title"><span>📊</span> Process Telemetry</div>
+        <span class="live-chip"><span class="live-dot"></span>LIVE</span>
+      </div>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <span class="m-label">Intake Flow</span>
+          <span class="m-value" id="t-flow">1 840 m³/h</span>
+          <span class="m-sub">Axial-flow pumps</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Top Brine T</span>
+          <span class="m-value" id="t-temp">68.2 °C</span>
+          <span class="m-sub">MED safe range</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Distillate TDS</span>
+          <span class="m-value" id="t-tds">&lt; 8 ppm</span>
+          <span class="m-sub">WHO potable</span>
+        </div>
+        <div class="metric-card">
+          <span class="m-label">Brine Salinity</span>
+          <span class="m-value" id="t-brine">72 ‰</span>
+          <span class="m-sub">Crystal feed</span>
+        </div>
+      </div>
+      <div class="pop-foot"><span>Recovery <b id="t-rec">38 %</b></span><span>GOR 11.4</span></div>
+    </div>
+
+    <div class="popover glass" id="pop-protocol">
+      <div class="pop-head">
+        <div class="pop-title"><span>⚙️</span> Process Readiness</div>
+        <span class="chip chip-teal" id="p-ready-badge">Ready</span>
+      </div>
+      <div class="proto-list">
+        <div class="proto-row"><span class="tick">✓</span> Intake screens clear — debris &amp; biofouling within limits</div>
+        <div class="proto-row"><span class="tick">✓</span> Antiscalant dosing active — CaSO₄ / Mg(OH)₂ suppressed</div>
+        <div class="proto-row"><span class="tick">✓</span> Demisters online — brine entrainment &lt; 0.1 %</div>
+        <div class="proto-row"><span class="tick">✓</span> Distillate conductivity locked &lt; 15 µS/cm</div>
+        <div class="proto-row"><span class="tick">✓</span> Salt moisture &lt; 0.2 % — packing grade achieved</div>
+      </div>
+      <div class="pop-foot"><span>Status</span><b id="p-ready">Full production</b></div>
+    </div>
+
+    <div class="popover glass" id="pop-outcome">
+      <div class="pop-head">
+        <div class="pop-title"><span>📋</span> Stage Summary</div>
+        <span class="chip chip-cyan" id="o-phase">Phase 1</span>
+      </div>
+      <div class="sum-title" id="o-title">Seawater Intake</div>
+      <div class="sum-list" id="o-body"></div>
+      <div class="pop-foot"><span>Next</span><b id="o-foot">Flash evaporation</b></div>
+    </div>
+  </div>
+
+  <div class="hud-bl">
+    <button class="icon-btn active" data-stage="1" title="1 · Intake">🌀</button>
+    <button class="icon-btn" data-stage="2" title="2 · Evaporate">♨️</button>
+    <button class="icon-btn" data-stage="3" title="3 · Condense">💧</button>
+    <button class="icon-btn" data-stage="4" title="4 · Pack & Store">📦</button>
+  </div>
+
+  <div class="subtitle-bar glass">
+    <div class="sub-avatar" id="sub-avatar">🐾</div>
+    <div class="sub-body">
+      <div class="sub-speaker" id="sub-speaker">Prof. Whisker Puff</div>
+      <p class="sub-text" id="sub-text">Welcome aboard.</p>
+    </div>
+    <div class="sub-nav">
+      <button id="sub-prev" title="Previous">◀</button>
+      <span class="idx" id="sub-idx">1/12</span>
+      <button id="sub-next" title="Next">▶</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+/* =========================================================================
+   searchO2 BLUE LAB — Salt Brine Extraction & Thermal Desalination
+   ========================================================================= */
+
+let scene, camera, renderer, controls;
+let waterPlane, causticMesh, bubbleField, vapourField;
+let plantGroup, intakeGroup, saltGroup, packGroup, waterTankGroup;
+let diversGroup;
+let whiskerPuffGroup, peepSqueakGroup, lilaGroup;
+let audioCtx = null, sfxOn = true;
+let voiceMode = 'auto';
+let voiceIdx = 2;
+let userInteracted = false;
+let pendingAdvance = false;
+let speechToken = 0;
+let voicesCache = [];
+let advanceTimer = null;
+let currentUtterance = null;
+let currentStage = 1, currentDialogue = 0;
+let clock = new THREE.Clock();
+let pumpPulse = 0;
+
+const M = (geo, mat, x=0, y=0, z=0) => {
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, y, z);
+  return m;
+};
+
+/* -------------------- Voice profiles -------------------- */
+/* Puff = 11-year-old girl (bright, clear, slightly lower than child) */
+/* Pip  = 7-year-old boy (energetic, higher)                         */
+/* Lila = adult local marine engineer / desalination expert          */
+const VOICE_PROFILES = {
+  'Prof. Whisker Puff': { pitch: 1.48, rate: 1.02, hints: ['female','samantha','zira','karen','google uk english female','susan','hazel','tessa','moira'] },
+  'Pip Squeak':         { pitch: 1.68, rate: 0.98, hints: ['male','daniel','alex','google uk english male','fred','rishi'] },
+  'Dr. Lila Brine':     { pitch: 1.05, rate: 0.97, hints: ['female','samantha','karen','google uk english female','susan','hazel','tessa'] }
+};
+
+function loadVoices() {
+  if ('speechSynthesis' in window) {
+    voicesCache = window.speechSynthesis.getVoices() || [];
+  }
+}
+if ('speechSynthesis' in window) {
+  loadVoices();
+  window.speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+function pickVoice(speaker) {
+  const prof = VOICE_PROFILES[speaker] || { hints: [] };
+  const en = voicesCache.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+  for (const hint of prof.hints) {
+    const hit = en.find(v => v.name.toLowerCase().includes(hint));
+    if (hit) return hit;
+  }
+  return en[0] || null;
+}
+
+/* -------------------- SFX -------------------- */
+function playSfx(type) {
+  if (!sfxOn) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
+
+    if (type === 'bubble') {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(280 + Math.random()*180, now);
+      osc.frequency.exponentialRampToValueAtTime(680 + Math.random()*280, now + 0.12);
+      g.gain.setValueAtTime(0.04, now);
+      g.gain.exponentialRampToValueAtTime(0.0008, now + 0.14);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.14);
+    } else if (type === 'sonar') {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(980, now);
+      g.gain.setValueAtTime(0.09, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.55);
+    } else if (type === 'pump') {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(42, now);
+      g.gain.setValueAtTime(0.03, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+      osc.connect(g); g.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.35);
+    } else if (type === 'steam') {
+      const bufSize = audioCtx.sampleRate * 0.4;
+      const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = (Math.random()*2-1) * Math.exp(-i / (bufSize * 0.35));
+      const src = audioCtx.createBufferSource(); src.buffer = buf;
+      const filt = audioCtx.createBiquadFilter(); filt.type = 'highpass'; filt.frequency.value = 1200;
+      const g = audioCtx.createGain(); g.gain.value = 0.05;
+      src.connect(filt); filt.connect(g); g.connect(audioCtx.destination);
+      src.start(now);
+    }
+  } catch(e) {}
+}
+
+/* -------------------- Dialogues (smooth, continuous) -------------------- */
+const DIALOGUES = [
+  { speaker:"Dr. Lila Brine", role:"Marine Desalination Engineer", avatar:"👩‍🔬", stage:1,
+    cam:{ pos:[-18, 4.2, 22], look:[-8, 0.5, 2] }, divers:[-10, 0.8, 4],
+    text:"“Welcome to Coastal Sector 7. I am Dr. Lila Brine — local marine engineer. Today we walk the full path from seawater intake through pure drinking water and export-grade salt. Puff and Pip will share the science with me.”" },
+
+  { speaker:"Prof. Whisker Puff", role:"Lead Astrobiologist", avatar:"🐾", stage:1,
+    cam:{ pos:[-12, 3.1, 16], look:[-6, -1.2, 1] }, divers:[-8, -0.4, 3],
+    text:"“Look at those big axial-flow intake pumps! They pull thousands of cubic metres per hour of raw seawater through screens that keep fish and debris out. The water is still full of salt — about 35 grams per litre.”" },
+
+  { speaker:"Pip Squeak", role:"Recon & Sensor Operator", avatar:"🐭", stage:1,
+    cam:{ pos:[-6, 1.8, 12], look:[-4, -2.5, 0] }, divers:[-5, -2.2, 2],
+    text:"“Whoa — the pipes go deep under the waves! The pumps are spinning so hard. Can the fish hear the whoosh? I hope the screens are gentle so nobody gets squished!”" },
+
+  { speaker:"Dr. Lila Brine", role:"Marine Desalination Engineer", avatar:"👩‍🔬", stage:2,
+    cam:{ pos:[6, 5.5, 18], look:[8, 2.2, 0] }, divers:[4, 1.5, 3],
+    text:"“Now the heart of the plant: multi-effect distillation. Seawater is sprayed over hot tubes. Steam inside the tubes condenses and gives its heat to the seawater outside, which boils at lower and lower pressure in each effect.”" },
+
+  { speaker:"Prof. Whisker Puff", role:"Lead Astrobiologist", avatar:"🐾", stage:2,
+    cam:{ pos:[12, 4.8, 14], look:[10, 2.0, -1] }, divers:[9, 1.2, 2],
+    text:"“Each effect re-uses the vapour from the one before it. That is why we get a Gain Output Ratio above 11 — more than eleven kilograms of pure water for every kilogram of heating steam. The leftover liquid becomes concentrated brine.”" },
+
+  { speaker:"Pip Squeak", role:"Recon & Sensor Operator", avatar:"🐭", stage:2,
+    cam:{ pos:[14, 3.6, 10], look:[11, 1.8, 0] }, divers:[10, 0.8, 1.5],
+    text:"“Steam clouds! It looks like the ocean is breathing out. The brine is getting thicker and saltier — like the sea is concentrating its own soup so we can take the salt later!”" },
+
+  { speaker:"Dr. Lila Brine", role:"Marine Desalination Engineer", avatar:"👩‍🔬", stage:3,
+    cam:{ pos:[18, 3.2, 12], look:[14, 1.0, -2] }, divers:[13, 0.4, 1],
+    text:"“The vapour rises, passes through demisters that knock out any brine droplets, then touches cold tubes and condenses into pure distillate. Conductivity stays under 15 microsiemens — cleaner than most bottled water.”" },
+
+  { speaker:"Prof. Whisker Puff", role:"Lead Astrobiologist", avatar:"🐾", stage:3,
+    cam:{ pos:[20, 2.8, 9], look:[15, 0.6, -1] }, divers:[14, 0.2, 0.5],
+    text:"“That distillate is pumped to storage tanks, remineralised a little for taste and health, then sent into the distribution network. Meanwhile the brine continues to the crystallisers where salt will form.”" },
+
+  { speaker:"Pip Squeak", role:"Recon & Sensor Operator", avatar:"🐭", stage:3,
+    cam:{ pos:[16, 2.2, 7], look:[13, 0.3, 0] }, divers:[12, -0.2, 0],
+    text:"“Tiny water drops turning into drinkable water! And the leftover salty water is not waste — it becomes the salt we use on food. Nothing is thrown away if we do it right!”" },
+
+  { speaker:"Dr. Lila Brine", role:"Marine Desalination Engineer", avatar:"👩‍🔬", stage:4,
+    cam:{ pos:[8, 4.5, 16], look:[2, 1.5, 4] }, divers:[0, 1.0, 5],
+    text:"“Final stage: the concentrated brine is fed to vacuum crystallisers or solar pans. Pure sodium chloride crystals grow, are centrifuged, washed, dried to under 0.2 percent moisture, then checked for quality — that is our QoS gate.”" },
+
+  { speaker:"Prof. Whisker Puff", role:"Lead Astrobiologist", avatar:"🐾", stage:4,
+    cam:{ pos:[2, 3.8, 14], look:[-4, 1.2, 3] }, divers:[-3, 0.6, 4],
+    text:"“Once the salt passes purity, moisture and microbial tests it is bagged in food-grade sacks, palletised and staged for export. The pure water sits in covered tanks ready for municipal supply or tanker loading.”" },
+
+  { speaker:"Pip Squeak", role:"Recon & Sensor Operator", avatar:"🐭", stage:4,
+    cam:{ pos:[-4, 3.2, 12], look:[-8, 0.8, 2] }, divers:[-6, 0.3, 3],
+    text:"“Bags of shiny white salt and big tanks of clean water! We started with ocean water and ended with both salt for the kitchen and water people can drink. That is the best magic — science magic!”" }
+];
+
+/* -------------------- Stage summaries -------------------- */
+const SUMMARIES = {
+  1: { title:"Seawater Intake & Pumping", phase:"Phase 1",
+       rows:[["Intake flow","1 840 m³/h"],["Pump type","Axial / mixed-flow"],["Screen mesh","2–5 mm"],["Head","8–12 m"]],
+       foot:"Flash evaporation" },
+  2: { title:"Multi-Effect Evaporation", phase:"Phase 2",
+       rows:[["Effects online","12"],["Top brine T","68 °C"],["GOR","11.4"],["Brine salinity","~72 ‰"]],
+       foot:"Condensation" },
+  3: { title:"Vapour Condensation", phase:"Phase 3",
+       rows:[["Distillate TDS","< 8 ppm"],["Conductivity","< 15 µS/cm"],["Demister efficiency","99.9 %"],["Recovery","38 %"]],
+       foot:"Salt & storage" },
+  4: { title:"Salt QoS, Pack & Water Store", phase:"Phase 4",
+       rows:[["Salt moisture","0.18 %"],["Purity (NaCl)","99.6 %"],["Bag size","25 / 50 kg"],["Water tanks","online"]],
+       foot:"Expedition complete" }
+};
+
+/* -------------------- Scene init -------------------- */
+function init() {
+  const container = document.getElementById('canvas-container');
+  const W = window.innerWidth, H = window.innerHeight;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x062231);
+  scene.fog = new THREE.FogExp2(0x073248, 0.012);
+
+  camera = new THREE.PerspectiveCamera(48, W/H, 0.1, 500);
+  camera.position.set(-18, 4.2, 22);
+
+  renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
+  container.appendChild(renderer.domElement);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.maxPolarAngle = Math.PI/2 + 0.12;
+  controls.minDistance = 4;
+  controls.maxDistance = 140;
+  controls.target.set(-8, 0.5, 2);
+
+  buildSky();
+  buildLighting();
+  buildSeabed();
+  buildPlant();
+  buildIntake();
+  buildSaltArea();
+  buildPacking();
+  buildWaterTanks();
+  buildCharacters();
+  buildParticles();
+
+  setupUI();
+  renderSummary(1);
+  applyStage(1, true, false);
+  showDialogue(0, true);
+
+  window.addEventListener('resize', onResize);
+
+  window.addEventListener('pointerdown', (e) => {
+    if (!userInteracted) {
+      userInteracted = true;
+      if (e.target === renderer.domElement && voiceMode !== 'off') {
+        speakCurrent();
+      }
+    }
+  }, true);
+
+  animate();
+}
+
+function onResize() {
+  const W = window.innerWidth, H = window.innerHeight;
+  camera.aspect = W/H; camera.updateProjectionMatrix();
+  renderer.setSize(W, H);
+}
+
+/* -------------------- Sky -------------------- */
+function buildSky() {
+  const geo = new THREE.SphereGeometry(240, 32, 20);
+  const colors = [];
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i) / 240;
+    let c;
+    if (y > 0.12) c = new THREE.Color(0x6eb8e0).lerp(new THREE.Color(0xb8e0f8), Math.min(1, y));
+    else c = new THREE.Color(0x0a3a52).lerp(new THREE.Color(0x6eb8e0), Math.max(0, (y+0.35)/0.5));
+    colors.push(c.r, c.g, c.b);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors:true, side: THREE.BackSide, fog: false })));
+
+  const sunGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(16, 20, 20),
+    new THREE.MeshBasicMaterial({ color: 0xfff4d0, transparent:true, opacity:0.5, fog:false })
+  );
+  sunGlow.position.set(80, 100, 50);
+  scene.add(sunGlow);
+}
+
+/* -------------------- Lighting -------------------- */
+function buildLighting() {
+  scene.add(new THREE.AmbientLight(0x1a6a8a, 1.05));
+
+  const sun = new THREE.DirectionalLight(0xfff4d6, 2.1);
+  sun.position.set(35, 60, 20);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 220;
+  const d = 50;
+  sun.shadow.camera.left = -d; sun.shadow.camera.right = d;
+  sun.shadow.camera.top = d; sun.shadow.camera.bottom = -d;
+  sun.shadow.bias = -0.0004;
+  scene.add(sun);
+
+  const plantLight = new THREE.PointLight(0x38bdf8, 2.8, 40);
+  plantLight.position.set(10, 6, 2);
+  scene.add(plantLight);
+
+  const warm = new THREE.PointLight(0xfbbf24, 1.4, 25);
+  warm.position.set(-12, 5, 6);
+  scene.add(warm);
+
+  const fill = new THREE.PointLight(0x0ea5e9, 1.0, 70);
+  fill.position.set(0, 15, 0);
+  scene.add(fill);
+}
+
+/* -------------------- Seabed -------------------- */
+function buildSeabed() {
+  const sandGeo = new THREE.PlaneGeometry(200, 200, 64, 64);
+  sandGeo.rotateX(-Math.PI/2);
+  const pos = sandGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const d = Math.sin(x*0.06)*Math.cos(z*0.06)*0.8 + Math.sin(x*0.18)*0.25;
+    const slope = (x < -20) ? Math.min(9, (-x-20)*0.25) : 0;
+    pos.setY(i, -11.5 + d + slope);
+  }
+  sandGeo.computeVertexNormals();
+
+  const seabed = new THREE.Mesh(sandGeo,
+    new THREE.MeshStandardMaterial({ color: 0xc4a882, roughness: 0.92, metalness: 0.03 }));
+  seabed.receiveShadow = true;
+  scene.add(seabed);
+
+  // Rocks
+  const rockColors = [0x3d3934, 0x4a4038, 0x5c5048, 0x2f2b28];
+  for (let r = 0; r < 22; r++) {
+    const rock = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(1.0 + Math.random()*2.0, 1),
+      new THREE.MeshStandardMaterial({ color: rockColors[r%4], roughness: 0.9 })
+    );
+    rock.position.set(-45 + Math.random()*20, -7 + Math.random()*6, -50 + Math.random()*100);
+    rock.scale.set(1.1, 0.7, 1.3);
+    rock.rotation.set(Math.random(), Math.random(), Math.random());
+    rock.castShadow = true;
+    scene.add(rock);
+  }
+
+  // Water surface
+  const waterGeo = new THREE.PlaneGeometry(200, 200, 80, 80);
+  waterGeo.rotateX(-Math.PI/2);
+  waterPlane = new THREE.Mesh(waterGeo, new THREE.MeshPhysicalMaterial({
+    color: 0x0ea5e9, transparent: true, opacity: 0.55,
+    roughness: 0.12, metalness: 0.08, transmission: 0.8, ior: 1.333,
+    side: THREE.DoubleSide, depthWrite: false
+  }));
+  waterPlane.position.y = 0;
+  scene.add(waterPlane);
+}
+
+/* -------------------- Main Plant (evaporators / effects) -------------------- */
+function buildPlant() {
+  plantGroup = new THREE.Group();
+  plantGroup.position.set(10, 0, 0);
+
+  const steel = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.35, metalness: 0.75 });
+  const darkSteel = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4, metalness: 0.8 });
+  const copper = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.45, metalness: 0.7 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.5 });
+  const cyan = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.3, emissive: 0x0891b2, emissiveIntensity: 0.15 });
+
+  // Main evaporator hall base
+  const base = M(new THREE.BoxGeometry(28, 1.2, 16), darkSteel, 0, 0.6, 0);
+  base.receiveShadow = true;
+  plantGroup.add(base);
+
+  // Multi-effect vessels (cylindrical effects in a row)
+  for (let i = 0; i < 6; i++) {
+    const effect = new THREE.Group();
+    effect.position.set(-10 + i * 4.2, 3.2, 0);
+
+    // Vessel body
+    const vessel = M(new THREE.CylinderGeometry(1.6, 1.6, 5.2, 20), steel);
+    vessel.castShadow = true;
+    effect.add(vessel);
+
+    // Top dome
+    effect.add(M(new THREE.SphereGeometry(1.6, 16, 12, 0, Math.PI*2, 0, Math.PI/2), steel, 0, 2.6, 0));
+
+    // Bottom cone-ish
+    effect.add(M(new THREE.CylinderGeometry(1.6, 0.9, 0.8, 16), darkSteel, 0, -2.8, 0));
+
+    // Sight glass / window
+    effect.add(M(new THREE.CircleGeometry(0.35, 16),
+      new THREE.MeshPhysicalMaterial({ color: 0x7dd3fc, transparent:true, opacity:0.4, transmission:0.7 }),
+      0, 0.8, 1.61));
+
+    // Steam inlet pipe (top)
+    effect.add(M(new THREE.CylinderGeometry(0.22, 0.22, 1.4, 10), copper, 0, 3.6, 0));
+    effect.add(M(new THREE.SphereGeometry(0.28, 10, 10), copper, 0, 4.3, 0));
+
+    // Brine outlet
+    effect.add(M(new THREE.CylinderGeometry(0.18, 0.18, 1.0, 8), darkSteel, 0.9, -3.0, 0));
+    effect.add(M(new THREE.CylinderGeometry(0.18, 0.18, 1.6, 8), darkSteel, 1.7, -3.4, 0));
+
+    // Vapour transfer pipe to next effect
+    if (i < 5) {
+      const pipe = M(new THREE.CylinderGeometry(0.2, 0.2, 3.2, 10), cyan, 2.1, 2.8, 0);
+      pipe.rotation.z = Math.PI/2;
+      effect.add(pipe);
+    }
+
+    plantGroup.add(effect);
+  }
+
+  // Brine heater at the start
+  const heater = new THREE.Group();
+  heater.position.set(-14.5, 3.5, 0);
+  heater.add(M(new THREE.CylinderGeometry(1.8, 1.8, 4.5, 18), copper));
+  heater.add(M(new THREE.SphereGeometry(1.8, 14, 10, 0, Math.PI*2, 0, Math.PI/2), copper, 0, 2.25, 0));
+  heater.add(M(new THREE.BoxGeometry(1.2, 0.6, 0.8), darkSteel, 0, 3.6, 0));
+  plantGroup.add(heater);
+
+  // Condenser / final cooler
+  const condenser = new THREE.Group();
+  condenser.position.set(16, 2.8, 0);
+  condenser.add(M(new THREE.BoxGeometry(5, 4.5, 4), steel));
+  condenser.add(M(new THREE.CylinderGeometry(0.35, 0.35, 3.5, 10), cyan, -1.2, 0, 2.2));
+  condenser.add(M(new THREE.CylinderGeometry(0.35, 0.35, 3.5, 10), cyan, 0, 0, 2.2));
+  condenser.add(M(new THREE.CylinderGeometry(0.35, 0.35, 3.5, 10), cyan, 1.2, 0, 2.2));
+  plantGroup.add(condenser);
+
+  // Walkway / platform
+  plantGroup.add(M(new THREE.BoxGeometry(32, 0.25, 3.5), white, 0, 5.6, 4.5));
+  for (let r = -14; r <= 14; r += 4) {
+    plantGroup.add(M(new THREE.CylinderGeometry(0.12, 0.12, 5.4, 8), darkSteel, r, 2.9, 4.5));
+  }
+
+  // Label poles / sensors
+  for (let s = 0; s < 4; s++) {
+    const pole = M(new THREE.CylinderGeometry(0.06, 0.06, 2.2, 6), darkSteel, -8 + s*5, 6.8, 3.8);
+    plantGroup.add(pole);
+    plantGroup.add(M(new THREE.BoxGeometry(0.5, 0.3, 0.08), cyan, -8 + s*5, 7.9, 3.8));
+  }
+
+  scene.add(plantGroup);
+}
+
+/* -------------------- Intake structure -------------------- */
+function buildIntake() {
+  intakeGroup = new THREE.Group();
+  intakeGroup.position.set(-22, 0, 4);
+
+  const concrete = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.85 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5, metalness: 0.6 });
+  const yellow = new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.4 });
+
+  // Intake head structure
+  intakeGroup.add(M(new THREE.BoxGeometry(8, 2.5, 6), concrete, 0, 1.2, 0));
+  intakeGroup.add(M(new THREE.BoxGeometry(9, 0.4, 7), concrete, 0, 2.5, 0));
+
+  // Large intake pipes going into water
+  for (let p = -1.5; p <= 1.5; p += 1.5) {
+    const pipe = M(new THREE.CylinderGeometry(0.7, 0.7, 14, 16), dark, p, -5, 0);
+    pipe.rotation.x = Math.PI/2;
+    pipe.position.z = -6;
+    intakeGroup.add(pipe);
+
+    // Screen cage at end
+    const cage = M(new THREE.CylinderGeometry(1.1, 1.1, 1.4, 12, 1, true),
+      new THREE.MeshStandardMaterial({ color: 0x94a3b8, wireframe: true, roughness: 0.7 }),
+      p, -5, -12.5);
+    cage.rotation.x = Math.PI/2;
+    intakeGroup.add(cage);
+  }
+
+  // Pump houses
+  for (let i = 0; i < 3; i++) {
+    const pump = new THREE.Group();
+    pump.position.set(-2.5 + i*2.5, 3.2, 1.5);
+    pump.add(M(new THREE.CylinderGeometry(0.55, 0.55, 1.6, 14), yellow));
+    pump.add(M(new THREE.CylinderGeometry(0.35, 0.35, 0.9, 10), dark, 0, 1.1, 0));
+    pump.add(M(new THREE.BoxGeometry(0.9, 0.5, 0.7), dark, 0, -0.9, 0));
+    // rotating impeller indicator
+    const impeller = M(new THREE.TorusGeometry(0.4, 0.08, 6, 12), dark, 0, 0, 0);
+    impeller.userData = { spin: true };
+    pump.add(impeller);
+    intakeGroup.add(pump);
+  }
+
+  // Discharge header
+  intakeGroup.add(M(new THREE.CylinderGeometry(0.45, 0.45, 9, 12), dark, 0, 4.2, 3));
+  intakeGroup.add(M(new THREE.CylinderGeometry(0.45, 0.45, 6, 12), dark, 4.5, 4.2, 0));
+
+  scene.add(intakeGroup);
+}
+
+/* -------------------- Salt crystallisation area -------------------- */
+function buildSaltArea() {
+  saltGroup = new THREE.Group();
+  saltGroup.position.set(4, 0, 12);
+
+  const white = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.7 });
+  const concrete = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.5 });
+
+  // Crystalliser tanks
+  for (let i = 0; i < 3; i++) {
+    const tank = new THREE.Group();
+    tank.position.set(i * 5.5 - 5.5, 2.2, 0);
+    tank.add(M(new THREE.CylinderGeometry(2.0, 2.0, 3.8, 18), concrete));
+    tank.add(M(new THREE.CylinderGeometry(2.05, 2.05, 0.3, 18), dark, 0, 1.95, 0));
+    // Salt crystals pile inside (visible top)
+    tank.add(M(new THREE.ConeGeometry(1.6, 1.4, 12), white, 0, 0.9, 0));
+    saltGroup.add(tank);
+  }
+
+  // Centrifuge / dryer
+  const dryer = new THREE.Group();
+  dryer.position.set(12, 2.0, 0);
+  dryer.add(M(new THREE.BoxGeometry(4, 3.2, 3.5), dark));
+  dryer.add(M(new THREE.CylinderGeometry(1.2, 1.2, 2.8, 14), concrete, 0, 0, 0));
+  saltGroup.add(dryer);
+
+  // Salt pile on ground
+  saltGroup.add(M(new THREE.ConeGeometry(2.8, 2.2, 16), white, 0, 1.1, 6));
+  saltGroup.add(M(new THREE.ConeGeometry(1.8, 1.5, 12), white, 4, 0.75, 7));
+
+  scene.add(saltGroup);
+}
+
+/* -------------------- Packing area -------------------- */
+function buildPacking() {
+  packGroup = new THREE.Group();
+  packGroup.position.set(-8, 0, 14);
+
+  const wood = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.75 });
+  const plastic = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, roughness: 0.4 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+
+  // Conveyor base
+  packGroup.add(M(new THREE.BoxGeometry(14, 0.4, 2.2), dark, 0, 0.9, 0));
+  packGroup.add(M(new THREE.BoxGeometry(14, 0.15, 1.8), wood, 0, 1.15, 0));
+
+  // Bags on conveyor
+  for (let b = 0; b < 6; b++) {
+    const bag = M(new THREE.BoxGeometry(0.9, 1.1, 0.55), plastic, -5 + b*1.8, 1.75, 0);
+    bag.castShadow = true;
+    packGroup.add(bag);
+  }
+
+  // Pallet stacks
+  for (let p = 0; p < 3; p++) {
+    const pallet = new THREE.Group();
+    pallet.position.set(-4 + p*4, 0.4, 4);
+    pallet.add(M(new THREE.BoxGeometry(2.4, 0.25, 2.0), wood));
+    for (let r = 0; r < 2; r++) {
+      for (let c = 0; c < 2; c++) {
+        pallet.add(M(new THREE.BoxGeometry(1.0, 1.0, 0.6), plastic, -0.55 + c*1.1, 0.7 + r*1.1, 0));
+      }
+    }
+    packGroup.add(pallet);
+  }
+
+  // Small crane / bagger head
+  packGroup.add(M(new THREE.BoxGeometry(2.5, 0.3, 1.5), dark, 0, 3.4, 0));
+  packGroup.add(M(new THREE.CylinderGeometry(0.15, 0.15, 2.2, 8), dark, 0, 2.3, 0));
+
+  scene.add(packGroup);
+}
+
+/* -------------------- Pure water storage tanks -------------------- */
+function buildWaterTanks() {
+  waterTankGroup = new THREE.Group();
+  waterTankGroup.position.set(18, 0, 10);
+
+  const white = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.45 });
+  const cyan = new THREE.MeshStandardMaterial({ color: 0x22d3ee, roughness: 0.3, emissive: 0x06b6d4, emissiveIntensity: 0.12 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.6 });
+
+  for (let i = 0; i < 3; i++) {
+    const tank = new THREE.Group();
+    tank.position.set(0, 3.5, i * 6 - 6);
+    // Large vertical storage tank
+    tank.add(M(new THREE.CylinderGeometry(2.4, 2.4, 7, 20), white));
+    tank.add(M(new THREE.SphereGeometry(2.4, 16, 10, 0, Math.PI*2, 0, Math.PI/2), white, 0, 3.5, 0));
+    tank.add(M(new THREE.SphereGeometry(2.4, 16, 10, 0, Math.PI*2, Math.PI/2, Math.PI/2), white, 0, -3.5, 0));
+    // Water level indicator
+    tank.add(M(new THREE.BoxGeometry(0.25, 4.5, 0.12), cyan, 2.45, 0, 0));
+    // Top vent
+    tank.add(M(new THREE.CylinderGeometry(0.3, 0.3, 0.8, 8), dark, 0, 4.2, 0));
+    waterTankGroup.add(tank);
+  }
+
+  // Distribution pipe header
+  waterTankGroup.add(M(new THREE.CylinderGeometry(0.35, 0.35, 14, 12), dark, 0, 0.5, 0));
+  waterTankGroup.add(M(new THREE.CylinderGeometry(0.35, 0.35, 8, 12), dark, -4, 0.5, -6));
+
+  scene.add(waterTankGroup);
+}
+
+/* -------------------- Characters -------------------- */
+function buildCharacters() {
+  diversGroup = new THREE.Group();
+  diversGroup.position.set(-10, 0.8, 4);
+
+  whiskerPuffGroup = buildWhiskerPuff();
+  whiskerPuffGroup.position.set(-2.2, 0, 1.5);
+  whiskerPuffGroup.userData.basePos = whiskerPuffGroup.position.clone();
+  diversGroup.add(whiskerPuffGroup);
+
+  peepSqueakGroup = buildPeepSqueak();
+  peepSqueakGroup.position.set(0.6, 0.3, 2.2);
+  peepSqueakGroup.userData.basePos = peepSqueakGroup.position.clone();
+  diversGroup.add(peepSqueakGroup);
+
+  lilaGroup = buildLila();
+  lilaGroup.position.set(2.8, -0.2, 0.4);
+  lilaGroup.userData.basePos = lilaGroup.position.clone();
+  diversGroup.add(lilaGroup);
+
+  scene.add(diversGroup);
+}
+
+/* ---------- Prof. Whisker Puff (11-year-old calico girl) ---------- */
+function buildWhiskerPuff() {
+  const g = new THREE.Group();
+  g.name = "Whisker";
+
+  const ginger = new THREE.MeshStandardMaterial({ color: 0xde7d34, roughness: 0.7 });
+  const white  = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+  const patchMat = new THREE.MeshStandardMaterial({ color: 0x3d2314, roughness: 0.7 });
+  const suit   = new THREE.MeshStandardMaterial({ color: 0x0f766e, roughness: 0.4 });
+  const metal  = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.85, roughness: 0.25 });
+  const yellowTank = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.35, metalness: 0.2 });
+  const rubber = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
+  const pink   = new THREE.MeshStandardMaterial({ color: 0xf9a8d4, roughness: 0.55 });
+  const black  = new THREE.MeshStandardMaterial({ color: 0x0b0b0b, roughness: 0.5 });
+  const glass  = new THREE.MeshPhysicalMaterial({
+    color: 0xbae6fd, transparent: true, opacity: 0.32,
+    roughness: 0.06, transmission: 0.92, ior: 1.45
+  });
+  const lensMat = new THREE.MeshPhysicalMaterial({
+    color: 0x7dd3fc, transparent: true, opacity: 0.3,
+    roughness: 0.1, transmission: 0.88, ior: 1.4
+  });
+  const goldEye = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xf59e0b, emissiveIntensity: 0.35 });
+
+  // Body (slightly taller for 11yo)
+  const body = M(new THREE.SphereGeometry(0.82, 20, 20), suit, 0, 0, 0);
+  body.scale.set(1.0, 1.35, 0.95);
+  g.add(body);
+
+  const chest = M(new THREE.SphereGeometry(0.68, 16, 16), white, 0, 0.15, 0.48);
+  chest.scale.set(0.75, 1.05, 0.5);
+  g.add(chest);
+
+  [-0.3, 0.3].forEach(sx => {
+    const strap = M(new THREE.BoxGeometry(0.15, 1.2, 0.1), rubber, sx, 0.3, 0.55);
+    strap.rotation.z = sx > 0 ? -0.1 : 0.1;
+    g.add(strap);
+  });
+  const belt = M(new THREE.TorusGeometry(0.8, 0.08, 8, 24), rubber, 0, -0.4, 0);
+  belt.rotation.x = Math.PI/2;
+  belt.scale.set(1, 1, 0.9);
+  g.add(belt);
+
+  // Tail
+  const tailCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, -0.6, -0.5),
+    new THREE.Vector3(0.2, -1.0, -0.9),
+    new THREE.Vector3(0.6, -1.2, -1.2),
+    new THREE.Vector3(0.95, -1.05, -1.4)
+  ]);
+  const tail = new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 12, 0.09, 8, false), ginger);
+  g.add(tail);
+  g.userData.tail = tail;
+
+  // Head
+  const head = new THREE.Group();
+  head.position.set(0, 1.25, 0.12);
+
+  const skull = M(new THREE.SphereGeometry(0.7, 22, 22), ginger);
+  skull.scale.set(1.1, 0.95, 1.0);
+  head.add(skull);
+
+  const patch = M(new THREE.SphereGeometry(0.32, 14, 14), patchMat, -0.26, 0.22, 0.5);
+  head.add(patch);
+
+  // Ears
+  const earGeo = new THREE.ConeGeometry(0.22, 0.45, 4);
+  const earL = M(earGeo, ginger, -0.42, 0.62, 0);
+  earL.rotation.z = 0.28;
+  head.add(earL);
+  head.add(M(new THREE.ConeGeometry(0.12, 0.28, 4), pink, -0.42, 0.63, 0.05).rotateZ(0.28));
+
+  const earR = M(earGeo, patchMat, 0.42, 0.62, 0);
+  earR.rotation.z = -0.28;
+  head.add(earR);
+  head.add(M(new THREE.ConeGeometry(0.12, 0.28, 4), pink, 0.42, 0.63, 0.05).rotateZ(-0.28));
+
+  // Muzzle
+  const muzzle = M(new THREE.SphereGeometry(0.28, 16, 16), white, 0, -0.14, 0.5);
+  muzzle.scale.set(1.15, 0.65, 0.6);
+  head.add(muzzle);
+
+  head.add(M(new THREE.ConeGeometry(0.065, 0.08, 6), pink, 0, -0.08, 0.7).rotateX(Math.PI));
+  head.add(M(new THREE.TorusGeometry(0.07, 0.012, 6, 12, Math.PI), black, 0, -0.2, 0.65).rotateZ(Math.PI));
+
+  // Whiskers
+  [-1, 1].forEach(side => {
+    for (let w = 0; w < 3; w++) {
+      const whisk = M(new THREE.CylinderGeometry(0.005, 0.005, 0.36, 4), white,
+        side * 0.32, -0.12 + w*0.05, 0.58);
+      whisk.rotation.z = Math.PI/2;
+      whisk.rotation.y = side * (0.18 + w*0.11);
+      head.add(whisk);
+    }
+  });
+
+  // Eyes + goggles
+  [-0.18, 0.18].forEach(ex => {
+    const sclera = M(new THREE.SphereGeometry(0.13, 14, 14), white, ex, 0.11, 0.62);
+    sclera.scale.set(1, 1, 0.7);
+    head.add(sclera);
+    head.add(M(new THREE.CircleGeometry(0.08, 20), goldEye, ex, 0.11, 0.72));
+    head.add(M(new THREE.CircleGeometry(0.04, 16), black, ex, 0.11, 0.721));
+    head.add(M(new THREE.CircleGeometry(0.014, 10),
+      new THREE.MeshBasicMaterial({ color: 0xffffff }), ex + 0.022, 0.13, 0.722));
+
+    head.add(M(new THREE.TorusGeometry(0.17, 0.028, 8, 20), rubber, ex, 0.11, 0.73));
+    head.add(M(new THREE.CircleGeometry(0.145, 24), lensMat, ex, 0.11, 0.74));
+  });
+  head.add(M(new THREE.BoxGeometry(0.16, 0.04, 0.045), rubber, 0, 0.11, 0.74));
+
+  const strap = M(new THREE.TorusGeometry(0.72, 0.03, 8, 28), rubber, 0, 0.11, 0.02);
+  strap.rotation.x = Math.PI/2;
+  strap.scale.set(1.05, 1, 0.95);
+  head.add(strap);
+
+  // Helmet
+  head.add(M(new THREE.SphereGeometry(1.0, 26, 26), glass, 0, 0.05, 0.06));
+  head.add(M(new THREE.TorusGeometry(0.82, 0.08, 12, 26), metal, 0, -0.68, 0.05).rotateX(Math.PI/2));
+
+  // Regulator
+  const reg = M(new THREE.CylinderGeometry(0.12, 0.12, 0.15, 12), metal, 0, -0.2, 0.85);
+  reg.rotation.z = Math.PI/2;
+  head.add(reg);
+
+  g.add(head);
+
+  // Tanks
+  const tankGroup = new THREE.Group();
+  tankGroup.position.set(0, 0.2, -0.85);
+  [-0.3, 0.3].forEach(tx => {
+    tankGroup.add(M(new THREE.CylinderGeometry(0.24, 0.24, 1.5, 16), yellowTank, tx, 0, 0));
+    tankGroup.add(M(new THREE.SphereGeometry(0.24, 12, 12, 0, Math.PI*2, 0, Math.PI/2), metal, tx, 0.75, 0));
+  });
+  tankGroup.add(M(new THREE.CylinderGeometry(0.065, 0.065, 0.8, 8), metal, 0, 0.82, 0).rotateZ(Math.PI/2));
+  g.add(tankGroup);
+
+  // Legs & flippers
+  g.userData.flippers = [];
+  [-0.42, 0.42].forEach(fx => {
+    g.add(M(new THREE.CylinderGeometry(0.17, 0.13, 0.55, 10), suit, fx, -1.05, -0.12).rotateX(0.35));
+    const flipper = M(new THREE.BoxGeometry(0.4, 0.055, 1.1), rubber, fx, -1.4, 0.32);
+    flipper.rotation.x = -0.28;
+    flipper.userData = { baseX: -0.28, phase: Math.random()*Math.PI*2 };
+    g.add(flipper);
+    g.userData.flippers.push(flipper);
+  });
+
+  g.add(M(new THREE.SphereGeometry(0.2, 10, 10), white, -0.72, -0.05, 0.5));
+  const rightArm = new THREE.Group();
+  rightArm.position.set(0.72, -0.05, 0.5);
+  rightArm.add(M(new THREE.SphereGeometry(0.2, 10, 10), white));
+  rightArm.add(M(new THREE.BoxGeometry(0.32, 0.2, 0.05),
+    new THREE.MeshStandardMaterial({ color: 0x06b6d4, emissive: 0x0891b2, emissiveIntensity: 0.8 }),
+    0.16, 0.08, 0.12));
+  g.add(rightArm);
+
+  g.userData.regulatorLocal = new THREE.Vector3(0, 1.05, 0.95);
+  g.userData.bubbleState = makeBubbleEmitter(g, 12, g.userData.regulatorLocal);
+
+  return g;
+}
+
+/* ---------- Pip Squeak (7-year-old boy mouse) ---------- */
+function buildPeepSqueak() {
+  const peep = new THREE.Group();
+  peep.name = "Pip";
+  peep.scale.set(0.62, 0.62, 0.62);
+  peep.userData.baseScale = 0.62;
+
+  const fur   = new THREE.MeshStandardMaterial({ color: 0xa8714b, roughness: 0.8 });
+  const lightFur = new THREE.MeshStandardMaterial({ color: 0xd6b48f, roughness: 0.85 });
+  const pink  = new THREE.MeshStandardMaterial({ color: 0xf9a8d4, roughness: 0.55 });
+  const glass = new THREE.MeshPhysicalMaterial({
+    color: 0x7dd3fc, transparent: true, opacity: 0.32,
+    roughness: 0.08, transmission: 0.92
+  });
+  const cyanSuit = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.3 });
+  const orange = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.5 });
+  const darkStrap = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.7 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x0b0b0b, roughness: 0.4 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+  const silver = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
+
+  const body = M(new THREE.SphereGeometry(0.48, 18, 18), cyanSuit);
+  body.scale.set(0.92, 1.25, 0.9);
+  peep.add(body);
+
+  [-0.17, 0.17].forEach(sx => {
+    peep.add(M(new THREE.BoxGeometry(0.08, 0.72, 0.05), darkStrap, sx, 0.12, 0.4).rotateZ(sx > 0 ? -0.08 : 0.08));
+  });
+  peep.add(M(new THREE.TorusGeometry(0.46, 0.045, 8, 20), darkStrap, 0, -0.1, 0).rotateX(Math.PI/2));
+
+  const tailCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, -0.32, -0.38),
+    new THREE.Vector3(0.12, -0.5, -0.65),
+    new THREE.Vector3(0.05, -0.7, -0.8)
+  ]);
+  peep.add(new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 8, 0.032, 6, false), pink));
+
+  const head = new THREE.Group();
+  head.position.set(0, 0.72, 0.08);
+
+  head.add(M(new THREE.SphereGeometry(0.38, 16, 16), fur));
+  const muzzle = M(new THREE.SphereGeometry(0.18, 12, 12), lightFur, 0, -0.08, 0.26);
+  muzzle.scale.set(1.05, 0.8, 0.9);
+  head.add(muzzle);
+
+  [-0.26, 0.26].forEach(ex => {
+    const ear = M(new THREE.CylinderGeometry(0.19, 0.19, 0.03, 14), fur, ex, 0.25, -0.02);
+    ear.rotation.set(0.25, 0, ex > 0 ? -0.4 : 0.4);
+    head.add(ear);
+    head.add(M(new THREE.CylinderGeometry(0.12, 0.12, 0.018, 12), pink, ex, 0.265, 0).rotateX(0.25).rotateZ(ex > 0 ? -0.4 : 0.4));
+  });
+
+  [-0.14, 0.14].forEach(ex => {
+    const eye = M(new THREE.SphereGeometry(0.11, 12, 12), white, ex, 0.06, 0.26);
+    eye.scale.set(1, 1.1, 0.7);
+    head.add(eye);
+    head.add(M(new THREE.SphereGeometry(0.055, 10, 10), black, ex, 0.06, 0.34).scale.set(1, 1.1, 0.5));
+    head.add(M(new THREE.SphereGeometry(0.02, 6, 6), white, ex + 0.03, 0.09, 0.36));
+  });
+
+  head.add(M(new THREE.SphereGeometry(0.045, 8, 8), pink, 0, -0.01, 0.44));
+  head.add(M(new THREE.BoxGeometry(0.045, 0.07, 0.025), white, -0.025, -0.12, 0.42));
+  head.add(M(new THREE.BoxGeometry(0.045, 0.07, 0.025), white, 0.025, -0.12, 0.42));
+
+  [-1, 1].forEach(side => {
+    for (let w = 0; w < 3; w++) {
+      const whisk = M(new THREE.CylinderGeometry(0.004, 0.004, 0.24, 4), lightFur,
+        side * 0.22, -0.03 + w*0.035, 0.4);
+      whisk.rotation.z = Math.PI/2;
+      whisk.rotation.y = side * (0.22 + w*0.1);
+      head.add(whisk);
+    }
+  });
+
+  [-0.15, 0.15].forEach(ex => {
+    head.add(M(new THREE.TorusGeometry(0.12, 0.02, 6, 16), darkStrap, ex, 0.06, 0.38));
+  });
+  head.add(M(new THREE.BoxGeometry(0.05, 0.025, 0.025), darkStrap, 0, 0.06, 0.38));
+
+  head.add(M(new THREE.SphereGeometry(0.65, 22, 22), glass));
+  head.add(M(new THREE.TorusGeometry(0.48, 0.04, 8, 24), silver, 0, -0.48, 0).rotateX(Math.PI/2));
+
+  head.add(M(new THREE.CylinderGeometry(0.014, 0.014, 0.28, 6), silver, 0, 0.72, 0));
+  const beacon = M(new THREE.SphereGeometry(0.055, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0x22d3ee, emissive: 0x22d3ee, emissiveIntensity: 1 }),
+    0, 0.88, 0);
+  head.add(beacon);
+  peep.userData.antenna = beacon;
+
+  peep.add(head);
+
+  peep.add(M(new THREE.CylinderGeometry(0.16, 0.16, 0.8, 12), orange, 0, 0.08, -0.55));
+  peep.add(M(new THREE.SphereGeometry(0.16, 10, 10, 0, Math.PI*2, 0, Math.PI/2), silver, 0, 0.48, -0.55));
+
+  peep.userData.flippers = [];
+  [-0.2, 0.2].forEach(fx => {
+    const flipper = M(new THREE.BoxGeometry(0.25, 0.045, 0.68), orange, fx, -0.65, 0.16);
+    flipper.rotation.x = -0.22;
+    flipper.userData = { baseX: -0.22, phase: Math.random()*Math.PI*2 };
+    peep.add(flipper);
+    peep.userData.flippers.push(flipper);
+  });
+
+  peep.userData.regulatorLocal = new THREE.Vector3(0, 0.55, 0.5);
+  peep.userData.bubbleState = makeBubbleEmitter(peep, 9, peep.userData.regulatorLocal);
+
+  return peep;
+}
+
+/* ---------- Dr. Lila Brine (adult local marine engineer) ---------- */
+function buildLila() {
+  const lila = new THREE.Group();
+  lila.name = "Lila";
+
+  const skin = new THREE.MeshStandardMaterial({ color: 0xc68642, roughness: 0.7 });
+  const suit = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, roughness: 0.35 });
+  const orange = new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.4, emissive: 0xea580c, emissiveIntensity: 0.06 });
+  const steel = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.85, roughness: 0.25 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.55 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x0b0b0b, roughness: 0.4 });
+  const lensMat = new THREE.MeshPhysicalMaterial({
+    color: 0x67e8f9, transparent: true, opacity: 0.38,
+    roughness: 0.08, transmission: 0.88, ior: 1.4
+  });
+  const hair = new THREE.MeshStandardMaterial({ color: 0x1c1917, roughness: 0.8 });
+
+  // Torso
+  lila.add(M(new THREE.BoxGeometry(1.15, 1.7, 0.65), suit));
+  lila.add(M(new THREE.BoxGeometry(1.25, 1.3, 0.8), orange, 0, 0.2, 0.05));
+  [-0.35, 0.35].forEach(px => lila.add(M(new THREE.BoxGeometry(0.3, 0.28, 0.16), dark, px, -0.1, 0.48)));
+
+  const belt = M(new THREE.TorusGeometry(0.68, 0.07, 8, 20), dark, 0, -0.45, 0);
+  belt.rotation.x = Math.PI/2;
+  belt.scale.set(1, 1, 0.85);
+  lila.add(belt);
+
+  // Head
+  const head = new THREE.Group();
+  head.position.set(0, 1.4, 0);
+
+  const skull = M(new THREE.SphereGeometry(0.46, 18, 18), skin);
+  skull.scale.set(0.9, 1.05, 0.9);
+  head.add(skull);
+
+  // Hair bun / short practical style
+  head.add(M(new THREE.SphereGeometry(0.42, 14, 14), hair, 0, 0.15, -0.15));
+  head.add(M(new THREE.SphereGeometry(0.22, 12, 12), hair, 0, 0.45, -0.2));
+
+  [-0.42, 0.42].forEach(ex => head.add(M(new THREE.SphereGeometry(0.08, 8, 8), skin, ex, 0, 0)));
+
+  [-0.15, 0.15].forEach(ex => {
+    const sclera = M(new THREE.SphereGeometry(0.08, 10, 10), white, ex, 0.05, 0.38);
+    sclera.scale.set(1, 1, 0.55);
+    head.add(sclera);
+    head.add(M(new THREE.SphereGeometry(0.038, 8, 8), black, ex, 0.05, 0.45));
+    head.add(M(new THREE.SphereGeometry(0.012, 6, 6), white, ex + 0.015, 0.07, 0.46));
+  });
+
+  const nose = M(new THREE.ConeGeometry(0.055, 0.12, 6), skin, 0, -0.02, 0.42);
+  nose.rotation.x = Math.PI/2;
+  head.add(nose);
+
+  // Dive mask
+  const maskStrap = M(new THREE.TorusGeometry(0.48, 0.035, 8, 24), dark, 0, 0.05, 0.02);
+  maskStrap.rotation.x = Math.PI/2;
+  maskStrap.scale.set(1.0, 1, 0.95);
+  head.add(maskStrap);
+  [-0.15, 0.15].forEach(ex => {
+    head.add(M(new THREE.TorusGeometry(0.12, 0.025, 8, 16), dark, ex, 0.05, 0.45));
+    head.add(M(new THREE.CircleGeometry(0.1, 16), lensMat, ex, 0.05, 0.465));
+  });
+  head.add(M(new THREE.BoxGeometry(0.09, 0.035, 0.035), dark, 0, 0.05, 0.45));
+
+  // Regulator
+  const reg = M(new THREE.CylinderGeometry(0.085, 0.085, 0.28, 10), steel, 0, -0.22, 0.42);
+  reg.rotation.z = Math.PI/2;
+  head.add(reg);
+
+  lila.add(head);
+
+  // Single tank
+  lila.add(M(new THREE.CylinderGeometry(0.3, 0.3, 1.9, 16),
+    new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.75, roughness: 0.3 }), 0, 0.25, -0.7));
+  lila.add(M(new THREE.SphereGeometry(0.3, 12, 12, 0, Math.PI*2, 0, Math.PI/2), steel, 0, 1.2, -0.7));
+
+  const hoseCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.25, 1.1, -0.55),
+    new THREE.Vector3(0.55, 0.9, -0.2),
+    new THREE.Vector3(0.3, 1.0, 0.35),
+    new THREE.Vector3(0.08, 1.15, 0.48)
+  ]);
+  lila.add(new THREE.Mesh(new THREE.TubeGeometry(hoseCurve, 14, 0.04, 8, false), dark));
+
+  // Arms & legs
+  lila.userData.flippers = [];
+  [-0.7, 0.7].forEach((ax, idx) => {
+    lila.add(M(new THREE.CylinderGeometry(0.16, 0.14, 1.1, 8), suit, ax, 0.3, 0.25).rotateX(-0.35));
+    lila.add(M(new THREE.SphereGeometry(0.15, 8, 8), dark, ax, -0.2, 0.55));
+
+    const leg = M(new THREE.CylinderGeometry(0.2, 0.16, 1.3, 8), suit, ax*0.45, -1.3, -0.08);
+    leg.rotation.x = 0.25;
+    lila.add(leg);
+
+    const flipper = M(new THREE.BoxGeometry(0.42, 0.06, 1.3), orange, ax*0.45, -1.95, 0.35);
+    flipper.rotation.x = -0.28;
+    flipper.userData = { baseX: -0.28, phase: Math.random()*Math.PI*2 };
+    lila.add(flipper);
+    lila.userData.flippers.push(flipper);
+  });
+
+  // Tablet / clipboard in hand
+  const tablet = M(new THREE.BoxGeometry(0.35, 0.5, 0.04),
+    new THREE.MeshStandardMaterial({ color: 0x0f172a, emissive: 0x06b6d4, emissiveIntensity: 0.3 }),
+    -0.85, 0.3, 0.6);
+  tablet.rotation.y = 0.4;
+  lila.add(tablet);
+
+  lila.userData.regulatorLocal = new THREE.Vector3(0, 1.15, 0.5);
+  lila.userData.bubbleState = makeBubbleEmitter(lila, 14, lila.userData.regulatorLocal);
+
+  return lila;
+}
+
+/* -------------------- Bubble emitter -------------------- */
+function resetBubblePos(origin) {
+  return {
+    x: origin.x + (Math.random()-0.5)*0.1,
+    y: origin.y + (Math.random()-0.5)*0.06,
+    z: origin.z + (Math.random()-0.5)*0.1
+  };
+}
+
+function makeBubbleEmitter(parent, count, originLocal) {
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  const data = [];
+  for (let i = 0; i < count; i++) {
+    const p = resetBubblePos(originLocal);
+    positions[i*3+0] = p.x;
+    positions[i*3+1] = p.y;
+    positions[i*3+2] = p.z;
+    data.push({ speed: 0.45 + Math.random()*0.55, drift: (Math.random()-0.5)*0.12, phase: Math.random()*Math.PI*2, life: Math.random()*3 });
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 32; canvas.height = 32;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#a5f3fc';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(16, 16, 11, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.beginPath(); ctx.arc(13, 13, 3, 0, Math.PI*2); ctx.fill();
+  const tex = new THREE.CanvasTexture(canvas);
+
+  const points = new THREE.Points(geo, new THREE.PointsMaterial({
+    size: 0.26, map: tex, transparent: true, opacity: 0.75,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  }));
+  parent.add(points);
+
+  return { points, data, origin: originLocal.clone(), count };
+}
+
+/* -------------------- Particles -------------------- */
+function buildParticles() {
+  const geo = new THREE.PlaneGeometry(140, 140, 28, 28);
+  geo.rotateX(-Math.PI/2);
+  causticMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+    color: 0x38bdf8, transparent: true, opacity: 0.14,
+    blending: THREE.AdditiveBlending, wireframe: true
+  }));
+  causticMesh.position.y = -11.2;
+  scene.add(causticMesh);
+
+  // Ambient bubbles
+  const count = 220;
+  const geoB = new THREE.BufferGeometry();
+  const pos = new Float32Array(count*3);
+  for (let i = 0; i < count; i++) {
+    pos[i*3+0] = (Math.random()-0.5)*60;
+    pos[i*3+1] = -11 + Math.random()*11;
+    pos[i*3+2] = (Math.random()-0.5)*60;
+  }
+  geoB.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 24; canvas.height = 24;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#67e8f9'; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.arc(12, 12, 9, 0, Math.PI*2); ctx.stroke();
+  const tex = new THREE.CanvasTexture(canvas);
+
+  bubbleField = new THREE.Points(geoB, new THREE.PointsMaterial({
+    size: 0.28, map: tex, transparent: true, opacity: 0.7,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  }));
+  scene.add(bubbleField);
+
+  // Vapour / steam particles near evaporators
+  const vCount = 80;
+  const geoV = new THREE.BufferGeometry();
+  const posV = new Float32Array(vCount*3);
+  for (let i = 0; i < vCount; i++) {
+    posV[i*3+0] = 4 + (Math.random()-0.5)*22;
+    posV[i*3+1] = 4 + Math.random()*5;
+    posV[i*3+2] = (Math.random()-0.5)*4;
+  }
+  geoV.setAttribute('position', new THREE.BufferAttribute(posV, 3));
+  vapourField = new THREE.Points(geoV, new THREE.PointsMaterial({
+    size: 0.45, color: 0xe0f2fe, transparent: true, opacity: 0.35,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  }));
+  scene.add(vapourField);
+}
+
+/* -------------------- Stage application -------------------- */
+function applyStage(s, initial, announce) {
+  currentStage = s;
+
+  document.querySelectorAll('.hud-bl .icon-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.stage) === s);
+  });
+
+  const d = { flow:'1 840 m³/h', temp:'68.2 °C', tds:'< 8 ppm', brine:'72 ‰', rec:'38 %', ready:'Full production', chip:'chip-emerald' };
+  if (s === 1) Object.assign(d, { flow:'1 840 m³/h', temp:'24.1 °C', tds:'—', brine:'35 ‰', rec:'—', ready:'Intake active', chip:'chip-amber' });
+  if (s === 2) Object.assign(d, { flow:'1 620 m³/h', temp:'68.2 °C', tds:'—', brine:'58 ‰', rec:'22 %', ready:'Effects online', chip:'chip-cyan' });
+  if (s === 3) Object.assign(d, { flow:'1 480 m³/h', temp:'42.0 °C', tds:'< 8 ppm', brine:'72 ‰', rec:'38 %', ready:'Distillate pure', chip:'chip-emerald' });
+  if (s === 4) Object.assign(d, { flow:'1 480 m³/h', temp:'38.5 °C', tds:'< 8 ppm', brine:'72 ‰', rec:'38 %', ready:'QoS + packing', chip:'chip-teal' });
+
+  document.getElementById('t-flow').textContent = d.flow;
+  document.getElementById('t-temp').textContent = d.temp;
+  document.getElementById('t-tds').textContent = d.tds;
+  document.getElementById('t-brine').textContent = d.brine;
+  document.getElementById('t-rec').textContent = d.rec;
+  document.getElementById('p-ready').textContent = d.ready;
+  const badge = document.getElementById('p-ready-badge');
+  badge.className = 'chip ' + d.chip;
+  badge.textContent = s === 1 ? 'Intake' : s === 2 ? 'Evaporating' : s === 3 ? 'Condensing' : 'Export Ready';
+  document.getElementById('info-phase').textContent = s + ' / 4';
+
+  renderSummary(s);
+
+  if (announce) {
+    showToast(getStageToast(s));
+    playSfx('sonar');
+  }
+}
+
+function getStageToast(s) {
+  if (s === 1) return '🌀 Stage 1 · Seawater Intake Online';
+  if (s === 2) return '♨️ Stage 2 · Multi-Effect Evaporation';
+  if (s === 3) return '💧 Stage 3 · Vapour Condensation';
+  return '📦 Stage 4 · Salt QoS, Pack & Water Storage';
+}
+
+function renderSummary(s) {
+  const sum = SUMMARIES[s];
+  document.getElementById('o-title').textContent = sum.title;
+  document.getElementById('o-phase').textContent = sum.phase;
+  document.getElementById('o-body').innerHTML = sum.rows
+    .map(r => `<div class="sum-row"><span>${r[0]}</span><span>${r[1]}</span></div>`)
+    .join('');
+  document.getElementById('o-foot').textContent = sum.foot;
+
+  const pop = document.getElementById('pop-outcome');
+  pop.classList.remove('flash');
+  void pop.offsetWidth;
+  pop.classList.add('flash');
+}
+
+/* -------------------- Dialogue + camera -------------------- */
+function showDialogue(idx, initial) {
+  if (idx < 0 || idx >= DIALOGUES.length) return;
+  currentDialogue = idx;
+  const d = DIALOGUES[idx];
+
+  document.getElementById('sub-avatar').textContent = d.avatar;
+  document.getElementById('sub-speaker').textContent = d.speaker;
+  document.getElementById('sub-text').textContent = d.text;
+  document.getElementById('sub-idx').textContent = (idx+1) + '/' + DIALOGUES.length;
+
+  if (d.stage !== currentStage) applyStage(d.stage, initial, false);
+
+  new TWEEN.Tween(camera.position)
+    .to({ x: d.cam.pos[0], y: d.cam.pos[1], z: d.cam.pos[2] }, initial ? 1 : 1700)
+    .easing(TWEEN.Easing.Cubic.InOut)
+    .start();
+  new TWEEN.Tween(controls.target)
+    .to({ x: d.cam.look[0], y: d.cam.look[1], z: d.cam.look[2] }, initial ? 1 : 1700)
+    .easing(TWEEN.Easing.Cubic.InOut)
+    .start();
+
+  new TWEEN.Tween(diversGroup.position)
+    .to({ x: d.divers[0], y: d.divers[1], z: d.divers[2] }, initial ? 1 : 1700)
+    .easing(TWEEN.Easing.Cubic.InOut)
+    .start();
+
+  if (!initial) speakCurrent();
+}
+
+/* -------------------- Speech (continuous, no cut) -------------------- */
+function clearAdvanceTimer() {
+  if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
+}
+
+function stopSpeech() {
+  speechToken++;
+  clearAdvanceTimer();
+  if ('speechSynthesis' in window) {
+    try { window.speechSynthesis.cancel(); } catch(e) {}
+  }
+  currentUtterance = null;
+  pendingAdvance = false;
+}
+
+function estimateDuration(text, rate) {
+  return Math.max(1600, (text.length / (13.5 * (rate || 1))) * 1000);
+}
+
+function speakCurrent() {
+  speechToken++;
+  clearAdvanceTimer();
+  if ('speechSynthesis' in window) {
+    try { window.speechSynthesis.cancel(); } catch(e) {}
+  }
+  currentUtterance = null;
+  pendingAdvance = false;
+
+  if (!userInteracted) return;
+
+  const d = DIALOGUES[currentDialogue];
+  if (!d) return;
+
+  if (voiceMode === 'off' || !('speechSynthesis' in window)) {
+    if (voiceMode === 'auto') {
+      const token = speechToken;
+      advanceTimer = setTimeout(() => {
+        if (token !== speechToken) return;
+        advanceTimer = null;
+        if (currentDialogue < DIALOGUES.length - 1) showDialogue(currentDialogue + 1, false);
+      }, estimateDuration(d.text, 1) + 700);
+    }
+    return;
+  }
+
+  try {
+    const token = speechToken;
+    const clean = d.text
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '')
+      .replace(/[“”"]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const u = new SpeechSynthesisUtterance(clean);
+    const prof = VOICE_PROFILES[d.speaker] || { pitch: 1, rate: 1 };
+    u.pitch = prof.pitch;
+    u.rate = prof.rate;
+    u.volume = 1;
+    const v = pickVoice(d.speaker);
+    if (v) u.voice = v;
+    currentUtterance = u;
+
+    const finish = () => {
+      if (token !== speechToken) return;
+      clearAdvanceTimer();
+      const shouldAdvance = pendingAdvance || voiceMode === 'auto';
+      pendingAdvance = false;
+      if (shouldAdvance && currentDialogue < DIALOGUES.length - 1) {
+        advanceTimer = setTimeout(() => {
+          advanceTimer = null;
+          if (token === speechToken) showDialogue(currentDialogue + 1, false);
+        }, 380);
+      }
+    };
+
+    u.onend = finish;
+    u.onerror = () => { if (token === speechToken) finish(); };
+
+    const est = estimateDuration(clean, u.rate);
+    advanceTimer = setTimeout(() => {
+      if (token !== speechToken) return;
+      advanceTimer = null;
+      if (window.speechSynthesis.speaking) {
+        advanceTimer = setTimeout(() => {
+          if (token === speechToken) finish();
+        }, 3500);
+      } else {
+        finish();
+      }
+    }, est + 1800);
+
+    window.speechSynthesis.speak(u);
+  } catch (e) {
+    if (voiceMode === 'auto') {
+      const token = speechToken;
+      advanceTimer = setTimeout(() => {
+        if (token === speechToken && currentDialogue < DIALOGUES.length - 1) {
+          showDialogue(currentDialogue + 1, false);
+        }
+      }, estimateDuration(d.text, 1) + 700);
+    }
+  }
+}
+
+/* -------------------- UI -------------------- */
+function setupUI() {
+  const popIds = ['pop-info', 'pop-telemetry', 'pop-protocol', 'pop-outcome'];
+
+  function closeAll() {
+    popIds.forEach(id => document.getElementById(id).classList.remove('show'));
+    ['btn-info','btn-telemetry','btn-protocol','btn-outcome'].forEach(id => {
+      document.getElementById(id).classList.remove('active');
+    });
+  }
+
+  function togglePopover(btnId, popId) {
+    const btn = document.getElementById(btnId);
+    const pop = document.getElementById(popId);
+    const isOpen = pop.classList.contains('show');
+    closeAll();
+    if (!isOpen) {
+      pop.classList.add('show');
+      btn.classList.add('active');
+    }
+  }
+
+  document.getElementById('btn-info').addEventListener('click', () => togglePopover('btn-info', 'pop-info'));
+  document.getElementById('btn-telemetry').addEventListener('click', () => togglePopover('btn-telemetry', 'pop-telemetry'));
+  document.getElementById('btn-protocol').addEventListener('click', () => togglePopover('btn-protocol', 'pop-protocol'));
+  document.getElementById('btn-outcome').addEventListener('click', () => togglePopover('btn-outcome', 'pop-outcome'));
+
+  document.getElementById('btn-audio').addEventListener('click', function() {
+    sfxOn = !sfxOn;
+    this.textContent = sfxOn ? '🔊' : '🔇';
+    this.classList.toggle('active', sfxOn);
+  });
+
+  const voiceBtn = document.getElementById('btn-voice');
+  const voiceIcons = ['🔇', '🗣️', '🔁'];
+  const voiceTitles = ['Narration off', 'Narration on (manual next)', 'Narration auto-advance'];
+  const voiceLabels = ['Off', 'On', 'Auto'];
+  function updateVoiceBtn() {
+    voiceBtn.textContent = voiceIcons[voiceIdx];
+    voiceBtn.title = voiceTitles[voiceIdx];
+    voiceBtn.classList.toggle('active', voiceIdx > 0);
+    document.getElementById('info-voice').textContent = voiceLabels[voiceIdx];
+  }
+  updateVoiceBtn();
+  voiceBtn.addEventListener('click', () => {
+    voiceIdx = (voiceIdx + 1) % 3;
+    voiceMode = ['off', 'on', 'auto'][voiceIdx];
+    if (voiceMode === 'off') stopSpeech();
+    updateVoiceBtn();
+    if (voiceMode !== 'off') speakCurrent();
+  });
+
+  let isDive = false;
+  document.getElementById('btn-view').addEventListener('click', function() {
+    isDive = !isDive;
+    this.textContent = isDive ? '⛵' : '🤿';
+    this.classList.toggle('active', isDive);
+    if (isDive) {
+      new TWEEN.Tween(camera.position).to({ x: -8, y: -3.5, z: 10 }, 1400).easing(TWEEN.Easing.Cubic.InOut).start();
+      new TWEEN.Tween(controls.target).to({ x: -4, y: -5, z: 0 }, 1400).easing(TWEEN.Easing.Cubic.InOut).start();
+    } else {
+      new TWEEN.Tween(camera.position).to({ x: -18, y: 4.2, z: 22 }, 1400).easing(TWEEN.Easing.Cubic.InOut).start();
+      new TWEEN.Tween(controls.target).to({ x: -8, y: 0.5, z: 2 }, 1400).easing(TWEEN.Easing.Cubic.InOut).start();
+    }
+    playSfx('sonar');
+  });
+
+  document.querySelectorAll('.hud-bl .icon-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = parseInt(btn.dataset.stage);
+      const idx = DIALOGUES.findIndex(d => d.stage === s);
+      if (idx !== -1) {
+        stopSpeech();
+        showDialogue(idx, false);
+        applyStage(s, false, false);
+        showToast(getStageToast(s));
+      }
+    });
+  });
+
+  document.getElementById('sub-prev').addEventListener('click', () => {
+    if (currentDialogue > 0) {
+      stopSpeech();
+      showDialogue(currentDialogue - 1, false);
+    }
+  });
+
+  document.getElementById('sub-next').addEventListener('click', () => {
+    if (pendingAdvance) {
+      stopSpeech();
+      if (currentDialogue < DIALOGUES.length - 1) showDialogue(currentDialogue + 1, false);
+      return;
+    }
+    if (currentDialogue < DIALOGUES.length - 1) {
+      if (voiceMode !== 'off' && 'speechSynthesis' in window && window.speechSynthesis.speaking) {
+        pendingAdvance = true;
+        showToast('⏳ Finishing narration…');
+        return;
+      }
+      showDialogue(currentDialogue + 1, false);
+    }
+  });
+
+  document.getElementById('canvas-container').addEventListener('pointerdown', () => closeAll());
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* -------------------- Animation helpers -------------------- */
+function animateFlippers(char, t, speed, amp) {
+  (char.userData.flippers || []).forEach(f => {
+    if (f.userData && f.userData.phase !== undefined) {
+      f.rotation.x = f.userData.baseX + Math.sin(t*speed + f.userData.phase) * amp;
+    }
+  });
+}
+
+function updateBubbleEmitter(char, dt, t) {
+  if (!char || !char.userData.bubbleState) return;
+  const st = char.userData.bubbleState;
+  const arr = st.points.geometry.attributes.position.array;
+  for (let i = 0; i < st.count; i++) {
+    const d = st.data[i];
+    d.life += dt;
+    arr[i*3+1] += d.speed * dt;
+    arr[i*3+0] += d.drift * dt;
+    arr[i*3+2] += Math.sin(t*2 + d.phase) * 0.003;
+    if (arr[i*3+1] > st.origin.y + 2.4 || d.life > 4) {
+      const p = resetBubblePos(st.origin);
+      arr[i*3+0] = p.x;
+      arr[i*3+1] = p.y;
+      arr[i*3+2] = p.z;
+      d.life = 0;
+    }
+  }
+  st.points.geometry.attributes.position.needsUpdate = true;
+}
+
+/* -------------------- Animate -------------------- */
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  const t = clock.getElapsedTime();
+
+  TWEEN.update();
+
+  // Water surface
+  if (waterPlane) {
+    const v = waterPlane.geometry.attributes.position;
+    for (let i = 0; i < v.count; i++) {
+      const u = v.getX(i), w = v.getZ(i);
+      v.setY(i, Math.sin(u*0.14 + t*1.4)*0.16 + Math.cos(w*0.18 + t*1.1)*0.13);
+    }
+    v.needsUpdate = true;
+  }
+
+  // Caustics
+  if (causticMesh) {
+    causticMesh.material.opacity = 0.11 + Math.sin(t*2.0)*0.04;
+    causticMesh.position.x = Math.sin(t*0.3)*1.6;
+    causticMesh.position.z = Math.cos(t*0.28)*1.6;
+  }
+
+  // Ambient bubbles
+  if (bubbleField) {
+    const arr = bubbleField.geometry.attributes.position.array;
+    for (let i = 0; i < arr.length/3; i++) {
+      arr[i*3+1] += 0.04 + Math.sin(t + i)*0.007;
+      arr[i*3+0] += 0.006;
+      if (arr[i*3+1] > 0.1) {
+        arr[i*3+1] = -11.0;
+        arr[i*3+0] = (Math.random()-0.5)*60;
+      }
+    }
+    bubbleField.geometry.attributes.position.needsUpdate = true;
+  }
+
+  // Vapour particles near plant
+  if (vapourField) {
+    const arr = vapourField.geometry.attributes.position.array;
+    for (let i = 0; i < arr.length/3; i++) {
+      arr[i*3+1] += 0.025 + Math.sin(t*0.8 + i)*0.01;
+      arr[i*3+0] += Math.sin(t*0.5 + i)*0.008;
+      if (arr[i*3+1] > 10) {
+        arr[i*3+1] = 4 + Math.random()*1.5;
+        arr[i*3+0] = 4 + (Math.random()-0.5)*22;
+      }
+    }
+    vapourField.geometry.attributes.position.needsUpdate = true;
+  }
+
+  // Pump impeller spin
+  if (intakeGroup) {
+    intakeGroup.traverse(o => {
+      if (o.userData && o.userData.spin) {
+        o.rotation.z += dt * 4.5;
+      }
+    });
+  }
+
+  // Characters
+  if (whiskerPuffGroup) {
+    const b = whiskerPuffGroup.userData.basePos;
+    whiskerPuffGroup.position.set(b.x, b.y + Math.sin(t*1.15)*0.12, b.z);
+    whiskerPuffGroup.rotation.z = Math.cos(t*0.85)*0.04;
+    whiskerPuffGroup.rotation.y = Math.sin(t*0.4)*0.15;
+    if (whiskerPuffGroup.userData.tail) whiskerPuffGroup.userData.tail.rotation.y = Math.sin(t*1.5)*0.35;
+    animateFlippers(whiskerPuffGroup, t, 3.0, 0.3);
+  }
+
+  if (lilaGroup) {
+    const b = lilaGroup.userData.basePos;
+    lilaGroup.position.set(b.x, b.y + Math.sin(t*1.05 + 0.8)*0.1, b.z);
+    lilaGroup.rotation.z = Math.sin(t*0.75)*0.03;
+    lilaGroup.rotation.y = Math.sin(t*0.28)*0.08;
+    animateFlippers(lilaGroup, t, 2.8, 0.28);
+  }
+
+  if (peepSqueakGroup) {
+    const b = peepSqueakGroup.userData.basePos;
+    const px = b.x + Math.sin(t*1.6)*0.55 + Math.sin(t*2.8)*0.12;
+    const py = b.y + Math.sin(t*2.0)*0.28 + Math.cos(t*1.0)*0.08;
+    const pz = b.z + Math.cos(t*1.2)*0.45;
+    peepSqueakGroup.position.set(px, py, pz);
+    peepSqueakGroup.rotation.y = Math.sin(t*1.5)*0.55;
+    peepSqueakGroup.rotation.z = Math.sin(t*2.2)*0.32;
+
+    const cyc = t % 5.5;
+    peepSqueakGroup.rotation.x = cyc < 1.2 ? (cyc/1.2)*Math.PI*2 : 0;
+
+    const pulse = 1 + Math.max(0, Math.sin(t*0.85))**8 * 0.07;
+    const baseScale = peepSqueakGroup.userData.baseScale || 0.62;
+    peepSqueakGroup.scale.setScalar(baseScale * pulse);
+
+    animateFlippers(peepSqueakGroup, t, 5.0, 0.55);
+
+    if (peepSqueakGroup.userData.antenna) {
+      peepSqueakGroup.userData.antenna.material.emissiveIntensity = 0.35 + Math.abs(Math.sin(t*4.5))*0.7;
+    }
+  }
+
+  updateBubbleEmitter(whiskerPuffGroup, dt, t);
+  updateBubbleEmitter(peepSqueakGroup, dt, t);
+  updateBubbleEmitter(lilaGroup, dt, t);
+
+  // Occasional pump SFX
+  pumpPulse += dt;
+  if (pumpPulse > 4.5 && currentStage === 1) {
+    pumpPulse = 0;
+    playSfx('pump');
+  }
+  if (pumpPulse > 7.0 && currentStage >= 2) {
+    pumpPulse = 0;
+    playSfx('steam');
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+/* -------------------- Boot -------------------- */
+window.addEventListener('load', () => {
+  init();
+});
+</script>
+
+<script>
+window.returnToBlueLab = function(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.closeModal === 'function') {
+      window.parent.closeModal();
+      return false;
+    }
+  } catch(err) {}
+  var ref = document.referrer || '';
+  var search = window.location.search || '';
+  if (ref.indexOf('/hub') !== -1 || search.indexOf('source=hub') !== -1) {
+    window.location.href = '../../hub/index.html#/saint-martin';
+    return false;
+  }
+  window.location.href = '../blue-lab.html';
+  return false;
+};
+window.returnToResearchLab = window.returnToBlueLab;
+</script>
+
+</body>
+</html>

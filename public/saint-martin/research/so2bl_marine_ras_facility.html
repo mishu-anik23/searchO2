@@ -1,0 +1,2166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saint Martin's Island — SearchO2 Blue Lab Marine RAS Facility</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js + OrbitControls + TWEEN.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      background: #021220;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+    }
+    #viewport-container {
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+    .bubble-font { font-family: 'Fredoka', cursive; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Sleek Holographic Glassmorphism */
+    .glass-panel {
+      background: rgba(5, 22, 38, 0.86);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.48);
+    }
+
+    /* Strict Icon-Only Control Buttons */
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      background: rgba(9, 32, 54, 0.9);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      border-radius: 12px;
+      color: #e0f2fe;
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .icon-btn:hover {
+      background: rgba(14, 165, 233, 0.32);
+      border-color: rgba(56, 189, 248, 0.85);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
+    }
+    .icon-btn.active {
+      background: linear-gradient(135deg, #0284c7, #0d9488);
+      color: #021d24;
+      border-color: #7dd3fc;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.5);
+    }
+    .icon-btn.emerald-accent {
+      border-color: rgba(16, 185, 129, 0.5);
+      color: #6ee7b7;
+    }
+    .icon-btn.emerald-accent.active {
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: #022c22;
+      border-color: #a7f3d0;
+    }
+
+    /* Live Voice Pulse Ring */
+    @keyframes pulseRing {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.75); }
+      70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .mic-live {
+      animation: pulseRing 1.5s infinite;
+      background: linear-gradient(135deg, #059669, #10b981) !important;
+      color: #022c22 !important;
+      border-color: #6ee7b7 !important;
+    }
+
+    /* Smooth Dialogue Transition Card */
+    .dialogue-box {
+      transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .dialogue-box.fade-out {
+      opacity: 0;
+      transform: translate(-50%, 16px) scale(0.97);
+      pointer-events: none;
+    }
+    .dialogue-box.fade-in {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+      pointer-events: auto;
+    }
+
+    /* Icon-Only 3D Projected Field Hotspots */
+    .hotspot-marker {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      z-index: 15;
+      pointer-events: auto;
+      cursor: pointer;
+      transition: transform 0.22s ease, opacity 0.22s ease;
+    }
+    .hotspot-marker:hover {
+      transform: translate(-50%, -56%) scale(1.16);
+      z-index: 25;
+    }
+    .hotspot-orb {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: rgba(6, 24, 42, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1.5px solid rgba(56, 189, 248, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55), 0 0 12px rgba(56, 189, 248, 0.35);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(6, 22, 38, 0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 3px; }
+  </style>
+</head>
+<body class="text-slate-100">
+
+  <!-- Full-Screen Widescreen 3D Canvas -->
+  <div id="viewport-container"></div>
+
+  <!-- Projected 3D Icon-Only Interactive Hotspots -->
+  <div id="hotspots-layer" class="fixed inset-0 pointer-events-none z-10 overflow-hidden"></div>
+
+  <!-- Top-Left: Icon-Only Station Badge & System Architecture Schematic Trigger -->
+  <header class="fixed top-4 left-4 z-20 flex items-center gap-2 pointer-events-auto">
+    <div class="glass-panel p-2 rounded-2xl flex items-center gap-2">
+      <div class="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-lg" title="SearchO2 Blue Lab — Saint Martin's Island Marine RAS (20.6237° N, 92.3234° E)">
+        🏝️
+      </div>
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" title="Closed-Loop Biosecurity & Telemetry Online"></span>
+      <button id="btn-open-architecture" class="icon-btn" title="Open RAS Loop & AI Bio-Monitoring Schematics">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Top-Right: Icon-Only Camera Presets, Live Voice Link, Subtitles & Audio Controls -->
+  <nav class="fixed top-4 right-4 z-20 flex flex-wrap items-center justify-end gap-1.5 pointer-events-auto max-w-[75vw]">
+    <a id="archive-home-link" href="#" onclick="returnToBlueLab(event)" class="icon-btn" title="Return to Blue Lab" aria-label="Return to Blue Lab" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">🔬</a>
+    <button id="cam-overview" class="icon-btn active" data-cam="overview" title="Camera: Full Blue Lab RAS & Lagoon Overview">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </button>
+    <button id="cam-squid" class="icon-btn" data-cam="squid" title="Camera: Bigfin Reef Squid Cultivation Tank">
+      <span class="text-base leading-none">🦑</span>
+    </button>
+    <button id="cam-shrimp" class="icon-btn" data-cam="shrimp" title="Camera: Giant Tiger Shrimp Cultivation Tank">
+      <span class="text-base leading-none">🦐</span>
+    </button>
+    <button id="cam-octopus" class="icon-btn" data-cam="octopus" title="Camera: Day Octopus Den & Cultivation Tank">
+      <span class="text-base leading-none">🐙</span>
+    </button>
+    <button id="cam-filtration" class="icon-btn" data-cam="filtration" title="Camera: Closed-Loop Water Filtration, MBBR Biofilter & UV-C">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+    </button>
+    <button id="cam-monitoring" class="icon-btn" data-cam="monitoring" title="Camera: AI Stereo-Vision Laser & Disease Monitoring Gantry">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+    </button>
+
+    <div class="w-[1px] h-6 bg-sky-800/70 mx-0.5 hidden sm:block"></div>
+
+    <button id="btn-live-voice" class="icon-btn emerald-accent" title="Two-Way Voice & Question Link with Captain Kabir, Prof. Puff & Pip">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+    </button>
+    <button id="btn-subtitles" class="icon-btn active" title="Toggle Spoken Dialogue Transcript Card">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+    </button>
+    <button id="btn-audio" class="icon-btn active" title="Toggle Voice Synthesis & Telemetry Audio">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+    </button>
+  </nav>
+
+  <!-- Top-Right Compact Telemetry & Stage Action HUD (Numeric Metrics + Icon Controls Only) -->
+  <aside id="telemetry-hud" class="fixed top-16 right-4 z-20 w-72 md:w-80 glass-panel p-3.5 rounded-2xl border border-sky-400/35 pointer-events-auto transition-all duration-300">
+    <div class="flex items-center justify-between pb-2.5 mb-2.5 border-b border-sky-900/70">
+      <div class="flex items-center gap-2">
+        <span id="hud-stage-icon" class="w-8 h-8 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-base">🌊</span>
+        <span id="hud-stage-num" class="font-mono text-xs font-bold text-cyan-300">01 / 05</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button id="btn-field-action" class="icon-btn bg-sky-400 text-slate-950 border-sky-200 hover:bg-sky-300" title="Execute Stage Field Action (Feed / Flush Filter / Laser Scan)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </button>
+        <button id="btn-stage-graphic" class="icon-btn bg-teal-500/25 border-teal-400/50 text-teal-200" title="Inspect Stage Engineering Diagram">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Real-Time RAS Water Quality Telemetry (Icon + Numeric Value Only) -->
+    <div class="grid grid-cols-3 gap-1.5 mb-2.5 text-center font-mono">
+      <div class="bg-slate-950/80 p-2 rounded-xl border border-sky-900/60" title="Dissolved Oxygen Saturation">
+        <span class="text-xs block mb-0.5">🫧</span>
+        <strong id="val-do" class="text-xs text-cyan-300">7.8 mg/L</strong>
+      </div>
+      <div class="bg-slate-950/80 p-2 rounded-xl border border-sky-900/60" title="Total Ammonia Nitrogen (NH3-N) Post-MBBR Biofilter">
+        <span class="text-xs block mb-0.5">🧪</span>
+        <strong id="val-nh3" class="text-xs text-emerald-400">0.01 ppm</strong>
+      </div>
+      <div class="bg-slate-950/80 p-2 rounded-xl border border-sky-900/60" title="Marine Salinity & Water Temperature">
+        <span class="text-xs block mb-0.5">🌡️</span>
+        <strong id="val-temp" class="text-xs text-amber-300">26.4°C</strong>
+      </div>
+    </div>
+
+    <!-- Closed-Loop Recirculation & Bio-Efficiency Bar -->
+    <div class="bg-slate-950/75 p-2 rounded-xl border border-sky-900/60" title="98.6% Closed-Loop Water Recirculation Efficiency">
+      <div class="flex justify-between items-center text-[10px] mb-1 font-mono text-cyan-200">
+        <span>♻️</span>
+        <span id="val-recirc">98.6%</span>
+      </div>
+      <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden flex">
+        <div id="bar-mech" class="bg-amber-400 h-full transition-all duration-500" style="width: 30%"></div>
+        <div id="bar-bio" class="bg-cyan-400 h-full transition-all duration-500" style="width: 40%"></div>
+        <div id="bar-o2" class="bg-emerald-400 h-full transition-all duration-500" style="width: 30%"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Live Voice & Question Drawer (Icon-Driven Interface) -->
+  <aside id="live-comms-panel" class="fixed top-16 left-4 z-30 w-80 glass-panel p-3.5 rounded-2xl border-2 border-emerald-400/60 hidden pointer-events-auto">
+    <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-emerald-800/60">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+        <span class="text-sm">🎙️</span>
+      </div>
+      <button id="btn-close-comms" class="icon-btn w-7 h-7" title="Close Voice Comms">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p id="voice-status-text" class="text-[11px] text-slate-200 mb-2.5 leading-snug">
+      Ask Captain Kabir, Professor Puff, or Pip about Squid, Shrimp, Octopus RAS farming, biofiltration, or AI health monitoring.
+    </p>
+    <div class="flex items-center gap-2">
+      <button id="btn-mic-record" class="icon-btn emerald-accent" title="Click to Speak Question via Microphone">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+      </button>
+      <form id="voice-text-form" class="flex flex-1 gap-1.5">
+        <input id="voice-text-input" type="text" placeholder="..." aria-label="Ask a question" class="flex-1 bg-slate-950/90 border border-sky-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400">
+        <button type="submit" class="icon-btn bg-cyan-500 text-slate-950 border-cyan-300" title="Send Question">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- Bottom-Left: Icon-Only Timeline & 5-Stage Interactive Navigator -->
+  <footer class="fixed bottom-4 left-4 z-20 glass-panel p-3 rounded-2xl flex flex-col gap-2.5 pointer-events-auto w-72 md:w-80">
+    <div class="flex items-center gap-2">
+      <button id="btn-play-pause" class="icon-btn bg-sky-400 text-slate-950 border-sky-200 hover:bg-sky-300" title="Play / Pause Guided Briefing">
+        <svg id="icon-pause" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
+        <svg id="icon-play" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button id="btn-restart" class="icon-btn" title="Restart RAS Tour from Beginning">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      </button>
+      <span id="time-display" class="font-mono text-cyan-300 w-11 text-center text-xs font-bold">00:00</span>
+      <input id="story-scrubber" type="range" min="0" max="125" step="0.1" value="0" aria-label="Timeline Scrubber" class="flex-1 cursor-pointer accent-cyan-400">
+    </div>
+
+    <!-- 5 Icon-Only Stage Buttons -->
+    <div class="grid grid-cols-5 gap-1.5 pt-2 border-t border-sky-900/60">
+      <button class="stage-jump-btn icon-btn w-full active" data-stage="0" title="Stage 1: Saint Martin's Blue Lab RAS Overview">
+        <span>🏝️</span>
+      </button>
+      <button class="stage-jump-btn icon-btn w-full" data-stage="1" title="Stage 2: Multi-Trophic Cultivation (Squid, Shrimp & Octopus)">
+        <span>🦑</span>
+      </button>
+      <button class="stage-jump-btn icon-btn w-full" data-stage="2" title="Stage 3: Closed-Loop Mechanical & MBBR Biofiltration">
+        <span>♻️</span>
+      </button>
+      <button class="stage-jump-btn icon-btn w-full" data-stage="3" title="Stage 4: Protein Skimmer, UV-C & Pure Oxygenation">
+        <span>🫧</span>
+      </button>
+      <button class="stage-jump-btn icon-btn w-full" data-stage="4" title="Stage 5: AI Stereo-Vision Growth & Disease Monitoring">
+        <span>🔬</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Bottom-Center / Right: Full Synchronized Dialogue Card (Preserved with Complete Narrative!) -->
+  <aside id="dialogue-container" class="dialogue-box fixed bottom-4 left-1/2 md:left-[63%] -translate-x-1/2 z-20 pointer-events-auto max-w-xl w-[92%] md:w-[54%] glass-panel p-4 rounded-2xl border border-cyan-400/40 flex items-start gap-3.5 fade-in">
+    <div id="speaker-avatar" class="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl bg-slate-950 border border-cyan-400/60 shadow-inner">
+      🧭
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex flex-wrap items-center justify-between gap-1 mb-1">
+        <div class="flex items-center gap-2">
+          <span id="speaker-name" class="bubble-font text-sm font-bold text-cyan-300">Captain Kabir</span>
+          <span id="speaker-role" class="text-[10px] px-2 py-0.5 rounded bg-sky-500/20 text-sky-200 border border-sky-400/25 font-mono">Saint Martin Master Aquaculturist</span>
+        </div>
+        <span id="speech-emotion" class="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-slate-950 text-emerald-300 border border-emerald-500/30">RAS Loop Active</span>
+      </div>
+      <p id="speech-text" class="text-xs md:text-[13px] text-slate-100 leading-relaxed font-normal">
+        "Welcome to the SearchO2 Blue Lab Recirculating Aquaculture System on Saint Martin's Island. By cultivating Bigfin Reef Squid, Giant Tiger Shrimp, and Day Octopus inside closed-loop land-based marine tanks, we protect our coral reefs from overfishing while recirculating ninety-eight point six percent of filtered seawater."
+      </p>
+    </div>
+  </aside>
+
+  <!-- Engineering & Biological Schematic Modal (Icon Tabs + Detailed SVG Diagram) -->
+  <div id="graphic-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="glass-panel border-2 border-cyan-400/50 rounded-3xl p-5 md:p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-sky-800/70">
+        <div>
+          <span id="modal-tag" class="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">RAS SYSTEM SCHEMATIC</span>
+          <h2 id="modal-title" class="bubble-font text-lg md:text-xl font-bold text-white mt-1">Closed-Loop Marine RAS Architecture</h2>
+        </div>
+        <button id="btn-close-graphic-modal" class="icon-btn hover:bg-red-500/30 hover:border-red-400" title="Close Schematic">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Icon-Only Modal Stage Tabs -->
+      <div class="flex items-center gap-2 mb-4">
+        <button class="modal-tab-btn icon-btn active" data-tab="0" title="Full Closed-Loop RAS Topology">🏝️</button>
+        <button class="modal-tab-btn icon-btn" data-tab="1" title="Squid, Shrimp & Octopus Tank Design">🦑</button>
+        <button class="modal-tab-btn icon-btn" data-tab="2" title="Drum Screen & MBBR Nitrification Biofilter">♻️</button>
+        <button class="modal-tab-btn icon-btn" data-tab="3" title="Foam Fractionation, UV-C & Oxygen Cone">🫧</button>
+        <button class="modal-tab-btn icon-btn" data-tab="4" title="AI Stereo-Vision & eDNA Disease Surveillance">🔬</button>
+      </div>
+
+      <div id="modal-svg-container" class="bg-slate-950/90 rounded-2xl p-4 border border-sky-800/70 mb-4 flex items-center justify-center"></div>
+      <div id="modal-details-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"></div>
+    </div>
+  </div>
+
+  <!-- Field Action Feedback Toast -->
+  <div id="action-toast" class="fixed bottom-24 right-4 z-30 glass-panel border border-emerald-400/60 px-4 py-2.5 rounded-xl text-xs text-emerald-200 font-medium shadow-xl opacity-0 pointer-events-none transition-opacity duration-300">
+    Action executed.
+  </div>
+
+  <script>
+    /* =========================================================================
+       SAINT MARTIN'S ISLAND SEARCHO2 BLUE LAB — MARINE RAS 3D SIMULATION
+       Squid, Shrimp & Octopus Cultivation | Closed-Loop Biofiltration | AI Health
+       Local Steward: Captain Kabir + Prof. Whisker Puff + Pip Squeak
+       ========================================================================= */
+
+    let scene, camera, renderer, controls;
+    let waterMesh, waterGeo, initialWaterZ;
+    let drumFilterMesh, oxygenConeMesh, uvChamberGlow, skimmerFoamMesh;
+    let laserScanPlaneSquid, laserScanPlaneShrimp, laserScanPlaneOctopus;
+    let hotspotObjects = [];
+
+    // Animated Species & Particle Collections
+    let squids = [], shrimps = [], octopuses = [];
+    let bioMediaCarriers = [], waterFlowParticles = [], bubbleParticles = [], feedParticles = [];
+
+    // Articulated 3D Characters
+    let kabirGroup, kabirHead, kabirArmR, kabirArmL;
+    let puffGroup, puffHead, puffArmR, puffArmL;
+    let pipGroup, pipHead, pipArmR, pipArmL;
+
+    // Timeline & Speech State
+    let storyTime = 0;
+    const TOTAL_DURATION = 125;
+    let isPlaying = true;
+    let audioEnabled = true;
+    let subtitlesEnabled = true;
+    let synth = null;
+    let currentBeatIdx = -1;
+    let isSpeaking = false;
+    let isLiveVoiceOpen = false;
+    let currentActiveStage = 0;
+
+    // Smooth Widescreen Camera Presets
+    const CAMERA_PRESETS = {
+      overview: { pos: { x: 21, y: 15, z: 23 }, target: { x: 0, y: 1.6, z: 0 } },
+      squid: { pos: { x: -4.5, y: 6.2, z: 9.8 }, target: { x: -5.8, y: 1.8, z: 2.2 } },
+      shrimp: { pos: { x: 0.8, y: 6.0, z: 9.8 }, target: { x: 0.0, y: 1.7, z: 2.2 } },
+      octopus: { pos: { x: 6.8, y: 6.2, z: 9.8 }, target: { x: 5.8, y: 1.8, z: 2.2 } },
+      filtration: { pos: { x: -1.5, y: 6.5, z: -10.5 }, target: { x: 0.0, y: 1.6, z: -3.8 } },
+      monitoring: { pos: { x: 8.5, y: 8.2, z: 7.5 }, target: { x: 0.0, y: 2.8, z: 2.2 } }
+    };
+
+    // Full Rich Multi-Character Scientific & Local Stewardship Dialogue
+    const STORY_BEATS = [
+      {
+        start: 0,
+        end: 13.5,
+        stage: 0,
+        speaker: 'Kabir',
+        avatar: '🧭',
+        role: 'Saint Martin Master Aquaculturist',
+        emotion: 'Coastal Stewardship',
+        text: "Welcome to the SearchO2 Blue Lab Recirculating Aquaculture System on Saint Martin's Island. By cultivating Bigfin Reef Squid, Giant Tiger Shrimp, and Day Octopus inside closed-loop land-based marine tanks, we protect our coral reefs from overfishing while recirculating ninety-eight point six percent of filtered seawater.",
+        cam: 'overview',
+        aim: new THREE.Vector3(0, 1.8, 2.2)
+      },
+      {
+        start: 13.5,
+        end: 26.5,
+        stage: 0,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Chief Marine & Astrobiologist',
+        emotion: 'Biosecure RAS Architecture',
+        text: "Each species occupies an isolated, species-specific hydro-loop powered by our island solar-wind microgrid. Separating cephalopods and crustaceans prevents territorial predation, eliminates coastal nutrient discharge, and maintains pristine tropical reef water chemistry year-round.",
+        cam: 'overview',
+        aim: new THREE.Vector3(-2, 1.8, -2)
+      },
+      {
+        start: 26.5,
+        end: 40.5,
+        stage: 1,
+        speaker: 'Kabir',
+        avatar: '🧭',
+        role: 'Saint Martin Master Aquaculturist',
+        emotion: 'Squid & Shrimp Cultivation',
+        text: "In Tank One, Bigfin Reef Squid cruise inside a circular laminar current with soft perimeter bumpers and automated live-mysid feeders that prevent mantle abrasion. Next door in Tank Two, Giant Tiger Shrimp graze across multi-tier benthic bio-substrates enriched with probiotic biofloc.",
+        cam: 'squid',
+        aim: new THREE.Vector3(-5.8, 1.8, 2.2)
+      },
+      {
+        start: 40.5,
+        end: 53.5,
+        stage: 1,
+        speaker: 'Pip',
+        avatar: '🌺',
+        role: 'Junior Field Technician',
+        emotion: 'Octopus Enrichment Habitat',
+        text: "And in Tank Three, our Day Octopuses inhabit custom terracotta reef dens with tactile puzzle feeders for cognitive enrichment! Because octopuses are master escape artists, the tank rim is sealed with an astroturf-lined lockable mesh canopy.",
+        cam: 'octopus',
+        aim: new THREE.Vector3(5.8, 1.8, 2.2)
+      },
+      {
+        start: 53.5,
+        end: 67.5,
+        stage: 2,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Chief Marine & Astrobiologist',
+        emotion: 'Drum Screen & MBBR Nitrification',
+        text: "To maintain crystal-clear water quality, outflowing tank water first enters our sixty-micron rotary drum micro-screen, stripping uneaten feed and solid waste into an organic fertilizer collector. Next, the water enters our Moving Bed Biofilm Reactor, where thousands of tumbling HDPE carriers house Nitrosomonas and Nitrobacter bacteria.",
+        cam: 'filtration',
+        aim: new THREE.Vector3(-3.8, 1.6, -3.8)
+      },
+      {
+        start: 67.5,
+        end: 80.5,
+        stage: 2,
+        speaker: 'Kabir',
+        avatar: '🧭',
+        role: 'Saint Martin Master Aquaculturist',
+        emotion: 'Ammonia Detoxification',
+        text: "Cephalopods are extraordinarily sensitive to nitrogenous waste. Our biological filter rapidly oxidizes toxic ammonia into nitrite and harmless nitrate at zero point zero one parts per million, keeping our squid and octopuses vibrant and stress-free.",
+        cam: 'shrimp',
+        aim: new THREE.Vector3(0, 1.7, 2.2)
+      },
+      {
+        start: 80.5,
+        end: 94.5,
+        stage: 3,
+        speaker: 'Pip',
+        avatar: '🌺',
+        role: 'Junior Field Technician',
+        emotion: 'Skimmer, UV-C & Oxygen Cone',
+        text: "After biofiltration, a counter-current protein skimmer strips dissolved organic proteins and squid ink traces into a foam cup, followed by a two-hundred-fifty-four-nanometer UV-C sterilizer that neutralizes ninety-nine point nine percent of waterborne Vibrio bacteria before our oxygen cone supersaturates the return flow!",
+        cam: 'filtration',
+        aim: new THREE.Vector3(3.5, 1.8, -3.8)
+      },
+      {
+        start: 94.5,
+        end: 109.5,
+        stage: 4,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Chief Marine & Astrobiologist',
+        emotion: 'AI Stereo-Vision & Pathology',
+        text: "Above every tank, dual stereo-vision AI cameras and low-intensity green sizing lasers measure mantle length, shrimp carapace growth, and biomass non-invasively. Simultaneously, computer vision tracks squid chromatophore flash patterns, swimming velocity, and gill ventilation to detect early disease symptoms days before clinical onset.",
+        cam: 'monitoring',
+        aim: new THREE.Vector3(0, 2.5, 2.2)
+      },
+      {
+        start: 109.5,
+        end: 125.0,
+        stage: 4,
+        speaker: 'Kabir',
+        avatar: '🧭',
+        role: 'Saint Martin Master Aquaculturist',
+        emotion: 'Sustainable Island Future',
+        text: "Paired with real-time dissolved oxygen, pH, and eDNA pathogen biosensors, our Saint Martin Blue Lab empowers local island fishers with sustainable, high-value marine aquaculture while letting our wild coral reefs regenerate in peace.",
+        cam: 'overview',
+        aim: new THREE.Vector3(0, 1.6, 0)
+      }
+    ];
+
+    const STAGE_CONFIG = [
+      {
+        icon: '🏝️',
+        num: '01 / 05',
+        mechPct: 30, bioPct: 40, o2Pct: 30,
+        toast: "RAS Loop Telemetry Verified: 98.6% seawater recirculation active across Squid, Shrimp & Octopus tanks."
+      },
+      {
+        icon: '🦑',
+        num: '02 / 05',
+        mechPct: 35, bioPct: 35, o2Pct: 30,
+        toast: "Automated Precision Feeders Triggered: Mysid shrimp pellets & probiotic biofloc dispensed to all 3 tanks."
+      },
+      {
+        icon: '♻️',
+        num: '03 / 05',
+        mechPct: 50, bioPct: 35, o2Pct: 15,
+        toast: "60µm Drum Filter Backwashed & MBBR Bio-Media Aeration Boosted: Ammonia stabilized at 0.01 ppm."
+      },
+      {
+        icon: '🫧',
+        num: '04 / 05',
+        mechPct: 20, bioPct: 30, o2Pct: 50,
+        toast: "UV-C 254nm Disinfection & Pure O₂ Saturation Cone Boosted: Dissolved Oxygen at 8.2 mg/L."
+      },
+      {
+        icon: '🔬',
+        num: '05 / 05',
+        mechPct: 25, bioPct: 40, o2Pct: 35,
+        toast: "AI Stereo-Vision Laser Scan Complete: 99.4% survival rate, zero Vibrio pathogens, optimal FCR growth."
+      }
+    ];
+
+    /* --- Audio & Smooth Speech Synthesis --- */
+    function initAudio() {
+      try {
+        if (!synth) synth = new (window.AudioContext || window.webkitAudioContext)();
+        if (synth && synth.state === 'suspended') synth.resume();
+      } catch (e) {}
+    }
+
+    function playFxTone(freq, type = 'sine', dur = 0.16, vol = 0.04) {
+      if (!audioEnabled || !synth) return;
+      try {
+        const osc = synth.createOscillator();
+        const gain = synth.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, synth.currentTime);
+        gain.gain.setValueAtTime(vol, synth.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(synth.destination);
+        osc.start();
+        osc.stop(synth.currentTime + dur);
+      } catch (e) {}
+    }
+
+    let availableVoices = [];
+    function loadVoices() {
+      if ('speechSynthesis' in window) {
+        availableVoices = window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => {
+          availableVoices = window.speechSynthesis.getVoices();
+        };
+      }
+    }
+    loadVoices();
+
+    function speakTextSmooth(text, speaker, onCompleteCallback = null) {
+      if (!('speechSynthesis' in window) || !audioEnabled) {
+        isSpeaking = false;
+        if (onCompleteCallback) onCompleteCallback();
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      isSpeaking = true;
+
+      if (speaker === 'Pip') {
+        utterance.pitch = 1.46;
+        utterance.rate = 1.06;
+        const v = availableVoices.find(voice => (voice.name.includes('Google UK English Female') || voice.name.includes('Samantha')) && voice.lang.startsWith('en'));
+        if (v) utterance.voice = v;
+        playFxTone(760, 'triangle', 0.12, 0.03);
+      } else if (speaker === 'Puff') {
+        utterance.pitch = 1.18;
+        utterance.rate = 0.98;
+        const v = availableVoices.find(voice => (voice.name.includes('Victoria') || voice.name.includes('Karen') || voice.name.includes('Female')) && voice.lang.startsWith('en'));
+        if (v) utterance.voice = v;
+        playFxTone(540, 'sine', 0.14, 0.03);
+      } else {
+        // Captain Kabir: Warm, authoritative marine steward voice
+        utterance.pitch = 0.92;
+        utterance.rate = 0.97;
+        const v = availableVoices.find(voice => (voice.name.includes('Daniel') || voice.name.includes('Google UK English Male') || voice.name.includes('Arthur')) && voice.lang.startsWith('en'));
+        if (v) utterance.voice = v;
+        playFxTone(340, 'sine', 0.15, 0.03);
+      }
+
+      utterance.onstart = () => { isSpeaking = true; };
+      utterance.onend = () => {
+        isSpeaking = false;
+        if (onCompleteCallback) onCompleteCallback();
+      };
+      utterance.onerror = () => {
+        isSpeaking = false;
+        if (onCompleteCallback) onCompleteCallback();
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    /* --- Three.js Scene Initialization --- */
+    function init() {
+      const container = document.getElementById('viewport-container');
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x031a2e);
+      scene.fog = new THREE.FogExp2(0x031a2e, 0.0085);
+
+      camera = new THREE.PerspectiveCamera(42, w / h, 0.2, 420);
+      camera.position.set(21, 15, 23);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.24;
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.055;
+      controls.maxPolarAngle = Math.PI / 2.08;
+      controls.minDistance = 5.5;
+      controls.maxDistance = 64;
+      controls.target.set(0, 1.6, 0);
+
+      setupLighting();
+      buildSaintMartinIslandSetting();
+      buildCultivationTanksAndSpecies();
+      buildClosedLoopFiltrationSystem();
+      buildAIMonitoringGantryAndSensors();
+      buildCharacters();
+      register3DIconHotspots();
+      setupUIEvents();
+
+      window.addEventListener('resize', onResize);
+    }
+
+    function setupLighting() {
+      const hemi = new THREE.HemisphereLight(0xbae6fd, 0x0f766e, 0.98);
+      scene.add(hemi);
+
+      const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.65);
+      sunLight.position.set(28, 38, 24);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.width = 2048;
+      sunLight.shadow.mapSize.height = 2048;
+      sunLight.shadow.camera.near = 5;
+      sunLight.shadow.camera.far = 100;
+      const d = 26;
+      sunLight.shadow.camera.left = -d;
+      sunLight.shadow.camera.right = d;
+      sunLight.shadow.camera.top = d;
+      sunLight.shadow.camera.bottom = -d;
+      sunLight.shadow.bias = -0.0004;
+      scene.add(sunLight);
+
+      const lagoonBounce = new THREE.DirectionalLight(0x22d3ee, 0.55);
+      lagoonBounce.position.set(-18, 8, -16);
+      scene.add(lagoonBounce);
+    }
+
+    /* --- Saint Martin's Island Coastal Terrace & Lagoon Environment --- */
+    function buildSaintMartinIslandSetting() {
+      // Deep Sea Floor
+      const seabed = new THREE.Mesh(
+        new THREE.PlaneGeometry(180, 180),
+        new THREE.MeshStandardMaterial({ color: 0x09344d, roughness: 0.9 })
+      );
+      seabed.rotation.x = -Math.PI / 2;
+      seabed.position.y = -0.8;
+      scene.add(seabed);
+
+      // Animated Ocean Lagoon
+      waterGeo = new THREE.PlaneGeometry(180, 180, 68, 68);
+      initialWaterZ = new Float32Array(waterGeo.attributes.position.count);
+      for (let i = 0; i < waterGeo.attributes.position.count; i++) {
+        initialWaterZ[i] = waterGeo.attributes.position.getZ(i);
+      }
+      waterMesh = new THREE.Mesh(
+        waterGeo,
+        new THREE.MeshPhysicalMaterial({
+          color: 0x0284c7,
+          emissive: 0x0369a1,
+          emissiveIntensity: 0.16,
+          roughness: 0.14,
+          metalness: 0.12,
+          transparent: true,
+          opacity: 0.78
+        })
+      );
+      waterMesh.rotation.x = -Math.PI / 2;
+      waterMesh.position.y = 0.28;
+      scene.add(waterMesh);
+
+      // Saint Martin Sandy Coral Island Platform
+      const islandSand = new THREE.Mesh(
+        new THREE.CylinderGeometry(16.5, 19.5, 1.15, 36),
+        new THREE.MeshStandardMaterial({ color: 0xe6ccb2, roughness: 0.92 })
+      );
+      islandSand.position.set(0, 0.18, 0);
+      islandSand.scale.set(1.22, 1, 1.05);
+      islandSand.receiveShadow = true;
+      scene.add(islandSand);
+
+      // Blue Lab Concrete Biosecure Aquaculture Deck
+      const rasDeck = new THREE.Mesh(
+        new THREE.BoxGeometry(18.5, 0.36, 13.8),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.65 })
+      );
+      rasDeck.position.set(0, 0.74, -0.5);
+      rasDeck.receiveShadow = true;
+      scene.add(rasDeck);
+
+      // Translucent Solar-Canopy Pergola Frame over the RAS Facility
+      const pillarMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.75, roughness: 0.25 });
+      [[-8.6, -6.8], [8.6, -6.8], [-8.6, 5.8], [8.6, 5.8]].forEach(([px, pz]) => {
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 4.8, 12), pillarMat);
+        pillar.position.set(px, 3.1, pz);
+        pillar.castShadow = true;
+        scene.add(pillar);
+      });
+
+      // Overhead Solar Roof Beams
+      const beam1 = new THREE.Mesh(new THREE.BoxGeometry(17.6, 0.18, 0.22), pillarMat);
+      beam1.position.set(0, 5.45, -6.8);
+      scene.add(beam1);
+      const beam2 = new THREE.Mesh(new THREE.BoxGeometry(17.6, 0.18, 0.22), pillarMat);
+      beam2.position.set(0, 5.45, 5.8);
+      scene.add(beam2);
+
+      // Coconut Palms Framing the Island Perimeter
+      [[-12.5, 6.5], [12.8, 6.2], [-13.2, -5.8], [13.0, -6.0]].forEach(([cx, cz]) => {
+        const palm = createCoconutPalm();
+        palm.position.set(cx, 0.65, cz);
+        scene.add(palm);
+      });
+    }
+
+    function createCoconutPalm() {
+      const group = new THREE.Group();
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+      const leafMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.65, side: THREE.DoubleSide });
+      for (let i = 0; i < 6; i++) {
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.14 - i * 0.01, 0.17 - i * 0.01, 0.78, 8), trunkMat);
+        seg.position.set(Math.sin(i * 0.12) * 0.25, 0.35 + i * 0.72, 0);
+        seg.rotation.z = -0.07;
+        group.add(seg);
+      }
+      const crown = new THREE.Group();
+      crown.position.set(0.2, 4.5, 0);
+      for (let f = 0; f < 7; f++) {
+        const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 2.2), leafMat);
+        frond.position.set(0, -0.3, 0.95);
+        frond.rotation.x = Math.PI / 2.6;
+        const pivot = new THREE.Group();
+        pivot.rotation.y = (f / 7) * Math.PI * 2;
+        pivot.add(frond);
+        crown.add(pivot);
+      }
+      group.add(crown);
+      return group;
+    }
+
+    /* --- 3 Marine RAS Cultivation Tanks: Squid, Shrimp & Octopus --- */
+    function createTransparentRASTank(x, z, waterColor, accentColor, hasEscapeMesh = false) {
+      const tankGroup = new THREE.Group();
+      tankGroup.position.set(x, 0.92, z);
+
+      // Heavy Marine Base Rim & Center Conical Drain
+      const baseRing = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.25, 2.35, 0.35, 32),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.5 })
+      );
+      baseRing.position.y = 0.175;
+      baseRing.receiveShadow = true;
+      tankGroup.add(baseRing);
+
+      // Transparent Acrylic Cylinder Wall
+      const glassMat = new THREE.MeshPhysicalMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: 0.24,
+        roughness: 0.08,
+        metalness: 0.05,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+      const wall = new THREE.Mesh(new THREE.CylinderGeometry(2.18, 2.18, 2.25, 36, 1, true), glassMat);
+      wall.position.y = 1.45;
+      tankGroup.add(wall);
+
+      // Illuminated Seawater Volume inside Tank
+      const waterVol = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.12, 2.12, 2.05, 32),
+        new THREE.MeshPhysicalMaterial({
+          color: waterColor,
+          emissive: waterColor,
+          emissiveIntensity: 0.18,
+          transparent: true,
+          opacity: 0.32,
+          roughness: 0.15,
+          depthWrite: false
+        })
+      );
+      waterVol.position.y = 1.38;
+      tankGroup.add(waterVol);
+
+      // Top Collar Ring + Automated Precision Feeder Hopper
+      const topRim = new THREE.Mesh(
+        new THREE.TorusGeometry(2.18, 0.08, 12, 36),
+        new THREE.MeshStandardMaterial({ color: accentColor, metalness: 0.6, roughness: 0.3 })
+      );
+      topRim.rotation.x = Math.PI / 2;
+      topRim.position.y = 2.58;
+      tankGroup.add(topRim);
+
+      // Automated Feeder Unit mounted on Rim
+      const feeder = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.24, 0.12, 0.48, 12),
+        new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.4 })
+      );
+      feeder.position.set(0, 2.78, -2.05);
+      tankGroup.add(feeder);
+
+      // Spawn falling feed particles
+      for (let f = 0; f < 6; f++) {
+        const pellet = new THREE.Mesh(
+          new THREE.SphereGeometry(0.035, 6, 6),
+          new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
+        );
+        tankGroup.add(pellet);
+        feedParticles.push({
+          mesh: pellet,
+          baseX: (Math.random() - 0.5) * 1.4,
+          baseZ: -0.8 + (Math.random() - 0.5) * 1.2,
+          offset: f * 0.17
+        });
+      }
+
+      // Escape-Proof Bio-Mesh Cover for Octopus Tank
+      if (hasEscapeMesh) {
+        const meshCover = new THREE.Mesh(
+          new THREE.CylinderGeometry(2.16, 2.16, 0.04, 24),
+          new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true, transparent: true, opacity: 0.45 })
+        );
+        meshCover.position.y = 2.6;
+        tankGroup.add(meshCover);
+      }
+
+      // Center Oxygen Diffuser Ring & Rising Micro-Bubbles
+      const diffuser = new THREE.Mesh(
+        new THREE.TorusGeometry(0.45, 0.04, 8, 20),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8 })
+      );
+      diffuser.rotation.x = Math.PI / 2;
+      diffuser.position.y = 0.38;
+      tankGroup.add(diffuser);
+
+      for (let b = 0; b < 14; b++) {
+        const bub = new THREE.Mesh(
+          new THREE.SphereGeometry(0.03 + (b % 3) * 0.012, 6, 6),
+          new THREE.MeshBasicMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0.75 })
+        );
+        const ang = (b / 14) * Math.PI * 2;
+        tankGroup.add(bub);
+        bubbleParticles.push({
+          mesh: bub,
+          rx: Math.cos(ang) * (0.35 + (b % 3) * 0.25),
+          rz: Math.sin(ang) * (0.35 + (b % 3) * 0.25),
+          offset: b * 0.07
+        });
+      }
+
+      scene.add(tankGroup);
+      return tankGroup;
+    }
+
+    function buildCultivationTanksAndSpecies() {
+      // 1. TANK 1 (Left, x = -5.8, z = 2.2): BIGFIN REEF SQUID (Sepioteuthis lessoniana)
+      const squidTank = createTransparentRASTank(-5.8, 2.2, 0x0284c7, 0x38bdf8, false);
+      const squidMat = new THREE.MeshStandardMaterial({
+        color: 0xf472b6,
+        emissive: 0xdb2777,
+        emissiveIntensity: 0.25,
+        roughness: 0.3
+      });
+      const finMat = new THREE.MeshStandardMaterial({
+        color: 0xfbcfe8,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide
+      });
+
+      for (let i = 0; i < 5; i++) {
+        const squid = new THREE.Group();
+        // Torpedo Mantle
+        const mantle = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.56, 12), squidMat);
+        mantle.rotation.x = Math.PI / 2;
+        squid.add(mantle);
+
+        // Undulating Lateral Reef Fins
+        const fin = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.44), finMat);
+        fin.rotation.x = Math.PI / 2;
+        fin.position.z = -0.05;
+        squid.add(fin);
+
+        // Trailing Tentacles
+        const tentacles = new THREE.Group();
+        tentacles.position.z = 0.28;
+        for (let t = 0; t < 6; t++) {
+          const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.005, 0.28, 6), squidMat);
+          tent.rotation.x = Math.PI / 2;
+          const ta = (t / 6) * Math.PI * 2;
+          tent.position.set(Math.cos(ta) * 0.05, Math.sin(ta) * 0.05, 0.14);
+          tentacles.add(tent);
+        }
+        squid.add(tentacles);
+
+        squidTank.add(squid);
+        squids.push({
+          group: squid,
+          fin,
+          tentacles,
+          radius: 1.05 + (i % 3) * 0.28,
+          height: 1.1 + (i % 3) * 0.38,
+          speed: 0.85 + (i % 3) * 0.15,
+          phase: (i / 5) * Math.PI * 2
+        });
+      }
+
+      // 2. TANK 2 (Center, x = 0.0, z = 2.2): GIANT TIGER SHRIMP (Penaeus monodon)
+      const shrimpTank = createTransparentRASTank(0.0, 2.2, 0x0d9488, 0x2dd4bf, false);
+
+      // Multi-Tier Benthic Biofloc Grazing Substrate Mesh
+      const substrateMat = new THREE.MeshStandardMaterial({ color: 0x134e4a, roughness: 0.8 });
+      for (let tier = 0; tier < 2; tier++) {
+        const ringShelf = new THREE.Mesh(new THREE.TorusGeometry(1.35 - tier * 0.35, 0.12, 8, 24), substrateMat);
+        ringShelf.rotation.x = Math.PI / 2;
+        ringShelf.position.y = 0.55 + tier * 0.45;
+        shrimpTank.add(ringShelf);
+      }
+
+      const shrimpBodyMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.35 });
+      const shrimpStripeMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 });
+
+      for (let i = 0; i < 9; i++) {
+        const shrimp = new THREE.Group();
+        // Curved Segmented Carapace & Abdomen
+        for (let s = 0; s < 4; s++) {
+          const seg = new THREE.Mesh(
+            new THREE.SphereGeometry(0.075 - s * 0.01, 8, 8),
+            s % 2 === 0 ? shrimpBodyMat : shrimpStripeMat
+          );
+          seg.scale.set(0.85, 0.9, 1.35);
+          seg.position.set(0, -s * 0.025, s * 0.11);
+          shrimp.add(seg);
+        }
+        // Long Sweeping Antennae
+        [-0.03, 0.03].forEach(ax => {
+          const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.002, 0.35, 5), shrimpBodyMat);
+          ant.rotation.x = Math.PI / 2.2;
+          ant.position.set(ax, 0.02, -0.2);
+          shrimp.add(ant);
+        });
+
+        shrimpTank.add(shrimp);
+        shrimps.push({
+          group: shrimp,
+          radius: 0.85 + (i % 4) * 0.26,
+          height: 0.62 + (i % 3) * 0.44,
+          speed: 0.65 + (i % 4) * 0.12,
+          phase: (i / 9) * Math.PI * 2
+        });
+      }
+
+      // 3. TANK 3 (Right, x = 5.8, z = 2.2): DAY OCTOPUS (Octopus cyanea)
+      const octopusTank = createTransparentRASTank(5.8, 2.2, 0x0369a1, 0x818cf8, true);
+
+      // Terracotta Reef Enrichment Dens on Tank Floor
+      const clayMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.85 });
+      [[-0.95, 0.55], [0.95, -0.45], [0.1, 1.05]].forEach(([dx, dz], idx) => {
+        const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.38, 0.65, 14, 1, true), clayMat);
+        pot.rotation.z = Math.PI / 2.3;
+        pot.rotation.y = idx * 1.1;
+        pot.position.set(dx, 0.62, dz);
+        octopusTank.add(pot);
+      });
+
+      const octoMat = new THREE.MeshStandardMaterial({
+        color: 0xe11d48,
+        emissive: 0x9f1239,
+        emissiveIntensity: 0.2,
+        roughness: 0.45
+      });
+
+      for (let i = 0; i < 3; i++) {
+        const octo = new THREE.Group();
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.24, 14, 14), octoMat);
+        head.scale.set(0.95, 1.25, 0.95);
+        head.position.y = 0.22;
+        octo.add(head);
+
+        const arms = [];
+        for (let a = 0; a < 8; a++) {
+          const armPivot = new THREE.Group();
+          const ang = (a / 8) * Math.PI * 2;
+          armPivot.rotation.y = ang;
+          const armMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.012, 0.52, 8), octoMat);
+          armMesh.rotation.z = Math.PI / 2.6;
+          armMesh.position.set(0.24, 0.04, 0);
+          armPivot.add(armMesh);
+          octo.add(armPivot);
+          arms.push(armPivot);
+        }
+
+        octopusTank.add(octo);
+        octopuses.push({
+          group: octo,
+          arms,
+          radius: 0.85 + i * 0.32,
+          baseY: 0.52 + (i % 2) * 0.38,
+          speed: 0.45 + i * 0.12,
+          phase: (i / 3) * Math.PI * 2
+        });
+      }
+    }
+
+    /* --- Closed-Loop Water Quality & Treatment Loop (Back Row, z = -3.8) --- */
+    function buildClosedLoopFiltrationSystem() {
+      const steelMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.78, roughness: 0.25 });
+      const darkBaseMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 });
+
+      // 1. ROTARY DRUM MICRO-SCREEN FILTER (x = -5.5, z = -3.8)
+      const drumUnit = new THREE.Group();
+      drumUnit.position.set(-5.5, 0.92, -3.8);
+      const housing = new THREE.Mesh(
+        new THREE.BoxGeometry(2.1, 1.65, 1.65),
+        new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.28, roughness: 0.15 })
+      );
+      housing.position.y = 0.85;
+      drumUnit.add(housing);
+
+      drumFilterMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.62, 0.62, 1.45, 20),
+        new THREE.MeshStandardMaterial({ color: 0xe2e8f0, wireframe: true })
+      );
+      drumFilterMesh.rotation.z = Math.PI / 2;
+      drumFilterMesh.position.y = 0.88;
+      drumUnit.add(drumFilterMesh);
+
+      // Organic Sludge Collector Bin beside Drum Filter
+      const sludgeBin = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.38, 0.34, 0.85, 14),
+        new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.7 })
+      );
+      sludgeBin.position.set(-1.35, 0.42, 0);
+      drumUnit.add(sludgeBin);
+      scene.add(drumUnit);
+
+      // 2. MOVING BED BIOFILM REACTOR (MBBR) NITRIFICATION BIOFILTER (x = -1.8, z = -3.8)
+      const mbbrUnit = new THREE.Group();
+      mbbrUnit.position.set(-1.8, 0.92, -3.8);
+      const mbbrTank = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.18, 1.18, 2.05, 24),
+        new THREE.MeshPhysicalMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.32, roughness: 0.12 })
+      );
+      mbbrTank.position.y = 1.05;
+      mbbrUnit.add(mbbrTank);
+
+      // Churning Buoyant HDPE Bio-Media Carriers inside MBBR
+      const carrierMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xeab308, emissiveIntensity: 0.25 });
+      for (let c = 0; c < 28; c++) {
+        const carrier = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.032, 6, 10), carrierMat);
+        mbbrUnit.add(carrier);
+        bioMediaCarriers.push({
+          mesh: carrier,
+          angle: (c / 28) * Math.PI * 2,
+          radius: 0.25 + (c % 4) * 0.2,
+          baseY: 0.45 + (c % 5) * 0.3,
+          speed: 1.6 + (c % 3) * 0.4
+        });
+      }
+      scene.add(mbbrUnit);
+
+      // 3. FOAM FRACTIONATOR (PROTEIN SKIMMER) & 254nm UV-C STERILIZER (x = 1.8, z = -3.8)
+      const skimmerUnit = new THREE.Group();
+      skimmerUnit.position.set(1.8, 0.92, -3.8);
+      const skimCol = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.55, 0.65, 2.35, 20),
+        new THREE.MeshPhysicalMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0.34, roughness: 0.1 })
+      );
+      skimCol.position.set(-0.45, 1.2, 0);
+      skimmerUnit.add(skimCol);
+
+      skimmerFoamMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.52, 0.52, 0.42, 16),
+        new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.9 })
+      );
+      skimmerFoamMesh.position.set(-0.45, 2.25, 0);
+      skimmerUnit.add(skimmerFoamMesh);
+
+      // Glowing Violet UV-C Disinfection Chamber
+      const uvHousing = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 1.85, 16), steelMat);
+      uvHousing.position.set(0.68, 1.05, 0);
+      skimmerUnit.add(uvHousing);
+
+      uvChamberGlow = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.31, 0.31, 1.2, 16),
+        new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.78 })
+      );
+      uvChamberGlow.position.set(0.68, 1.05, 0);
+      skimmerUnit.add(uvChamberGlow);
+      scene.add(skimmerUnit);
+
+      // 4. PURE OXYGENATION CONE & DEGASSING TOWER (x = 5.5, z = -3.8)
+      const o2Unit = new THREE.Group();
+      o2Unit.position.set(5.5, 0.92, -3.8);
+      const o2Base = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.95, 0.35, 20), darkBaseMat);
+      o2Base.position.y = 0.18;
+      o2Unit.add(o2Base);
+
+      oxygenConeMesh = new THREE.Mesh(
+        new THREE.ConeGeometry(0.88, 2.25, 24),
+        new THREE.MeshPhysicalMaterial({
+          color: 0x10b981,
+          emissive: 0x059669,
+          emissiveIntensity: 0.32,
+          transparent: true,
+          opacity: 0.55,
+          roughness: 0.12
+        })
+      );
+      oxygenConeMesh.position.y = 1.45;
+      o2Unit.add(oxygenConeMesh);
+      scene.add(o2Unit);
+
+      // CLOSED-LOOP RECIRCULATION PIPELINES & ANIMATED WATER QUALITY PARTICLES
+      // Outflow Drain Manifold (Tanks -> Drum Filter)
+      const drainCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(5.8, 1.15, 0.1),
+        new THREE.Vector3(0.0, 1.15, -0.5),
+        new THREE.Vector3(-5.8, 1.15, 0.1),
+        new THREE.Vector3(-5.5, 1.35, -3.8)
+      ]);
+      scene.add(new THREE.Mesh(
+        new THREE.TubeGeometry(drainCurve, 28, 0.085, 8, false),
+        new THREE.MeshStandardMaterial({ color: 0xd97706, transparent: true, opacity: 0.65 })
+      ));
+      for (let i = 0; i < 6; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), new THREE.MeshBasicMaterial({ color: 0xf59e0b }));
+        scene.add(p);
+        waterFlowParticles.push({ mesh: p, curve: drainCurve, offset: i * 0.166 });
+      }
+
+      // Treatment Interconnect Manifold (Drum -> MBBR Biofilter -> UV-C -> Oxygen Cone)
+      const treatCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-5.5, 1.45, -3.8),
+        new THREE.Vector3(-1.8, 1.45, -3.8),
+        new THREE.Vector3(1.8, 1.45, -3.8),
+        new THREE.Vector3(5.5, 1.45, -3.8)
+      ]);
+      scene.add(new THREE.Mesh(
+        new THREE.TubeGeometry(treatCurve, 24, 0.09, 8, false),
+        new THREE.MeshStandardMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.65 })
+      ));
+      for (let i = 0; i < 6; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.105, 8, 8), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
+        scene.add(p);
+        waterFlowParticles.push({ mesh: p, curve: treatCurve, offset: i * 0.166 });
+      }
+
+      // Clean Oxygenated Return Header (Oxygen Cone -> Overhead Distribution back into all 3 Tanks)
+      const returnCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(5.5, 2.4, -3.8),
+        new THREE.Vector3(5.8, 3.65, 2.2),
+        new THREE.Vector3(0.0, 3.65, 2.2),
+        new THREE.Vector3(-5.8, 3.65, 2.2)
+      ]);
+      scene.add(new THREE.Mesh(
+        new THREE.TubeGeometry(returnCurve, 28, 0.085, 8, false),
+        new THREE.MeshStandardMaterial({ color: 0x10b981, transparent: true, opacity: 0.7 })
+      ));
+      for (let i = 0; i < 7; i++) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), new THREE.MeshBasicMaterial({ color: 0x34d399 }));
+        scene.add(p);
+        waterFlowParticles.push({ mesh: p, curve: returnCurve, offset: i * 0.142 });
+      }
+    }
+
+    /* --- AI Stereo-Vision Gantry, Sizing Lasers & IoT Biosensor Probes --- */
+    function buildAIMonitoringGantryAndSensors() {
+      const railMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.8, roughness: 0.2 });
+
+      // Overhead AI Vision Optical Rail spanning all 3 Cultivation Tanks
+      const gantryBar = new THREE.Mesh(new THREE.BoxGeometry(14.6, 0.12, 0.16), railMat);
+      gantryBar.position.set(0, 4.35, 2.2);
+      scene.add(gantryBar);
+
+      [-7.2, 7.2].forEach(gx => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 3.5, 10), railMat);
+        leg.position.set(gx, 2.6, 2.2);
+        scene.add(leg);
+      });
+
+      const scanMat = new THREE.MeshBasicMaterial({
+        color: 0x10b981,
+        transparent: true,
+        opacity: 0.24,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+
+      // Stereo-Vision Camera Pods & Sweeping Biomass Laser Planes over each Tank
+      const createScannerPod = (tx) => {
+        const pod = new THREE.Mesh(
+          new THREE.BoxGeometry(0.65, 0.26, 0.42),
+          new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.7 })
+        );
+        pod.position.set(tx, 4.22, 2.2);
+        scene.add(pod);
+
+        const laserPlane = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.1), scanMat);
+        laserPlane.position.set(tx, 2.25, 2.2);
+        scene.add(laserPlane);
+        return laserPlane;
+      };
+
+      laserScanPlaneSquid = createScannerPod(-5.8);
+      laserScanPlaneShrimp = createScannerPod(0.0);
+      laserScanPlaneOctopus = createScannerPod(5.8);
+
+      // Central Blue Lab AI Diagnostics & eDNA Biosensor Console (x = 7.4, z = 4.6)
+      const consoleGroup = new THREE.Group();
+      consoleGroup.position.set(7.4, 0.92, 4.6);
+      consoleGroup.rotation.y = -0.55;
+
+      const pedestal = new THREE.Mesh(
+        new THREE.BoxGeometry(1.1, 1.35, 0.65),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.6 })
+      );
+      pedestal.position.y = 0.68;
+      consoleGroup.add(pedestal);
+
+      const holoScreen = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.35, 0.85),
+        new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.65, side: THREE.DoubleSide })
+      );
+      holoScreen.position.set(0, 1.68, 0);
+      holoScreen.rotation.x = -0.25;
+      consoleGroup.add(holoScreen);
+      scene.add(consoleGroup);
+    }
+
+    /* --- Articulated 3D Characters: Captain Kabir, Prof. Whisker Puff & Pip Squeak --- */
+    function buildCharacters() {
+      // 1. CAPTAIN KABIR — Local Saint Martin's Island Master Aquaculturist & Reef Steward
+      kabirGroup = new THREE.Group();
+      const skinMat = new THREE.MeshStandardMaterial({ color: 0xb4693e, roughness: 0.65 });
+      const tunicMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.55 });
+      const gamchaRedMat = new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.75 });
+      const gamchaWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.75 });
+      const hatStrawMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.85 });
+
+      const kTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 1.35, 16), tunicMat);
+      kTorso.position.y = 1.42;
+      kTorso.castShadow = true;
+      kabirGroup.add(kTorso);
+
+      // Traditional Coastal Gamcha Scarf draped around neck & shoulders
+      const gamchaCollar = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.08, 10, 20), gamchaRedMat);
+      gamchaCollar.rotation.x = Math.PI / 2.2;
+      gamchaCollar.position.y = 2.02;
+      kabirGroup.add(gamchaCollar);
+
+      const gamchaTail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.78, 0.06), gamchaWhiteMat);
+      gamchaTail.position.set(0.26, 1.65, 0.44);
+      kabirGroup.add(gamchaTail);
+
+      kabirHead = new THREE.Group();
+      kabirHead.position.set(0, 2.38, 0.02);
+      kabirHead.add(new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), skinMat));
+
+      // Woven Tropical Island Sun Hat
+      const hatBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.72, 0.05, 20), hatStrawMat);
+      hatBrim.position.y = 0.24;
+      kabirHead.add(hatBrim);
+      const hatCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.38, 0.26, 16), hatStrawMat);
+      hatCrown.position.y = 0.38;
+      kabirHead.add(hatCrown);
+
+      // Friendly Eyes & Mustache
+      [-0.12, 0.12].forEach(ex => {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshBasicMaterial({ color: 0x0f172a }));
+        eye.position.set(ex, 0.05, 0.35);
+        kabirHead.add(eye);
+      });
+      const mustache = new THREE.Mesh(
+        new THREE.BoxGeometry(0.24, 0.05, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b })
+      );
+      mustache.position.set(0, -0.08, 0.36);
+      kabirHead.add(mustache);
+      kabirGroup.add(kabirHead);
+
+      // Legs & Articulated Arms
+      [-0.2, 0.2].forEach(lx => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.75, 10), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+        leg.position.set(lx, 0.38, 0);
+        kabirGroup.add(leg);
+      });
+
+      kabirArmR = new THREE.Group();
+      kabirArmR.position.set(0.54, 1.92, 0);
+      const kArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.68, 8), skinMat);
+      kArmMesh.position.y = -0.32;
+      kabirArmR.add(kArmMesh);
+      kabirGroup.add(kabirArmR);
+
+      kabirGroup.position.set(-2.9, 0.92, 4.9);
+      scene.add(kabirGroup);
+
+      // 2. PROFESSOR WHISKER PUFF (Chief Marine & Astrobiologist)
+      puffGroup = new THREE.Group();
+      const calicoGinger = new THREE.MeshStandardMaterial({ color: 0xe07a38, roughness: 0.65 });
+      const calicoWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+      const labCoat = new THREE.MeshStandardMaterial({ color: 0x0d9488, roughness: 0.5 });
+
+      const pBody = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.58, 1.2, 16), calicoWhite);
+      pBody.position.y = 1.38;
+      pBody.castShadow = true;
+      puffGroup.add(pBody);
+
+      const pCoat = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.62, 0.85, 16), labCoat);
+      pCoat.position.y = 1.46;
+      puffGroup.add(pCoat);
+
+      puffHead = new THREE.Group();
+      puffHead.position.set(0, 2.22, 0.04);
+      const pHeadMesh = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), calicoGinger);
+      pHeadMesh.scale.set(1.12, 0.94, 1.02);
+      puffHead.add(pHeadMesh);
+      [-0.2, 0.2].forEach(gx => {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.03, 8, 18), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+        rim.position.set(gx, 0.04, 0.58);
+        puffHead.add(rim);
+      });
+      const earGeo = new THREE.ConeGeometry(0.2, 0.38, 4);
+      const earL = new THREE.Mesh(earGeo, calicoGinger);
+      earL.position.set(-0.38, 0.52, 0.04);
+      earL.rotation.z = 0.35;
+      puffHead.add(earL);
+      const earR = new THREE.Mesh(earGeo, new THREE.MeshStandardMaterial({ color: 0x27272a }));
+      earR.position.set(0.38, 0.52, 0.04);
+      earR.rotation.z = -0.35;
+      puffHead.add(earR);
+      puffGroup.add(puffHead);
+
+      [-0.22, 0.22].forEach(lx => {
+        const pLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.7, 10), calicoWhite);
+        pLeg.position.set(lx, 0.35, 0);
+        puffGroup.add(pLeg);
+      });
+
+      puffArmR = new THREE.Group();
+      puffArmR.position.set(0.58, 1.85, 0);
+      const pArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.58, 8), calicoWhite);
+      pArmMesh.position.y = -0.28;
+      puffArmR.add(pArmMesh);
+      puffGroup.add(puffArmR);
+
+      puffGroup.position.set(2.9, 0.92, 4.9);
+      scene.add(puffGroup);
+
+      // 3. PIP SQUEAK (Junior Field Technician)
+      pipGroup = new THREE.Group();
+      const mouseBrown = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.75 });
+      const mousePink = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.5 });
+      const shirtMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.6 });
+
+      const mTorso = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 14), mouseBrown);
+      mTorso.scale.set(0.9, 1.15, 0.9);
+      mTorso.position.y = 0.9;
+      pipGroup.add(mTorso);
+
+      const mShirt = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.38, 0.42, 14), shirtMat);
+      mShirt.position.y = 0.95;
+      pipGroup.add(mShirt);
+
+      pipHead = new THREE.Group();
+      pipHead.position.set(0, 1.28, 0.04);
+      pipHead.add(new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 14), mouseBrown));
+      [-0.2, 0.2].forEach((ex, idx) => {
+        const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.025, 12), mousePink);
+        ear.position.set(ex, 0.2, -0.02);
+        ear.rotation.set(0.2, idx === 0 ? 0.35 : -0.35, idx === 0 ? -0.4 : 0.4);
+        pipHead.add(ear);
+      });
+      pipGroup.add(pipHead);
+
+      pipArmR = new THREE.Group();
+      pipArmR.position.set(0.32, 1.02, 0);
+      const pawR = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.048, 0.32, 8), mouseBrown);
+      pawR.position.y = -0.16;
+      pipArmR.add(pawR);
+      pipGroup.add(pipArmR);
+
+      pipGroup.position.set(1.5, 0.92, 5.1);
+      scene.add(pipGroup);
+    }
+
+    /* --- 3D Icon-Only Projected Hotspots --- */
+    function register3DIconHotspots() {
+      const defs = [
+        { icon: '🦑', title: 'Bigfin Reef Squid RAS Tank (Laminar Current & Live Feeders)', pos: new THREE.Vector3(-5.8, 3.8, 2.2), tab: 1, cam: 'squid' },
+        { icon: '🦐', title: 'Giant Tiger Shrimp RAS Tank (Benthic Biofloc Substrates)', pos: new THREE.Vector3(0.0, 3.8, 2.2), tab: 1, cam: 'shrimp' },
+        { icon: '🐙', title: 'Day Octopus RAS Tank (Terracotta Dens & Escape-Proof Mesh)', pos: new THREE.Vector3(5.8, 3.8, 2.2), tab: 1, cam: 'octopus' },
+        { icon: '♻️', title: '60µm Drum Filter & MBBR Nitrification Biofilter', pos: new THREE.Vector3(-3.6, 3.2, -3.8), tab: 2, cam: 'filtration' },
+        { icon: '🫧', title: 'Protein Skimmer, 254nm UV-C & Pure Oxygenation Cone', pos: new THREE.Vector3(3.6, 3.2, -3.8), tab: 3, cam: 'filtration' },
+        { icon: '🔬', title: 'AI Stereo-Vision Biomass Lasers & eDNA Health Console', pos: new THREE.Vector3(7.4, 3.0, 4.6), tab: 4, cam: 'monitoring' }
+      ];
+
+      const layer = document.getElementById('hotspots-layer');
+      defs.forEach(def => {
+        const el = document.createElement('div');
+        el.className = 'hotspot-marker';
+        el.title = def.title;
+        el.innerHTML = `<div class="hotspot-orb">${def.icon}</div>`;
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          initAudio();
+          focusCameraPreset(def.cam);
+          openGraphicModal(def.tab);
+        });
+        layer.appendChild(el);
+        hotspotObjects.push({ el, pos: def.pos });
+      });
+    }
+
+    function updateProjectedHotspots() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      hotspotObjects.forEach(item => {
+        const projected = item.pos.clone().project(camera);
+        if (projected.z > 1) {
+          item.el.style.opacity = '0';
+          item.el.style.pointerEvents = 'none';
+        } else {
+          const x = (projected.x * 0.5 + 0.5) * w;
+          const y = (-(projected.y * 0.5) + 0.5) * h;
+          item.el.style.left = `${x}px`;
+          item.el.style.top = `${y}px`;
+          item.el.style.opacity = '1';
+          item.el.style.pointerEvents = 'auto';
+        }
+      });
+    }
+
+    /* --- Detailed SVG Schematics Modal --- */
+    const GRAPHIC_MODAL_DATA = [
+      {
+        tag: "TOPOLOGY // CLOSED-LOOP MARINE RAS",
+        title: "Saint Martin's Island Multi-Species Marine RAS Loop",
+        svg: `
+          <svg viewBox="0 0 720 250" class="w-full h-auto max-h-64">
+            <rect x="20" y="25" width="185" height="55" rx="12" fill="rgba(244,114,182,0.16)" stroke="#f472b6" stroke-width="2"/>
+            <text x="112" y="48" fill="#fbcfe8" font-size="11" font-weight="bold" text-anchor="middle">🦑 BIGFIN REEF SQUID</text>
+            <text x="112" y="66" fill="#cbd5e1" font-size="10" text-anchor="middle">Laminar Ring + Soft Bumpers</text>
+
+            <rect x="20" y="96" width="185" height="55" rx="12" fill="rgba(45,212,191,0.16)" stroke="#2dd4bf" stroke-width="2"/>
+            <text x="112" y="119" fill="#99f6e4" font-size="11" font-weight="bold" text-anchor="middle">🦐 GIANT TIGER SHRIMP</text>
+            <text x="112" y="137" fill="#cbd5e1" font-size="10" text-anchor="middle">Multi-Tier Biofloc Substrates</text>
+
+            <rect x="20" y="167" width="185" height="55" rx="12" fill="rgba(129,140,248,0.16)" stroke="#818cf8" stroke-width="2"/>
+            <text x="112" y="190" fill="#c7d2fe" font-size="11" font-weight="bold" text-anchor="middle">🐙 DAY OCTOPUS</text>
+            <text x="112" y="208" fill="#cbd5e1" font-size="10" text-anchor="middle">Terracotta Dens + Locked Mesh</text>
+
+            <path d="M205 52 L275 110" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="5 3"/>
+            <path d="M205 123 L275 123" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="5 3"/>
+            <path d="M205 194 L275 138" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="5 3"/>
+
+            <rect x="275" y="45" width="175" height="158" rx="14" fill="rgba(6,182,212,0.16)" stroke="#22d3ee" stroke-width="2.5"/>
+            <text x="362" y="72" fill="#67e8f9" font-size="12" font-weight="bold" text-anchor="middle">WATER TREATMENT LOOP</text>
+            <text x="362" y="98" fill="#fde047" font-size="10.5" text-anchor="middle">1. 60µm Drum Micro-Screen</text>
+            <text x="362" y="122" fill="#6ee7b7" font-size="10.5" text-anchor="middle">2. MBBR Nitrification Biofilter</text>
+            <text x="362" y="146" fill="#d8b4fe" font-size="10.5" text-anchor="middle">3. Foam Skimmer + 254nm UV-C</text>
+            <text x="362" y="170" fill="#7dd3fc" font-size="10.5" text-anchor="middle">4. Pure O₂ Saturation Cone</text>
+
+            <path d="M450 123 L515 123" stroke="#10b981" stroke-width="3"/>
+
+            <rect x="515" y="55" width="185" height="136" rx="14" fill="rgba(16,185,129,0.16)" stroke="#10b981" stroke-width="2.5"/>
+            <text x="607" y="84" fill="#6ee7b7" font-size="12" font-weight="bold" text-anchor="middle">🔬 AI BIO-MONITORING</text>
+            <text x="607" y="110" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Stereo-Vision Laser Sizing</text>
+            <text x="607" y="132" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Chromatophore Stress AI</text>
+            <text x="607" y="154" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• eDNA Vibrio Early Warning</text>
+            <text x="607" y="176" fill="#fde047" font-size="10.5" font-weight="bold" text-anchor="middle">98.6% SEAWATER REUSE</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Zero Coastal Reef Pollution", text: "Unlike open-net sea cages, land-based closed-loop RAS treats 98.6% of seawater continuously, preventing organic runoff onto Saint Martin's living coral reefs." },
+          { title: "Species-Specific Hydro-Isolation", text: "Squid, Tiger Shrimp, and Day Octopus are housed in dedicated hydraulic circuits tuned to each species' exact dissolved oxygen, flow velocity, and habitat needs." }
+        ]
+      },
+      {
+        tag: "CULTIVATION // CEPHALOPOD & CRUSTACEAN HABITATS",
+        title: "Tailored RAS Tank Engineering for Squid, Shrimp & Octopus",
+        svg: `
+          <svg viewBox="0 0 720 245" class="w-full h-auto max-h-64">
+            <rect x="25" y="30" width="210" height="185" rx="14" fill="rgba(244,114,182,0.12)" stroke="#f472b6" stroke-width="2"/>
+            <text x="130" y="56" fill="#fbcfe8" font-size="12" font-weight="bold" text-anchor="middle">🦑 SQUID TANK</text>
+            <text x="130" y="84" fill="#e2e8f0" font-size="10.5" text-anchor="middle">• Circular Laminar Flow</text>
+            <text x="130" y="108" fill="#e2e8f0" font-size="10.5" text-anchor="middle">• Cushioned Perimeter Wall</text>
+            <text x="130" y="132" fill="#e2e8f0" font-size="10.5" text-anchor="middle">• Live Mysid &amp; Pellet Hopper</text>
+            <text x="130" y="156" fill="#e2e8f0" font-size="10.5" text-anchor="middle">• Anti-Ink Rapid Skim Drain</text>
+
+            <rect x="255" y="30" width="210" height="185" rx="14" fill="rgba(45,212,191,0.12)" stroke="#2dd4bf" stroke-width="2"/>
+            <text x="360" y="56" fill="#99f6e4" font-size="12" font-weight="bold" text-anchor="middle">🦐 SHRIMP TANK</text>
+            <text x="360" y="84" fill="#e2e8f0" font-size="10.5" text-anchor="middle">• Multi-Tier Grazing Rings</text>
+            <text x="360" y="108" fill="#e2e8f0" font-size="10.5" text-anchor="middle">• Probiotic Biofloc Enrichment</text>
+            <text x="360" y="132" fill="#e2e8f0" font-size="10.5" text-anchor="middle">• Dual Center Vortex Drain</text>
+            <text x="360" y="156" fill="#e2e8f0" font-size="10.5" text-anchor="middle">• High-Density 450/m³ Stock</text>
+
+            <rect x="485" y="30" width="210" height="185" rx="14" fill="rgba(129,140,248,0.12)" stroke="#818cf8" stroke-width="2"/>
+            <text x="590" y="56" fill="#c7d2fe" font-size="12" font-weight="bold" text-anchor="middle">🐙 OCTOPUS TANK</text>
+            <text x="590" y="84" fill="#e2e8f0" font-size="10.5" text-anchor="middle">• Terracotta Reef Dens</text>
+            <text x="590" y="108" fill="#e2e8f0" font-size="10.5" text-anchor="middle">• Puzzle Enrichment Feeders</text>
+            <text x="590" y="132" fill="#e2e8f0" font-size="10.5" text-anchor="middle">• Astroturf Rim + Locked Lid</text>
+            <text x="590" y="156" fill="#e2e8f0" font-size="10.5" text-anchor="middle">• Zero-Stress Low-Glare LED</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Delicate Cephalopod Protection", text: "Bigfin Reef Squid require smooth circular currents and cushioned walls so their delicate skin and fins never abrade during rapid jet-propulsion bursts." },
+          { title: "Cognitive Enrichment & Containment", text: "Day Octopuses are provided with terracotta dens and foraging puzzles, while a textured astroturf rim and locked mesh lid prevent nocturnal tank escapes." }
+        ]
+      },
+      {
+        tag: "FILTRATION // SOLIDS & BIOLOGICAL NITRIFICATION",
+        title: "60µm Rotary Drum Filter & MBBR Nitrification Cascade",
+        svg: `
+          <svg viewBox="0 0 720 240" class="w-full h-auto max-h-64">
+            <rect x="30" y="45" width="200" height="145" rx="14" fill="rgba(245,158,11,0.15)" stroke="#f59e0b" stroke-width="2.5"/>
+            <text x="130" y="75" fill="#fde047" font-size="12" font-weight="bold" text-anchor="middle">60µm DRUM SCREEN</text>
+            <text x="130" y="104" fill="#f1f5f9" font-size="10.5" text-anchor="middle">Removes 96% Solid Waste</text>
+            <text x="130" y="128" fill="#f1f5f9" font-size="10.5" text-anchor="middle">Auto-Backwash Spray Bar</text>
+            <text x="130" y="152" fill="#fdba74" font-size="10.5" text-anchor="middle">Sludge → Island Bio-Compost</text>
+
+            <path d="M230 118 L280 118" stroke="#38bdf8" stroke-width="3.5"/>
+
+            <rect x="280" y="35" width="410" height="165" rx="14" fill="rgba(6,182,212,0.15)" stroke="#22d3ee" stroke-width="2.5"/>
+            <text x="485" y="64" fill="#67e8f9" font-size="12" font-weight="bold" text-anchor="middle">MOVING BED BIOFILM REACTOR (MBBR) NITRIFICATION</text>
+            <rect x="300" y="82" width="110" height="65" rx="10" fill="rgba(239,68,68,0.2)" stroke="#f87171"/>
+            <text x="355" y="110" fill="#fca5a5" font-size="11" font-weight="bold" text-anchor="middle">NH₃ / NH₄⁺</text>
+            <text x="355" y="130" fill="#cbd5e1" font-size="9.5" text-anchor="middle">Toxic Ammonia</text>
+
+            <text x="428" y="118" fill="#fde047" font-size="16" font-weight="bold" text-anchor="middle">→</text>
+
+            <rect x="445" y="82" width="110" height="65" rx="10" fill="rgba(245,158,11,0.2)" stroke="#fbbf24"/>
+            <text x="500" y="110" fill="#fde047" font-size="11" font-weight="bold" text-anchor="middle">NO₂⁻</text>
+            <text x="500" y="130" fill="#cbd5e1" font-size="9.5" text-anchor="middle">Nitrosomonas</text>
+
+            <text x="572" y="118" fill="#6ee7b7" font-size="16" font-weight="bold" text-anchor="middle">→</text>
+
+            <rect x="588" y="82" width="88" height="65" rx="10" fill="rgba(16,185,129,0.22)" stroke="#34d399"/>
+            <text x="632" y="110" fill="#6ee7b7" font-size="11" font-weight="bold" text-anchor="middle">NO₃⁻</text>
+            <text x="632" y="130" fill="#cbd5e1" font-size="9.5" text-anchor="middle">Nitrobacter</text>
+
+            <text x="485" y="176" fill="#99f6e4" font-size="10.5" font-weight="bold" text-anchor="middle">850 m²/m³ Protected Biofilm Surface Area | Residual NH₃ &lt; 0.015 ppm</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Rapid Solids Separation", text: "The rotating 60-micron stainless steel drum filter removes fecal pellets and molted shrimp shells within 12 minutes of excretion before they can mineralize into ammonia." },
+          { title: "Two-Stage Aerobic Biofiltration", text: "Aeration keeps thousands of high-surface-area HDPE carriers tumbling continuously, maintaining active nitrifying biofilms capable of detoxifying sudden post-feeding ammonia spikes." }
+        ]
+      },
+      {
+        tag: "DISINFECTION // SKIMMER, UV-C & OXYGENATION",
+        title: "Protein Skimming, 254nm UV-C & Pure Oxygen Supersaturation",
+        svg: `
+          <svg viewBox="0 0 720 240" class="w-full h-auto max-h-64">
+            <rect x="30" y="38" width="205" height="164" rx="14" fill="rgba(224,242,254,0.12)" stroke="#7dd3fc" stroke-width="2"/>
+            <text x="132" y="66" fill="#bae6fd" font-size="12" font-weight="bold" text-anchor="middle">FOAM FRACTIONATOR</text>
+            <text x="132" y="96" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Counter-Current Microbubbles</text>
+            <text x="132" y="122" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Strips Dissolved Proteins</text>
+            <text x="132" y="148" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Rapid Squid Ink Extraction</text>
+
+            <rect x="257" y="38" width="205" height="164" rx="14" fill="rgba(168,85,247,0.16)" stroke="#c084fc" stroke-width="2"/>
+            <text x="360" y="66" fill="#e9d5ff" font-size="12" font-weight="bold" text-anchor="middle">254nm UV-C REACTOR</text>
+            <text x="360" y="96" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• 65 mJ/cm² Germicidal Dose</text>
+            <text x="360" y="122" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• 99.9% Vibrio Inactivation</text>
+            <text x="360" y="148" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Zero Chemical Residuals</text>
+
+            <rect x="485" y="38" width="205" height="164" rx="14" fill="rgba(16,185,129,0.16)" stroke="#34d399" stroke-width="2"/>
+            <text x="587" y="66" fill="#6ee7b7" font-size="12" font-weight="bold" text-anchor="middle">OXYGENATION CONE</text>
+            <text x="587" y="96" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• PSA Pure O₂ Injection</text>
+            <text x="587" y="122" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• 98% Gas Transfer Efficiency</text>
+            <text x="587" y="148" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Sustains 7.8–8.4 mg/L DO</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Chemical-Free Pathogen Barrier", text: "High-intensity 254nm ultraviolet irradiation disrupts the DNA of marine Vibrio pathogens and viral particles on every pass without adding antibiotics or chlorine." },
+          { title: "High-Metabolism Cephalopod Oxygenation", text: "Squid and octopus exhibit high respiratory rates; our pressurized Speece oxygen cone dissolves pure O₂ cleanly to maintain 105% saturation." }
+        ]
+      },
+      {
+        tag: "AI SURVEILLANCE // BIOMASS GROWTH & DISEASE DETECTION",
+        title: "Stereo-Vision Laser Biometrics & Early Stress Diagnostics",
+        svg: `
+          <svg viewBox="0 0 720 240" class="w-full h-auto max-h-64">
+            <rect x="30" y="35" width="315" height="170" rx="14" fill="rgba(16,185,129,0.14)" stroke="#10b981" stroke-width="2.5"/>
+            <text x="187" y="64" fill="#6ee7b7" font-size="12" font-weight="bold" text-anchor="middle">📏 NON-INVASIVE GROWTH &amp; BIOMASS AI</text>
+            <text x="187" y="94" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Dual Stereo-Vision Cameras + 520nm Laser Grid</text>
+            <text x="187" y="118" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Real-Time Squid Mantle &amp; Shrimp Carapace Sizing</text>
+            <text x="187" y="142" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Automated FCR (Feed Conversion Ratio) Tuning</text>
+            <text x="187" y="172" fill="#fde047" font-size="10.5" font-weight="bold" text-anchor="middle">ZERO HANDLING STRESS ON STOCK</text>
+
+            <rect x="375" y="35" width="315" height="170" rx="14" fill="rgba(56,189,248,0.14)" stroke="#38bdf8" stroke-width="2.5"/>
+            <text x="532" y="64" fill="#7dd3fc" font-size="12" font-weight="bold" text-anchor="middle">🩺 DISEASE &amp; BEHAVIORAL BIOSENSORS</text>
+            <text x="532" y="94" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Chromatophore Flash &amp; Skin Lesion Vision AI</text>
+            <text x="532" y="118" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Gill Ventilation &amp; Swimming Trajectory Anomaly Alert</text>
+            <text x="532" y="142" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Automated Loop eDNA Pathogen qPCR Sampling</text>
+            <text x="532" y="172" fill="#6ee7b7" font-size="10.5" font-weight="bold" text-anchor="middle">72-HOUR EARLY PATHOGEN INTERVENTION</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Contactless Stereo-Laser Growth Tracking", text: "Overhead stereo cameras triangulate exact 3D body dimensions of swimming squid, shrimp, and octopuses, dynamically adjusting daily feed rations to eliminate waste." },
+          { title: "Optical Health & eDNA Surveillance", text: "Computer vision detects subtle skin lesions, abnormal shrimp swimming, or squid chromatophore stress signaling, triggering instant UV-C boost and probiotic dosing." }
+        ]
+      }
+    ];
+
+    function openGraphicModal(tabIndex = 0) {
+      document.getElementById('graphic-modal').classList.remove('hidden');
+      renderGraphicModalTab(tabIndex);
+    }
+
+    function renderGraphicModalTab(tabIndex) {
+      const data = GRAPHIC_MODAL_DATA[tabIndex] || GRAPHIC_MODAL_DATA[0];
+      document.getElementById('modal-tag').textContent = data.tag;
+      document.getElementById('modal-title').textContent = data.title;
+      document.getElementById('modal-svg-container').innerHTML = data.svg;
+
+      document.getElementById('modal-details-grid').innerHTML = data.cards.map(c => `
+        <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-sky-800/60">
+          <h4 class="font-bold text-sky-300 mb-1">${c.title}</h4>
+          <p class="text-slate-300 leading-relaxed">${c.text}</p>
+        </div>
+      `).join('');
+
+      document.querySelectorAll('.modal-tab-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx === tabIndex);
+      });
+    }
+
+    /* --- Real-Time Two-Way Voice & Question Link --- */
+    async function askRASLabAI(userQuery) {
+      const statusEl = document.getElementById('voice-status-text');
+      statusEl.textContent = `Querying Blue Lab RAS Team: "${userQuery}"...`;
+
+      const wasPlaying = isPlaying;
+      isPlaying = false;
+      updatePlayPauseIcons(false);
+
+      const systemPrompt = `You are Captain Kabir (Saint Martin's Island Master Aquaculturist), Professor Whisker Puff (Chief Marine Biologist), and Pip Squeak (Field Technician) at the SearchO2 Blue Lab Recirculating Aquaculture System (RAS) on Saint Martin's Island.
+Respond in 2 to 3 concise, clear, scientifically accurate sentences explaining how Bigfin Reef Squid, Giant Tiger Shrimp, and Day Octopus are cultivated in closed-loop marine RAS tanks, how water quality is maintained (60µm drum filter, MBBR nitrification biofilter, foam fractionator, 254nm UV-C sterilizer, pure oxygen cone), or how growth and disease are monitored (AI stereo-vision sizing lasers, chromatophore/behavior tracking, eDNA biosensors).`;
+
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      try {
+        let responseText = "";
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: userQuery }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] }
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        }
+
+        if (!responseText) {
+          responseText = "In our Saint Martin Blue Lab RAS facility, Bigfin Reef Squid, Giant Tiger Shrimp, and Day Octopus thrive in isolated marine loops. Water passes continuously through a sixty-micron drum filter, an MBBR nitrification biofilter, a 254-nanometer UV-C sterilizer, and a pure oxygen cone, while stereo-vision lasers and eDNA sensors monitor growth and health in real time.";
+        }
+
+        document.getElementById('speaker-avatar').textContent = '🧭';
+        document.getElementById('speaker-name').textContent = 'Captain Kabir & Prof. Puff';
+        document.getElementById('speaker-role').textContent = 'Live RAS Telemetry Response';
+        document.getElementById('speech-emotion').textContent = 'Live Link Active';
+        document.getElementById('speech-text').textContent = `"${responseText}"`;
+        statusEl.textContent = "Response active. Ask another question or close drawer to resume.";
+
+        speakTextSmooth(responseText, 'Kabir', () => {
+          if (wasPlaying && !isLiveVoiceOpen) {
+            isPlaying = true;
+            updatePlayPauseIcons(true);
+          }
+        });
+      } catch (err) {
+        const fallback = "Our closed-loop marine RAS recirculates ninety-eight point six percent of filtered seawater through a drum screen, MBBR biofilter, foam skimmer, UV-C sterilizer, and oxygen cone, while AI stereo-vision cameras measure squid, shrimp, and octopus growth non-invasively.";
+        document.getElementById('speech-text').textContent = `"${fallback}"`;
+        speakTextSmooth(fallback, 'Kabir');
+      }
+    }
+
+    function setupRealTimeVoiceComms() {
+      const commsPanel = document.getElementById('live-comms-panel');
+      const liveBtn = document.getElementById('btn-live-voice');
+      const micBtn = document.getElementById('btn-mic-record');
+      const statusText = document.getElementById('voice-status-text');
+
+      liveBtn.addEventListener('click', () => {
+        initAudio();
+        isLiveVoiceOpen = !isLiveVoiceOpen;
+        commsPanel.classList.toggle('hidden', !isLiveVoiceOpen);
+        liveBtn.classList.toggle('active', isLiveVoiceOpen);
+        if (isLiveVoiceOpen) {
+          isPlaying = false;
+          updatePlayPauseIcons(false);
+          if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        }
+      });
+
+      document.getElementById('btn-close-comms').addEventListener('click', () => {
+        isLiveVoiceOpen = false;
+        commsPanel.classList.add('hidden');
+        liveBtn.classList.remove('active');
+      });
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      let recognition = null;
+      if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+          micBtn.classList.add('mic-live');
+          statusText.textContent = 'Microphone active — speak your question clearly...';
+        };
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          document.getElementById('voice-text-input').value = transcript;
+          askRASLabAI(transcript);
+        };
+        recognition.onerror = () => {
+          micBtn.classList.remove('mic-live');
+          statusText.textContent = 'Microphone unavailable. Type your question in the field below.';
+        };
+        recognition.onend = () => {
+          micBtn.classList.remove('mic-live');
+        };
+      }
+
+      micBtn.addEventListener('click', () => {
+        initAudio();
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        if (recognition) {
+          try { recognition.start(); } catch (e) {}
+        } else {
+          statusText.textContent = 'Voice input unavailable in this browser. Type your question below.';
+        }
+      });
+
+      document.getElementById('voice-text-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        initAudio();
+        const input = document.getElementById('voice-text-input');
+        const q = input.value.trim();
+        if (q) {
+          askRASLabAI(q);
+          input.value = '';
+        }
+      });
+    }
+
+    /* --- Smooth Camera & Stage Synchronization --- */
+    function focusCameraPreset(presetKey) {
+      const preset = CAMERA_PRESETS[presetKey];
+      if (!preset) return;
+      new TWEEN.Tween(camera.position).to(preset.pos, 1150).easing(TWEEN.Easing.Cubic.Out).start();
+      new TWEEN.Tween(controls.target).to(preset.target, 1150).easing(TWEEN.Easing.Cubic.Out).start();
+
+      document.querySelectorAll('[data-cam]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.cam === presetKey);
+      });
+    }
+
+    function updateStageHUD(stageIdx) {
+      currentActiveStage = stageIdx;
+      const cfg = STAGE_CONFIG[stageIdx] || STAGE_CONFIG[0];
+      document.getElementById('hud-stage-icon').textContent = cfg.icon;
+      document.getElementById('hud-stage-num').textContent = cfg.num;
+
+      document.getElementById('bar-mech').style.width = `${cfg.mechPct}%`;
+      document.getElementById('bar-bio').style.width = `${cfg.bioPct}%`;
+      document.getElementById('bar-o2').style.width = `${cfg.o2Pct}%`;
+
+      document.querySelectorAll('.stage-jump-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx === stageIdx);
+      });
+    }
+
+    function updatePlayPauseIcons(playing) {
+      document.getElementById('icon-pause').classList.toggle('hidden', !playing);
+      document.getElementById('icon-play').classList.toggle('hidden', playing);
+    }
+
+    function showActionToast(msg) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      setTimeout(() => { toast.style.opacity = '0'; }, 4200);
+    }
+
+    function updateStoryTimeline(time) {
+      const scrubber = document.getElementById('story-scrubber');
+      if (Math.abs(parseFloat(scrubber.value) - time) > 0.4) scrubber.value = time;
+
+      const mins = Math.floor(time / 60);
+      const secs = Math.floor(time % 60);
+      document.getElementById('time-display').textContent =
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      // Live RAS Water Quality Telemetry Fluctuations
+      const doVal = (7.75 + Math.sin(time * 0.8) * 0.22).toFixed(1);
+      const tempVal = (26.4 + Math.cos(time * 0.5) * 0.15).toFixed(1);
+      document.getElementById('val-do').textContent = `${doVal} mg/L`;
+      document.getElementById('val-temp').textContent = `${tempVal}°C`;
+
+      const idx = STORY_BEATS.findIndex(b => time >= b.start && time < b.end);
+      if (idx !== -1 && idx !== currentBeatIdx) {
+        currentBeatIdx = idx;
+        const beat = STORY_BEATS[idx];
+        const dialogueBox = document.getElementById('dialogue-container');
+
+        dialogueBox.classList.remove('fade-in');
+        dialogueBox.classList.add('fade-out');
+
+        setTimeout(() => {
+          document.getElementById('speaker-avatar').textContent = beat.avatar;
+          document.getElementById('speaker-name').textContent =
+            beat.speaker === 'Kabir' ? 'Captain Kabir' :
+            (beat.speaker === 'Puff' ? 'Professor Whisker Puff' : 'Pip Squeak');
+          document.getElementById('speaker-role').textContent = beat.role;
+          document.getElementById('speech-emotion').textContent = beat.emotion;
+          document.getElementById('speech-text').textContent = `"${beat.text}"`;
+
+          if (subtitlesEnabled) {
+            dialogueBox.classList.remove('fade-out');
+            dialogueBox.classList.add('fade-in');
+          }
+        }, 180);
+
+        updateStageHUD(beat.stage);
+        focusCameraPreset(beat.cam);
+        speakTextSmooth(beat.text, beat.speaker);
+      }
+
+      // Smooth Character Gaze Tracking toward Active Focus Point
+      const activeBeat = STORY_BEATS[currentBeatIdx] || STORY_BEATS[0];
+      if (activeBeat && activeBeat.aim) {
+        [kabirGroup, puffGroup, pipGroup].forEach(char => {
+          if (!char) return;
+          const dx = activeBeat.aim.x - char.position.x;
+          const dz = activeBeat.aim.z - char.position.z;
+          const targetRot = Math.atan2(dx, dz);
+          char.rotation.y = THREE.MathUtils.lerp(char.rotation.y, targetRot, 0.05);
+        });
+      }
+    }
+
+    /* --- UI Event Listeners --- */
+    function setupUIEvents() {
+      document.getElementById('btn-play-pause').addEventListener('click', () => {
+        initAudio();
+        isPlaying = !isPlaying;
+        updatePlayPauseIcons(isPlaying);
+        if (!isPlaying && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          isSpeaking = false;
+        }
+      });
+
+      document.getElementById('btn-restart').addEventListener('click', () => {
+        initAudio();
+        storyTime = 0;
+        currentBeatIdx = -1;
+        isPlaying = true;
+        updatePlayPauseIcons(true);
+        updateStoryTimeline(0);
+      });
+
+      document.getElementById('story-scrubber').addEventListener('input', (e) => {
+        initAudio();
+        storyTime = parseFloat(e.target.value);
+        currentBeatIdx = -1;
+        updateStoryTimeline(storyTime);
+      });
+
+      const stageStartTimes = [0, 26.6, 53.6, 80.6, 94.6];
+      document.querySelectorAll('.stage-jump-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          initAudio();
+          const s = parseInt(btn.dataset.stage, 10);
+          storyTime = stageStartTimes[s] || 0;
+          currentBeatIdx = -1;
+          isPlaying = true;
+          updatePlayPauseIcons(true);
+          updateStoryTimeline(storyTime);
+        });
+      });
+
+      document.querySelectorAll('[data-cam]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          initAudio();
+          focusCameraPreset(btn.dataset.cam);
+        });
+      });
+
+      document.getElementById('btn-open-architecture').addEventListener('click', () => openGraphicModal(0));
+      document.getElementById('btn-stage-graphic').addEventListener('click', () => openGraphicModal(currentActiveStage));
+      document.getElementById('btn-close-graphic-modal').addEventListener('click', () => {
+        document.getElementById('graphic-modal').classList.add('hidden');
+      });
+      document.querySelectorAll('.modal-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => renderGraphicModalTab(parseInt(btn.dataset.tab, 10)));
+      });
+
+      document.getElementById('btn-field-action').addEventListener('click', () => {
+        initAudio();
+        playFxTone(660, 'sine', 0.2, 0.05);
+        const cfg = STAGE_CONFIG[currentActiveStage] || STAGE_CONFIG[0];
+        showActionToast(cfg.toast);
+      });
+
+      const audioBtn = document.getElementById('btn-audio');
+      audioBtn.addEventListener('click', () => {
+        initAudio();
+        audioEnabled = !audioEnabled;
+        audioBtn.classList.toggle('active', audioEnabled);
+        if (!audioEnabled && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          isSpeaking = false;
+        }
+      });
+
+      const subBtn = document.getElementById('btn-subtitles');
+      subBtn.addEventListener('click', () => {
+        subtitlesEnabled = !subtitlesEnabled;
+        subBtn.classList.toggle('active', subtitlesEnabled);
+        const box = document.getElementById('dialogue-container');
+        box.classList.toggle('fade-out', !subtitlesEnabled);
+        box.classList.toggle('fade-in', subtitlesEnabled);
+      });
+
+      setupRealTimeVoiceComms();
+    }
+
+    function onResize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+
+    /* --- Main 60 FPS Biological & Hydraulic Simulation Loop --- */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+      TWEEN.update();
+
+      // 1. Timeline Progression with Zero-Cutoff Speech Guard
+      if (isPlaying) {
+        const nextBeat = STORY_BEATS[currentBeatIdx + 1];
+        if (nextBeat && isSpeaking && storyTime + delta >= nextBeat.start - 0.15) {
+          // Hold smoothly until active speaker finishes sentence
+        } else {
+          storyTime += delta;
+        }
+
+        if (storyTime >= TOTAL_DURATION) {
+          storyTime = TOTAL_DURATION;
+          isPlaying = false;
+          updatePlayPauseIcons(false);
+        }
+        updateStoryTimeline(storyTime);
+      }
+
+      // 2. Coastal Lagoon Wave Undulation
+      if (waterGeo && initialWaterZ) {
+        const pos = waterGeo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i);
+          const y = pos.getY(i);
+          const wave = Math.sin(x * 0.28 + elapsed * 1.6) * 0.055 + Math.cos(y * 0.24 + elapsed * 1.3) * 0.045;
+          pos.setZ(i, initialWaterZ[i] + wave);
+        }
+        pos.needsUpdate = true;
+      }
+
+      // 3. Squid Swimming & Fin Undulation inside Tank 1
+      squids.forEach(sq => {
+        const ang = elapsed * sq.speed + sq.phase;
+        sq.group.position.set(
+          Math.cos(ang) * sq.radius,
+          sq.height + Math.sin(elapsed * 2.2 + sq.phase) * 0.12,
+          Math.sin(ang) * sq.radius
+        );
+        sq.group.rotation.y = -ang;
+        sq.fin.scale.x = 0.85 + Math.sin(elapsed * 8.0 + sq.phase) * 0.22;
+        sq.tentacles.rotation.y = Math.sin(elapsed * 5.5 + sq.phase) * 0.18;
+      });
+
+      // 4. Giant Tiger Shrimp Grazing & Swimming inside Tank 2
+      shrimps.forEach(sh => {
+        const ang = elapsed * sh.speed + sh.phase;
+        sh.group.position.set(
+          Math.cos(ang) * sh.radius,
+          sh.height + Math.sin(elapsed * 3.0 + sh.phase) * 0.06,
+          Math.sin(ang) * sh.radius
+        );
+        sh.group.rotation.y = -ang;
+      });
+
+      // 5. Day Octopus Tentacle Undulation & Den Exploration inside Tank 3
+      octopuses.forEach(oc => {
+        const ang = elapsed * oc.speed + oc.phase;
+        oc.group.position.set(
+          Math.cos(ang) * oc.radius,
+          oc.baseY + Math.sin(elapsed * 1.8 + oc.phase) * 0.08,
+          Math.sin(ang) * oc.radius
+        );
+        oc.group.rotation.y = -ang + Math.PI / 2;
+        oc.arms.forEach((arm, aIdx) => {
+          arm.rotation.z = Math.sin(elapsed * 3.8 + oc.phase + aIdx * 0.7) * 0.22;
+        });
+      });
+
+      // 6. Rising Oxygen Bubbles & Falling Automated Feed Pellets
+      bubbleParticles.forEach(b => {
+        const cycle = (elapsed * 0.55 + b.offset) % 1.0;
+        b.mesh.position.set(
+          b.rx + Math.sin(elapsed * 4 + b.offset * 10) * 0.05,
+          0.42 + cycle * 2.0,
+          b.rz
+        );
+      });
+
+      feedParticles.forEach(fp => {
+        const fall = (elapsed * 0.35 + fp.offset) % 1.0;
+        fp.mesh.position.set(fp.baseX, 2.45 - fall * 1.85, fp.baseZ);
+      });
+
+      // 7. Closed-Loop Water Treatment Animations
+      if (drumFilterMesh) drumFilterMesh.rotation.x += 0.025;
+      if (uvChamberGlow) {
+        uvChamberGlow.material.opacity = 0.62 + Math.sin(elapsed * 6.0) * 0.22;
+      }
+
+      // Tumbling HDPE Bio-Media Carriers inside MBBR Biofilter
+      bioMediaCarriers.forEach((bm, idx) => {
+        const a = elapsed * bm.speed + bm.angle;
+        bm.mesh.position.set(
+          Math.cos(a) * bm.radius,
+          bm.baseY + Math.sin(elapsed * 3.2 + idx) * 0.14,
+          Math.sin(a) * bm.radius
+        );
+        bm.mesh.rotation.x += 0.04;
+        bm.mesh.rotation.y += 0.05;
+      });
+
+      // Continuous Water Quality Flow Particles through Closed-Loop Pipes
+      waterFlowParticles.forEach(wp => {
+        const t = (elapsed * 0.42 + wp.offset) % 1.0;
+        wp.mesh.position.copy(wp.curve.getPoint(t));
+      });
+
+      // 8. Sweeping AI Stereo-Vision Biomass Laser Planes
+      const sweepZ = 2.2 + Math.sin(elapsed * 1.9) * 1.45;
+      if (laserScanPlaneSquid) laserScanPlaneSquid.position.z = sweepZ;
+      if (laserScanPlaneShrimp) laserScanPlaneShrimp.position.z = sweepZ;
+      if (laserScanPlaneOctopus) laserScanPlaneOctopus.position.z = sweepZ;
+
+      // 9. Character Subtle Expressive Gestures
+      if (kabirArmR) kabirArmR.rotation.x = Math.sin(elapsed * 2.1) * 0.14 + 0.25;
+      if (puffArmR) puffArmR.rotation.x = Math.cos(elapsed * 2.3) * 0.12 + 0.22;
+      if (pipArmR) pipArmR.rotation.x = Math.sin(elapsed * 2.9) * 0.16 + 0.2;
+
+      updateProjectedHotspots();
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.onload = () => {
+      init();
+      updateStoryTimeline(0);
+      animate();
+    };
+  </script>
+
+<script>
+window.returnToBlueLab = function(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.closeModal === 'function') {
+      window.parent.closeModal();
+      return false;
+    }
+  } catch(err) {}
+  var ref = document.referrer || '';
+  var search = window.location.search || '';
+  if (ref.indexOf('/hub') !== -1 || search.indexOf('source=hub') !== -1) {
+    window.location.href = '../../hub/index.html#/saint-martin';
+    return false;
+  }
+  window.location.href = '../blue-lab.html';
+  return false;
+};
+window.returnToResearchLab = window.returnToBlueLab;
+</script>
+
+</body>
+</html>

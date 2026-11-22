@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bavarian Viticulture & Franconian Terroir 3D - Alpenhof Research Lab</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js and OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- GSAP for smooth transitions -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cinzel:wght@500;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow: hidden;
+      user-select: none;
+      background: #090e17;
+    }
+    
+    .font-heritage {
+      font-family: 'Cinzel', serif;
+    }
+
+    .glass-dock {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.65);
+    }
+    
+    .glass-modal {
+      background: rgba(11, 18, 30, 0.92);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(245, 158, 11, 0.32);
+      box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.85);
+    }
+
+    .icon-btn {
+      position: relative;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .icon-btn:hover {
+      transform: translateY(-2px);
+      background: rgba(245, 158, 11, 0.22);
+      border-color: rgba(245, 158, 11, 0.55);
+      color: #fef3c7;
+    }
+
+    .icon-btn.active {
+      background: rgba(217, 119, 6, 0.42);
+      border-color: #f59e0b;
+      color: #fef3c7;
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.38);
+    }
+
+    .micro-tooltip {
+      position: absolute;
+      bottom: calc(100% + 9px);
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 500;
+      white-space: nowrap;
+      color: #f1f5f9;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 6px;
+      pointer-events: none;
+      opacity: 0;
+      transition: all 0.18s ease;
+      letter-spacing: 0.02em;
+      z-index: 50;
+    }
+
+    .icon-btn:hover .micro-tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .subtitle-bar {
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+
+    .type-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 0.9em;
+      background: #f59e0b;
+      margin-left: 2px;
+      vertical-align: text-bottom;
+      animation: blink 0.85s step-end infinite;
+    }
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    /* Thinner Bottom-Left Subtitle & Inline CC Toggle Pill */
+    .sub-toggle-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      color: #fef3c7;
+      font-size: 9px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+    .sub-toggle-pill:hover {
+      background: rgba(245, 158, 11, 0.38);
+      border-color: #f59e0b;
+    }
+    .sub-toggle-pill .sub-toggle-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #f59e0b;
+      box-shadow: 0 0 6px #f59e0b;
+    }
+    .sub-toggle-pill.is-off {
+      background: rgba(100, 116, 139, 0.25);
+      border-color: rgba(148, 163, 184, 0.3);
+      color: #94a3b8;
+    }
+    .sub-toggle-pill.is-off .sub-toggle-dot {
+      background: #64748b;
+      box-shadow: none;
+    }
+    #subtitles-container.dialogue-hidden {
+      opacity: 0 !important;
+      transform: translateY(10px) !important;
+      pointer-events: none !important;
+    }
+
+    /* Fallback layout rules to ensure perfect positioning under all environments */
+    header.top-left-header {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 20;
+    }
+    nav.top-right-nav {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #subtitles-container {
+      position: fixed;
+      left: 16px;
+      bottom: 60px;
+      z-index: 30;
+      max-width: 440px;
+      width: 90%;
+    }
+    nav.bottom-nav-dock {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen m-0 p-0 text-slate-100">
+
+  <div id="canvas-container" class="absolute inset-0 z-0"></div>
+
+  <!-- Top Left: Mission & Roster Badges -->
+  <header class="top-left-header absolute top-4 left-4 z-20 pointer-events-none flex flex-col gap-2 max-w-sm sm:max-w-md">
+    <div class="p-3 rounded-2xl glass-dock pointer-events-auto border border-amber-500/35">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-purple-600 to-amber-300 p-[2px] shadow-lg flex-shrink-0">
+            <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-lg">
+              🍇
+            </div>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[9px] uppercase tracking-widest text-amber-400 font-bold font-mono">Franken 15th C.</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30 font-mono">50% SLOPE TERROIR</span>
+            </div>
+            <h1 class="text-xs sm:text-sm font-heritage font-bold text-slate-100 leading-tight">Bavarian Viticulture &amp; Terroir 3D</h1>
+          </div>
+        </div>
+      </div>
+      <!-- Personnel Badges -->
+      <div class="grid grid-cols-3 gap-1.5 text-[10px]">
+        <div class="p-1 rounded-xl bg-slate-900/80 border border-purple-500/40 flex items-center gap-1.5">
+          <span class="text-sm">🧔</span>
+          <div class="truncate">
+            <strong class="text-purple-300 block truncate leading-tight">Lukas Gruber</strong>
+            <span class="text-[8px] text-slate-400">Vintner &amp; Cooper</span>
+          </div>
+        </div>
+        <div class="p-1 rounded-xl bg-slate-900/80 border border-amber-500/40 flex items-center gap-1.5">
+          <span class="text-sm">🦉</span>
+          <div class="truncate">
+            <strong class="text-amber-300 block truncate leading-tight">Prof. Puff</strong>
+            <span class="text-[8px] text-slate-400">Soil Hydrologist</span>
+          </div>
+        </div>
+        <div class="p-1 rounded-xl bg-slate-900/80 border border-cyan-500/40 flex items-center gap-1.5">
+          <span class="text-sm">🐥</span>
+          <div class="truncate">
+            <strong class="text-cyan-300 block truncate leading-tight">Pip Squeak</strong>
+            <span class="text-[8px] text-slate-400">Field Scout</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Top Right Toolbar: Icon-Only Quick Controls -->
+  <nav class="top-right-nav absolute top-4 right-4 z-20 flex items-center gap-1.5 p-1 glass-dock rounded-xl pointer-events-auto">
+    <button id="toggle-subtitles-btn" class="icon-btn active w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 border border-transparent text-xs" aria-label="Subtitles">
+      <i class="fa-regular fa-closed-captioning"></i>
+      <div class="micro-tooltip">Subtitles: ON</div>
+    </button>
+    <button id="toggle-fog-btn" class="icon-btn w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 border border-transparent text-xs" aria-label="River Mist">
+      <i class="fa-solid fa-smog"></i>
+      <div class="micro-tooltip">Main Valley Morning Mist</div>
+    </button>
+    <button id="toggle-sun-btn" class="icon-btn w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 border border-transparent text-xs" aria-label="Solar Angle">
+      <i class="fa-solid fa-sun"></i>
+      <div class="micro-tooltip">Bavarian Golden Hour</div>
+    </button>
+    <button id="toggle-audio-btn" class="icon-btn w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 border border-transparent text-xs" aria-label="Audio">
+      <i id="audio-icon" class="fa-solid fa-volume-xmark"></i>
+      <div class="micro-tooltip">Sound + British Voiceover</div>
+    </button>
+
+    <div class="w-[1px] h-5 bg-slate-700/60 mx-0.5"></div>
+
+    <!-- Return to Research Lab -->
+    <a id="archive-home-link" href="#" onclick="returnToResearchLab(event)" class="icon-btn w-8 h-8 rounded-lg flex items-center justify-center text-slate-300 border border-transparent text-xs" title="Return to Research Lab" aria-label="Return to Research Lab">
+      🔬
+      <div class="micro-tooltip">Return to Research Lab</div>
+    </a>
+  </nav>
+
+  <!-- Bottom Navigation Dock -->
+  <nav class="bottom-nav-dock absolute bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 p-1.5 glass-dock rounded-2xl pointer-events-auto max-w-[96vw] overflow-x-auto shadow-2xl">
+    <button class="nav-dock-btn icon-btn active w-10 h-10 rounded-xl flex items-center justify-center text-amber-400 border border-amber-500/30 text-sm" data-action="cam-panorama">
+      <i class="fa-solid fa-mountain-sun"></i>
+      <div class="micro-tooltip">Valley Terroir Overview</div>
+    </button>
+    <button class="nav-dock-btn icon-btn w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 border border-transparent text-sm" data-action="cam-drainage">
+      <i class="fa-solid fa-water"></i>
+      <div class="micro-tooltip">50% Slope Water Drainage</div>
+    </button>
+    <button class="nav-dock-btn icon-btn w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 border border-transparent text-sm" data-action="cam-strata">
+      <i class="fa-solid fa-layer-group"></i>
+      <div class="micro-tooltip">Triassic Soil Strata Cutaway</div>
+    </button>
+    <button class="nav-dock-btn icon-btn w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 border border-transparent text-sm" data-action="cam-trellis">
+      <i class="fa-solid fa-leaf"></i>
+      <div class="micro-tooltip">Vineyard Rows &amp; Fruit Clusters</div>
+    </button>
+    <button class="nav-dock-btn icon-btn w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 border border-transparent text-sm" data-modal="modal-phenology">
+      <i class="fa-solid fa-clock-rotate-left"></i>
+      <div class="micro-tooltip">Seasonal Fruiting Timeline</div>
+    </button>
+    <button class="nav-dock-btn icon-btn w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 border border-transparent text-sm" data-modal="modal-grapes">
+      <i class="fa-solid fa-cubes-stacked"></i>
+      <div class="micro-tooltip">Bavarian Cultivars (Silvaner, etc.)</div>
+    </button>
+    <button class="nav-dock-btn icon-btn w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 border border-transparent text-sm" data-action="cam-presshouse">
+      <i class="fa-solid fa-landmark"></i>
+      <div class="micro-tooltip">15th-C. Winepress (Baumkelter)</div>
+    </button>
+  </nav>
+
+  <!-- Thinner Bottom-Left Subtitle Modal with Inline CC Toggle -->
+  <aside id="subtitles-container" class="subtitle-bar fixed bottom-20 left-4 z-40 max-w-sm sm:max-w-md w-[92%] glass-dock px-3.5 py-2.5 rounded-xl border border-amber-500/40 shadow-xl flex items-center gap-2.5 pointer-events-auto">
+    <div id="speaker-avatar" class="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-lg bg-slate-900 border border-amber-500/50 shadow">
+      🍇
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between gap-1 mb-0.5">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span id="subtitle-scene-tag" class="text-[11px] font-bold text-amber-300 truncate">Scene I • Terroir Overview</span>
+          <span id="speaker-role" class="hidden sm:inline text-[8px] px-1.5 py-px rounded-full bg-amber-500/20 text-amber-300 border-amber-400/30 font-mono border truncate">Franken Viticulture Heritage</span>
+        </div>
+        <button id="btn-sub-toggle-pill" class="sub-toggle-pill" title="Toggle Subtitles On / Off">
+          <span class="sub-toggle-dot"></span>
+          <span class="sub-toggle-text">CC ON</span>
+        </button>
+      </div>
+      <p id="subtitle-text" class="text-[10.5px] text-slate-100 leading-snug font-medium line-clamp-3 min-h-[2.8em] m-0"></p>
+    </div>
+  </aside>
+
+  <!-- Phenology Interactive Modal -->
+  <div id="modal-phenology" class="modal-window fixed inset-0 z-40 bg-black/50 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-modal max-w-md w-full p-4 rounded-2xl relative border border-amber-500/35 text-xs">
+      <div class="flex justify-between items-center mb-2.5 pb-1.5 border-b border-slate-700/60">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+          <span class="font-heritage font-bold text-amber-200 text-sm">Phenological Fruiting Progression</span>
+        </div>
+        <button class="close-modal-btn w-6 h-6 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-[11px]"></i>
+        </button>
+      </div>
+      <p class="text-[11px] text-slate-300 mb-2.5 leading-relaxed">
+        Watch Bavarian <em class="text-amber-300">Vitis vinifera</em> vines adapt throughout the year—from early winter dormancy to veraison berry swelling:
+      </p>
+      <div class="flex items-center justify-between text-[10px] text-slate-300 font-medium mb-1.5">
+        <span id="season-stage-name" class="text-amber-300 font-semibold">Véraison (Color Turn &amp; Berry Softening)</span>
+        <span id="season-stage-month">August – September</span>
+      </div>
+      <input id="phenology-slider" type="range" min="0" max="100" value="75" class="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg mb-3">
+      <div class="grid grid-cols-4 gap-1.5 text-center text-[10px] mb-3">
+        <button class="season-step-btn p-1.5 rounded-lg border border-slate-700/70 bg-slate-800/50 hover:border-amber-500 transition" data-step="0">Winterschnitt<br><span class="text-[8px] text-slate-400">Pruning</span></button>
+        <button class="season-step-btn p-1.5 rounded-lg border border-slate-700/70 bg-slate-800/50 hover:border-amber-500 transition" data-step="35">Blüte<br><span class="text-[8px] text-slate-400">Flowering</span></button>
+        <button class="season-step-btn p-1.5 rounded-lg border border-amber-500 bg-amber-600/25 transition" data-step="75">Véraison<br><span class="text-[8px] text-slate-400">Ripening</span></button>
+        <button class="season-step-btn p-1.5 rounded-lg border border-slate-700/70 bg-slate-800/50 hover:border-amber-500 transition" data-step="100">Weinlese<br><span class="text-[8px] text-slate-400">Harvest</span></button>
+      </div>
+      <div class="flex items-center justify-between pt-2 border-t border-slate-800/80">
+        <button id="toggle-phenology-autoplay" class="px-3 py-1 rounded-lg bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/40 text-amber-200 text-[11px] font-medium flex items-center gap-1.5">
+          <i id="autoplay-icon" class="fa-solid fa-play text-[10px]"></i>
+          <span>Auto-Cycle Seasons</span>
+        </button>
+        <span class="text-[10px] text-slate-400">Grapes scale &amp; morph colors live</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cultivars Interactive Modal -->
+  <div id="modal-grapes" class="modal-window fixed inset-0 z-40 bg-black/50 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-modal max-w-md w-full p-4 rounded-2xl relative border border-amber-500/35 text-xs">
+      <div class="flex justify-between items-center mb-2.5 pb-1.5 border-b border-slate-700/60">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-wine-bottle text-amber-400"></i>
+          <span class="font-heritage font-bold text-amber-200 text-sm">Bavarian Cultivars &amp; Soil Pairing</span>
+        </div>
+        <button class="close-modal-btn w-6 h-6 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-[11px]"></i>
+        </button>
+      </div>
+      <div class="grid grid-cols-4 gap-1 mb-2.5" id="grape-variety-pills"></div>
+      <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-700/60 space-y-1.5">
+        <div class="flex justify-between items-start">
+          <div>
+            <h4 id="info-grape-name" class="font-heritage font-bold text-amber-100 text-xs">Silvaner (Grüner Silvaner)</h4>
+            <span id="info-grape-soil" class="text-[10px] text-amber-400">Muschelkalk (Limestone) • Iconic White</span>
+          </div>
+          <div class="w-6 h-6 rounded-full border border-amber-500/40 flex items-center justify-center text-xs" id="info-grape-berry-preview">🍇</div>
+        </div>
+        <p id="info-grape-desc" class="text-[11px] text-slate-300 leading-relaxed">
+          First planted in Castell in 1659. Famous for fine herbaceous flint, dry mineral backbone, and juicy orchard fruit notes.
+        </p>
+        <div class="flex justify-between text-[10px] text-slate-400 pt-1.5 border-t border-slate-800">
+          <span>Must Weight: <strong id="info-grape-brix" class="text-amber-300">85–95 °Oe</strong></span>
+          <span>Bavarian Vessel: <strong class="text-amber-300">Bocksbeutel</strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const GRAPE_VARIETIES = [
+      {
+        id: "silvaner",
+        name: "Silvaner",
+        latin: "Grüner Silvaner",
+        colorType: "white",
+        ripeHex: 0xd6e594,
+        unripeHex: 0x5a8641,
+        sugarOe: "85 - 95 °Oe",
+        soil: "Muschelkalk (Shell Limestone)",
+        desc: "Documented in Franconia since 1659 at Schloss Castell. Salty limestone minerality, fine pear notes, and herbal depth. The undisputed soul of Bavarian wine, often served in the distinctive Bocksbeutel."
+      },
+      {
+        id: "muller",
+        name: "Müller-Thurgau",
+        latin: "Rivaner",
+        colorType: "white",
+        ripeHex: 0xe5f2a2,
+        unripeHex: 0x618d45,
+        sugarOe: "75 - 85 °Oe",
+        soil: "Loess & Sandy Marl",
+        desc: "Bavaria's historic workhorse variety since the early 20th century, producing floral, elderflower-scented, crisp white wines perfectly suited to hearty Franconian gastronomy and the cool Main valley climate."
+      },
+      {
+        id: "spatburgunder",
+        name: "Spätburgunder",
+        latin: "Pinot Noir",
+        colorType: "red",
+        ripeHex: 0x481226,
+        unripeHex: 0x527c3d,
+        sugarOe: "90 - 105 °Oe",
+        soil: "Buntsandstein (Red Sandstone)",
+        desc: "Cultivated along the Churfranken red sandstone cliffs since the High Middle Ages. Yields world-class smoky cherry, forest-floor complexity and elegant spice — a true Bavarian expression of Pinot Noir."
+      },
+      {
+        id: "domina",
+        name: "Domina",
+        latin: "Portugieser × Pinot Noir",
+        colorType: "red",
+        ripeHex: 0x22071e,
+        unripeHex: 0x4a7337,
+        sugarOe: "82 - 94 °Oe",
+        soil: "Keuper Marl & Limestone",
+        desc: "A prized modern Franconian red grape producing deeply pigmented, full-bodied wines with dark brambleberry, pepper and fine tannin structure. A proud regional specialty."
+      }
+    ];
+
+    let currentGrapeIdx = 0;
+
+    /* ---- Voice-over narration with smooth fade crossfading ---- */
+    const VOICE_CLIPS = {
+      intro: "vo_intro.mp3",
+      panorama: "vo_panorama.mp3",
+      drainage: "vo_drainage.mp3",
+      strata: "vo_strata.mp3",
+      trellis: "vo_trellis.mp3",
+      presshouse: "vo_presshouse.mp3"
+    };
+    let voiceEnabled = false;
+    let currentVoice = null;
+    let lastVoiceKey = null;
+
+    function playVoice(key) {
+      if (!voiceEnabled) return;
+      if (!key || !VOICE_CLIPS[key]) return;
+      
+      // Smooth fade-out of any previous audio to eliminate abrupt cuts
+      if (currentVoice) {
+        const prevVoice = currentVoice;
+        if (window.gsap) {
+          gsap.to(prevVoice, {
+            volume: 0,
+            duration: 0.35,
+            ease: "power1.out",
+            onComplete: () => {
+              try { prevVoice.pause(); prevVoice.currentTime = 0; } catch(e) {}
+            }
+          });
+        } else {
+          try { prevVoice.pause(); prevVoice.currentTime = 0; } catch(e) {}
+        }
+        currentVoice = null;
+      }
+      
+      lastVoiceKey = key;
+      const src = VOICE_CLIPS[key];
+      const nextAudio = new Audio(src);
+      nextAudio.volume = 0;
+      nextAudio.preload = "auto";
+      currentVoice = nextAudio;
+      
+      const p = nextAudio.play();
+      if (p && p.then) {
+        p.then(() => {
+          if (window.gsap) {
+            gsap.to(nextAudio, { volume: 1.0, duration: 0.45, ease: "power1.in" });
+          } else {
+            nextAudio.volume = 1.0;
+          }
+        }).catch((err) => {
+          console.warn("Voice play blocked:", err);
+        });
+      }
+    }
+
+    const SCENE_CUES = {
+      panorama: {
+        tag: "Scene I • Terroir Overview",
+        speaker: "🧔 Lukas Gruber",
+        role: "Franconian Viticulture Heritage",
+        text: "For over a thousand years Franconian monks and free farmers have shaped these steep Main-river terraces. The 50 % slopes capture reflected sunlight from the water, creating warm microclimates that allow cool-climate vines to reach perfect ripeness — the living heart of Bavarian wine culture."
+      },
+      drainage: {
+        tag: "Scene II • Hill Slope Hydrology",
+        speaker: "🦉 Prof. Whisker Puff",
+        role: "50% Slope Soil Mechanics",
+        text: "On 45°–60° gradients rainwater races downhill within minutes. This natural drainage, perfected since medieval terrace construction, keeps roots dry and prevents the fungal diseases that once devastated European vineyards. Gravity itself is a silent guardian of Franconian quality."
+      },
+      strata: {
+        tag: "Scene III • Triassic Soil Cutaway",
+        speaker: "🦉 Prof. Whisker Puff",
+        role: "Triassic Triad Geology",
+        text: "The famous Triassic Triad of Franken: soft Muschelkalk limestone at the surface gives flinty minerality; moisture-retaining Gipskeuper in the middle; and deep, porous Buntsandstein red sandstone that lets roots plunge eight metres for cool water and distinctive earthy notes."
+      },
+      trellis: {
+        tag: "Scene IV • Vines & Trellising",
+        speaker: "🧔 Lukas Gruber",
+        role: "Guyot Canopy Architecture",
+        text: "Gnarled, century-old Vitis vinifera trunks trained on classic vertical shoot positioning. The system maximises sunlight on every leaf while valley breezes keep clusters dry — a method refined by generations of Franconian winegrowers and still used on the steepest Würzburg and Steigerwald slopes."
+      },
+      presshouse: {
+        tag: "Scene V • 15th-Century Historic Kelterei",
+        speaker: "🧔 Lukas Gruber",
+        role: "Historic Baumkelter Press",
+        text: "Monumental wooden Baumkelter presses of the 15th century crushed whole clusters by lever and screw. The free-run must flowed into large oak Stückfass barrels for cool spontaneous fermentation — the same gentle philosophy that still shapes the finest Franconian wines today."
+      }
+    };
+
+    class AudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.playing = false;
+        this.windGain = null;
+      }
+      init() {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioCtx();
+        const bufferSize = this.ctx.sampleRate * 2;
+        const noise = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = noise.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const src = this.ctx.createBufferSource();
+        src.buffer = noise;
+        src.loop = true;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(260, this.ctx.currentTime);
+        this.windGain = this.ctx.createGain();
+        this.windGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+        src.connect(filter);
+        filter.connect(this.windGain);
+        this.windGain.connect(this.ctx.destination);
+        src.start(0);
+      }
+      toggle() {
+        if (!this.ctx) this.init();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        this.playing = !this.playing;
+        this.windGain.gain.setTargetAtTime(this.playing ? 0.07 : 0.0001, this.ctx.currentTime, 0.4);
+        return this.playing;
+      }
+    }
+    const audio = new AudioEngine();
+
+    let scene, camera, renderer, controls, sun, river, turnLever, screw, clock;
+    let strataGroup, drainageParticles, berryMat, barkMat, leafMat, leafMat2, wireMat, world;
+    const grapeBerryMeshes = [];
+    const vineCanopyLeaves = [];
+    let pCount = 1400;
+
+    function initThree() {
+      if (typeof THREE === 'undefined') return;
+      if (scene) return; // already initialized
+
+      clock = new THREE.Clock();
+      const container = document.getElementById('canvas-container');
+      scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xc2d6e8);
+    scene.fog = new THREE.FogExp2(0xd4e2ef, 0.0025);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 900);
+    camera.position.set(58, 32, 68);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.055;
+    controls.maxPolarAngle = Math.PI / 2 - 0.03;
+    controls.minDistance = 6;
+    controls.maxDistance = 200;
+    controls.target.set(0, 10, 4);
+
+    const hemiLight = new THREE.HemisphereLight(0xe8f0ff, 0x6b5a48, 0.55);
+    scene.add(hemiLight);
+
+    const sun = new THREE.DirectionalLight(0xfff6e8, 1.85);
+    sun.position.set(55, 70, 40);
+    sun.castShadow = true;
+    sun.shadow.mapSize.width = 2048;
+    sun.shadow.mapSize.height = 2048;
+    sun.shadow.camera.near = 8;
+    sun.shadow.camera.far = 260;
+    const d = 90;
+    sun.shadow.camera.left = -d;
+    sun.shadow.camera.right = d;
+    sun.shadow.camera.top = d;
+    sun.shadow.camera.bottom = -d;
+    sun.shadow.bias = -0.00025;
+    scene.add(sun);
+
+    const riverBounce = new THREE.DirectionalLight(0xb4d8ec, 0.4);
+    riverBounce.position.set(0, -8, 48);
+    scene.add(riverBounce);
+
+    const fillLight = new THREE.DirectionalLight(0xfff0d8, 0.25);
+    fillLight.position.set(-40, 30, 20);
+    scene.add(fillLight);
+
+    const world = new THREE.Group();
+    scene.add(world);
+
+    const grapeBerryMeshes = [];
+    const vineCanopyLeaves = [];
+    const allVineTrees = new THREE.Group();
+
+    const barkMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.92, metalness: 0.04 });
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x2f5c1a, roughness: 0.6, side: THREE.DoubleSide });
+    const leafMat2 = new THREE.MeshStandardMaterial({ color: 0x3d6e28, roughness: 0.65, side: THREE.DoubleSide });
+    const berryMat = new THREE.MeshStandardMaterial({ color: GRAPE_VARIETIES[0].ripeHex, roughness: 0.22, metalness: 0.12 });
+    const wireMat = new THREE.MeshBasicMaterial({ color: 0x777777 });
+
+    function createRealisticGrapeTree(x, y, z, scale = 1.15) {
+      const treeGroup = new THREE.Group();
+      treeGroup.position.set(x, y, z);
+      treeGroup.scale.set(scale, scale, scale);
+
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3((Math.random() - 0.5) * 0.22, 0.5, (Math.random() - 0.5) * 0.14),
+        new THREE.Vector3((Math.random() - 0.5) * 0.25, 1.15, (Math.random() - 0.5) * 0.1),
+        new THREE.Vector3(0, 1.55, 0)
+      ]);
+      const trunkGeom = new THREE.TubeGeometry(curve, 10, 0.095, 8, false);
+      const trunk = new THREE.Mesh(trunkGeom, barkMat);
+      trunk.castShadow = true;
+      trunk.receiveShadow = true;
+      treeGroup.add(trunk);
+
+      [-1, 1].forEach((dir) => {
+        const branchCurve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0, 1.55, 0),
+          new THREE.Vector3(dir * 0.75, 1.58 + (Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.08),
+          new THREE.Vector3(dir * 1.55, 1.52, (Math.random() - 0.5) * 0.1)
+        ]);
+        const branchGeom = new THREE.TubeGeometry(branchCurve, 8, 0.055, 7, false);
+        const branch = new THREE.Mesh(branchGeom, barkMat);
+        branch.castShadow = true;
+        treeGroup.add(branch);
+      });
+
+      for (let l = 0; l < 5; l++) {
+        const leafCluster = new THREE.Group();
+        const offsetX = (l - 2) * 0.55 + (Math.random() - 0.5) * 0.12;
+        leafCluster.position.set(offsetX, 1.85 + (Math.random() - 0.5) * 0.15, (Math.random() - 0.5) * 0.2);
+
+        for (let k = 0; k < 6; k++) {
+          const size = 0.32 + Math.random() * 0.08;
+          const leafGeom = new THREE.CircleGeometry(size, 6);
+          const mat = Math.random() > 0.4 ? leafMat : leafMat2;
+          const leaf = new THREE.Mesh(leafGeom, mat);
+          leaf.rotation.set(
+            -1.1 + (Math.random() - 0.5) * 0.4,
+            Math.random() * Math.PI * 2,
+            (Math.random() - 0.5) * 0.35
+          );
+          leaf.position.set(
+            (Math.random() - 0.5) * 0.4,
+            (Math.random() - 0.5) * 0.2,
+            (Math.random() - 0.5) * 0.28
+          );
+          leaf.castShadow = true;
+          leafCluster.add(leaf);
+        }
+        vineCanopyLeaves.push(leafCluster);
+        treeGroup.add(leafCluster);
+      }
+
+      for (let b = 0; b < 2; b++) {
+        const bunchGroup = new THREE.Group();
+        const bx = (b === 0 ? -0.6 : 0.6);
+        bunchGroup.position.set(bx, 1.32 + Math.random() * 0.08, 0.1 + (Math.random() - 0.5) * 0.08);
+
+        const berryCount = 16 + Math.floor(Math.random() * 5);
+        for (let s = 0; s < berryCount; s++) {
+          const sphereGeom = new THREE.SphereGeometry(0.068 + Math.random() * 0.012, 7, 7);
+          const berry = new THREE.Mesh(sphereGeom, berryMat);
+          const row = Math.floor(s / 4);
+          const radius = Math.max(0.02, (4 - row) * 0.05);
+          const angle = (s % 4) * (Math.PI / 2) + row * 0.25;
+          berry.position.set(Math.cos(angle) * radius, -row * 0.08 - Math.random() * 0.015, Math.sin(angle) * radius);
+          bunchGroup.add(berry);
+        }
+        grapeBerryMeshes.push(bunchGroup);
+        treeGroup.add(bunchGroup);
+      }
+
+      return treeGroup;
+    }
+
+    function terrainElevAt(x, z) {
+      let elev = 0;
+      if (z < 26) {
+        elev = Math.sin(Math.min((26 - z) / 82, 1.25) * Math.PI * 0.5) * 33;
+        elev += Math.floor(elev / 3.8) * 0.65;
+        elev += Math.sin(x * 0.085) * 0.9 + Math.cos(x * 0.04) * 0.4;
+      } else {
+        if (Math.abs(z - 52) < 19) elev = -1.8;
+        else elev = Math.sin((z - 26) * 0.045) * 2.2;
+      }
+      return elev;
+    }
+
+    const terrainGeom = new THREE.PlaneGeometry(190, 190, 90, 90);
+    terrainGeom.rotateX(-Math.PI / 2);
+    const pos = terrainGeom.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      pos.setY(i, terrainElevAt(pos.getX(i), pos.getZ(i)));
+    }
+    terrainGeom.computeVertexNormals();
+
+    const terrain = new THREE.Mesh(terrainGeom, new THREE.MeshStandardMaterial({
+      color: 0x8b7355,
+      roughness: 0.96,
+      flatShading: true
+    }));
+    terrain.receiveShadow = true;
+    terrain.renderOrder = 0;
+    world.add(terrain);
+
+    const rowZ = [-15, -10, -5, 0, 5, 10, 15];
+    rowZ.forEach((zVal) => {
+      const yBase = terrainElevAt(0, zVal) + 1.8;
+
+      [-36, 36].forEach((postX) => {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 2.7, 7), barkMat);
+        post.position.set(postX, yBase + 1.35, zVal);
+        post.castShadow = true;
+        allVineTrees.add(post);
+      });
+
+      [1.2, 1.6, 2.0].forEach((wireH) => {
+        const wireGeom = new THREE.CylinderGeometry(0.015, 0.015, 72, 4);
+        wireGeom.rotateZ(Math.PI / 2);
+        const wire = new THREE.Mesh(wireGeom, wireMat);
+        wire.position.set(0, yBase + wireH, zVal);
+        allVineTrees.add(wire);
+      });
+
+      for (let xVal = -33; xVal <= 33; xVal += 2.4) {
+        if (Math.abs(xVal) < 3.0 && zVal > 11) continue;
+        const yLocal = terrainElevAt(xVal, zVal) + 1.8;
+        const scale = 1.2 + Math.random() * 0.25;
+        const tree = createRealisticGrapeTree(xVal, yLocal, zVal, scale);
+        allVineTrees.add(tree);
+      }
+    });
+    allVineTrees.renderOrder = 10;
+    world.add(allVineTrees);
+
+    const river = new THREE.Mesh(
+      new THREE.PlaneGeometry(190, 38),
+      new THREE.MeshStandardMaterial({ color: 0x1a4566, roughness: 0.1, metalness: 0.9, transparent: true, opacity: 0.93 })
+    );
+    river.rotateX(-Math.PI / 2);
+    river.position.set(0, -0.5, 52);
+    world.add(river);
+
+    const stoneWallMat = new THREE.MeshStandardMaterial({ color: 0x8a8478, roughness: 0.94 });
+    [-13, -7, -1, 5, 11, 17].forEach((wz) => {
+      const wallH = 2.1 + Math.random() * 0.3;
+      const wallY = terrainElevAt(0, wz) + wallH * 0.5 + 0.3;
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(78, wallH, 1.1), stoneWallMat);
+      wall.position.set(0, wallY, wz);
+      wall.castShadow = true;
+      wall.receiveShadow = true;
+      wall.renderOrder = 1;
+      world.add(wall);
+    });
+
+    const estate = new THREE.Group();
+    estate.position.set(-28, 3.2, 32);
+    const estateBase = new THREE.Mesh(new THREE.BoxGeometry(14, 3.4, 9.5), new THREE.MeshStandardMaterial({ color: 0x9a9286, roughness: 0.85 }));
+    estateBase.position.y = 1.7;
+    estateBase.castShadow = true;
+    estateBase.receiveShadow = true;
+    estate.add(estateBase);
+
+    const timberMat = new THREE.MeshStandardMaterial({ color: 0x3d2e22, roughness: 0.9 });
+    [[-5, 0], [5, 0], [0, -3.5], [0, 3.5]].forEach(([ox, oz]) => {
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(0.35, 3.5, 0.35), timberMat);
+      beam.position.set(ox, 1.75, oz);
+      estate.add(beam);
+    });
+
+    const estateUpper = new THREE.Mesh(new THREE.BoxGeometry(13.4, 3.6, 9.0), new THREE.MeshStandardMaterial({ color: 0xf0e9db, roughness: 0.75 }));
+    estateUpper.position.y = 5.15;
+    estateUpper.castShadow = true;
+    estate.add(estateUpper);
+
+    const windowMat = new THREE.MeshStandardMaterial({ color: 0x2a3a4a, metalness: 0.3, roughness: 0.3 });
+    for (let wx = -4; wx <= 4; wx += 4) {
+      const win = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.4, 0.15), windowMat);
+      win.position.set(wx, 5.1, 4.55);
+      estate.add(win);
+    }
+
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(9.5, 5.0, 4), new THREE.MeshStandardMaterial({ color: 0xa03a28, roughness: 0.8 }));
+    roof.rotateY(Math.PI / 4);
+    roof.scale.set(1.15, 1, 0.82);
+    roof.position.y = 9.0;
+    roof.castShadow = true;
+    estate.add(roof);
+    world.add(estate);
+
+    const chapel = new THREE.Group();
+    chapel.position.set(16, 28.5, -36);
+    const chapelNave = new THREE.Mesh(new THREE.BoxGeometry(6.2, 5.0, 8.5), new THREE.MeshStandardMaterial({ color: 0xe2ddd3, roughness: 0.8 }));
+    chapelNave.position.y = 2.5;
+    chapelNave.castShadow = true;
+    chapel.add(chapelNave);
+
+    const chapelRoof = new THREE.Mesh(new THREE.ConeGeometry(5.5, 3.2, 4), new THREE.MeshStandardMaterial({ color: 0x6b3a2a, roughness: 0.85 }));
+    chapelRoof.rotateY(Math.PI / 4);
+    chapelRoof.position.y = 6.6;
+    chapel.add(chapelRoof);
+
+    const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 1.3, 6.5, 8), new THREE.MeshStandardMaterial({ color: 0x3a554e, roughness: 0.7 }));
+    spire.position.set(0, 9.8, 2.5);
+    spire.castShadow = true;
+    chapel.add(spire);
+
+    const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.1, 0.12), new THREE.MeshStandardMaterial({ color: 0xc9b896 }));
+    crossV.position.set(0, 13.5, 2.5);
+    chapel.add(crossV);
+    const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.12, 0.12), new THREE.MeshStandardMaterial({ color: 0xc9b896 }));
+    crossH.position.set(0, 13.2, 2.5);
+    chapel.add(crossH);
+    world.add(chapel);
+
+    const pressGroup = new THREE.Group();
+    pressGroup.position.set(26, 4.0, 28);
+    const oakMat = new THREE.MeshStandardMaterial({ color: 0x4a3222, roughness: 0.88 });
+
+    const pressBasin = new THREE.Mesh(new THREE.BoxGeometry(7.2, 1.35, 6.0), new THREE.MeshStandardMaterial({ color: 0x7a746c, roughness: 0.9 }));
+    pressBasin.position.y = 0.67;
+    pressBasin.castShadow = true;
+    pressBasin.receiveShadow = true;
+    pressGroup.add(pressBasin);
+
+    const pressBasket = new THREE.Mesh(new THREE.CylinderGeometry(1.75, 1.75, 2.5, 18, 1, true), oakMat);
+    pressBasket.position.y = 2.35;
+    pressBasket.castShadow = true;
+    pressGroup.add(pressBasket);
+
+    const basketInner = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 2.3, 16, 1, true), new THREE.MeshStandardMaterial({ color: 0x3a2818, side: THREE.BackSide }));
+    basketInner.position.y = 2.35;
+    pressGroup.add(basketInner);
+
+    const screw = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 4.2, 12), oakMat);
+    screw.position.y = 4.3;
+    screw.castShadow = true;
+    pressGroup.add(screw);
+
+    const turnLever = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 5.2, 8), oakMat);
+    turnLever.rotateZ(Math.PI / 2);
+    turnLever.position.y = 5.4;
+    turnLever.castShadow = true;
+    pressGroup.add(turnLever);
+
+    const leverEndMat = new THREE.MeshStandardMaterial({ color: 0x2e1f14 });
+    [-2.5, 2.5].forEach(lx => {
+      const end = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), leverEndMat);
+      end.position.set(lx, 5.4, 0);
+      pressGroup.add(end);
+    });
+
+    const bocksbeutel = new THREE.Mesh(
+      new THREE.SphereGeometry(0.5, 16, 16),
+      new THREE.MeshPhysicalMaterial({ color: 0x1a3520, transmission: 0.75, roughness: 0.15, transparent: true, metalness: 0.1 })
+    );
+    bocksbeutel.scale.set(1.35, 1.5, 0.52);
+    bocksbeutel.position.set(3.5, 2.5, 0.8);
+    pressGroup.add(bocksbeutel);
+
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.45), new THREE.MeshStandardMaterial({ color: 0xe8d9b5, roughness: 0.6 }));
+    label.position.set(3.5, 2.55, 1.05);
+    pressGroup.add(label);
+    world.add(pressGroup);
+
+    const strataGroup = new THREE.Group();
+    strataGroup.position.set(-38, 13, -2);
+    const createStrataLayer = (y, h, color) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(16, h, 16), new THREE.MeshStandardMaterial({ color, roughness: 0.88 }));
+      m.position.y = y;
+      m.castShadow = true;
+      m.receiveShadow = true;
+      strataGroup.add(m);
+    };
+    createStrataLayer(1.5, 2.6, 0x4a3a2b);
+    createStrataLayer(-1.7, 3.8, 0xd8cca8);
+    createStrataLayer(-5.8, 4.4, 0x586355);
+    createStrataLayer(-10.5, 5.0, 0x8a3f2c);
+    strataGroup.visible = false;
+    world.add(strataGroup);
+
+    const pCount = 1400;
+    const rainGeom = new THREE.BufferGeometry();
+    const rainCoords = new Float32Array(pCount * 3);
+    for (let p = 0; p < pCount; p++) {
+      rainCoords[p * 3] = (Math.random() - 0.5) * 60;
+      rainCoords[p * 3 + 2] = (Math.random() - 0.5) * 36 - 6;
+      rainCoords[p * 3 + 1] = (25 - rainCoords[p * 3 + 2]) * 0.45 + Math.random() * 2.5 + 1.5;
+    }
+    rainGeom.setAttribute('position', new THREE.BufferAttribute(rainCoords, 3));
+    const drainageParticles = new THREE.Points(rainGeom, new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.48, transparent: true, opacity: 0.85, depthWrite: false }));
+    drainageParticles.visible = false;
+    world.add(drainageParticles);
+    } // end initThree
+
+    if (typeof THREE !== 'undefined') {
+      try { initThree(); } catch(e) { console.warn('Three init deferred:', e); }
+    } else {
+      window.addEventListener('load', () => {
+        if (typeof THREE !== 'undefined') {
+          try { initThree(); animate(); } catch(e) {}
+        }
+      });
+    }
+
+    let phenologyCycleValue = 75;
+    let isAutoplayingPhenology = false;
+
+    function updateFruitingCycle(val) {
+      phenologyCycleValue = val;
+      const g = GRAPE_VARIETIES[currentGrapeIdx];
+      const leafScale = Math.min(1.15, 0.15 + (val / 45) * 1.0);
+      vineCanopyLeaves.forEach(cluster => { cluster.scale.set(leafScale, leafScale, leafScale); });
+
+      let bunchScale = 0.001;
+      let lerpFactor = 0;
+      if (val < 22) {
+        bunchScale = 0.001;
+      } else if (val < 58) {
+        bunchScale = ((val - 22) / 36) * 0.5;
+        lerpFactor = 0;
+      } else {
+        bunchScale = 0.5 + ((val - 58) / 42) * 0.55;
+        lerpFactor = (val - 58) / 42;
+      }
+
+      if (typeof THREE !== 'undefined' && berryMat) {
+        const cUnripe = new THREE.Color(g.unripeHex);
+        const cRipe = new THREE.Color(g.ripeHex);
+        const blendedColor = cUnripe.clone().lerp(cRipe, Math.min(1, Math.max(0, lerpFactor)));
+        berryMat.color.copy(blendedColor);
+      }
+
+      grapeBerryMeshes.forEach(b => { b.scale.set(bunchScale, bunchScale, bunchScale); });
+
+      const stageName = document.getElementById('season-stage-name');
+      const stageMonth = document.getElementById('season-stage-month');
+      if (val < 22) {
+        stageName.textContent = "Winter Pruning & Budbreak (Austrieb)";
+        stageMonth.textContent = "March – May";
+      } else if (val < 58) {
+        stageName.textContent = "Flowering & Fruit Set (Blüte)";
+        stageMonth.textContent = "June – July";
+      } else if (val < 88) {
+        stageName.textContent = "Véraison (Color Turn & Berry Softening)";
+        stageMonth.textContent = "August – September";
+      } else {
+        stageName.textContent = "Full Harvest (Weinlese)";
+        stageMonth.textContent = "Late September – October";
+      }
+    }
+
+    const cameraPresets = {
+      panorama: { eye: [58, 32, 68], target: [0, 10, 4] },
+      drainage: { eye: [38, 18, 32], target: [2, 9, 0] },
+      strata:   { eye: [-18, 9, 14], target: [-38, 5, -2] },
+      trellis:  { eye: [22, 5.8, 9], target: [0, 7.5, 2] },
+      presshouse: { eye: [34, 8.5, 36], target: [26, 5.5, 28] }
+    };
+
+    let typewriterTimer = null;
+
+    function typeWriter(text, element, speed = 15) {
+      if (typewriterTimer) clearInterval(typewriterTimer);
+      element.innerHTML = "";
+      let i = 0;
+      const cursor = document.createElement("span");
+      cursor.className = "type-cursor";
+      element.appendChild(cursor);
+
+      typewriterTimer = setInterval(() => {
+        if (i < text.length) {
+          const textNode = document.createTextNode(text.charAt(i));
+          element.insertBefore(textNode, cursor);
+          i++;
+        } else {
+          clearInterval(typewriterTimer);
+          typewriterTimer = null;
+          setTimeout(() => { if (cursor.parentNode) cursor.remove(); }, 1400);
+        }
+      }, speed);
+    }
+
+    function triggerView(viewKey) {
+      const p = cameraPresets[viewKey];
+      if (!p) return;
+
+      if (strataGroup) strataGroup.visible = (viewKey === 'strata');
+      if (drainageParticles) drainageParticles.visible = (viewKey === 'drainage');
+
+      // Play matching voice-over with gentle crossfade
+      playVoice(viewKey);
+
+      if (camera && controls && window.gsap) {
+        gsap.to(camera.position, {
+          x: p.eye[0], y: p.eye[1], z: p.eye[2],
+          duration: 1.7,
+          ease: "power2.inOut"
+        });
+
+        gsap.to(controls.target, {
+          x: p.target[0], y: p.target[1], z: p.target[2],
+          duration: 1.7,
+          ease: "power2.inOut",
+          onUpdate: () => controls.update()
+        });
+      }
+
+      const cue = SCENE_CUES[viewKey];
+      const tagEl = document.getElementById('subtitle-scene-tag');
+      const textEl = document.getElementById('subtitle-text');
+      const avatarEl = document.getElementById('speaker-avatar');
+      const roleEl = document.getElementById('speaker-role');
+
+      if (cue && tagEl && textEl) {
+        const applyText = () => {
+          tagEl.textContent = cue.tag;
+          if (roleEl) roleEl.textContent = cue.role;
+          if (avatarEl) {
+            avatarEl.textContent = cue.speaker.includes('Puff') ? '🦉' : '🧔';
+          }
+          textEl.style.opacity = 1;
+          typeWriter(cue.text, textEl, 14);
+        };
+        if (window.gsap) {
+          gsap.to(textEl, {
+            opacity: 0,
+            duration: 0.22,
+            onComplete: applyText
+          });
+        } else {
+          applyText();
+        }
+      }
+    }
+
+    const grapePillsContainer = document.getElementById('grape-variety-pills');
+    GRAPE_VARIETIES.forEach((g, idx) => {
+      const btn = document.createElement('button');
+      btn.className = `p-1.5 rounded-lg border text-[11px] font-semibold transition ${idx === 0 ? 'border-amber-500 bg-amber-600/30 text-amber-200' : 'border-slate-700/60 bg-slate-800/40 text-slate-300 hover:border-slate-500'}`;
+      btn.textContent = g.name;
+      btn.addEventListener('click', () => {
+        currentGrapeIdx = idx;
+        Array.from(grapePillsContainer.children).forEach((c, i) => {
+          c.className = (i === idx)
+            ? 'p-1.5 rounded-lg border border-amber-500 bg-amber-600/30 text-amber-200 text-[11px] font-semibold transition'
+            : 'p-1.5 rounded-lg border border-slate-700/60 bg-slate-800/40 text-slate-300 text-[11px] font-semibold transition';
+        });
+        document.getElementById('info-grape-name').textContent = `${g.name} (${g.latin})`;
+        document.getElementById('info-grape-soil').textContent = `${g.soil} • ${g.colorType.toUpperCase()}`;
+        document.getElementById('info-grape-desc').textContent = g.desc;
+        document.getElementById('info-grape-brix').textContent = g.sugarOe;
+        updateFruitingCycle(phenologyCycleValue);
+      });
+      grapePillsContainer.appendChild(btn);
+    });
+
+    document.querySelectorAll('.nav-dock-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-dock-btn').forEach(b => {
+          b.classList.remove('active', 'border-amber-500/30', 'text-amber-400');
+          b.classList.add('border-transparent', 'text-slate-300');
+        });
+        btn.classList.add('active', 'border-amber-500/30', 'text-amber-400');
+        btn.classList.remove('border-transparent', 'text-slate-300');
+
+        if (btn.dataset.action) {
+          const view = btn.dataset.action.replace('cam-', '');
+          triggerView(view);
+        } else if (btn.dataset.modal) {
+          openModal(btn.dataset.modal);
+          if (btn.dataset.modal === 'modal-phenology' || btn.dataset.modal === 'modal-grapes') triggerView('trellis');
+        }
+      });
+    });
+
+    function openModal(modalId) {
+      closeAllModals();
+      const m = document.getElementById(modalId);
+      if (m) {
+        m.classList.remove('hidden');
+        m.classList.add('flex');
+      }
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.modal-window').forEach(m => {
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+      });
+    }
+
+    document.querySelectorAll('.close-modal-btn').forEach(btn => {
+      btn.addEventListener('click', closeAllModals);
+    });
+
+    document.querySelectorAll('.modal-window').forEach(m => {
+      m.addEventListener('click', (e) => { if (e.target === m) closeAllModals(); });
+    });
+
+    const phenologySlider = document.getElementById('phenology-slider');
+    phenologySlider.addEventListener('input', (e) => { updateFruitingCycle(parseInt(e.target.value)); });
+
+    document.querySelectorAll('.season-step-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const step = parseInt(btn.dataset.step);
+        phenologySlider.value = step;
+        updateFruitingCycle(step);
+      });
+    });
+
+    const autoplayBtn = document.getElementById('toggle-phenology-autoplay');
+    const autoplayIcon = document.getElementById('autoplay-icon');
+    autoplayBtn.addEventListener('click', () => {
+      isAutoplayingPhenology = !isAutoplayingPhenology;
+      autoplayIcon.className = isAutoplayingPhenology ? 'fa-solid fa-pause text-[10px]' : 'fa-solid fa-play text-[10px]';
+    });
+
+    // Subtitle toggles (Top button & Bottom-Left inline CC toggle pill)
+    let subtitlesEnabled = true;
+    const subBtn = document.getElementById('toggle-subtitles-btn');
+    const subContainer = document.getElementById('subtitles-container');
+    const inlineCcBtn = document.getElementById('btn-sub-toggle-pill');
+
+    function setSubtitlesState(enabled) {
+      subtitlesEnabled = enabled;
+      if (subBtn) {
+        subBtn.classList.toggle('active', subtitlesEnabled);
+        subBtn.querySelector('.micro-tooltip').textContent = `Subtitles: ${subtitlesEnabled ? 'ON' : 'OFF'}`;
+      }
+      if (inlineCcBtn) {
+        inlineCcBtn.classList.toggle('is-off', !subtitlesEnabled);
+        const txt = inlineCcBtn.querySelector('.sub-toggle-text');
+        if (txt) txt.textContent = subtitlesEnabled ? 'CC ON' : 'CC OFF';
+      }
+      if (subContainer) {
+        if (!subtitlesEnabled) {
+          subContainer.classList.add('dialogue-hidden');
+        } else {
+          subContainer.classList.remove('dialogue-hidden');
+        }
+      }
+    }
+
+    if (subBtn) {
+      subBtn.addEventListener('click', () => {
+        setSubtitlesState(!subtitlesEnabled);
+      });
+    }
+
+    if (inlineCcBtn) {
+      inlineCcBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setSubtitlesState(!subtitlesEnabled);
+      });
+    }
+
+    let fogActive = false;
+    document.getElementById('toggle-fog-btn').addEventListener('click', (e) => {
+      fogActive = !fogActive;
+      e.currentTarget.classList.toggle('active', fogActive);
+      if (scene && scene.fog && window.gsap) { gsap.to(scene.fog, { density: fogActive ? 0.011 : 0.0028, duration: 1.3 }); }
+    });
+
+    let sunActive = false;
+    document.getElementById('toggle-sun-btn').addEventListener('click', (e) => {
+      sunActive = !sunActive;
+      e.currentTarget.classList.toggle('active', sunActive);
+      if (sun && window.gsap) {
+        gsap.to(sun, { intensity: sunActive ? 2.4 : 1.75, duration: 1.1 });
+        gsap.to(sun.color, { r: 1.0, g: sunActive ? 0.86 : 0.96, b: sunActive ? 0.72 : 0.91, duration: 1.1 });
+      }
+    });
+
+    const audioBtn = document.getElementById('toggle-audio-btn');
+    const audioIcon = document.getElementById('audio-icon');
+    audioBtn.addEventListener('click', () => {
+      const playing = audio.toggle();
+      voiceEnabled = playing;
+      if (!playing && currentVoice) {
+        try {
+          if (window.gsap) {
+            gsap.to(currentVoice, { volume: 0, duration: 0.3, onComplete: () => {
+              try { currentVoice.pause(); currentVoice.currentTime = 0; } catch(e) {}
+            }});
+          } else {
+            try { currentVoice.pause(); currentVoice.currentTime = 0; } catch(e) {}
+          }
+        } catch(e) {}
+      }
+      if (playing) {
+        const activeKey = lastVoiceKey || 'panorama';
+        playVoice(activeKey);
+      }
+      audioBtn.classList.toggle('active', playing);
+      audioIcon.className = playing ? 'fa-solid fa-volume-high text-amber-400' : 'fa-solid fa-volume-xmark text-slate-300';
+      audioBtn.querySelector('.micro-tooltip').textContent = playing ? 'Sound + Voice ON' : 'Sound + Voice OFF';
+    });
+
+    function animate() {
+      if (typeof THREE === 'undefined' || !renderer || !scene || !camera || !clock) return;
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const time = clock.getElapsedTime();
+
+      if (isAutoplayingPhenology) {
+        let nextVal = phenologyCycleValue + delta * 11;
+        if (nextVal > 100) nextVal = 0;
+        phenologySlider.value = nextVal;
+        updateFruitingCycle(nextVal);
+      }
+
+      if (drainageParticles.visible) {
+        const arr = drainageParticles.geometry.attributes.position.array;
+        for (let i = 0; i < pCount; i++) {
+          const idx = i * 3;
+          arr[idx + 1] -= 0.18;
+          arr[idx + 2] += 0.16;
+          if (arr[idx + 1] <= 0.3 || arr[idx + 2] > 38) {
+            arr[idx] = (Math.random() - 0.5) * 60;
+            arr[idx + 2] = (Math.random() - 0.5) * 36 - 14;
+            arr[idx + 1] = (25 - arr[idx + 2]) * 0.45 + 2.8;
+          }
+        }
+        drainageParticles.geometry.attributes.position.needsUpdate = true;
+      }
+
+      if (river && river.material) river.material.opacity = 0.91 + Math.sin(time * 1.4) * 0.035;
+      if (turnLever) turnLever.rotation.y += delta * 0.32;
+      if (screw) screw.rotation.y += delta * 0.32;
+
+      if (controls) controls.update();
+      if (renderer) renderer.render(scene, camera);
+    }
+
+    window.onload = function() {
+      updateFruitingCycle(75);
+      const firstCue = SCENE_CUES.panorama;
+      document.getElementById('subtitle-scene-tag').textContent = firstCue.tag;
+      typeWriter(firstCue.text, document.getElementById('subtitle-text'), 15);
+      lastVoiceKey = 'intro';
+      animate();
+    };
+
+    window.returnToResearchLab = function(e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      try {
+        if (window.parent && window.parent !== window && typeof window.parent.openLabArchiveModal === 'function') {
+          window.parent.openLabArchiveModal();
+          return false;
+        }
+      } catch (err) {}
+      var ref = document.referrer || '';
+      var search = window.location.search || '';
+      if (ref.indexOf('/hub') !== -1 || search.indexOf('source=hub') !== -1) {
+        window.location.href = '../../../hub/index.html#/alpenhof';
+        return false;
+      }
+      window.location.href = '../../alpenhof.html#lab';
+      return false;
+    };
+
+    window.addEventListener('resize', () => {
+      if (camera && renderer) {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,2882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SearchO2 Blue Lab — Interactive Seashore CNG Field, Marine Jetty &amp; Operation Boat</title>
+
+  <!-- Tailwind CSS & Three.js Libraries -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+  <!-- Alpenhof & SearchO2 Standard Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Fredoka:wght@500;600;700&family=Cinzel:wght@700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; overflow: hidden;
+      width: 100vw; height: 100vh;
+      background: #04101e;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #viewport-container { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; }
+    .bubble-font { font-family: 'Fredoka', cursive; }
+    .cinzel { font-family: 'Cinzel', serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .glass-ui {
+      background: rgba(9, 20, 38, 0.86);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+    }
+
+    /* Standard icon toolbar */
+    .tool-icon {
+      position: relative;
+      width: 38px; height: 38px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 12px;
+      font-size: 15px; line-height: 1;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #e2e8f0;
+      cursor: pointer;
+      flex: 0 0 auto;
+      transition: background .18s, border-color .18s, transform .18s, box-shadow .18s;
+    }
+    .tool-icon:hover {
+      background: rgba(56, 189, 248, 0.24);
+      border-color: rgba(56, 189, 248, 0.7);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(56, 189, 248, 0.28);
+    }
+    .tool-icon:active { transform: translateY(0) scale(0.96); }
+    .tool-icon.active {
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      color: #031525;
+      border-color: #7dd3fc;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.5);
+    }
+    .tool-icon.listening {
+      background: linear-gradient(135deg, #f43f5e, #f97316);
+      color: #ffffff;
+      border-color: #fda4af;
+      box-shadow: 0 0 18px rgba(244, 63, 94, 0.75);
+      animation: alarmPulse 0.9s infinite;
+    }
+
+    /* Standard tooltip bubble */
+    .tool-icon::after {
+      content: attr(data-tip);
+      position: absolute;
+      top: calc(100% + 9px);
+      left: 50%;
+      transform: translate(-50%, -6px);
+      background: rgba(2, 6, 23, 0.97);
+      border: 1px solid rgba(56, 189, 248, 0.42);
+      color: #e2e8f0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .015em;
+      padding: 5px 9px;
+      border-radius: 8px;
+      white-space: nowrap;
+      opacity: 0; pointer-events: none;
+      transition: opacity .16s ease, transform .16s ease;
+      z-index: 90;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+    }
+    .tool-icon:hover::after { opacity: 1; transform: translate(-50%, 0); }
+
+    .tip-up::after {
+      top: auto;
+      bottom: calc(100% + 9px);
+      transform: translate(-50%, 6px);
+    }
+    .tip-up:hover::after { transform: translate(-50%, 0); }
+
+    /* Dialogue box */
+    .dialogue-box {
+      transition: opacity .26s cubic-bezier(.16,1,.3,1), transform .26s cubic-bezier(.16,1,.3,1);
+    }
+    .dialogue-box.fade-out {
+      opacity: 0;
+      transform: translate(-50%, 16px) scale(.96);
+      pointer-events: none;
+    }
+    .dialogue-box.fade-in {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+    .subtitles-off .dialogue-box {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translate(-50%, 20px) scale(.96) !important;
+    }
+
+    /* Virtual Concept Fact Slide */
+    #virtual-slide {
+      transition: opacity .32s ease, transform .32s cubic-bezier(.16,1,.3,1);
+    }
+    #virtual-slide.slide-hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-12px) scale(0.96);
+    }
+
+    /* Timeline step chips */
+    .step-chip {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      padding: 4px 2px;
+      border-radius: 7px;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      color: #94a3b8;
+      transition: all .18s ease;
+      cursor: pointer;
+    }
+    .step-chip:hover { border-color: rgba(56,189,248,.6); color: #bae6fd; }
+    .step-chip.active {
+      background: linear-gradient(135deg, #0284c7, #10b981);
+      color: #04231c;
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
+    }
+
+    input[type=range] {
+      -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 4px;
+      background: linear-gradient(90deg, #0ea5e9 0%, #10b981 100%);
+      outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 11px; height: 11px; border-radius: 50%;
+      background: #f0fdfa; border: 2px solid #0ea5e9;
+      box-shadow: 0 0 8px rgba(56,189,248,.8);
+      cursor: pointer;
+    }
+
+    #player-panel { transition: opacity .2s ease, transform .2s cubic-bezier(.16,1,.3,1); }
+    #player-panel.hidden-panel {
+      opacity: 0; pointer-events: none;
+      transform: translateY(10px) scale(.95);
+      display: block !important;
+    }
+
+    .custom-scroll::-webkit-scrollbar { width: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.4); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 4px; }
+
+    /* Alarm Pulse */
+    @keyframes alarmPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6); border-color: rgba(244, 63, 94, 0.9); }
+      50% { box-shadow: 0 0 18px 4px rgba(244, 63, 94, 0.35); border-color: rgba(251, 113, 133, 1); }
+    }
+    .alarm-active { animation: alarmPulse 1.1s infinite; }
+
+    /* Voice Equalizer Bars */
+    @keyframes eqBounce {
+      0%, 100% { height: 4px; }
+      50% { height: 15px; }
+    }
+    .eq-bar {
+      width: 3px; height: 4px; border-radius: 2px;
+      background: #38bdf8;
+      transition: height 0.12s ease;
+    }
+    .speaking .eq-bar:nth-child(1) { animation: eqBounce 0.42s infinite 0.0s; background: #34d399; }
+    .speaking .eq-bar:nth-child(2) { animation: eqBounce 0.35s infinite 0.1s; background: #38bdf8; }
+    .speaking .eq-bar:nth-child(3) { animation: eqBounce 0.48s infinite 0.18s; background: #34d399; }
+    .speaking .eq-bar:nth-child(4) { animation: eqBounce 0.39s infinite 0.08s; background: #38bdf8; }
+
+    .quest-checkbox {
+      width: 14px; height: 14px; border-radius: 4px;
+      border: 1.5px solid #38bdf8;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 9px; flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .quest-done .quest-checkbox {
+      background: #10b981; border-color: #10b981; color: #022c22; font-weight: 900;
+    }
+    .quest-done .quest-label {
+      text-decoration: line-through; color: #64748b;
+    }
+
+    /* 3D Hotspot Floating Pins */
+    .hotspot-pin {
+      position: fixed;
+      z-index: 25;
+      transform: translate(-50%, -100%);
+      pointer-events: auto;
+      cursor: pointer;
+      transition: transform 0.18s ease, opacity 0.2s ease, border-color 0.2s ease;
+    }
+    .hotspot-pin:hover {
+      transform: translate(-50%, -108%) scale(1.08);
+      z-index: 35;
+      border-color: #ffffff;
+    }
+    .hotspot-pulse {
+      animation: pinPulse 2.2s infinite;
+    }
+    @keyframes pinPulse {
+      0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.65); }
+      70% { box-shadow: 0 0 0 10px rgba(56, 189, 248, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+    }
+  </style>
+</head>
+<body class="text-white">
+
+  <!-- Full-Screen 3D Canvas Container -->
+  <div id="viewport-container"></div>
+
+  <!-- ============ INTERACTIVE 3D WORLD HOTSPOT PINS (Click to Explore & Open Graphic Modal) ============ -->
+  <div id="hotspot-layer" class="fixed inset-0 z-20 pointer-events-none">
+    <button id="pin-boat" class="hotspot-pin glass-ui px-2.5 py-1 rounded-full border border-cyan-400/80 flex items-center gap-1.5 shadow-xl hotspot-pulse">
+      <span class="text-xs">🚤</span>
+      <span class="text-[9.5px] font-bold text-cyan-200 whitespace-nowrap">SearchO2 Boat · Seismic</span>
+    </button>
+
+    <button id="pin-drilling" class="hotspot-pin glass-ui px-2.5 py-1 rounded-full border border-amber-400/80 flex items-center gap-1.5 shadow-xl hotspot-pulse">
+      <span class="text-xs">🔩</span>
+      <span class="text-[9.5px] font-bold text-amber-200 whitespace-nowrap">PDC Drill &amp; Subsea BOP</span>
+    </button>
+
+    <button id="pin-jetty" class="hotspot-pin glass-ui px-2.5 py-1 rounded-full border border-emerald-400/80 flex items-center gap-1.5 shadow-xl hotspot-pulse">
+      <span class="text-xs">🌉</span>
+      <span class="text-[9.5px] font-bold text-emerald-200 whitespace-nowrap">Marine Jetty &amp; AUV Dock</span>
+    </button>
+
+    <button id="pin-beach-valve" class="hotspot-pin glass-ui px-2.5 py-1 rounded-full border border-sky-400/80 flex items-center gap-1.5 shadow-xl hotspot-pulse">
+      <span class="text-xs">🎚️</span>
+      <span class="text-[9.5px] font-bold text-sky-200 whitespace-nowrap">Beach Pig-Receiver &amp; Choke</span>
+    </button>
+
+    <button id="pin-bluelab" class="hotspot-pin glass-ui px-2.5 py-1 rounded-full border border-purple-400/80 flex items-center gap-1.5 shadow-xl hotspot-pulse">
+      <span class="text-xs">🛢️</span>
+      <span class="text-[9.5px] font-bold text-purple-200 whitespace-nowrap">Blue Lab 250-bar CNG</span>
+    </button>
+  </div>
+
+  <!-- ============ TOP LEFT : Mission Header, Roster & Interactive Game Progression ============ -->
+  <header class="fixed top-4 left-4 z-40 flex flex-col gap-2 pointer-events-none max-w-[355px]">
+    <!-- Mission Card -->
+    <div class="glass-ui p-3 rounded-2xl shadow-2xl pointer-events-auto border border-cyan-500/35">
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-emerald-400 p-[2px] shadow-lg flex-shrink-0">
+            <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-lg">🌊</div>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <h1 class="text-[13px] font-bold tracking-wide text-cyan-200 leading-tight">SearchO2 · Seashore CNG</h1>
+              <span class="text-[8px] px-1.5 py-[1px] rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 font-mono">3D-LIVE</span>
+            </div>
+            <p class="text-[10px] text-slate-300 leading-tight">Seashore Beach, Marine Jetty, Boat &amp; Blue Lab</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="stage-tag" class="text-[9px] uppercase font-bold tracking-wider px-2 py-1 rounded-lg bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 text-center mb-2">
+        Stage 1 · SearchO2 Seismic Boat &amp; Acoustic Soft-Start
+      </div>
+
+      <!-- Strict Roster: Tariq (Local Fishing Cat), Prof. Puff & Pip Squeak (Click to Talk) -->
+      <div class="grid grid-cols-3 gap-1.5 text-[9px]">
+        <div class="p-1.5 rounded-xl bg-slate-900/85 border border-amber-500/40 flex items-center gap-1.5 cursor-pointer hover:border-amber-300 transition" onclick="askCharacterPrompt('Tariq')" title="Click to talk with Tariq">
+          <span class="text-sm">🐈</span>
+          <div class="truncate">
+            <strong class="text-amber-300 block truncate leading-tight text-[8.5px]">Tariq (Local)</strong>
+            <span class="text-[7.5px] text-slate-400">Cryo-Delta Eng</span>
+          </div>
+        </div>
+        <div class="p-1.5 rounded-xl bg-slate-900/85 border border-purple-500/40 flex items-center gap-1.5 cursor-pointer hover:border-purple-300 transition" onclick="askCharacterPrompt('Puff')" title="Click to talk with Prof. Puff">
+          <span class="text-sm">🌸</span>
+          <div class="truncate">
+            <strong class="text-purple-300 block truncate leading-tight text-[8.5px]">Prof. Puff</strong>
+            <span class="text-[7.5px] text-slate-400">Gas &amp; Eco Sci</span>
+          </div>
+        </div>
+        <div class="p-1.5 rounded-xl bg-slate-900/85 border border-cyan-500/40 flex items-center gap-1.5 cursor-pointer hover:border-cyan-300 transition" onclick="askCharacterPrompt('Pip')" title="Click to talk with Pip Squeak">
+          <span class="text-sm">🌺</span>
+          <div class="truncate">
+            <strong class="text-cyan-300 block truncate leading-tight text-[8.5px]">Pip Squeak</strong>
+            <span class="text-[7.5px] text-slate-400">AUV &amp; QA Rover</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Progression To-Do Checklist Panel -->
+    <div id="quest-panel" class="glass-ui p-3 rounded-2xl shadow-2xl pointer-events-auto border border-emerald-500/30">
+      <div class="flex items-center justify-between mb-1.5">
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs">🎯</span>
+          <span class="text-[10.5px] font-bold tracking-wide text-emerald-300 uppercase">Field Progression Protocol</span>
+        </div>
+        <span id="quest-progress-badge" class="mono text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/40">0 / 6 Done</span>
+      </div>
+      <div class="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden mb-2 border border-slate-800">
+        <div id="quest-progress-bar" class="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-300" style="width: 0%;"></div>
+      </div>
+      <ul id="quest-list" class="space-y-1 text-[9.5px] max-h-[160px] overflow-y-auto custom-scroll pr-1">
+        <li id="q-1" class="quest-item flex items-center justify-between gap-2 p-1.5 rounded-lg bg-slate-900/75 border border-slate-800 cursor-pointer hover:border-cyan-500/50" data-stage="1">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="quest-checkbox"></span>
+            <span class="quest-label text-slate-200 truncate">1. Seismic Soft-Start &amp; 500m MMO Zone</span>
+          </div>
+          <span class="text-[8px] px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono">BOAT</span>
+        </li>
+        <li id="q-2" class="quest-item flex items-center justify-between gap-2 p-1.5 rounded-lg bg-slate-900/75 border border-slate-800 cursor-pointer hover:border-cyan-500/50" data-stage="2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="quest-checkbox"></span>
+            <span class="quest-label text-slate-200 truncate">2. Closed-Loop PDC Drill &amp; Subsea BOP</span>
+          </div>
+          <span class="text-[8px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">DRILL</span>
+        </li>
+        <li id="q-3" class="quest-item flex items-center justify-between gap-2 p-1.5 rounded-lg bg-slate-900/75 border border-slate-800 cursor-pointer hover:border-cyan-500/50" data-stage="3">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="quest-checkbox"></span>
+            <span class="quest-label text-slate-200 truncate">3. Jetty AUV Launch &amp; TDLAS Sniffing</span>
+          </div>
+          <span class="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">JETTY</span>
+        </li>
+        <li id="q-4" class="quest-item flex items-center justify-between gap-2 p-1.5 rounded-lg bg-slate-900/75 border border-slate-800 cursor-pointer hover:border-cyan-500/50" data-stage="3">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="quest-checkbox"></span>
+            <span class="quest-label text-slate-200 truncate">4. Lock Acoustic (160dB) &amp; CH₄ (5ppm) Caps</span>
+          </div>
+          <span class="text-[8px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 font-mono">LIMIT</span>
+        </li>
+        <li id="q-5" class="quest-item flex items-center justify-between gap-2 p-1.5 rounded-lg bg-slate-900/75 border border-slate-800 cursor-pointer hover:border-cyan-500/50" data-stage="4">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="quest-checkbox"></span>
+            <span class="quest-label text-slate-200 truncate">5. Bubble Curtain &amp; Beach 400ms Shut-In</span>
+          </div>
+          <span class="text-[8px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono">VALVE</span>
+        </li>
+        <li id="q-6" class="quest-item flex items-center justify-between gap-2 p-1.5 rounded-lg bg-slate-900/75 border border-slate-800 cursor-pointer hover:border-cyan-500/50" data-stage="5">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="quest-checkbox"></span>
+            <span class="quest-label text-slate-200 truncate">6. 250-bar CNG Cascade &amp; Reef Balance</span>
+          </div>
+          <span class="text-[8px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono">CNG</span>
+        </li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- ============ TOP RIGHT : Toolbar with Icon-Only Buttons ============ -->
+  <nav class="fixed top-4 right-4 z-40 flex flex-row items-center gap-2 flex-nowrap">
+    <a id="archive-home-link" href="#" onclick="returnToBlueLab(event)" class="tool-icon" data-tip="Return to Blue Lab" aria-label="Return to Blue Lab" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">🔬</a>
+    <button id="btn-audio"            class="tool-icon active" data-tip="Real-Time Voice Synthesis On/Off">🔊</button>
+    <button id="btn-mic-talk"         class="tool-icon"        data-tip="Push-to-Talk Live Voice Q&amp;A with Crew">🎙️</button>
+    <button id="btn-subtitle"         class="tool-icon active" data-tip="Subtitles &amp; Voice Console On/Off">💬</button>
+    <button id="btn-slide-toggle"     class="tool-icon active" data-tip="Telemetry &amp; Threshold HUD">📊</button>
+    <button id="btn-open-stage-guide" class="tool-icon"        data-tip="Interactive Stage Graphic &amp; Action Modal">📘</button>
+    <button id="btn-cam-boat"         class="tool-icon"        data-tip="SearchO2 Operation Boat &amp; Seismic">🚤</button>
+    <button id="btn-cam-jetty"        class="tool-icon"        data-tip="Marine Jetty, AUV Dock &amp; Reef">🌉</button>
+    <button id="btn-cam-drilling"     class="tool-icon"        data-tip="Offshore Drill Rig &amp; Subsea BOP">🔩</button>
+    <button id="btn-cam-beach"        class="tool-icon"        data-tip="Beach Pig-Receiver &amp; Choke Station">🏖️</button>
+    <button id="btn-cam-wide"         class="tool-icon active" data-tip="Full-Screen Seashore &amp; Ocean Panorama">🏝️</button>
+  </nav>
+
+  <!-- ============ TOP CENTER-RIGHT : Concept Fact Slide & Interactive Threshold Console ============ -->
+  <aside id="virtual-slide" class="fixed top-20 right-4 z-30 w-[345px] sm:w-[395px] flex flex-col gap-2.5 pointer-events-auto">
+    <!-- Concept Fact Card -->
+    <div id="slide-card" class="glass-ui p-3 rounded-2xl border border-cyan-400/40 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-700/60 pb-1.5 mb-2">
+        <div class="flex items-center gap-2">
+          <span id="slide-icon" class="text-lg">🚤</span>
+          <div>
+            <h2 id="slide-title" class="bubble-font text-[12px] font-bold text-cyan-200">SearchO2 Seismic &amp; Soft-Start</h2>
+            <span id="slide-subtitle" class="text-[9px] text-slate-400 font-mono">BSH SEL_ss ≤ 160 dB &amp; 500m MMO Zone</span>
+          </div>
+        </div>
+        <button id="btn-inspect-current-stage" class="mono text-[9.5px] font-bold px-2.5 py-1 rounded-full bg-cyan-500/25 hover:bg-cyan-500/45 text-cyan-200 border border-cyan-400/60 transition shadow">
+          🔍 Stage Graphic
+        </button>
+      </div>
+
+      <!-- Step Diagram Card -->
+      <div id="slide-diagram" class="rounded-xl bg-slate-950/75 p-2 border border-slate-800 text-[10px] mb-2 font-mono space-y-1">
+        <div class="flex items-center justify-between text-slate-300">
+          <span>🚤 SearchO2 Vessel:</span>
+          <span class="text-emerald-400 font-bold">Hydrophone Streamer Array</span>
+        </div>
+        <div class="flex items-center justify-between text-slate-300">
+          <span>🔉 Ramp-Up Protocol:</span>
+          <span class="text-cyan-400 font-bold">20-Min Gradual Airgun Soft-Start</span>
+        </div>
+        <div class="flex items-center justify-between text-slate-300">
+          <span>🫧 Bubble Curtain:</span>
+          <span class="text-amber-400 font-bold">-15 dB Acoustic Attenuation</span>
+        </div>
+      </div>
+
+      <!-- Live Telemetry Readouts -->
+      <div class="grid grid-cols-4 gap-1.5 text-center font-mono text-[9px]">
+        <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+          <div class="text-slate-400 text-[7px]">SEISMIC SEL</div>
+          <div id="metric-noise" class="text-cyan-300 font-bold">152 dB</div>
+        </div>
+        <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+          <div class="text-slate-400 text-[7px]">DISSOLVED CH₄</div>
+          <div id="metric-ch4" class="text-emerald-300 font-bold">1.6 ppm</div>
+        </div>
+        <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+          <div class="text-slate-400 text-[7px]">DISSOLVED O₂</div>
+          <div id="metric-do" class="text-sky-300 font-bold">7.4 mg/L</div>
+        </div>
+        <div class="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+          <div class="text-slate-400 text-[7px]">CNG CASCADE</div>
+          <div id="metric-cng" class="text-amber-300 font-bold">248 bar</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Auto-Measurement Threshold & Contamination Response Drawer -->
+    <div id="threshold-panel" class="glass-ui p-3 rounded-2xl border border-amber-400/35 shadow-2xl">
+      <div class="flex items-center justify-between mb-1.5">
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs">🎛️</span>
+          <span class="text-[10px] font-bold text-amber-200 tracking-wide uppercase">Auto-Telemetry Thresholds</span>
+        </div>
+        <span id="system-status-pill" class="mono text-[8.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">● ECO-SAFE NOMINAL</span>
+      </div>
+
+      <div class="space-y-1.5 text-[9.5px] font-mono">
+        <div>
+          <div class="flex justify-between text-slate-300">
+            <span>🔊 Acoustic SEL Ceiling:</span>
+            <span id="val-thresh-noise" class="text-cyan-300 font-bold">160 dB re 1µPa</span>
+          </div>
+          <input id="slider-thresh-noise" type="range" min="140" max="180" step="1" value="160" class="w-full">
+        </div>
+
+        <div>
+          <div class="flex justify-between text-slate-300">
+            <span>🧪 Subsea CH₄ Seep Limit:</span>
+            <span id="val-thresh-ch4" class="text-emerald-300 font-bold">5.0 ppm</span>
+          </div>
+          <input id="slider-thresh-ch4" type="range" min="2.0" max="15.0" step="0.5" value="5.0" class="w-full">
+        </div>
+
+        <div>
+          <div class="flex justify-between text-slate-300">
+            <span>🫧 Min Dissolved O₂ (Hypoxia):</span>
+            <span id="val-thresh-do" class="text-sky-300 font-bold">5.5 mg/L</span>
+          </div>
+          <input id="slider-thresh-do" type="range" min="3.5" max="7.5" step="0.2" value="5.5" class="w-full">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-1.5 mt-2 pt-2 border-t border-slate-700/60">
+        <button id="btn-sim-leak" class="py-1.5 px-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/50 text-rose-200 font-bold text-[9px] transition flex items-center justify-center gap-1">
+          ⚠️ Simulate Seep Breach
+        </button>
+        <button id="btn-deploy-mitigation" class="py-1.5 px-2 rounded-lg bg-emerald-500/25 hover:bg-emerald-500/40 border border-emerald-400/50 text-emerald-200 font-bold text-[9px] transition flex items-center justify-center gap-1">
+          🛡️ Engage Valve &amp; Curtain
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ BOTTOM LEFT : Packed expandable playback controller ============ -->
+  <div class="fixed bottom-4 left-4 z-50 flex flex-col items-start gap-2">
+    <div id="player-panel" class="hidden-panel glass-ui rounded-2xl p-2.5 w-[290px] shadow-2xl border border-slate-700">
+      <div class="flex items-center gap-1.5">
+        <button id="btn-play-pause" class="w-7 h-7 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[11px] font-bold flex items-center justify-center transition">⏸</button>
+        <button id="btn-restart" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] flex items-center justify-center border border-slate-600 transition" title="Restart">↺</button>
+        <span id="time-display" class="mono text-[10px] text-cyan-300 w-9 text-center font-bold">00:00</span>
+        <input id="story-scrubber" type="range" min="0" max="100" step="0.1" value="0" class="flex-1">
+        <span class="mono text-[9px] text-slate-500">1:40</span>
+      </div>
+      <div class="grid grid-cols-4 gap-1 mt-2">
+        <button id="step-btn-1" class="step-chip active" data-tip="Step 1: SearchO2 Boat &amp; Seismic">S1·BOAT</button>
+        <button id="step-btn-2" class="step-chip" data-tip="Step 2: PDC Drilling &amp; Subsea BOP">S2·DRIL</button>
+        <button id="step-btn-3" class="step-chip" data-tip="Step 3: Jetty AUV &amp; Auto-Telemetry">S3·JETTY</button>
+        <button id="step-btn-4" class="step-chip" data-tip="Step 4: Beach Valve &amp; 250-bar CNG">S4·CNG</button>
+      </div>
+    </div>
+    <button id="btn-player-toggle" class="tool-icon tip-up" data-tip="Timeline Playback Panel">▶</button>
+  </div>
+
+  <!-- ============ BOTTOM CENTER : Smooth Real-Time Interactive Voice Dialogue & Q&A ============ -->
+  <div id="subtitle-layer" class="fixed left-0 right-0 bottom-0 z-30 pointer-events-none" style="padding-bottom: 16px;">
+    <div id="dialogue-container"
+         class="dialogue-box fade-in pointer-events-auto mx-auto glass-ui px-4 py-2.5 rounded-2xl border border-cyan-400/45 shadow-2xl flex flex-col gap-2"
+         style="width: min(710px, 92vw);">
+      <div class="flex items-center gap-3">
+        <div id="speaker-avatar" class="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl bg-slate-900 border-2 border-cyan-400 shadow-md">🐈</div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2 mb-0.5">
+            <div class="flex items-center gap-1.5 min-w-0">
+              <span id="speaker-name" class="bubble-font text-[12px] font-bold text-amber-300 tracking-wide truncate">Tariq the Fishing Cat</span>
+              <span id="speaker-role" class="hidden sm:inline text-[9px] px-1.5 py-[1px] rounded bg-amber-500/20 text-amber-300 border border-amber-400/30 font-mono whitespace-nowrap">Cryo-Delta Chief Engineer</span>
+            </div>
+            <!-- Live Voice Equalizer, Mic Status & Replay Button -->
+            <div class="flex items-center gap-1.5">
+              <span id="voice-status-tag" class="text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-slate-900 text-emerald-300 border border-emerald-500/30">VOICE READY</span>
+              <div id="voice-eq" class="flex items-end gap-[2px] h-4 px-1.5 py-0.5 rounded bg-slate-900/90 border border-slate-700" title="Live Voice Stream">
+                <span class="eq-bar"></span>
+                <span class="eq-bar"></span>
+                <span class="eq-bar"></span>
+                <span class="eq-bar"></span>
+              </div>
+              <button id="btn-replay-voice" class="text-[9px] px-1.5 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/35 text-cyan-200 border border-cyan-400/40 font-mono transition" title="Replay Current Voice">↻ Speak</button>
+            </div>
+          </div>
+          <p id="speech-text" class="text-[11.5px] text-slate-100 leading-snug font-medium">
+            "Welcome to our full-screen SearchO2 Seashore CNG field! Out on the open bay, our SearchO2 operation boat is towing hydrophone streamers while our wooden marine jetty monitors the coral reef!"
+          </p>
+        </div>
+      </div>
+
+      <!-- Interactive Conversational Prompt Bar (Ask Tariq, Prof. Puff, or Pip in Real Time) -->
+      <div class="flex flex-wrap sm:flex-nowrap items-center gap-1.5 pt-1.5 border-t border-slate-700/60">
+        <button id="btn-inline-mic" type="button" class="px-2 py-0.5 rounded-full bg-rose-500/25 hover:bg-rose-500/40 border border-rose-400/50 text-rose-200 text-[9px] font-bold flex items-center gap-1 transition whitespace-nowrap" title="Hold or Click to Speak with Crew">
+          🎙️ Talk
+        </button>
+        <button class="qa-chip text-[9px] px-2 py-0.5 rounded-full bg-slate-800/90 hover:bg-cyan-500/25 border border-slate-600 hover:border-cyan-400 text-slate-200 transition truncate" data-q="How does the SearchO2 boat protect dolphins during seismic surveys?">🐬 Dolphin Safety?</button>
+        <button class="qa-chip text-[9px] px-2 py-0.5 rounded-full bg-slate-800/90 hover:bg-cyan-500/25 border border-slate-600 hover:border-cyan-400 text-slate-200 transition truncate" data-q="How do we drill without dumping mud on the beach or seabed?">🔩 Zero-Dump Drill?</button>
+        <button class="qa-chip text-[9px] px-2 py-0.5 rounded-full bg-slate-800/90 hover:bg-cyan-500/25 border border-slate-600 hover:border-cyan-400 text-slate-200 transition truncate" data-q="How does the marine jetty AUV scan for methane leaks?">🌉 Jetty &amp; AUV?</button>
+        <button class="qa-chip text-[9px] px-2 py-0.5 rounded-full bg-slate-800/90 hover:bg-cyan-500/25 border border-slate-600 hover:border-cyan-400 text-slate-200 transition truncate" data-q="What happens at the beach pig-receiver and 250-bar CNG cascade?">🛢️ 250-bar CNG?</button>
+        <form id="voice-chat-form" class="flex-1 flex items-center gap-1 min-w-[135px]">
+          <input id="voice-chat-input" type="text" placeholder="Ask Tariq, Prof. Puff, or Pip..." class="w-full bg-slate-950/90 border border-slate-700 focus:border-cyan-400 rounded-lg px-2 py-0.5 text-[10px] text-white outline-none">
+          <button type="submit" class="px-2 py-0.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-[9.5px] transition">Ask</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ INTERACTIVE EXPLANATORY GRAPHIC MODAL (Per Stage Inspection & Action) ============ -->
+  <aside id="modal-stage-graphic" class="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="glass-ui border-2 border-cyan-400/65 rounded-3xl p-5 max-w-2xl w-full shadow-2xl relative">
+      <button id="btn-close-stage-modal"
+              class="absolute top-3.5 right-3.5 w-8 h-8 rounded-xl bg-slate-800/90 hover:bg-rose-500/80 border border-slate-600 hover:border-rose-400 text-slate-200 text-xs flex items-center justify-center transition"
+              title="Close">✕</button>
+
+      <!-- Stage Selector Tabs inside Graphic Modal -->
+      <div class="flex flex-wrap items-center gap-1.5 mb-3 pr-8">
+        <button class="modal-tab px-2.5 py-1 rounded-lg text-[10px] font-bold bg-cyan-500 text-slate-950 transition" data-mstage="1">1 · Seismic &amp; Boat</button>
+        <button class="modal-tab px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition" data-mstage="2">2 · PDC Drill &amp; BOP</button>
+        <button class="modal-tab px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition" data-mstage="3">3 · Jetty AUV &amp; Sensors</button>
+        <button class="modal-tab px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition" data-mstage="4">4 · Beach Leak Failsafe</button>
+        <button class="modal-tab px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition" data-mstage="5">5 · 250-bar CNG Plant</button>
+      </div>
+
+      <div class="flex items-center gap-3 mb-3">
+        <div id="mstage-icon" class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-emerald-400 text-slate-950 flex items-center justify-center text-2xl shadow-lg flex-shrink-0">🚤</div>
+        <div>
+          <h2 id="mstage-title" class="cinzel text-base sm:text-lg font-bold text-cyan-200">Stage 1: SearchO2 Seismic Vessel &amp; Acoustic Soft-Start</h2>
+          <p id="mstage-sub" class="text-[11px] text-slate-300">Sub-seabed anticline mapping with 500m Marine Mammal Observer exclusion &amp; bubble curtain attenuation.</p>
+        </div>
+      </div>
+
+      <!-- Dynamic Explanatory SVG Technical Graphic -->
+      <div id="mstage-svg-box" class="w-full rounded-2xl bg-slate-950/95 border border-cyan-500/35 p-3 mb-3 flex items-center justify-center overflow-hidden">
+        <!-- Populated dynamically via JS -->
+      </div>
+
+      <!-- Engineering Specs & Interactive Parameter Controls -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] font-mono mb-3" id="mstage-metrics">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-700/60">
+        <span id="mstage-action-status" class="text-[10.5px] font-mono text-emerald-300">● Ready for Field Verification</span>
+        <div class="flex items-center gap-2">
+          <button id="btn-mstage-narrate" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-cyan-400/40 text-cyan-200 font-bold text-[10.5px] transition">
+            🔊 Hear Crew Explain
+          </button>
+          <button id="btn-mstage-execute" class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold text-[11px] shadow-lg transition">
+            ✓ Execute Field Action &amp; Verify Step
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================================================================== -->
+  <!-- THREE.JS SIMULATION & SMOOTH REAL-TIME VOICE CONVERSATION ENGINE      -->
+  <!-- ===================================================================== -->
+  <script>
+  let scene, camera, renderer, controls, raycaster, mouseVec;
+
+  // Characters (Strict Roster: Tariq the Fishing Cat, Prof. Puff, Pip Squeak)
+  let tariqGroup, tariqHead, tariqArmL, tariqArmR, tariqTail;
+  let puffGroup, puffHead, puffArmL, puffArmR, puffTail;
+  let pipGroup, pipHead, pipArmL, pipArmR, pipTail, pipWand;
+
+  // Full-Screen Seashore, Jetty, SearchO2 Operation Boat & Gas Field Objects
+  let oceanMesh, oceanGeo, seabedStrata, gasReservoirGlow;
+  let searchO2Boat, boatWakeParticles, boatWakePos = [], seismicWaves = [];
+  let marineJetty, jettyAuvDock, telemetryBuoys = [];
+  let drillingRig, drillString, subseaBOP, christmasTree, bubbleCurtainParticles, bubbleCurtainPos = [];
+  let beachPigReceiver, beachChokeManifold, shoreFlareStack, flareFlame;
+  let blueLabBuilding, amineScrubber, dehydratorTowers, compressorSkid, compressorWheel, cascadeCylinders, cngDispenser;
+  let auvDrone, auvLaserBeam;
+  let gasFlowParticles, gasFlowPos = [];
+  let seepParticles, seepPos = [];
+  let marineDolphinPod = [], coralReefGroup, seagulls = [];
+
+  // Hotspot 3D Anchor Objects & Clickable Meshes
+  const hotspots = {};
+  const clickableMeshes = [];
+
+  // Lighting & Clock
+  let sunLight, ambientLight, reservoirLight, alarmLight, jettyBeaconLight;
+  let clock;
+
+  // Timeline & Interactive State
+  const TOTAL_DURATION = 100;
+  let storyTime = 0;
+  let isPlaying = true;
+  let audioEnabled = true;
+  let subtitlesEnabled = true;
+  let currentSpeechIdx = -1;
+  let activeModalStage = 1;
+  let synth = null;
+
+  // Auto-Measurement Thresholds & Contamination State
+  let threshNoise = 160;
+  let threshCH4 = 5.0;
+  let threshDO = 5.5;
+  let simulatedLeakActive = false;
+  let mitigationEngaged = true;
+
+  let liveNoise = 152;
+  let liveCH4 = 1.6;
+  let liveDO = 7.4;
+  let liveCNG = 248;
+
+  const completedQuests = new Set();
+
+  /* Wide Full-Screen Camera Perspectives */
+  const CAM = {
+    wide:     { pos: [1.0, 17.0, 30.0],  tgt: [0.0, 0.4, 0.5],   zoom: 0.94 },
+    boat:     { pos: [-15.5, 8.2, 16.0], tgt: [-11.5, 0.5, 4.2], zoom: 1.45 },
+    drilling: { pos: [-5.5, 7.5, 15.0],  tgt: [-3.5, -0.4, -1.5],zoom: 1.45 },
+    jetty:    { pos: [2.5, 6.5, 15.0],   tgt: [-0.5, 0.4, 3.8],  zoom: 1.50 },
+    beach:    { pos: [8.5, 7.0, 14.0],   tgt: [5.6, 1.0, -1.0],  zoom: 1.50 },
+    bluelab:  { pos: [14.5, 8.2, 15.0],  tgt: [11.4, 1.8, -1.2], zoom: 1.42 }
+  };
+
+  /* Narrative Beats */
+  const STORY_BEATS = [
+    {
+      start: 0, end: 12, speaker: 'Tariq', avatar: '🐈', role: 'Cryo-Delta Chief Engineer', quest: 'q-1', stage: 1,
+      text: "Welcome to our full-screen SearchO2 Seashore CNG field! Out on the open bay, our SearchO2 operation boat is towing hydrophone streamers to map the methane anticline without harming marine life!",
+      slide: {
+        icon: "🚤", title: "SearchO2 Operation Boat · Seismic", sub: "BSH SEL_ss ≤ 160 dB & 500m MMO Exclusion",
+        diagram: [
+          ["🚤 SearchO2 Vessel", "Parallel 150m Hydrophone Transect"],
+          ["👁️ MMO Pre-Watch", "30-Min Clear 500m Dolphin Exclusion"],
+          ["🫧 Bubble Curtain", "-15 dB Subsea Acoustic Attenuation"]
+        ]
+      }
+    },
+    {
+      start: 12, end: 24, speaker: 'Puff', avatar: '🌸', role: 'Gas & Eco-Telemetry Lead', quest: 'q-1', stage: 1,
+      text: "Notice how our SearchO2 boat uses a 20-minute gradual soft-start ramp-up! Combined with our subsea pneumatic bubble curtain, coastal dolphins swim peacefully right outside the exclusion perimeter.",
+      slide: {
+        icon: "🐬", title: "Acoustic Soft-Start & PAM Grid", sub: "Zero Cetacean Hearing Threshold Shift",
+        diagram: [
+          ["🔉 Ramp-Up Protocol", "20-Min Gradual Pressure Escalation"],
+          ["📡 PAM Hydrophones", "Real-Time Whistle & Click Detection"],
+          ["📏 Regulatory Cap", "SEL_ss ≤ 160 dB re 1 µPa²·s at 750m"]
+        ]
+      }
+    },
+    {
+      start: 24, end: 36, speaker: 'Tariq', avatar: '🐈', role: 'Cryo-Delta Chief Engineer', quest: 'q-2', stage: 2,
+      text: "Stage 2: Exploratory Drilling & Subsea BOP! Our jack-up rig drives a Polycrystalline Diamond Compact bit through shale caprock using a closed-loop riser—zero cuttings ever touch the seabed!",
+      slide: {
+        icon: "🔩", title: "Closed-Loop PDC Drilling & BOP", sub: "Cemented Casing & Zero-Discharge Mud",
+        diagram: [
+          ["💎 Rotary PDC Bit", "2,840m Sub-Seabed Gas Pay Zone"],
+          ["🛑 Dual Shear-Ram BOP", "400ms Subsea Blowout Failsafe"],
+          ["♻️ Zero-Dump Mud", "Cuttings Centrifuged & Shipped Onshore"]
+        ]
+      }
+    },
+    {
+      start: 36, end: 48, speaker: 'Pip', avatar: '🌺', role: 'AUV & QA Rover', quest: 'q-3', stage: 3,
+      text: "Here on the wooden marine jetty! I just launched our yellow Blue Lab AUV patrol drone from the jetty dock. Its TDLAS laser sniffer scans the coral reef and seabed pipeline for dissolved methane!",
+      slide: {
+        icon: "🌉", title: "Marine Jetty & Autonomous AUV", sub: "Continuous TDLAS Methane & CTD Scanning",
+        diagram: [
+          ["🌉 Service Jetty", "Solar AUV Charging & Telemetry Pier"],
+          ["🤖 TDLAS Laser AUV", "1.65 µm Infrared Methane Detection"],
+          ["🪸 Geopolymer Reef", "pH-Neutral Concrete Habitat Jackets"]
+        ]
+      }
+    },
+    {
+      start: 48, end: 60, speaker: 'Puff', avatar: '🌸', role: 'Gas & Eco-Telemetry Lead', quest: 'q-4', stage: 3,
+      text: "Use the right-hand Auto-Telemetry sliders to lock in our strict thresholds: 160 dB acoustic cap, 5.0 ppm methane seep ceiling, and 5.5 mg/L minimum dissolved oxygen to prevent coastal hypoxia!",
+      slide: {
+        icon: "🎛️", title: "Auto-Measurement Thresholds", sub: "SCADA Real-Time Ecological Interlocks",
+        diagram: [
+          ["🔊 Noise Interlock", "> 160 dB → Auto-Pause Survey/Drill"],
+          ["🧪 Seepage Trigger", "> 5.0 ppm CH₄ → Close Beach Choke"],
+          ["🫧 Hypoxia Guard", "< 5.5 mg/L DO → Flow Trim & Aeration"]
+        ]
+      }
+    },
+    {
+      start: 60, end: 74, speaker: 'Tariq', avatar: '🐈', role: 'Cryo-Delta Chief Engineer', quest: 'q-5', stage: 4,
+      text: "Where the subsea pipeline comes ashore on the beach, our Pig-Receiver and Automated Emergency Choke Valve stand guard! Test a micro-seep breach anytime to see the 400-millisecond shut-in!",
+      slide: {
+        icon: "🎚️", title: "Beach Valve & Seep Containment", sub: "Shore-Crossing HDD & Instant Shut-In",
+        diagram: [
+          ["🏖️ Shore HDD Crossing", "Trenchless Bore Under Beach Dunes"],
+          ["⚡ 400ms Auto-Choke", "Isolates Subsea Wellhead on Breach"],
+          ["💉 Brine Reinjection", "100% Produced Water Returned Deep"]
+        ]
+      }
+    },
+    {
+      start: 74, end: 88, speaker: 'Puff', avatar: '🌸', role: 'Gas & Eco-Telemetry Lead', quest: 'q-6', stage: 5,
+      text: "Inside our seashore Blue Lab, MDEA amine scrubbers and zeolite dehydrators purify gas to 98.4% methane, before our 4-stage compressor fills Type-IV carbon-fiber CNG cylinders at 250 bar!",
+      slide: {
+        icon: "🛢️", title: "Blue Lab 250-bar CNG Cascade", sub: "Amine Sweetening & 4-Stage Compression",
+        diagram: [
+          ["🧪 MDEA & Zeolite", "Removes H₂S & Water (<3 ppm H₂O)"],
+          ["⚙️ 4-Stage Compressor", "12 → 48 → 140 → 250 bar Intercooled"],
+          ["🔋 Type-IV Cylinders", "Carbon-Fiber Composite Cascade Bank"]
+        ]
+      }
+    },
+    {
+      start: 88, end: 100, speaker: 'All', avatar: '🏆', role: 'SearchO2 Blue Lab Team', quest: 'q-6', stage: 5,
+      text: "All 6 field progression milestones complete! Click any 3D hotspot pin on the boat, jetty, drill rig, or beach—or use the Talk button below for live voice conversation with our crew!",
+      slide: {
+        icon: "🏆", title: "Seashore CNG Eco-Balance Certified", sub: "Clean 250-bar Fuel + Thriving Marine Habitat",
+        diagram: [
+          ["🚤 SearchO2 Fleet", "Zero-Harm Acoustic & AUV Surveillance"],
+          ["🌉 Jetty & Reefs", "Net-Positive Coastal Biodiversity"],
+          ["⚡ Clean CNG Output", "250-bar Fuel Ready for Clean Transport"]
+        ]
+      }
+    }
+  ];
+
+  /* ===================================================================== */
+  /* SMOOTH CHUNKED REAL-TIME VOICE ENGINE (KEEP-ALIVE + FORMANT BACKUP)   */
+  /* ===================================================================== */
+  let availableVoices = [];
+  let speechQueue = [];
+  let isSpeakingNow = false;
+  let activeSpeakingCharacter = '';
+  let lastSpokenText = "";
+  let lastSpokenSpeaker = "Tariq";
+  let speechKeepAliveTimer = null;
+
+  function initAudio() {
+    try {
+      if (!synth) synth = new (window.AudioContext || window.webkitAudioContext)();
+      if (synth && synth.state === 'suspended') synth.resume();
+    } catch(e){}
+  }
+
+  function playTone(freq, type = 'sine', duration = 0.14, gainVal = 0.038) {
+    if (!audioEnabled || !synth) return;
+    try {
+      if (synth.state === 'suspended') synth.resume();
+      const osc = synth.createOscillator(), gain = synth.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, synth.currentTime);
+      gain.gain.setValueAtTime(gainVal, synth.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + duration);
+      osc.connect(gain); gain.connect(synth.destination);
+      osc.start(); osc.stop(synth.currentTime + duration);
+    } catch(e){}
+  }
+
+  function loadVoices() {
+    if ('speechSynthesis' in window) {
+      availableVoices = window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        availableVoices = window.speechSynthesis.getVoices();
+      };
+    }
+  }
+  loadVoices();
+
+  function setSpeakingVisual(active, speaker = '') {
+    isSpeakingNow = active;
+    activeSpeakingCharacter = active ? speaker : '';
+    const eq = document.getElementById('voice-eq');
+    const tag = document.getElementById('voice-status-tag');
+    if (eq) eq.classList.toggle('speaking', active);
+    if (tag) {
+      tag.textContent = active ? `SPEAKING · ${speaker.toUpperCase()}` : 'VOICE READY';
+      tag.className = active
+        ? 'text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/25 text-cyan-200 border border-cyan-400/50'
+        : 'text-[8.5px] font-mono px-1.5 py-0.5 rounded bg-slate-900 text-emerald-300 border border-emerald-500/30';
+    }
+  }
+
+  // Smooth sentence-chunked Web Speech engine with Chrome pause/resume keep-alive
+  function speakTextSmooth(text, speaker, interrupt = true) {
+    lastSpokenText = text;
+    lastSpokenSpeaker = speaker;
+
+    if (!audioEnabled || !('speechSynthesis' in window)) {
+      setSpeakingVisual(false);
+      return;
+    }
+
+    if (interrupt) {
+      window.speechSynthesis.cancel();
+      speechQueue = [];
+      if (speechKeepAliveTimer) clearInterval(speechKeepAliveTimer);
+    }
+
+    // Split into smooth conversational clauses so browser TTS never stalls
+    const chunks = text.match(/[^.!?;]+[.!?;]+|[^.!?;]+$/g) || [text];
+    chunks.forEach(c => {
+      const cleaned = c.replace(/["']/g, '').trim();
+      if (cleaned.length > 0) speechQueue.push({ text: cleaned, speaker });
+    });
+
+    if (speaker === 'Pip') playTone(720, 'triangle', 0.1, 0.03);
+    else if (speaker === 'Puff') playTone(520, 'sine', 0.14, 0.028);
+    else if (speaker === 'Tariq') playTone(250, 'sawtooth', 0.14, 0.03);
+    else playTone(440, 'sine', 0.14, 0.03);
+
+    processSpeechQueue();
+  }
+
+  function selectBestVoice(speaker) {
+    if (!availableVoices || availableVoices.length === 0) {
+      availableVoices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    }
+    const enVoices = availableVoices.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+    const pool = enVoices.length > 0 ? enVoices : availableVoices;
+    if (pool.length === 0) return null;
+
+    if (speaker === 'Pip') {
+      return pool.find(v => /Junior|Fred|Google UK English Female|Victoria|Karen/i.test(v.name)) || pool[0];
+    } else if (speaker === 'Puff') {
+      return pool.find(v => /Samantha|Google US English|Zira|Moira|Tessa/i.test(v.name)) || pool[0];
+    } else {
+      return pool.find(v => /Daniel|Alex|Google UK English Male|Arthur|Oliver|David/i.test(v.name)) || pool[0];
+    }
+  }
+
+  function processSpeechQueue() {
+    if (!audioEnabled || !('speechSynthesis' in window)) {
+      setSpeakingVisual(false);
+      return;
+    }
+    if (window.speechSynthesis.speaking) return;
+    if (speechQueue.length === 0) {
+      setSpeakingVisual(false);
+      if (speechKeepAliveTimer) clearInterval(speechKeepAliveTimer);
+      return;
+    }
+
+    const item = speechQueue.shift();
+    const u = new SpeechSynthesisUtterance(item.text);
+    const chosenVoice = selectBestVoice(item.speaker);
+    if (chosenVoice) u.voice = chosenVoice;
+
+    if (item.speaker === 'Pip') {
+      u.pitch = 1.55; u.rate = 1.10;
+    } else if (item.speaker === 'Puff') {
+      u.pitch = 1.22; u.rate = 1.02;
+    } else if (item.speaker === 'Tariq') {
+      u.pitch = 0.88; u.rate = 1.02;
+    } else {
+      u.pitch = 1.04; u.rate = 1.03;
+    }
+
+    u.onstart = () => {
+      setSpeakingVisual(true, item.speaker);
+      if (speechKeepAliveTimer) clearInterval(speechKeepAliveTimer);
+      speechKeepAliveTimer = setInterval(() => {
+        if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        }
+      }, 9000);
+    };
+
+    u.onend = () => {
+      if (speechQueue.length > 0) {
+        setTimeout(processSpeechQueue, 45);
+      } else {
+        setSpeakingVisual(false);
+        if (speechKeepAliveTimer) clearInterval(speechKeepAliveTimer);
+      }
+    };
+
+    u.onerror = () => {
+      setSpeakingVisual(false);
+      if (speechKeepAliveTimer) clearInterval(speechKeepAliveTimer);
+    };
+
+    window.speechSynthesis.speak(u);
+  }
+
+  // Intelligent Real-Time Conversational Crew Q&A Responder
+  function respondToUserQuestion(rawQuery) {
+    initAudio();
+    const q = rawQuery.toLowerCase();
+    let speaker = 'Tariq';
+    let avatar = '🐈';
+    let role = 'Cryo-Delta Chief Engineer';
+    let reply = "";
+    let camTarget = null;
+    let stageNum = null;
+
+    if (q.includes('dolphin') || q.includes('seismic') || q.includes('boat') || q.includes('noise') || q.includes('sound') || q.includes('whale')) {
+      speaker = 'Puff'; avatar = '🌸'; role = 'Gas & Eco-Telemetry Lead'; camTarget = 'boat'; stageNum = 1;
+      reply = "Our SearchO2 operation boat enforces a 30-minute visual and hydrophone watch across a 500-meter exclusion zone. We use a 20-minute soft-start ramp-up and a subsea bubble curtain that cuts sound pressure by 15 decibels so dolphins stay completely safe!";
+      completeQuest('q-1');
+    } else if (q.includes('drill') || q.includes('mud') || q.includes('bop') || q.includes('seabed') || q.includes('cuttings')) {
+      speaker = 'Tariq'; avatar = '🐈'; role = 'Cryo-Delta Chief Engineer'; camTarget = 'drilling'; stageNum = 2;
+      reply = "We drill with a closed-loop riser, a Polycrystalline Diamond Compact bit, and three cemented steel casings. Every gram of drill cuttings is centrifuged on the rig and shipped onshore—zero waste ever touches the seabed or beach!";
+      completeQuest('q-2');
+    } else if (q.includes('jetty') || q.includes('auv') || q.includes('drone') || q.includes('sensor') || q.includes('threshold') || q.includes('coral')) {
+      speaker = 'Pip'; avatar = '🌺'; role = 'AUV & QA Rover'; camTarget = 'jetty'; stageNum = 3;
+      reply = "From our wooden marine service jetty, I launch the yellow Blue Lab AUV! Its 1.65-micrometer TDLAS laser sniffer patrols the geopolymer coral reef at 40 Hertz. If methane exceeds 5 ppm or oxygen drops below 5.5 mg/L, our SCADA interlock triggers automatically!";
+      completeQuest('q-3');
+    } else if (q.includes('leak') || q.includes('spill') || q.includes('valve') || q.includes('beach') || q.includes('pig') || q.includes('choke')) {
+      speaker = 'Tariq'; avatar = '🐈'; role = 'Cryo-Delta Chief Engineer'; camTarget = 'beach'; stageNum = 4;
+      reply = "Right here on the beach shore-crossing, our Pig-Receiver and Automated Emergency Choke Valve slam shut in 400 milliseconds if any pressure anomaly occurs, while produced water is reinjected deep underground!";
+      completeQuest('q-5');
+    } else if (q.includes('cng') || q.includes('250') || q.includes('compress') || q.includes('chemical') || q.includes('methane') || q.includes('storage')) {
+      speaker = 'Puff'; avatar = '🌸'; role = 'Gas & Eco-Telemetry Lead'; camTarget = 'bluelab'; stageNum = 5;
+      reply = "Inside Blue Lab, MDEA amine towers strip hydrogen sulfide and zeolite molecular sieves dry the gas below 3 ppm water. Then our 4-stage intercooled compressor fills Type-IV carbon-composite cylinders to 250 bar with 98.4% pure methane!";
+      completeQuest('q-6');
+    } else {
+      speaker = 'Tariq'; avatar = '🐈'; role = 'Cryo-Delta Chief Engineer'; camTarget = 'wide';
+      reply = "Great question! Across this seashore panorama, our SearchO2 boat maps the reservoir, the closed-loop rig extracts methane safely, the wooden jetty docks our laser AUV, and Blue Lab compresses clean 250-bar CNG!";
+    }
+
+    if (camTarget) setCameraPreset(camTarget, false);
+    if (stageNum) activeModalStage = stageNum;
+
+    const box = document.getElementById('dialogue-container');
+    document.getElementById('speaker-avatar').textContent = avatar;
+    document.getElementById('speaker-name').textContent =
+      speaker === 'Tariq' ? 'Tariq the Fishing Cat' :
+      speaker === 'Puff' ? 'Professor Whisker Puff' : 'Pip Squeak-a-Link';
+    document.getElementById('speaker-role').textContent = role;
+    document.getElementById('speech-text').textContent = `"${reply}"`;
+    box.classList.remove('fade-out'); box.classList.add('fade-in');
+
+    speakTextSmooth(reply, speaker, true);
+  }
+
+  window.askCharacterPrompt = function(who) {
+    initAudio();
+    if (who === 'Tariq') respondToUserQuestion("How do we drill and guard the beach choke valve?");
+    else if (who === 'Puff') respondToUserQuestion("How does the SearchO2 boat protect dolphins and compress 250-bar CNG?");
+    else respondToUserQuestion("How does the marine jetty AUV drone scan the coral reef?");
+  };
+
+  /* ===================================================================== */
+  /* STAGE EXPLANATORY GRAPHIC MODAL DATA & INTERACTIVE RENDERER           */
+  /* ===================================================================== */
+  const STAGE_GRAPHICS = {
+    1: {
+      icon: "🚤",
+      title: "Stage 1: SearchO2 Operation Boat & Acoustic Soft-Start",
+      sub: "Low-impact 3D seismic reflection mapping with 500m MMO exclusion zone & bubble curtain.",
+      quest: "q-1",
+      cam: "boat",
+      narration: "Stage 1: Our SearchO2 operation boat tows hydrophone streamers along 150-meter transects. Before firing a single acoustic pulse, Marine Mammal Observers verify a clear 500-meter exclusion zone for 30 minutes, followed by a 20-minute soft-start ramp-up and a 15-decibel bubble curtain!",
+      speaker: "Puff",
+      metrics: [
+        { label: "SOURCE LEVEL", val: "152 dB re 1µPa", color: "text-cyan-300" },
+        { label: "MMO EXCLUSION", val: "500 m Radius", color: "text-emerald-300" },
+        { label: "BUBBLE CURTAIN", val: "-15 dB Attenuation", color: "text-amber-300" }
+      ],
+      svg: `<svg viewBox="0 0 600 180" class="w-full h-40">
+        <rect x="0" y="0" width="600" height="55" fill="#07192e"/>
+        <rect x="0" y="55" width="600" height="75" fill="#033b5c"/>
+        <rect x="0" y="130" width="600" height="50" fill="#1e293b"/>
+        <path d="M 180 180 Q 300 135 420 180 Z" fill="#0284c7" opacity="0.65"/>
+        <text x="300" y="168" fill="#bae6fd" font-size="11" font-family="monospace" text-anchor="middle">Sub-Seabed Methane Anticline Trap (2,840m)</text>
+        <polygon points="85,52 165,52 182,38 78,38" fill="#f8fafc"/>
+        <rect x="112" y="24" width="32" height="14" fill="#0d9488"/>
+        <text x="128" y="18" fill="#38bdf8" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">SearchO2 Boat</text>
+        <line x1="78" y1="48" x2="15" y2="68" stroke="#facc15" stroke-width="2.5" stroke-dasharray="4,3"/>
+        <text x="45" y="82" fill="#fde047" font-size="9" font-family="monospace" text-anchor="middle">Hydrophones</text>
+        <path d="M 140 60 Q 190 95 240 130" stroke="#38bdf8" stroke-width="2" fill="none" stroke-dasharray="5,4"/>
+        <path d="M 240 130 Q 285 95 330 65" stroke="#10b981" stroke-width="2" fill="none"/>
+        <line x1="410" y1="55" x2="410" y2="130" stroke="#e0f2fe" stroke-width="4" stroke-dasharray="3,4"/>
+        <text x="410" y="46" fill="#e0f2fe" font-size="10" font-family="monospace" text-anchor="middle">Bubble Curtain (-15 dB)</text>
+        <text x="515" y="88" font-size="20" text-anchor="middle">🐬</text>
+        <text x="515" y="106" fill="#6ee7b7" font-size="9.5" font-family="monospace" text-anchor="middle">Safe Outside 500m</text>
+      </svg>`
+    },
+    2: {
+      icon: "🔩",
+      title: "Stage 2: Closed-Loop PDC Drilling & Subsea BOP Stack",
+      sub: "Three cemented steel casing strings isolate aquifers while zero cuttings touch the ocean floor.",
+      quest: "q-2",
+      cam: "drilling",
+      narration: "Stage 2: Our jack-up rig turns a Polycrystalline Diamond Compact bit through caprock into the 185-bar reservoir. All bentonite drilling mud and rock cuttings return through a sealed riser to onshore centrifuges, while a dual shear-ram Blowout Preventer guards the seabed wellhead!",
+      speaker: "Tariq",
+      metrics: [
+        { label: "DRILL BIT TYPE", val: "PDC Rotary + Mud", color: "text-amber-300" },
+        { label: "SUBSEA BOP", val: "Dual Shear-Ram", color: "text-rose-300" },
+        { label: "CUTTINGS DUMP", val: "0.0% (Onshore)", color: "text-emerald-300" }
+      ],
+      svg: `<svg viewBox="0 0 600 180" class="w-full h-40">
+        <rect x="0" y="0" width="600" height="45" fill="#07192e"/>
+        <rect x="0" y="45" width="600" height="65" fill="#033b5c"/>
+        <rect x="0" y="110" width="600" height="70" fill="#1e293b"/>
+        <rect x="130" y="25" width="100" height="14" fill="#94a3b8"/>
+        <polygon points="160,25 180,3 200,25" fill="none" stroke="#facc15" stroke-width="2.5"/>
+        <rect x="174" y="25" width="12" height="135" fill="#cbd5e1"/>
+        <rect x="166" y="96" width="28" height="22" rx="3" fill="#facc15"/>
+        <text x="122" y="106" fill="#fde047" font-size="10" font-family="monospace" text-anchor="end">Subsea BOP</text>
+        <path d="M 186 85 L 250 85 L 250 22 L 225 22" stroke="#10b981" stroke-width="2.5" fill="none"/>
+        <rect x="265" y="14" width="110" height="24" rx="4" fill="#065f46" stroke="#34d399"/>
+        <text x="320" y="29" fill="#a7f3d0" font-size="9.5" font-family="monospace" text-anchor="middle">Cuttings Capture Tank</text>
+        <path d="M 194 105 L 540 105 L 580 75" stroke="#38bdf8" stroke-width="3.5" fill="none"/>
+        <text x="410" y="96" fill="#7dd3fc" font-size="10" font-family="monospace" text-anchor="middle">Subsea Gas Gathering Flowline → Beach</text>
+      </svg>`
+    },
+    3: {
+      icon: "🌉",
+      title: "Stage 3: Marine Jetty, AUV TDLAS Sniffer & Thresholds",
+      sub: "Solar wooden jetty docks the autonomous AUV drone scanning reef & pipeline at 40 Hz.",
+      quest: "q-3",
+      cam: "jetty",
+      narration: "Stage 3: From the wooden marine service jetty, Pip launches our autonomous yellow AUV! Its downward 1.65-micrometer TDLAS laser beam measures dissolved methane and oxygen across the geopolymer coral reef, streaming live telemetry to our SCADA threshold console!",
+      speaker: "Pip",
+      metrics: [
+        { label: "TDLAS LASER", val: "1.65 µm CH₄ Scan", color: "text-emerald-300" },
+        { label: "CH₄ CEILING", val: "5.0 ppm Trigger", color: "text-cyan-300" },
+        { label: "MIN OXYGEN", val: "5.5 mg/L DO", color: "text-sky-300" }
+      ],
+      svg: `<svg viewBox="0 0 600 180" class="w-full h-40">
+        <rect x="0" y="0" width="600" height="45" fill="#07192e"/>
+        <rect x="0" y="45" width="430" height="85" fill="#033b5c"/>
+        <polygon points="410,130 460,40 600,40 600,180 0,180 0,130" fill="#92754c"/>
+        <rect x="260" y="34" width="210" height="8" fill="#b45309"/>
+        <line x1="280" y1="42" x2="280" y2="130" stroke="#78350f" stroke-width="5"/>
+        <line x1="340" y1="42" x2="340" y2="130" stroke="#78350f" stroke-width="5"/>
+        <line x1="400" y1="42" x2="400" y2="130" stroke="#78350f" stroke-width="5"/>
+        <text x="365" y="25" fill="#fcd34d" font-size="10.5" font-weight="bold" font-family="monospace" text-anchor="middle">Marine Service Jetty &amp; AUV Dock</text>
+        <rect x="115" y="72" width="56" height="16" rx="8" fill="#facc15"/>
+        <polygon points="143,88 110,130 176,130" fill="#10b981" opacity="0.35"/>
+        <text x="143" y="64" fill="#fef08a" font-size="10" font-family="monospace" text-anchor="middle">Blue Lab AUV (TDLAS)</text>
+        <text x="143" y="126" font-size="16" text-anchor="middle">🪸🐠🪸</text>
+      </svg>`
+    },
+    4: {
+      icon: "🎚️",
+      title: "Stage 4: Beach Pig-Receiver & 400ms Contamination Shut-In",
+      sub: "Trenchless HDD shore-crossing, automated emergency choke valve & produced-water reinjection.",
+      quest: "q-5",
+      cam: "beach",
+      narration: "Stage 4: Our gathering pipeline passes beneath the beach dunes via Horizontal Directional Drilling so waves and turtle nesting sands are untouched. At the beach station, our Pig-Receiver and 400-millisecond Automated Choke Valve isolate the well instantly if any seep is detected!",
+      speaker: "Tariq",
+      metrics: [
+        { label: "SHUT-IN SPEED", val: "400 ms Failsafe", color: "text-rose-300" },
+        { label: "SHORE CROSSING", val: "Trenchless HDD", color: "text-cyan-300" },
+        { label: "BRINE DISPOSAL", val: "100% Reinjected", color: "text-emerald-300" }
+      ],
+      svg: `<svg viewBox="0 0 600 180" class="w-full h-40">
+        <rect x="0" y="0" width="600" height="180" fill="#07192e"/>
+        <polygon points="0,120 220,120 300,55 600,55 600,180 0,180" fill="#b8986a"/>
+        <path d="M 30 112 Q 210 115 320 48 L 430 48" stroke="#0284c7" stroke-width="6" fill="none"/>
+        <rect x="335" y="32" width="38" height="24" rx="4" fill="#ef4444" stroke="#fca5a5" stroke-width="2"/>
+        <text x="354" y="23" fill="#fda4af" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">400ms Auto-Choke</text>
+        <rect x="415" y="34" width="65" height="20" rx="4" fill="#334155" stroke="#38bdf8"/>
+        <text x="447" y="47" fill="#bae6fd" font-size="9" font-family="monospace" text-anchor="middle">Pig Receiver</text>
+        <line x1="520" y1="55" x2="520" y2="165" stroke="#10b981" stroke-width="4" stroke-dasharray="5,3"/>
+        <text x="520" y="175" fill="#6ee7b7" font-size="9.5" font-family="monospace" text-anchor="middle">Deep Brine Reinjection</text>
+      </svg>`
+    },
+    5: {
+      icon: "🛢️",
+      title: "Stage 5: Blue Lab Gas Sweetening & 250-bar CNG Cascade",
+      sub: "MDEA amine H₂S removal, zeolite dehydration (<3 ppm H₂O) & 4-stage carbon-composite storage.",
+      quest: "q-6",
+      cam: "bluelab",
+      narration: "Stage 5: Inside our seashore Blue Lab, MDEA amine scrubbers strip acid gases and zeolite molecular sieves prevent methane hydrate ice. Finally, our 4-stage reciprocating compressor pressurizes 98.4% pure methane to 250 bar inside Type-IV carbon-fiber cascade cylinders!",
+      speaker: "Puff",
+      metrics: [
+        { label: "METHANE PURITY", val: "98.4% CH₄", color: "text-emerald-300" },
+        { label: "COMPRESSION", val: "4-Stage (250 bar)", color: "text-cyan-300" },
+        { label: "STORAGE VESSEL", val: "Type-IV Carbon", color: "text-purple-300" }
+      ],
+      svg: `<svg viewBox="0 0 600 180" class="w-full h-40">
+        <rect x="0" y="0" width="600" height="180" fill="#07192e"/>
+        <rect x="30" y="140" width="540" height="14" fill="#1e293b"/>
+        <rect x="65" y="35" width="38" height="105" rx="8" fill="#0284c7" stroke="#7dd3fc"/>
+        <text x="84" y="26" fill="#7dd3fc" font-size="9.5" font-family="monospace" text-anchor="middle">MDEA Amine</text>
+        <rect x="145" y="55" width="26" height="85" rx="5" fill="#cbd5e1"/>
+        <rect x="180" y="55" width="26" height="85" rx="5" fill="#cbd5e1"/>
+        <text x="175" y="45" fill="#e2e8f0" font-size="9.5" font-family="monospace" text-anchor="middle">Zeolite Dryers</text>
+        <rect x="255" y="80" width="95" height="60" rx="6" fill="#0f766e" stroke="#34d399"/>
+        <text x="302" y="108" fill="#a7f3d0" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">4-Stage Comp</text>
+        <text x="302" y="123" fill="#6ee7b7" font-size="9" font-family="monospace" text-anchor="middle">12→250 bar</text>
+        <rect x="405" y="45" width="135" height="95" rx="6" fill="#0f172a" stroke="#a855f7" stroke-width="2"/>
+        <rect x="418" y="58" width="110" height="16" rx="6" fill="#38bdf8"/>
+        <rect x="418" y="84" width="110" height="16" rx="6" fill="#38bdf8"/>
+        <rect x="418" y="110" width="110" height="16" rx="6" fill="#38bdf8"/>
+        <text x="472" y="35" fill="#d8b4fe" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">Type-IV 250-bar Cascade</text>
+      </svg>`
+    }
+  };
+
+  function openStageGraphicModal(stageNum) {
+    activeModalStage = stageNum;
+    const data = STAGE_GRAPHICS[stageNum];
+    if (!data) return;
+
+    document.getElementById('mstage-icon').textContent = data.icon;
+    document.getElementById('mstage-title').textContent = data.title;
+    document.getElementById('mstage-sub').textContent = data.sub;
+    document.getElementById('mstage-svg-box').innerHTML = data.svg;
+
+    const metricsEl = document.getElementById('mstage-metrics');
+    metricsEl.innerHTML = data.metrics.map(m => `
+      <div class="bg-slate-900/90 p-2 rounded-xl border border-slate-800 text-center">
+        <div class="text-slate-400 text-[8.5px]">${m.label}</div>
+        <div class="${m.color} font-bold text-[11px]">${m.val}</div>
+      </div>
+    `).join('');
+
+    document.querySelectorAll('.modal-tab').forEach(btn => {
+      const s = parseInt(btn.getAttribute('data-mstage'), 10);
+      if (s === stageNum) {
+        btn.className = 'modal-tab px-2.5 py-1 rounded-lg text-[10px] font-bold bg-cyan-500 text-slate-950 transition';
+      } else {
+        btn.className = 'modal-tab px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+      }
+    });
+
+    const isDone = completedQuests.has(data.quest);
+    document.getElementById('mstage-action-status').textContent = isDone
+      ? '✓ Verified & Logged in Progression Protocol'
+      : '● Ready for Interactive Field Verification';
+
+    setCameraPreset(data.cam, false);
+    document.getElementById('modal-stage-graphic').classList.remove('opacity-0', 'pointer-events-none');
+  }
+
+  /* ===================================================================== */
+  /* INITIALIZATION                                                        */
+  /* ===================================================================== */
+  function init() {
+    const container = document.getElementById('viewport-container');
+    const w = window.innerWidth, h = window.innerHeight;
+
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x04101e);
+    scene.fog = new THREE.FogExp2(0x04101e, 0.0072);
+
+    // Wide full-screen orthographic panorama covering sea, jetty, boat, beach, and Blue Lab
+    const aspect = w / h, d = 17.5;
+    camera = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, 0.1, 500);
+    camera.position.set(1.0, 17.0, 30.0);
+    camera.lookAt(0.0, 0.4, 0.5);
+    camera.zoom = CAM.wide.zoom;
+    camera.updateProjectionMatrix();
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(w, h);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.24;
+    container.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.maxPolarAngle = Math.PI / 2.02;
+    controls.target.set(0.0, 0.4, 0.5);
+
+    raycaster = new THREE.Raycaster();
+    mouseVec = new THREE.Vector2();
+
+    setupLighting();
+    buildWideBeachAndOceanPanorama();
+    buildSearchO2OperationBoat();
+    buildMarineJettyAndBuoys();
+    buildDrillingAndSubseaWellhead();
+    buildBeachGasInfrastructure();
+    buildBlueLabCNGFacility();
+    buildAutonomousAUVAndMarineLife();
+    buildFlowAndSeepParticles();
+
+    // Strict Character Roster
+    buildTariqFishingCat();
+    buildPuff();
+    buildPip();
+
+    setupUI();
+    clock = new THREE.Clock();
+    window.addEventListener('resize', onResize);
+  }
+
+  /* ===================================================================== */
+  /* LIGHTING                                                              */
+  /* ===================================================================== */
+  function setupLighting() {
+    ambientLight = new THREE.HemisphereLight(0xbae6fd, 0x0f172a, 1.05);
+    scene.add(ambientLight);
+
+    sunLight = new THREE.DirectionalLight(0xfffbeb, 1.55);
+    sunLight.position.set(24, 38, 22);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 110;
+    const dl = 32;
+    sunLight.shadow.camera.left = -dl;
+    sunLight.shadow.camera.right = dl;
+    sunLight.shadow.camera.top = dl;
+    sunLight.shadow.camera.bottom = -dl;
+    sunLight.shadow.bias = -0.0003;
+    scene.add(sunLight);
+
+    reservoirLight = new THREE.PointLight(0x38bdf8, 2.2, 16);
+    reservoirLight.position.set(-3.5, -4.5, -1.5);
+    scene.add(reservoirLight);
+
+    jettyBeaconLight = new THREE.PointLight(0x10b981, 1.8, 12);
+    jettyBeaconLight.position.set(1.5, 1.8, 3.8);
+    scene.add(jettyBeaconLight);
+
+    alarmLight = new THREE.PointLight(0xf43f5e, 0.0, 22);
+    alarmLight.position.set(4.5, 4.5, 0.0);
+    scene.add(alarmLight);
+  }
+
+  /* ===================================================================== */
+  /* EXPANSIVE FULL-SCREEN BEACH, WAVES & SUB-SEABED STRATA                */
+  /* ===================================================================== */
+  function buildWideBeachAndOceanPanorama() {
+    seabedStrata = new THREE.Group();
+
+    const payZone = new THREE.Mesh(
+      new THREE.BoxGeometry(58, 1.6, 46),
+      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.95 })
+    );
+    payZone.position.set(0, -5.2, 0);
+    seabedStrata.add(payZone);
+
+    gasReservoirGlow = new THREE.Mesh(
+      new THREE.SphereGeometry(4.2, 24, 16),
+      new THREE.MeshStandardMaterial({
+        color: 0x0284c7, emissive: 0x0ea5e9, emissiveIntensity: 0.68,
+        transparent: true, opacity: 0.8
+      })
+    );
+    gasReservoirGlow.scale.set(1.9, 0.45, 1.4);
+    gasReservoirGlow.position.set(-3.5, -4.7, -1.5);
+    seabedStrata.add(gasReservoirGlow);
+
+    const capRock = new THREE.Mesh(
+      new THREE.BoxGeometry(58, 1.2, 46),
+      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.9 })
+    );
+    capRock.position.set(0, -3.8, 0);
+    seabedStrata.add(capRock);
+
+    const seabed = new THREE.Mesh(
+      new THREE.BoxGeometry(58, 1.4, 46),
+      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.88 })
+    );
+    seabed.position.set(0, -2.5, 0);
+    seabed.receiveShadow = true;
+    seabedStrata.add(seabed);
+
+    scene.add(seabedStrata);
+
+    // Expansive Golden Sandy Beach & Coastal Dunes (X = +2.5 to +28)
+    const beachSlope = new THREE.Mesh(
+      new THREE.BoxGeometry(26, 2.5, 46),
+      new THREE.MeshStandardMaterial({ color: 0xe2c391, roughness: 0.92 })
+    );
+    beachSlope.position.set(15.5, -0.9, 0);
+    beachSlope.receiveShadow = true;
+    scene.add(beachSlope);
+
+    // Wet Shoreline Tidal Strip
+    const wetSand = new THREE.Mesh(
+      new THREE.BoxGeometry(3.2, 0.15, 46),
+      new THREE.MeshStandardMaterial({ color: 0xb08d57, roughness: 0.45 })
+    );
+    wetSand.position.set(3.6, 0.32, 0);
+    wetSand.receiveShadow = true;
+    scene.add(wetSand);
+
+    // Beach Boulders & Coastal Palm/Mangrove Grove
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.9 });
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.75 });
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.88, flatShading: true });
+
+    [[16.5, -11], [18.0, 9], [15.5, 13], [19.5, -4], [17.0, 16], [14.2, -14]].forEach(([px, pz]) => {
+      const tree = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.25, 3.6, 8), trunkMat);
+      trunk.position.y = 1.8; trunk.castShadow = true; tree.add(trunk);
+      for (let i = 0; i < 6; i++) {
+        const frond = new THREE.Mesh(new THREE.ConeGeometry(0.95, 2.2, 5), leafMat);
+        frond.position.set(Math.cos(i * 1.05) * 0.65, 3.5, Math.sin(i * 1.05) * 0.65);
+        frond.rotation.z = 0.68; frond.rotation.y = i * 1.05;
+        tree.add(frond);
+      }
+      tree.position.set(px, 0.35, pz);
+      scene.add(tree);
+    });
+
+    [[4.8, 9.5, 0.7], [5.5, -10.5, 0.85], [6.2, 12.0, 0.55], [4.4, -6.5, 0.6]].forEach(([rx, rz, rs]) => {
+      const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(rs, 0), rockMat);
+      rock.position.set(rx, 0.45, rz); rock.castShadow = true;
+      scene.add(rock);
+    });
+
+    // Dynamic Animated Ocean Surface across the entire left & foreground vista
+    oceanGeo = new THREE.PlaneGeometry(38, 46, 48, 48);
+    oceanGeo.rotateX(-Math.PI / 2);
+    oceanMesh = new THREE.Mesh(
+      oceanGeo,
+      new THREE.MeshPhysicalMaterial({
+        color: 0x0284c7,
+        emissive: 0x0369a1,
+        emissiveIntensity: 0.25,
+        roughness: 0.14,
+        metalness: 0.12,
+        transparent: true,
+        opacity: 0.54
+      })
+    );
+    oceanMesh.position.set(-14.0, 0.18, 0);
+    scene.add(oceanMesh);
+  }
+
+  /* ===================================================================== */
+  /* VISIBLE SEARCHO2 OPERATION BOAT, WAKE & SEISMIC STREAMERS             */
+  /* ===================================================================== */
+  function buildSearchO2OperationBoat() {
+    searchO2Boat = new THREE.Group();
+    searchO2Boat.position.set(-11.5, 0.28, 4.2);
+
+    const hullWhite = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
+    const hullBlue = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 });
+    const deckTeal = new THREE.MeshStandardMaterial({ color: 0x0f766e, roughness: 0.55 });
+    const orangeAccent = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4 });
+
+    const keel = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.44, 1.75), hullBlue);
+    keel.position.y = 0.12; keel.castShadow = true;
+    keel.userData = { stageModal: 1 };
+    clickableMeshes.push(keel);
+    searchO2Boat.add(keel);
+
+    const upperHull = new THREE.Mesh(new THREE.BoxGeometry(4.7, 0.58, 1.85), hullWhite);
+    upperHull.position.y = 0.56; upperHull.castShadow = true;
+    upperHull.userData = { stageModal: 1 };
+    clickableMeshes.push(upperHull);
+    searchO2Boat.add(upperHull);
+
+    const bow = new THREE.Mesh(new THREE.ConeGeometry(1.22, 1.65, 4), orangeAccent);
+    bow.rotation.z = -Math.PI / 2; bow.rotation.x = Math.PI / 4;
+    bow.position.set(3.05, 0.46, 0);
+    searchO2Boat.add(bow);
+
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.55, 1.1, 1.35), deckTeal);
+    cabin.position.set(0.85, 1.35, 0); cabin.castShadow = true;
+    cabin.userData = { stageModal: 1 };
+    clickableMeshes.push(cabin);
+    searchO2Boat.add(cabin);
+
+    const radarMast = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.85, 8), hullWhite);
+    radarMast.position.set(0.85, 2.25, 0);
+    searchO2Boat.add(radarMast);
+
+    const radarBar = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.15, 1.25), orangeAccent);
+    radarBar.position.set(0.85, 2.65, 0);
+    radarBar.name = 'boatRadar';
+    searchO2Boat.add(radarBar);
+
+    const aFrame = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.3, 1.5), orangeAccent);
+    aFrame.position.set(-2.05, 1.38, 0); aFrame.rotation.z = 0.25;
+    searchO2Boat.add(aFrame);
+
+    const streamer = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.04, 0.04, 5.4, 8),
+      new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xca8a04, emissiveIntensity: 0.45 })
+    );
+    streamer.rotation.z = Math.PI / 2;
+    streamer.position.set(-4.7, -0.35, 0);
+    searchO2Boat.add(streamer);
+
+    scene.add(searchO2Boat);
+    hotspots.boat = searchO2Boat;
+
+    // Boat Stern Foam Wake Particles
+    const wCount = 48;
+    const wGeo = new THREE.BufferGeometry();
+    const wPos = new Float32Array(wCount * 3);
+    for (let i = 0; i < wCount; i++) {
+      wPos[i * 3] = -13.5 - Math.random() * 4.2;
+      wPos[i * 3 + 1] = 0.22;
+      wPos[i * 3 + 2] = 4.2 + (Math.random() - 0.5) * 1.4;
+      boatWakePos.push({ age: Math.random() });
+    }
+    wGeo.setAttribute('position', new THREE.BufferAttribute(wPos, 3));
+    boatWakeParticles = new THREE.Points(wGeo, new THREE.PointsMaterial({
+      size: 0.19, color: 0xf8fafc, transparent: true, opacity: 0.78
+    }));
+    scene.add(boatWakeParticles);
+
+    // Expanding Subsea Acoustic Seismic Pulse Rings
+    for (let i = 0; i < 3; i++) {
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.45, 0.64, 32),
+        new THREE.MeshBasicMaterial({
+          color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.78
+        })
+      );
+      ring.rotation.x = Math.PI / 2;
+      ring.position.set(-11.5, -0.5 - i * 0.8, 4.2);
+      ring.userData = { phase: i * 0.33 };
+      scene.add(ring);
+      seismicWaves.push(ring);
+    }
+  }
+
+  /* ===================================================================== */
+  /* VISIBLE MARINE SERVICE JETTY, AUV DOCK & FLOATING TELEMETRY BUOYS     */
+  /* ===================================================================== */
+  function buildMarineJettyAndBuoys() {
+    marineJetty = new THREE.Group();
+    marineJetty.position.set(1.5, 0.55, 3.8);
+
+    const timberMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.82 });
+    const pilingMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.9 });
+    const safetyYellow = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 });
+    const solarBlue = new THREE.MeshStandardMaterial({
+      color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 0.5
+    });
+
+    // Main Wooden Pier Deck extending from Sandy Beach out over Water
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(8.2, 0.25, 2.3), timberMat);
+    deck.position.set(0.4, 0, 0); deck.castShadow = true; deck.receiveShadow = true;
+    deck.userData = { stageModal: 3 };
+    clickableMeshes.push(deck);
+    marineJetty.add(deck);
+
+    // T-Head Pier Platform at Seaward Tip
+    const tHead = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.27, 4.6), timberMat);
+    tHead.position.set(-3.5, 0, 0); tHead.castShadow = true; tHead.receiveShadow = true;
+    tHead.userData = { stageModal: 3 };
+    clickableMeshes.push(tHead);
+    marineJetty.add(tHead);
+
+    // Support Pilings & Bollards
+    for (let px = -3.3; px <= 3.8; px += 1.75) {
+      [-0.98, 0.98].forEach(pz => {
+        const pile = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 3.2, 10), pilingMat);
+        pile.position.set(px, -1.2, pz); pile.castShadow = true;
+        marineJetty.add(pile);
+
+        if (px < 1.0) {
+          const bollard = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.42, 8), safetyYellow);
+          bollard.position.set(px, 0.32, pz);
+          marineJetty.add(bollard);
+        }
+      });
+    }
+
+    // Jetty AUV Launch Davit Crane & Solar Telemetry Kiosk
+    jettyAuvDock = new THREE.Group();
+    jettyAuvDock.position.set(-3.5, 0.13, -1.35);
+
+    const kiosk = new THREE.Mesh(new THREE.BoxGeometry(0.88, 1.15, 0.88), solarBlue);
+    kiosk.position.y = 0.58; kiosk.castShadow = true;
+    kiosk.userData = { stageModal: 3 };
+    clickableMeshes.push(kiosk);
+    jettyAuvDock.add(kiosk);
+
+    const davitArm = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.12, 0.12), safetyYellow);
+    davitArm.position.set(-0.42, 1.38, 0); davitArm.rotation.z = 0.25;
+    jettyAuvDock.add(davitArm);
+
+    marineJetty.add(jettyAuvDock);
+    scene.add(marineJetty);
+    hotspots.jetty = jettyAuvDock;
+
+    // Floating Eco-Telemetry Sensor Buoys
+    [[-6.2, -5.5], [-5.8, 7.8], [0.2, -6.2]].forEach(([bx, bz], idx) => {
+      const buoy = new THREE.Group();
+      buoy.position.set(bx, 0.22, bz);
+      const floatBase = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.38, 0.45, 12), safetyYellow);
+      buoy.add(floatBase);
+      const tower = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.85, 8), solarBlue);
+      tower.position.y = 0.62;
+      buoy.add(tower);
+      const beacon = new THREE.Mesh(
+        new THREE.SphereGeometry(0.11, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0x10b981 })
+      );
+      beacon.position.y = 1.1;
+      buoy.add(beacon);
+      buoy.userData = { phase: idx * 1.4 };
+      scene.add(buoy);
+      telemetryBuoys.push(buoy);
+    });
+  }
+
+  /* ===================================================================== */
+  /* OFFSHORE EXPLORATORY DRILL RIG, SUBSEA BOP & BUBBLE CURTAIN           */
+  /* ===================================================================== */
+  function buildDrillingAndSubseaWellhead() {
+    drillingRig = new THREE.Group();
+    drillingRig.position.set(-3.5, 0.2, -1.5);
+
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.25 });
+    const yellowMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.4, roughness: 0.35 });
+    const redValveMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 });
+    const bluePipeMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6, roughness: 0.3 });
+
+    [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]].forEach(([lx, lz]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 3.6, 10), steelMat);
+      leg.position.set(lx, -0.4, lz); leg.castShadow = true;
+      drillingRig.add(leg);
+    });
+
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.35, 4.2), steelMat);
+    deck.position.y = 1.35; deck.castShadow = true;
+    deck.userData = { stageModal: 2 };
+    clickableMeshes.push(deck);
+    drillingRig.add(deck);
+
+    const derrick = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35, 0.95, 3.8, 4, 1, true),
+      yellowMat
+    );
+    derrick.position.set(0, 3.4, 0); derrick.rotation.y = Math.PI / 4;
+    derrick.userData = { stageModal: 2 };
+    clickableMeshes.push(derrick);
+    drillingRig.add(derrick);
+
+    const mudTank = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.7, 1.4), bluePipeMat);
+    mudTank.position.set(1.3, 1.85, -1.1);
+    drillingRig.add(mudTank);
+
+    drillString = new THREE.Group();
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 8.2, 12), steelMat);
+    pipe.position.y = -0.8;
+    drillString.add(pipe);
+
+    const pdcBit = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.45, 8), yellowMat);
+    pdcBit.rotation.x = Math.PI;
+    pdcBit.position.y = -4.9;
+    drillString.add(pdcBit);
+    drillingRig.add(drillString);
+
+    subseaBOP = new THREE.Group();
+    subseaBOP.position.set(0, -1.7, 0);
+    const bopBody = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.85, 0.95), yellowMat);
+    bopBody.userData = { stageModal: 2 };
+    clickableMeshes.push(bopBody);
+    subseaBOP.add(bopBody);
+
+    [-0.65, 0.65].forEach(rx => {
+      const ram = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.45, 10), redValveMat);
+      ram.rotation.z = Math.PI / 2; ram.position.set(rx, 0.1, 0);
+      subseaBOP.add(ram);
+    });
+    drillingRig.add(subseaBOP);
+
+    christmasTree = new THREE.Group();
+    christmasTree.position.set(0, -0.95, 0);
+    const treeCore = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.7, 12), bluePipeMat);
+    christmasTree.add(treeCore);
+    drillingRig.add(christmasTree);
+
+    const flowline = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 9.2, 10), bluePipeMat);
+    flowline.rotation.z = Math.PI / 2;
+    flowline.position.set(4.5, -1.45, 0);
+    drillingRig.add(flowline);
+
+    scene.add(drillingRig);
+    hotspots.drilling = drillingRig;
+
+    // Acoustic Bubble Curtain Ring
+    const bCount = 95;
+    const bGeo = new THREE.BufferGeometry();
+    const bPos = new Float32Array(bCount * 3);
+    for (let i = 0; i < bCount; i++) {
+      const ang = (i / bCount) * Math.PI * 2;
+      const rad = 2.9;
+      bPos[i * 3]     = -3.5 + Math.cos(ang) * rad;
+      bPos[i * 3 + 1] = -1.8 + Math.random() * 2.0;
+      bPos[i * 3 + 2] = -1.5 + Math.sin(ang) * rad;
+      bubbleCurtainPos.push({ ang, rad, speed: 0.65 + Math.random() * 0.8 });
+    }
+    bGeo.setAttribute('position', new THREE.BufferAttribute(bPos, 3));
+    bubbleCurtainParticles = new THREE.Points(bGeo, new THREE.PointsMaterial({
+      size: 0.14, color: 0xe0f2fe, transparent: true, opacity: 0.85
+    }));
+    scene.add(bubbleCurtainParticles);
+  }
+
+  /* ===================================================================== */
+  /* BEACH GAS INFRASTRUCTURE: PIG RECEIVER, AUTO-CHOKE & SAFETY STACK     */
+  /* ===================================================================== */
+  function buildBeachGasInfrastructure() {
+    beachChokeManifold = new THREE.Group();
+    beachChokeManifold.position.set(5.6, 0.35, -1.5);
+
+    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.88 });
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.82, roughness: 0.25 });
+    const redActuator = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.35 });
+    const bluePipe = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6, roughness: 0.3 });
+
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.25, 3.2), concreteMat);
+    pad.position.y = 0.12; pad.receiveShadow = true;
+    beachChokeManifold.add(pad);
+
+    const riserPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.3, 12), bluePipe);
+    riserPipe.position.set(-0.6, 0.75, 0);
+    beachChokeManifold.add(riserPipe);
+
+    const chokeActuator = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.58, 0.58), redActuator);
+    chokeActuator.position.set(-0.6, 1.45, 0); chokeActuator.castShadow = true;
+    chokeActuator.userData = { stageModal: 4 };
+    clickableMeshes.push(chokeActuator);
+    beachChokeManifold.add(chokeActuator);
+
+    beachPigReceiver = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 1.85, 14), steelMat);
+    beachPigReceiver.rotation.z = Math.PI / 2;
+    beachPigReceiver.position.set(0.3, 0.95, 0); beachPigReceiver.castShadow = true;
+    beachPigReceiver.userData = { stageModal: 4 };
+    clickableMeshes.push(beachPigReceiver);
+    beachChokeManifold.add(beachPigReceiver);
+
+    shoreFlareStack = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.16, 3.4, 10), steelMat);
+    shoreFlareStack.position.set(0.6, 1.9, -1.1); shoreFlareStack.castShadow = true;
+    beachChokeManifold.add(shoreFlareStack);
+
+    flareFlame = new THREE.Mesh(
+      new THREE.ConeGeometry(0.22, 0.55, 8),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.75 })
+    );
+    flareFlame.position.set(0.6, 3.85, -1.1);
+    beachChokeManifold.add(flareFlame);
+
+    scene.add(beachChokeManifold);
+    hotspots.beachValve = beachChokeManifold;
+  }
+
+  /* ===================================================================== */
+  /* ONSHORE SEASHORE BLUE LAB: SCRUBBERS, COMPRESSOR & 250-BAR CNG CASCADE */
+  /* ===================================================================== */
+  function buildBlueLabCNGFacility() {
+    blueLabBuilding = new THREE.Group();
+    blueLabBuilding.position.set(11.4, 0.35, -1.2);
+
+    const slabMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85 });
+    const cobaltMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, metalness: 0.65, roughness: 0.25 });
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.2 });
+    const carbonMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.4, roughness: 0.35 });
+    const cyanGlowMat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.7
+    });
+
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(8.6, 0.3, 9.2), slabMat);
+    pad.position.y = 0.15; pad.receiveShadow = true;
+    blueLabBuilding.add(pad);
+
+    amineScrubber = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 3.2, 16), cobaltMat);
+    amineScrubber.position.set(-2.9, 1.9, -2.2); amineScrubber.castShadow = true;
+    amineScrubber.userData = { stageModal: 5 };
+    clickableMeshes.push(amineScrubber);
+    blueLabBuilding.add(amineScrubber);
+
+    dehydratorTowers = new THREE.Group();
+    [-1.9, -1.0].forEach(dx => {
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 2.6, 14), steelMat);
+      tower.position.set(dx, 1.6, -2.2); tower.castShadow = true;
+      tower.userData = { stageModal: 5 };
+      clickableMeshes.push(tower);
+      dehydratorTowers.add(tower);
+    });
+    blueLabBuilding.add(dehydratorTowers);
+
+    compressorSkid = new THREE.Group();
+    compressorSkid.position.set(0.6, 0.3, -2.0);
+    const compBase = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.8, 1.4), cobaltMat);
+    compBase.position.y = 0.4; compBase.castShadow = true;
+    compBase.userData = { stageModal: 5 };
+    clickableMeshes.push(compBase);
+    compressorSkid.add(compBase);
+
+    for (let f = -2; f <= 2; f++) {
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.9, 1.1), steelMat);
+      fin.position.set(f * 0.28, 1.15, 0);
+      compressorSkid.add(fin);
+    }
+
+    compressorWheel = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.08, 10, 24), cyanGlowMat);
+    compressorWheel.position.set(-1.1, 0.75, 0);
+    compressorWheel.rotation.y = Math.PI / 2;
+    compressorSkid.add(compressorWheel);
+    blueLabBuilding.add(compressorSkid);
+
+    cascadeCylinders = new THREE.Group();
+    cascadeCylinders.position.set(3.0, 0.3, -1.4);
+
+    const rackFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6, 2.3, 2.4),
+      new THREE.MeshStandardMaterial({ color: 0x334155, wireframe: true })
+    );
+    rackFrame.position.y = 1.15;
+    cascadeCylinders.add(rackFrame);
+
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 2; col++) {
+        const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 2.1, 14), carbonMat);
+        cyl.rotation.x = Math.PI / 2;
+        cyl.position.set((col - 0.5) * 0.65, 0.55 + row * 0.62, 0);
+        cyl.castShadow = true;
+        cyl.userData = { stageModal: 5 };
+        clickableMeshes.push(cyl);
+        cascadeCylinders.add(cyl);
+
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), cyanGlowMat);
+        cap.position.set((col - 0.5) * 0.65, 0.55 + row * 0.62, 1.05);
+        cascadeCylinders.add(cap);
+      }
+    }
+    blueLabBuilding.add(cascadeCylinders);
+
+    cngDispenser = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.75, 0.75), cobaltMat);
+    cngDispenser.position.set(2.9, 1.18, 1.6); cngDispenser.castShadow = true;
+    cngDispenser.userData = { stageModal: 5 };
+    clickableMeshes.push(cngDispenser);
+    blueLabBuilding.add(cngDispenser);
+
+    const screen = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.45, 0.05), cyanGlowMat);
+    screen.position.set(2.9, 1.48, 1.99);
+    blueLabBuilding.add(screen);
+
+    scene.add(blueLabBuilding);
+    hotspots.bluelab = cascadeCylinders;
+  }
+
+  /* ===================================================================== */
+  /* AUTONOMOUS AUV DRONE, CORAL REEF, DOLPHIN POD & COASTAL SEAGULLS      */
+  /* ===================================================================== */
+  function buildAutonomousAUVAndMarineLife() {
+    auvDrone = new THREE.Group();
+    auvDrone.position.set(-1.2, -0.65, 3.8);
+
+    const auvYellow = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.35, metalness: 0.3 });
+    const auvDark = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 });
+
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 1.3, 14), auvYellow);
+    body.rotation.z = Math.PI / 2;
+    body.userData = { stageModal: 3 };
+    clickableMeshes.push(body);
+    auvDrone.add(body);
+
+    const noseDome = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 12), auvDark);
+    noseDome.position.set(0.65, 0, 0);
+    auvDrone.add(noseDome);
+
+    auvLaserBeam = new THREE.Mesh(
+      new THREE.ConeGeometry(0.68, 1.25, 16, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: 0x10b981, transparent: true, opacity: 0.32, side: THREE.DoubleSide
+      })
+    );
+    auvLaserBeam.position.set(0.2, -0.65, 0);
+    auvDrone.add(auvLaserBeam);
+
+    scene.add(auvDrone);
+
+    coralReefGroup = new THREE.Group();
+    coralReefGroup.position.set(-1.5, -1.75, 4.2);
+    const coralColors = [0xf472b6, 0x34d399, 0xfbbf24, 0x38bdf8];
+    for (let c = 0; c < 10; c++) {
+      const coral = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.22 + (c % 3) * 0.08, 0),
+        new THREE.MeshStandardMaterial({ color: coralColors[c % coralColors.length], roughness: 0.7 })
+      );
+      coral.position.set((c - 4.5) * 0.42, 0.15, (c % 2 - 0.5) * 0.65);
+      coralReefGroup.add(coral);
+    }
+    scene.add(coralReefGroup);
+
+    const dolphinMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.28 });
+    [0, 1].forEach(idx => {
+      const d = new THREE.Group();
+      const dBody = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 12), dolphinMat);
+      dBody.scale.set(2.4, 0.75, 0.8);
+      d.add(dBody);
+      const dFin = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.35, 4), dolphinMat);
+      dFin.position.set(0, 0.28, 0); dFin.rotation.z = -0.3;
+      d.add(dFin);
+      d.userData = { offset: idx * 0.85 };
+      scene.add(d);
+      marineDolphinPod.push(d);
+    });
+
+    const gullMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
+    for (let g = 0; g < 4; g++) {
+      const gull = new THREE.Group();
+      const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.04, 0.18), gullMat);
+      wingL.position.x = -0.28;
+      const wingR = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.04, 0.18), gullMat);
+      wingR.position.x = 0.28;
+      gull.add(wingL, wingR);
+      gull.userData = { phase: g * 1.57, radius: 5.5 + g * 1.4, height: 5.2 + g * 0.6 };
+      scene.add(gull);
+      seagulls.push(gull);
+    }
+  }
+
+  /* ===================================================================== */
+  /* PARTICLE SYSTEMS: GAS EXTRACTION STREAM & MICRO-SEEP PLUME            */
+  /* ===================================================================== */
+  function buildFlowAndSeepParticles() {
+    const gCount = 75;
+    const gGeo = new THREE.BufferGeometry();
+    const gPos = new Float32Array(gCount * 3);
+    for (let i = 0; i < gCount; i++) {
+      const t = i / gCount;
+      gPos[i * 3]     = -3.5;
+      gPos[i * 3 + 1] = -4.5 + t * 3.0;
+      gPos[i * 3 + 2] = -1.5;
+      gasFlowPos.push({ progress: t, speed: 0.35 + Math.random() * 0.2 });
+    }
+    gGeo.setAttribute('position', new THREE.BufferAttribute(gPos, 3));
+    gasFlowParticles = new THREE.Points(gGeo, new THREE.PointsMaterial({
+      size: 0.16, color: 0x38bdf8, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending
+    }));
+    scene.add(gasFlowParticles);
+
+    const sCount = 60;
+    const sGeo = new THREE.BufferGeometry();
+    const sPos = new Float32Array(sCount * 3);
+    for (let i = 0; i < sCount; i++) {
+      sPos[i * 3]     = -3.5 + (Math.random() - 0.5) * 0.6;
+      sPos[i * 3 + 1] = -1.6 + Math.random() * 1.8;
+      sPos[i * 3 + 2] = -1.5 + (Math.random() - 0.5) * 0.6;
+      seepPos.push({
+        vx: (Math.random() - 0.5) * 0.015,
+        vy: 0.02 + Math.random() * 0.02,
+        vz: (Math.random() - 0.5) * 0.015
+      });
+    }
+    sGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+    seepParticles = new THREE.Points(sGeo, new THREE.PointsMaterial({
+      size: 0.2, color: 0xf43f5e, transparent: true, opacity: 0.92
+    }));
+    seepParticles.visible = false;
+    scene.add(seepParticles);
+  }
+
+  /* ===================================================================== */
+  /* CHARACTER RIGS: TARIQ THE FISHING CAT, PROF. PUFF & PIP SQUEAK        */
+  /* ===================================================================== */
+  function buildTariqFishingCat() {
+    tariqGroup = new THREE.Group();
+
+    const furOlive = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 });
+    const furCream = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.8 });
+    const stripeDark = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.85 });
+    const neopreneTeal = new THREE.MeshStandardMaterial({ color: 0x0d9488, roughness: 0.5 });
+    const harnessOrange = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.45 });
+    const brassMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.2 });
+
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.56, 0.68, 1.38, 16), neopreneTeal);
+    body.position.y = 1.35; body.castShadow = true;
+    tariqGroup.add(body);
+
+    const chestPatch = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.75, 0.2), furCream);
+    chestPatch.position.set(0, 1.55, 0.52);
+    tariqGroup.add(chestPatch);
+
+    [-0.28, 0.28].forEach(sx => {
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.11, 1.25, 1.18), harnessOrange);
+      strap.position.set(sx, 1.4, 0);
+      tariqGroup.add(strap);
+    });
+
+    [-0.3, 0.3].forEach(lx => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.65, 10), furOlive);
+      leg.position.set(lx, 0.42, 0);
+      tariqGroup.add(leg);
+      const boot = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.52), stripeDark);
+      boot.position.set(lx, 0.11, 0.08);
+      tariqGroup.add(boot);
+    });
+
+    tariqHead = new THREE.Group();
+    tariqHead.position.set(0, 2.28, 0.08);
+
+    const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.68, 18, 18), furOlive);
+    headMesh.scale.set(1.12, 0.94, 1.08); headMesh.castShadow = true;
+    tariqHead.add(headMesh);
+
+    [-0.22, 0.22].forEach(fx => {
+      const browStripe = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 0.12), stripeDark);
+      browStripe.position.set(fx, 0.35, 0.62);
+      tariqHead.add(browStripe);
+    });
+
+    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 14), furCream);
+    muzzle.scale.set(1.15, 0.78, 0.85); muzzle.position.set(0, -0.14, 0.58);
+    tariqHead.add(muzzle);
+
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10),
+      new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
+    nose.position.set(0, -0.08, 0.85);
+    tariqHead.add(nose);
+
+    [-0.25, 0.25].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10),
+        new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.4 }));
+      eye.position.set(ex, 0.08, 0.65);
+      tariqHead.add(eye);
+    });
+
+    [-0.46, 0.46].forEach((ex, idx) => {
+      const ear = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.38, 4), furOlive);
+      ear.position.set(ex, 0.58, 0.02);
+      ear.rotation.z = idx === 0 ? 0.32 : -0.32;
+      tariqHead.add(ear);
+    });
+
+    tariqGroup.add(tariqHead);
+
+    tariqArmL = new THREE.Group();
+    tariqArmL.position.set(-0.74, 1.5, 0);
+    const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.72, 10), furOlive);
+    armL.position.y = -0.36; tariqArmL.add(armL);
+    tariqGroup.add(tariqArmL);
+
+    tariqArmR = new THREE.Group();
+    tariqArmR.position.set(0.74, 1.5, 0);
+    const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.72, 10), furOlive);
+    armR.position.y = -0.36; tariqArmR.add(armR);
+
+    const spanner = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.85, 0.14), brassMat);
+    spanner.position.set(0.05, -0.45, 0.22);
+    tariqArmR.add(spanner);
+    tariqGroup.add(tariqArmR);
+
+    tariqTail = new THREE.Group();
+    tariqTail.position.set(0, 0.75, -0.55);
+    let prev = tariqTail;
+    for (let i = 0; i < 4; i++) {
+      const seg = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.11 - i * 0.015, 0.12 - i * 0.015, 0.22, 8),
+        i % 2 === 0 ? furOlive : stripeDark
+      );
+      seg.position.set(0, 0.06, -0.16); seg.rotation.x = -0.35;
+      prev.add(seg); prev = seg;
+    }
+    tariqGroup.add(tariqTail);
+
+    tariqGroup.position.set(5.6, 0.6, 0.8);
+    tariqGroup.rotation.y = -0.55;
+    scene.add(tariqGroup);
+  }
+
+  /* Strict Preservation of Prof. Whisker Puff Design */
+  function buildPuff() {
+    puffGroup = new THREE.Group();
+
+    const ginger = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.68 });
+    const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.72 });
+    const black = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.68 });
+    const labVest = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.55 });
+    const skirtMat = new THREE.MeshStandardMaterial({ color: 0x065f46, roughness: 0.62 });
+
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.64, 1.25, 16), white);
+    body.position.y = 1.35; body.castShadow = true; puffGroup.add(body);
+
+    const vest = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.67, 0.9, 16, 1, false, 0.3, Math.PI * 1.8), labVest);
+    vest.position.y = 1.45; puffGroup.add(vest);
+
+    const skirt = new THREE.Mesh(new THREE.ConeGeometry(0.85, 0.65, 16, 1, true), skirtMat);
+    skirt.position.y = 0.85; skirt.rotation.x = Math.PI; puffGroup.add(skirt);
+
+    puffHead = new THREE.Group();
+    puffHead.position.set(0, 2.3, 0.1);
+
+    const headGeo = new THREE.SphereGeometry(0.72, 20, 20);
+    headGeo.scale(1.15, 0.95, 1.05);
+    const head = new THREE.Mesh(headGeo, ginger);
+    head.castShadow = true; puffHead.add(head);
+
+    const patch = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), black);
+    patch.scale.set(0.9, 0.8, 0.35); patch.position.set(-0.35, 0.25, 0.55);
+    puffHead.add(patch);
+
+    const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.32, 14, 14), white);
+    muzzle.scale.set(1.2, 0.8, 0.85); muzzle.position.set(0, -0.15, 0.62);
+    puffHead.add(muzzle);
+
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.09, 4),
+      new THREE.MeshStandardMaterial({ color: 0xf472b6 }));
+    nose.rotation.z = Math.PI; nose.rotation.x = 0.35; nose.position.set(0, -0.09, 0.92);
+    puffHead.add(nose);
+
+    const earGeo = new THREE.ConeGeometry(0.26, 0.48, 4);
+    const earL = new THREE.Mesh(earGeo, ginger);
+    earL.position.set(-0.48, 0.65, 0.05); earL.rotation.set(-0.1, 0, 0.35); puffHead.add(earL);
+
+    const earR = new THREE.Mesh(earGeo, black);
+    earR.position.set(0.48, 0.65, 0.05); earR.rotation.set(-0.1, 0, -0.35); puffHead.add(earR);
+
+    const glassesMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.12 });
+    [-0.26, 0.26].forEach(gx => {
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.04, 10, 24), glassesMat);
+      rim.position.set(gx, 0.02, 0.75); puffHead.add(rim);
+    });
+    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.22), glassesMat);
+    bridge.rotation.z = Math.PI / 2; bridge.position.set(0, 0.02, 0.77); puffHead.add(bridge);
+
+    puffGroup.add(puffHead);
+
+    puffArmL = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.7, 10), white);
+    puffArmL.position.set(-0.62, 1.35, 0); puffGroup.add(puffArmL);
+
+    puffArmR = new THREE.Group();
+    puffArmR.position.set(0.62, 1.35, 0);
+    const armRMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.7, 10), white);
+    armRMesh.position.y = -0.35; puffArmR.add(armRMesh);
+
+    const tablet = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.45, 0.04),
+      new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0369a1, emissiveIntensity: 0.6 }));
+    tablet.position.set(0, -0.65, 0.2); puffArmR.add(tablet);
+    puffGroup.add(puffArmR);
+
+    puffTail = new THREE.Group();
+    puffTail.position.set(0, 0.8, -0.5);
+    let prev = puffTail;
+    for (let i = 0; i < 5; i++) {
+      const seg = new THREE.Mesh(new THREE.SphereGeometry(0.12 - i * 0.015, 8, 8), (i % 2 === 0) ? ginger : black);
+      seg.position.set(0, 0.12, -0.14); prev.add(seg); prev = seg;
+    }
+    puffGroup.add(puffTail);
+
+    puffGroup.position.set(9.8, 0.65, 1.6);
+    puffGroup.rotation.y = -0.35;
+    scene.add(puffGroup);
+  }
+
+  /* Strict Preservation of Pip Squeak-a-Link Design */
+  function buildPip() {
+    pipGroup = new THREE.Group();
+
+    const mouseBrown = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.78 });
+    const mousePink = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.55 });
+    const beachShirt = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.62 });
+    const shortsMat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.62 });
+    const sneakerMat = new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.45 });
+
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), mouseBrown);
+    body.scale.set(0.9, 1.15, 0.9); body.position.y = 0.55; body.castShadow = true;
+    pipGroup.add(body);
+
+    const shirt = new THREE.Mesh(new THREE.CylinderGeometry(0.39, 0.42, 0.45, 14), beachShirt);
+    shirt.position.y = 0.62; pipGroup.add(shirt);
+
+    const shorts = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.38, 0.28, 14), shortsMat);
+    shorts.position.y = 0.34; pipGroup.add(shorts);
+
+    pipHead = new THREE.Group();
+    pipHead.position.set(0, 0.92, 0.02);
+
+    const mHead = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), mouseBrown);
+    mHead.castShadow = true; pipHead.add(mHead);
+
+    const snout = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.38, 12), mouseBrown);
+    snout.rotation.x = 1.35; snout.position.set(0, -0.06, 0.26); pipHead.add(snout);
+
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), mousePink);
+    nose.position.set(0, -0.08, 0.45); pipHead.add(nose);
+
+    [-0.24, 0.24].forEach((ex, idx) => {
+      const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 14), mousePink);
+      ear.position.set(ex, 0.24, -0.02);
+      ear.rotation.set(0.2, idx === 0 ? 0.35 : -0.35, idx === 0 ? -0.4 : 0.4);
+      pipHead.add(ear);
+    });
+
+    [-0.13, 0.13].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0x09090b }));
+      eye.position.set(ex, 0.06, 0.3); pipHead.add(eye);
+    });
+
+    pipGroup.add(pipHead);
+
+    pipArmL = new THREE.Group();
+    pipArmL.position.set(-0.36, 0.65, 0);
+    const pawL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+    pawL.position.y = -0.18; pipArmL.add(pawL); pipGroup.add(pipArmL);
+
+    pipArmR = new THREE.Group();
+    pipArmR.position.set(0.36, 0.65, 0);
+    const pawR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.35, 8), mouseBrown);
+    pawR.position.y = -0.18; pipArmR.add(pawR);
+
+    pipWand = new THREE.Group();
+    pipWand.position.set(0.06, -0.25, 0.14);
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.45),
+      new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9 }));
+    pipWand.add(rod);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 0.8 }));
+    tip.position.y = 0.24; pipWand.add(tip);
+    pipArmR.add(pipWand);
+    pipGroup.add(pipArmR);
+
+    [-0.16, 0.16].forEach(lx => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.26, 8), mouseBrown);
+      leg.position.set(lx, 0.18, 0); pipGroup.add(leg);
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.32), sneakerMat);
+      shoe.position.set(lx, 0.06, 0.06); pipGroup.add(shoe);
+    });
+
+    pipTail = new THREE.Group();
+    pipTail.position.set(0, 0.28, -0.32);
+    let pPrev = pipTail;
+    for (let i = 0; i < 5; i++) {
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.03 - i * 0.004, 0.035 - i * 0.004, 0.15, 6), mousePink);
+      seg.position.set(0, 0.04, -0.12); seg.rotation.x = -0.25; pPrev.add(seg); pPrev = seg;
+    }
+    pipGroup.add(pipTail);
+
+    // Standing right on the Marine Jetty T-Head Pier inspecting the AUV!
+    pipGroup.position.set(-1.6, 0.68, 3.8);
+    pipGroup.rotation.y = -Math.PI / 2;
+    scene.add(pipGroup);
+  }
+
+  /* ===================================================================== */
+  /* CAMERA PRESETS                                                        */
+  /* ===================================================================== */
+  function setCameraPreset(key, instant = false) {
+    const p = CAM[key];
+    if (!p) return;
+    if (instant) {
+      camera.position.set(p.pos[0], p.pos[1], p.pos[2]);
+      controls.target.set(p.tgt[0], p.tgt[1], p.tgt[2]);
+      camera.zoom = p.zoom; camera.updateProjectionMatrix();
+      return;
+    }
+    new TWEEN.Tween(camera.position)
+      .to({ x: p.pos[0], y: p.pos[1], z: p.pos[2] }, 1100)
+      .easing(TWEEN.Easing.Cubic.InOut).start();
+    new TWEEN.Tween(controls.target)
+      .to({ x: p.tgt[0], y: p.tgt[1], z: p.tgt[2] }, 1100)
+      .easing(TWEEN.Easing.Cubic.InOut).start();
+    new TWEEN.Tween({ z: camera.zoom })
+      .to({ z: p.zoom }, 1100)
+      .easing(TWEEN.Easing.Cubic.InOut)
+      .onUpdate(o => { camera.zoom = o.z; camera.updateProjectionMatrix(); })
+      .start();
+  }
+
+  /* ===================================================================== */
+  /* GAME PROGRESSION & TELEMETRY THRESHOLD EVALUATOR                      */
+  /* ===================================================================== */
+  function completeQuest(questId) {
+    if (!questId || completedQuests.has(questId)) return;
+    completedQuests.add(questId);
+    const el = document.getElementById(questId);
+    if (el) {
+      el.classList.add('quest-done');
+      el.querySelector('.quest-checkbox').textContent = '✓';
+    }
+    const count = completedQuests.size;
+    document.getElementById('quest-progress-badge').textContent = `${count} / 6 Done`;
+    document.getElementById('quest-progress-bar').style.width = `${(count / 6) * 100}%`;
+  }
+
+  function evaluateThresholds(t) {
+    if (simulatedLeakActive && !mitigationEngaged) {
+      liveNoise = 168 + Math.round(Math.sin(t * 6) * 3);
+      liveCH4 = +(8.4 + Math.sin(t * 4) * 0.9).toFixed(1);
+      liveDO = +(4.4 + Math.cos(t * 3) * 0.2).toFixed(1);
+      liveCNG = 192;
+    } else {
+      liveNoise = mitigationEngaged ? Math.round(148 + Math.sin(t * 2) * 3) : Math.round(163 + Math.sin(t * 3) * 2);
+      liveCH4 = +(1.6 + Math.abs(Math.sin(t * 1.5)) * 0.5).toFixed(1);
+      liveDO = +(7.4 + Math.cos(t * 1.2) * 0.2).toFixed(1);
+      liveCNG = Math.round(247 + Math.sin(t * 1.8) * 2);
+    }
+
+    const anyAlarm = (liveNoise > threshNoise) || (liveCH4 > threshCH4) || (liveDO < threshDO);
+
+    const elNoise = document.getElementById('metric-noise');
+    const elCH4 = document.getElementById('metric-ch4');
+    const elDO = document.getElementById('metric-do');
+    const elCNG = document.getElementById('metric-cng');
+
+    elNoise.textContent = `${liveNoise} dB`;
+    elNoise.className = (liveNoise > threshNoise) ? 'text-rose-400 font-bold' : 'text-cyan-300 font-bold';
+
+    elCH4.textContent = `${liveCH4} ppm`;
+    elCH4.className = (liveCH4 > threshCH4) ? 'text-rose-400 font-bold' : 'text-emerald-300 font-bold';
+
+    elDO.textContent = `${liveDO} mg/L`;
+    elDO.className = (liveDO < threshDO) ? 'text-rose-400 font-bold' : 'text-sky-300 font-bold';
+
+    elCNG.textContent = `${liveCNG} bar`;
+
+    const threshPanel = document.getElementById('threshold-panel');
+    const statusPill = document.getElementById('system-status-pill');
+
+    if (anyAlarm) {
+      threshPanel.classList.add('alarm-active');
+      statusPill.textContent = '⚠ THRESHOLD BREACH · SHUT-IN';
+      statusPill.className = 'mono text-[8.5px] font-bold px-2 py-0.5 rounded-full bg-rose-500/30 text-rose-200 border border-rose-400';
+      alarmLight.intensity = 3.2 + Math.sin(t * 14) * 2.0;
+      seepParticles.visible = true;
+    } else {
+      threshPanel.classList.remove('alarm-active');
+      statusPill.textContent = '● ECO-SAFE NOMINAL';
+      statusPill.className = 'mono text-[8.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40';
+      alarmLight.intensity = 0;
+      seepParticles.visible = false;
+    }
+  }
+
+  /* ===================================================================== */
+  /* TIMELINE & CONCEPT FACT SLIDE UPDATER                                 */
+  /* ===================================================================== */
+  function updateStoryTimeline(time) {
+    const scrubber = document.getElementById('story-scrubber');
+    if (Math.abs(parseFloat(scrubber.value) - time) > 0.35) scrubber.value = time;
+
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    document.getElementById('time-display').textContent =
+      `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+    let currentStep = 1;
+    if (time >= 60) currentStep = 4;
+    else if (time >= 36) currentStep = 3;
+    else if (time >= 24) currentStep = 2;
+
+    for (let i = 1; i <= 4; i++) {
+      const btn = document.getElementById('step-btn-' + i);
+      if (i === currentStep) btn.classList.add('active');
+      else btn.classList.remove('active');
+    }
+
+    const stepTags = [
+      'Stage 1 · SearchO2 Seismic Boat &amp; Acoustic Soft-Start',
+      'Stage 2 · Closed-Loop PDC Drilling &amp; Subsea BOP Stack',
+      'Stage 3 · Marine Jetty AUV Sniffer &amp; Thresholds',
+      'Stage 4 · Beach Valve Failsafe &amp; 250-bar CNG Cascade'
+    ];
+    document.getElementById('stage-tag').innerHTML = stepTags[currentStep - 1];
+
+    const idx = STORY_BEATS.findIndex(b => time >= b.start && time < b.end);
+    if (idx !== -1 && idx !== currentSpeechIdx) {
+      currentSpeechIdx = idx;
+      const beat = STORY_BEATS[idx];
+      activeModalStage = beat.stage;
+      if (beat.quest) completeQuest(beat.quest);
+
+      const box = document.getElementById('dialogue-container');
+      box.classList.remove('fade-in'); box.classList.add('fade-out');
+
+      setTimeout(() => {
+        document.getElementById('speaker-avatar').textContent = beat.avatar;
+        document.getElementById('speaker-name').textContent =
+          beat.speaker === 'Tariq' ? 'Tariq the Fishing Cat' :
+          beat.speaker === 'Puff' ? 'Professor Whisker Puff' :
+          beat.speaker === 'Pip' ? 'Pip Squeak-a-Link' : 'SearchO2 Blue Lab Team';
+        document.getElementById('speaker-role').textContent = beat.role;
+        document.getElementById('speech-text').textContent = `"${beat.text}"`;
+
+        if (subtitlesEnabled) {
+          box.classList.remove('fade-out'); box.classList.add('fade-in');
+        }
+      }, 120);
+
+      updateConceptSlide(beat.slide);
+      speakTextSmooth(beat.text, beat.speaker, true);
+    }
+
+    evaluateThresholds(time);
+  }
+
+  function updateConceptSlide(slide) {
+    if (!slide) return;
+    document.getElementById('slide-icon').textContent = slide.icon;
+    document.getElementById('slide-title').textContent = slide.title;
+    document.getElementById('slide-subtitle').textContent = slide.sub;
+
+    const diag = document.getElementById('slide-diagram');
+    diag.innerHTML = '';
+    slide.diagram.forEach(([k, v]) => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center justify-between text-slate-300';
+      row.innerHTML = `<span>${k}:</span><span class="text-cyan-300 font-bold">${v}</span>`;
+      diag.appendChild(row);
+    });
+  }
+
+  /* ===================================================================== */
+  /* 3D HOTSPOT SCREEN-SPACE PROJECTION                                    */
+  /* ===================================================================== */
+  function updateHotspotPins() {
+    const map = [
+      { id: 'pin-boat',        obj: hotspots.boat,       yOff: 2.9 },
+      { id: 'pin-drilling',    obj: hotspots.drilling,   yOff: 4.9 },
+      { id: 'pin-jetty',       obj: hotspots.jetty,      yOff: 2.3 },
+      { id: 'pin-beach-valve', obj: hotspots.beachValve, yOff: 2.7 },
+      { id: 'pin-bluelab',     obj: hotspots.bluelab,    yOff: 3.1 }
+    ];
+
+    const v = new THREE.Vector3();
+    map.forEach(item => {
+      const el = document.getElementById(item.id);
+      if (!el || !item.obj) return;
+      item.obj.getWorldPosition(v);
+      v.y += item.yOff;
+      v.project(camera);
+      const x = (v.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-(v.y * 0.5) + 0.5) * window.innerHeight;
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+    });
+  }
+
+  /* ===================================================================== */
+  /* 3D KINEMATICS & SURROUNDING BEACH/WATER ANIMATIONS                    */
+  /* ===================================================================== */
+  function animateChoreography(t) {
+    // 1. Dynamic Rolling Ocean Waves
+    if (oceanGeo) {
+      const pos = oceanGeo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+        const wave = Math.sin(x * 0.45 + t * 1.8) * 0.09 + Math.cos(z * 0.35 + t * 1.4) * 0.07;
+        pos.setY(i, wave);
+      }
+      pos.needsUpdate = true;
+    }
+
+    // 2. SearchO2 Operation Boat Cruising Transect, Pitch & Radar Spin
+    if (searchO2Boat) {
+      searchO2Boat.position.z = 4.2 + Math.sin(t * 0.38) * 4.5;
+      searchO2Boat.position.y = 0.28 + Math.sin(t * 2.6) * 0.06;
+      searchO2Boat.rotation.z = Math.cos(t * 2.2) * 0.03;
+      const radar = searchO2Boat.getObjectByName('boatRadar');
+      if (radar) radar.rotation.y += 0.07;
+    }
+
+    // Boat Stern Foam Wake
+    if (boatWakeParticles && searchO2Boat) {
+      const pos = boatWakeParticles.geometry.attributes.position.array;
+      for (let i = 0; i < boatWakePos.length; i++) {
+        boatWakePos[i].age = (boatWakePos[i].age + 0.018) % 1;
+        const a = boatWakePos[i].age;
+        pos[i * 3]     = searchO2Boat.position.x - 2.2 - a * 4.2;
+        pos[i * 3 + 1] = 0.22;
+        pos[i * 3 + 2] = searchO2Boat.position.z + (Math.sin(i * 3.1) * 0.65 * (0.3 + a));
+      }
+      boatWakeParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // Expanding Subsea Seismic Pulse Rings
+    seismicWaves.forEach(ring => {
+      const p = ((t * 0.45 + ring.userData.phase) % 1);
+      ring.position.set(searchO2Boat.position.x, -0.3 - p * 3.8, searchO2Boat.position.z);
+      const s = 0.6 + p * 4.6;
+      ring.scale.set(s, s, 1);
+      ring.material.opacity = (1 - p) * 0.78;
+    });
+
+    // 3. Bobbing Telemetry Buoys
+    telemetryBuoys.forEach(b => {
+      b.position.y = 0.22 + Math.sin(t * 2.4 + b.userData.phase) * 0.08;
+      b.rotation.z = Math.cos(t * 1.9 + b.userData.phase) * 0.08;
+    });
+
+    // 4. Bubble Curtain Rising Bubbles
+    if (bubbleCurtainParticles) {
+      bubbleCurtainParticles.visible = mitigationEngaged;
+      const pos = bubbleCurtainParticles.geometry.attributes.position.array;
+      for (let i = 0; i < bubbleCurtainPos.length; i++) {
+        pos[i * 3 + 1] += 0.026 * bubbleCurtainPos[i].speed;
+        if (pos[i * 3 + 1] > 0.18) pos[i * 3 + 1] = -1.8;
+      }
+      bubbleCurtainParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // 5. Rotary PDC Drill String, Compressor Flywheel & Safety Stack Flame
+    if (drillString && !simulatedLeakActive) drillString.rotation.y += 0.08;
+    if (compressorWheel && !simulatedLeakActive) compressorWheel.rotation.z -= 0.12;
+    if (flareFlame) {
+      const fs = 0.85 + Math.sin(t * 12) * 0.2;
+      flareFlame.scale.set(fs, 0.9 + Math.cos(t * 15) * 0.25, fs);
+    }
+
+    // 6. Autonomous AUV Patrol Trajectory around Jetty & Reef
+    if (auvDrone) {
+      const orbitAng = t * 0.65;
+      auvDrone.position.x = -1.2 + Math.cos(orbitAng) * 2.6;
+      auvDrone.position.z = 3.8 + Math.sin(orbitAng) * 2.2;
+      auvDrone.position.y = -0.65 + Math.sin(t * 2.2) * 0.12;
+      auvDrone.rotation.y = -orbitAng;
+      if (auvLaserBeam) {
+        auvLaserBeam.material.opacity = 0.24 + Math.sin(t * 8) * 0.12;
+      }
+    }
+
+    // 7. Coastal Dolphin Pod & Soaring Seagulls
+    marineDolphinPod.forEach(d => {
+      const dAng = t * 0.42 + d.userData.offset;
+      d.position.x = -8.2 + Math.cos(dAng) * 3.4;
+      d.position.z = 7.8 + Math.sin(dAng) * 2.4;
+      d.position.y = -0.22 + Math.sin(t * 3.2 + d.userData.offset) * 0.2;
+      d.rotation.y = -dAng + Math.PI / 2;
+    });
+
+    seagulls.forEach(g => {
+      const ang = t * 0.55 + g.userData.phase;
+      g.position.x = 3.5 + Math.cos(ang) * g.userData.radius;
+      g.position.z = 1.5 + Math.sin(ang) * g.userData.radius;
+      g.position.y = g.userData.height + Math.sin(t * 2.5 + g.userData.phase) * 0.35;
+      g.rotation.y = -ang;
+      g.children[0].rotation.z = Math.sin(t * 7 + g.userData.phase) * 0.32;
+      g.children[1].rotation.z = -Math.sin(t * 7 + g.userData.phase) * 0.32;
+    });
+
+    // 8. Gas Flow Particles from Reservoir -> Wellhead -> Beach Valve -> Blue Lab
+    if (gasFlowParticles) {
+      const pos = gasFlowParticles.geometry.attributes.position.array;
+      for (let i = 0; i < gasFlowPos.length; i++) {
+        const d = gasFlowPos[i];
+        if (!simulatedLeakActive || mitigationEngaged) {
+          d.progress = (d.progress + 0.008 * d.speed) % 1;
+        }
+        if (d.progress < 0.4) {
+          const u = d.progress / 0.4;
+          pos[i * 3]     = -3.5;
+          pos[i * 3 + 1] = -4.7 + u * 3.25;
+          pos[i * 3 + 2] = -1.5;
+        } else {
+          const u = (d.progress - 0.4) / 0.6;
+          pos[i * 3]     = -3.5 + u * 12.2;
+          pos[i * 3 + 1] = -1.45 + (u > 0.72 ? (u - 0.72) * 10.5 : 0);
+          pos[i * 3 + 2] = -1.5;
+        }
+      }
+      gasFlowParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // 9. Micro-Seep Contamination Particles
+    if (seepParticles && seepParticles.visible) {
+      const pos = seepParticles.geometry.attributes.position.array;
+      for (let i = 0; i < seepPos.length; i++) {
+        pos[i * 3]     += seepPos[i].vx;
+        pos[i * 3 + 1] += seepPos[i].vy;
+        pos[i * 3 + 2] += seepPos[i].vz;
+        if (pos[i * 3 + 1] > 0.2) {
+          pos[i * 3]     = -3.5 + (Math.random() - 0.5) * 0.5;
+          pos[i * 3 + 1] = -1.6;
+          pos[i * 3 + 2] = -1.5 + (Math.random() - 0.5) * 0.5;
+        }
+      }
+      seepParticles.geometry.attributes.position.needsUpdate = true;
+    }
+
+    // 10. Character Gestures & Real-Time Voice Lip/Head Sync
+    const curBeat = STORY_BEATS.find(b => t >= b.start && t < b.end);
+    const activeSpeaker = isSpeakingNow ? activeSpeakingCharacter : (curBeat ? curBeat.speaker : '');
+
+    tariqHead.rotation.y = (activeSpeaker === 'Tariq') ? Math.sin(t * 4.5) * 0.22 : Math.sin(t * 1.1) * 0.08;
+    tariqHead.rotation.x = (activeSpeaker === 'Tariq') ? Math.sin(t * 6.0) * 0.11 : 0;
+    tariqArmR.rotation.x = (activeSpeaker === 'Tariq') ? (-0.45 + Math.sin(t * 4.2) * 0.28) : -0.2;
+    if (tariqTail) tariqTail.rotation.y = Math.sin(t * 2.2) * 0.28;
+
+    puffHead.rotation.y = (activeSpeaker === 'Puff') ? Math.sin(t * 4.5) * 0.22 : -0.15;
+    puffHead.rotation.x = (activeSpeaker === 'Puff') ? Math.sin(t * 6.2) * 0.12 : 0;
+    puffArmR.rotation.x = (activeSpeaker === 'Puff') ? (-0.45 + Math.sin(t * 4.0) * 0.25) : -0.25;
+    if (puffTail) puffTail.rotation.y = Math.sin(t * 1.8) * 0.25;
+
+    const hop = (activeSpeaker === 'Pip') ? Math.abs(Math.sin(t * 5.8)) * 0.16 : 0;
+    pipGroup.position.y = 0.68 + hop;
+    pipHead.rotation.y = (activeSpeaker === 'Pip') ? Math.sin(t * 4.8) * 0.24 : 0.1;
+    pipArmR.rotation.x = (activeSpeaker === 'Pip') ? (-0.5 + Math.sin(t * 5.2) * 0.32) : -0.2;
+    if (pipTail) pipTail.rotation.y = Math.sin(t * 3.4) * 0.32;
+  }
+
+  /* ===================================================================== */
+  /* UI SETUP & INTERACTIVE EVENT LISTENERS                                */
+  /* ===================================================================== */
+  function setupUI() {
+    const playBtn = document.getElementById('btn-play-pause');
+    const playerPanel = document.getElementById('player-panel');
+    const playerToggle = document.getElementById('btn-player-toggle');
+
+    playerToggle.addEventListener('click', () => {
+      initAudio();
+      const isHidden = playerPanel.classList.contains('hidden-panel');
+      playerPanel.classList.toggle('hidden-panel');
+      playerToggle.classList.toggle('active', isHidden);
+    });
+
+    playBtn.addEventListener('click', () => {
+      initAudio();
+      isPlaying = !isPlaying;
+      playBtn.textContent = isPlaying ? '⏸' : '▶';
+      playerToggle.textContent = isPlaying ? '⏸' : '▶';
+    });
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      initAudio();
+      storyTime = 0;
+      currentSpeechIdx = -1;
+      isPlaying = true;
+      simulatedLeakActive = false;
+      mitigationEngaged = true;
+      playBtn.textContent = '⏸';
+      playerToggle.textContent = '⏸';
+      setCameraPreset('wide', false);
+    });
+
+    document.getElementById('story-scrubber').addEventListener('input', (e) => {
+      initAudio();
+      storyTime = parseFloat(e.target.value);
+      currentSpeechIdx = -1;
+      updateStoryTimeline(storyTime);
+    });
+
+    // Step jumps
+    const stepTimes = { 1: 0.1, 2: 24.1, 3: 36.1, 4: 60.1 };
+    const stepCams  = { 1: 'boat', 2: 'drilling', 3: 'jetty', 4: 'beach' };
+    [1, 2, 3, 4].forEach(n => {
+      document.getElementById('step-btn-' + n).addEventListener('click', () => {
+        initAudio();
+        storyTime = stepTimes[n];
+        currentSpeechIdx = -1;
+        isPlaying = true;
+        playBtn.textContent = '⏸';
+        playerToggle.textContent = '⏸';
+        setCameraPreset(stepCams[n], false);
+        updateStoryTimeline(storyTime);
+      });
+    });
+
+    // Hotspot Pin Clicks -> Opens Detailed Explanatory Graphic Modal for that Object
+    document.getElementById('pin-boat').addEventListener('click', () => { initAudio(); openStageGraphicModal(1); });
+    document.getElementById('pin-drilling').addEventListener('click', () => { initAudio(); openStageGraphicModal(2); });
+    document.getElementById('pin-jetty').addEventListener('click', () => { initAudio(); openStageGraphicModal(3); });
+    document.getElementById('pin-beach-valve').addEventListener('click', () => { initAudio(); openStageGraphicModal(4); });
+    document.getElementById('pin-bluelab').addEventListener('click', () => { initAudio(); openStageGraphicModal(5); });
+
+    // Direct 3D Mesh Raycasting Click Support
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      mouseVec.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseVec.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(mouseVec, camera);
+      const hits = raycaster.intersectObjects(clickableMeshes, false);
+      if (hits.length > 0 && hits[0].object.userData.stageModal) {
+        initAudio();
+        openStageGraphicModal(hits[0].object.userData.stageModal);
+      }
+    });
+
+    // Interactive Quest Checklist Click -> Opens Graphic Modal for that Stage
+    document.querySelectorAll('.quest-item').forEach(item => {
+      item.addEventListener('click', () => {
+        initAudio();
+        const stg = parseInt(item.getAttribute('data-stage'), 10) || 1;
+        openStageGraphicModal(stg);
+      });
+    });
+
+    // Modal Stage Tabs, Crew Narration & Execute Action Button
+    document.querySelectorAll('.modal-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const s = parseInt(btn.getAttribute('data-mstage'), 10);
+        openStageGraphicModal(s);
+      });
+    });
+
+    document.getElementById('btn-mstage-narrate').addEventListener('click', () => {
+      initAudio();
+      const data = STAGE_GRAPHICS[activeModalStage];
+      if (data) speakTextSmooth(data.narration, data.speaker, true);
+    });
+
+    document.getElementById('btn-mstage-execute').addEventListener('click', () => {
+      initAudio();
+      const data = STAGE_GRAPHICS[activeModalStage];
+      if (data && data.quest) completeQuest(data.quest);
+      document.getElementById('mstage-action-status').textContent = '✓ Verified & Logged in Progression Protocol';
+      playTone(660, 'sine', 0.22, 0.05);
+      speakTextSmooth(`Stage ${activeModalStage} field action verified and logged into our SearchO2 progression protocol!`, 'Tariq', true);
+    });
+
+    document.getElementById('btn-open-stage-guide').addEventListener('click', () => {
+      initAudio();
+      openStageGraphicModal(activeModalStage);
+    });
+    document.getElementById('btn-inspect-current-stage').addEventListener('click', () => {
+      initAudio();
+      openStageGraphicModal(activeModalStage);
+    });
+    document.getElementById('btn-close-stage-modal').addEventListener('click', () => {
+      document.getElementById('modal-stage-graphic').classList.add('opacity-0', 'pointer-events-none');
+    });
+
+    // Interactive Threshold Sliders
+    document.getElementById('slider-thresh-noise').addEventListener('input', (e) => {
+      threshNoise = parseInt(e.target.value, 10);
+      document.getElementById('val-thresh-noise').textContent = `${threshNoise} dB re 1µPa`;
+      completeQuest('q-4');
+      evaluateThresholds(storyTime);
+    });
+
+    document.getElementById('slider-thresh-ch4').addEventListener('input', (e) => {
+      threshCH4 = parseFloat(e.target.value);
+      document.getElementById('val-thresh-ch4').textContent = `${threshCH4.toFixed(1)} ppm`;
+      completeQuest('q-4');
+      evaluateThresholds(storyTime);
+    });
+
+    document.getElementById('slider-thresh-do').addEventListener('input', (e) => {
+      threshDO = parseFloat(e.target.value);
+      document.getElementById('val-thresh-do').textContent = `${threshDO.toFixed(1)} mg/L`;
+      completeQuest('q-4');
+      evaluateThresholds(storyTime);
+    });
+
+    // Simulate Micro-Seep Breach & Engage Failsafe
+    document.getElementById('btn-sim-leak').addEventListener('click', () => {
+      initAudio();
+      simulatedLeakActive = true;
+      mitigationEngaged = false;
+      setCameraPreset('drilling', false);
+      evaluateThresholds(storyTime);
+      respondToUserQuestion("Alert! Subsea micro-seep detected!");
+    });
+
+    document.getElementById('btn-deploy-mitigation').addEventListener('click', () => {
+      initAudio();
+      simulatedLeakActive = false;
+      mitigationEngaged = true;
+      completeQuest('q-5');
+      evaluateThresholds(storyTime);
+      respondToUserQuestion("How does the beach valve and bubble curtain stop a leak?");
+    });
+
+    // Real-Time Voice Chat Form & Quick Q&A Chips
+    document.getElementById('voice-chat-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      initAudio();
+      const input = document.getElementById('voice-chat-input');
+      const val = input.value.trim();
+      if (!val) return;
+      input.value = '';
+      respondToUserQuestion(val);
+    });
+
+    document.querySelectorAll('.qa-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        initAudio();
+        respondToUserQuestion(chip.getAttribute('data-q'));
+      });
+    });
+
+    document.getElementById('btn-replay-voice').addEventListener('click', () => {
+      initAudio();
+      if (lastSpokenText) speakTextSmooth(lastSpokenText, lastSpokenSpeaker, true);
+    });
+
+    // Browser SpeechRecognition Push-to-Talk Microphone (Both Toolbar & Inline Button)
+    const micBtn = document.getElementById('btn-mic-talk');
+    const inlineMicBtn = document.getElementById('btn-inline-mic');
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    function triggerVoiceRecognition() {
+      initAudio();
+      if (!SpeechRec) {
+        document.getElementById('voice-chat-input').focus();
+        speakTextSmooth("Type any question in the chat box below and our crew will answer right away!", "Pip", true);
+        return;
+      }
+      const recognition = new SpeechRec();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      try {
+        window.speechSynthesis.cancel();
+        recognition.start();
+        micBtn.classList.add('listening');
+        inlineMicBtn.textContent = '🔴 Listening...';
+        document.getElementById('voice-status-tag').textContent = 'LISTENING MIC...';
+      } catch (err) {}
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('voice-chat-input').value = transcript;
+        respondToUserQuestion(transcript);
+      };
+      recognition.onerror = () => {
+        micBtn.classList.remove('listening');
+        inlineMicBtn.textContent = '🎙️ Talk';
+      };
+      recognition.onend = () => {
+        micBtn.classList.remove('listening');
+        inlineMicBtn.textContent = '🎙️ Talk';
+      };
+    }
+
+    micBtn.addEventListener('click', triggerVoiceRecognition);
+    inlineMicBtn.addEventListener('click', triggerVoiceRecognition);
+
+    // Camera Presets
+    document.getElementById('btn-cam-boat').addEventListener('click', () => setCameraPreset('boat', false));
+    document.getElementById('btn-cam-jetty').addEventListener('click', () => setCameraPreset('jetty', false));
+    document.getElementById('btn-cam-drilling').addEventListener('click', () => setCameraPreset('drilling', false));
+    document.getElementById('btn-cam-beach').addEventListener('click', () => setCameraPreset('beach', false));
+    document.getElementById('btn-cam-wide').addEventListener('click', () => setCameraPreset('wide', false));
+
+    // Audio Toggle
+    const audioBtn = document.getElementById('btn-audio');
+    audioBtn.addEventListener('click', () => {
+      initAudio();
+      audioEnabled = !audioEnabled;
+      audioBtn.textContent = audioEnabled ? '🔊' : '🔇';
+      audioBtn.classList.toggle('active', audioEnabled);
+      if (!audioEnabled && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        speechQueue = [];
+        setSpeakingVisual(false);
+      }
+    });
+
+    // Subtitle Toggle
+    const subBtn = document.getElementById('btn-subtitle');
+    subBtn.addEventListener('click', () => {
+      subtitlesEnabled = !subtitlesEnabled;
+      subBtn.classList.toggle('active', subtitlesEnabled);
+      document.body.classList.toggle('subtitles-off', !subtitlesEnabled);
+      const box = document.getElementById('dialogue-container');
+      if (subtitlesEnabled) {
+        box.classList.remove('fade-out'); box.classList.add('fade-in');
+      } else {
+        box.classList.remove('fade-in'); box.classList.add('fade-out');
+      }
+    });
+
+    // HUD Slide Toggle
+    const slideToggleBtn = document.getElementById('btn-slide-toggle');
+    const slideHUD = document.getElementById('virtual-slide');
+    slideToggleBtn.addEventListener('click', () => {
+      const isHidden = slideHUD.classList.contains('slide-hidden');
+      slideHUD.classList.toggle('slide-hidden', !isHidden);
+      slideToggleBtn.classList.toggle('active', isHidden);
+    });
+
+    window.addEventListener('click', () => initAudio(), { once: true });
+  }
+
+  /* ===================================================================== */
+  /* RESIZE & ANIMATION LOOP                                               */
+  /* ===================================================================== */
+  function onResize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const aspect = w / h, d = 17.5;
+    camera.left = -d * aspect;
+    camera.right = d * aspect;
+    camera.top = d;
+    camera.bottom = -d;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+
+    TWEEN.update();
+
+    if (isPlaying) {
+      storyTime += dt;
+      if (storyTime >= TOTAL_DURATION) {
+        storyTime = TOTAL_DURATION;
+        isPlaying = false;
+        document.getElementById('btn-play-pause').textContent = '▶';
+        document.getElementById('btn-player-toggle').textContent = '▶';
+      }
+      updateStoryTimeline(storyTime);
+    }
+
+    animateChoreography(storyTime);
+    updateHotspotPins();
+
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  window.onload = () => {
+    init();
+    setCameraPreset('wide', true);
+    animate();
+  };
+  </script>
+
+<script>
+window.returnToBlueLab = function(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.closeModal === 'function') {
+      window.parent.closeModal();
+      return false;
+    }
+  } catch(err) {}
+  var ref = document.referrer || '';
+  var search = window.location.search || '';
+  if (ref.indexOf('/hub') !== -1 || search.indexOf('source=hub') !== -1) {
+    window.location.href = '../../hub/index.html#/saint-martin';
+    return false;
+  }
+  window.location.href = '../blue-lab.html';
+  return false;
+};
+window.returnToResearchLab = window.returnToBlueLab;
+</script>
+
+</body>
+</html>

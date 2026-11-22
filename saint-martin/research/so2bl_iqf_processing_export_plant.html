@@ -1,0 +1,2141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saint Martin's Island — SearchO2 Blue Lab IQF Processing & Export Plant</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js + OrbitControls + TWEEN.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fredoka:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    * { box-sizing: border-box; }
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      background: #02111f;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+    }
+    #viewport-container {
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+    .bubble-font { font-family: 'Fredoka', cursive; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Sleek Holographic Glassmorphism */
+    .glass-panel {
+      background: rgba(5, 21, 38, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+    }
+
+    /* 100% Icon-Only Control Buttons */
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      background: rgba(9, 32, 56, 0.92);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 12px;
+      color: #e0f2fe;
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .icon-btn:hover {
+      background: rgba(14, 165, 233, 0.34);
+      border-color: rgba(56, 189, 248, 0.85);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.28);
+    }
+    .icon-btn.active {
+      background: linear-gradient(135deg, #0284c7, #0d9488);
+      color: #021d24;
+      border-color: #7dd3fc;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.55);
+    }
+    .icon-btn.emerald-accent {
+      border-color: rgba(16, 185, 129, 0.55);
+      color: #6ee7b7;
+    }
+    .icon-btn.emerald-accent.active {
+      background: linear-gradient(135deg, #059669, #10b981);
+      color: #022c22;
+      border-color: #a7f3d0;
+    }
+
+    /* Live Voice Pulse Ring */
+    @keyframes pulseRing {
+      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.75); }
+      70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .mic-live {
+      animation: pulseRing 1.5s infinite;
+      background: linear-gradient(135deg, #059669, #10b981) !important;
+      color: #022c22 !important;
+      border-color: #6ee7b7 !important;
+    }
+
+    /* Smooth Dialogue Card Transition */
+    .dialogue-box {
+      transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .dialogue-box.fade-out {
+      opacity: 0;
+      transform: translate(-50%, 16px) scale(0.97);
+      pointer-events: none;
+    }
+    .dialogue-box.fade-in {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+      pointer-events: auto;
+    }
+
+    /* Icon-Only 3D Projected Field Hotspots */
+    .hotspot-marker {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      z-index: 15;
+      pointer-events: auto;
+      cursor: pointer;
+      transition: transform 0.22s ease, opacity 0.22s ease;
+    }
+    .hotspot-marker:hover {
+      transform: translate(-50%, -56%) scale(1.16);
+      z-index: 25;
+    }
+    .hotspot-orb {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: rgba(6, 24, 42, 0.92);
+      backdrop-filter: blur(8px);
+      border: 1.5px solid rgba(56, 189, 248, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55), 0 0 12px rgba(56, 189, 248, 0.38);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(6, 22, 38, 0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 3px; }
+  </style>
+</head>
+<body class="text-slate-100">
+
+  <!-- Full-Screen Widescreen 3D Canvas -->
+  <div id="viewport-container"></div>
+
+  <!-- Projected 3D Icon-Only Interactive Hotspots -->
+  <div id="hotspots-layer" class="fixed inset-0 pointer-events-none z-10 overflow-hidden"></div>
+
+  <!-- Top-Left: Icon-Only Station Badge & System Schematic Trigger -->
+  <header class="fixed top-4 left-4 z-20 flex items-center gap-2 pointer-events-auto">
+    <div class="glass-panel p-2 rounded-2xl flex items-center gap-2">
+      <div class="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-lg" title="SearchO2 Blue Lab — Saint Martin's Island IQF Marine Processing & Export Plant">
+        ❄️
+      </div>
+      <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" title="HACCP & ISO-22000 Cold-Chain Telemetry Active"></span>
+      <button id="btn-open-architecture" class="icon-btn" title="Open IQF Cryogenic Line & Cold-Chain Export Schematics">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Top-Right: 100% Icon-Only Camera Presets, Live Voice Link, Subtitles & Audio Controls -->
+  <nav class="fixed top-4 right-4 z-20 flex flex-wrap items-center justify-end gap-1.5 pointer-events-auto max-w-[78vw]">
+    <a id="archive-home-link" href="#" onclick="returnToBlueLab(event)" class="icon-btn" title="Return to Blue Lab" aria-label="Return to Blue Lab" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">🔬</a>
+    <button id="cam-overview" class="icon-btn active" data-cam="overview" title="Camera: Full IQF Processing Hall & Export Dock Overview">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </button>
+    <button id="cam-reception" class="icon-btn" data-cam="reception" title="Camera: RAS Live Harvest Reception, Ozone Washer & Prep Line">
+      <span class="text-base leading-none">🦐</span>
+    </button>
+    <button id="cam-laser" class="icon-btn" data-cam="laser" title="Camera: Ultrasonic Cleaning & Optical Laser Sorter/Grader">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+    </button>
+    <button id="cam-spiral" class="icon-btn" data-cam="spiral" title="Camera: -40°C Cryogenic Impingement Spiral IQF Freezer Tunnel">
+      <span class="text-base leading-none">🌀</span>
+    </button>
+    <button id="cam-glazing" class="icon-btn" data-cam="glazing" title="Camera: Protective Water-Glazing Tunnel & 14-Head Radial Weigher">
+      <span class="text-base leading-none">🧊</span>
+    </button>
+    <button id="cam-reefer" class="icon-btn" data-cam="reefer" title="Camera: X-Ray Inspector, QR Traceability & -25°C Export Reefer">
+      <span class="text-base leading-none">🚢</span>
+    </button>
+
+    <div class="w-[1px] h-6 bg-sky-800/70 mx-0.5 hidden sm:block"></div>
+
+    <button id="btn-live-voice" class="icon-btn emerald-accent" title="Two-Way Voice & Question Link with Farhana, Captain Kabir, Prof. Puff & Pip">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.1" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+    </button>
+    <button id="btn-subtitles" class="icon-btn active" title="Toggle Spoken Dialogue Transcript Card">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+    </button>
+    <button id="btn-audio" class="icon-btn active" title="Toggle Voice Synthesis & Plant Telemetry Audio">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+    </button>
+  </nav>
+
+  <!-- Top-Right Compact Cryogenic & Cold-Chain Telemetry HUD (Icon + Numeric Value Only) -->
+  <aside id="telemetry-hud" class="fixed top-16 right-4 z-20 w-72 md:w-80 glass-panel p-3.5 rounded-2xl border border-sky-400/35 pointer-events-auto transition-all duration-300">
+    <div class="flex items-center justify-between pb-2.5 mb-2.5 border-b border-sky-900/70">
+      <div class="flex items-center gap-2">
+        <span id="hud-stage-icon" class="w-8 h-8 rounded-xl bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-base">🏭</span>
+        <span id="hud-stage-num" class="font-mono text-xs font-bold text-cyan-300">01 / 05</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button id="btn-field-action" class="icon-btn bg-sky-400 text-slate-950 border-sky-200 hover:bg-sky-300" title="Execute Stage Action (Ozone Wash / Laser Grade / Cryo Boost / Glaze Mist / X-Ray Scan)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </button>
+        <button id="btn-stage-graphic" class="icon-btn bg-teal-500/25 border-teal-400/50 text-teal-200" title="Inspect Stage Engineering Diagram">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Real-Time IQF Telemetry (Icon + Numeric Value Only) -->
+    <div class="grid grid-cols-3 gap-1.5 mb-2.5 text-center font-mono">
+      <div class="bg-slate-950/80 p-2 rounded-xl border border-sky-900/60" title="Spiral IQF Tunnel Impingement Air Temperature">
+        <span class="text-xs block mb-0.5">❄️</span>
+        <strong id="val-iqf-temp" class="text-xs text-cyan-300">-40.2°C</strong>
+      </div>
+      <div class="bg-slate-950/80 p-2 rounded-xl border border-sky-900/60" title="Protective Ice Glaze & Core Freezing Time">
+        <span class="text-xs block mb-0.5">🧊</span>
+        <strong id="val-glaze" class="text-xs text-emerald-400">7.2% / 9m</strong>
+      </div>
+      <div class="bg-slate-950/80 p-2 rounded-xl border border-sky-900/60" title="Export ISO Reefer Container Hold Temperature">
+        <span class="text-xs block mb-0.5">🚢</span>
+        <strong id="val-reefer" class="text-xs text-amber-300">-25.4°C</strong>
+      </div>
+    </div>
+
+    <!-- Cold-Chain & Yield Efficiency Bar -->
+    <div class="bg-slate-950/75 p-2 rounded-xl border border-sky-900/60" title="99.8% HACCP Cold-Chain Integrity & Export Grade Yield">
+      <div class="flex justify-between items-center text-[10px] mb-1 font-mono text-cyan-200">
+        <span>🛡️</span>
+        <span id="val-yield">99.8%</span>
+      </div>
+      <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden flex">
+        <div id="bar-prep" class="bg-amber-400 h-full transition-all duration-500" style="width: 30%"></div>
+        <div id="bar-cryo" class="bg-cyan-400 h-full transition-all duration-500" style="width: 45%"></div>
+        <div id="bar-pack" class="bg-emerald-400 h-full transition-all duration-500" style="width: 25%"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Live Voice & Question Drawer -->
+  <aside id="live-comms-panel" class="fixed top-16 left-4 z-30 w-80 glass-panel p-3.5 rounded-2xl border-2 border-emerald-400/60 hidden pointer-events-auto">
+    <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-emerald-800/60">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+        <span class="text-sm">🎙️</span>
+      </div>
+      <button id="btn-close-comms" class="icon-btn w-7 h-7" title="Close Voice Comms">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <p id="voice-status-text" class="text-[11px] text-slate-200 mb-2.5 leading-snug">
+      Ask Farhana Rahman, Captain Kabir, Professor Puff, or Pip about the -40°C Spiral IQF freezer, glazing, shrimp/squid/octopus prep, X-ray inspection, or export reefer loading.
+    </p>
+    <div class="flex items-center gap-2">
+      <button id="btn-mic-record" class="icon-btn emerald-accent" title="Click to Speak Question via Microphone">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+      </button>
+      <form id="voice-text-form" class="flex flex-1 gap-1.5">
+        <input id="voice-text-input" type="text" placeholder="..." aria-label="Ask a question" class="flex-1 bg-slate-950/90 border border-sky-800 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400">
+        <button type="submit" class="icon-btn bg-cyan-500 text-slate-950 border-cyan-300" title="Send Question">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- Bottom-Left: 100% Icon-Only Timeline & 5-Stage Interactive Navigator -->
+  <footer class="fixed bottom-4 left-4 z-20 glass-panel p-3 rounded-2xl flex flex-col gap-2.5 pointer-events-auto w-72 md:w-80">
+    <div class="flex items-center gap-2">
+      <button id="btn-play-pause" class="icon-btn bg-sky-400 text-slate-950 border-sky-200 hover:bg-sky-300" title="Play / Pause Guided Briefing">
+        <svg id="icon-pause" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
+        <svg id="icon-play" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button id="btn-restart" class="icon-btn" title="Restart IQF Plant Tour from Beginning">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      </button>
+      <span id="time-display" class="font-mono text-cyan-300 w-11 text-center text-xs font-bold">00:00</span>
+      <input id="story-scrubber" type="range" min="0" max="135" step="0.1" value="0" aria-label="Timeline Scrubber" class="flex-1 cursor-pointer accent-cyan-400">
+    </div>
+
+    <!-- 5 Icon-Only Stage Buttons -->
+    <div class="grid grid-cols-5 gap-1.5 pt-2 border-t border-sky-900/60">
+      <button class="stage-jump-btn icon-btn w-full active" data-stage="0" title="Stage 1: Live RAS Harvest Reception, Slurry Stunning & Ozone Flume Washer">
+        <span>🦐</span>
+      </button>
+      <button class="stage-jump-btn icon-btn w-full" data-stage="1" title="Stage 2: Species-Specific Prep Lines & Optical Laser Sizing Grader">
+        <span>🔬</span>
+      </button>
+      <button class="stage-jump-btn icon-btn w-full" data-stage="2" title="Stage 3: -40°C Cryogenic Impingement Spiral IQF Freezer Tunnel">
+        <span>🌀</span>
+      </button>
+      <button class="stage-jump-btn icon-btn w-full" data-stage="3" title="Stage 4: Protective Water-Glazing Tunnel & 14-Head Radial Packaging">
+        <span>🧊</span>
+      </button>
+      <button class="stage-jump-btn icon-btn w-full" data-stage="4" title="Stage 5: Dual-Energy X-Ray Inspection, QR Traceability & -25°C Export Reefer">
+        <span>🚢</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Bottom-Center / Right: Full Synchronized Dialogue Card (4 Characters) -->
+  <aside id="dialogue-container" class="dialogue-box fixed bottom-4 left-1/2 md:left-[63%] -translate-x-1/2 z-20 pointer-events-auto max-w-xl w-[92%] md:w-[54%] glass-panel p-4 rounded-2xl border border-cyan-400/40 flex items-start gap-3.5 fade-in">
+    <div id="speaker-avatar" class="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl bg-slate-950 border border-cyan-400/60 shadow-inner">
+      👩‍🔬
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex flex-wrap items-center justify-between gap-1 mb-1">
+        <div class="flex items-center gap-2">
+          <span id="speaker-name" class="bubble-font text-sm font-bold text-cyan-300">Farhana Rahman</span>
+          <span id="speaker-role" class="text-[10px] px-2 py-0.5 rounded bg-sky-500/20 text-sky-200 border border-sky-400/25 font-mono">IQF &amp; Cold-Chain Specialist</span>
+        </div>
+        <span id="speech-emotion" class="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-slate-950 text-emerald-300 border border-emerald-500/30">HACCP Cleanroom</span>
+      </div>
+      <p id="speech-text" class="text-xs md:text-[13px] text-slate-100 leading-relaxed font-normal">
+        "Welcome to the SearchO2 Blue Lab Individually Quick Frozen processing and international export facility on Saint Martin's Island. Directly adjacent to our closed-loop RAS tanks, this three-sixteen-L stainless-steel cleanroom freezes harvested Giant Tiger Shrimp, Bigfin Reef Squid, and Day Octopus at minus forty degrees Celsius within twenty minutes of harvest."
+      </p>
+    </div>
+  </aside>
+
+  <!-- Engineering & Cold-Chain Schematic Modal (Icon Tabs + Detailed SVG Diagram) -->
+  <div id="graphic-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="glass-panel border-2 border-cyan-400/50 rounded-3xl p-5 md:p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-sky-800/70">
+        <div>
+          <span id="modal-tag" class="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">IQF LINE SCHEMATIC</span>
+          <h2 id="modal-title" class="bubble-font text-lg md:text-xl font-bold text-white mt-1">End-to-End IQF Processing &amp; Export Architecture</h2>
+        </div>
+        <button id="btn-close-graphic-modal" class="icon-btn hover:bg-red-500/30 hover:border-red-400" title="Close Schematic">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Icon-Only Modal Stage Tabs -->
+      <div class="flex items-center gap-2 mb-4">
+        <button class="modal-tab-btn icon-btn active" data-tab="0" title="Full RAS-to-Reefer IQF Process Topology">🏭</button>
+        <button class="modal-tab-btn icon-btn" data-tab="1" title="Species-Specific Prep & Optical Laser Grading">🔬</button>
+        <button class="modal-tab-btn icon-btn" data-tab="2" title="-40°C Spiral IQF Impingement Freezer Physics">🌀</button>
+        <button class="modal-tab-btn icon-btn" data-tab="3" title="Protective Water Glazing & 14-Head VFFS Packing">🧊</button>
+        <button class="modal-tab-btn icon-btn" data-tab="4" title="X-Ray Inspection, QR Traceability & -25°C Reefer">🚢</button>
+      </div>
+
+      <div id="modal-svg-container" class="bg-slate-950/90 rounded-2xl p-4 border border-sky-800/70 mb-4 flex items-center justify-center"></div>
+      <div id="modal-details-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs"></div>
+    </div>
+  </div>
+
+  <!-- Field Action Feedback Toast -->
+  <div id="action-toast" class="fixed bottom-24 right-4 z-30 glass-panel border border-emerald-400/60 px-4 py-2.5 rounded-xl text-xs text-emerald-200 font-medium shadow-xl opacity-0 pointer-events-none transition-opacity duration-300">
+    Action executed.
+  </div>
+
+  <script>
+    /* =========================================================================
+       SAINT MARTIN'S ISLAND SEARCHO2 BLUE LAB — IQF PROCESSING & EXPORT PLANT
+       4 Characters: Farhana Rahman, Captain Kabir, Prof. Whisker Puff, Pip Squeak
+       End-to-End 3D Animation: RAS Reception -> Prep & Laser Grader -> -40°C Spiral
+       IQF Freezer -> Water Glazing & 14-Head Packaging -> X-Ray & -25°C Reefer
+       ========================================================================= */
+
+    let scene, camera, renderer, controls;
+    let waterMesh, waterGeo, initialWaterZ;
+    let spiralDrumMesh, evapFan1, evapFan2, laserGraderBeam, xrayScannerBeam;
+    let glazingMistParticles = [], cryoVaporParticles = [], ozoneBubbles = [];
+    let productItems = []; // Animated Shrimp, Squid, Octopus moving along the entire IQF line
+    let exportCartons = [];
+    let hotspotObjects = [];
+
+    // 4 Articulated 3D Characters
+    let farhanaGroup, farhanaHead, farhanaArmR, farhanaArmL;
+    let kabirGroup, kabirHead, kabirArmR, kabirArmL;
+    let puffGroup, puffHead, puffArmR, puffArmL;
+    let pipGroup, pipHead, pipArmR, pipArmL;
+
+    // Timeline & Audio State
+    let storyTime = 0;
+    const TOTAL_DURATION = 135;
+    let isPlaying = true;
+    let audioEnabled = true;
+    let subtitlesEnabled = true;
+    let synth = null;
+    let currentBeatIdx = -1;
+    let isSpeaking = false;
+    let isLiveVoiceOpen = false;
+    let currentActiveStage = 0;
+    let cryoBoostTimer = 0;
+
+    // Smooth Widescreen Camera Presets
+    const CAMERA_PRESETS = {
+      overview: { pos: { x: 22, y: 15.5, z: 24 }, target: { x: 0, y: 1.8, z: 0 } },
+      reception: { pos: { x: -12.5, y: 6.2, z: 8.5 }, target: { x: -9.5, y: 1.5, z: 0.5 } },
+      laser: { pos: { x: -5.5, y: 5.8, z: 7.5 }, target: { x: -4.8, y: 1.6, z: 0.0 } },
+      spiral: { pos: { x: -0.5, y: 6.8, z: 8.8 }, target: { x: -0.2, y: 2.2, z: 0.0 } },
+      glazing: { pos: { x: 5.2, y: 6.2, z: 8.0 }, target: { x: 4.8, y: 1.8, z: 0.0 } },
+      reefer: { pos: { x: 13.5, y: 6.8, z: 9.2 }, target: { x: 10.5, y: 1.8, z: 0.0 } }
+    };
+
+    // Full Multi-Character Synchronized Dialogue Script (4 Characters)
+    const STORY_BEATS = [
+      {
+        start: 0,
+        end: 14.5,
+        stage: 0,
+        speaker: 'Farhana',
+        avatar: '👩‍🔬',
+        role: 'Local IQF & Cold-Chain Specialist',
+        emotion: 'HACCP Cleanroom',
+        text: "Welcome to the SearchO2 Blue Lab Individually Quick Frozen processing and international export facility on Saint Martin's Island. Directly adjacent to our closed-loop RAS tanks, this three-sixteen-L stainless-steel cleanroom freezes harvested Giant Tiger Shrimp, Bigfin Reef Squid, and Day Octopus at minus forty degrees Celsius within twenty minutes of harvest.",
+        cam: 'overview',
+        aim: new THREE.Vector3(-4, 1.8, 0)
+      },
+      {
+        start: 14.5,
+        end: 28.5,
+        stage: 0,
+        speaker: 'Kabir',
+        avatar: '🧭',
+        role: 'RAS Aquaculture & Harvest Lead',
+        emotion: 'Chilled Slurry Transfer',
+        text: "From our RAS harvest bay, live shrimp, squid, and octopuses are transferred in insulated food-grade totes filled with zero-point-five-degree chilled seawater slurry. This humane cold-stunning preserves firm muscle texture and prevents lactic acid buildup before entering our agitated ozone-microbubble flume washer.",
+        cam: 'reception',
+        aim: new THREE.Vector3(-9.5, 1.4, 0.5)
+      },
+      {
+        start: 28.5,
+        end: 43.0,
+        stage: 1,
+        speaker: 'Farhana',
+        avatar: '👩‍🔬',
+        role: 'Local IQF & Cold-Chain Specialist',
+        emotion: 'Precision Species Prep',
+        text: "Along our laminar water-jet preparation tables, each species receives specialized processing: shrimp are automatically peeled and deveined; squid mantles are cleaned and sliced into uniform rings and tubes; and octopus portions undergo gentle enzymatic tumbling for export tenderness.",
+        cam: 'laser',
+        aim: new THREE.Vector3(-5.2, 1.5, 0.0)
+      },
+      {
+        start: 43.0,
+        end: 57.0,
+        stage: 1,
+        speaker: 'Pip',
+        avatar: '🌺',
+        role: 'Junior Automation & Packaging Tech',
+        emotion: '3D Optical Laser Sorter',
+        text: "Next, every single piece passes beneath our high-speed blue optical laser grader! Dual stereo cameras scan length, thickness, and chromatic freshness in milliseconds, sorting export-grade shrimp, squid rings, and octopus tentacles evenly onto the stainless spiral freezer belt without overlapping.",
+        cam: 'laser',
+        aim: new THREE.Vector3(-3.8, 1.8, 0.0)
+      },
+      {
+        start: 57.0,
+        end: 72.5,
+        stage: 2,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Chief Marine & Food Safety Scientist',
+        emotion: 'Cryogenic Crystallization',
+        text: "Inside the minus-forty-degree Spiral IQF tunnel, high-velocity vertical impingement air jets sweep across the ascending helical belt. By passing through the thermal arrest zone in under nine minutes, intracellular water forms microscopic nano-crystals rather than jagged ice shards, guaranteeing zero drip loss and fresh-caught texture upon thawing.",
+        cam: 'spiral',
+        aim: new THREE.Vector3(-0.2, 2.2, 0.0)
+      },
+      {
+        start: 72.5,
+        end: 86.5,
+        stage: 2,
+        speaker: 'Farhana',
+        avatar: '👩‍🔬',
+        role: 'Local IQF & Cold-Chain Specialist',
+        emotion: 'Individual Separation',
+        text: "Because each shrimp, squid ring, and octopus tentacle is suspended on fluidized cold air currents, pieces freeze individually instead of clumping into solid blocks. International chefs can pour out exact single portions directly from the freezer bag.",
+        cam: 'spiral',
+        aim: new THREE.Vector3(0.4, 2.0, 0.0)
+      },
+      {
+        start: 86.5,
+        end: 102.0,
+        stage: 3,
+        speaker: 'Pip',
+        avatar: '🌺',
+        role: 'Junior Automation & Packaging Tech',
+        emotion: 'Water Glazing & 14-Head Weigher',
+        text: "Exiting the spiral freezer at minus twenty-eight degrees core temperature, the seafood enters our chilled water-glazing mist tunnel to lock in a seven-percent protective ice shield against freezer burn. Then our fourteen-head radial weigher doses exact one-kilogram batches into nitrogen-flushed vacuum pouches!",
+        cam: 'glazing',
+        aim: new THREE.Vector3(4.8, 1.8, 0.0)
+      },
+      {
+        start: 102.0,
+        end: 118.0,
+        stage: 4,
+        speaker: 'Puff',
+        avatar: '🌸',
+        role: 'Chief Marine & Food Safety Scientist',
+        emotion: 'X-Ray & Blockchain Traceability',
+        text: "Every sealed pouch passes through our dual-energy X-ray contaminant scanner to verify zero shell fragments or foreign inclusions, receiving a laser-printed QR passport linked directly to its SearchO2 RAS tank water quality and feed log.",
+        cam: 'reefer',
+        aim: new THREE.Vector3(8.2, 1.6, 0.0)
+      },
+      {
+        start: 118.0,
+        end: 135.0,
+        stage: 4,
+        speaker: 'Kabir',
+        avatar: '🧭',
+        role: 'RAS Aquaculture & Harvest Lead',
+        emotion: 'Global Cold-Chain Export',
+        text: "Finally, insulated master cartons are palletized directly inside our docked minus-twenty-five-degree refrigerated ISO container. Powered by Saint Martin's solar-wind microgrid, our sustainable RAS-to-IQF value chain delivers premium zero-antibiotic Bangladeshi seafood to global markets.",
+        cam: 'reefer',
+        aim: new THREE.Vector3(11.5, 1.8, 0.0)
+      }
+    ];
+
+    const STAGE_CONFIG = [
+      {
+        icon: '🦐',
+        num: '01 / 05',
+        prepPct: 50, cryoPct: 30, packPct: 20,
+        toast: "Chilled Slurry Transfer & Ozone Microbubble Flume Washer Activated (0.5°C, 0.4 ppm O₃)."
+      },
+      {
+        icon: '🔬',
+        num: '02 / 05',
+        prepPct: 55, cryoPct: 25, packPct: 20,
+        toast: "3D Optical Laser Sorter Calibrated: 99.6% size grading uniformity across Shrimp, Squid & Octopus."
+      },
+      {
+        icon: '🌀',
+        num: '03 / 05',
+        prepPct: 20, cryoPct: 60, packPct: 20,
+        toast: "Cryogenic Impingement Boost Active: -42.5°C air velocity increased; core freeze completed in 8.4 mins."
+      },
+      {
+        icon: '🧊',
+        num: '04 / 05',
+        prepPct: 20, cryoPct: 30, packPct: 50,
+        toast: "Protective 7.2% Ice Glaze Applied & 14-Head Radial Weigher Nitrogen-Flushed Export Pouches Sealed."
+      },
+      {
+        icon: '🚢',
+        num: '05 / 05',
+        prepPct: 20, cryoPct: 30, packPct: 50,
+        toast: "Dual-Energy X-Ray Verified (100% Pass) & QR Traceability Cartons Loaded into -25.4°C Export Reefer."
+      }
+    ];
+
+    /* --- Audio & Smooth Multi-Voice Speech Synthesis --- */
+    function initAudio() {
+      try {
+        if (!synth) synth = new (window.AudioContext || window.webkitAudioContext)();
+        if (synth && synth.state === 'suspended') synth.resume();
+      } catch (e) {}
+    }
+
+    function playFxTone(freq, type = 'sine', dur = 0.16, vol = 0.04) {
+      if (!audioEnabled || !synth) return;
+      try {
+        const osc = synth.createOscillator();
+        const gain = synth.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, synth.currentTime);
+        gain.gain.setValueAtTime(vol, synth.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, synth.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(synth.destination);
+        osc.start();
+        osc.stop(synth.currentTime + dur);
+      } catch (e) {}
+    }
+
+    let availableVoices = [];
+    function loadVoices() {
+      if ('speechSynthesis' in window) {
+        availableVoices = window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => {
+          availableVoices = window.speechSynthesis.getVoices();
+        };
+      }
+    }
+    loadVoices();
+
+    function speakTextSmooth(text, speaker, onCompleteCallback = null) {
+      if (!('speechSynthesis' in window) || !audioEnabled) {
+        isSpeaking = false;
+        if (onCompleteCallback) onCompleteCallback();
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      isSpeaking = true;
+
+      if (speaker === 'Pip') {
+        utterance.pitch = 1.46;
+        utterance.rate = 1.06;
+        const v = availableVoices.find(voice => (voice.name.includes('Google UK English Female') || voice.name.includes('Samantha')) && voice.lang.startsWith('en'));
+        if (v) utterance.voice = v;
+        playFxTone(760, 'triangle', 0.12, 0.03);
+      } else if (speaker === 'Farhana') {
+        // Local IQF & Cold-Chain Specialist: Clear, poised female voice
+        utterance.pitch = 1.12;
+        utterance.rate = 1.01;
+        const v = availableVoices.find(voice => (voice.name.includes('Google US English') || voice.name.includes('Zira') || voice.name.includes('Female')) && voice.lang.startsWith('en'));
+        if (v) utterance.voice = v;
+        playFxTone(620, 'sine', 0.13, 0.03);
+      } else if (speaker === 'Puff') {
+        utterance.pitch = 1.24;
+        utterance.rate = 0.97;
+        const v = availableVoices.find(voice => (voice.name.includes('Victoria') || voice.name.includes('Karen') || voice.name.includes('Moira')) && voice.lang.startsWith('en'));
+        if (v) utterance.voice = v;
+        playFxTone(520, 'sine', 0.14, 0.03);
+      } else {
+        // Captain Kabir: Warm, authoritative master aquaculturist voice
+        utterance.pitch = 0.92;
+        utterance.rate = 0.97;
+        const v = availableVoices.find(voice => (voice.name.includes('Daniel') || voice.name.includes('Google UK English Male') || voice.name.includes('Arthur')) && voice.lang.startsWith('en'));
+        if (v) utterance.voice = v;
+        playFxTone(340, 'sine', 0.15, 0.03);
+      }
+
+      utterance.onstart = () => { isSpeaking = true; };
+      utterance.onend = () => {
+        isSpeaking = false;
+        if (onCompleteCallback) onCompleteCallback();
+      };
+      utterance.onerror = () => {
+        isSpeaking = false;
+        if (onCompleteCallback) onCompleteCallback();
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    /* --- Three.js Scene Initialization --- */
+    function init() {
+      const container = document.getElementById('viewport-container');
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x03182b);
+      scene.fog = new THREE.FogExp2(0x03182b, 0.0075);
+
+      camera = new THREE.PerspectiveCamera(42, w / h, 0.2, 420);
+      camera.position.set(22, 15.5, 24);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.25;
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.055;
+      controls.maxPolarAngle = Math.PI / 2.08;
+      controls.minDistance = 5.5;
+      controls.maxDistance = 68;
+      controls.target.set(0, 1.8, 0);
+
+      setupLighting();
+      buildCoastalCleanroomHall();
+      buildStage1ReceptionAndWasher();
+      buildStage2PrepAndLaserGrader();
+      buildStage3SpiralIQFFreezer();
+      buildStage4GlazingAndPackaging();
+      buildStage5XRayAndExportReefer();
+      spawnAnimatedSeafoodProducts();
+      buildFourCharacters();
+      register3DIconHotspots();
+      setupUIEvents();
+
+      window.addEventListener('resize', onResize);
+    }
+
+    function setupLighting() {
+      const hemi = new THREE.HemisphereLight(0xe0f2fe, 0x0f766e, 1.0);
+      scene.add(hemi);
+
+      const sunLight = new THREE.DirectionalLight(0xffffff, 1.55);
+      sunLight.position.set(28, 40, 25);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.width = 2048;
+      sunLight.shadow.mapSize.height = 2048;
+      sunLight.shadow.camera.near = 5;
+      sunLight.shadow.camera.far = 110;
+      const d = 30;
+      sunLight.shadow.camera.left = -d;
+      sunLight.shadow.camera.right = d;
+      sunLight.shadow.camera.top = d;
+      sunLight.shadow.camera.bottom = -d;
+      sunLight.shadow.bias = -0.0004;
+      scene.add(sunLight);
+
+      // Cool Cryogenic Cyan Fill Light over the Spiral Freezer
+      const cryoLight = new THREE.PointLight(0x38bdf8, 1.2, 16);
+      cryoLight.position.set(-0.2, 4.8, 0);
+      scene.add(cryoLight);
+    }
+
+    /* --- Saint Martin Coastal Setting + 316L Stainless HACCP Cleanroom Hall --- */
+    function buildCoastalCleanroomHall() {
+      // Animated Bay of Bengal Lagoon surrounding the facility
+      waterGeo = new THREE.PlaneGeometry(180, 180, 64, 64);
+      initialWaterZ = new Float32Array(waterGeo.attributes.position.count);
+      for (let i = 0; i < waterGeo.attributes.position.count; i++) {
+        initialWaterZ[i] = waterGeo.attributes.position.getZ(i);
+      }
+      waterMesh = new THREE.Mesh(
+        waterGeo,
+        new THREE.MeshPhysicalMaterial({
+          color: 0x0284c7,
+          emissive: 0x0369a1,
+          emissiveIntensity: 0.16,
+          roughness: 0.15,
+          transparent: true,
+          opacity: 0.8
+        })
+      );
+      waterMesh.rotation.x = -Math.PI / 2;
+      waterMesh.position.y = 0.25;
+      scene.add(waterMesh);
+
+      // Coral Sand Platform
+      const sandBase = new THREE.Mesh(
+        new THREE.CylinderGeometry(21, 24, 1.1, 36),
+        new THREE.MeshStandardMaterial({ color: 0xe6ccb2, roughness: 0.92 })
+      );
+      sandBase.position.set(0, 0.18, 0);
+      sandBase.scale.set(1.35, 1, 0.92);
+      sandBase.receiveShadow = true;
+      scene.add(sandBase);
+
+      // Hygienic Non-Slip Blue Epoxy Cleanroom Floor Slab
+      const epoxyFloor = new THREE.Mesh(
+        new THREE.BoxGeometry(25.5, 0.36, 13.5),
+        new THREE.MeshStandardMaterial({ color: 0x0c4a6e, roughness: 0.35, metalness: 0.15 })
+      );
+      epoxyFloor.position.set(0.5, 0.74, 0);
+      epoxyFloor.receiveShadow = true;
+      scene.add(epoxyFloor);
+
+      // Insulated PIR Cleanroom Back Wall & Transparent Glass Observation Perimeter
+      const backWall = new THREE.Mesh(
+        new THREE.BoxGeometry(25.5, 5.2, 0.35),
+        new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.4 })
+      );
+      backWall.position.set(0.5, 3.3, -6.5);
+      backWall.receiveShadow = true;
+      scene.add(backWall);
+
+      // Hygienic Blue Cove Baseboard along Back Wall
+      const coveTrim = new THREE.Mesh(
+        new THREE.BoxGeometry(25.55, 0.35, 0.4),
+        new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 })
+      );
+      coveTrim.position.set(0.5, 1.08, -6.48);
+      scene.add(coveTrim);
+
+      // Overhead LED Cleanroom Light Fixtures & Structural Truss
+      const steelMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.25 });
+      [[-11.8, -6.2], [12.8, -6.2], [-11.8, 6.2], [12.8, 6.2]].forEach(([px, pz]) => {
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 5.2, 12), steelMat);
+        col.position.set(px, 3.3, pz);
+        scene.add(col);
+      });
+
+      // Overhead Cleanroom LED Luminaire Bars
+      for (let lx = -9; lx <= 10; lx += 4.75) {
+        const lightBar = new THREE.Mesh(
+          new THREE.BoxGeometry(3.2, 0.12, 0.45),
+          new THREE.MeshBasicMaterial({ color: 0xe0f2fe })
+        );
+        lightBar.position.set(lx, 5.8, 0);
+        scene.add(lightBar);
+      }
+
+      // Hygiene Airlock & Stainless Handwash/Sanitizer Boot Station at Entrance (-11.2, 4.4)
+      const sanitizeStation = new THREE.Group();
+      sanitizeStation.position.set(-11.0, 0.92, 4.4);
+      const sinkBody = new THREE.Mesh(
+        new THREE.BoxGeometry(1.4, 1.15, 0.75),
+        new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.85, roughness: 0.2 })
+      );
+      sinkBody.position.y = 0.58;
+      sanitizeStation.add(sinkBody);
+      const sanitizerGlow = new THREE.Mesh(
+        new THREE.BoxGeometry(0.9, 0.12, 0.4),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+      );
+      sanitizerGlow.position.y = 1.18;
+      sanitizeStation.add(sanitizerGlow);
+      scene.add(sanitizeStation);
+    }
+
+    /* --- STAGE 1: RAS Harvest Reception Totes & Agitated Ozone Flume Washer --- */
+    function buildStage1ReceptionAndWasher() {
+      const steelMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.82, roughness: 0.22 });
+      const blueBeltMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.45 });
+
+      // Insulated Chilled-Slurry Harvest Totes arriving from RAS Tanks (x = -11.2, z = 0)
+      [-1.3, 1.3].forEach((tz, idx) => {
+        const tote = new THREE.Group();
+        tote.position.set(-11.2, 0.92, tz);
+        const box = new THREE.Mesh(
+          new THREE.BoxGeometry(1.35, 1.05, 1.15),
+          new THREE.MeshStandardMaterial({ color: idx === 0 ? 0x0ea5e9 : 0x14b8a6, roughness: 0.35 })
+        );
+        box.position.y = 0.52;
+        box.castShadow = true;
+        tote.add(box);
+
+        // Chilled Ice-Slurry Surface inside Tote
+        const iceTop = new THREE.Mesh(
+          new THREE.PlaneGeometry(1.22, 1.02),
+          new THREE.MeshBasicMaterial({ color: 0xe0f2fe })
+        );
+        iceTop.rotation.x = -Math.PI / 2;
+        iceTop.position.y = 1.06;
+        tote.add(iceTop);
+        scene.add(tote);
+      });
+
+      // Agitated Ozone-Microbubble Flume Washer Tank (x = -9.2, z = 0)
+      const washerGroup = new THREE.Group();
+      washerGroup.position.set(-9.2, 0.92, 0);
+
+      const basin = new THREE.Mesh(
+        new THREE.BoxGeometry(2.2, 1.15, 2.8),
+        new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.36, roughness: 0.1 })
+      );
+      basin.position.y = 0.65;
+      washerGroup.add(basin);
+
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.25, 2.9), steelMat);
+      frame.position.y = 0.12;
+      washerGroup.add(frame);
+
+      // Rising Ozone Disinfection Microbubbles
+      for (let b = 0; b < 18; b++) {
+        const bub = new THREE.Mesh(
+          new THREE.SphereGeometry(0.038, 6, 6),
+          new THREE.MeshBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.8 })
+        );
+        washerGroup.add(bub);
+        ozoneBubbles.push({
+          mesh: bub,
+          bx: (Math.random() - 0.5) * 1.8,
+          bz: (Math.random() - 0.5) * 2.4,
+          offset: b * 0.055
+        });
+      }
+
+      // Inclined Modular Blue Dewatering Conveyor feeding Stage 2
+      const inclineBelt = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.12, 2.4), blueBeltMat);
+      inclineBelt.position.set(1.6, 1.25, 0);
+      inclineBelt.rotation.z = 0.14;
+      washerGroup.add(inclineBelt);
+
+      scene.add(washerGroup);
+    }
+
+    /* --- STAGE 2: Species-Specific Prep Lines & 3D Optical Laser Sorter/Grader --- */
+    function buildStage2PrepAndLaserGrader() {
+      const steelMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.2 });
+      const blueBeltMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.4 });
+
+      // Hygienic 316L Stainless Preparation & Laminar Water-Jet Trimming Table (x = -6.2, z = 0)
+      const prepTable = new THREE.Group();
+      prepTable.position.set(-6.2, 0.92, 0);
+
+      const bed = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 2.9), steelMat);
+      bed.position.y = 1.25;
+      bed.castShadow = true;
+      prepTable.add(bed);
+
+      // Three Color-Coded Species Lanes (Shrimp, Squid, Octopus)
+      [-0.85, 0, 0.85].forEach(lz => {
+        const lane = new THREE.Mesh(new THREE.BoxGeometry(3.15, 0.05, 0.68), blueBeltMat);
+        lane.position.set(0, 1.36, lz);
+        prepTable.add(lane);
+      });
+
+      // Overhead Laminar Spray Bar
+      const sprayArch = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.85, 2.95), steelMat);
+      sprayArch.position.set(-0.4, 1.72, 0);
+      prepTable.add(sprayArch);
+
+      // Table Support Legs
+      [[-1.4, -1.3], [1.4, -1.3], [-1.4, 1.3], [1.4, 1.3]].forEach(([lx, lz]) => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.25, 8), steelMat);
+        leg.position.set(lx, 0.62, lz);
+        prepTable.add(leg);
+      });
+      scene.add(prepTable);
+
+      // 3D OPTICAL LASER SORTER & BIOMASS GRADER HOOD (x = -3.7, z = 0)
+      const graderGroup = new THREE.Group();
+      graderGroup.position.set(-3.7, 0.92, 0);
+
+      const graderBelt = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.18, 2.7), blueBeltMat);
+      graderBelt.position.y = 1.28;
+      graderGroup.add(graderBelt);
+
+      const opticalHood = new THREE.Mesh(
+        new THREE.BoxGeometry(1.15, 0.65, 2.75),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.7, roughness: 0.25 })
+      );
+      opticalHood.position.y = 2.28;
+      graderGroup.add(opticalHood);
+
+      // Sweeping Blue Optical Grading Laser Curtain
+      laserGraderBeam = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.95, 2.55),
+        new THREE.MeshBasicMaterial({
+          color: 0x38bdf8,
+          transparent: true,
+          opacity: 0.38,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        })
+      );
+      laserGraderBeam.rotation.y = Math.PI / 2;
+      laserGraderBeam.position.y = 1.72;
+      graderGroup.add(laserGraderBeam);
+
+      scene.add(graderGroup);
+    }
+
+    /* --- STAGE 3: -40°C Cryogenic Impingement Spiral IQF Freezer Tunnel --- */
+    function buildStage3SpiralIQFFreezer() {
+      const spiralGroup = new THREE.Group();
+      spiralGroup.position.set(-0.2, 0.92, 0);
+
+      const steelMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.2 });
+      const frostTrimMat = new THREE.MeshStandardMaterial({ color: 0xbae6fd, roughness: 0.35, metalness: 0.3 });
+
+      // Insulated PIR Freezer Base & Top Plenum
+      const base = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.35, 4.4), steelMat);
+      base.position.y = 0.18;
+      spiralGroup.add(base);
+
+      const topPlenum = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.55, 4.4), frostTrimMat);
+      topPlenum.position.y = 3.85;
+      spiralGroup.add(topPlenum);
+
+      // Cutaway Frosted Transparent Inspection Enclosure
+      const glassWall = new THREE.Mesh(
+        new THREE.CylinderGeometry(2.05, 2.05, 3.25, 32, 1, true),
+        new THREE.MeshPhysicalMaterial({
+          color: 0xe0f2fe,
+          transparent: true,
+          opacity: 0.24,
+          roughness: 0.12,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        })
+      );
+      glassWall.position.y = 1.98;
+      spiralGroup.add(glassWall);
+
+      // Central Rotating Stainless Spiral Drive Drum
+      spiralDrumMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.72, 0.72, 3.2, 20),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.75, roughness: 0.25 })
+      );
+      spiralDrumMesh.position.y = 1.98;
+      spiralGroup.add(spiralDrumMesh);
+
+      // Helical Ascending Stainless Mesh Tiers (6 Tiers)
+      const tierMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.25 });
+      for (let t = 0; t < 6; t++) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(1.38, 0.06, 8, 28), tierMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = 0.72 + t * 0.46;
+        spiralGroup.add(ring);
+      }
+
+      // Dual Top High-Velocity Cryogenic Evaporator Fans
+      const buildEvapFan = (fx) => {
+        const fanHousing = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.65, 0.65, 0.25, 18),
+          new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6 })
+        );
+        fanHousing.position.set(fx, 4.22, 0);
+        spiralGroup.add(fanHousing);
+
+        const blades = new THREE.Group();
+        blades.position.set(fx, 4.26, 0);
+        for (let b = 0; b < 4; b++) {
+          const blade = new THREE.Mesh(
+            new THREE.BoxGeometry(0.14, 0.03, 1.05),
+            new THREE.MeshBasicMaterial({ color: 0xe0f2fe })
+          );
+          blade.rotation.y = (b / 4) * Math.PI;
+          blades.add(blade);
+        }
+        spiralGroup.add(blades);
+        return blades;
+      };
+
+      evapFan1 = buildEvapFan(-1.1);
+      evapFan2 = buildEvapFan(1.1);
+
+      // Frosted Liquid CO2 / Ammonia Refrigeration Header Pipe
+      const cryoPipe = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.11, 0.11, 3.8, 12),
+        new THREE.MeshBasicMaterial({ color: 0xf0f9ff })
+      );
+      cryoPipe.position.set(-2.05, 2.0, -1.85);
+      spiralGroup.add(cryoPipe);
+
+      // Swirling -40°C Cryogenic Mist Particles inside Spiral Freezer
+      for (let m = 0; m < 24; m++) {
+        const mist = new THREE.Mesh(
+          new THREE.SphereGeometry(0.08 + (m % 3) * 0.03, 6, 6),
+          new THREE.MeshBasicMaterial({ color: 0xf0f9ff, transparent: true, opacity: 0.38 })
+        );
+        spiralGroup.add(mist);
+        cryoVaporParticles.push({
+          mesh: mist,
+          angle: (m / 24) * Math.PI * 2,
+          radius: 0.95 + (m % 4) * 0.24,
+          baseY: 0.65 + (m % 6) * 0.48,
+          speed: 1.4 + (m % 3) * 0.35
+        });
+      }
+
+      scene.add(spiralGroup);
+    }
+
+    /* --- STAGE 4: Protective Water-Glazing Tunnel & 14-Head Radial Weigher --- */
+    function buildStage4GlazingAndPackaging() {
+      const steelMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.2 });
+      const tealBeltMat = new THREE.MeshStandardMaterial({ color: 0x0d9488, roughness: 0.4 });
+
+      // 1. CHILLED (+1°C) PROTECTIVE WATER-GLAZING TUNNEL (x = 3.5, z = 0)
+      const glazeGroup = new THREE.Group();
+      glazeGroup.position.set(3.5, 0.92, 0);
+
+      const belt = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.16, 2.2), tealBeltMat);
+      belt.position.y = 1.28;
+      glazeGroup.add(belt);
+
+      const mistHood = new THREE.Mesh(
+        new THREE.BoxGeometry(1.75, 0.88, 2.25),
+        new THREE.MeshPhysicalMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.34, roughness: 0.1 })
+      );
+      mistHood.position.y = 1.82;
+      glazeGroup.add(mistHood);
+
+      // Fine Chilled Glazing Mist Droplets
+      for (let g = 0; g < 16; g++) {
+        const drop = new THREE.Mesh(
+          new THREE.SphereGeometry(0.028, 6, 6),
+          new THREE.MeshBasicMaterial({ color: 0xbae6fd })
+        );
+        glazeGroup.add(drop);
+        glazingMistParticles.push({
+          mesh: drop,
+          gx: (Math.random() - 0.5) * 1.4,
+          gz: (Math.random() - 0.5) * 1.9,
+          offset: g * 0.062
+        });
+      }
+      scene.add(glazeGroup);
+
+      // 2. 14-HEAD RADIAL MULTI-HEAD WEIGHER & NITROGEN VFFS PACKAGER (x = 6.2, z = 0)
+      const packGroup = new THREE.Group();
+      packGroup.position.set(6.2, 0.92, 0);
+
+      // Elevated Gantry Frame
+      [[-0.85, -0.85], [0.85, -0.85], [-0.85, 0.85], [0.85, 0.85]].forEach(([px, pz]) => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 3.3, 8), steelMat);
+        leg.position.set(px, 1.65, pz);
+        packGroup.add(leg);
+      });
+
+      // Radial 14-Head Weighing Cone & Hopper Ring
+      const weighCone = new THREE.Mesh(
+        new THREE.ConeGeometry(0.95, 1.15, 14),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.75, roughness: 0.25 })
+      );
+      weighCone.rotation.x = Math.PI;
+      weighCone.position.y = 2.85;
+      packGroup.add(weighCone);
+
+      // Vertical Form-Fill-Seal (VFFS) Nitrogen Pouch Former
+      const vffsCollar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.38, 0.32, 0.95, 16),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.65 })
+      );
+      vffsCollar.position.y = 1.75;
+      packGroup.add(vffsCollar);
+
+      // Outfeed Pouch Conveyor
+      const outBelt = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.14, 1.6), tealBeltMat);
+      outBelt.position.set(0.6, 1.05, 0);
+      packGroup.add(outBelt);
+
+      scene.add(packGroup);
+    }
+
+    /* --- STAGE 5: Dual-Energy X-Ray Inspector, QR Traceability & -25°C Reefer --- */
+    function buildStage5XRayAndExportReefer() {
+      const steelMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.82, roughness: 0.22 });
+
+      // 1. DUAL-ENERGY X-RAY & METAL DETECTOR TUNNEL (x = 8.6, z = 0)
+      const xrayGroup = new THREE.Group();
+      xrayGroup.position.set(8.6, 0.92, 0);
+
+      const xBelt = new THREE.Mesh(
+        new THREE.BoxGeometry(2.4, 0.14, 1.6),
+        new THREE.MeshStandardMaterial({ color: 0x0284c7 })
+      );
+      xBelt.position.y = 1.05;
+      xrayGroup.add(xBelt);
+
+      const xTunnel = new THREE.Mesh(
+        new THREE.BoxGeometry(1.35, 0.95, 1.55),
+        new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.65, roughness: 0.3 })
+      );
+      xTunnel.position.y = 1.58;
+      xrayGroup.add(xTunnel);
+
+      // Green PASS Status Beacon & Laser Curtain
+      xrayScannerBeam = new THREE.Mesh(
+        new THREE.BoxGeometry(1.42, 0.1, 1.6),
+        new THREE.MeshBasicMaterial({ color: 0x10b981 })
+      );
+      xrayScannerBeam.position.y = 2.08;
+      xrayGroup.add(xrayScannerBeam);
+      scene.add(xrayGroup);
+
+      // 2. DOCKED -25°C REFRIGERATED ISO EXPORT CONTAINER (REEFER) (x = 12.2, z = 0)
+      const reeferGroup = new THREE.Group();
+      reeferGroup.position.set(12.2, 0.92, 0);
+
+      // Insulated White Marine Reefer Shell (Open Left Facing End for Loading)
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.18, 3.2), steelMat);
+      roof.position.y = 3.1;
+      reeferGroup.add(roof);
+
+      const floor = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.22, 3.2), steelMat);
+      floor.position.y = 0.15;
+      reeferGroup.add(floor);
+
+      const backSide = new THREE.Mesh(new THREE.BoxGeometry(4.6, 2.95, 0.16), steelMat);
+      backSide.position.set(0, 1.62, -1.52);
+      reeferGroup.add(backSide);
+
+      const farEnd = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.95, 3.2), steelMat);
+      farEnd.position.set(2.22, 1.62, 0);
+      reeferGroup.add(farEnd);
+
+      // Cryogenic Reefer Compressor Unit on Far End (-25.4°C)
+      const chillerUnit = new THREE.Mesh(
+        new THREE.BoxGeometry(0.45, 2.35, 2.6),
+        new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6 })
+      );
+      chillerUnit.position.set(2.45, 1.65, 0);
+      reeferGroup.add(chillerUnit);
+
+      // Stacked Export Master Cartons inside the Reefer
+      const cartonMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
+      const stripeMat = new THREE.MeshBasicMaterial({ color: 0x0ea5e9 });
+      for (let row = 0; row < 2; row++) {
+        for (let col = 0; col < 3; col++) {
+          const box = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.52, 0.78), cartonMat);
+          box.position.set(0.35 + row * 0.95, 0.55 + col * 0.55, -0.55);
+          reeferGroup.add(box);
+
+          const tag = new THREE.Mesh(new THREE.BoxGeometry(0.87, 0.1, 0.8), stripeMat);
+          tag.position.set(0.35 + row * 0.95, 0.55 + col * 0.55, -0.55);
+          reeferGroup.add(tag);
+        }
+      }
+
+      scene.add(reeferGroup);
+
+      // Animated Export Cartons moving from X-Ray to Reefer Bay
+      for (let c = 0; c < 4; c++) {
+        const carton = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.34, 0.48), cartonMat);
+        scene.add(carton);
+        exportCartons.push({ mesh: carton, offset: c * 0.25 });
+      }
+    }
+
+    /* --- Animated Seafood Items (Shrimp, Squid Rings, Octopus Tentacles) on Line --- */
+    function spawnAnimatedSeafoodProducts() {
+      const speciesConfigs = [
+        { type: 'shrimp', laneZ: -0.75, warmColor: 0xf97316, frozenColor: 0xfed7aa },
+        { type: 'squid', laneZ: 0.0, warmColor: 0xf472b6, frozenColor: 0xfce7f3 },
+        { type: 'octopus', laneZ: 0.75, warmColor: 0xe11d48, frozenColor: 0xfecdd3 }
+      ];
+
+      speciesConfigs.forEach((cfg) => {
+        for (let i = 0; i < 6; i++) {
+          let geo;
+          if (cfg.type === 'squid') {
+            geo = new THREE.TorusGeometry(0.11, 0.04, 8, 16);
+          } else if (cfg.type === 'octopus') {
+            geo = new THREE.CylinderGeometry(0.055, 0.02, 0.32, 8);
+          } else {
+            geo = new THREE.SphereGeometry(0.095, 8, 8);
+          }
+
+          const mat = new THREE.MeshStandardMaterial({
+            color: cfg.warmColor,
+            roughness: 0.35
+          });
+          const mesh = new THREE.Mesh(geo, mat);
+          if (cfg.type === 'squid') mesh.rotation.x = Math.PI / 2;
+          if (cfg.type === 'octopus') mesh.rotation.z = Math.PI / 2;
+
+          scene.add(mesh);
+          productItems.push({
+            mesh,
+            mat,
+            laneZ: cfg.laneZ,
+            warmHex: new THREE.Color(cfg.warmColor),
+            frozenHex: new THREE.Color(cfg.frozenColor),
+            offset: i / 6
+          });
+        }
+      });
+    }
+
+    /* --- Four Articulated 3D Characters --- */
+    function buildFourCharacters() {
+      // 1. FARHANA RAHMAN — Local IQF & Cold-Chain Specialist (Saint Martin's Island / Cox's Bazar)
+      farhanaGroup = new THREE.Group();
+      const fSkin = new THREE.MeshStandardMaterial({ color: 0xc68652, roughness: 0.6 });
+      const whiteCoat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.45 });
+      const hairnetMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.65 });
+      const scarfTeal = new THREE.MeshStandardMaterial({ color: 0x0d9488, roughness: 0.6 });
+
+      const fTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.46, 1.32, 16), whiteCoat);
+      fTorso.position.y = 1.4;
+      fTorso.castShadow = true;
+      farhanaGroup.add(fTorso);
+
+      // Coastal Woven Accent Scarf
+      const fScarf = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.065, 10, 20), scarfTeal);
+      fScarf.rotation.x = Math.PI / 2.2;
+      fScarf.position.y = 2.02;
+      farhanaGroup.add(fScarf);
+
+      farhanaHead = new THREE.Group();
+      farhanaHead.position.set(0, 2.34, 0.02);
+      farhanaHead.add(new THREE.Mesh(new THREE.SphereGeometry(0.36, 16, 16), fSkin));
+
+      // Hygienic Cleanroom Hairnet Cap
+      const hairnet = new THREE.Mesh(
+        new THREE.SphereGeometry(0.385, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.62),
+        hairnetMat
+      );
+      hairnet.rotation.x = -0.25;
+      farhanaHead.add(hairnet);
+
+      [-0.11, 0.11].forEach(ex => {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.036, 8, 8), new THREE.MeshBasicMaterial({ color: 0x0f172a }));
+        eye.position.set(ex, 0.04, 0.34);
+        farhanaHead.add(eye);
+      });
+      farhanaGroup.add(farhanaHead);
+
+      [-0.18, 0.18].forEach(lx => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.1, 0.74, 10), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
+        leg.position.set(lx, 0.37, 0);
+        farhanaGroup.add(leg);
+      });
+
+      farhanaArmR = new THREE.Group();
+      farhanaArmR.position.set(0.5, 1.9, 0);
+      const fArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.65, 8), whiteCoat);
+      fArmMesh.position.y = -0.3;
+      farhanaArmR.add(fArmMesh);
+      // Stainless Thermal Probe Clipboard
+      const clipboard = new THREE.Mesh(
+        new THREE.BoxGeometry(0.28, 0.36, 0.03),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.7 })
+      );
+      clipboard.position.set(0, -0.58, 0.14);
+      farhanaArmR.add(clipboard);
+      farhanaGroup.add(farhanaArmR);
+
+      farhanaGroup.position.set(-1.8, 0.92, 3.6);
+      scene.add(farhanaGroup);
+
+      // 2. CAPTAIN KABIR — RAS Aquaculture & Harvest Lead (Local Saint Martin's Master Aquaculturist)
+      kabirGroup = new THREE.Group();
+      const kSkin = new THREE.MeshStandardMaterial({ color: 0xb4693e, roughness: 0.65 });
+      const kApron = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.55 });
+      const gamchaRed = new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.75 });
+      const hatStraw = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.85 });
+
+      const kTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 1.35, 16), kApron);
+      kTorso.position.y = 1.42;
+      kTorso.castShadow = true;
+      kabirGroup.add(kTorso);
+
+      const gamchaCollar = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.08, 10, 20), gamchaRed);
+      gamchaCollar.rotation.x = Math.PI / 2.2;
+      gamchaCollar.position.y = 2.02;
+      kabirGroup.add(gamchaCollar);
+
+      kabirHead = new THREE.Group();
+      kabirHead.position.set(0, 2.38, 0.02);
+      kabirHead.add(new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), kSkin));
+      const hatBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.72, 0.05, 20), hatStraw);
+      hatBrim.position.y = 0.24;
+      kabirHead.add(hatBrim);
+      const hatCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.38, 0.26, 16), hatStraw);
+      hatCrown.position.y = 0.38;
+      kabirHead.add(hatCrown);
+      kabirGroup.add(kabirHead);
+
+      [-0.2, 0.2].forEach(lx => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.75, 10), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+        leg.position.set(lx, 0.38, 0);
+        kabirGroup.add(leg);
+      });
+
+      kabirArmR = new THREE.Group();
+      kabirArmR.position.set(0.54, 1.92, 0);
+      const kArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.68, 8), kSkin);
+      kArmMesh.position.y = -0.32;
+      kabirArmR.add(kArmMesh);
+      kabirGroup.add(kabirArmR);
+
+      kabirGroup.position.set(-7.6, 0.92, 3.6);
+      scene.add(kabirGroup);
+
+      // 3. PROFESSOR WHISKER PUFF — Chief Marine & Food Safety Scientist
+      puffGroup = new THREE.Group();
+      const calicoGinger = new THREE.MeshStandardMaterial({ color: 0xe07a38, roughness: 0.65 });
+      const calicoWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+      const labCoat = new THREE.MeshStandardMaterial({ color: 0x0d9488, roughness: 0.5 });
+
+      const pBody = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.58, 1.2, 16), calicoWhite);
+      pBody.position.y = 1.38;
+      puffGroup.add(pBody);
+
+      const pCoat = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.62, 0.85, 16), labCoat);
+      pCoat.position.y = 1.46;
+      puffGroup.add(pCoat);
+
+      puffHead = new THREE.Group();
+      puffHead.position.set(0, 2.22, 0.04);
+      const pHeadMesh = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), calicoGinger);
+      pHeadMesh.scale.set(1.12, 0.94, 1.02);
+      puffHead.add(pHeadMesh);
+      [-0.2, 0.2].forEach(gx => {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.03, 8, 18), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+        rim.position.set(gx, 0.04, 0.58);
+        puffHead.add(rim);
+      });
+      const earGeo = new THREE.ConeGeometry(0.2, 0.38, 4);
+      const earL = new THREE.Mesh(earGeo, calicoGinger);
+      earL.position.set(-0.38, 0.52, 0.04);
+      earL.rotation.z = 0.35;
+      puffHead.add(earL);
+      const earR = new THREE.Mesh(earGeo, new THREE.MeshStandardMaterial({ color: 0x27272a }));
+      earR.position.set(0.38, 0.52, 0.04);
+      earR.rotation.z = -0.35;
+      puffHead.add(earR);
+      puffGroup.add(puffHead);
+
+      [-0.22, 0.22].forEach(lx => {
+        const pLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.7, 10), calicoWhite);
+        pLeg.position.set(lx, 0.35, 0);
+        puffGroup.add(pLeg);
+      });
+
+      puffArmR = new THREE.Group();
+      puffArmR.position.set(0.58, 1.85, 0);
+      const pArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.58, 8), calicoWhite);
+      pArmMesh.position.y = -0.28;
+      puffArmR.add(pArmMesh);
+      puffGroup.add(puffArmR);
+
+      puffGroup.position.set(2.4, 0.92, 3.6);
+      scene.add(puffGroup);
+
+      // 4. PIP SQUEAK — Junior Automation & Packaging Technician
+      pipGroup = new THREE.Group();
+      const mouseBrown = new THREE.MeshStandardMaterial({ color: 0x9a3412, roughness: 0.75 });
+      const mousePink = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.5 });
+      const shirtMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.6 });
+
+      const mTorso = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 14), mouseBrown);
+      mTorso.scale.set(0.9, 1.15, 0.9);
+      mTorso.position.y = 0.9;
+      pipGroup.add(mTorso);
+
+      const mShirt = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.38, 0.42, 14), shirtMat);
+      mShirt.position.y = 0.95;
+      pipGroup.add(mShirt);
+
+      pipHead = new THREE.Group();
+      pipHead.position.set(0, 1.28, 0.04);
+      pipHead.add(new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 14), mouseBrown));
+      [-0.2, 0.2].forEach((ex, idx) => {
+        const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.025, 12), mousePink);
+        ear.position.set(ex, 0.2, -0.02);
+        ear.rotation.set(0.2, idx === 0 ? 0.35 : -0.35, idx === 0 ? -0.4 : 0.4);
+        pipHead.add(ear);
+      });
+      pipGroup.add(pipHead);
+
+      pipArmR = new THREE.Group();
+      pipArmR.position.set(0.32, 1.02, 0);
+      const pawR = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.048, 0.32, 8), mouseBrown);
+      pawR.position.y = -0.16;
+      pipArmR.add(pawR);
+      pipGroup.add(pipArmR);
+
+      pipGroup.position.set(6.8, 0.92, 3.6);
+      scene.add(pipGroup);
+    }
+
+    /* --- 3D Icon-Only Projected Hotspots --- */
+    function register3DIconHotspots() {
+      const defs = [
+        { icon: '🦐', title: 'Live RAS Harvest Reception & Ozone Flume Washer (0.5°C)', pos: new THREE.Vector3(-9.8, 3.0, 0.0), tab: 0, cam: 'reception' },
+        { icon: '🔬', title: 'Species Prep Line & 3D Optical Laser Sorter/Grader', pos: new THREE.Vector3(-4.5, 3.6, 0.0), tab: 1, cam: 'laser' },
+        { icon: '🌀', title: '-40°C Cryogenic Impingement Spiral IQF Freezer Tunnel', pos: new THREE.Vector3(-0.2, 5.4, 0.0), tab: 2, cam: 'spiral' },
+        { icon: '🧊', title: 'Protective Water-Glazing Mist Tunnel & 14-Head Radial Weigher', pos: new THREE.Vector3(4.8, 4.4, 0.0), tab: 3, cam: 'glazing' },
+        { icon: '🚢', title: 'Dual-Energy X-Ray Inspector & -25°C Export Reefer Container', pos: new THREE.Vector3(10.5, 4.2, 0.0), tab: 4, cam: 'reefer' }
+      ];
+
+      const layer = document.getElementById('hotspots-layer');
+      defs.forEach(def => {
+        const el = document.createElement('div');
+        el.className = 'hotspot-marker';
+        el.title = def.title;
+        el.innerHTML = `<div class="hotspot-orb">${def.icon}</div>`;
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          initAudio();
+          focusCameraPreset(def.cam);
+          openGraphicModal(def.tab);
+        });
+        layer.appendChild(el);
+        hotspotObjects.push({ el, pos: def.pos });
+      });
+    }
+
+    function updateProjectedHotspots() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      hotspotObjects.forEach(item => {
+        const projected = item.pos.clone().project(camera);
+        if (projected.z > 1) {
+          item.el.style.opacity = '0';
+          item.el.style.pointerEvents = 'none';
+        } else {
+          const x = (projected.x * 0.5 + 0.5) * w;
+          const y = (-(projected.y * 0.5) + 0.5) * h;
+          item.el.style.left = `${x}px`;
+          item.el.style.top = `${y}px`;
+          item.el.style.opacity = '1';
+          item.el.style.pointerEvents = 'auto';
+        }
+      });
+    }
+
+    /* --- Detailed SVG Schematics Modal --- */
+    const GRAPHIC_MODAL_DATA = [
+      {
+        tag: "ARCHITECTURE // RAS-TO-IQF COLD CHAIN",
+        title: "End-to-End Marine IQF Processing & Export Topology",
+        svg: `
+          <svg viewBox="0 0 720 245" class="w-full h-auto max-h-64">
+            <rect x="18" y="45" width="125" height="150" rx="12" fill="rgba(14,165,233,0.16)" stroke="#38bdf8" stroke-width="2"/>
+            <text x="80" y="75" fill="#7dd3fc" font-size="11" font-weight="bold" text-anchor="middle">1. RECEPTION</text>
+            <text x="80" y="102" fill="#f1f5f9" font-size="10" text-anchor="middle">0.5°C Slurry Totes</text>
+            <text x="80" y="124" fill="#f1f5f9" font-size="10" text-anchor="middle">Ozone Flume Wash</text>
+            <text x="80" y="146" fill="#6ee7b7" font-size="10" text-anchor="middle">&lt; 20m From RAS</text>
+
+            <path d="M143 120 L165 120" stroke="#38bdf8" stroke-width="2.5"/>
+
+            <rect x="165" y="45" width="125" height="150" rx="12" fill="rgba(245,158,11,0.16)" stroke="#f59e0b" stroke-width="2"/>
+            <text x="227" y="75" fill="#fde047" font-size="11" font-weight="bold" text-anchor="middle">2. PREP &amp; LASER</text>
+            <text x="227" y="102" fill="#f1f5f9" font-size="10" text-anchor="middle">Shrimp / Squid / Octo</text>
+            <text x="227" y="124" fill="#f1f5f9" font-size="10" text-anchor="middle">Laminar Water-Jet</text>
+            <text x="227" y="146" fill="#7dd3fc" font-size="10" text-anchor="middle">3D Optical Grader</text>
+
+            <path d="M290 120 L312 120" stroke="#38bdf8" stroke-width="2.5"/>
+
+            <rect x="312" y="35" width="135" height="170" rx="14" fill="rgba(6,182,212,0.22)" stroke="#22d3ee" stroke-width="2.5"/>
+            <text x="379" y="68" fill="#67e8f9" font-size="11.5" font-weight="bold" text-anchor="middle">3. SPIRAL IQF</text>
+            <text x="379" y="96" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">-40°C Impingement</text>
+            <text x="379" y="120" fill="#cbd5e1" font-size="10" text-anchor="middle">8–11 Min Core Freeze</text>
+            <text x="379" y="144" fill="#6ee7b7" font-size="10" text-anchor="middle">Nano-Crystal Arrest</text>
+            <text x="379" y="168" fill="#fde047" font-size="10" text-anchor="middle">Zero Clumping</text>
+
+            <path d="M447 120 L469 120" stroke="#10b981" stroke-width="2.5"/>
+
+            <rect x="469" y="45" width="115" height="150" rx="12" fill="rgba(16,185,129,0.16)" stroke="#10b981" stroke-width="2"/>
+            <text x="526" y="75" fill="#6ee7b7" font-size="11" font-weight="bold" text-anchor="middle">4. GLAZE &amp; PACK</text>
+            <text x="526" y="102" fill="#f1f5f9" font-size="10" text-anchor="middle">7.2% Ice Glaze</text>
+            <text x="526" y="124" fill="#f1f5f9" font-size="10" text-anchor="middle">14-Head Weigher</text>
+            <text x="526" y="146" fill="#7dd3fc" font-size="10" text-anchor="middle">N₂ Flush Pouch</text>
+
+            <path d="M584 120 L604 120" stroke="#10b981" stroke-width="2.5"/>
+
+            <rect x="604" y="45" width="100" height="150" rx="12" fill="rgba(129,140,248,0.18)" stroke="#818cf8" stroke-width="2"/>
+            <text x="654" y="75" fill="#c7d2fe" font-size="11" font-weight="bold" text-anchor="middle">5. EXPORT</text>
+            <text x="654" y="102" fill="#f1f5f9" font-size="10" text-anchor="middle">X-Ray Scan</text>
+            <text x="654" y="124" fill="#f1f5f9" font-size="10" text-anchor="middle">RAS QR Code</text>
+            <text x="654" y="146" fill="#67e8f9" font-size="10" text-anchor="middle">-25°C Reefer</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Ultra-Fresh 20-Minute Harvest-to-Freezer Loop", text: "Locating the HACCP cleanroom directly beside the Saint Martin RAS facility eliminates transport stress and bacterial proliferation, locking in peak sashimi-grade freshness." },
+          { title: "100% Renewable Island Cold-Chain Power", text: "Cryogenic refrigeration compressors and air-handling units run on SearchO2 Blue Lab's hybrid solar-wind-BESS microgrid with zero diesel emissions." }
+        ]
+      },
+      {
+        tag: "PREPARATION // SPECIES LINES & LASER GRADING",
+        title: "Parallel Shrimp, Squid & Octopus Prep + 3D Optical Sorter",
+        svg: `
+          <svg viewBox="0 0 720 240" class="w-full h-auto max-h-64">
+            <rect x="25" y="30" width="210" height="180" rx="14" fill="rgba(249,115,22,0.14)" stroke="#fb923c" stroke-width="2"/>
+            <text x="130" y="58" fill="#fed7aa" font-size="12" font-weight="bold" text-anchor="middle">🦐 SHRIMP LINE</text>
+            <text x="130" y="88" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Gentle De-heading &amp; Peeling</text>
+            <text x="130" y="114" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Vacuum Dorsal Deveining</text>
+            <text x="130" y="140" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Tail-On Butterfly Grading</text>
+
+            <rect x="255" y="30" width="210" height="180" rx="14" fill="rgba(244,114,182,0.14)" stroke="#f472b6" stroke-width="2"/>
+            <text x="360" y="58" fill="#fbcfe8" font-size="12" font-weight="bold" text-anchor="middle">🦑 SQUID LINE</text>
+            <text x="360" y="88" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Chitin Pen &amp; Viscera Extraction</text>
+            <text x="360" y="114" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Ultrasonic Skin Membrane Wash</text>
+            <text x="360" y="140" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Precision 12mm Ring &amp; Tube Cut</text>
+
+            <rect x="485" y="30" width="210" height="180" rx="14" fill="rgba(225,29,72,0.14)" stroke="#fb7185" stroke-width="2"/>
+            <text x="590" y="58" fill="#fecdd3" font-size="12" font-weight="bold" text-anchor="middle">🐙 OCTOPUS LINE</text>
+            <text x="590" y="88" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Beak &amp; Eye Evisceration</text>
+            <text x="590" y="114" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Soft-Paddle Enzymatic Tumbler</text>
+            <text x="590" y="140" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Flower-Cut Rosette &amp; Tentacles</text>
+          </svg>
+        `,
+        cards: [
+          { title: "3D Optical Laser Singulation", text: "Before entering the spiral freezer, stereo vision cameras measure each piece's surface area and automatically space items on the mesh belt so zero pieces touch or freeze together." },
+          { title: "Ozone Microbubble Sanitation", text: "Cold 0.4 ppm ozonated seawater reduces surface microbial load by 99.8% before decomposing cleanly back into pure dissolved oxygen." }
+        ]
+      },
+      {
+        tag: "CRYOGENICS // -40°C IMPINGEMENT SPIRAL IQF",
+        title: "Rapid Thermal Arrest & Nano-Crystal Cellular Preservation",
+        svg: `
+          <svg viewBox="0 0 720 240" class="w-full h-auto max-h-64">
+            <rect x="30" y="35" width="315" height="170" rx="14" fill="rgba(6,182,212,0.15)" stroke="#22d3ee" stroke-width="2.5"/>
+            <text x="187" y="64" fill="#67e8f9" font-size="12" font-weight="bold" text-anchor="middle">❄️ IQF SPIRAL FREEZING (-40°C / 9 MIN)</text>
+            <text x="187" y="94" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Rapid Passage Through 0°C to -5°C Zone</text>
+            <text x="187" y="118" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Microscopic Intracellular Ice Crystals</text>
+            <text x="187" y="142" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Cell Walls Intact → &lt; 0.8% Thaw Drip Loss</text>
+            <text x="187" y="172" fill="#6ee7b7" font-size="10.5" font-weight="bold" text-anchor="middle">FRESH-CAUGHT SNAP &amp; SWEETNESS</text>
+
+            <rect x="375" y="35" width="315" height="170" rx="14" fill="rgba(239,68,68,0.12)" stroke="#f87171" stroke-width="2"/>
+            <text x="532" y="64" fill="#fca5a5" font-size="12" font-weight="bold" text-anchor="middle">⚠️ CONVENTIONAL SLOW BLOCK FREEZING</text>
+            <text x="532" y="94" fill="#cbd5e1" font-size="10.5" text-anchor="middle">• Slow 12-Hour Thermal Arrest</text>
+            <text x="532" y="118" fill="#cbd5e1" font-size="10.5" text-anchor="middle">• Large Jagged Ice Needles Rupture Cells</text>
+            <text x="532" y="142" fill="#cbd5e1" font-size="10.5" text-anchor="middle">• 12–18% Moisture &amp; Protein Drip Loss</text>
+            <text x="532" y="172" fill="#fca5a5" font-size="10.5" font-weight="bold" text-anchor="middle">SOLID BLOCK CLUMPING &amp; MUSHY TEXTURE</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Vertical Air Impingement Physics", text: "High-velocity -40°C air jets strip away the warm insulating boundary layer around every shrimp and squid ring, accelerating heat transfer by 400%." },
+          { title: "Helical Compact Footprint", text: "Six ascending stainless mesh tiers provide 65 meters of continuous freezing travel inside a compact insulated footprint ideal for island facilities." }
+        ]
+      },
+      {
+        tag: "GLAZING & PACKAGING // MOISTURE LOCK",
+        title: "Chilled Water-Glazing Tunnel & 14-Head Radial VFFS Packager",
+        svg: `
+          <svg viewBox="0 0 720 240" class="w-full h-auto max-h-64">
+            <rect x="30" y="38" width="205" height="164" rx="14" fill="rgba(125,211,252,0.14)" stroke="#38bdf8" stroke-width="2"/>
+            <text x="132" y="66" fill="#bae6fd" font-size="12" font-weight="bold" text-anchor="middle">🧊 +1°C GLAZING MIST</text>
+            <text x="132" y="96" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Forms 7.2% Protective Ice Coat</text>
+            <text x="132" y="122" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Prevents Lipid Oxidation</text>
+            <text x="132" y="148" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Zero Freezer Burn for 24 Mos</text>
+
+            <rect x="257" y="38" width="205" height="164" rx="14" fill="rgba(45,212,191,0.14)" stroke="#2dd4bf" stroke-width="2"/>
+            <text x="360" y="66" fill="#99f6e4" font-size="12" font-weight="bold" text-anchor="middle">⚖️ 14-HEAD WEIGHER</text>
+            <text x="360" y="96" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• ±0.5g Combinatorial Precision</text>
+            <text x="360" y="122" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• 70 Export Pouches / Minute</text>
+            <text x="360" y="148" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Net-Glaze Weight Compensated</text>
+
+            <rect x="485" y="38" width="205" height="164" rx="14" fill="rgba(16,185,129,0.14)" stroke="#34d399" stroke-width="2"/>
+            <text x="587" y="66" fill="#6ee7b7" font-size="12" font-weight="bold" text-anchor="middle">📦 N₂-FLUSHED VFFS</text>
+            <text x="587" y="96" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• High-Barrier Recyclable Film</text>
+            <text x="587" y="122" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• &lt; 0.3% Residual Oxygen</text>
+            <text x="587" y="148" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Hermetic Ultrasonic Seal</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Surface Glaze Sublimation Shield", text: "When -28°C frozen seafood meets +1°C atomized water mist, a crystal-clear 7% ice shell freezes instantaneously, sacrificing itself during long-haul shipping instead of dehydrating the seafood." },
+          { title: "Modified Atmosphere Nitrogen Flushing", text: "Purging pouches with food-grade nitrogen before heat sealing prevents oxidative rancidity in delicate cephalopod and shrimp lipids." }
+        ]
+      },
+      {
+        tag: "QUALITY ASSURANCE // X-RAY & -25°C REEFER EXPORT",
+        title: "Dual-Energy X-Ray Inspection, RAS QR Passport & Export Reefer",
+        svg: `
+          <svg viewBox="0 0 720 240" class="w-full h-auto max-h-64">
+            <rect x="30" y="38" width="205" height="164" rx="14" fill="rgba(16,185,129,0.15)" stroke="#10b981" stroke-width="2"/>
+            <text x="132" y="66" fill="#6ee7b7" font-size="12" font-weight="bold" text-anchor="middle">🛡️ DUAL-ENERGY X-RAY</text>
+            <text x="132" y="96" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Detects 0.4mm Shell / Metal</text>
+            <text x="132" y="122" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Verifies Seal &amp; Fill Integrity</text>
+            <text x="132" y="148" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Auto Pneumatic Reject Gate</text>
+
+            <rect x="257" y="38" width="205" height="164" rx="14" fill="rgba(56,189,248,0.15)" stroke="#38bdf8" stroke-width="2"/>
+            <text x="360" y="66" fill="#7dd3fc" font-size="12" font-weight="bold" text-anchor="middle">📱 RAS QR TRACEABILITY</text>
+            <text x="360" y="96" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Links to Saint Martin RAS Tank</text>
+            <text x="360" y="122" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Full Water Quality &amp; eDNA Log</text>
+            <text x="360" y="148" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• EU / US FDA / Japan Compliant</text>
+
+            <rect x="485" y="38" width="205" height="164" rx="14" fill="rgba(129,140,248,0.15)" stroke="#818cf8" stroke-width="2"/>
+            <text x="587" y="66" fill="#c7d2fe" font-size="12" font-weight="bold" text-anchor="middle">🚢 -25°C ISO REEFER</text>
+            <text x="587" y="96" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Direct Dock Cold-Lock Seal</text>
+            <text x="587" y="122" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Satellite IoT Temp Telemetry</text>
+            <text x="587" y="148" fill="#f1f5f9" font-size="10.5" text-anchor="middle">• Zero Cold-Chain Breakage</text>
+          </svg>
+        `,
+        cards: [
+          { title: "Digital Farm-to-Fork Provenance", text: "International buyers scan the master carton QR code to verify exact harvest timestamp, antibiotic-free RAS water quality telemetry, and -40°C IQF thermal curves." },
+          { title: "Unbroken Sub-Zero Cold Chain", text: "Cartons load directly through an insulated dock seal into a -25.4°C refrigerated ISO container for global maritime and air cargo export." }
+        ]
+      }
+    ];
+
+    function openGraphicModal(tabIndex = 0) {
+      document.getElementById('graphic-modal').classList.remove('hidden');
+      renderGraphicModalTab(tabIndex);
+    }
+
+    function renderGraphicModalTab(tabIndex) {
+      const data = GRAPHIC_MODAL_DATA[tabIndex] || GRAPHIC_MODAL_DATA[0];
+      document.getElementById('modal-tag').textContent = data.tag;
+      document.getElementById('modal-title').textContent = data.title;
+      document.getElementById('modal-svg-container').innerHTML = data.svg;
+
+      document.getElementById('modal-details-grid').innerHTML = data.cards.map(c => `
+        <div class="bg-slate-900/90 p-3.5 rounded-2xl border border-sky-800/60">
+          <h4 class="font-bold text-sky-300 mb-1">${c.title}</h4>
+          <p class="text-slate-300 leading-relaxed">${c.text}</p>
+        </div>
+      `).join('');
+
+      document.querySelectorAll('.modal-tab-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx === tabIndex);
+      });
+    }
+
+    /* --- Real-Time Two-Way Voice & Question Link --- */
+    async function askIQFPlantAI(userQuery) {
+      const statusEl = document.getElementById('voice-status-text');
+      statusEl.textContent = `Querying Blue Lab IQF Team: "${userQuery}"...`;
+
+      const wasPlaying = isPlaying;
+      isPlaying = false;
+      updatePlayPauseIcons(false);
+
+      const systemPrompt = `You are Farhana Rahman (Local IQF & Cold-Chain Specialist), Captain Kabir (RAS Harvest Lead), Professor Whisker Puff (Chief Food Safety Scientist), and Pip Squeak (Packaging Technician) at the SearchO2 Blue Lab IQF Processing & Export Plant on Saint Martin's Island.
+Respond in 2 to 3 concise, authoritative sentences explaining how farmed Giant Tiger Shrimp, Bigfin Reef Squid, and Day Octopus from the RAS facility are chilled-slurry stunned, ozone-washed, laser-graded, frozen at -40°C in the Spiral IQF tunnel (preventing ice-crystal cell damage and clumping), water-glazed at 7.2%, nitrogen-packed, X-ray inspected, and exported in -25°C reefers.`;
+
+      const apiKey = "";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      try {
+        let responseText = "";
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: userQuery }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] }
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        }
+
+        if (!responseText) {
+          responseText = "Within twenty minutes of RAS harvest, our Giant Tiger Shrimp, Bigfin Reef Squid, and Day Octopus are ozone-washed, sorted by 3D optical lasers, and individually frozen at minus forty degrees Celsius in our Spiral IQF tunnel. Each piece receives a seven-percent protective ice glaze, nitrogen-flushed vacuum packaging, and dual-energy X-ray verification before entering our minus-twenty-five-degree export reefer.";
+        }
+
+        document.getElementById('speaker-avatar').textContent = '👩‍🔬';
+        document.getElementById('speaker-name').textContent = 'Farhana Rahman & IQF Team';
+        document.getElementById('speaker-role').textContent = 'Live Cold-Chain Response';
+        document.getElementById('speech-emotion').textContent = 'Live Link Active';
+        document.getElementById('speech-text').textContent = `"${responseText}"`;
+        statusEl.textContent = "Response active. Ask another question or close drawer to resume.";
+
+        speakTextSmooth(responseText, 'Farhana', () => {
+          if (wasPlaying && !isLiveVoiceOpen) {
+            isPlaying = true;
+            updatePlayPauseIcons(true);
+          }
+        });
+      } catch (err) {
+        const fallback = "Our minus-forty-degree Spiral IQF tunnel freezes every shrimp, squid ring, and octopus tentacle individually in under nine minutes, locking in cellular moisture with a protective ice glaze before X-ray inspection and minus-twenty-five-degree ISO reefer export.";
+        document.getElementById('speech-text').textContent = `"${fallback}"`;
+        speakTextSmooth(fallback, 'Farhana');
+      }
+    }
+
+    function setupRealTimeVoiceComms() {
+      const commsPanel = document.getElementById('live-comms-panel');
+      const liveBtn = document.getElementById('btn-live-voice');
+      const micBtn = document.getElementById('btn-mic-record');
+      const statusText = document.getElementById('voice-status-text');
+
+      liveBtn.addEventListener('click', () => {
+        initAudio();
+        isLiveVoiceOpen = !isLiveVoiceOpen;
+        commsPanel.classList.toggle('hidden', !isLiveVoiceOpen);
+        liveBtn.classList.toggle('active', isLiveVoiceOpen);
+        if (isLiveVoiceOpen) {
+          isPlaying = false;
+          updatePlayPauseIcons(false);
+          if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        }
+      });
+
+      document.getElementById('btn-close-comms').addEventListener('click', () => {
+        isLiveVoiceOpen = false;
+        commsPanel.classList.add('hidden');
+        liveBtn.classList.remove('active');
+      });
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      let recognition = null;
+      if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+          micBtn.classList.add('mic-live');
+          statusText.textContent = 'Microphone active — speak your question clearly...';
+        };
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          document.getElementById('voice-text-input').value = transcript;
+          askIQFPlantAI(transcript);
+        };
+        recognition.onerror = () => {
+          micBtn.classList.remove('mic-live');
+          statusText.textContent = 'Microphone unavailable. Type your question in the field below.';
+        };
+        recognition.onend = () => {
+          micBtn.classList.remove('mic-live');
+        };
+      }
+
+      micBtn.addEventListener('click', () => {
+        initAudio();
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        if (recognition) {
+          try { recognition.start(); } catch (e) {}
+        } else {
+          statusText.textContent = 'Voice input unavailable in this browser. Type your question below.';
+        }
+      });
+
+      document.getElementById('voice-text-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        initAudio();
+        const input = document.getElementById('voice-text-input');
+        const q = input.value.trim();
+        if (q) {
+          askIQFPlantAI(q);
+          input.value = '';
+        }
+      });
+    }
+
+    /* --- Smooth Camera & Stage Synchronization --- */
+    function focusCameraPreset(presetKey) {
+      const preset = CAMERA_PRESETS[presetKey];
+      if (!preset) return;
+      new TWEEN.Tween(camera.position).to(preset.pos, 1150).easing(TWEEN.Easing.Cubic.Out).start();
+      new TWEEN.Tween(controls.target).to(preset.target, 1150).easing(TWEEN.Easing.Cubic.Out).start();
+
+      document.querySelectorAll('[data-cam]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.cam === presetKey);
+      });
+    }
+
+    function updateStageHUD(stageIdx) {
+      currentActiveStage = stageIdx;
+      const cfg = STAGE_CONFIG[stageIdx] || STAGE_CONFIG[0];
+      document.getElementById('hud-stage-icon').textContent = cfg.icon;
+      document.getElementById('hud-stage-num').textContent = cfg.num;
+
+      document.getElementById('bar-prep').style.width = `${cfg.prepPct}%`;
+      document.getElementById('bar-cryo').style.width = `${cfg.cryoPct}%`;
+      document.getElementById('bar-pack').style.width = `${cfg.packPct}%`;
+
+      document.querySelectorAll('.stage-jump-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx === stageIdx);
+      });
+    }
+
+    function updatePlayPauseIcons(playing) {
+      document.getElementById('icon-pause').classList.toggle('hidden', !playing);
+      document.getElementById('icon-play').classList.toggle('hidden', playing);
+    }
+
+    function showActionToast(msg) {
+      const toast = document.getElementById('action-toast');
+      toast.textContent = msg;
+      toast.style.opacity = '1';
+      setTimeout(() => { toast.style.opacity = '0'; }, 4200);
+    }
+
+    function updateStoryTimeline(time) {
+      const scrubber = document.getElementById('story-scrubber');
+      if (Math.abs(parseFloat(scrubber.value) - time) > 0.4) scrubber.value = time;
+
+      const mins = Math.floor(time / 60);
+      const secs = Math.floor(time % 60);
+      document.getElementById('time-display').textContent =
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      // Live Cryogenic & Cold-Chain Telemetry Fluctuations
+      const boostOffset = cryoBoostTimer > 0 ? -2.3 : 0;
+      const iqfTemp = (-40.2 + boostOffset + Math.sin(time * 0.7) * 0.35).toFixed(1);
+      const reeferTemp = (-25.4 + Math.cos(time * 0.5) * 0.18).toFixed(1);
+      document.getElementById('val-iqf-temp').textContent = `${iqfTemp}°C`;
+      document.getElementById('val-reefer').textContent = `${reeferTemp}°C`;
+
+      const idx = STORY_BEATS.findIndex(b => time >= b.start && time < b.end);
+      if (idx !== -1 && idx !== currentBeatIdx) {
+        currentBeatIdx = idx;
+        const beat = STORY_BEATS[idx];
+        const dialogueBox = document.getElementById('dialogue-container');
+
+        dialogueBox.classList.remove('fade-in');
+        dialogueBox.classList.add('fade-out');
+
+        setTimeout(() => {
+          document.getElementById('speaker-avatar').textContent = beat.avatar;
+          document.getElementById('speaker-name').textContent =
+            beat.speaker === 'Farhana' ? 'Farhana Rahman' :
+            (beat.speaker === 'Kabir' ? 'Captain Kabir' :
+            (beat.speaker === 'Puff' ? 'Professor Whisker Puff' : 'Pip Squeak'));
+          document.getElementById('speaker-role').textContent = beat.role;
+          document.getElementById('speech-emotion').textContent = beat.emotion;
+          document.getElementById('speech-text').textContent = `"${beat.text}"`;
+
+          if (subtitlesEnabled) {
+            dialogueBox.classList.remove('fade-out');
+            dialogueBox.classList.add('fade-in');
+          }
+        }, 180);
+
+        updateStageHUD(beat.stage);
+        focusCameraPreset(beat.cam);
+        speakTextSmooth(beat.text, beat.speaker);
+      }
+
+      // Smooth 4-Character Gaze Orientation toward Active Processing Zone
+      const activeBeat = STORY_BEATS[currentBeatIdx] || STORY_BEATS[0];
+      if (activeBeat && activeBeat.aim) {
+        [farhanaGroup, kabirGroup, puffGroup, pipGroup].forEach(char => {
+          if (!char) return;
+          const dx = activeBeat.aim.x - char.position.x;
+          const dz = activeBeat.aim.z - char.position.z;
+          const targetRot = Math.atan2(dx, dz);
+          char.rotation.y = THREE.MathUtils.lerp(char.rotation.y, targetRot, 0.05);
+        });
+      }
+    }
+
+    /* --- UI Event Listeners --- */
+    function setupUIEvents() {
+      document.getElementById('btn-play-pause').addEventListener('click', () => {
+        initAudio();
+        isPlaying = !isPlaying;
+        updatePlayPauseIcons(isPlaying);
+        if (!isPlaying && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          isSpeaking = false;
+        }
+      });
+
+      document.getElementById('btn-restart').addEventListener('click', () => {
+        initAudio();
+        storyTime = 0;
+        currentBeatIdx = -1;
+        isPlaying = true;
+        updatePlayPauseIcons(true);
+        updateStoryTimeline(0);
+      });
+
+      document.getElementById('story-scrubber').addEventListener('input', (e) => {
+        initAudio();
+        storyTime = parseFloat(e.target.value);
+        currentBeatIdx = -1;
+        updateStoryTimeline(storyTime);
+      });
+
+      const stageStartTimes = [0, 28.6, 57.1, 86.6, 102.1];
+      document.querySelectorAll('.stage-jump-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          initAudio();
+          const s = parseInt(btn.dataset.stage, 10);
+          storyTime = stageStartTimes[s] || 0;
+          currentBeatIdx = -1;
+          isPlaying = true;
+          updatePlayPauseIcons(true);
+          updateStoryTimeline(storyTime);
+        });
+      });
+
+      document.querySelectorAll('[data-cam]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          initAudio();
+          focusCameraPreset(btn.dataset.cam);
+        });
+      });
+
+      document.getElementById('btn-open-architecture').addEventListener('click', () => openGraphicModal(0));
+      document.getElementById('btn-stage-graphic').addEventListener('click', () => openGraphicModal(currentActiveStage));
+      document.getElementById('btn-close-graphic-modal').addEventListener('click', () => {
+        document.getElementById('graphic-modal').classList.add('hidden');
+      });
+      document.querySelectorAll('.modal-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => renderGraphicModalTab(parseInt(btn.dataset.tab, 10)));
+      });
+
+      document.getElementById('btn-field-action').addEventListener('click', () => {
+        initAudio();
+        playFxTone(680, 'sine', 0.2, 0.05);
+        cryoBoostTimer = 4.0;
+        const cfg = STAGE_CONFIG[currentActiveStage] || STAGE_CONFIG[0];
+        showActionToast(cfg.toast);
+      });
+
+      const audioBtn = document.getElementById('btn-audio');
+      audioBtn.addEventListener('click', () => {
+        initAudio();
+        audioEnabled = !audioEnabled;
+        audioBtn.classList.toggle('active', audioEnabled);
+        if (!audioEnabled && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          isSpeaking = false;
+        }
+      });
+
+      const subBtn = document.getElementById('btn-subtitles');
+      subBtn.addEventListener('click', () => {
+        subtitlesEnabled = !subtitlesEnabled;
+        subBtn.classList.toggle('active', subtitlesEnabled);
+        const box = document.getElementById('dialogue-container');
+        box.classList.toggle('fade-out', !subtitlesEnabled);
+        box.classList.toggle('fade-in', subtitlesEnabled);
+      });
+
+      setupRealTimeVoiceComms();
+    }
+
+    function onResize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+
+    /* --- Main 60 FPS Cryogenic & Conveyor Simulation Loop --- */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      const elapsed = clock.getElapsedTime();
+      TWEEN.update();
+
+      if (cryoBoostTimer > 0) cryoBoostTimer = Math.max(0, cryoBoostTimer - delta);
+      const speedMult = cryoBoostTimer > 0 ? 1.55 : 1.0;
+
+      // 1. Timeline Progression with Zero-Cutoff Speech Guard
+      if (isPlaying) {
+        const nextBeat = STORY_BEATS[currentBeatIdx + 1];
+        if (nextBeat && isSpeaking && storyTime + delta >= nextBeat.start - 0.15) {
+          // Hold smoothly until active speaker finishes sentence
+        } else {
+          storyTime += delta;
+        }
+
+        if (storyTime >= TOTAL_DURATION) {
+          storyTime = TOTAL_DURATION;
+          isPlaying = false;
+          updatePlayPauseIcons(false);
+        }
+        updateStoryTimeline(storyTime);
+      }
+
+      // 2. Coastal Lagoon Waves
+      if (waterGeo && initialWaterZ) {
+        const pos = waterGeo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+          const x = pos.getX(i);
+          const y = pos.getY(i);
+          const wave = Math.sin(x * 0.28 + elapsed * 1.6) * 0.055 + Math.cos(y * 0.24 + elapsed * 1.3) * 0.045;
+          pos.setZ(i, initialWaterZ[i] + wave);
+        }
+        pos.needsUpdate = true;
+      }
+
+      // 3. Spiral IQF Freezer Drum & Evaporator Fans Rotation
+      if (spiralDrumMesh) spiralDrumMesh.rotation.y += 0.025 * speedMult;
+      if (evapFan1) evapFan1.rotation.y += 0.18 * speedMult;
+      if (evapFan2) evapFan2.rotation.y -= 0.18 * speedMult;
+
+      // 4. Sweeping Optical Laser Grader & X-Ray Scanner Pulse
+      if (laserGraderBeam) {
+        laserGraderBeam.position.x = Math.sin(elapsed * 4.5) * 0.35;
+      }
+      if (xrayScannerBeam) {
+        xrayScannerBeam.material.color.setHex(Math.sin(elapsed * 6.0) > 0 ? 0x10b981 : 0x34d399);
+      }
+
+      // 5. Ozone Microbubbles, Cryogenic Mist & Glazing Water Mist
+      ozoneBubbles.forEach(ob => {
+        const cyc = (elapsed * 0.75 + ob.offset) % 1.0;
+        ob.mesh.position.set(ob.bx, 0.2 + cyc * 0.9, ob.bz);
+      });
+
+      cryoVaporParticles.forEach((cv, idx) => {
+        const a = elapsed * cv.speed * speedMult + cv.angle;
+        cv.mesh.position.set(
+          Math.cos(a) * cv.radius,
+          cv.baseY + Math.sin(elapsed * 2.5 + idx) * 0.12,
+          Math.sin(a) * cv.radius
+        );
+      });
+
+      glazingMistParticles.forEach(gm => {
+        const drop = (elapsed * 1.3 + gm.offset) % 1.0;
+        gm.mesh.position.set(gm.gx, 2.15 - drop * 0.75, gm.gz);
+      });
+
+      // 6. End-to-End Seafood Journey: Prep -> Laser Grader -> Ascending -40°C Spiral -> Glazing -> Packager
+      productItems.forEach(item => {
+        const t = (elapsed * 0.085 * speedMult + item.offset) % 1.0;
+
+        if (t < 0.32) {
+          // Stage 1-2: Moving along Prep & Optical Laser Grader Belt (x = -7.8 to -2.2)
+          const u = t / 0.32;
+          item.mesh.position.set(-7.8 + u * 5.6, 2.34, item.laneZ);
+          item.mat.color.copy(item.warmHex);
+          item.mat.emissive.setHex(0x000000);
+        } else if (t < 0.72) {
+          // Stage 3: Ascending inside the -40°C Spiral IQF Freezer (x center = -0.2)
+          const u = (t - 0.32) / 0.40;
+          const spiralAngle = u * Math.PI * 6; // 3 full helical revolutions
+          const spiralR = 1.25 + item.laneZ * 0.22;
+          item.mesh.position.set(
+            -0.2 + Math.cos(spiralAngle) * spiralR,
+            1.65 + u * 2.65,
+            Math.sin(spiralAngle) * spiralR
+          );
+          // Smoothly freeze from warm raw color to frosted pearl-white IQF state
+          item.mat.color.lerpColors(item.warmHex, item.frozenHex, u);
+          item.mat.emissive.setHex(0x38bdf8);
+          item.mat.emissiveIntensity = u * 0.25;
+        } else {
+          // Stage 4: Exiting Spiral through Water-Glazing Tunnel into 14-Head Weigher (x = 1.8 to 6.1)
+          const u = (t - 0.72) / 0.28;
+          item.mesh.position.set(1.8 + u * 4.3, 2.32, item.laneZ * 0.65);
+          item.mat.color.copy(item.frozenHex);
+          item.mat.emissive.setHex(0x7dd3fc);
+          item.mat.emissiveIntensity = 0.32;
+        }
+      });
+
+      // 7. Export Cartons Moving from X-Ray Inspector into -25°C Export Reefer
+      exportCartons.forEach(ec => {
+        const u = (elapsed * 0.22 * speedMult + ec.offset) % 1.0;
+        ec.mesh.position.set(7.4 + u * 4.2, 2.15, 0);
+      });
+
+      // 8. Four Characters Subtle Gestures
+      if (farhanaArmR) farhanaArmR.rotation.x = Math.sin(elapsed * 2.1) * 0.14 + 0.32;
+      if (kabirArmR) kabirArmR.rotation.x = Math.cos(elapsed * 2.0) * 0.14 + 0.24;
+      if (puffArmR) puffArmR.rotation.x = Math.sin(elapsed * 2.3) * 0.12 + 0.22;
+      if (pipArmR) pipArmR.rotation.x = Math.cos(elapsed * 2.8) * 0.16 + 0.2;
+
+      updateProjectedHotspots();
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.onload = () => {
+      init();
+      updateStoryTimeline(0);
+      animate();
+    };
+  </script>
+
+<script>
+window.returnToBlueLab = function(e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.closeModal === 'function') {
+      window.parent.closeModal();
+      return false;
+    }
+  } catch(err) {}
+  var ref = document.referrer || '';
+  var search = window.location.search || '';
+  if (ref.indexOf('/hub') !== -1 || search.indexOf('source=hub') !== -1) {
+    window.location.href = '../../hub/index.html#/saint-martin';
+    return false;
+  }
+  window.location.href = '../blue-lab.html';
+  return false;
+};
+window.returnToResearchLab = window.returnToBlueLab;
+</script>
+
+</body>
+</html>
